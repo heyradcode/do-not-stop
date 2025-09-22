@@ -1,35 +1,67 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import {
+  DynamicContextProvider,
+  DynamicWidget,
+  useDynamicContext,
+} from '@dynamic-labs/sdk-react-core';
+import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
+import { DynamicWagmiConnector } from '@dynamic-labs/wagmi-connector';
+import {
+  createConfig,
+  WagmiProvider,
+  useAccount,
+} from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http } from 'viem';
+import { mainnet } from 'viem/chains';
+import { useEffect } from 'react';
+import { DYNAMIC_ENV_ID } from '../config';
 
-function App() {
-  const [count, setCount] = useState(0)
+const config = createConfig({
+  chains: [mainnet],
+  multiInjectedProviderDiscovery: false,
+  transports: {
+    [mainnet.id]: http(),
+  },
+});
+
+const queryClient = new QueryClient();
+
+export default function App() {
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <DynamicContextProvider
+      settings={{
+        environmentId: DYNAMIC_ENV_ID,
+        walletConnectors: [EthereumWalletConnectors],
+      }}
+    >
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <DynamicWagmiConnector>
+            <DynamicWidget />
+            <AccountInfo />
+          </DynamicWagmiConnector>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </DynamicContextProvider>
+  );
 }
 
-export default App
+function AccountInfo() {
+  const { address, isConnected, chain } = useAccount();
+  const { sdkHasLoaded } = useDynamicContext();
+
+  useEffect(() => {
+    sdkHasLoaded ? console.log("SDK has loaded") : console.log("SDK is still loading");
+  }, [sdkHasLoaded]);
+
+  return (
+    <div>
+      <p>
+        wagmi connected: {isConnected ? 'true' : 'false'}
+      </p>
+      <p>wagmi address: {address}</p>
+      <p>wagmi network: {chain?.id}</p>
+    </div>
+  );
+};
