@@ -1,7 +1,9 @@
+import React, { useEffect } from 'react';
 import {
   DynamicContextProvider,
   DynamicWidget,
   useDynamicContext,
+  useIsLoggedIn,
 } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
 import { DynamicWagmiConnector } from '@dynamic-labs/wagmi-connector';
@@ -13,7 +15,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http } from 'viem';
 import { mainnet } from 'viem/chains';
-import { useEffect } from 'react';
+
 import { DYNAMIC_ENV_ID } from '../config';
 
 const config = createConfig({
@@ -26,8 +28,7 @@ const config = createConfig({
 
 const queryClient = new QueryClient();
 
-export default function App() {
-
+const App: React.FC = () => {
   return (
     <DynamicContextProvider
       settings={{
@@ -45,11 +46,14 @@ export default function App() {
       </WagmiProvider>
     </DynamicContextProvider>
   );
-}
+};
 
-function AccountInfo() {
+interface AccountInfoProps {}
+
+const AccountInfo: React.FC<AccountInfoProps> = () => {
   const { address, isConnected, chain } = useAccount();
   const { sdkHasLoaded } = useDynamicContext();
+  const isLoggedIn: boolean = useIsLoggedIn();
 
   useEffect(() => {
     sdkHasLoaded ? console.log("SDK has loaded") : console.log("SDK is still loading");
@@ -57,6 +61,7 @@ function AccountInfo() {
 
   return (
     <div>
+      <p>isLoggedIn: {isLoggedIn ? 'Logged in' : 'not Logged in'}</p>
       <p>
         wagmi connected: {isConnected ? 'true' : 'false'}
       </p>
@@ -65,3 +70,5 @@ function AccountInfo() {
     </div>
   );
 };
+
+export default App;
