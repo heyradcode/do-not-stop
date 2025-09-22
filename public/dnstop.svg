@@ -1,0 +1,29 @@
+<svg
+  width="200"
+  height="200"
+  viewBox="0 0 200 200"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <circle cx="100" cy="100" r="96" fill="url(#grad)" />
+  <path
+    d="M70 100c0-20 15-35 35-35s35 15 35 35-15 35-35 35-35-15-35-35z"
+    stroke="white"
+    stroke-width="12"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M95 85l20 15-20 15"
+    stroke="white"
+    stroke-width="12"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="200" y2="200">
+      <stop offset="0%" stop-color="#6C63FF" />
+      <stop offset="100%" stop-color="#00D4FF" />
+    </linearGradient>
+  </defs>
+</svg>
