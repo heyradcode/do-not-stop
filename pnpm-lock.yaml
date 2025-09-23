@@ -11,6 +11,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.90.1
         version: 5.90.1(react@19.1.1)
+      '@types/react-modal':
+        specifier: ^3.16.3
+        version: 3.16.3
       axios:
         specifier: ^1.12.2
         version: 1.12.2
@@ -20,6 +23,9 @@ importers:
       react-dom:
         specifier: ^19.1.1
         version: 19.1.1(react@19.1.1)
+      react-modal:
+        specifier: ^3.16.3
+        version: 3.16.3(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       viem:
         specifier: ^2.37.7
         version: 2.37.7(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.22.4)
@@ -810,6 +816,9 @@ packages:
     peerDependencies:
       '@types/react': ^19.0.0
 
+  '@types/react-modal@3.16.3':
+    resolution: {integrity: sha512-xXuGavyEGaFQDgBv4UVm8/ZsG+qxeQ7f77yNrW3n+1J6XAstUy5rYHeIHPh1KzsGc6IkCIdu6lQ2xWzu1jBTLg==}
+
   '@types/react@19.1.13':
     resolution: {integrity: sha512-hHkbU/eoO3EG5/MZkuFSKmYqPbSVk5byPFa3e7y/8TybHiLMACgI8seVYlicwk7H5K/rI2px9xrQp/C+AUDTiQ==}
 
@@ -1557,6 +1566,9 @@ packages:
     resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
     engines: {node: '>=0.8.x'}
 
+  exenv@1.2.2:
+    resolution: {integrity: sha512-Z+ktTxTwv9ILfgKCk32OX3n/doe+OcLTRtqK9pcL+JsP3J1/VW8Uvl4ZjLlKqeW4rzK4oesDOGMEMRIZqtP4Iw==}
+
   extension-port-stream@3.0.0:
     resolution: {integrity: sha512-an2S5quJMiy5bnZKEf6AkfH/7r8CzHvhchU40gxN+OM6HPhe7Z9T1FUychcf2M9PpPOO0Hf7BAEfJkw2TDIBDw==}
     engines: {node: '>=12.0.0'}
@@ -2301,6 +2313,15 @@ packages:
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
 
+  react-lifecycles-compat@3.0.4:
+    resolution: {integrity: sha512-fBASbA6LnOU9dOU2eW7aQ8xmYBSXUIWr+UmF9b1efZBazGNO+rcXT/icdKnYm2pTwcRylVUYwW7H1PHfLekVzA==}
+
+  react-modal@3.16.3:
+    resolution: {integrity: sha512-yCYRJB5YkeQDQlTt17WGAgFJ7jr2QYcWa1SHqZ3PluDmnKJ/7+tVU+E6uKyZ0nODaeEj+xCpK4LcSnKXLMC0Nw==}
+    peerDependencies:
+      react: ^0.14.0 || ^15.0.0 || ^16 || ^17 || ^18 || ^19
+      react-dom: ^0.14.0 || ^15.0.0 || ^16 || ^17 || ^18 || ^19
+
   react-refresh@0.17.0:
     resolution: {integrity: sha512-z6F7K9bV85EfseRCp2bzrpyQ0Gkw1uLoCel9XBVWPg/TjRj94SkJzUTGfOa4bs7iJvBWtQG0Wq7wnI0syw3EBQ==}
     engines: {node: '>=0.10.0'}
@@ -2794,6 +2815,9 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  warning@4.0.3:
+    resolution: {integrity: sha512-rpJyN222KWIvHJ/F53XSZv0Zl/accqHR8et1kpaMTD/fLCRxtV8iX8czMzY7sVZupTI3zcUTg8eycS2kNF9l6w==}
 
   webextension-polyfill@0.10.0:
     resolution: {integrity: sha512-c5s35LgVa5tFaHhrZDnr3FpQpjj1BB+RXhLTYUxGqBVN460HkbM8TBtEqdXWbpTKfzwCcjAZVF7zXCYSKtcp9g==}
@@ -3980,6 +4004,10 @@ snapshots:
     optional: true
 
   '@types/react-dom@19.1.9(@types/react@19.1.13)':
+    dependencies:
+      '@types/react': 19.1.13
+
+  '@types/react-modal@3.16.3':
     dependencies:
       '@types/react': 19.1.13
 
@@ -5423,6 +5451,8 @@ snapshots:
 
   events@3.3.0: {}
 
+  exenv@1.2.2: {}
+
   extension-port-stream@3.0.0:
     dependencies:
       readable-stream: 3.6.2
@@ -6161,6 +6191,17 @@ snapshots:
 
   react-is@16.13.1: {}
 
+  react-lifecycles-compat@3.0.4: {}
+
+  react-modal@3.16.3(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
+    dependencies:
+      exenv: 1.2.2
+      prop-types: 15.8.1
+      react: 19.1.1
+      react-dom: 19.1.1(react@19.1.1)
+      react-lifecycles-compat: 3.0.4
+      warning: 4.0.3
+
   react-refresh@0.17.0: {}
 
   react@19.1.1: {}
@@ -6719,6 +6760,10 @@ snapshots:
       - uploadthing
       - utf-8-validate
       - zod
+
+  warning@4.0.3:
+    dependencies:
+      loose-envify: 1.4.0
 
   webextension-polyfill@0.10.0: {}
 

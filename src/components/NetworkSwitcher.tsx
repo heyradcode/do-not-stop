@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   // Mainnets
   mainnet,
@@ -24,10 +24,11 @@ import {
   gnosisChiado
 } from 'viem/chains';
 import { useAccount, useSwitchChain } from 'wagmi';
+import Modal from 'react-modal';
 import './NetworkSwitcher.css';
 
 // Organized chains with testnets right after their mainnets
-const organizedChains = [
+const CHAINS = [
   // Ethereum
   { chain: mainnet, name: 'Ethereum', symbol: 'ETH', isTestnet: false },
   { chain: sepolia, name: 'Sepolia', symbol: 'ETH', isTestnet: true },
@@ -71,46 +72,37 @@ const organizedChains = [
 
 const NetworkSwitcher: React.FC = () => {
   const { chain } = useAccount();
-  const { switchChain, isPending } = useSwitchChain();
-
-  // Auto-check testnets on initial render if current chain is a testnet
+  const { switchChain, isPending, error: switchError } = useSwitchChain();
+  const [isOpen, setIsOpen] = useState(false);
   const [showTestnets, setShowTestnets] = useState(() => {
     if (!chain) return false;
-    return organizedChains.some(
+    return CHAINS.some(
       chainConfig => chainConfig.chain.id === chain.id && chainConfig.isTestnet
     );
   });
 
+  // Set the app element for react-modal accessibility
+  useEffect(() => {
+    Modal.setAppElement('#root');
+  }, []);
+
   if (!chain) return null;
 
   const visibleChains = showTestnets
-    ? organizedChains.filter(chain => chain.isTestnet)
-    : organizedChains.filter(chain => !chain.isTestnet);
+    ? CHAINS.filter(chain => chain.isTestnet)
+    : CHAINS.filter(chain => !chain.isTestnet);
+
+  const currentChainConfig = CHAINS.find(
+    chainConfig => chainConfig.chain.id === chain.id
+  );
 
   const handleTestnetToggle = (checked: boolean) => {
     setShowTestnets(checked);
+  };
 
-    // Find equivalent network when toggling
-    const currentChainConfig = organizedChains.find(
-      chainConfig => chainConfig.chain.id === chain.id
-    );
-
-    if (currentChainConfig) {
-      // Find the equivalent network by looking for the same chain type
-      // (e.g., Ethereum <-> Sepolia, BSC <-> BSC Testnet)
-      const equivalentChain = organizedChains.find(
-        chainConfig => {
-          // Match by chain type (first part of name) and opposite testnet status
-          const currentType = currentChainConfig.chain.name.split(' ')[0];
-          const candidateType = chainConfig.chain.name.split(' ')[0];
-          return candidateType === currentType && chainConfig.isTestnet === checked;
-        }
-      );
-
-      if (equivalentChain) {
-        switchChain({ chainId: equivalentChain.chain.id });
-      }
-    }
+  const handleNetworkSelect = (chainId: number) => {
+    switchChain({ chainId });
+    setIsOpen(false);
   };
 
   return (
@@ -122,28 +114,75 @@ const NetworkSwitcher: React.FC = () => {
             type="checkbox"
             checked={showTestnets}
             onChange={(e) => handleTestnetToggle(e.target.checked)}
+            disabled={isPending}
           />
           <span>Testnets</span>
         </label>
       </div>
-      <div className="network-dropdown">
-        <select
-          value={chain.id}
-          onChange={(e) => switchChain({ chainId: Number(e.target.value) })}
-          disabled={isPending}
-          className="network-select"
-        >
-          {visibleChains.map(({ chain: chainConfig, name, isTestnet }) => (
-            <option
-              key={chainConfig.id}
-              value={chainConfig.id}
-              className={isTestnet ? 'testnet-option' : ''}
-            >
-              {name} {isTestnet ? '(TEST)' : ''}
-            </option>
-          ))}
-        </select>
-      </div>
+
+      {switchError && (
+        <div className="network-error">
+          Error: {switchError.message}
+        </div>
+      )}
+
+      <button
+        className="network-trigger"
+        onClick={() => setIsOpen(true)}
+        disabled={isPending}
+      >
+        <div className="network-info">
+          <span className="network-name">
+            {isPending ? 'Switching...' : (currentChainConfig?.name || 'Unknown Network')}
+          </span>
+          <span className="network-symbol">
+            {isPending ? '...' : (currentChainConfig?.symbol || '?')}
+          </span>
+        </div>
+        <div className="dropdown-arrow">
+          ▼
+        </div>
+      </button>
+
+      <Modal
+        isOpen={isOpen}
+        onRequestClose={() => setIsOpen(false)}
+        className="network-modal"
+        overlayClassName="network-modal-overlay"
+        shouldCloseOnOverlayClick={true}
+        shouldCloseOnEsc={true}
+      >
+        <div className="network-modal-header">
+          <h3>Select Network</h3>
+          <button
+            className="network-modal-close"
+            onClick={() => setIsOpen(false)}
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="network-modal-content">
+          <div className="network-list">
+            {visibleChains.map(({ chain: chainConfig, name, symbol, isTestnet }) => (
+              <button
+                key={chainConfig.id}
+                className={`network-option ${chain.id === chainConfig.id ? 'active' : ''} ${isTestnet ? 'testnet' : ''}`}
+                onClick={() => handleNetworkSelect(chainConfig.id)}
+                disabled={isPending}
+              >
+                <div className="network-option-info">
+                  <span className="network-option-name">{name}</span>
+                  <span className="network-option-symbol">{symbol}</span>
+                </div>
+                {chain.id === chainConfig.id && (
+                  <div className="network-check">✓</div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
