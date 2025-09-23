@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import WalletConnection from './WalletConnection';
+import './AccountInfo.css';
 
 const AccountInfo: React.FC = () => {
   const { address, isConnected, chain, status } = useAccount();
