@@ -1,13 +1,5 @@
 import React, { useEffect } from 'react';
 import {
-  DynamicContextProvider,
-  DynamicWidget,
-  useDynamicContext,
-  useIsLoggedIn,
-} from '@dynamic-labs/sdk-react-core';
-import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
-import { DynamicWagmiConnector } from '@dynamic-labs/wagmi-connector';
-import {
   createConfig,
   WagmiProvider,
   useAccount,
@@ -15,8 +7,6 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http } from 'viem';
 import { mainnet } from 'viem/chains';
-
-import { DYNAMIC_ENV_ID } from '../config';
 
 const config = createConfig({
   chains: [mainnet],
@@ -30,45 +20,33 @@ const queryClient = new QueryClient();
 
 const App: React.FC = () => {
   return (
-    <DynamicContextProvider
-      settings={{
-        environmentId: DYNAMIC_ENV_ID,
-        walletConnectors: [EthereumWalletConnectors],
-      }}
-    >
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
-          <DynamicWagmiConnector>
-            <DynamicWidget />
-            <AccountInfo />
-          </DynamicWagmiConnector>
-        </QueryClientProvider>
-      </WagmiProvider>
-    </DynamicContextProvider>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <AccountInfo />
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 };
 
 interface AccountInfoProps {}
 
 const AccountInfo: React.FC<AccountInfoProps> = () => {
-  const { address, isConnected, chain } = useAccount();
-  const { sdkHasLoaded } = useDynamicContext();
-  const isLoggedIn: boolean = useIsLoggedIn();
+  const { address, isConnected, chain, status } = useAccount();
 
   useEffect(() => {
-    sdkHasLoaded ? console.log("SDK has loaded") : console.log("SDK is still loading");
-  }, [sdkHasLoaded]);
+    console.log("Account status:", { address, isConnected, chain, status });
+  }, [address, isConnected, chain, status]);
 
   return (
     <div>
-      <p>isLoggedIn: {isLoggedIn ? 'Logged in' : 'not Logged in'}</p>
-      <p>
-        wagmi connected: {isConnected ? 'true' : 'false'}
-      </p>
-      <p>wagmi address: {address}</p>
-      <p>wagmi network: {chain?.id}</p>
+      <h1>Wallet Connection Status</h1>
+      <p>Connected: {isConnected ? 'true' : 'false'}</p>
+      <p>Address: {address || 'Not connected'}</p>
+      <p>Network: {chain?.id || 'Unknown'}</p>
+      <p>Status: {status}</p>
     </div>
   );
 };
 
 export default App;
+

@@ -14,8 +14,7 @@
 
   * **viem**: Lightweight Ethereum client for smart contract interactions.
   * **wagmi**: React hooks for seamless wallet and blockchain interactions.
-  * **dynamic.xyz**: Easy integration for dynamic smart contract rendering.
-* **Evolving Architecture**: Designed for continuous improvements, reflecting the fast-paced Web3 ecosystem.
+  * **Evolving Architecture**: Designed for continuous improvements, reflecting the fast-paced Web3 ecosystem.
 
 ---
 
@@ -52,7 +51,7 @@ http://localhost:5173
 
 * **Frontend**: React 19+, TypeScript
 * **Build Tool**: Vite
-* **Blockchain**: wagmi, viem, dynamic.xyz
+* **Blockchain**: wagmi, viem
 * **Styling**: Your choice (Tailwind, CSS Modules, etc.)
 
 ---
