@@ -1,12 +1,7 @@
 import React from 'react';
+
 import { useUserProfile } from '../hooks/useUserProfile';
 import './ProtectedContent.css';
-
-interface User {
-  address: string;
-  createdAt: string;
-  lastLogin: string;
-}
 
 const ProtectedContent: React.FC = () => {
   const { data: profileData, isLoading, error, refetch } = useUserProfile();

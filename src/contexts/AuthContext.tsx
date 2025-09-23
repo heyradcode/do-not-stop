@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
+
 import { useNonce, useVerifySignature } from '../hooks/useAuth';
 import { useUserProfile } from '../hooks/useUserProfile';
 
@@ -47,7 +48,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const isWalletConnected = isConnected && !!address;
-    
+
     // If wallet is disconnected, clear authentication state and token
     if (!isWalletConnected) {
       setAuthenticated(false);
@@ -55,7 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.removeItem('authToken');
       return;
     }
-    
+
     // If we have both token and wallet connection, the useUserProfile hook will automatically run
     // and validate the token by fetching the user profile
   }, [address, isConnected]);
@@ -105,7 +106,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (verifyError) {
       console.error('Verification error:', verifyError);
       setPendingNonce(null);
-      alert('Authentication failed: ' + verifyError.message);
+      alert(`Authentication failed: ${verifyError.message}`);
     }
   }, [verifyError]);
 
@@ -114,7 +115,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (signError) {
       console.error('Signing error:', signError);
       setPendingNonce(null);
-      alert('Signing failed: ' + signError.message);
+      alert(`Signing failed: ${signError.message}`);
     }
   }, [signError]);
 
@@ -127,34 +128,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signAndLogin = async () => {
     if (!address) return;
-    
+
     try {
       // Get nonce from backend using React Query
       const { data } = await getNonce();
       const { nonce } = data;
-      
+
       // Store nonce for later use
       setPendingNonce(nonce);
-      
+
       // Create message to sign
       const message = `Sign this message to authenticate: ${nonce}`;
-      
+
       console.log('Requesting signature for message:', message);
-      
+
       // Trigger the signing process - this will show MetaMask popup
       signMessage({ message });
-      
+
     } catch (error) {
       console.error('Error getting nonce:', error);
-      alert('Error getting nonce: ' + error.message);
+      alert(`Error getting nonce: ${error.message}`);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      isAuthenticated, 
-      user, 
-      logout, 
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      user,
+      logout,
       signAndLogin,
       isSigning,
       isVerifying,

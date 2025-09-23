@@ -1,9 +1,6 @@
-import React from 'react';
-import {
-  createConfig,
-  WagmiProvider,
-} from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
+import React from 'react';
 import { http } from 'viem';
 import { 
   // Mainnets
@@ -29,9 +26,14 @@ import {
   celoAlfajores,
   gnosisChiado
 } from 'viem/chains';
+import {
+  createConfig,
+  WagmiProvider,
+} from 'wagmi';
 import { injected } from 'wagmi/connectors';
-import { AuthProvider } from './contexts/AuthContext';
+
 import Main from './components/Main';
+import { AuthProvider } from './contexts/AuthContext';
 import './App.css';
 
 // All supported chains
@@ -52,9 +54,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: (failureCount, error: any) => {
+      retry: (failureCount, error: AxiosError) => {
         // Don't retry on 401 (unauthorized)
-        if (error?.response?.status === 401) {
+        if (error.response?.status === 401) {
           return false;
         }
         return failureCount < 3;

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useAccount, useSwitchChain } from 'wagmi';
 import { 
   // Mainnets
   mainnet,
@@ -24,6 +23,7 @@ import {
   celoAlfajores,
   gnosisChiado
 } from 'viem/chains';
+import { useAccount, useSwitchChain } from 'wagmi';
 import './NetworkSwitcher.css';
 
 const mainnetChains = [
@@ -76,7 +76,7 @@ const NetworkSwitcher: React.FC = () => {
         </label>
       </div>
       <div className="network-buttons">
-        {visibleChains.map(({ chain: chainConfig, name, symbol, isTestnet }) => (
+        {visibleChains.map(({ chain: chainConfig, name, isTestnet }) => (
           <button
             key={chainConfig.id}
             onClick={() => switchChain({ chainId: chainConfig.id })}

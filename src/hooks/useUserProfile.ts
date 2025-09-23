@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+
 import { API_URL } from '../config';
 
 // Get user profile
@@ -17,9 +18,9 @@ export const useUserProfile = () => {
       return data;
     },
     enabled: !!token, // Only run if token exists
-    retry: (failureCount, error: any) => {
+    retry: (failureCount, error: AxiosError) => {
       // Don't retry on 401 (unauthorized)
-      if (error?.response?.status === 401) {
+      if (error.response?.status === 401) {
         localStorage.removeItem('authToken');
         return false;
       }

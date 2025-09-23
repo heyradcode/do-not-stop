@@ -1,7 +1,9 @@
 import React from 'react';
+
 import { useAuth } from '../contexts/AuthContext';
-import WalletConnection from './WalletConnection';
+
 import ProtectedContent from './ProtectedContent';
+import WalletConnection from './WalletConnection';
 import './Main.css';
 
 const Main: React.FC = () => {
