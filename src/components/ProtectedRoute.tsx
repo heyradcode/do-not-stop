@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { API_URL } from '../config';
+import React from 'react';
+import { useUserProfile } from '../hooks/useUser';
 import './ProtectedRoute.css';
 
 interface User {
@@ -10,67 +9,14 @@ interface User {
 }
 
 const ProtectedRoute: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: profileData, isLoading, error, refetch } = useUserProfile();
+  const user = profileData?.user || null;
 
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        setError('No authentication token found');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const { data } = await axios.get(`${API_URL}/api/protected/profile`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        setUser(data.user);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-        // Clear invalid token
-        localStorage.removeItem('authToken');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserProfile();
-  }, []);
-
-  const handleRefresh = async () => {
-    setLoading(true);
-    setError(null);
-    
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      setError('No authentication token found');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const { data } = await axios.get(`${API_URL}/api/protected/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      setUser(data.user);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
+  const handleRefresh = () => {
+    refetch();
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="protected-route">
         <h2>Protected Route</h2>
@@ -84,7 +30,7 @@ const ProtectedRoute: React.FC = () => {
       <div className="protected-route">
         <h2>Protected Route</h2>
         <div className="error">
-          <p>❌ Error: {error}</p>
+          <p>❌ Error: {error.message}</p>
           <button onClick={handleRefresh} className="refresh-button">
             Try Again
           </button>

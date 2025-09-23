@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi';
-import axios from 'axios';
-import { API_URL } from '../config';
+import { useNonce, useVerifySignature } from '../hooks/useAuth';
+import WalletStatus from './WalletStatus';
 import './WalletConnection.css';
 
 const WalletConnection: React.FC = () => {
@@ -10,23 +10,48 @@ const WalletConnection: React.FC = () => {
   const { disconnect } = useDisconnect();
   const { signMessage, isPending: isSigning, data: signature, error: signError } = useSignMessage();
   
+  // React Query hooks
+  const { data: nonceData, refetch: getNonce, isLoading: isNonceLoading } = useNonce();
+  const { mutate: verifySignature, isPending: isVerifying, data: authData, error: verifyError } = useVerifySignature();
+  
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [pendingNonce, setPendingNonce] = useState<string | null>(null);
 
   // Handle signature completion
   useEffect(() => {
     if (signature && pendingNonce && address) {
-      handleSignatureComplete(signature, pendingNonce, address);
+      verifySignature({
+        address,
+        signature,
+        nonce: pendingNonce,
+      });
     }
-  }, [signature, pendingNonce, address]);
+  }, [signature, pendingNonce, address, verifySignature]);
+
+  // Handle authentication success
+  useEffect(() => {
+    if (authData?.success) {
+      setUser(authData.user);
+      setIsAuthenticated(true);
+      setPendingNonce(null);
+      console.log('Authentication successful:', authData);
+    }
+  }, [authData]);
+
+  // Handle verification errors
+  useEffect(() => {
+    if (verifyError) {
+      console.error('Verification error:', verifyError);
+      setPendingNonce(null);
+      alert('Authentication failed: ' + verifyError.message);
+    }
+  }, [verifyError]);
 
   // Handle signing errors
   useEffect(() => {
     if (signError) {
       console.error('Signing error:', signError);
-      setLoading(false);
       setPendingNonce(null);
       alert('Signing failed: ' + signError.message);
     }
@@ -42,10 +67,9 @@ const WalletConnection: React.FC = () => {
   const handleSignAndLogin = async () => {
     if (!address) return;
     
-    setLoading(true);
     try {
-      // Get nonce from backend
-      const { data } = await axios.get(`${API_URL}/api/auth/nonce`);
+      // Get nonce from backend using React Query
+      const { data } = await getNonce();
       const { nonce } = data;
       
       // Store nonce for later use
@@ -61,38 +85,7 @@ const WalletConnection: React.FC = () => {
       
     } catch (error) {
       console.error('Error getting nonce:', error);
-      setLoading(false);
       alert('Error getting nonce: ' + error.message);
-    }
-  };
-
-  const handleSignatureComplete = async (signature: string, nonce: string, address: string) => {
-    try {
-      console.log('Signature received, verifying with backend...');
-      
-      // Send to backend for verification
-      const { data: authData } = await axios.post(`${API_URL}/api/auth/verify`, {
-        address,
-        signature,
-        nonce
-      });
-      
-      if (authData.success) {
-        // Store token in localStorage
-        localStorage.setItem('authToken', authData.token);
-        setUser(authData.user);
-        setIsAuthenticated(true);
-        console.log('Authentication successful:', authData);
-      } else {
-        console.error('Authentication failed:', authData.error);
-        alert('Authentication failed: ' + authData.error);
-      }
-    } catch (error) {
-      console.error('Verification error:', error);
-      alert('Error during verification: ' + error.message);
-    } finally {
-      setLoading(false);
-      setPendingNonce(null);
     }
   };
 
@@ -119,14 +112,8 @@ const WalletConnection: React.FC = () => {
 
   if (isAuthenticated && user) {
     return (
-      <div className="wallet-status">
-        <p className="status-item">✅ Connected: {isConnected ? 'true' : 'false'}</p>
-        <p className="status-item">📍 Address: {address || 'Not connected'}</p>
-        <p className="status-item">🌐 Network: {chain?.id || 'Unknown'}</p>
-        <p className="status-item">📊 Status: {status}</p>
-        <p className="status-item">🔐 Authenticated: Yes</p>
-        <p className="status-item">👤 User: {user.address}</p>
-        <p className="status-item">📅 Last Login: {new Date(user.lastLogin).toLocaleString()}</p>
+      <div>
+        <WalletStatus isAuthenticated={isAuthenticated} user={user} />
         <div className="button-group">
           <button 
             onClick={handleLogout}
@@ -146,19 +133,15 @@ const WalletConnection: React.FC = () => {
   }
 
   return (
-    <div className="wallet-status">
-      <p className="status-item">✅ Connected: {isConnected ? 'true' : 'false'}</p>
-      <p className="status-item">📍 Address: {address || 'Not connected'}</p>
-      <p className="status-item">🌐 Network: {chain?.id || 'Unknown'}</p>
-      <p className="status-item">📊 Status: {status}</p>
-      <p className="status-item">🔐 Authenticated: No</p>
+    <div>
+      <WalletStatus isAuthenticated={isAuthenticated} user={user} />
       <div className="button-group">
         <button 
           onClick={handleSignAndLogin}
-          disabled={loading || isSigning}
+          disabled={isNonceLoading || isSigning || isVerifying}
           className="connect-button"
         >
-          {loading ? 'Processing...' : isSigning ? 'Please sign in MetaMask...' : 'Sign Message & Login'}
+          {isNonceLoading ? 'Getting nonce...' : isSigning ? 'Please sign in MetaMask...' : isVerifying ? 'Verifying...' : 'Sign Message & Login'}
         </button>
         <button 
           onClick={() => disconnect()}
