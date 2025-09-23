@@ -51,7 +51,6 @@
 .disconnect-button {
   background-color: var(--danger-color);
   color: white;
-  margin-top: var(--spacing-sm);
   
   &:hover {
     background-color: #c82333;
