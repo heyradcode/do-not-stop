@@ -1,3 +1,12 @@
+/* Compact Network Switcher for Top-Right */
+.network-switcher-compact {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 100;
+}
+
+/* Legacy full-width switcher (keeping for reference) */
 .network-switcher {
   margin: 20px 0;
   padding: 15px;
@@ -63,6 +72,82 @@
   }
 }
 
+/* Compact Network Trigger Button */
+.network-trigger-compact {
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  background-color: white;
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  min-width: 120px;
+}
+
+.network-trigger-compact:hover:not(:disabled) {
+  border-color: #007bff;
+  background-color: #f8f9ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 123, 255, 0.15);
+}
+
+.network-trigger-compact:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.network-trigger-compact:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f5f5f5;
+}
+
+.network-info-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.network-name-compact {
+  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.dropdown-arrow-compact {
+  font-size: 10px;
+  color: #666;
+  transition: transform 0.2s ease;
+}
+
+.network-trigger-compact:hover .dropdown-arrow-compact {
+  transform: translateY(1px);
+}
+
+.network-error-compact {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background-color: #fee;
+  border: 1px solid #fcc;
+  color: #c33;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: errorShake 0.3s ease-in-out;
+}
+
+/* Legacy full-width trigger (keeping for reference) */
 .network-trigger {
   width: 100%;
   padding: 12px 16px;
@@ -163,6 +248,12 @@
   padding: 20px 24px;
   border-bottom: 1px solid #e0e0e0;
   background-color: #f8f9fa;
+}
+
+.network-modal-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .network-modal-header h3 {
@@ -278,6 +369,27 @@
 
 /* Responsive */
 @media (max-width: 480px) {
+  .network-switcher-compact {
+    top: 10px;
+    right: 10px;
+  }
+
+  .network-trigger-compact {
+    padding: 6px 10px;
+    font-size: 12px;
+    min-width: 100px;
+  }
+
+  .network-name-compact {
+    font-size: 12px;
+  }
+
+  .network-error-compact {
+    top: -35px;
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
   .network-modal {
     margin: 10px;
     max-width: none;

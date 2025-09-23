@@ -106,40 +106,24 @@ const NetworkSwitcher: React.FC = () => {
   };
 
   return (
-    <div className="network-switcher">
-      <div className="network-header">
-        <h4>Network</h4>
-        <label className="testnet-toggle">
-          <input
-            type="checkbox"
-            checked={showTestnets}
-            onChange={(e) => handleTestnetToggle(e.target.checked)}
-            disabled={isPending}
-          />
-          <span>Testnets</span>
-        </label>
-      </div>
-
+    <div className="network-switcher-compact">
       {switchError && (
-        <div className="network-error">
+        <div className="network-error-compact">
           Error: {switchError.message}
         </div>
       )}
 
       <button
-        className="network-trigger"
+        className="network-trigger-compact"
         onClick={() => setIsOpen(true)}
         disabled={isPending}
       >
-        <div className="network-info">
-          <span className="network-name">
-            {isPending ? 'Switching...' : (currentChainConfig?.name || 'Unknown Network')}
-          </span>
-          <span className="network-symbol">
-            {isPending ? '...' : (currentChainConfig?.symbol || '?')}
+        <div className="network-info-compact">
+          <span className="network-name-compact">
+            {isPending ? 'Switching...' : (currentChainConfig?.name || 'Unknown')}
           </span>
         </div>
-        <div className="dropdown-arrow">
+        <div className="dropdown-arrow-compact">
           ▼
         </div>
       </button>
@@ -154,12 +138,23 @@ const NetworkSwitcher: React.FC = () => {
       >
         <div className="network-modal-header">
           <h3>Select Network</h3>
-          <button
-            className="network-modal-close"
-            onClick={() => setIsOpen(false)}
-          >
-            ×
-          </button>
+          <div className="network-modal-controls">
+            <label className="testnet-toggle">
+              <input
+                type="checkbox"
+                checked={showTestnets}
+                onChange={(e) => handleTestnetToggle(e.target.checked)}
+                disabled={isPending}
+              />
+              <span>Testnets</span>
+            </label>
+            <button
+              className="network-modal-close"
+              onClick={() => setIsOpen(false)}
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         <div className="network-modal-content">
