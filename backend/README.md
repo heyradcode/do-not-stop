@@ -31,7 +31,7 @@ This is the Node.js backend for the Web3 authentication demo.
 1. **Install dependencies**:
    ```bash
    cd backend
-   npm install
+   pnpm install
    ```
 
 2. **Set environment variables**:
@@ -43,10 +43,10 @@ This is the Node.js backend for the Web3 authentication demo.
 3. **Start the server**:
    ```bash
    # Development
-   npm run dev
+   pnpm run dev
    
    # Production
-   npm start
+   pnpm start
    ```
 
 The server will run on `http://localhost:3001`
