@@ -72,13 +72,46 @@ const organizedChains = [
 const NetworkSwitcher: React.FC = () => {
   const { chain } = useAccount();
   const { switchChain, isPending } = useSwitchChain();
-  const [showTestnets, setShowTestnets] = useState(false);
+
+  // Auto-check testnets on initial render if current chain is a testnet
+  const [showTestnets, setShowTestnets] = useState(() => {
+    if (!chain) return false;
+    return organizedChains.some(
+      chainConfig => chainConfig.chain.id === chain.id && chainConfig.isTestnet
+    );
+  });
 
   if (!chain) return null;
 
   const visibleChains = showTestnets
-    ? organizedChains
+    ? organizedChains.filter(chain => chain.isTestnet)
     : organizedChains.filter(chain => !chain.isTestnet);
+
+  const handleTestnetToggle = (checked: boolean) => {
+    setShowTestnets(checked);
+
+    // Find equivalent network when toggling
+    const currentChainConfig = organizedChains.find(
+      chainConfig => chainConfig.chain.id === chain.id
+    );
+
+    if (currentChainConfig) {
+      // Find the equivalent network by looking for the same chain type
+      // (e.g., Ethereum <-> Sepolia, BSC <-> BSC Testnet)
+      const equivalentChain = organizedChains.find(
+        chainConfig => {
+          // Match by chain type (first part of name) and opposite testnet status
+          const currentType = currentChainConfig.chain.name.split(' ')[0];
+          const candidateType = chainConfig.chain.name.split(' ')[0];
+          return candidateType === currentType && chainConfig.isTestnet === checked;
+        }
+      );
+
+      if (equivalentChain) {
+        switchChain({ chainId: equivalentChain.chain.id });
+      }
+    }
+  };
 
   return (
     <div className="network-switcher">
@@ -88,9 +121,9 @@ const NetworkSwitcher: React.FC = () => {
           <input
             type="checkbox"
             checked={showTestnets}
-            onChange={(e) => setShowTestnets(e.target.checked)}
+            onChange={(e) => handleTestnetToggle(e.target.checked)}
           />
-          <span>Show Testnets</span>
+          <span>Testnets</span>
         </label>
       </div>
       <div className="network-dropdown">
