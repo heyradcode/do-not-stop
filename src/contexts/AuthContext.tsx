@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 import { useNonce, useVerifySignature } from '../hooks/useAuth';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 interface User {
   address: string;
@@ -41,25 +42,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // React Query hooks
   const { refetch: getNonce, isLoading: isNonceLoading } = useNonce();
   const { mutate: verifySignature, isPending: isVerifying, data: authData, error: verifyError } = useVerifySignature();
+  const { data: userProfile, error: profileError } = useUserProfile();
   const { signMessage, isPending: isSigning, data: signature, error: signError } = useSignMessage();
 
   useEffect(() => {
-    // Check if user is authenticated - requires both token AND wallet connection
-    const token = localStorage.getItem('authToken');
-    const hasToken = !!token;
     const isWalletConnected = isConnected && !!address;
-    
-    const shouldBeAuthenticated = hasToken && isWalletConnected;
-    
-    setAuthenticated(shouldBeAuthenticated);
     
     // If wallet is disconnected, clear authentication state and token
     if (!isWalletConnected) {
+      setAuthenticated(false);
       setUser(null);
-      // Clear token when wallet is disconnected for security
       localStorage.removeItem('authToken');
+      return;
     }
+    
+    // If we have both token and wallet connection, the useUserProfile hook will automatically run
+    // and validate the token by fetching the user profile
   }, [address, isConnected]);
+
+  // Handle user profile success (token is valid)
+  useEffect(() => {
+    if (userProfile?.success) {
+      setAuthenticated(true);
+      setUser(userProfile.user);
+    }
+  }, [userProfile]);
+
+  // Handle user profile failure (token is invalid/expired)
+  useEffect(() => {
+    if (profileError) {
+      console.error('Profile fetch failed:', profileError);
+      setAuthenticated(false);
+      setUser(null);
+      // Token is already cleared by useUserProfile hook on 401
+    }
+  }, [profileError]);
 
   // Handle signature completion
   useEffect(() => {
