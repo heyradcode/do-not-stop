@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi';
 import { useNonce, useVerifySignature } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import WalletStatus from './WalletStatus';
 import './WalletConnection.css';
 
@@ -14,8 +15,8 @@ const WalletConnection: React.FC = () => {
   const { data: nonceData, refetch: getNonce, isLoading: isNonceLoading } = useNonce();
   const { mutate: verifySignature, isPending: isVerifying, data: authData, error: verifyError } = useVerifySignature();
   
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  // Auth context
+  const { isAuthenticated, user, setAuthenticated, logout } = useAuth();
   const [pendingNonce, setPendingNonce] = useState<string | null>(null);
 
   // Handle signature completion
@@ -32,12 +33,11 @@ const WalletConnection: React.FC = () => {
   // Handle authentication success
   useEffect(() => {
     if (authData?.success) {
-      setUser(authData.user);
-      setIsAuthenticated(true);
+      setAuthenticated(true, authData.user);
       setPendingNonce(null);
       console.log('Authentication successful:', authData);
     }
-  }, [authData]);
+  }, [authData, setAuthenticated]);
 
   // Handle verification errors
   useEffect(() => {
@@ -90,9 +90,7 @@ const WalletConnection: React.FC = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    setUser(null);
-    setIsAuthenticated(false);
+    logout();
   };
 
   if (!isConnected) {
@@ -113,7 +111,7 @@ const WalletConnection: React.FC = () => {
   if (isAuthenticated && user) {
     return (
       <div>
-        <WalletStatus isAuthenticated={isAuthenticated} user={user} />
+        <WalletStatus />
         <div className="button-group">
           <button 
             onClick={handleLogout}
@@ -134,7 +132,7 @@ const WalletConnection: React.FC = () => {
 
   return (
     <div>
-      <WalletStatus isAuthenticated={isAuthenticated} user={user} />
+      <WalletStatus />
       <div className="button-group">
         <button 
           onClick={handleSignAndLogin}

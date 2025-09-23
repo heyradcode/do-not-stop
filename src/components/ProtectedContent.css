@@ -1,6 +1,6 @@
-/* Protected Route Styles with Modern CSS */
+/* Protected Content Styles with Modern CSS */
 
-.protected-route {
+.protected-content {
   padding: var(--spacing-lg);
   margin: var(--spacing-lg) 0;
   border: 2px solid var(--success-color);

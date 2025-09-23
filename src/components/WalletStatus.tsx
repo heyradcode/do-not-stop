@@ -1,16 +1,10 @@
 import React from 'react';
 import { useAccount } from 'wagmi';
+import { useAuth } from '../contexts/AuthContext';
 
-interface WalletStatusProps {
-  isAuthenticated: boolean;
-  user?: {
-    address: string;
-    lastLogin: string;
-  } | null;
-}
-
-const WalletStatus: React.FC<WalletStatusProps> = ({ isAuthenticated, user }) => {
+const WalletStatus: React.FC = () => {
   const { address, isConnected, chain, status } = useAccount();
+  const { isAuthenticated, user } = useAuth();
 
   return (
     <div className="wallet-status">

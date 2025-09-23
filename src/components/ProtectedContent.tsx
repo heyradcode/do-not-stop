@@ -1,6 +1,6 @@
 import React from 'react';
-import { useUserProfile } from '../hooks/useUser';
-import './ProtectedRoute.css';
+import { useUserProfile } from '../hooks/useUserProfile';
+import './ProtectedContent.css';
 
 interface User {
   address: string;
@@ -8,7 +8,7 @@ interface User {
   lastLogin: string;
 }
 
-const ProtectedRoute: React.FC = () => {
+const ProtectedContent: React.FC = () => {
   const { data: profileData, isLoading, error, refetch } = useUserProfile();
   const user = profileData?.user || null;
 
@@ -18,8 +18,8 @@ const ProtectedRoute: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="protected-route">
-        <h2>Protected Route</h2>
+      <div className="protected-content">
+        <h2>Protected Content</h2>
         <div className="loading">Loading user profile...</div>
       </div>
     );
@@ -27,8 +27,8 @@ const ProtectedRoute: React.FC = () => {
 
   if (error) {
     return (
-      <div className="protected-route">
-        <h2>Protected Route</h2>
+      <div className="protected-content">
+        <h2>Protected Content</h2>
         <div className="error">
           <p>❌ Error: {error.message}</p>
           <button onClick={handleRefresh} className="refresh-button">
@@ -40,8 +40,8 @@ const ProtectedRoute: React.FC = () => {
   }
 
   return (
-    <div className="protected-route">
-      <h2>🔒 Protected Route</h2>
+    <div className="protected-content">
+      <h2>🔒 Protected Content</h2>
       <p className="success">✅ Successfully authenticated with JWT!</p>
       
       {user && (
@@ -66,4 +66,4 @@ const ProtectedRoute: React.FC = () => {
   );
 };
 
-export default ProtectedRoute;
+export default ProtectedContent;
