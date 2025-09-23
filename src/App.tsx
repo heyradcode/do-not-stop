@@ -5,18 +5,22 @@ import {
 } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http } from 'viem';
-import { mainnet } from 'viem/chains';
+import { mainnet, bsc, polygon, arbitrum, optimism } from 'viem/chains';
 import { injected } from 'wagmi/connectors';
 import { AuthProvider } from './contexts/AuthContext';
 import Main from './components/Main';
 import './App.css';
 
 const config = createConfig({
-  chains: [mainnet],
+  chains: [mainnet, bsc, polygon, arbitrum, optimism],
   connectors: [injected()],
   multiInjectedProviderDiscovery: false,
   transports: {
     [mainnet.id]: http(),
+    [bsc.id]: http(),
+    [polygon.id]: http(),
+    [arbitrum.id]: http(),
+    [optimism.id]: http(),
   },
 });
 

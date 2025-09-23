@@ -2,6 +2,7 @@ import React from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useAuth } from '../contexts/AuthContext';
 import WalletStatus from './WalletStatus';
+import NetworkSwitcher from './NetworkSwitcher';
 import './WalletConnection.css';
 
 const WalletConnection: React.FC = () => {
@@ -30,6 +31,7 @@ const WalletConnection: React.FC = () => {
   return (
     <div>
       <WalletStatus />
+      {isConnected && <NetworkSwitcher />}
       <div className="button-group">
         {!isConnected ? (
           <button 

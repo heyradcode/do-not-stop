@@ -34,7 +34,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chainId } = useAccount();
   const [isAuthenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [pendingNonce, setPendingNonce] = useState<string | null>(null);
@@ -80,14 +80,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Handle signature completion
   useEffect(() => {
-    if (signature && pendingNonce && address) {
+    if (signature && pendingNonce && address && chainId) {
       verifySignature({
         address,
         signature,
         nonce: pendingNonce,
+        chainId,
       });
     }
-  }, [signature, pendingNonce, address, verifySignature]);
+  }, [signature, pendingNonce, address, chainId, verifySignature]);
 
   // Handle authentication success
   useEffect(() => {

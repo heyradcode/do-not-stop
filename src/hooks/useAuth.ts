@@ -18,15 +18,17 @@ export const useNonce = () => {
 // Verify signature and get JWT token
 export const useVerifySignature = () => {
   return useMutation({
-    mutationFn: async ({ address, signature, nonce }: {
+    mutationFn: async ({ address, signature, nonce, chainId }: {
       address: string;
       signature: string;
       nonce: string;
+      chainId: number;
     }) => {
       const { data } = await axios.post(`${API_URL}/api/auth/verify`, {
         address,
         signature,
         nonce,
+        chainId,
       });
       return data;
     },

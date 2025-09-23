@@ -4,6 +4,15 @@ import { ethers } from 'ethers';
 
 const router = express.Router();
 
+// Chain ID to name mapping
+const CHAIN_NAMES = {
+  1: 'Ethereum Mainnet',
+  56: 'BSC',
+  137: 'Polygon',
+  42161: 'Arbitrum',
+  10: 'Optimism'
+};
+
 // In-memory storage for demo (use database in production)
 const users = new Map();
 
@@ -18,11 +27,14 @@ router.get('/nonce', (req, res) => {
 // Verify signature and issue JWT
 router.post('/verify', async (req, res) => {
   try {
-    const { address, signature, nonce } = req.body;
+    const { address, signature, nonce, chainId } = req.body;
 
     if (!address || !signature || !nonce) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+
+    // Log which chain the user is connecting from
+    console.log(`Authentication attempt from ${CHAIN_NAMES[chainId] || `Chain ${chainId}`} - Address: ${address}`);
 
     // Recover the address from the signature
     const message = `Sign this message to authenticate: ${nonce}`;
