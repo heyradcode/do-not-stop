@@ -43,3 +43,15 @@
   margin: 8px 0;
   font-size: 16px;
 }
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.button-group button {
+  flex: 1;
+  min-width: 120px;
+}
