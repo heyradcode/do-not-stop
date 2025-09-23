@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi';
+import axios from 'axios';
+import { API_URL } from '../config';
 import './WalletConnection.css';
 
 const WalletConnection: React.FC = () => {
@@ -43,8 +45,8 @@ const WalletConnection: React.FC = () => {
     setLoading(true);
     try {
       // Get nonce from backend
-      const nonceResponse = await fetch('http://localhost:3001/api/auth/nonce');
-      const { nonce } = await nonceResponse.json();
+      const { data } = await axios.get(`${API_URL}/api/auth/nonce`);
+      const { nonce } = data;
       
       // Store nonce for later use
       setPendingNonce(nonce);
@@ -69,19 +71,11 @@ const WalletConnection: React.FC = () => {
       console.log('Signature received, verifying with backend...');
       
       // Send to backend for verification
-      const authResponse = await fetch('http://localhost:3001/api/auth/verify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          address,
-          signature,
-          nonce
-        }),
+      const { data: authData } = await axios.post(`${API_URL}/api/auth/verify`, {
+        address,
+        signature,
+        nonce
       });
-      
-      const authData = await authResponse.json();
       
       if (authData.success) {
         // Store token in localStorage

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { API_URL } from '../config';
 import './ProtectedRoute.css';
 
 interface User {
@@ -23,18 +25,12 @@ const ProtectedRoute: React.FC = () => {
       }
 
       try {
-        const response = await fetch('http://localhost:3001/api/protected/profile', {
+        const { data } = await axios.get(`${API_URL}/api/protected/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
           },
         });
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch user profile');
-        }
-
-        const data = await response.json();
         setUser(data.user);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred');
@@ -60,18 +56,12 @@ const ProtectedRoute: React.FC = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/protected/profile', {
+      const { data } = await axios.get(`${API_URL}/api/protected/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
         },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch user profile');
-      }
-
-      const data = await response.json();
       setUser(data.user);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

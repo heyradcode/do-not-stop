@@ -32,17 +32,23 @@ git clone https://github.com/heyradcode/do-not-stop.git
 cd do-not-stop
 ```
 
-2. **Install dependencies**
+2. **Set up environment variables**
+```bash
+cp env.example .env
+# Edit .env if needed (default: http://localhost:3001)
+```
+
+3. **Install dependencies**
 ```bash
 pnpm install
 ```
 
-3. **Run the development server**
+4. **Run the development server**
 ```bash
 pnpm dev
 ```
 
-4. **Open your browser**
+5. **Open your browser**
 ```
 http://localhost:5173
 ```
