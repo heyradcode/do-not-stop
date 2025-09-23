@@ -36,66 +36,46 @@
   cursor: pointer;
 }
 
-.network-buttons {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+.network-dropdown {
   width: 100%;
-  overflow: hidden;
 }
 
-.network-button {
-  padding: 8px 12px;
+.network-select {
+  width: 100%;
+  padding: 10px 12px;
   border: 1px solid #ddd;
   border-radius: 6px;
   background-color: white;
-  color: #666;
-  font-size: 12px;
+  color: #333;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
 }
 
-.network-button:hover:not(:disabled) {
-  background-color: #f0f0f0;
+.network-select:hover:not(:disabled) {
   border-color: #999;
+  background-color: #f9f9f9;
 }
 
-.network-button.active {
-  background-color: #007bff;
-  color: white;
+.network-select:focus {
+  outline: none;
   border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
 
-.network-button:disabled {
+.network-select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  background-color: #f5f5f5;
 }
 
-.network-button.testnet {
-  border-color: #ffa500;
-  background-color: #fff8e1;
+.testnet-option {
   color: #e65100;
-}
-
-.network-button.testnet:hover:not(:disabled) {
-  background-color: #ffecb3;
-  border-color: #ff8f00;
-}
-
-.network-button.testnet.active {
-  background-color: #ff9800;
-  color: white;
-  border-color: #ff9800;
-}
-
-.testnet-badge {
-  display: inline-block;
-  margin-left: 4px;
-  padding: 2px 4px;
-  background-color: #ff5722;
-  color: white;
-  font-size: 8px;
-  font-weight: bold;
-  border-radius: 3px;
-  text-transform: uppercase;
+  font-style: italic;
 }
