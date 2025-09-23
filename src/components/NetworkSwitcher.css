@@ -4,6 +4,9 @@
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   background-color: #f9f9f9;
+  width: 100%;
+  max-width: 600px;
+  box-sizing: border-box;
 }
 
 .network-header {
@@ -37,6 +40,8 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  width: 100%;
+  overflow: hidden;
 }
 
 .network-button {
