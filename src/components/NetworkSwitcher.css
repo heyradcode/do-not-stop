@@ -6,10 +6,31 @@
   background-color: #f9f9f9;
 }
 
+.network-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
 .network-switcher h4 {
-  margin: 0 0 10px 0;
+  margin: 0;
   color: #333;
   font-size: 14px;
+}
+
+.testnet-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+}
+
+.testnet-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
 }
 
 .network-buttons {
@@ -43,4 +64,33 @@
 .network-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.network-button.testnet {
+  border-color: #ffa500;
+  background-color: #fff8e1;
+  color: #e65100;
+}
+
+.network-button.testnet:hover:not(:disabled) {
+  background-color: #ffecb3;
+  border-color: #ff8f00;
+}
+
+.network-button.testnet.active {
+  background-color: #ff9800;
+  color: white;
+  border-color: #ff9800;
+}
+
+.testnet-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 2px 4px;
+  background-color: #ff5722;
+  color: white;
+  font-size: 8px;
+  font-weight: bold;
+  border-radius: 3px;
+  text-transform: uppercase;
 }

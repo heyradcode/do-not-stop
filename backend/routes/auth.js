@@ -6,11 +6,18 @@ const router = express.Router();
 
 // Chain ID to name mapping
 const CHAIN_NAMES = {
+  // Mainnets
   1: 'Ethereum Mainnet',
   56: 'BSC',
   137: 'Polygon',
   42161: 'Arbitrum',
-  10: 'Optimism'
+  10: 'Optimism',
+  // Testnets
+  11155111: 'Sepolia',
+  97: 'BSC Testnet',
+  80001: 'Mumbai',
+  421614: 'Arbitrum Sepolia',
+  11155420: 'Optimism Sepolia'
 };
 
 // In-memory storage for demo (use database in production)

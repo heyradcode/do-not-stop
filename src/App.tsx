@@ -5,23 +5,27 @@ import {
 } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http } from 'viem';
-import { mainnet, bsc, polygon, arbitrum, optimism } from 'viem/chains';
+import { 
+  mainnet, bsc, polygon, arbitrum, optimism,
+  sepolia, bscTestnet, polygonMumbai, arbitrumSepolia, optimismSepolia
+} from 'viem/chains';
 import { injected } from 'wagmi/connectors';
 import { AuthProvider } from './contexts/AuthContext';
 import Main from './components/Main';
 import './App.css';
 
+// All supported chains
+const mainnetChains = [mainnet, bsc, polygon, arbitrum, optimism];
+const testnetChains = [sepolia, bscTestnet, polygonMumbai, arbitrumSepolia, optimismSepolia];
+const allChains = [...mainnetChains, ...testnetChains];
+
 const config = createConfig({
-  chains: [mainnet, bsc, polygon, arbitrum, optimism],
+  chains: allChains,
   connectors: [injected()],
   multiInjectedProviderDiscovery: false,
-  transports: {
-    [mainnet.id]: http(),
-    [bsc.id]: http(),
-    [polygon.id]: http(),
-    [arbitrum.id]: http(),
-    [optimism.id]: http(),
-  },
+  transports: Object.fromEntries(
+    allChains.map(chain => [chain.id, http()])
+  ),
 });
 
 const queryClient = new QueryClient({
