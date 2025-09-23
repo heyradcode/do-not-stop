@@ -12,15 +12,18 @@ This is the Node.js backend for the Web3 authentication demo.
 
 ## API Endpoints
 
-### Authentication
+### Root
+- `GET /` - API information and available endpoints
+
+### Authentication (`/api/auth`)
 - `GET /api/auth/nonce` - Get a nonce for signing
 - `POST /api/auth/verify` - Verify signature and get JWT token
 
-### Protected Routes
+### Protected Routes (`/api/protected`)
 - `GET /api/protected/profile` - Get user profile (requires JWT)
-- `GET /api/users` - Get all users (requires JWT)
+- `GET /api/protected/users` - Get all users (requires JWT)
 
-### Health Check
+### Health Check (`/api/health`)
 - `GET /api/health` - Server health status
 
 ## Setup
