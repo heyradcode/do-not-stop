@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useSignMessage } from 'wagmi';
+import { useNonce, useVerifySignature } from '../hooks/useAuth';
 
 interface User {
   address: string;
@@ -12,6 +13,10 @@ interface AuthContextType {
   user: User | null;
   setAuthenticated: (authenticated: boolean, user?: User | null) => void;
   logout: () => void;
+  signAndLogin: () => Promise<void>;
+  isSigning: boolean;
+  isVerifying: boolean;
+  isNonceLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +37,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { address, isConnected } = useAccount();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [pendingNonce, setPendingNonce] = useState<string | null>(null);
+
+  // React Query hooks
+  const { data: nonceData, refetch: getNonce, isLoading: isNonceLoading } = useNonce();
+  const { mutate: verifySignature, isPending: isVerifying, data: authData, error: verifyError } = useVerifySignature();
+  const { signMessage, isPending: isSigning, data: signature, error: signError } = useSignMessage();
 
   useEffect(() => {
     // Check if user is authenticated - requires both token AND wallet connection
@@ -49,6 +60,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [address, isConnected]);
 
+  // Handle signature completion
+  useEffect(() => {
+    if (signature && pendingNonce && address) {
+      verifySignature({
+        address,
+        signature,
+        nonce: pendingNonce,
+      });
+    }
+  }, [signature, pendingNonce, address, verifySignature]);
+
+  // Handle authentication success
+  useEffect(() => {
+    if (authData?.success) {
+      setAuthenticated(true, authData.user);
+      setPendingNonce(null);
+      console.log('Authentication successful:', authData);
+    }
+  }, [authData]);
+
+  // Handle verification errors
+  useEffect(() => {
+    if (verifyError) {
+      console.error('Verification error:', verifyError);
+      setPendingNonce(null);
+      alert('Authentication failed: ' + verifyError.message);
+    }
+  }, [verifyError]);
+
+  // Handle signing errors
+  useEffect(() => {
+    if (signError) {
+      console.error('Signing error:', signError);
+      setPendingNonce(null);
+      alert('Signing failed: ' + signError.message);
+    }
+  }, [signError]);
+
   const setAuthenticated = (authenticated: boolean, userData?: User | null) => {
     setIsAuthenticated(authenticated);
     if (userData) {
@@ -64,8 +113,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
+  const signAndLogin = async () => {
+    if (!address) return;
+    
+    try {
+      // Get nonce from backend using React Query
+      const { data } = await getNonce();
+      const { nonce } = data;
+      
+      // Store nonce for later use
+      setPendingNonce(nonce);
+      
+      // Create message to sign
+      const message = `Sign this message to authenticate: ${nonce}`;
+      
+      console.log('Requesting signature for message:', message);
+      
+      // Trigger the signing process - this will show MetaMask popup
+      signMessage({ message });
+      
+    } catch (error) {
+      console.error('Error getting nonce:', error);
+      alert('Error getting nonce: ' + error.message);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, setAuthenticated, logout }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      user, 
+      setAuthenticated, 
+      logout, 
+      signAndLogin,
+      isSigning,
+      isVerifying,
+      isNonceLoading
+    }}>
       {children}
     </AuthContext.Provider>
   );
