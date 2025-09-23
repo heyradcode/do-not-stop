@@ -11,7 +11,6 @@ interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  setAuthenticated: (authenticated: boolean, user?: User | null) => void;
   logout: () => void;
   signAndLogin: () => Promise<void>;
   isSigning: boolean;
@@ -35,12 +34,12 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const { address, isConnected } = useAccount();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [pendingNonce, setPendingNonce] = useState<string | null>(null);
 
   // React Query hooks
-  const { data: nonceData, refetch: getNonce, isLoading: isNonceLoading } = useNonce();
+  const { refetch: getNonce, isLoading: isNonceLoading } = useNonce();
   const { mutate: verifySignature, isPending: isVerifying, data: authData, error: verifyError } = useVerifySignature();
   const { signMessage, isPending: isSigning, data: signature, error: signError } = useSignMessage();
 
@@ -52,11 +51,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     const shouldBeAuthenticated = hasToken && isWalletConnected;
     
-    setIsAuthenticated(shouldBeAuthenticated);
+    setAuthenticated(shouldBeAuthenticated);
     
-    // If wallet is disconnected, clear authentication state
+    // If wallet is disconnected, clear authentication state and token
     if (!isWalletConnected) {
       setUser(null);
+      // Clear token when wallet is disconnected for security
+      localStorage.removeItem('authToken');
     }
   }, [address, isConnected]);
 
@@ -74,7 +75,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Handle authentication success
   useEffect(() => {
     if (authData?.success) {
-      setAuthenticated(true, authData.user);
+      setAuthenticated(true);
+      setUser(authData.user);
       setPendingNonce(null);
       console.log('Authentication successful:', authData);
     }
@@ -98,18 +100,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [signError]);
 
-  const setAuthenticated = (authenticated: boolean, userData?: User | null) => {
-    setIsAuthenticated(authenticated);
-    if (userData) {
-      setUser(userData);
-    } else if (!authenticated) {
-      setUser(null);
-    }
-  };
 
   const logout = () => {
     localStorage.removeItem('authToken');
-    setIsAuthenticated(false);
+    setAuthenticated(false);
     setUser(null);
   };
 
@@ -142,7 +136,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     <AuthContext.Provider value={{ 
       isAuthenticated, 
       user, 
-      setAuthenticated, 
       logout, 
       signAndLogin,
       isSigning,
