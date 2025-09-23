@@ -6,6 +6,14 @@ const WalletStatus: React.FC = () => {
   const { address, isConnected, chain, status } = useAccount();
   const { isAuthenticated, user } = useAuth();
 
+  if (!isConnected) {
+    return (
+      <div className="wallet-status">
+        <p>No wallet connected</p>
+      </div>
+    );
+  }
+
   return (
     <div className="wallet-status">
       <p className="status-item">✅ Connected: {isConnected ? 'true' : 'false'}</p>
