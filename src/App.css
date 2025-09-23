@@ -40,3 +40,54 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Wallet Connection Styles */
+.wallet-container {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.wallet-status {
+  margin-bottom: 20px;
+}
+
+.connect-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.connect-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.connect-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.disconnect-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background-color 0.2s;
+}
+
+.disconnect-button:hover {
+  background-color: #c82333;
+}
+
+.status-item {
+  margin: 8px 0;
+  font-size: 16px;
+}
