@@ -1,72 +1,73 @@
-/* Protected Route Styles */
+/* Protected Route Styles with Modern CSS */
+
 .protected-route {
-  padding: 20px;
-  margin: 20px 0;
-  border: 2px solid #28a745;
-  border-radius: 8px;
-  background-color: #f8f9fa;
-}
-
-.protected-route h2 {
-  color: #28a745;
-  margin-bottom: 15px;
-}
-
-.success {
-  color: #28a745;
-  font-weight: bold;
-  margin-bottom: 20px;
-}
-
-.loading {
-  color: #007bff;
-  font-style: italic;
-}
-
-.error {
-  color: #dc3545;
-  margin-bottom: 15px;
+  padding: var(--spacing-lg);
+  margin: var(--spacing-lg) 0;
+  border: 2px solid var(--success-color);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-secondary);
+  
+  h2 {
+    color: var(--success-color);
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .success {
+    color: var(--success-color);
+    font-weight: bold;
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .loading {
+    color: var(--info-color);
+    font-style: italic;
+  }
+  
+  .error {
+    color: var(--error-color);
+    margin-bottom: var(--spacing-md);
+  }
 }
 
 .user-profile {
-  background-color: white;
-  padding: 15px;
-  border-radius: 5px;
-  margin: 15px 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.user-profile h3 {
-  margin-top: 0;
-  color: #333;
-}
-
-.profile-item {
-  margin: 10px 0;
-  padding: 5px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.profile-item:last-child {
-  border-bottom: none;
-}
-
-.profile-item strong {
-  color: #555;
-  margin-right: 10px;
+  background-color: var(--bg-primary);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-sm);
+  margin: var(--spacing-md) 0;
+  box-shadow: var(--shadow-md);
+  
+  h3 {
+    margin-top: 0;
+    color: var(--text-primary);
+  }
+  
+  .profile-item {
+    margin: var(--spacing-sm) 0;
+    padding: var(--spacing-xs) 0;
+    border-bottom: 1px solid var(--border-light);
+    
+    &:last-child {
+      border-bottom: none;
+    }
+    
+    strong {
+      color: var(--text-secondary);
+      margin-right: var(--spacing-sm);
+    }
+  }
 }
 
 .refresh-button {
-  padding: 10px 20px;
-  font-size: 14px;
-  background-color: #17a2b8;
-  color: white;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-sm);
+  background-color: var(--warning-color);
+  color: var(--text-light);
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.refresh-button:hover {
-  background-color: #138496;
+  transition: var(--transition-normal);
+  
+  &:hover {
+    background-color: var(--warning-hover);
+  }
 }

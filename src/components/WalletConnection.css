@@ -1,57 +1,59 @@
-/* Wallet Connection Styles */
+/* Wallet Connection Styles with Modern CSS */
+
 .wallet-status {
-  margin-bottom: 20px;
-}
-
-.connect-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.connect-button:hover:not(:disabled) {
-  background-color: #0056b3;
-}
-
-.connect-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.disconnect-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: background-color 0.2s;
-}
-
-.disconnect-button:hover {
-  background-color: #c82333;
-}
-
-.status-item {
-  margin: 8px 0;
-  font-size: 16px;
+  margin-bottom: var(--spacing-lg);
+  
+  .status-item {
+    margin: var(--spacing-sm) 0;
+    font-size: var(--font-md);
+  }
 }
 
 .button-group {
   display: flex;
   gap: 10px;
-  margin-top: 15px;
+  margin-top: var(--spacing-md);
   flex-wrap: wrap;
+  
+  button {
+    flex: 1;
+    min-width: 120px;
+  }
 }
 
-.button-group button {
-  flex: 1;
-  min-width: 120px;
+/* Base button styles */
+.connect-button,
+.disconnect-button {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  font-size: var(--font-md);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-normal);
+}
+
+/* Connect button specific styles */
+.connect-button {
+  background-color: var(--primary-color);
+  color: white;
+  
+  &:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+/* Disconnect button specific styles */
+.disconnect-button {
+  background-color: var(--danger-color);
+  color: white;
+  margin-top: var(--spacing-sm);
+  
+  &:hover {
+    background-color: #c82333;
+  }
 }

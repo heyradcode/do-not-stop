@@ -1,0 +1,73 @@
+/* Global CSS Variables */
+:root {
+  /* Colors */
+  --primary-color: #007bff;
+  --primary-hover: #0056b3;
+  --secondary-color: #6c757d;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #17a2b8;
+  --warning-hover: #138496;
+  --info-color: #007bff;
+  --light-color: #f8f9fa;
+  --dark-color: #343a40;
+  
+  /* Text Colors */
+  --text-primary: #333;
+  --text-secondary: #555;
+  --text-muted: #6c757d;
+  --text-light: #fff;
+  
+  /* Background Colors */
+  --bg-primary: #fff;
+  --bg-secondary: #f8f9fa;
+  --bg-dark: #343a40;
+  
+  /* Border Colors */
+  --border-color: #dee2e6;
+  --border-light: #eee;
+  --border-dark: #adb5bd;
+  
+  /* Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-xxl: 24px;
+  --spacing-xxxl: 32px;
+  
+  /* Font Sizes */
+  --font-xs: 12px;
+  --font-sm: 14px;
+  --font-md: 16px;
+  --font-lg: 18px;
+  --font-xl: 20px;
+  --font-xxl: 24px;
+  
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 2px 4px rgba(0,0,0,0.1);
+  --shadow-lg: 0 4px 8px rgba(0,0,0,0.15);
+  --shadow-xl: 0 8px 16px rgba(0,0,0,0.2);
+  
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+  
+  /* Z-Index Scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+}
