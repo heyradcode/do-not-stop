@@ -12,12 +12,22 @@ const CHAIN_NAMES = {
   137: 'Polygon',
   42161: 'Arbitrum',
   10: 'Optimism',
+  43114: 'Avalanche',
+  8453: 'Base',
+  250: 'Fantom',
+  42220: 'Celo',
+  100: 'Gnosis',
   // Testnets
   11155111: 'Sepolia',
   97: 'BSC Testnet',
   80001: 'Mumbai',
   421614: 'Arbitrum Sepolia',
-  11155420: 'Optimism Sepolia'
+  11155420: 'Optimism Sepolia',
+  43113: 'Fuji',
+  84532: 'Base Sepolia',
+  4002: 'Fantom Testnet',
+  44787: 'Alfajores',
+  10200: 'Chiado'
 };
 
 // In-memory storage for demo (use database in production)

@@ -1,8 +1,28 @@
 import React, { useState } from 'react';
 import { useAccount, useSwitchChain } from 'wagmi';
 import { 
-  mainnet, bsc, polygon, arbitrum, optimism,
-  sepolia, bscTestnet, polygonMumbai, arbitrumSepolia, optimismSepolia
+  // Mainnets
+  mainnet,
+  bsc,
+  polygon,
+  arbitrum,
+  optimism,
+  avalanche,
+  base,
+  fantom,
+  celo,
+  gnosis,
+  // Testnets
+  sepolia,
+  bscTestnet,
+  polygonMumbai,
+  arbitrumSepolia,
+  optimismSepolia,
+  avalancheFuji,
+  baseSepolia,
+  fantomTestnet,
+  celoAlfajores,
+  gnosisChiado
 } from 'viem/chains';
 import './NetworkSwitcher.css';
 
@@ -12,6 +32,11 @@ const mainnetChains = [
   { chain: polygon, name: 'Polygon', symbol: 'MATIC', isTestnet: false },
   { chain: arbitrum, name: 'Arbitrum', symbol: 'ETH', isTestnet: false },
   { chain: optimism, name: 'Optimism', symbol: 'ETH', isTestnet: false },
+  { chain: avalanche, name: 'Avalanche', symbol: 'AVAX', isTestnet: false },
+  { chain: base, name: 'Base', symbol: 'ETH', isTestnet: false },
+  { chain: fantom, name: 'Fantom', symbol: 'FTM', isTestnet: false },
+  { chain: celo, name: 'Celo', symbol: 'CELO', isTestnet: false },
+  { chain: gnosis, name: 'Gnosis', symbol: 'GNO', isTestnet: false },
 ];
 
 const testnetChains = [
@@ -20,6 +45,11 @@ const testnetChains = [
   { chain: polygonMumbai, name: 'Mumbai', symbol: 'MATIC', isTestnet: true },
   { chain: arbitrumSepolia, name: 'Arbitrum Sepolia', symbol: 'ETH', isTestnet: true },
   { chain: optimismSepolia, name: 'Optimism Sepolia', symbol: 'ETH', isTestnet: true },
+  { chain: avalancheFuji, name: 'Fuji', symbol: 'AVAX', isTestnet: true },
+  { chain: baseSepolia, name: 'Base Sepolia', symbol: 'ETH', isTestnet: true },
+  { chain: fantomTestnet, name: 'Fantom Testnet', symbol: 'FTM', isTestnet: true },
+  { chain: celoAlfajores, name: 'Alfajores', symbol: 'CELO', isTestnet: true },
+  { chain: gnosisChiado, name: 'Chiado', symbol: 'GNO', isTestnet: true },
 ];
 
 const NetworkSwitcher: React.FC = () => {

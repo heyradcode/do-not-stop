@@ -6,8 +6,28 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http } from 'viem';
 import { 
-  mainnet, bsc, polygon, arbitrum, optimism,
-  sepolia, bscTestnet, polygonMumbai, arbitrumSepolia, optimismSepolia
+  // Mainnets
+  mainnet,
+  bsc,
+  polygon,
+  arbitrum,
+  optimism,
+  avalanche,
+  base,
+  fantom,
+  celo,
+  gnosis,
+  // Testnets
+  sepolia,
+  bscTestnet,
+  polygonMumbai,
+  arbitrumSepolia,
+  optimismSepolia,
+  avalancheFuji,
+  baseSepolia,
+  fantomTestnet,
+  celoAlfajores,
+  gnosisChiado
 } from 'viem/chains';
 import { injected } from 'wagmi/connectors';
 import { AuthProvider } from './contexts/AuthContext';
@@ -15,8 +35,8 @@ import Main from './components/Main';
 import './App.css';
 
 // All supported chains
-const mainnetChains = [mainnet, bsc, polygon, arbitrum, optimism];
-const testnetChains = [sepolia, bscTestnet, polygonMumbai, arbitrumSepolia, optimismSepolia];
+const mainnetChains = [mainnet, bsc, polygon, arbitrum, optimism, avalanche, base, fantom, celo, gnosis];
+const testnetChains = [sepolia, bscTestnet, polygonMumbai, arbitrumSepolia, optimismSepolia, avalancheFuji, baseSepolia, fantomTestnet, celoAlfajores, gnosisChiado];
 const allChains = [...mainnetChains, ...testnetChains];
 
 const config = createConfig({
