@@ -5,22 +5,23 @@ import { useAuth } from '../contexts/AuthContext';
 
 import NetworkSwitcher from './NetworkSwitcher';
 import WalletStatus from './WalletStatus';
+import NativeBalance from './NativeBalance';
 import './WalletConnection.css';
 
 const WalletConnection: React.FC = () => {
   const { isConnected } = useAccount();
   const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-  
+
   // Auth context with centralized authentication logic
-  const { 
-    isAuthenticated, 
-    user, 
-    logout, 
-    signAndLogin, 
-    isSigning, 
-    isVerifying, 
-    isNonceLoading 
+  const {
+    isAuthenticated,
+    user,
+    logout,
+    signAndLogin,
+    isSigning,
+    isVerifying,
+    isNonceLoading
   } = useAuth();
 
   const handleConnect = () => {
@@ -33,10 +34,15 @@ const WalletConnection: React.FC = () => {
   return (
     <div>
       <WalletStatus />
-      {isConnected && <NetworkSwitcher />}
+      {isConnected && (
+        <>
+          <NativeBalance />
+          <NetworkSwitcher />
+        </>
+      )}
       <div className="button-group">
         {!isConnected ? (
-          <button 
+          <button
             onClick={handleConnect}
             disabled={isPending}
             className="connect-button"
@@ -45,13 +51,13 @@ const WalletConnection: React.FC = () => {
           </button>
         ) : isAuthenticated && user ? (
           <>
-            <button 
+            <button
               onClick={logout}
               className="disconnect-button"
             >
               Logout
             </button>
-            <button 
+            <button
               onClick={() => disconnect()}
               className="disconnect-button"
             >
@@ -60,14 +66,14 @@ const WalletConnection: React.FC = () => {
           </>
         ) : (
           <>
-            <button 
+            <button
               onClick={signAndLogin}
               disabled={isNonceLoading || isSigning || isVerifying}
               className="connect-button"
             >
               {isNonceLoading ? 'Getting nonce...' : isSigning ? 'Please sign in MetaMask...' : isVerifying ? 'Verifying...' : 'Sign Message & Login'}
             </button>
-            <button 
+            <button
               onClick={() => disconnect()}
               className="disconnect-button"
             >

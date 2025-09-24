@@ -1,8 +1,6 @@
 import React from 'react';
 import { useAccount } from 'wagmi';
 
-import { useAuth } from '../contexts/AuthContext';
-
 const WalletStatus: React.FC = () => {
   const { address, isConnected, chain, status } = useAccount();
 
