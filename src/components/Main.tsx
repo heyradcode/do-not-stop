@@ -12,7 +12,7 @@ const Main: React.FC = () => {
   return (
     <div className="main-container">
       <div className="main-header">
-        <h1>Web3 Authentication Demo</h1>
+        <h1>Do Not Stop</h1>
       </div>
 
       <AccountDropdown />
