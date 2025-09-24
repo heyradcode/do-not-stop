@@ -208,7 +208,7 @@
     .balance-amount {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: center;
 
         .balance-display {
             display: flex;
