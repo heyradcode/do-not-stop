@@ -1,7 +1,6 @@
 import React from 'react';
 import { useReadContract } from 'wagmi';
-import { formatTokenBalance } from '../constants/tokens';
-import { ERC20_ABI } from '../constants/tokens';
+import { formatTokenBalance, ERC20_ABI } from '../constants/tokens';
 import './TokenBalance.css';
 
 interface TokenBalanceProps {
@@ -11,7 +10,6 @@ interface TokenBalanceProps {
     decimals: number;
     name: string;
     onBalanceLoaded?: (hasBalance: boolean) => void;
-    onBalanceLoading?: () => void;
 }
 
 const TokenBalance: React.FC<TokenBalanceProps> = ({
@@ -21,7 +19,6 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
     decimals,
     name,
     onBalanceLoaded,
-    onBalanceLoading,
 }) => {
     const { data: balance, isLoading, error } = useReadContract({
         address: tokenAddress,
@@ -30,12 +27,6 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({
         args: [userAddress],
     });
 
-    // Notify parent component about loading status
-    React.useEffect(() => {
-        if (isLoading) {
-            onBalanceLoading?.();
-        }
-    }, [isLoading, onBalanceLoading]);
 
     // Notify parent component about balance status
     React.useEffect(() => {
