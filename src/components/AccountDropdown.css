@@ -190,7 +190,7 @@
 
 /* Balance Section */
 .balance-section {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
     padding: 12px;
     background: #f8f9ff;
     border-radius: 8px;
@@ -250,6 +250,48 @@
     }
 }
 
+/* Tokens Section */
+.tokens-section {
+    margin-bottom: 20px;
+
+    .tokens-label {
+        font-size: 12px;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 12px;
+        font-weight: 600;
+    }
+
+    .tokens-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        padding-right: 4px;
+
+        /* Custom scrollbar */
+        &::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 2px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 2px;
+        }
+
+        &::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    }
+}
+
 @keyframes spin {
     0% {
         transform: rotate(0deg);
@@ -258,6 +300,18 @@
     100% {
         transform: rotate(360deg);
     }
+}
+
+/* No Tokens Message */
+.no-tokens-message {
+    text-align: center;
+    color: #666;
+    font-size: 12px;
+    font-style: italic;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin: 4px 0;
 }
 
 /* Action Buttons */
