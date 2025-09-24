@@ -26,9 +26,16 @@ const AccountDropdown: React.FC = () => {
     } = useAuth();
 
     // Get native token balance
-    const { data: balance, isLoading: isBalanceLoading } = useBalance({
+    const { data: balance, isLoading: isBalanceLoading, refetch: refetchBalance } = useBalance({
         address: address,
     });
+
+    // Refetch balance when dropdown opens
+    useEffect(() => {
+        if (isOpen && address) {
+            refetchBalance();
+        }
+    }, [isOpen, address, refetchBalance]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
