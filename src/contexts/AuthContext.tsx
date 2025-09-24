@@ -72,7 +72,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Handle user profile failure (token is invalid/expired)
   useEffect(() => {
     if (profileError) {
-      console.error('Profile fetch failed:', profileError);
       setAuthenticated(false);
       setUser(null);
       // Token is already cleared by useUserProfile hook on 401
@@ -97,14 +96,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthenticated(true);
       setUser(authData.user);
       setPendingNonce(null);
-      console.log('Authentication successful:', authData);
     }
   }, [authData]);
 
   // Handle verification errors
   useEffect(() => {
     if (verifyError) {
-      console.error('Verification error:', verifyError);
       setPendingNonce(null);
       alert(`Authentication failed: ${verifyError.message}`);
     }
@@ -113,7 +110,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Handle signing errors
   useEffect(() => {
     if (signError) {
-      console.error('Signing error:', signError);
       setPendingNonce(null);
       alert(`Signing failed: ${signError.message}`);
     }
@@ -140,13 +136,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Create message to sign
       const message = `Sign this message to authenticate: ${nonce}`;
 
-      console.log('Requesting signature for message:', message);
 
       // Trigger the signing process - this will show MetaMask popup
       signMessage({ message });
 
     } catch (error) {
-      console.error('Error getting nonce:', error);
       alert(`Error getting nonce: ${error.message}`);
     }
   };

@@ -35,9 +35,9 @@ const users = new Map();
 
 // Generate nonce for signing
 router.get('/nonce', (req, res) => {
-  const nonce = Math.random().toString(36).substring(2, 15) + 
-                Math.random().toString(36).substring(2, 15);
-  
+  const nonce = Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15);
+
   res.json({ nonce });
 });
 
@@ -51,7 +51,6 @@ router.post('/verify', async (req, res) => {
     }
 
     // Log which chain the user is connecting from
-    console.log(`Authentication attempt from ${CHAIN_NAMES[chainId] || `Chain ${chainId}`} - Address: ${address}`);
 
     // Recover the address from the signature
     const message = `Sign this message to authenticate: ${nonce}`;
@@ -77,7 +76,7 @@ router.post('/verify', async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { 
+      {
         address: address.toLowerCase(),
         userId: address.toLowerCase()
       },
@@ -96,7 +95,6 @@ router.post('/verify', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Verification error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
