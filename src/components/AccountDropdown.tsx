@@ -12,6 +12,7 @@ const AccountDropdown: React.FC = () => {
     const { connect, connectors, isPending: isConnecting } = useConnect();
     const { disconnect } = useDisconnect();
     const [isOpen, setIsOpen] = useState(false);
+    const [isCopied, setIsCopied] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     const {
@@ -67,6 +68,30 @@ const AccountDropdown: React.FC = () => {
         setIsOpen(false);
     };
 
+    const handleCopyAddress = async () => {
+        if (address) {
+            try {
+                await navigator.clipboard.writeText(address);
+                console.log('Address copied to clipboard');
+                setIsCopied(true);
+                // Reset the copied state after 2 seconds
+                setTimeout(() => setIsCopied(false), 2000);
+            } catch (err) {
+                console.error('Failed to copy address:', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = address;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                setIsCopied(true);
+                // Reset the copied state after 2 seconds
+                setTimeout(() => setIsCopied(false), 2000);
+            }
+        }
+    };
+
     // Format address for display
     const formatAddress = (addr: string) => {
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -110,7 +135,16 @@ const AccountDropdown: React.FC = () => {
                     <div className="user-dropdown-menu">
                         <div className="dropdown-header">
                             <div className="user-details">
-                                <div className="user-address-full">{address}</div>
+                                <div
+                                    className={`user-address-full clickable-address ${isCopied ? 'copied' : ''}`}
+                                    onClick={handleCopyAddress}
+                                    title={isCopied ? "Address copied!" : "Click to copy address"}
+                                >
+                                    <span className="address-text">{address}</span>
+                                    <span className="copy-icon">
+                                        {isCopied ? "✓" : "📋"}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
