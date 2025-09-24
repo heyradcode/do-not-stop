@@ -75,7 +75,7 @@ const AccountDropdown: React.FC = () => {
 
     if (!isConnected || !address) {
         return (
-            <div className="account-dropdown">
+            <div className="account-dropdown-container">
                 <button
                     className="connect-wallet-btn"
                     onClick={handleConnect}

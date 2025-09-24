@@ -11,12 +11,13 @@ const Main: React.FC = () => {
 
   return (
     <div className="main-container">
+      <div className="main-header">
+        <h1>Web3 Authentication Demo</h1>
+      </div>
+
       <AccountDropdown />
 
       <div className="main-content">
-        <h1>Web3 Authentication Demo</h1>
-        <p>Connect your wallet → Sign a message → Get JWT token → Access protected routes</p>
-
         {isAuthenticated && (
           <Dashboard />
         )}
