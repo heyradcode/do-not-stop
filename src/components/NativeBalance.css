@@ -1,10 +1,6 @@
-/* Native Balance Component */
+/* Native Balance Component - Now integrated into UserDropdown */
 .native-balance {
-    position: fixed;
-    top: 20px;
-    right: 160px;
-    /* Position to the left of the network switcher */
-    z-index: 100;
+    /* Positioning removed - now handled by UserDropdown */
     background: white;
     border: 1px solid #e0e0e0;
     border-radius: 12px;

@@ -2,30 +2,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import React from 'react';
 import { http } from 'viem';
-import { 
-  // Mainnets
-  mainnet,
-  bsc,
-  polygon,
-  arbitrum,
-  optimism,
-  avalanche,
-  base,
-  fantom,
-  celo,
-  gnosis,
-  // Testnets
-  sepolia,
-  bscTestnet,
-  polygonMumbai,
-  arbitrumSepolia,
-  optimismSepolia,
-  avalancheFuji,
-  baseSepolia,
-  fantomTestnet,
-  celoAlfajores,
-  gnosisChiado
-} from 'viem/chains';
 import {
   createConfig,
   WagmiProvider,
@@ -34,15 +10,14 @@ import { injected } from 'wagmi/connectors';
 
 import Main from './components/Main';
 import { AuthProvider } from './contexts/AuthContext';
+import { CHAINS } from './constants/chains';
 import './App.css';
 
-// All supported chains
-const mainnetChains = [mainnet, bsc, polygon, arbitrum, optimism, avalanche, base, fantom, celo, gnosis];
-const testnetChains = [sepolia, bscTestnet, polygonMumbai, arbitrumSepolia, optimismSepolia, avalancheFuji, baseSepolia, fantomTestnet, celoAlfajores, gnosisChiado];
-const allChains = [...mainnetChains, ...testnetChains];
+// All supported chains from centralized configuration
+const allChains = CHAINS.map(chainConfig => chainConfig.chain);
 
 const config = createConfig({
-  chains: allChains,
+  chains: allChains as any,
   connectors: [injected()],
   multiInjectedProviderDiscovery: false,
   transports: Object.fromEntries(
@@ -54,9 +29,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: (failureCount, error: AxiosError) => {
+      retry: (failureCount, error) => {
         // Don't retry on 401 (unauthorized)
-        if (error.response?.status === 401) {
+        if (error instanceof AxiosError && error.response?.status === 401) {
           return false;
         }
         return failureCount < 3;

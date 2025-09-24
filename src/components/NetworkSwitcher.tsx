@@ -1,74 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  // Mainnets
-  mainnet,
-  bsc,
-  polygon,
-  arbitrum,
-  optimism,
-  avalanche,
-  base,
-  fantom,
-  celo,
-  gnosis,
-  // Testnets
-  sepolia,
-  bscTestnet,
-  polygonMumbai,
-  arbitrumSepolia,
-  optimismSepolia,
-  avalancheFuji,
-  baseSepolia,
-  fantomTestnet,
-  celoAlfajores,
-  gnosisChiado
-} from 'viem/chains';
 import { useAccount, useSwitchChain } from 'wagmi';
 import Modal from 'react-modal';
+import { CHAINS, getChainsByType, getChainConfig } from '../constants/chains';
 import './NetworkSwitcher.css';
-
-// Organized chains with testnets right after their mainnets
-const CHAINS = [
-  // Ethereum
-  { chain: mainnet, name: 'Ethereum', symbol: 'ETH', isTestnet: false },
-  { chain: sepolia, name: 'Sepolia', symbol: 'ETH', isTestnet: true },
-
-  // BSC
-  { chain: bsc, name: 'BSC', symbol: 'BNB', isTestnet: false },
-  { chain: bscTestnet, name: 'BSC Testnet', symbol: 'tBNB', isTestnet: true },
-
-  // Polygon
-  { chain: polygon, name: 'Polygon', symbol: 'MATIC', isTestnet: false },
-  { chain: polygonMumbai, name: 'Mumbai', symbol: 'MATIC', isTestnet: true },
-
-  // Arbitrum
-  { chain: arbitrum, name: 'Arbitrum', symbol: 'ETH', isTestnet: false },
-  { chain: arbitrumSepolia, name: 'Arbitrum Sepolia', symbol: 'ETH', isTestnet: true },
-
-  // Optimism
-  { chain: optimism, name: 'Optimism', symbol: 'ETH', isTestnet: false },
-  { chain: optimismSepolia, name: 'Optimism Sepolia', symbol: 'ETH', isTestnet: true },
-
-  // Avalanche
-  { chain: avalanche, name: 'Avalanche', symbol: 'AVAX', isTestnet: false },
-  { chain: avalancheFuji, name: 'Fuji', symbol: 'AVAX', isTestnet: true },
-
-  // Base
-  { chain: base, name: 'Base', symbol: 'ETH', isTestnet: false },
-  { chain: baseSepolia, name: 'Base Sepolia', symbol: 'ETH', isTestnet: true },
-
-  // Fantom
-  { chain: fantom, name: 'Fantom', symbol: 'FTM', isTestnet: false },
-  { chain: fantomTestnet, name: 'Fantom Testnet', symbol: 'FTM', isTestnet: true },
-
-  // Celo
-  { chain: celo, name: 'Celo', symbol: 'CELO', isTestnet: false },
-  { chain: celoAlfajores, name: 'Alfajores', symbol: 'CELO', isTestnet: true },
-
-  // Gnosis
-  { chain: gnosis, name: 'Gnosis', symbol: 'GNO', isTestnet: false },
-  { chain: gnosisChiado, name: 'Chiado', symbol: 'GNO', isTestnet: true },
-];
 
 const NetworkSwitcher: React.FC = () => {
   const { chain } = useAccount();
@@ -88,13 +22,8 @@ const NetworkSwitcher: React.FC = () => {
 
   if (!chain) return null;
 
-  const visibleChains = showTestnets
-    ? CHAINS.filter(chain => chain.isTestnet)
-    : CHAINS.filter(chain => !chain.isTestnet);
-
-  const currentChainConfig = CHAINS.find(
-    chainConfig => chainConfig.chain.id === chain.id
-  );
+  const visibleChains = getChainsByType(showTestnets);
+  const currentChainConfig = getChainConfig(chain?.id || 0);
 
   const handleTestnetToggle = (checked: boolean) => {
     setShowTestnets(checked);

@@ -1,9 +1,9 @@
 import React from 'react';
 
 import { useUserProfile } from '../hooks/useUserProfile';
-import './ProtectedContent.css';
+import './Dashboard.css';
 
-const ProtectedContent: React.FC = () => {
+const Dashboard: React.FC = () => {
   const { data: profileData, isLoading, error, refetch } = useUserProfile();
   const user = profileData?.user || null;
 
@@ -51,4 +51,4 @@ const ProtectedContent: React.FC = () => {
   );
 };
 
-export default ProtectedContent;
+export default Dashboard;

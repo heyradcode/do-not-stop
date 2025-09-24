@@ -1,9 +1,7 @@
-/* Compact Network Switcher for Top-Right */
+/* Compact Network Switcher - Now integrated into UserDropdown */
 .network-switcher-compact {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 100;
+  position: relative;
+  display: inline-block;
 }
 
 /* Legacy full-width switcher (keeping for reference) */
