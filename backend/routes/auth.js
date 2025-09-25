@@ -4,31 +4,6 @@ import { ethers } from 'ethers';
 
 const router = express.Router();
 
-// Chain ID to name mapping
-const CHAIN_NAMES = {
-  // Mainnets
-  1: 'Ethereum Mainnet',
-  56: 'BSC',
-  137: 'Polygon',
-  42161: 'Arbitrum',
-  10: 'Optimism',
-  43114: 'Avalanche',
-  8453: 'Base',
-  250: 'Fantom',
-  42220: 'Celo',
-  100: 'Gnosis',
-  // Testnets
-  11155111: 'Sepolia',
-  97: 'BSC Testnet',
-  80001: 'Mumbai',
-  421614: 'Arbitrum Sepolia',
-  11155420: 'Optimism Sepolia',
-  43113: 'Fuji',
-  84532: 'Base Sepolia',
-  4002: 'Fantom Testnet',
-  44787: 'Alfajores',
-  10200: 'Chiado'
-};
 
 // In-memory storage for demo (use database in production)
 const users = new Map();
@@ -44,13 +19,11 @@ router.get('/nonce', (req, res) => {
 // Verify signature and issue JWT
 router.post('/verify', async (req, res) => {
   try {
-    const { address, signature, nonce, chainId } = req.body;
+    const { address, signature, nonce } = req.body;
 
     if (!address || !signature || !nonce) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-
-    // Log which chain the user is connecting from
 
     // Recover the address from the signature
     const message = `Sign this message to authenticate: ${nonce}`;
@@ -94,7 +67,7 @@ router.post('/verify', async (req, res) => {
       }
     });
 
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: 'Internal server error' });
   }
 });

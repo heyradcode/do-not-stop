@@ -16,7 +16,7 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({ symbol, decimals, name, bal
         return null;
     }
 
-    const formattedBalance = formatTokenBalance(balance as any, decimals);
+    const formattedBalance = formatTokenBalance(balance as bigint, decimals);
     const displayBalance = parseFloat(formattedBalance).toFixed(4);
 
     return (

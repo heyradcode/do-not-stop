@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 
 import { useNonce, useVerifySignature } from '../hooks/useAuth';
@@ -141,7 +141,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       signMessage({ message });
 
     } catch (error) {
-      alert(`Error getting nonce: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Error getting nonce: ${errorMessage}`);
     }
   };
 

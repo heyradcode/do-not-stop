@@ -17,7 +17,7 @@ const AccountDropdown: React.FC = () => {
     // tokenStatus maps tokenAddress -> { fetched: boolean; balance?: bigint | number }
     const [tokenStatus, setTokenStatus] = useState<Record<string, { fetched: boolean; balance?: bigint | number }>>({});
     const [isTokensLoading, setIsTokensLoading] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const dropdownRef = useRef<any>(null);
 
     const {
         isAuthenticated,
@@ -60,24 +60,20 @@ const AccountDropdown: React.FC = () => {
                     args: [address]
                 }));
 
-                let results: Array<{ address: string; balance?: bigint | number; error?: any }> = [];
+                let results: Array<{ address: string; balance?: bigint | number; error?: unknown }> = [];
 
-                if ((publicClient as any)?.multicall) {
-                    try {
-                        // Use the correct viem multicall syntax
-                        const multicallRes = await (publicClient as any).multicall({
-                            contracts: calls,
-                            allowFailure: true
-                        });
+                if ((publicClient as { multicall?: unknown })?.multicall) {
+                    // Use the correct viem multicall syntax
+                    const multicallRes = await (publicClient as { multicall: (params: unknown) => Promise<unknown> }).multicall({
+                        contracts: calls,
+                        allowFailure: true
+                    });
 
-                        results = multicallRes.map((r: any, idx: number) => ({
-                            address: calls[idx].address,
-                            balance: r.status === 'success' ? r.result : undefined,
-                            error: r.status === 'failure' ? r.error : undefined
-                        }));
-                    } catch (multicallError) {
-                        throw multicallError;
-                    }
+                    results = (multicallRes as Array<{ status: string; result?: unknown; error?: unknown }>).map((r, idx: number) => ({
+                        address: calls[idx].address,
+                        balance: r.status === 'success' ? (r.result as bigint) : undefined,
+                        error: r.status === 'failure' ? r.error : undefined
+                    }));
                 } else {
                     throw new Error('Multicall not available');
                 }
@@ -92,7 +88,7 @@ const AccountDropdown: React.FC = () => {
                 }
 
                 setTokenStatus(newStatus);
-            } catch (err) {
+            } catch {
                 // Error fetching token balances
             } finally {
                 setIsTokensLoading(false);
@@ -116,8 +112,8 @@ const AccountDropdown: React.FC = () => {
 
     // Close dropdown when clicking outside
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        const handleClickOutside = (event: globalThis.MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as globalThis.Node)) {
                 setIsOpen(false);
             }
         };
@@ -155,11 +151,11 @@ const AccountDropdown: React.FC = () => {
     const handleCopyAddress = async () => {
         if (address) {
             try {
-                await navigator.clipboard.writeText(address);
+                await globalThis.navigator.clipboard.writeText(address);
                 setIsCopied(true);
                 // Reset the copied state after 2 seconds
-                setTimeout(() => setIsCopied(false), 2000);
-            } catch (err) {
+                globalThis.setTimeout(() => setIsCopied(false), 2000);
+            } catch {
                 // Fallback for older browsers
                 const textArea = document.createElement('textarea');
                 textArea.value = address;
@@ -169,7 +165,7 @@ const AccountDropdown: React.FC = () => {
                 document.body.removeChild(textArea);
                 setIsCopied(true);
                 // Reset the copied state after 2 seconds
-                setTimeout(() => setIsCopied(false), 2000);
+                globalThis.setTimeout(() => setIsCopied(false), 2000);
             }
         }
     };
