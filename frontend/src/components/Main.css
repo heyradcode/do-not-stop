@@ -34,9 +34,69 @@
   /* Account for fixed header */
   padding: 40px 20px;
   text-align: center;
-  max-width: 800px;
+  max-width: 1200px;
   margin-left: auto;
   margin-right: auto;
+}
+
+/* Welcome Section */
+.welcome-section {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.welcome-section h2 {
+  font-size: 2.5rem;
+  margin: 0 0 16px 0;
+  color: #333;
+  font-weight: 700;
+}
+
+.welcome-section>p {
+  font-size: 1.2rem;
+  color: #666;
+  margin: 0 0 40px 0;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  margin-top: 40px;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.feature {
+  background: white;
+  border-radius: 16px;
+  padding: 30px 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+}
+
+.feature:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.feature h3 {
+  font-size: 1.5rem;
+  margin: 0 0 12px 0;
+  color: #333;
+  font-weight: 700;
+}
+
+.feature p {
+  font-size: 1rem;
+  color: #666;
+  margin: 0;
+  line-height: 1.5;
 }
 
 /* Responsive Design */

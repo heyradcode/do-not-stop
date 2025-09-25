@@ -1,0 +1,174 @@
+.zombie-creator {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.creator-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    color: white;
+}
+
+.creator-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-weight: 700;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.creator-card p {
+    margin: 0 0 20px 0;
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+.creator-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+}
+
+.input-group label {
+    font-weight: 600;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.input-group input {
+    padding: 12px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.input-group input:focus {
+    background: white;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.input-group input::placeholder {
+    color: #666;
+}
+
+.create-button {
+    padding: 14px 24px;
+    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+.create-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+}
+
+.create-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.create-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.error-message {
+    background: rgba(220, 53, 69, 0.2);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 16px;
+    color: #ff6b6b;
+    font-size: 14px;
+    font-weight: 500;
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.error-message.user-rejection {
+    background: rgba(108, 117, 125, 0.2);
+    border: 1px solid rgba(108, 117, 125, 0.3);
+    color: #6c757d;
+    font-style: italic;
+}
+
+.success-message {
+    background: rgba(40, 167, 69, 0.2);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 16px;
+    color: #28a745;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.transaction-info {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 16px;
+    font-size: 12px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    word-break: break-all;
+}
+
+.transaction-info p {
+    margin: 4px 0;
+    opacity: 0.8;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .zombie-creator {
+        padding: 16px;
+    }
+
+    .creator-card {
+        padding: 20px;
+    }
+
+    .creator-card h3 {
+        font-size: 20px;
+    }
+
+    .input-group input {
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+
+    .create-button {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+}

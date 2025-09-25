@@ -1,0 +1,199 @@
+.transaction-status {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e0e0e0;
+    z-index: 1000;
+    min-width: 300px;
+    max-width: 400px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.status-content {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    gap: 12px;
+}
+
+.status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 16px;
+}
+
+.transaction-status.pending .status-icon {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.transaction-status.confirming .status-icon {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.transaction-status.confirmed .status-icon {
+    background: #d4edda;
+    color: #155724;
+}
+
+.transaction-status.error .status-icon {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e0e0e0;
+    border-top: 2px solid #0c5460;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.status-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.status-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.transaction-hash {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 12px;
+    color: #666;
+    word-break: break-all;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-button:hover:not(:disabled) {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.close-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Status-specific animations */
+.transaction-status.confirmed {
+    animation: successPulse 0.6s ease-out;
+}
+
+@keyframes successPulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.transaction-status.error {
+    animation: errorShake 0.6s ease-out;
+}
+
+@keyframes errorShake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .transaction-status {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+        max-width: none;
+    }
+
+    .status-content {
+        padding: 12px;
+    }
+
+    .status-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+    }
+
+    .spinner {
+        width: 16px;
+        height: 16px;
+    }
+
+    .status-title {
+        font-size: 13px;
+    }
+
+    .transaction-hash {
+        font-size: 11px;
+    }
+}
