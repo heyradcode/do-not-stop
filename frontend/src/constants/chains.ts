@@ -22,6 +22,24 @@ import {
     celoAlfajores,
     gnosisChiado
 } from 'viem/chains';
+import { defineChain } from 'viem';
+
+// Hardhat Local Network
+const hardhatLocal = defineChain({
+    id: 31337,
+    name: 'Hardhat Local',
+    nativeCurrency: {
+        decimals: 18,
+        name: 'Ether',
+        symbol: 'ETH',
+    },
+    rpcUrls: {
+        default: {
+            http: ['http://localhost:8545'],
+        },
+    },
+    testnet: true,
+});
 
 // Chain configuration interface
 export interface ChainConfig {
@@ -33,6 +51,9 @@ export interface ChainConfig {
 
 // Organized chains with testnets right after their mainnets
 export const CHAINS: ChainConfig[] = [
+    // Hardhat Local (for development)
+    { chain: hardhatLocal, name: 'Hardhat Local', symbol: 'ETH', isTestnet: true },
+
     // Ethereum
     { chain: mainnet, name: 'Ethereum', symbol: 'ETH', isTestnet: false },
     { chain: sepolia, name: 'Sepolia', symbol: 'ETH', isTestnet: true },
@@ -76,6 +97,7 @@ export const CHAINS: ChainConfig[] = [
 
 // Chain ID to native token symbol mapping
 export const CHAIN_SYMBOLS: { [key: number]: string } = {
+    31337: 'ETH',    // Hardhat Local
     1: 'ETH',        // Ethereum Mainnet
     11155111: 'ETH', // Sepolia
     56: 'BNB',       // BSC

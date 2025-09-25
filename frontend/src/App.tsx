@@ -21,7 +21,10 @@ const config = createConfig({
   connectors: [injected()],
   multiInjectedProviderDiscovery: false,
   transports: Object.fromEntries(
-    allChains.map(chain => [chain.id, http()])
+    allChains.map(chain => [
+      chain.id,
+      http(chain.rpcUrls.default.http[0])
+    ])
   ),
 });
 
