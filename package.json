@@ -4,27 +4,29 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "install:all": "pnpm install && pnpm --prefix frontend install && pnpm --prefix backend install && pnpm --prefix contracts install",
+    "postinstall": "pnpm install:all",
     "dev:frontend": "pnpm --prefix frontend dev",
     "dev:backend": "pnpm --prefix backend dev",
-    "dev:full": "concurrently \"pnpm dev:backend\" \"pnpm dev:frontend\"",
-    "dev:contracts": "npx hardhat node",
-    "compile": "npx hardhat compile",
-    "test": "npx hardhat test",
-    "deploy:local": "npx hardhat ignition deploy ignition/modules/ZombieFactory.ts --network localhost",
-    "deploy:sepolia": "npx hardhat ignition deploy ignition/modules/ZombieFactory.ts --network sepolia",
-    "deploy:status": "npx hardhat ignition status",
-    "deploy:visualize": "npx hardhat ignition visualize ignition/modules/ZombieFactory.ts",
+    "dev:contracts": "pnpm --prefix contracts node",
+    "dev:full": "concurrently --kill-others-on-fail --prefix-colors \"bgBlue.bold,bgGreen.bold,bgYellow.bold,bgMagenta.bold\" --names \"HARDHAT,CONTRACTS,BACKEND,FRONTEND\" \"pnpm --prefix contracts node\" \"node scripts/deploy-with-delay.js\" \"pnpm --prefix backend dev\" \"pnpm --prefix frontend dev\"",
+    "dev:full:no-deploy": "concurrently --kill-others-on-fail --prefix-colors \"bgBlue.bold,bgGreen.bold,bgYellow.bold\" --names \"HARDHAT,BACKEND,FRONTEND\" \"pnpm --prefix contracts node\" \"pnpm --prefix backend dev\" \"pnpm --prefix frontend dev\"",
+    "compile": "pnpm --prefix contracts compile",
+    "test": "pnpm --prefix contracts test",
+    "deploy:local": "pnpm --prefix contracts deploy:local",
+    "deploy:sepolia": "pnpm --prefix contracts deploy:sepolia",
+    "deploy:status": "pnpm --prefix contracts deploy:status",
+    "deploy:visualize": "pnpm --prefix contracts deploy:visualize",
     "build:frontend": "pnpm --prefix frontend build",
-    "build:backend": "pnpm --prefix backend build"
+    "build:backend": "pnpm --prefix backend build",
+    "build:all": "pnpm compile && pnpm build:backend && pnpm build:frontend",
+    "clean": "pnpm --prefix contracts clean && pnpm --prefix frontend clean && pnpm --prefix backend clean",
+    "reset": "pnpm clean && pnpm install:all",
+    "start": "pnpm dev:full",
+    "setup": "pnpm install:all && pnpm compile",
+    "status": "echo 📊 Project Status: && pnpm list --depth=0 && echo. && echo ✅ Frontend: && pnpm --prefix frontend list --depth=0 && echo. && echo ✅ Backend: && pnpm --prefix backend list --depth=0 && echo. && echo ✅ Contracts: && pnpm --prefix contracts list --depth=0"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-ignition": "^3.0.3",
-    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
-    "@openzeppelin/contracts": "^5.4.0",
-    "@types/node": "^22.18.6",
-    "concurrently": "^8.2.2",
-    "hardhat": "^3.0.6",
-    "typescript": "~5.8.0",
-    "viem": "^2.37.8"
+    "concurrently": "^8.2.2"
   }
 }
