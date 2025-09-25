@@ -6,9 +6,9 @@
   "scripts": {
     "install:all": "pnpm install && pnpm --prefix frontend install && pnpm --prefix backend install && pnpm --prefix contracts install",
     "postinstall": "pnpm install:all",
-    "dev:frontend": "pnpm --prefix frontend dev",
-    "dev:backend": "pnpm --prefix backend dev",
-    "dev:contracts": "pnpm --prefix contracts node",
+    "dev:frontend": "title Frontend && pnpm --prefix frontend dev",
+    "dev:backend": "title Backend && pnpm --prefix backend dev",
+    "dev:contracts": "title Hardhat && pnpm --prefix contracts node",
     "dev:full": "concurrently --kill-others-on-fail --prefix-colors \"bgBlue.bold,bgGreen.bold,bgYellow.bold,bgMagenta.bold\" --names \"HARDHAT,CONTRACTS,BACKEND,FRONTEND\" \"pnpm --prefix contracts node\" \"node scripts/deploy-with-delay.js\" \"pnpm --prefix backend dev\" \"pnpm --prefix frontend dev\"",
     "dev:full:no-deploy": "concurrently --kill-others-on-fail --prefix-colors \"bgBlue.bold,bgGreen.bold,bgYellow.bold\" --names \"HARDHAT,BACKEND,FRONTEND\" \"pnpm --prefix contracts node\" \"pnpm --prefix backend dev\" \"pnpm --prefix frontend dev\"",
     "compile": "pnpm --prefix contracts compile",
