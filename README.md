@@ -11,8 +11,12 @@ do-not-stop/
 │   ├── public/        # Static assets
 │   ├── package.json   # Frontend dependencies
 │   └── vite.config.ts # Vite configuration
-├── backend/           # Node.js + Express API
-│   ├── routes/        # API routes
+├── backend/           # Node.js + Express API (TypeScript)
+│   ├── src/           # TypeScript source files
+│   │   ├── server.ts  # Main server file
+│   │   └── routes/    # API routes (TypeScript)
+│   ├── dist/          # Compiled JavaScript
+│   ├── tsconfig.json  # TypeScript configuration
 │   ├── package.json   # Backend dependencies
 │   └── README.md      # Backend documentation
 ├── contracts/         # Hardhat + Solidity contracts
@@ -46,9 +50,10 @@ pnpm start              # Alias for dev:full
 
 # Or start individually:
 pnpm dev:frontend       # React frontend (http://localhost:5173)
-pnpm dev:backend        # Node.js API (http://localhost:3001)
+pnpm dev:backend        # TypeScript API (http://localhost:3001)
 pnpm dev:contracts      # Hardhat local network (http://localhost:8545)
 ```
+
 
 ### Smart Contracts
 
@@ -76,7 +81,7 @@ pnpm deploy:status
 - **🧟‍♂️ CryptoZombies** - NFT collection with breeding and battles
 - **🌐 Multi-chain Support** - Ethereum, Polygon, BSC, Arbitrum, etc.
 - **⚡ Modern Tech Stack** - React 19, Wagmi v2, Viem, Hardhat v3
-- **🔒 TypeScript** - Full type safety across the stack
+- **🔒 TypeScript** - Full type safety across frontend and backend
 - **🎨 Automated Deployment** - Contracts deploy automatically
 - **🛠️ Workspace Management** - Organized monorepo structure
 
@@ -90,9 +95,11 @@ pnpm deploy:status
 - Tailwind CSS (styling)
 
 ### Backend
-- Node.js + Express
+- Node.js + Express + TypeScript
 - JWT authentication
 - CORS enabled
+- Hot reload with tsx
+- Type-safe API routes
 
 ### Smart Contracts
 - Solidity 0.8.24

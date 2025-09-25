@@ -1,6 +1,6 @@
-# Backend - Web3 Authentication API
+# Backend - Web3 Authentication API (TypeScript)
 
-This is the Node.js backend for the Web3 authentication demo. Part of the Do Not Stop full-stack Web3 application.
+This is the Node.js + TypeScript backend for the Web3 authentication demo. Part of the Do Not Stop full-stack Web3 application.
 
 ## Features
 
@@ -11,6 +11,9 @@ This is the Node.js backend for the Web3 authentication demo. Part of the Do Not
 - **User Management**: Simple in-memory user storage (use database in production)
 - **CORS Enabled**: Cross-origin requests from frontend
 - **Health Monitoring**: Health check endpoints for monitoring
+- **TypeScript**: Full type safety with strict configuration
+- **Hot Reload**: Automatic restart on file changes with tsx
+- **Type-safe Routes**: Express routes with proper TypeScript types
 
 ## API Endpoints
 
@@ -53,11 +56,14 @@ pnpm dev:full
 
 3. **Start the server**:
    ```bash
-   # Development
-   pnpm run dev
+   # Development (TypeScript with hot reload)
+   pnpm dev
    
-   # Production
+   # Production (compiled JavaScript)
    pnpm start
+   
+   # Build TypeScript
+   pnpm build
    ```
 
 The server will run on `http://localhost:3001`

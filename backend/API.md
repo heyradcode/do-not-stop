@@ -5,7 +5,7 @@
 http://localhost:3001
 ```
 
-> **Note**: The backend runs on port 3001, not 3000. This is configured in the backend's `server.js` file.
+> **Note**: The backend runs on port 3001, not 3000. This is configured in the backend's `src/server.ts` file (TypeScript).
 
 ## 🚀 Quick Start
 
@@ -15,9 +15,11 @@ The backend is part of the automated development workflow. From the project root
 # Start everything (backend + frontend + contracts)
 pnpm dev:full
 
-# Or start backend only
+# Or start backend only (TypeScript with hot reload)
 pnpm dev:backend
 ```
+
+> **Backend Features**: This backend is built with TypeScript, includes hot reload for development, and provides type-safe API routes.
 
 ## Endpoints
 

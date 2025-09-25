@@ -17,7 +17,10 @@ pnpm start
 
 ```
 do-not-stop/
-├── backend/           # Node.js API server
+├── backend/           # Node.js + TypeScript API server
+│   ├── src/          # TypeScript source files
+│   ├── dist/         # Compiled JavaScript
+│   └── tsconfig.json # TypeScript configuration
 ├── frontend/          # React + Vite frontend
 ├── contracts/         # Hardhat + Solidity contracts
 │   ├── src/          # Solidity source files
@@ -82,7 +85,8 @@ do-not-stop/
 ## 🔧 Configuration
 
 - **Frontend**: `frontend/vite.config.ts`
-- **Backend**: `backend/server.js`
+- **Backend**: `backend/src/server.ts` (TypeScript)
+- **Backend Config**: `backend/tsconfig.json`
 - **Contracts**: `contracts/hardhat.config.ts`
 
 ## 📝 Notes
@@ -90,4 +94,5 @@ do-not-stop/
 - The `dev:full` command uses colored output to distinguish between services
 - Contract deployment has a 5-second delay to ensure Hardhat node is ready
 - All services run concurrently and will restart if any fail
+- Backend uses TypeScript with hot reload via `tsx watch`
 - Use `Ctrl+C` to stop all services at once
