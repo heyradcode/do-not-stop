@@ -5,6 +5,20 @@
 http://localhost:3001
 ```
 
+> **Note**: The backend runs on port 3001, not 3000. This is configured in the backend's `server.js` file.
+
+## 🚀 Quick Start
+
+The backend is part of the automated development workflow. From the project root:
+
+```bash
+# Start everything (backend + frontend + contracts)
+pnpm dev:full
+
+# Or start backend only
+pnpm dev:backend
+```
+
 ## Endpoints
 
 ### Root

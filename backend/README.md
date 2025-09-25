@@ -1,6 +1,6 @@
 # Backend - Web3 Authentication API
 
-This is the Node.js backend for the Web3 authentication demo.
+This is the Node.js backend for the Web3 authentication demo. Part of the Do Not Stop full-stack Web3 application.
 
 ## Features
 
@@ -9,6 +9,8 @@ This is the Node.js backend for the Web3 authentication demo.
 - **JWT Authentication**: Issues JWT tokens upon successful verification
 - **Protected Routes**: Example protected endpoints that require JWT
 - **User Management**: Simple in-memory user storage (use database in production)
+- **CORS Enabled**: Cross-origin requests from frontend
+- **Health Monitoring**: Health check endpoints for monitoring
 
 ## API Endpoints
 
@@ -28,6 +30,15 @@ This is the Node.js backend for the Web3 authentication demo.
 
 ## Setup
 
+### Automated (Recommended)
+From the project root:
+```bash
+# Install all dependencies and start everything
+pnpm install
+pnpm dev:full
+```
+
+### Manual Setup
 1. **Install dependencies**:
    ```bash
    cd backend
@@ -50,6 +61,15 @@ This is the Node.js backend for the Web3 authentication demo.
    ```
 
 The server will run on `http://localhost:3001`
+
+### From Project Root
+```bash
+# Start backend only
+pnpm dev:backend
+
+# Or start everything
+pnpm dev:full
+```
 
 ## Environment Variables
 
