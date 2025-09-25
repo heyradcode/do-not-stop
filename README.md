@@ -1,121 +1,129 @@
-# do-not-stop
+# Do Not Stop - Full Stack Web3 App
 
-> A full-stack Web3 authentication demo built with React, Node.js, and modern blockchain tools.
+A modern full-stack Web3 application with React frontend, Node.js backend, and Solidity smart contracts.
 
-**do-not-stop** demonstrates a complete Web3 authentication flow: wallet connection → message signing → backend verification → JWT authentication → protected routes.
+## 🏗️ Project Structure
 
----
-
-## 🚀 Features
-
-* **React 19+ & TypeScript**: Cutting-edge frontend development with type safety and modern React patterns.
-* **Vite**: Lightning-fast development and optimized builds.
-* **Web3 Integration**:
-  * **viem**: Lightweight Ethereum client for smart contract interactions.
-  * **wagmi**: React hooks for seamless wallet and blockchain interactions.
-* **Full-Stack Authentication**:
-  * **Node.js Backend**: Express server with JWT authentication
-  * **Message Signing**: Users sign messages to prove wallet ownership
-  * **Signature Verification**: Backend verifies signatures using ethers.js
-  * **Protected Routes**: JWT-protected API endpoints
-* **Evolving Architecture**: Designed for continuous improvements, reflecting the fast-paced Web3 ecosystem.
-
----
-
-## 💻 Getting Started
-
-### Frontend (React)
-
-1. **Clone the repo**
-```bash
-git clone https://github.com/heyradcode/do-not-stop.git
-cd do-not-stop
+```
+do-not-stop/
+├── frontend/           # React + Vite frontend
+│   ├── src/           # React components and logic
+│   ├── package.json   # Frontend dependencies
+│   └── vite.config.ts # Vite configuration
+├── backend/           # Node.js + Express API
+│   ├── routes/        # API routes
+│   └── package.json   # Backend dependencies
+├── contracts/         # Solidity smart contracts
+│   └── ZombieFactory.sol
+├── scripts/           # Deployment scripts
+│   └── deploy.js
+├── test/              # Smart contract tests
+│   └── ZombieFactory.test.js
+├── hardhat.config.js  # Hardhat configuration
+└── package.json       # Root package.json (orchestration)
 ```
 
-2. **Set up environment variables**
-```bash
-cp env.example .env
-# Edit .env if needed (default: http://localhost:3001)
-```
+## 🚀 Quick Start
 
-3. **Install dependencies**
+### Install Dependencies
 ```bash
+# Install root dependencies (Hardhat, etc.)
 pnpm install
+
+# Install frontend dependencies
+pnpm --prefix frontend install
+
+# Install backend dependencies
+pnpm --prefix backend install
 ```
 
-4. **Run the development server**
+### Development
+
 ```bash
-pnpm dev
+# Start everything (frontend + backend + contracts)
+pnpm dev:full
+
+# Or start individually:
+pnpm dev:frontend    # React frontend
+pnpm dev:backend     # Node.js API
+pnpm dev:contracts   # Hardhat local network
 ```
 
-5. **Open your browser**
-```
-http://localhost:5173
-```
+### Smart Contracts
 
-### Backend (Node.js)
-
-1. **Navigate to backend directory**
 ```bash
-cd backend
+# Compile contracts
+pnpm compile
+
+# Run tests
+pnpm test
+
+# Deploy to local network
+pnpm deploy:local
+
+# Deploy to Sepolia testnet
+pnpm deploy:sepolia
 ```
 
-2. **Install dependencies**
-```bash
-npm install
-```
+## 🧟‍♂️ Features
 
-3. **Set up environment variables**
-```bash
-cp env.example .env
-# Edit .env with your JWT secret
-```
+- **Web3 Authentication** - MetaMask integration with JWT
+- **CryptoZombies** - NFT collection with breeding and battles
+- **Multi-chain Support** - Ethereum, Polygon, BSC, Arbitrum, etc.
+- **Modern Tech Stack** - React 19, Wagmi v2, Viem, Hardhat v3
+- **TypeScript** - Full type safety across the stack
 
-4. **Start the backend server**
-```bash
-npm run dev
-```
-
-The backend will run on `http://localhost:3001`
-
-### Complete Demo Flow
-
-1. **Start both servers** (frontend on :5173, backend on :3001)
-2. **Connect your wallet** (MetaMask, etc.)
-3. **Click "Sign Message & Login"** to authenticate
-4. **View protected content** that requires JWT authentication
-
----
-
-## 🛠 Tech Stack
+## 🛠️ Tech Stack
 
 ### Frontend
-* **React 19+ & TypeScript**: Modern React with type safety
-* **Vite**: Fast build tool and dev server
-* **wagmi & viem**: Web3 wallet integration
-* **CSS Modules**: Component-scoped styling
+- React 19 + TypeScript
+- Vite (build tool)
+- Wagmi v2 + Viem (Web3)
+- React Query (data fetching)
+- Tailwind CSS (styling)
 
 ### Backend
-* **Node.js & Express**: Server framework
-* **JWT**: JSON Web Token authentication
-* **ethers.js**: Ethereum signature verification
-* **CORS**: Cross-origin resource sharing
+- Node.js + Express
+- JWT authentication
+- CORS enabled
 
----
+### Smart Contracts
+- Solidity 0.8.24
+- Hardhat v3
+- OpenZeppelin v5
+- ERC-721 NFT standard
 
-## 🌱 Philosophy
+## 📝 Environment Variables
 
-**do-not-stop** demonstrates:
+Create `.env` files in the appropriate directories:
 
-* Integration of Ethereum smart contracts into a React app.
-* Modern React patterns with hooks, context, and state management.
-* Continuous improvement mindset — evolving with the Web3 ecosystem.
+### Root `.env`
+```bash
+SEPOLIA_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID
+PRIVATE_KEY=your_private_key_here
+```
 
-This project is for personal use.
+### Backend `.env`
+```bash
+JWT_SECRET=your-super-secret-jwt-key-here
+PORT=3001
+```
 
----
+### Frontend `.env`
+```bash
+VITE_API_URL=http://localhost:3001
+```
 
-## 📝 License
+## 🎯 Development Workflow
 
-MIT License © 2025 Rad Code
-GitHub: [heyradcode](https://github.com/heyradcode)
+1. **Start local blockchain**: `pnpm dev:contracts`
+2. **Deploy contracts**: `pnpm deploy:local`
+3. **Start backend**: `pnpm dev:backend`
+4. **Start frontend**: `pnpm dev:frontend`
+5. **Test contracts**: `pnpm test`
+
+## 📚 Learn More
+
+- [Hardhat Documentation](https://hardhat.org/docs)
+- [Wagmi Documentation](https://wagmi.sh)
+- [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts)
