@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
 import TransactionStatus from './TransactionStatus';
 import { CONTRACT_ADDRESS } from '../config';
+import { parseContractError } from '../utils/errorParser';
 import './ZombieCreator.css';
 
 const ZombieCreator: React.FC = () => {
@@ -10,6 +11,7 @@ const ZombieCreator: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [isUserRejection, setIsUserRejection] = useState(false);
+    const [isContractError, setIsContractError] = useState(false);
 
     const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
 
@@ -27,6 +29,7 @@ const ZombieCreator: React.FC = () => {
         setError(null);
         setSuccess(null);
         setIsUserRejection(false);
+        setIsContractError(false);
 
         try {
             await writeContract({
@@ -60,16 +63,10 @@ const ZombieCreator: React.FC = () => {
 
     React.useEffect(() => {
         if (writeError) {
-            // Handle user rejection gracefully
-            if (writeError.message?.includes('User rejected') ||
-                writeError.message?.includes('User denied') ||
-                writeError.message?.includes('rejected')) {
-                setError('Transaction cancelled by user');
-                setIsUserRejection(true);
-            } else {
-                setError('Transaction failed. Please try again.');
-                setIsUserRejection(false);
-            }
+            const parsedError = parseContractError(writeError);
+            setError(parsedError.message);
+            setIsUserRejection(parsedError.isUserRejection);
+            setIsContractError(parsedError.isContractError);
         }
     }, [writeError]);
 
@@ -114,8 +111,8 @@ const ZombieCreator: React.FC = () => {
                 </div>
 
                 {error && (
-                    <div className={`error-message ${isUserRejection ? 'user-rejection' : ''}`}>
-                        {isUserRejection ? '⏸️' : '❌'} {error}
+                    <div className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}>
+                        {isUserRejection ? '⏸️' : isContractError ? '⚠️' : '❌'} {error}
                     </div>
                 )}
 

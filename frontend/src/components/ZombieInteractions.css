@@ -259,6 +259,13 @@
     font-style: italic;
 }
 
+.error-message.contract-error {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+    color: #ffc107;
+    font-weight: 600;
+}
+
 .success-message {
     background: rgba(40, 167, 69, 0.1);
     border: 1px solid rgba(40, 167, 69, 0.3);
