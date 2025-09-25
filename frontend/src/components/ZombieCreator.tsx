@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
 import TransactionStatus from './TransactionStatus';
+import { CONTRACT_ADDRESS } from '../config';
 import './ZombieCreator.css';
 
 const ZombieCreator: React.FC = () => {
@@ -29,7 +30,7 @@ const ZombieCreator: React.FC = () => {
 
         try {
             await writeContract({
-                address: '0x5FbDB2315678afecb367f032d93F642f64180aa3', // Contract address from deployment
+                address: CONTRACT_ADDRESS,
                 abi: [
                     {
                         name: 'createRandomZombie',

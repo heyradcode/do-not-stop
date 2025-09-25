@@ -74,6 +74,7 @@ do-not-stop/
    This will:
    - Start Hardhat local network
    - Deploy contracts automatically
+   - **Inject contract address into frontend** (creates/updates `.env.local`)
    - Start backend API server
    - Start frontend development server
 
@@ -93,6 +94,7 @@ do-not-stop/
 
 - The `dev:full` command uses colored output to distinguish between services
 - Contract deployment has a 5-second delay to ensure Hardhat node is ready
+- **Contract address is automatically injected** into frontend `.env.local` file (required for frontend to work)
 - All services run concurrently and will restart if any fail
 - Backend uses TypeScript with hot reload via `tsx watch`
 - Use `Ctrl+C` to stop all services at once

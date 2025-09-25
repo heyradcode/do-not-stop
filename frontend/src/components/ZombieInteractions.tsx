@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useWriteContract, useReadContract, useReadContracts } from 'wagmi';
 import TransactionStatus from './TransactionStatus';
+import { CONTRACT_ADDRESS } from '../config';
 import './ZombieInteractions.css';
 
 interface Zombie {
@@ -30,7 +31,7 @@ const ZombieInteractions: React.FC = () => {
 
     // Get zombie IDs owned by the user
     const { data: zombieIdsData, refetch: refetchZombieIds } = useReadContract({
-        address: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+        address: CONTRACT_ADDRESS,
         abi: [
             {
                 name: 'getZombiesByOwner',
@@ -47,7 +48,7 @@ const ZombieInteractions: React.FC = () => {
 
     // Create contracts array for batch reading zombie data
     const zombieContracts = zombieIdsData?.map((zombieId: bigint) => ({
-        address: '0x5FbDB2315678afecb367f032d93F642f64180aa3' as const,
+        address: CONTRACT_ADDRESS as const,
         abi: [
             {
                 name: 'getZombie',
@@ -143,7 +144,7 @@ const ZombieInteractions: React.FC = () => {
 
         try {
             await writeContract({
-                address: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+                address: CONTRACT_ADDRESS,
                 abi: [
                     {
                         name: 'createZombieFromDNA',
@@ -181,7 +182,7 @@ const ZombieInteractions: React.FC = () => {
 
         try {
             await writeContract({
-                address: '0x5FbDB2315678afecb367f032d93F642f64180aa3',
+                address: CONTRACT_ADDRESS,
                 abi: [
                     {
                         name: 'battleZombies',
