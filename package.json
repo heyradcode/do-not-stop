@@ -10,17 +10,21 @@
     "dev:contracts": "npx hardhat node",
     "compile": "npx hardhat compile",
     "test": "npx hardhat test",
-    "deploy:local": "npx hardhat run scripts/deploy.js --network localhost",
-    "deploy:sepolia": "npx hardhat run scripts/deploy.js --network sepolia",
+    "deploy:local": "npx hardhat ignition deploy ignition/modules/ZombieFactory.ts --network localhost",
+    "deploy:sepolia": "npx hardhat ignition deploy ignition/modules/ZombieFactory.ts --network sepolia",
+    "deploy:status": "npx hardhat ignition status",
+    "deploy:visualize": "npx hardhat ignition visualize ignition/modules/ZombieFactory.ts",
     "build:frontend": "pnpm --prefix frontend build",
     "build:backend": "pnpm --prefix backend build"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-chai-matchers": "^2.1.0",
-    "@nomicfoundation/hardhat-ethers": "^4.0.1",
+    "@nomicfoundation/hardhat-ignition": "^3.0.3",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
     "@openzeppelin/contracts": "^5.4.0",
-    "chai": "^4.4.1",
+    "@types/node": "^22.18.6",
     "concurrently": "^8.2.2",
-    "hardhat": "^3.0.6"
+    "hardhat": "^3.0.6",
+    "typescript": "~5.8.0",
+    "viem": "^2.37.8"
   }
 }
