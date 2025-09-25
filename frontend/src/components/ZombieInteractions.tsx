@@ -163,6 +163,7 @@ const ZombieInteractions: React.FC = () => {
                 ],
                 functionName: 'createZombieFromDNA',
                 args: [selectedZombie1, selectedZombie2, newZombieName.trim()],
+                gas: 500000n, // Set gas limit to 500,000
             });
         } catch (err) {
             setError('Failed to breed zombies. Please try again.');
@@ -201,6 +202,7 @@ const ZombieInteractions: React.FC = () => {
                 ],
                 functionName: 'battleZombies',
                 args: [selectedZombie1, selectedZombie2],
+                gas: 300000n, // Set gas limit to 300,000
             });
         } catch (err) {
             setError('Failed to start battle. Please try again.');

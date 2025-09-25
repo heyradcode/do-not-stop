@@ -45,6 +45,7 @@ const ZombieCreator: React.FC = () => {
                 ],
                 functionName: 'createRandomZombie',
                 args: [zombieName.trim()],
+                gas: 500000n, // Set gas limit to 500,000
             });
         } catch (err) {
             setError('Failed to create zombie. Please try again.');

@@ -20,7 +20,7 @@ const ZombieGallery: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     // Get zombie IDs owned by the user
-    const { data: zombieIdsData, refetch: refetchZombieIds } = useReadContract({
+    const { data: zombieIdsData, refetch: refetchZombieIds, error: zombieIdsError } = useReadContract({
         address: CONTRACT_ADDRESS,
         abi: [
             {
@@ -37,6 +37,7 @@ const ZombieGallery: React.FC = () => {
             enabled: !!address,
         },
     });
+
 
     // Create contracts array for batch reading zombie data
     const zombieContracts = zombieIdsData?.map((zombieId: bigint) => ({
@@ -102,7 +103,7 @@ const ZombieGallery: React.FC = () => {
             setZombies([]);
             setLoading(false);
         }
-    }, [zombiesData, zombiesError, zombieIdsData]);
+    }, [zombiesData, zombiesError, zombieIdsData, zombieContracts.length]);
 
     // Set loading state
     useEffect(() => {
