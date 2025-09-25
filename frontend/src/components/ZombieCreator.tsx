@@ -32,7 +32,7 @@ const ZombieCreator: React.FC = () => {
         setIsContractError(false);
 
         try {
-            await writeContract({
+            writeContract({
                 address: CONTRACT_ADDRESS,
                 abi: [
                     {
