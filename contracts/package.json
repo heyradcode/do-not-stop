@@ -7,16 +7,17 @@
         "compile": "npx hardhat compile",
         "test": "npx hardhat test",
         "node": "npx hardhat node",
-        "deploy:local": "npx hardhat ignition deploy ignition/modules/ZombieFactory.ts --network localhost",
-        "deploy:sepolia": "npx hardhat ignition deploy ignition/modules/ZombieFactory.ts --network sepolia",
+        "deploy:local": "npx hardhat ignition deploy ignition/modules/CryptoZombies.ts --network localhost",
+        "deploy:sepolia": "npx hardhat ignition deploy ignition/modules/CryptoZombies.ts --network sepolia",
         "deploy:status": "npx hardhat ignition status",
-        "deploy:visualize": "npx hardhat ignition visualize ignition/modules/ZombieFactory.ts"
+        "deploy:visualize": "npx hardhat ignition visualize ignition/modules/CryptoZombies.ts"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-ignition": "^3.0.3",
         "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
         "@openzeppelin/contracts": "^5.4.0",
         "@types/node": "^22.18.6",
+        "chai": "^4.4.1",
         "hardhat": "^3.0.6",
         "typescript": "~5.8.0",
         "viem": "^2.37.8"
