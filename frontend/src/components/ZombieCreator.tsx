@@ -86,7 +86,7 @@ const ZombieCreator: React.FC = () => {
         <div className="zombie-creator">
             <div className="creator-card">
                 <h3>🧟‍♂️ Create Your First Zombie</h3>
-                <p>Give your zombie a unique name and bring it to life!</p>
+                <p>Give your zombie a unique name and bring it to life! You can only create one zombie initially - breed it to create more!</p>
 
                 <div className="creator-form">
                     <div className="input-group">

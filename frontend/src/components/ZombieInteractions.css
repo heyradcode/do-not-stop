@@ -26,6 +26,13 @@
     text-align: center;
 }
 
+.help-text {
+    font-style: italic;
+    color: #888;
+    font-size: 0.9em;
+    margin-top: 8px;
+}
+
 .action-buttons {
     display: flex;
     gap: 16px;

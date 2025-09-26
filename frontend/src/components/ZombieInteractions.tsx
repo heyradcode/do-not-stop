@@ -270,6 +270,7 @@ const ZombieInteractions: React.FC = () => {
                 <div className="interactions-card">
                     <h3>⚔️ Zombie Interactions</h3>
                     <p>You need at least 2 zombies to breed or battle</p>
+                    <p className="help-text">Create your first zombie above, then breed it to create more zombies!</p>
                 </div>
             </div>
         );
