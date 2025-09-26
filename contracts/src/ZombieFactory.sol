@@ -38,7 +38,7 @@ contract ZombieFactory is ERC721, Ownable, ReentrancyGuard {
     // Constants
     uint256 private constant DNA_DIGITS = 16;
     uint256 private constant LEVEL_UP_REQUIREMENT = 1000;
-    uint256 private constant BATTLE_COOLDOWN = 1 days;
+    uint256 private constant BATTLE_COOLDOWN = 1 minutes;
     
     constructor() ERC721("CryptoZombies", "ZOMBIE") Ownable(msg.sender) {}
     
