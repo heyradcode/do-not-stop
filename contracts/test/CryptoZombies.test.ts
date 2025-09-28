@@ -1,7 +1,9 @@
 import { expect } from "chai";
 import { describe, it, beforeEach } from "node:test";
 import { network } from "hardhat";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+
+// Simple sleep function to replace time manipulation
+const sleep = (seconds: number) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
 
 describe("CryptoZombies", async function () {
     const { viem } = await network.connect();
@@ -88,9 +90,9 @@ describe("CryptoZombies", async function () {
             await cryptoZombies.write.createRandomZombie(["Parent2"], {
                 account: addr2.account
             });
-            
+
             // Skip time to make zombies ready for breeding
-            await time.increase(60); // 1 minute
+            await sleep(5); // 5 seconds
         });
 
         it("Should create zombie from two parents", async function () {
@@ -129,7 +131,7 @@ describe("CryptoZombies", async function () {
             });
 
             // Skip time to make zombies ready for battle
-            await time.increase(60); // 1 minute
+            await sleep(5); // 5 seconds
 
             // Transfer one zombie to addr1 for battle
             await cryptoZombies.write.transferFrom([addr2.account.address, addr1.account.address, 2n], {
@@ -146,8 +148,8 @@ describe("CryptoZombies", async function () {
             const zombie1 = await cryptoZombies.read.getZombie([1n]);
             const zombie2 = await cryptoZombies.read.getZombie([2n]);
 
-            const totalWins = zombie1[4] + zombie2[4]; // winCount
-            const totalLosses = zombie1[5] + zombie2[5]; // lossCount
+            const totalWins = zombie1.winCount + zombie2.winCount;
+            const totalLosses = zombie1.lossCount + zombie2.lossCount;
 
             expect(totalWins).to.equal(1n);
             expect(totalLosses).to.equal(1n);

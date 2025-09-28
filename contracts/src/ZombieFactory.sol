@@ -15,7 +15,7 @@ contract ZombieFactory is Ownable {
     // Constants
     uint256 public constant DNA_DIGITS = 16;
     uint256 public constant DNA_MODULUS = 10 ** DNA_DIGITS;
-    uint256 public constant BATTLE_COOLDOWN = 1 minutes;
+    uint256 public constant BATTLE_COOLDOWN = 5 seconds;
     
     // Zombie struct with modern traits
     struct Zombie {
