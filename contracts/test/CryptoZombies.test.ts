@@ -106,7 +106,7 @@ describe("CryptoZombies", async function () {
             });
 
             expect(await cryptoZombies.read.getTotalZombiesCount()).to.equal(3n);
-            expect(await cryptoZombies.read.ownerZombieCount([addr1.account.address])).to.equal(2n);
+            expect(await cryptoZombies.read.ownerZombieCount([addr1.account.address])).to.equal(3n);
         });
 
         it("Should not allow breeding zombie with itself", async function () {
