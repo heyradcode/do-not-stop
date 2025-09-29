@@ -1,4 +1,4 @@
-# Smart Contracts - ZombieFactory
+# Smart Contracts - CryptoZombies
 
 This directory contains the Hardhat project with Solidity smart contracts for the Do Not Stop Web3 application.
 
@@ -7,14 +7,21 @@ This directory contains the Hardhat project with Solidity smart contracts for th
 ```
 contracts/
 ├── src/                    # Solidity source files
-│   └── ZombieFactory.sol  # Main contract
+│   ├── CryptoZombies.sol   # Main contract
+│   ├── data/               # Data management
+│   │   └── ZombieData.sol
+│   ├── features/           # Feature contracts
+│   │   ├── ZombieBattle.sol
+│   │   └── ZombieBreeding.sol
+│   └── utils/              # Utility functions
+│       └── ZombieUtils.sol
 ├── test/                   # Contract tests
-│   └── ZombieFactory.test.js
+│   └── CryptoZombies.test.ts
 ├── artifacts/              # Compiled contracts
 ├── cache/                  # Hardhat cache
 ├── ignition/               # Deployment scripts
 │   └── modules/
-│       └── ZombieFactory.ts
+│       └── CryptoZombies.ts
 ├── hardhat.config.ts       # Hardhat configuration
 ├── tsconfig.json           # TypeScript configuration
 └── package.json            # Contract dependencies
@@ -60,19 +67,24 @@ pnpm deploy:local
 | `pnpm deploy:status` | Check deployment status |
 | `pnpm deploy:visualize` | Visualize deployment plan |
 
-## 🧟‍♂️ ZombieFactory Contract
+## 🧟‍♂️ CryptoZombies Contract
 
-The main contract implements a zombie factory with the following features:
+The main contract implements a zombie game with the following features:
 
 - **Create Zombies**: Users can create zombies with random DNA
 - **Zombie Breeding**: Two zombies can breed to create a new zombie
-- **Random DNA Generation**: Uses block properties for randomness
+- **Zombie Battles**: Zombies can battle each other
+- **Level System**: Zombies can level up and gain abilities
 - **ERC-721 Compatible**: NFT standard for zombie ownership
+- **Clean Architecture**: Uses composition instead of deep inheritance
 
 ### Key Functions
 
 - `createRandomZombie(string memory _name)` - Create a new zombie
-- `feedOnKitty(uint256 _zombieId, uint256 _kittyId)` - Feed zombie on CryptoKitties
+- `battleZombies(uint256 _zombieId1, uint256 _zombieId2)` - Battle two zombies
+- `attack(uint256 _zombieId, uint256 _targetId)` - Attack another zombie
+- `createZombieFromDNA(uint256 _zombieId1, uint256 _zombieId2, string memory _name)` - Breed zombies
+- `levelUp(uint256 _zombieId)` - Level up a zombie (requires fee)
 - `changeName(uint256 _zombieId, string memory _newName)` - Change zombie name
 - `changeDna(uint256 _zombieId, uint256 _newDna)` - Change zombie DNA
 - `getZombiesByOwner(address _owner)` - Get zombies owned by address
@@ -116,7 +128,7 @@ pnpm test
 pnpm test --gas-report
 
 # Run specific test file
-npx hardhat test test/ZombieFactory.test.js
+npx hardhat test test/CryptoZombies.test.ts
 ```
 
 ## 📦 Deployment
