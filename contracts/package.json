@@ -4,7 +4,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "compile": "npx hardhat compile",
+        "compile": "npx hardhat compile && node ../scripts/sync-abi.js",
+        "compile:only": "npx hardhat compile",
         "test": "npx hardhat test",
         "node": "npx hardhat node",
         "deploy:local": "npx hardhat ignition deploy ignition/modules/CryptoZombies.ts --network localhost",

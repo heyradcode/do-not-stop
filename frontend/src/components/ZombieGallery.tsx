@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 import { CONTRACT_ADDRESS } from '../config';
+import CryptoZombiesABI from '../contracts/CryptoZombies.json';
 import './ZombieGallery.css';
 
 interface Zombie {
@@ -20,17 +21,9 @@ const ZombieGallery: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     // Get zombie IDs owned by the user
-    const { data: zombieIdsData, refetch: refetchZombieIds, error: zombieIdsError } = useReadContract({
+    const { data: zombieIdsData, refetch: refetchZombieIds } = useReadContract({
         address: CONTRACT_ADDRESS,
-        abi: [
-            {
-                name: 'getZombiesByOwner',
-                type: 'function',
-                inputs: [{ name: '_owner', type: 'address' }],
-                outputs: [{ name: '', type: 'uint256[]' }],
-                stateMutability: 'view',
-            },
-        ],
+        abi: CryptoZombiesABI.abi,
         functionName: 'getZombiesByOwner',
         args: address ? [address] : undefined,
         query: {
@@ -40,31 +33,9 @@ const ZombieGallery: React.FC = () => {
 
 
     // Create contracts array for batch reading zombie data
-    const zombieContracts = zombieIdsData?.map((zombieId: bigint) => ({
-        address: CONTRACT_ADDRESS as const,
-        abi: [
-            {
-                name: 'getZombie',
-                type: 'function',
-                inputs: [{ name: '_zombieId', type: 'uint256' }],
-                outputs: [
-                    {
-                        name: '',
-                        type: 'tuple',
-                        components: [
-                            { name: 'name', type: 'string' },
-                            { name: 'dna', type: 'uint256' },
-                            { name: 'level', type: 'uint32' },
-                            { name: 'readyTime', type: 'uint32' },
-                            { name: 'winCount', type: 'uint16' },
-                            { name: 'lossCount', type: 'uint16' },
-                            { name: 'rarity', type: 'uint8' },
-                        ],
-                    },
-                ],
-                stateMutability: 'view',
-            },
-        ] as const,
+    const zombieContracts = (zombieIdsData as bigint[])?.map((zombieId: bigint) => ({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: CryptoZombiesABI.abi as any,
         functionName: 'getZombie' as const,
         args: [zombieId],
     })) || [];
@@ -81,8 +52,8 @@ const ZombieGallery: React.FC = () => {
     useEffect(() => {
         if (zombiesData && zombiesData.length > 0) {
             const processedZombies = zombiesData
-                .filter(result => result.status === 'success' && result.result)
-                .map(result => {
+                .filter((result: any) => result.status === 'success' && result.result)
+                .map((result: any) => {
                     const zombieData = result.result as any;
                     return {
                         name: zombieData.name,
@@ -99,7 +70,7 @@ const ZombieGallery: React.FC = () => {
         } else if (zombiesError) {
             setError('Failed to load zombie data');
             setLoading(false);
-        } else if (zombieIdsData && zombieIdsData.length === 0) {
+        } else if (zombieIdsData && (zombieIdsData as bigint[]).length === 0) {
             setZombies([]);
             setLoading(false);
         }
@@ -107,7 +78,7 @@ const ZombieGallery: React.FC = () => {
 
     // Set loading state
     useEffect(() => {
-        if (zombieIdsData && zombieIdsData.length > 0) {
+        if (zombieIdsData && (zombieIdsData as bigint[]).length > 0) {
             setLoading(isZombiesLoading);
         }
     }, [isZombiesLoading, zombieIdsData]);

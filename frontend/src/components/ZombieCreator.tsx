@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAccount, useWriteContract } from 'wagmi';
 import TransactionStatus from './TransactionStatus';
 import { CONTRACT_ADDRESS } from '../config';
+import CryptoZombiesABI from '../contracts/CryptoZombies.json';
 import { parseContractError } from '../utils/errorParser';
 import './ZombieCreator.css';
 
@@ -34,15 +35,7 @@ const ZombieCreator: React.FC = () => {
         try {
             writeContract({
                 address: CONTRACT_ADDRESS,
-                abi: [
-                    {
-                        name: 'createRandomZombie',
-                        type: 'function',
-                        inputs: [{ name: '_name', type: 'string' }],
-                        outputs: [],
-                        stateMutability: 'nonpayable',
-                    },
-                ],
+                abi: CryptoZombiesABI.abi,
                 functionName: 'createRandomZombie',
                 args: [zombieName.trim()],
                 gas: 500000n, // Set gas limit to 500,000

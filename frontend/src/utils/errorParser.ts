@@ -33,7 +33,7 @@ export function parseContractError(error: any): ParsedError {
     let revertReason = extractRevertReason(errorMessage);
 
     // Map common revert reasons to user-friendly messages
-    const friendlyMessage = mapRevertReasonToFriendlyMessage(revertReason, error);
+    const friendlyMessage = mapRevertReasonToFriendlyMessage(revertReason);
 
     return {
       message: friendlyMessage,
@@ -103,7 +103,7 @@ function extractRevertReason(errorMessage: string): string {
   return errorMessage;
 }
 
-function mapRevertReasonToFriendlyMessage(revertReason: string, originalError?: any): string {
+function mapRevertReasonToFriendlyMessage(revertReason: string): string {
   const reason = revertReason.toLowerCase();
 
   // Handle gas errors first

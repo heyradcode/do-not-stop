@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Main CryptoZombies contract with composition-based architecture
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
