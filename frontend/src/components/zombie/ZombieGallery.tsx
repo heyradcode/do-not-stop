@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useZombiesContract, type Zombie } from '../hooks/useZombiesContract';
+import { useZombiesContract } from '../../hooks/useZombiesContract';
 import './ZombieGallery.css';
 
 const ZombieGallery: React.FC = () => {

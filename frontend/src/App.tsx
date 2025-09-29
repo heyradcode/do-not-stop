@@ -8,7 +8,7 @@ import {
 } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
-import Main from './components/Main';
+import Main from './components/layout/Main';
 import { AuthProvider } from './contexts/AuthContext';
 import { CHAINS } from './constants/chains';
 import './App.css';

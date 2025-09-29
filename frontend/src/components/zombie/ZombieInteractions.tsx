@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import TransactionStatus from './TransactionStatus';
-import { useZombiesContract, type Zombie } from '../hooks/useZombiesContract';
-import { parseContractError } from '../utils/errorParser';
+import TransactionStatus from '../ui/TransactionStatus';
+import { useZombiesContract, type Zombie } from '../../hooks/useZombiesContract';
+import { parseContractError } from '../../utils/errorParser';
 import './ZombieInteractions.css';
 
 const ZombieInteractions: React.FC = () => {

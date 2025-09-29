@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAccount, useSwitchChain } from 'wagmi';
 import Modal from 'react-modal';
-import { CHAINS, getChainsByType, getChainConfig } from '../constants/chains';
+import { CHAINS, getChainsByType, getChainConfig } from '../../constants/chains';
 import './NetworkSwitcher.css';
 
 const NetworkSwitcher: React.FC = () => {

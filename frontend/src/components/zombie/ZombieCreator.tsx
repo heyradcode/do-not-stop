@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import TransactionStatus from './TransactionStatus';
-import { useZombiesContract } from '../hooks/useZombiesContract';
-import { parseContractError } from '../utils/errorParser';
+import TransactionStatus from '../ui/TransactionStatus';
+import { useZombiesContract } from '../../hooks/useZombiesContract';
+import { parseContractError } from '../../utils/errorParser';
 import './ZombieCreator.css';
 
 const ZombieCreator: React.FC = () => {
