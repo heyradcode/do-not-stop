@@ -35,7 +35,7 @@ describe("CryptoZombies", async function () {
         });
 
         it("Should start with 0 zombies", async function () {
-            expect(await cryptoZombies.read.getTotalZombies()).to.equal(0n);
+            expect(await cryptoZombies.read.getTotalZombiesCount()).to.equal(0n);
         });
     });
 
@@ -76,7 +76,7 @@ describe("CryptoZombies", async function () {
                 account: addr2.account
             });
 
-            expect(await cryptoZombies.read.getTotalZombies()).to.equal(2n);
+            expect(await cryptoZombies.read.getTotalZombiesCount()).to.equal(2n);
             expect(await cryptoZombies.read.ownerZombieCount([addr1.account.address])).to.equal(1n);
             expect(await cryptoZombies.read.ownerZombieCount([addr2.account.address])).to.equal(1n);
         });
@@ -105,7 +105,7 @@ describe("CryptoZombies", async function () {
                 account: addr1.account
             });
 
-            expect(await cryptoZombies.read.getTotalZombies()).to.equal(3n);
+            expect(await cryptoZombies.read.getTotalZombiesCount()).to.equal(3n);
             expect(await cryptoZombies.read.ownerZombieCount([addr1.account.address])).to.equal(2n);
         });
 
@@ -194,7 +194,7 @@ describe("CryptoZombies", async function () {
         });
 
         it("Should return correct total zombie count", async function () {
-            expect(await cryptoZombies.read.getTotalZombies()).to.equal(2n);
+            expect(await cryptoZombies.read.getTotalZombiesCount()).to.equal(2n);
         });
     });
 

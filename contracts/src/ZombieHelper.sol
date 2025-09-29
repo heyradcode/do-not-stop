@@ -22,7 +22,7 @@ contract ZombieHelper is ZombieFeeding {
     // Modifiers
     modifier onlyOwnerOf(uint256 _zombieId) {
         require(
-            _zombieId > 0 && _zombieId <= getTotalZombies(),
+            _zombieId > 0 && _zombieId <= getTotalZombiesCount(),
             "Zombie doesn't exist"
         );
         _;
