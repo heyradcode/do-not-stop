@@ -1,109 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount, useReadContract, useReadContracts } from 'wagmi';
-import { CONTRACT_ADDRESS } from '../config';
-import CryptoZombiesABI from '../contracts/CryptoZombies.json';
+import { useZombiesContract, type Zombie } from '../hooks/useZombiesContract';
 import './ZombieGallery.css';
 
-interface Zombie {
-    name: string;
-    dna: bigint;
-    level: number;
-    readyTime: bigint;
-    winCount: number;
-    lossCount: number;
-    rarity: number;
-}
-
 const ZombieGallery: React.FC = () => {
-    const { address, isConnected } = useAccount();
-    const [zombies, setZombies] = useState<Zombie[]>([]);
+    const { isConnected, zombies, isLoading, contractError, refetchZombieIds, getRarityColor, getRarityName } = useZombiesContract();
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    // Get zombie IDs owned by the user
-    const { data: zombieIdsData, refetch: refetchZombieIds } = useReadContract({
-        address: CONTRACT_ADDRESS,
-        abi: CryptoZombiesABI.abi,
-        functionName: 'getZombiesByOwner',
-        args: address ? [address] : undefined,
-        query: {
-            enabled: !!address,
-        },
-    });
-
-
-    // Create contracts array for batch reading zombie data
-    const zombieContracts = (zombieIdsData as bigint[])?.map((zombieId: bigint) => ({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        abi: CryptoZombiesABI.abi as any,
-        functionName: 'getZombie' as const,
-        args: [zombieId],
-    })) || [];
-
-    // Batch read all zombie data
-    const { data: zombiesData, isLoading: isZombiesLoading, error: zombiesError } = useReadContracts({
-        contracts: zombieContracts,
-        query: {
-            enabled: zombieContracts.length > 0,
-        },
-    });
-
-    // Process zombie data when it changes
-    useEffect(() => {
-        if (zombiesData && zombiesData.length > 0) {
-            const processedZombies = zombiesData
-                .filter((result: any) => result.status === 'success' && result.result)
-                .map((result: any) => {
-                    const zombieData = result.result as any;
-                    return {
-                        name: zombieData.name,
-                        dna: BigInt(zombieData.dna),
-                        level: Number(zombieData.level),
-                        readyTime: BigInt(zombieData.readyTime),
-                        winCount: Number(zombieData.winCount),
-                        lossCount: Number(zombieData.lossCount),
-                        rarity: Number(zombieData.rarity),
-                    } as Zombie;
-                });
-            setZombies(processedZombies);
-            setLoading(false);
-        } else if (zombiesError) {
-            setError('Failed to load zombie data');
-            setLoading(false);
-        } else if (zombieIdsData && (zombieIdsData as bigint[]).length === 0) {
-            setZombies([]);
-            setLoading(false);
-        }
-    }, [zombiesData, zombiesError, zombieIdsData, zombieContracts.length]);
 
     // Set loading state
     useEffect(() => {
-        if (zombieIdsData && (zombieIdsData as bigint[]).length > 0) {
-            setLoading(isZombiesLoading);
-        }
-    }, [isZombiesLoading, zombieIdsData]);
-
-    const getRarityColor = (rarity: number): string => {
-        switch (rarity) {
-            case 1: return '#6c757d'; // Common - Gray
-            case 2: return '#28a745'; // Uncommon - Green
-            case 3: return '#007bff'; // Rare - Blue
-            case 4: return '#6f42c1'; // Epic - Purple
-            case 5: return '#fd7e14'; // Legendary - Orange
-            default: return '#6c757d';
-        }
-    };
-
-    const getRarityName = (rarity: number): string => {
-        switch (rarity) {
-            case 1: return 'Common';
-            case 2: return 'Uncommon';
-            case 3: return 'Rare';
-            case 4: return 'Epic';
-            case 5: return 'Legendary';
-            default: return 'Unknown';
-        }
-    };
+        setLoading(isLoading);
+    }, [isLoading]);
 
     const isReady = (readyTime: bigint): boolean => {
         return Date.now() / 1000 >= Number(readyTime);
@@ -157,16 +63,16 @@ const ZombieGallery: React.FC = () => {
                 </div>
             )}
 
-            {error && (
+            {contractError && (
                 <div className="error-container">
-                    <p>❌ {error}</p>
+                    <p>❌ {contractError?.message || 'Failed to load zombie data'}</p>
                     <button onClick={() => refetchZombieIds()} className="retry-button">
                         Try Again
                     </button>
                 </div>
             )}
 
-            {!loading && !error && zombies.length === 0 && (
+            {!loading && !contractError && zombies.length === 0 && (
                 <div className="empty-state">
                     <div className="empty-icon">🧟‍♂️</div>
                     <h3>No zombies yet!</h3>
@@ -174,7 +80,7 @@ const ZombieGallery: React.FC = () => {
                 </div>
             )}
 
-            {!loading && !error && zombies.length > 0 && (
+            {!loading && !contractError && zombies.length > 0 && (
                 <div className="zombie-grid">
                     {zombies.map((zombie, index) => (
                         <div key={index} className="zombie-card">

@@ -1,23 +1,19 @@
 import React, { useState } from 'react';
-import { useAccount, useWriteContract } from 'wagmi';
 import TransactionStatus from './TransactionStatus';
-import { CONTRACT_ADDRESS } from '../config';
-import CryptoZombiesABI from '../contracts/CryptoZombies.json';
+import { useZombiesContract } from '../hooks/useZombiesContract';
 import { parseContractError } from '../utils/errorParser';
 import './ZombieCreator.css';
 
 const ZombieCreator: React.FC = () => {
-    const { address, isConnected } = useAccount();
+    const { isConnected, createRandomZombie, hash, isPending, writeError } = useZombiesContract();
     const [zombieName, setZombieName] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [isUserRejection, setIsUserRejection] = useState(false);
     const [isContractError, setIsContractError] = useState(false);
 
-    const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
-
     const handleCreateZombie = async () => {
-        if (!isConnected || !address) {
+        if (!isConnected) {
             setError('Please connect your wallet first');
             return;
         }
@@ -33,13 +29,7 @@ const ZombieCreator: React.FC = () => {
         setIsContractError(false);
 
         try {
-            writeContract({
-                address: CONTRACT_ADDRESS,
-                abi: CryptoZombiesABI.abi,
-                functionName: 'createRandomZombie',
-                args: [zombieName.trim()],
-                gas: 500000n, // Set gas limit to 500,000
-            });
+            await createRandomZombie(zombieName.trim());
         } catch (err) {
             setError('Failed to create zombie. Please try again.');
             console.error('Error creating zombie:', err);

@@ -1,25 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useReadContract, useReadContracts } from 'wagmi';
 import TransactionStatus from './TransactionStatus';
-import { CONTRACT_ADDRESS } from '../config';
-import CryptoZombiesABI from '../contracts/CryptoZombies.json';
+import { useZombiesContract, type Zombie } from '../hooks/useZombiesContract';
 import { parseContractError } from '../utils/errorParser';
 import './ZombieInteractions.css';
 
-interface Zombie {
-    name: string;
-    dna: bigint;
-    level: number;
-    readyTime: bigint;
-    winCount: number;
-    lossCount: number;
-    rarity: number;
-}
-
 const ZombieInteractions: React.FC = () => {
-    const { address, isConnected } = useAccount();
-    const [zombies, setZombies] = useState<Zombie[]>([]);
-    const [zombieIds, setZombieIds] = useState<bigint[]>([]);
+    const {
+        isConnected,
+        zombies,
+        zombieIds,
+        isLoading,
+        createZombieFromDNA,
+        battleZombies,
+        levelUp,
+        changeName,
+        hash,
+        isPending,
+        writeError,
+        refetchZombieIds,
+        isReady
+    } = useZombiesContract();
+
     const [selectedZombie1, setSelectedZombie1] = useState<bigint | null>(null);
     const [selectedZombie2, setSelectedZombie2] = useState<bigint | null>(null);
     const [newZombieName, setNewZombieName] = useState('');
@@ -32,73 +33,10 @@ const ZombieInteractions: React.FC = () => {
     const [isUserRejection, setIsUserRejection] = useState(false);
     const [isContractError, setIsContractError] = useState(false);
 
-    const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
-
-    // Get zombie IDs owned by the user
-    const { data: zombieIdsData, refetch: refetchZombieIds } = useReadContract({
-        address: CONTRACT_ADDRESS,
-        abi: CryptoZombiesABI.abi,
-        functionName: 'getZombiesByOwner',
-        args: address ? [address] : undefined,
-        query: { enabled: !!address },
-    });
-
-    // Create contracts array for batch reading zombie data
-    const zombieContracts = (zombieIdsData as bigint[])?.map((zombieId: bigint) => ({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        abi: CryptoZombiesABI.abi as any,
-        functionName: 'getZombie' as const,
-        args: [zombieId],
-    })) || [];
-
-    // Batch read all zombie data
-    const { data: zombiesData, isLoading: isZombiesLoading, error: zombiesError } = useReadContracts({
-        contracts: zombieContracts,
-        query: {
-            enabled: zombieContracts.length > 0,
-        },
-    });
-
-    // Process zombie data when it changes
-    useEffect(() => {
-        if (zombiesData && zombiesData.length > 0) {
-            const processedZombies = zombiesData
-                .filter((result: any) => result.status === 'success' && result.result)
-                .map((result: any) => {
-                    const zombieData = result.result as any;
-                    return {
-                        name: zombieData.name,
-                        dna: BigInt(zombieData.dna),
-                        level: Number(zombieData.level),
-                        readyTime: BigInt(zombieData.readyTime),
-                        winCount: Number(zombieData.winCount),
-                        lossCount: Number(zombieData.lossCount),
-                        rarity: Number(zombieData.rarity),
-                    } as Zombie;
-                });
-            setZombies(processedZombies);
-            setZombieIds((zombieIdsData as bigint[]) || []);
-            setLoading(false);
-        } else if (zombiesError) {
-            setError('Failed to load zombie data');
-            setLoading(false);
-        } else if (zombieIdsData && (zombieIdsData as bigint[]).length === 0) {
-            setZombies([]);
-            setZombieIds([]);
-            setLoading(false);
-        }
-    }, [zombiesData, zombiesError, zombieIdsData]);
-
     // Set loading state
     useEffect(() => {
-        if (zombieIdsData && (zombieIdsData as bigint[]).length > 0) {
-            setLoading(isZombiesLoading);
-        }
-    }, [isZombiesLoading, zombieIdsData]);
-
-    const isReady = (readyTime: bigint): boolean => {
-        return Date.now() / 1000 >= Number(readyTime);
-    };
+        setLoading(isLoading);
+    }, [isLoading]);
 
     const getReadyZombies = (): { id: bigint; zombie: Zombie }[] => {
         return zombieIds
@@ -119,18 +57,10 @@ const ZombieInteractions: React.FC = () => {
         setIsContractError(false);
 
         try {
-            writeContract({
-                address: CONTRACT_ADDRESS,
-                abi: CryptoZombiesABI.abi,
-                functionName: 'createZombieFromDNA',
-                args: [selectedZombie1, selectedZombie2, newZombieName.trim()],
-                gas: 500000n, // Set gas limit to 500,000
-            });
+            await createZombieFromDNA(selectedZombie1, selectedZombie2, newZombieName.trim());
         } catch (err) {
             setError('Failed to breed zombies. Please try again.');
             console.error('Error breeding zombies:', err);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -147,18 +77,10 @@ const ZombieInteractions: React.FC = () => {
         setIsContractError(false);
 
         try {
-            writeContract({
-                address: CONTRACT_ADDRESS,
-                abi: CryptoZombiesABI.abi,
-                functionName: 'battleZombies',
-                args: [selectedZombie1, selectedZombie2],
-                gas: 300000n, // Set gas limit to 300,000
-            });
+            await battleZombies(selectedZombie1, selectedZombie2);
         } catch (err) {
             setError('Failed to start battle. Please try again.');
             console.error('Error starting battle:', err);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -175,19 +97,10 @@ const ZombieInteractions: React.FC = () => {
         setIsContractError(false);
 
         try {
-            writeContract({
-                address: CONTRACT_ADDRESS,
-                abi: CryptoZombiesABI.abi,
-                functionName: 'levelUp',
-                args: [selectedZombie],
-                value: 1000000000000000n, // 0.001 ETH
-                gas: 200000n,
-            });
+            await levelUp(selectedZombie);
         } catch (err) {
             setError('Failed to level up zombie. Please try again.');
             console.error('Error leveling up zombie:', err);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -204,18 +117,10 @@ const ZombieInteractions: React.FC = () => {
         setIsContractError(false);
 
         try {
-            writeContract({
-                address: CONTRACT_ADDRESS,
-                abi: CryptoZombiesABI.abi,
-                functionName: 'changeName',
-                args: [selectedZombie, newName.trim()],
-                gas: 100000n,
-            });
+            await changeName(selectedZombie, newName.trim());
         } catch (err) {
             setError('Failed to change zombie name. Please try again.');
             console.error('Error changing zombie name:', err);
-        } finally {
-            setLoading(false);
         }
     };
 
