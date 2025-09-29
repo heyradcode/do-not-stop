@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAccount, useBalance } from 'wagmi';
 import { formatEther } from 'viem';
-import { getNativeTokenSymbol } from '../constants/chains';
+import { getNativeTokenSymbol } from '../../constants/chains';
 import './NativeBalance.css';
 
 const NativeBalance: React.FC = () => {

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAccount, useConnect, useDisconnect, useBalance, usePublicClient } from 'wagmi';
 import { formatEther } from 'viem';
-import { useAuth } from '../contexts/AuthContext';
-import { getNativeTokenSymbol } from '../constants/chains';
-import { getPopularTokens } from '../constants/tokens';
+import { useAuth } from '../../contexts/AuthContext';
+import { getNativeTokenSymbol } from '../../constants/chains';
+import { getPopularTokens } from '../../constants/tokens';
 import NetworkSwitcher from './NetworkSwitcher';
 import TokenBalance from './TokenBalance';
 import './AccountDropdown.css';
