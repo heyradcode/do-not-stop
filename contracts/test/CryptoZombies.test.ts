@@ -151,8 +151,8 @@ describe("CryptoZombies", async function () {
             const totalWins = zombie1.winCount + zombie2.winCount;
             const totalLosses = zombie1.lossCount + zombie2.lossCount;
 
-            expect(totalWins).to.equal(1n);
-            expect(totalLosses).to.equal(1n);
+            expect(totalWins).to.equal(1);
+            expect(totalLosses).to.equal(1);
         });
 
         it("Should not allow battling zombie with itself", async function () {
