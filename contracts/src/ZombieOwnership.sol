@@ -111,7 +111,6 @@ contract ZombieOwnership is ZombieAttack, ERC721, ReentrancyGuard {
     ) internal override returns (uint256) {
         uint256 newZombieId = super._createZombie(_name, _dna, _rarity);
         _safeMint(msg.sender, newZombieId);
-        ownerZombieCount[msg.sender]++;
         return newZombieId;
     }
 

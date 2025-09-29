@@ -127,6 +127,9 @@ contract ZombieFactory is Ownable {
             rarity: _rarity
         });
 
+        // Track ownership count in the factory
+        ownerZombieCount[msg.sender]++;
+
         emit NewZombie(newZombieId, _name, _dna, _rarity);
 
         return newZombieId;
