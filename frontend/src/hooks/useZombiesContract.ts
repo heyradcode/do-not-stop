@@ -146,6 +146,16 @@ export const useZombiesContract = () => {
         });
     };
 
+    const transferZombie = (to: string, zombieId: bigint) => {
+        return writeContract({
+            address: CONTRACT_ADDRESS,
+            abi: CryptoZombiesABI.abi,
+            functionName: 'transferFrom',
+            args: [address, to as `0x${string}`, zombieId],
+            gas: 200000n,
+        });
+    };
+
     // Read functions for individual zombie data
     const getZombie = (zombieId: bigint) => {
         return useReadContract({
@@ -249,6 +259,7 @@ export const useZombiesContract = () => {
         createZombieFromDNA,
         attack,
         changeDna,
+        transferZombie,
 
         // Read functions
         getZombie,

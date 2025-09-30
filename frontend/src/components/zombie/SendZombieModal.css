@@ -1,0 +1,221 @@
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.send-zombie-modal {
+    background: linear-gradient(135deg, #2c1810 0%, #1a0f0a 100%);
+    border: 2px solid #8B4513;
+    border-radius: 12px;
+    padding: 0;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid #8B4513;
+    background: linear-gradient(90deg, #8B4513 0%, #A0522D 100%);
+    border-radius: 10px 10px 0 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.close-button:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.close-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.modal-content {
+    padding: 24px;
+}
+
+.zombie-preview {
+    background: linear-gradient(135deg, #3d2817 0%, #2c1810 100%);
+    border: 1px solid #8B4513;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.zombie-preview h3 {
+    margin: 0 0 12px 0;
+    color: #fff;
+    font-size: 1.25rem;
+}
+
+.zombie-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.zombie-details p {
+    margin: 0;
+    color: #ccc;
+    font-size: 0.9rem;
+}
+
+.recipient-input {
+    margin-bottom: 20px;
+}
+
+.recipient-input label {
+    display: block;
+    margin-bottom: 8px;
+    color: #fff;
+    font-weight: 500;
+}
+
+.recipient-input input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #8B4513;
+    border-radius: 6px;
+    background: #2c1810;
+    color: #fff;
+    font-size: 1rem;
+    font-family: 'Courier New', monospace;
+    transition: border-color 0.2s;
+}
+
+.recipient-input input:focus {
+    outline: none;
+    border-color: #A0522D;
+}
+
+.recipient-input input.error {
+    border-color: #ff4444;
+}
+
+.recipient-input input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.error-message {
+    color: #ff4444;
+    font-size: 0.875rem;
+    margin: 8px 0 0 0;
+}
+
+.error-container {
+    background: #2c1810;
+    border: 1px solid #ff4444;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
+.error-container p {
+    margin: 0;
+    color: #ff4444;
+    font-size: 0.9rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.cancel-button,
+.send-button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.cancel-button {
+    background: #666;
+    color: #fff;
+}
+
+.cancel-button:hover:not(:disabled) {
+    background: #777;
+}
+
+.send-button {
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+    color: #fff;
+}
+
+.send-button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #A0522D 0%, #8B4513 100%);
+    transform: translateY(-1px);
+}
+
+.send-button:disabled,
+.cancel-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+    .send-zombie-modal {
+        width: 95%;
+        margin: 20px;
+    }
+
+    .modal-content {
+        padding: 16px;
+    }
+
+    .zombie-details {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+    }
+
+    .cancel-button,
+    .send-button {
+        width: 100%;
+    }
+}

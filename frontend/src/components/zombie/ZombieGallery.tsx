@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useZombiesContract } from '../../hooks/useZombiesContract';
+import SendZombieModal from './SendZombieModal';
 import './ZombieGallery.css';
 
 const ZombieGallery: React.FC = () => {
-    const { isConnected, zombies, isLoading, contractError, refetchZombieIds, getRarityColor, getRarityName } = useZombiesContract();
+    const { isConnected, zombies, zombieIds, isLoading, contractError, refetchZombieIds, getRarityColor, getRarityName } = useZombiesContract();
     const [loading, setLoading] = useState(false);
+    const [sendModalOpen, setSendModalOpen] = useState(false);
+    const [selectedZombie, setSelectedZombie] = useState<{ zombie: any; zombieId: bigint } | null>(null);
 
     // Set loading state
     useEffect(() => {
@@ -29,6 +32,16 @@ const ZombieGallery: React.FC = () => {
         if (hours > 0) return `${hours}h ${minutes}m`;
         if (minutes > 0) return `${minutes}m ${seconds}s`;
         return `${seconds}s`;
+    };
+
+    const handleSendClick = (zombie: any, zombieId: bigint) => {
+        setSelectedZombie({ zombie, zombieId });
+        setSendModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setSendModalOpen(false);
+        setSelectedZombie(null);
     };
 
     if (!isConnected) {
@@ -124,9 +137,27 @@ const ZombieGallery: React.FC = () => {
                                     </div>
                                 )}
                             </div>
+
+                            <div className="zombie-actions">
+                                <button
+                                    className="send-button"
+                                    onClick={() => handleSendClick(zombie, zombieIds[index])}
+                                >
+                                    📤 Send
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
+            )}
+
+            {sendModalOpen && selectedZombie && (
+                <SendZombieModal
+                    isOpen={sendModalOpen}
+                    onClose={handleCloseModal}
+                    zombie={selectedZombie.zombie}
+                    zombieId={selectedZombie.zombieId}
+                />
             )}
         </div>
     );

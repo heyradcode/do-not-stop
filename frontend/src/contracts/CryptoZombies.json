@@ -235,6 +235,31 @@
         {
           "indexed": false,
           "internalType": "uint256",
+          "name": "zombieId1",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "zombieId2",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newZombieId",
+          "type": "uint256"
+        }
+      ],
+      "name": "ZombieBred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
           "name": "zombieId",
           "type": "uint256"
         },
