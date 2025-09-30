@@ -19,6 +19,7 @@ import "./utils/ZombieUtils.sol";
 contract CryptoZombies is ERC721, ReentrancyGuard, Ownable {
     // Events
     event ZombieTransferred(uint256 zombieId, address from, address to);
+    event ZombieBred(uint256 zombieId1, uint256 zombieId2, uint256 newZombieId);
 
     // Dependencies
     ZombieData public zombieData;
@@ -44,6 +45,12 @@ contract CryptoZombies is ERC721, ReentrancyGuard, Ownable {
                 new ZombieBreeding(address(zombieData), address(zombieUtils))
             )
         );
+
+        // Authorize the breeding contract to create zombies
+        zombieData.authorizeCaller(address(zombieBreeding));
+
+        // Authorize the battle contract to update stats and level up zombies
+        zombieData.authorizeCaller(address(zombieBattle));
     }
 
     // Modifiers
@@ -127,7 +134,15 @@ contract CryptoZombies is ERC721, ReentrancyGuard, Ownable {
         uint256 _zombieId2,
         string memory _name
     ) public {
+        // Call the breeding contract to handle the logic
         zombieBreeding.createZombieFromDNA(_zombieId1, _zombieId2, _name);
+
+        // Get the total count to find the new zombie ID
+        uint256 newZombieId = zombieData.getTotalZombiesCount();
+
+        // Mint NFT to the caller
+        _safeMint(msg.sender, newZombieId);
+        ownerZombieCount[msg.sender]++;
     }
 
     // Utility Functions

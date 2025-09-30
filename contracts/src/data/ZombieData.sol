@@ -33,6 +33,7 @@ contract ZombieData is Ownable {
     // State variables
     uint256 private _zombieCount;
     mapping(uint256 => Zombie) public zombies;
+    mapping(address => bool) public authorizedCallers;
 
     // Modifiers
     modifier onlyZombieOwner(uint256 _zombieId) {
@@ -43,7 +44,29 @@ contract ZombieData is Ownable {
         _;
     }
 
+    modifier onlyAuthorized() {
+        require(
+            msg.sender == owner() || authorizedCallers[msg.sender],
+            "Not authorized to create zombies"
+        );
+        _;
+    }
+
     constructor() Ownable(msg.sender) {}
+
+    /**
+     * @dev Authorize a caller to create zombies
+     */
+    function authorizeCaller(address _caller) external onlyOwner {
+        authorizedCallers[_caller] = true;
+    }
+
+    /**
+     * @dev Revoke authorization for a caller
+     */
+    function revokeCaller(address _caller) external onlyOwner {
+        authorizedCallers[_caller] = false;
+    }
 
     /**
      * @dev Create a new zombie
@@ -52,7 +75,7 @@ contract ZombieData is Ownable {
         string memory _name,
         uint256 _dna,
         uint8 _rarity
-    ) external onlyOwner returns (uint256) {
+    ) external onlyAuthorized returns (uint256) {
         _zombieCount++;
         uint256 newZombieId = _zombieCount;
 
@@ -115,7 +138,7 @@ contract ZombieData is Ownable {
      */
     function levelUpZombie(
         uint256 _zombieId
-    ) external onlyOwner onlyZombieOwner(_zombieId) {
+    ) external onlyAuthorized onlyZombieOwner(_zombieId) {
         zombies[_zombieId].level++;
         emit ZombieLevelUp(_zombieId, zombies[_zombieId].level);
     }
@@ -147,7 +170,7 @@ contract ZombieData is Ownable {
      */
     function triggerCooldown(
         uint256 _zombieId
-    ) external onlyOwner onlyZombieOwner(_zombieId) {
+    ) external onlyAuthorized onlyZombieOwner(_zombieId) {
         zombies[_zombieId].readyTime = uint32(
             block.timestamp + BATTLE_COOLDOWN
         );
@@ -159,7 +182,7 @@ contract ZombieData is Ownable {
     function updateBattleStats(
         uint256 _zombieId,
         bool won
-    ) external onlyOwner onlyZombieOwner(_zombieId) {
+    ) external onlyAuthorized onlyZombieOwner(_zombieId) {
         if (won) {
             zombies[_zombieId].winCount++;
         } else {
