@@ -31,10 +31,10 @@ async function injectContractAddress() {
         }
 
         const deployedAddresses = JSON.parse(readFileSync(deployedAddressesPath, 'utf8'));
-        const contractAddress = deployedAddresses['ZombieFactoryModule#ZombieFactory'];
+        const contractAddress = deployedAddresses['CryptoZombiesModule#CryptoZombies'];
 
         if (!contractAddress) {
-            console.error('❌ ZombieFactory contract address not found');
+            console.error('❌ CryptoZombies contract address not found');
             return;
         }
 
