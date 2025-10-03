@@ -34,10 +34,33 @@
   /* Account for fixed header */
   padding: 40px 20px;
   text-align: center;
-  max-width: 1200px;
+  max-width: 1400px;
   margin-left: auto;
   margin-right: auto;
 }
+
+/* Grid layout for authenticated content */
+.main-content.authenticated {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 30px;
+  align-items: stretch;
+  text-align: left;
+  min-height: 600px;
+}
+
+/* Component positioning in grid */
+.main-content.authenticated> :nth-child(1) {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.main-content.authenticated> :nth-child(2) {
+  grid-column: 2;
+  grid-row: 1;
+}
+
 
 /* Welcome Section */
 .welcome-section {
@@ -100,6 +123,17 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1024px) {
+  .main-content.authenticated {
+    display: block;
+    text-align: center;
+  }
+
+  .main-content.authenticated>* {
+    margin-bottom: 30px;
+  }
+}
+
 @media (max-width: 768px) {
   .main-header {
     padding: 15px;

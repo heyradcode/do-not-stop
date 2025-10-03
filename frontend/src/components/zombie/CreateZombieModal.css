@@ -1,82 +1,117 @@
-.zombie-creator {
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
     display: flex;
+    align-items: center;
     justify-content: center;
-    padding: 0;
-    width: 100%;
+    z-index: 1000;
+    padding: 20px;
 }
 
-.creator-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.modal-content {
+    background: white;
     border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
     width: 100%;
-    height: 100%;
-    text-align: center;
-    color: white;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-evenly;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
-.creator-card h3 {
-    margin: 0 0 8px 0;
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 24px 16px 24px;
+    border-bottom: 1px solid #e0e0e0;
+    margin: -24px -24px 0 -24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 16px 16px 0 0;
+}
+
+.modal-header h2 {
+    margin: 0;
     font-size: 24px;
     font-weight: 700;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    color: #333;
 }
 
-.creator-card p {
-    margin: 0 0 20px 0;
-    opacity: 0.9;
-    font-size: 14px;
+.close-button {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.close-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.modal-body {
+    padding: 24px 24px 24px 24px;
+}
+
+.modal-body p {
+    margin: 0 0 24px 0;
+    color: #666;
+    font-size: 16px;
+    line-height: 1.5;
 }
 
 .creator-form {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 20px;
 }
 
 .input-group {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    text-align: left;
 }
 
 .input-group label {
     font-weight: 600;
     font-size: 14px;
-    color: rgba(255, 255, 255, 0.9);
+    color: #333;
 }
 
 .input-group input {
     padding: 12px 16px;
-    border: none;
+    border: 2px solid #e0e0e0;
     border-radius: 8px;
     font-size: 16px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #333;
     transition: all 0.3s ease;
     outline: none;
 }
 
 .input-group input:focus {
-    background: white;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
-    transform: translateY(-1px);
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .input-group input::placeholder {
-    color: #666;
+    color: #999;
 }
 
 .create-button {
     padding: 14px 24px;
-    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+    background: linear-gradient(45deg, #667eea, #764ba2);
     color: white;
     border: none;
     border-radius: 8px;
@@ -86,12 +121,12 @@
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
 .create-button:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .create-button:active:not(:disabled) {
@@ -106,12 +141,12 @@
 }
 
 .error-message {
-    background: rgba(220, 53, 69, 0.2);
+    background: rgba(220, 53, 69, 0.1);
     border: 1px solid rgba(220, 53, 69, 0.3);
     border-radius: 8px;
     padding: 12px;
     margin-top: 16px;
-    color: #ff6b6b;
+    color: #dc3545;
     font-size: 14px;
     font-weight: 500;
     max-width: 100%;
@@ -120,21 +155,21 @@
 }
 
 .error-message.user-rejection {
-    background: rgba(108, 117, 125, 0.2);
+    background: rgba(108, 117, 125, 0.1);
     border: 1px solid rgba(108, 117, 125, 0.3);
     color: #6c757d;
     font-style: italic;
 }
 
 .error-message.contract-error {
-    background: rgba(255, 193, 7, 0.2);
+    background: rgba(255, 193, 7, 0.1);
     border: 1px solid rgba(255, 193, 7, 0.3);
     color: #ffc107;
     font-weight: 600;
 }
 
 .success-message {
-    background: rgba(40, 167, 69, 0.2);
+    background: rgba(40, 167, 69, 0.1);
     border: 1px solid rgba(40, 167, 69, 0.3);
     border-radius: 8px;
     padding: 12px;
@@ -144,33 +179,26 @@
     font-weight: 500;
 }
 
-.transaction-info {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 12px;
-    margin-top: 16px;
-    font-size: 12px;
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    word-break: break-all;
-}
-
-.transaction-info p {
-    margin: 4px 0;
-    opacity: 0.8;
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
-    .zombie-creator {
-        padding: 16px;
+    .modal-overlay {
+        padding: 10px;
     }
 
-    .creator-card {
-        padding: 20px;
+    .modal-content {
+        max-width: 100%;
     }
 
-    .creator-card h3 {
+    .modal-header {
+        padding: 20px 20px 0 20px;
+    }
+
+    .modal-header h2 {
         font-size: 20px;
+    }
+
+    .modal-body {
+        padding: 0 20px 20px 20px;
     }
 
     .input-group input {

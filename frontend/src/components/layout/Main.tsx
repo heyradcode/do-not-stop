@@ -3,7 +3,6 @@ import React from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
 import AccountDropdown from '../wallet/AccountDropdown';
-import ZombieCreator from '../zombie/ZombieCreator';
 import ZombieGallery from '../zombie/ZombieGallery';
 import ZombieInteractions from '../zombie/ZombieInteractions';
 import './Main.css';
@@ -19,10 +18,9 @@ const Main: React.FC = () => {
 
       <AccountDropdown />
 
-      <div className="main-content">
+      <div className={`main-content ${isAuthenticated ? 'authenticated' : ''}`}>
         {isAuthenticated ? (
           <>
-            <ZombieCreator />
             <ZombieGallery />
             <ZombieInteractions />
           </>

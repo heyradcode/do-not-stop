@@ -1,7 +1,9 @@
 .zombie-interactions {
-    padding: 20px;
-    max-width: 800px;
-    margin: 0 auto;
+    padding: 0;
+    max-width: none;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .interactions-card {
@@ -10,6 +12,9 @@
     padding: 24px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     border: 1px solid #e0e0e0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .interactions-card h3 {
