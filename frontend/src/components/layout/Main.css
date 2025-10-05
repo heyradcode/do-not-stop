@@ -38,9 +38,12 @@
 
 /* Base Styles */
 .main-container {
-  min-height: 100vh;
+  height: 100vh;
   font-family: system-ui, -apple-system, sans-serif;
   position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Header Styles */
@@ -67,12 +70,17 @@
 
 /* Main Content */
 .main-content {
+  flex: 1;
   margin-block-start: 100px;
   /* Account for fixed header */
   padding: var(--spacing-2xl) var(--spacing-lg);
   text-align: center;
   max-width: 1400px;
   margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 /* Authenticated Layout */
@@ -84,6 +92,8 @@
   align-items: stretch;
   text-align: start;
   min-height: 600px;
+  justify-content: stretch;
+  margin-block: var(--spacing-2xl);
 }
 
 .main-content.authenticated> :nth-child(1) {
