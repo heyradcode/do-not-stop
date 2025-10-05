@@ -71,8 +71,9 @@
 /* Main Content */
 .main-content {
   flex: 1;
-  margin-block-start: 100px;
-  /* Account for fixed header */
+  margin-block-start: 80px;
+  margin-block-end: var(--spacing-2xl);
+  /* Account for fixed header and add bottom margin */
   padding: var(--spacing-2xl) var(--spacing-lg);
   text-align: center;
   max-width: 1400px;
@@ -93,7 +94,6 @@
   text-align: start;
   min-height: 600px;
   justify-content: stretch;
-  margin-block: var(--spacing-2xl);
 }
 
 .main-content.authenticated> :nth-child(1) {
@@ -187,7 +187,8 @@
   }
 
   .main-content {
-    margin-block-start: 80px;
+    margin-block-start: 70px;
+    margin-block-end: var(--spacing-lg);
     padding: var(--spacing-lg) var(--spacing-md);
   }
 }
@@ -202,7 +203,8 @@
   }
 
   .main-content {
-    margin-block-start: 70px;
+    margin-block-start: 60px;
+    margin-block-end: var(--spacing-md);
     padding: var(--spacing-md) var(--spacing-sm);
   }
 }
