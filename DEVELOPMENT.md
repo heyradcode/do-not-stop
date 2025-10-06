@@ -1,68 +1,41 @@
-# 🚀 Development Guide
+# Development Guide
 
-## Quick Start
+## Getting Started
 
 ```bash
-# Install all dependencies (root + all sub-projects)
+# Install dependencies
 pnpm install
 
-# Start everything (Hardhat node + contract deployment + backend + frontend + Solana)
+# Start everything
 pnpm dev:full
-
-# Or use the shorter alias
-pnpm start
 ```
 
-## 📁 Project Structure
+This starts:
+- Ethereum local network (Hardhat)
+- Solana validator (Docker)
+- Backend API server
+- Frontend development server
+- Auto-deploys contracts
 
-```
-do-not-stop/
-├── backend/           # Node.js + TypeScript API server
-│   ├── src/          # TypeScript source files
-│   ├── dist/         # Compiled JavaScript
-│   └── tsconfig.json # TypeScript configuration
-├── frontend/          # React + Vite frontend
-├── contracts/         # Multi-blockchain smart contracts
-│   ├── ethereum/     # Ethereum contracts (Hardhat + Solidity)
-│   │   ├── src/      # Solidity source files
-│   │   ├── test/     # Contract tests
-│   │   └── ...
-│   └── solana/       # Solana contracts (Anchor + Rust)
-│       ├── hello-world/ # Solana program example
-│       ├── config/   # Solana configuration
-│       └── docker-compose.yml # Solana Docker setup
-└── scripts/          # Automation scripts
-```
-
-## 🛠️ Available Commands
-
-### Installation & Setup
-- `pnpm install` - Installs all dependencies (root + sub-projects)
-- `pnpm setup` - Install all dependencies + compile contracts
-- `pnpm reset` - Clean everything and reinstall
+## Available Commands
 
 ### Development
-- `pnpm dev:full` - **Full stack development** (Hardhat + contracts + backend + frontend + Solana)
-- `pnpm dev:full:no-deploy` - Full stack without contract deployment
+- `pnpm dev:full` - Start everything
 - `pnpm dev:frontend` - Frontend only
-- `pnpm dev:backend` - Backend only  
-- `pnpm dev:contracts` - Hardhat node only
+- `pnpm dev:backend` - Backend only
+- `pnpm dev:contracts` - Ethereum contracts only
 - `pnpm dev:solana` - Solana validator only
 
 ### Building
 - `pnpm build:all` - Build everything
-- `pnpm build:frontend` - Build frontend
-- `pnpm build:backend` - Build backend
-- `pnpm compile` - Compile contracts
+- `pnpm compile` - Compile contracts only
 
-### Contract Management
-#### Ethereum
-- `pnpm deploy:local` - Deploy to local Hardhat network
+### Ethereum Contracts
+- `pnpm deploy:local` - Deploy to local network
 - `pnpm deploy:sepolia` - Deploy to Sepolia testnet
 - `pnpm test` - Run contract tests
-- `pnpm deploy:status` - Check deployment status
 
-#### Solana
+### Solana
 - `pnpm solana:start` - Start Solana validator
 - `pnpm solana:stop` - Stop Solana validator
 - `pnpm solana:logs` - View Solana logs
@@ -72,80 +45,89 @@ do-not-stop/
 ### Utilities
 - `pnpm status` - Show project status
 - `pnpm clean` - Clean build artifacts
-- `pnpm reset` - Full reset
 
-## 🎯 Development Workflow
+## Project Structure
 
-1. **First time setup:**
+```
+do-not-stop/
+├── frontend/           # React + Vite frontend
+├── backend/            # Node.js + Express + TypeScript
+├── contracts/
+│   ├── ethereum/       # Hardhat + Solidity contracts
+│   └── solana/         # Anchor + Rust + Docker
+└── scripts/            # Deployment automation
+```
+
+## Development Workflow
+
+1. **First time:**
    ```bash
    pnpm install
+   pnpm dev:full
    ```
 
 2. **Daily development:**
    ```bash
    pnpm dev:full
    ```
-   This will:
-   - Start Hardhat local network
-   - Deploy contracts automatically
-   - **Inject contract address into frontend** (creates/updates `.env.local`)
-   - Start Solana validator in Docker
-   - Start backend API server
-   - Start frontend development server
 
 3. **Access your app:**
    - Frontend: http://localhost:5173
-   - Backend API: http://localhost:3001
-   - Hardhat Network: http://localhost:8545
+   - Backend: http://localhost:3001
+   - Ethereum RPC: http://localhost:8545
    - Solana RPC: http://localhost:8899
 
-## 🔧 Configuration
+## Configuration Files
 
-- **Frontend**: `frontend/vite.config.ts`
-- **Backend**: `backend/src/server.ts` (TypeScript)
-- **Backend Config**: `backend/tsconfig.json`
-- **Ethereum Contracts**: `contracts/ethereum/hardhat.config.ts`
-- **Solana Contracts**: `contracts/solana/docker-compose.yml`
+- **Frontend:** `frontend/vite.config.ts`
+- **Backend:** `backend/src/server.ts`
+- **Ethereum:** `contracts/ethereum/hardhat.config.ts`
+- **Solana:** `contracts/solana/docker-compose.yml`
 
-## 📝 Notes
+## Environment Variables
 
-- The `dev:full` command uses colored output to distinguish between services
-- Contract deployment has a 5-second delay to ensure Hardhat node is ready
-- **Contract address is automatically injected** into frontend `.env.local` file (required for frontend to work)
-- Solana validator runs in Docker for consistent cross-platform development
-- All services run concurrently and will restart if any fail
+### Backend (`backend/.env`)
+```bash
+JWT_SECRET=your-super-secret-jwt-key-here
+PORT=3001
+```
+
+### Ethereum Contracts (`contracts/ethereum/.env`)
+```bash
+SEPOLIA_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID
+PRIVATE_KEY=your_private_key_here
+```
+
+### Frontend (`frontend/.env.local`)
+```bash
+VITE_API_URL=http://localhost:3001
+VITE_CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
+```
+
+> The contract address is automatically injected when you run `pnpm dev:full`
+
+## Solana Development
+
+The Solana validator runs in Docker for consistency:
+
+- **Image:** `solanalabs/solana:v1.18.4`
+- **RPC Port:** 8899
+- **WebSocket:** 8900
+- **Metrics:** 9900
+
+### Solana Commands
+```bash
+pnpm solana:start    # Start validator
+pnpm solana:stop     # Stop validator
+pnpm solana:logs     # View logs
+pnpm solana:reset    # Reset validator
+pnpm solana:cli      # Access CLI
+```
+
+## Notes
+
+- Contract deployment has a 5-second delay to ensure Hardhat is ready
+- Solana validator uses Docker volumes for data persistence
+- All services restart automatically if they fail
+- Use `Ctrl+C` to stop everything
 - Backend uses TypeScript with hot reload via `tsx watch`
-- Use `Ctrl+C` to stop all services at once
-
-## 🐳 Solana Docker Setup
-
-The Solana validator runs in Docker for consistent development across platforms:
-
-- **Docker Image**: `solanalabs/solana:v1.18.4`
-- **RPC Port**: 8899
-- **WebSocket Port**: 8900
-- **Metrics Port**: 9900
-- **Data Persistence**: Docker volumes for ledger data
-- **Configuration**: `contracts/solana/config/config.yml`
-
-### Solana Development Workflow
-
-1. **Start Solana validator:**
-   ```bash
-   pnpm solana:start
-   ```
-
-2. **Access Solana CLI:**
-   ```bash
-   pnpm solana:cli
-   ```
-
-3. **Check Solana logs:**
-   ```bash
-   pnpm solana:logs
-   ```
-
-4. **Reset Solana validator:**
-   ```bash
-   pnpm solana:reset
-   ```
