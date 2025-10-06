@@ -40,6 +40,120 @@
     }
 }
 
+/* Wallet Options */
+.wallet-options {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border: 1px solid #e0e0e0;
+    min-width: 320px;
+    max-width: 400px;
+}
+
+.wallet-options h3 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.wallet-options-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.wallet-option-btn {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: #f8f9fa;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    width: 100%;
+    text-align: left;
+}
+
+.wallet-option-btn:hover {
+    border-color: #667eea;
+    background: #f0f4ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.wallet-option-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.wallet-option-btn.evm {
+    border-color: #667eea;
+}
+
+.wallet-option-btn.solana {
+    border-color: #9945ff;
+}
+
+.wallet-option-btn.solana:hover {
+    border-color: #9945ff;
+    background: #f8f0ff;
+    box-shadow: 0 4px 12px rgba(153, 69, 255, 0.15);
+}
+
+.wallet-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.wallet-info {
+    flex: 1;
+}
+
+.wallet-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.wallet-description {
+    color: #666;
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.back-btn {
+    width: 100%;
+    padding: 8px 16px;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+    background: #e9ecef;
+    border-color: #ccc;
+}
+
 /* User Trigger Button (when connected) */
 .user-trigger {
     display: flex;

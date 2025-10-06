@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 
-import { useNonce, useVerifySignature } from '../hooks/useAuth';
-import { useUserProfile } from '../hooks/useUserProfile';
+import { useNonce, useVerifySignature } from '../../hooks/useAuth';
+import { useUserProfile } from '../../hooks/useUserProfile';
 
 interface User {
   address: string;

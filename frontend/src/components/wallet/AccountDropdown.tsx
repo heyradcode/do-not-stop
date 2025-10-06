@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useAccount, useConnect, useDisconnect, useBalance, usePublicClient } from 'wagmi';
-import { formatEther } from 'viem';
-import { useAuth } from '../../contexts/AuthContext';
-import { getNativeTokenSymbol } from '../../constants/chains';
+import { useAccount, useConnect, useDisconnect, usePublicClient } from 'wagmi';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useAuth } from '../../contexts';
 import { getPopularTokens } from '../../constants/tokens';
-import NetworkSwitcher from './NetworkSwitcher';
+import { EthereumNetworkSwitcher, SolanaNetworkSwitcher } from './NetworkSwitcher';
 import TokenBalance from './TokenBalance';
+import NativeBalance from './NativeBalance';
 import './AccountDropdown.css';
 
 const AccountDropdown: React.FC = () => {
     const { address, isConnected, chain } = useAccount();
     const { connect, connectors, isPending: isConnecting } = useConnect();
     const { disconnect } = useDisconnect();
+    const { publicKey: solanaPublicKey, connected: solanaConnected, disconnect: solanaDisconnect } = useWallet();
     const [isOpen, setIsOpen] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
+    const [showWalletOptions, setShowWalletOptions] = useState(false);
     // tokenStatus maps tokenAddress -> { fetched: boolean; balance?: bigint | number }
     const [tokenStatus, setTokenStatus] = useState<Record<string, { fetched: boolean; balance?: bigint | number }>>({});
     const [isTokensLoading, setIsTokensLoading] = useState(false);
@@ -28,10 +30,6 @@ const AccountDropdown: React.FC = () => {
         isNonceLoading
     } = useAuth();
 
-    // Get native token balance
-    const { data: balance, isLoading: isBalanceLoading, refetch: refetchBalance } = useBalance({
-        address,
-    });
 
     // Memoize popular tokens to prevent infinite re-renders
     const popularTokens = useMemo(() => getPopularTokens(chain?.id), [chain?.id]);
@@ -57,7 +55,7 @@ const AccountDropdown: React.FC = () => {
                         outputs: [{ name: '', type: 'uint256' }]
                     }],
                     functionName: 'balanceOf',
-                    args: [address]
+                    args: [address as `0x${string}`]
                 }));
 
                 let results: Array<{ address: string; balance?: bigint | number; error?: unknown }> = [];
@@ -96,12 +94,11 @@ const AccountDropdown: React.FC = () => {
         };
 
         if (isOpen && address) {
-            refetchBalance();
             // Reset token status when opening dropdown
             setTokenStatus({});
             fetchTokenBalances();
         }
-    }, [isOpen, address, refetchBalance, publicClient, popularTokens]);
+    }, [isOpen, address, publicClient, popularTokens]);
 
     // derived counts
     const fetchedCount = Object.values(tokenStatus).filter(s => s.fetched).length;
@@ -173,38 +170,84 @@ const AccountDropdown: React.FC = () => {
     // token balances are handled by parent batch fetch; no per-token callback needed
 
     // Format address for display
-    const formatAddress = (addr: string) => {
+    const formatAddress = (addr: string | undefined) => {
+        if (!addr) return '';
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
     };
 
 
-    if (!isConnected || !address) {
+    // Show wallet options if neither EVM nor Solana is connected
+    if ((!isConnected || !address) && (!solanaConnected || !solanaPublicKey)) {
+        if (showWalletOptions) {
+            return (
+                <div className="account-dropdown-container">
+                    <div className="wallet-options">
+                        <h3>Choose Blockchain</h3>
+                        <div className="wallet-options-grid">
+                            <button
+                                className="wallet-option-btn evm"
+                                onClick={handleConnect}
+                                disabled={isConnecting}
+                            >
+                                <div className="wallet-icon">🔗</div>
+                                <div className="wallet-info">
+                                    <div className="wallet-name">Ethereum & EVM Chains</div>
+                                    <div className="wallet-description">Ethereum, Polygon, BSC, Arbitrum, etc.</div>
+                                </div>
+                                {isConnecting && <div className="loading-spinner"></div>}
+                            </button>
+
+                            <button
+                                className="wallet-option-btn solana"
+                                onClick={() => {
+                                    // Trigger Solana wallet connection
+                                    const event = new CustomEvent('solana-connect');
+                                    window.dispatchEvent(event);
+                                }}
+                            >
+                                <div className="wallet-icon">☀️</div>
+                                <div className="wallet-info">
+                                    <div className="wallet-name">Solana</div>
+                                    <div className="wallet-description">Solana blockchain</div>
+                                </div>
+                            </button>
+                        </div>
+                        <button
+                            className="back-btn"
+                            onClick={() => setShowWalletOptions(false)}
+                        >
+                            ← Back
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="account-dropdown-container">
                 <button
                     className="connect-wallet-btn"
-                    onClick={handleConnect}
-                    disabled={isConnecting}
+                    onClick={() => setShowWalletOptions(true)}
                 >
-                    {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                    Connect Wallet
                 </button>
             </div>
         );
     }
 
-    const formattedBalance = balance ? formatEther(balance.value) : '0';
-    const symbol = getNativeTokenSymbol(chain?.id);
 
     return (
         <div className="account-dropdown-container">
-            <NetworkSwitcher />
+            {isConnected && <EthereumNetworkSwitcher />}
+            {solanaConnected && <SolanaNetworkSwitcher />}
             <div className="account-dropdown" ref={dropdownRef}>
                 <button
                     className="user-trigger"
                     onClick={() => setIsOpen(!isOpen)}
                 >
                     <div className="user-info">
-                        <span className="user-address">{formatAddress(address)}</span>
+                        {address && <span className="user-address">{formatAddress(address)}</span>}
+                        {solanaPublicKey && <span className="user-address">{formatAddress(solanaPublicKey.toString())}</span>}
                     </div>
                     <div className="dropdown-arrow">
                         {isOpen ? '▲' : '▼'}
@@ -215,39 +258,53 @@ const AccountDropdown: React.FC = () => {
                     <div className="user-dropdown-menu">
                         <div className="dropdown-header">
                             <div className="user-details">
-                                <div
-                                    className={`user-address-full clickable-address ${isCopied ? 'copied' : ''}`}
-                                    onClick={handleCopyAddress}
-                                    title={isCopied ? "Address copied!" : "Click to copy address"}
-                                >
-                                    <span className="address-text">{address}</span>
-                                    <span className="copy-icon">
-                                        {isCopied ? "✓" : "📋"}
-                                    </span>
-                                </div>
+                                {address && (
+                                    <div
+                                        className={`user-address-full clickable-address ${isCopied ? 'copied' : ''}`}
+                                        onClick={handleCopyAddress}
+                                        title={isCopied ? "Address copied!" : "Click to copy address"}
+                                    >
+                                        <span className="address-text">{address}</span>
+                                        <span className="copy-icon">
+                                            {isCopied ? "✓" : "📋"}
+                                        </span>
+                                    </div>
+                                )}
+                                {solanaPublicKey && (
+                                    <div
+                                        className={`user-address-full clickable-address ${isCopied ? 'copied' : ''}`}
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(solanaPublicKey.toString());
+                                            setIsCopied(true);
+                                            setTimeout(() => setIsCopied(false), 2000);
+                                        }}
+                                        title={isCopied ? "Address copied!" : "Click to copy address"}
+                                    >
+                                        <span className="address-text">{solanaPublicKey.toString()}</span>
+                                        <span className="copy-icon">
+                                            {isCopied ? "✓" : "📋"}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         <div className="dropdown-content">
-                            {/* Native Balance Section */}
-                            <div className="balance-section">
-                                <div className="balance-label">Native Balance</div>
-                                <div className="balance-amount">
-                                    {isBalanceLoading ? (
-                                        <div className="balance-loading">
-                                            <div className="loading-spinner"></div>
-                                            <span>Loading...</span>
-                                        </div>
-                                    ) : (
-                                        <div className="balance-display">
-                                            <span className="balance-value">
-                                                {parseFloat(formattedBalance).toFixed(4)}
-                                            </span>
-                                            <span className="balance-symbol">{symbol}</span>
-                                        </div>
-                                    )}
+                            {/* Ethereum/EVM Balance Section */}
+                            {isConnected && address && (
+                                <div className="balance-section">
+                                    <div className="balance-label">Ethereum Balance</div>
+                                    <NativeBalance type="ethereum" />
                                 </div>
-                            </div>
+                            )}
+
+                            {/* Solana Balance Section */}
+                            {solanaConnected && solanaPublicKey && (
+                                <div className="balance-section">
+                                    <div className="balance-label">Solana Balance</div>
+                                    <NativeBalance type="solana" />
+                                </div>
+                            )}
 
                             {/* ERC-20 Tokens Section */}
                             {popularTokens.length > 0 && (
@@ -296,12 +353,26 @@ const AccountDropdown: React.FC = () => {
                                     </button>
                                 )}
 
-                                <button
-                                    className="action-btn danger"
-                                    onClick={handleDisconnect}
-                                >
-                                    Disconnect Wallet
-                                </button>
+                                {isConnected && (
+                                    <button
+                                        className="action-btn danger"
+                                        onClick={handleDisconnect}
+                                    >
+                                        Disconnect Ethereum Wallet
+                                    </button>
+                                )}
+
+                                {solanaConnected && (
+                                    <button
+                                        className="action-btn danger"
+                                        onClick={() => {
+                                            solanaDisconnect();
+                                            setIsOpen(false);
+                                        }}
+                                    >
+                                        Disconnect Solana Wallet
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

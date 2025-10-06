@@ -9,7 +9,7 @@ import {
 import { injected } from 'wagmi/connectors';
 
 import Main from './components/layout/Main';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, SolanaWalletProvider } from './contexts';
 import { CHAINS } from './constants/chains';
 import './App.css';
 
@@ -50,9 +50,11 @@ const App: React.FC = () => {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Main />
-        </AuthProvider>
+        <SolanaWalletProvider network="Solana Local">
+          <AuthProvider>
+            <Main />
+          </AuthProvider>
+        </SolanaWalletProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

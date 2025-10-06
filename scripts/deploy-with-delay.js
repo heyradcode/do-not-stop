@@ -10,7 +10,7 @@ await setTimeout(5000); // Wait 5 seconds for Hardhat node to start
 
 console.log('🚀 Deploying contracts to local network...');
 try {
-    execSync('pnpm --prefix contracts deploy:local', { stdio: 'inherit' });
+    execSync('pnpm --prefix contracts/ethereum deploy:local', { stdio: 'inherit' });
     console.log('✅ Contracts deployed successfully!');
 
     // Extract contract address and inject into frontend
@@ -23,7 +23,7 @@ try {
 async function injectContractAddress() {
     try {
         // Read deployed addresses
-        const deployedAddressesPath = join(process.cwd(), 'contracts', 'ignition', 'deployments', 'chain-31337', 'deployed_addresses.json');
+        const deployedAddressesPath = join(process.cwd(), 'contracts', 'ethereum', 'ignition', 'deployments', 'chain-31337', 'deployed_addresses.json');
 
         if (!existsSync(deployedAddressesPath)) {
             console.error('❌ Deployed addresses file not found');

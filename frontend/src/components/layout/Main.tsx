@@ -1,8 +1,9 @@
 import React from 'react';
 
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts';
 
 import AccountDropdown from '../wallet/AccountDropdown';
+import SolanaWalletTrigger from '../wallet/SolanaWalletTrigger';
 import ZombieGallery from '../zombie/ZombieGallery';
 import ZombieInteractions from '../zombie/ZombieInteractions';
 import './Main.css';
@@ -14,9 +15,10 @@ const Main: React.FC = () => {
     <div className="main-container">
       <div className="main-header">
         <h1>Do Not Stop</h1>
+        <div className="wallet-section">
+          <AccountDropdown />
+        </div>
       </div>
-
-      <AccountDropdown />
 
       <div className={`main-content ${isAuthenticated ? 'authenticated' : ''}`}>
         {isAuthenticated ? (
@@ -45,6 +47,9 @@ const Main: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Hidden Solana wallet trigger */}
+      <SolanaWalletTrigger />
     </div>
   );
 };

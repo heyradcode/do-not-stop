@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # Solana Local Validator
+  solana-validator:
+    image: solanalabs/solana:v1.18.4
+    container_name: solana-validator
+    ports:
+      - "8899:8899" # RPC port
+      - "8900:8900" # WebSocket port
+      - "9900:9900" # Metrics port
+    volumes:
+      - solana-data:/home/solana/.local/share/solana
+      - ./contracts/solana/config:/home/solana/.config/solana
+    command: >
+      sh -c "
+        solana-test-validator 
+        --reset 
+        --quiet 
+        --rpc-port 8899 
+        --rpc-bind-address 0.0.0.0 
+        --rpc-pubsub-enable-block-subscription 
+        --rpc-pubsub-enable-vote-subscription 
+        --enable-rpc-transaction-history 
+        --limit-ledger-size 50000000
+      "
+    environment:
+      - RUST_LOG=warn
+    networks:
+      - solana-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8899/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Solana CLI tools (for deployment and management)
+  solana-cli:
+    image: solanalabs/solana:v1.18.4
+    container_name: solana-cli
+    volumes:
+      - ./contracts/solana/config:/home/solana/.config/solana
+      - ./contracts/solana:/workspace/contracts
+    working_dir: /workspace
+    command: tail -f /dev/null
+    depends_on:
+      - solana-validator
+    networks:
+      - solana-network
+
+volumes:
+  solana-data:
+    driver: local
+
+networks:
+  solana-network:
+    driver: bridge

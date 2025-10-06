@@ -1,6 +1,6 @@
 # Do Not Stop - Full Stack Web3 App
 
-A modern full-stack Web3 application with React frontend, Node.js backend, and Solidity smart contracts. Features automated development workflow with one-command setup and deployment.
+A modern full-stack Web3 application with React frontend, Node.js backend, and multi-blockchain smart contracts. Features automated development workflow with one-command setup and deployment for both Ethereum and Solana blockchains.
 
 ## 🏗️ Project Structure
 
@@ -19,14 +19,16 @@ do-not-stop/
 │   ├── tsconfig.json  # TypeScript configuration
 │   ├── package.json   # Backend dependencies
 │   └── README.md      # Backend documentation
-├── contracts/         # Hardhat + Solidity contracts
-│   ├── src/           # Solidity source files
-│   ├── test/          # Contract tests
-│   ├── artifacts/     # Compiled contracts
-│   ├── cache/         # Hardhat cache
-│   ├── ignition/      # Deployment scripts
-│   ├── hardhat.config.*
-│   └── package.json   # Contract dependencies
+├── contracts/         # Multi-blockchain smart contracts
+│   ├── ethereum/      # Ethereum contracts (Hardhat + Solidity)
+│   │   ├── src/       # Solidity source files
+│   │   ├── test/      # Contract tests
+│   │   ├── artifacts/ # Compiled contracts
+│   │   └── ...
+│   └── solana/        # Solana contracts (Anchor + Rust)
+│       ├── hello-world/ # Solana program example
+│       ├── config/    # Solana configuration
+│       └── docker-compose.yml # Solana Docker setup
 ├── scripts/           # Automation scripts
 │   └── deploy-with-delay.js
 └── package.json       # Root workspace management
@@ -52,37 +54,37 @@ pnpm start              # Alias for dev:full
 pnpm dev:frontend       # React frontend (http://localhost:5173)
 pnpm dev:backend        # TypeScript API (http://localhost:3001)
 pnpm dev:contracts      # Hardhat local network (http://localhost:8545)
+pnpm dev:solana        # Solana local validator (http://localhost:8899)
 ```
 
 
 ### Smart Contracts
 
 ```bash
-# Compile contracts
-pnpm compile
+# Ethereum contracts
+pnpm compile          # Compile contracts
+pnpm test             # Run tests
+pnpm deploy:local     # Deploy to local network
+pnpm deploy:sepolia   # Deploy to Sepolia testnet
 
-# Run tests
-pnpm test
-
-# Deploy to local network
-pnpm deploy:local
-
-# Deploy to Sepolia testnet
-pnpm deploy:sepolia
-
-# Check deployment status
-pnpm deploy:status
+# Solana contracts
+pnpm solana:start     # Start Solana validator
+pnpm solana:stop      # Stop Solana validator
+pnpm solana:logs      # View Solana logs
+pnpm solana:reset     # Reset Solana validator
+pnpm solana:cli       # Access Solana CLI
 ```
 
 ## 🧟‍♂️ Features
 
 - **🚀 One-Command Development** - Start entire stack with `pnpm dev:full`
-- **🔐 Web3 Authentication** - MetaMask integration with JWT
+- **🔐 Multi-Blockchain Authentication** - MetaMask (Ethereum) + Solana wallet support
 - **🧟‍♂️ CryptoZombies** - NFT collection with breeding and battles
-- **🌐 Multi-chain Support** - Ethereum, Polygon, BSC, Arbitrum, etc.
-- **⚡ Modern Tech Stack** - React 19, Wagmi v2, Viem, Hardhat v3
+- **🌐 Multi-chain Support** - Ethereum, Polygon, BSC, Arbitrum, Solana
+- **⚡ Modern Tech Stack** - React 19, Wagmi v2, Viem, Hardhat v3, Solana Web3.js
 - **🔒 TypeScript** - Full type safety across frontend and backend
 - **🎨 Automated Deployment** - Contracts deploy automatically
+- **🐳 Docker Integration** - Solana local validator in Docker
 - **🛠️ Workspace Management** - Organized monorepo structure
 
 ## 🛠️ Tech Stack
@@ -90,7 +92,8 @@ pnpm deploy:status
 ### Frontend
 - React 19 + TypeScript
 - Vite (build tool)
-- Wagmi v2 + Viem (Web3)
+- Wagmi v2 + Viem (Ethereum Web3)
+- Solana Web3.js + Wallet Adapter (Solana)
 - React Query (data fetching)
 - Tailwind CSS (styling)
 
@@ -102,16 +105,23 @@ pnpm deploy:status
 - Type-safe API routes
 
 ### Smart Contracts
+#### Ethereum
 - Solidity 0.8.24
 - Hardhat v3
 - OpenZeppelin v5
 - ERC-721 NFT standard
 
+#### Solana
+- Rust + Anchor framework
+- Docker-based local validator
+- Solana Web3.js integration
+- Multi-wallet support
+
 ## 📝 Environment Variables
 
 Create `.env` files in the appropriate directories:
 
-### Contracts `.env` (in `contracts/` directory)
+### Ethereum Contracts `.env` (in `contracts/ethereum/` directory)
 ```bash
 SEPOLIA_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID
 PRIVATE_KEY=your_private_key_here
@@ -131,42 +141,38 @@ VITE_CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
 
 > **Note**: The `VITE_CONTRACT_ADDRESS` is **automatically injected** by the deployment script when you run `pnpm dev:full`. The frontend will throw an error if this environment variable is missing, ensuring you always use the correct deployed contract address.
 
-## 🎯 Development Workflow
+### Solana Configuration
+Solana uses Docker for local development. No additional environment variables needed - the Docker setup handles all configuration automatically.
 
-### Automated (Recommended)
+## 🎯 Quick Development
+
 ```bash
-# One command to rule them all
+# One command to start everything
 pnpm dev:full
 ```
 
-### Manual (if needed)
-1. **Start local blockchain**: `pnpm dev:contracts`
-2. **Deploy contracts**: `pnpm deploy:local`
-3. **Start backend**: `pnpm dev:backend`
-4. **Start frontend**: `pnpm dev:frontend`
-5. **Test contracts**: `pnpm test`
+> **📖 For detailed development workflow, see [DEVELOPMENT.md](./DEVELOPMENT.md)**
 
-## 🛠️ Available Commands
+## 🛠️ Key Commands
 
 | Command | Description |
 |---------|-------------|
-| `pnpm install` | Install all dependencies (root + sub-projects) |
-| `pnpm dev:full` | **Full stack development** (everything running) |
+| `pnpm install` | Install all dependencies |
+| `pnpm dev:full` | **Start everything** (Ethereum + Solana + Backend + Frontend) |
 | `pnpm start` | Alias for `dev:full` |
-| `pnpm dev:frontend` | Frontend only (http://localhost:5173) |
-| `pnpm dev:backend` | Backend only (http://localhost:3001) |
-| `pnpm dev:contracts` | Hardhat node only (http://localhost:8545) |
-| `pnpm compile` | Compile smart contracts |
-| `pnpm test` | Run contract tests |
-| `pnpm deploy:local` | Deploy to local network |
-| `pnpm deploy:sepolia` | Deploy to Sepolia testnet |
+| `pnpm solana:start` | Start Solana validator |
+| `pnpm solana:stop` | Stop Solana validator |
 | `pnpm build:all` | Build everything |
 | `pnpm status` | Show project status |
-| `pnpm reset` | Clean everything and reinstall |
+
+> **📖 For complete command reference, see [DEVELOPMENT.md](./DEVELOPMENT.md)**
 
 ## 📚 Learn More
 
 - [Hardhat Documentation](https://hardhat.org/docs)
 - [Wagmi Documentation](https://wagmi.sh)
 - [OpenZeppelin Contracts](https://docs.openzeppelin.com/contracts)
+- [Solana Documentation](https://docs.solana.com/)
+- [Anchor Framework](https://www.anchor-lang.com/)
+- [Solana Wallet Adapter](https://github.com/solana-labs/wallet-adapter)
 - [DEVELOPMENT.md](./DEVELOPMENT.md) - Detailed development guide

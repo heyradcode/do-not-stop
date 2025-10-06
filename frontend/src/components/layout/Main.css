@@ -68,6 +68,16 @@
   background-clip: text;
 }
 
+/* Wallet Section */
+.wallet-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
 /* Main Content */
 .main-content {
   flex: 1;
@@ -184,6 +194,11 @@
 
   .main-header h1 {
     font-size: var(--font-size-3xl);
+  }
+
+  .wallet-section {
+    flex-direction: column;
+    gap: var(--spacing-sm);
   }
 
   .main-content {
