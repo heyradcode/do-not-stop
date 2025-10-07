@@ -9,7 +9,7 @@ A full-stack Web3 app with React frontend, Node.js backend, and multi-blockchain
 pnpm install
 
 # Start the entire stack
-pnpm dev:full
+pnpm dev
 ```
 
 That's it! The app will be running at http://localhost:5173
@@ -38,15 +38,15 @@ do-not-stop/
 
 | Command | What it does |
 |---------|-------------|
-| `pnpm dev:full` | Start everything (Ethereum + Solana + Backend + Frontend) |
+| `pnpm dev` | Start everything (Ethereum + Solana + Backend + Frontend) |
+| `pnpm dev:no-deploy` | Start everything except contract deployment |
 | `pnpm dev:frontend` | Frontend only |
 | `pnpm dev:backend` | Backend only |
 | `pnpm dev:contracts` | Ethereum contracts only |
 | `pnpm dev:solana` | Solana validator only |
 | `pnpm solana:start` | Start Solana validator |
 | `pnpm solana:stop` | Stop Solana validator |
-| `pnpm build:all` | Build everything |
-| `pnpm status` | Show project status |
+| `pnpm build` | Build everything |
 
 ## Environment Setup
 
