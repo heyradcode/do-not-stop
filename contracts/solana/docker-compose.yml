@@ -43,9 +43,38 @@ services:
       - ./contracts/solana/config:/home/solana/.config/solana
       - ./contracts/solana:/workspace/contracts
     working_dir: /workspace
-    command: tail -f /dev/null
+    command: >
+      sh -c "
+        # Install Rust and Anchor CLI
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &&
+        source ~/.cargo/env &&
+        cargo install --git https://github.com/coral-xyz/anchor avm --locked --force &&
+        avm install latest &&
+        avm use latest &&
+        tail -f /dev/null
+      "
     depends_on:
       - solana-validator
+    networks:
+      - solana-network
+
+  # Anchor CLI for building contracts
+  anchor-cli:
+    image: rust:1.75
+    container_name: anchor-cli
+    volumes:
+      - ./contracts/solana:/workspace/contracts
+    working_dir: /workspace
+    command: >
+      sh -c "
+        # Install Rust and Anchor CLI
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &&
+        source ~/.cargo/env &&
+        cargo install --git https://github.com/coral-xyz/anchor avm --locked --force &&
+        avm install latest &&
+        avm use latest &&
+        tail -f /dev/null
+      "
     networks:
       - solana-network
 
