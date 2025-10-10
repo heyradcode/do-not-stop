@@ -1,31 +1,33 @@
-version: '3.8'
-
 services:
-  # Solana Local Validator
-  solana-validator:
-    image: solanalabs/solana:v1.18.4
-    container_name: solana-validator
+  # Solana development environment using pre-built image
+  solana-dev:
+    image: tchambard/solana-test-validator:latest
+    container_name: solana-dev
+    user: root
     ports:
       - "8899:8899" # RPC port
       - "8900:8900" # WebSocket port
       - "9900:9900" # Metrics port
     volumes:
-      - solana-data:/home/solana/.local/share/solana
-      - ./contracts/solana/config:/home/solana/.config/solana
+      - ./cryptozombies:/home/ubuntu/cryptozombies
+      - .pnpm-store:/home/ubuntu/.pnpm-store
+      - type: volume # Solana SDK (named volume)
+        source: solana-install
+        target: /home/ubuntu/.local/share/solana/install # <-- same path as in the image
+    working_dir: /home/ubuntu
     command: >
       sh -c "
-        solana-test-validator 
-        --reset 
-        --quiet 
-        --rpc-port 8899 
-        --rpc-bind-address 0.0.0.0 
-        --rpc-pubsub-enable-block-subscription 
-        --rpc-pubsub-enable-vote-subscription 
-        --enable-rpc-transaction-history 
-        --limit-ledger-size 50000000
+        pnpm config set store-dir /home/ubuntu/.pnpm-store &&
+        solana-test-validator --reset --rpc-port 8899 --bind-address 0.0.0.0 &
+        # Wait for validator to be ready
+        sleep 10 &&
+        # Keep container running
+        tail -f /dev/null
       "
     environment:
       - RUST_LOG=warn
+      - ANCHOR_PACKAGE_MANAGER=pnpm
+      - TMPDIR=/tmp
     networks:
       - solana-network
     healthcheck:
@@ -35,53 +37,9 @@ services:
       retries: 5
       start_period: 30s
 
-  # Solana CLI tools (for deployment and management)
-  solana-cli:
-    image: solanalabs/solana:v1.18.4
-    container_name: solana-cli
-    volumes:
-      - ./contracts/solana/config:/home/solana/.config/solana
-      - ./contracts/solana:/workspace/contracts
-    working_dir: /workspace
-    command: >
-      sh -c "
-        # Install Rust and Anchor CLI
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &&
-        source ~/.cargo/env &&
-        cargo install --git https://github.com/coral-xyz/anchor avm --locked --force &&
-        avm install latest &&
-        avm use latest &&
-        tail -f /dev/null
-      "
-    depends_on:
-      - solana-validator
-    networks:
-      - solana-network
-
-  # Anchor CLI for building contracts
-  anchor-cli:
-    image: rust:1.75
-    container_name: anchor-cli
-    volumes:
-      - ./contracts/solana:/workspace/contracts
-    working_dir: /workspace
-    command: >
-      sh -c "
-        # Install Rust and Anchor CLI
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y &&
-        source ~/.cargo/env &&
-        cargo install --git https://github.com/coral-xyz/anchor avm --locked --force &&
-        avm install latest &&
-        avm use latest &&
-        tail -f /dev/null
-      "
-    networks:
-      - solana-network
-
-volumes:
-  solana-data:
-    driver: local
-
 networks:
   solana-network:
     driver: bridge
+
+volumes:
+  solana-install:

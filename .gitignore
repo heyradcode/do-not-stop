@@ -181,3 +181,7 @@ Thumbs.db
 # Build outputs
 dist/
 build/
+
+#solana
+test-ledger
+.pnpm-store
