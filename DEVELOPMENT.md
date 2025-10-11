@@ -7,7 +7,7 @@
 pnpm install
 
 # Start everything
-pnpm dev:full
+pnpm dev
 ```
 
 This starts:
@@ -20,14 +20,15 @@ This starts:
 ## Available Commands
 
 ### Development
-- `pnpm dev:full` - Start everything
+- `pnpm dev` - Start everything (Ethereum + Solana + Backend + Frontend)
+- `pnpm dev:no-deploy` - Start everything except contract deployment
 - `pnpm dev:frontend` - Frontend only
 - `pnpm dev:backend` - Backend only
 - `pnpm dev:contracts` - Ethereum contracts only
 - `pnpm dev:solana` - Solana validator only
 
 ### Building
-- `pnpm build:all` - Build everything
+- `pnpm build` - Build everything
 - `pnpm compile` - Compile contracts only
 
 ### Ethereum Contracts
@@ -36,15 +37,14 @@ This starts:
 - `pnpm test` - Run contract tests
 
 ### Solana
-- `pnpm solana:start` - Start Solana validator
+- `pnpm solana:start` - Start Solana validator (detached)
 - `pnpm solana:stop` - Stop Solana validator
 - `pnpm solana:logs` - View Solana logs
-- `pnpm solana:reset` - Reset Solana validator
-- `pnpm solana:cli` - Access Solana CLI
+- `pnpm dev:solana` - Start Solana validator with logs
 
 ### Utilities
-- `pnpm status` - Show project status
 - `pnpm clean` - Clean build artifacts
+- `pnpm reset` - Clean and reinstall everything
 
 ## Project Structure
 
@@ -63,12 +63,12 @@ do-not-stop/
 1. **First time:**
    ```bash
    pnpm install
-   pnpm dev:full
+   pnpm dev
    ```
 
 2. **Daily development:**
    ```bash
-   pnpm dev:full
+   pnpm dev
    ```
 
 3. **Access your app:**
@@ -104,24 +104,24 @@ VITE_API_URL=http://localhost:3001
 VITE_CONTRACT_ADDRESS=0x5FbDB2315678afecb367f032d93F642f64180aa3
 ```
 
-> The contract address is automatically injected when you run `pnpm dev:full`
+> The contract address is automatically injected when you run `pnpm dev`
 
 ## Solana Development
 
-The Solana validator runs in Docker for consistency:
+The Solana validator runs in Docker for consistency with quiet logging:
 
-- **Image:** `solanalabs/solana:v1.18.4`
+- **Image:** `tchambard/solana-test-validator:latest`
 - **RPC Port:** 8899
 - **WebSocket:** 8900
 - **Metrics:** 9900
+- **Logging:** Quiet mode (verbose logs suppressed)
 
 ### Solana Commands
 ```bash
-pnpm solana:start    # Start validator
+pnpm solana:start    # Start validator (detached, quiet)
 pnpm solana:stop     # Stop validator
 pnpm solana:logs     # View logs
-pnpm solana:reset    # Reset validator
-pnpm solana:cli      # Access CLI
+pnpm dev:solana      # Start validator with logs visible
 ```
 
 ## Notes

@@ -43,9 +43,10 @@ do-not-stop/
 | `pnpm dev:frontend` | Frontend only |
 | `pnpm dev:backend` | Backend only |
 | `pnpm dev:contracts` | Ethereum contracts only |
-| `pnpm dev:solana` | Solana validator only |
-| `pnpm solana:start` | Start Solana validator |
+| `pnpm dev:solana` | Solana validator with logs |
+| `pnpm solana:start` | Start Solana validator (detached, quiet) |
 | `pnpm solana:stop` | Stop Solana validator |
+| `pnpm solana:logs` | View Solana logs |
 | `pnpm build` | Build everything |
 
 ## Environment Setup
