@@ -16,7 +16,7 @@ services:
     command: >
       sh -c "
         pnpm config set store-dir /home/ubuntu/.pnpm-store &&
-        solana-test-validator --reset --rpc-port 8899 --bind-address 0.0.0.0 &
+        solana-test-validator --reset --rpc-port 8899 --bind-address 0.0.0.0 --quiet > /dev/null 2>&1 &
         sleep 10 &&
         tail -f /dev/null
       "
