@@ -1,6 +1,3 @@
-[toolchain]
-package_manager = "pnpm"
-
 [features]
 resolution = true
 skip-lint = false

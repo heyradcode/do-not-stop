@@ -11,22 +11,17 @@ services:
     volumes:
       - ./cryptozombies:/home/ubuntu/cryptozombies
       - .pnpm-store:/home/ubuntu/.pnpm-store
-      - type: volume # Solana SDK (named volume)
-        source: solana-install
-        target: /home/ubuntu/.local/share/solana/install # <-- same path as in the image
+      - solana-cache:/root/.cache/solana
     working_dir: /home/ubuntu
     command: >
       sh -c "
         pnpm config set store-dir /home/ubuntu/.pnpm-store &&
         solana-test-validator --reset --rpc-port 8899 --bind-address 0.0.0.0 &
-        # Wait for validator to be ready
         sleep 10 &&
-        # Keep container running
         tail -f /dev/null
       "
     environment:
       - RUST_LOG=warn
-      - ANCHOR_PACKAGE_MANAGER=pnpm
       - TMPDIR=/tmp
     networks:
       - solana-network
@@ -42,4 +37,4 @@ networks:
     driver: bridge
 
 volumes:
-  solana-install:
+  solana-cache:
