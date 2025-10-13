@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useAccount, useConnect, useDisconnect, usePublicClient } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useDynamicContext, useIsLoggedIn } from '@dynamic-labs/sdk-react-core';
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { useAuth } from '../../contexts';
 import { getPopularTokens } from '../../constants/tokens';
 import { EthereumNetworkSwitcher, SolanaNetworkSwitcher } from './NetworkSwitcher';
@@ -11,11 +11,8 @@ import './AccountDropdown.css';
 
 const AccountDropdown: React.FC = () => {
     const { address, isConnected, chain } = useAccount();
-    const { connect, connectors, isPending: isConnecting } = useConnect();
-    const { disconnect } = useDisconnect();
     const { publicKey: solanaPublicKey, connected: solanaConnected, disconnect: solanaDisconnect } = useWallet();
-    const { setShowAuthFlow, user } = useDynamicContext();
-    const isDynamicLoggedIn = useIsLoggedIn();
+    const { setShowAuthFlow, handleLogOut } = useDynamicContext();
     const [isOpen, setIsOpen] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
 
@@ -125,15 +122,8 @@ const AccountDropdown: React.FC = () => {
         }
     }, [isOpen]);
 
-    const handleConnect = () => {
-        const injectedConnector = connectors.find(connector => connector.type === 'injected');
-        if (injectedConnector) {
-            connect({ connector: injectedConnector });
-        }
-    };
-
     const handleDisconnect = () => {
-        disconnect();
+        handleLogOut();
         setIsOpen(false);
     };
 
@@ -177,8 +167,8 @@ const AccountDropdown: React.FC = () => {
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
     };
 
-    // Show connect button if not authenticated via Dynamic.xyz
-    if (!isDynamicLoggedIn) {
+    // Show connect button if not connected via Wagmi (which is connected through Dynamic.xyz)
+    if (!isConnected) {
         return (
             <div className="account-dropdown-container">
                 <button
