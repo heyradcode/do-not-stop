@@ -304,7 +304,7 @@ const AccountDropdown: React.FC = () => {
                                         className="action-btn danger"
                                         onClick={handleDisconnect}
                                     >
-                                        Disconnect Ethereum Wallet
+                                        Disconnect
                                     </button>
                                 )}
 
@@ -316,7 +316,7 @@ const AccountDropdown: React.FC = () => {
                                             setIsOpen(false);
                                         }}
                                     >
-                                        Disconnect Solana Wallet
+                                        Disconnect
                                     </button>
                                 )}
                             </div>
