@@ -14,11 +14,10 @@ const AccountDropdown: React.FC = () => {
     const { connect, connectors, isPending: isConnecting } = useConnect();
     const { disconnect } = useDisconnect();
     const { publicKey: solanaPublicKey, connected: solanaConnected, disconnect: solanaDisconnect } = useWallet();
-    const { setShowAuthFlow, isAuthenticated: isDynamicAuthenticated } = useDynamicContext();
+    const { setShowAuthFlow, user } = useDynamicContext();
     const [isOpen, setIsOpen] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
-    const [showWalletOptions, setShowWalletOptions] = useState(false);
-    // tokenStatus maps tokenAddress -> { fetched: boolean; balance?: bigint | number }
+
     const [tokenStatus, setTokenStatus] = useState<Record<string, { fetched: boolean; balance?: bigint | number }>>({});
     const [isTokensLoading, setIsTokensLoading] = useState(false);
     const dropdownRef = useRef<any>(null);
@@ -177,9 +176,10 @@ const AccountDropdown: React.FC = () => {
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
     };
 
+    console.log({ user })
 
     // Show connect button if not authenticated via Dynamic.xyz
-    if (!isDynamicAuthenticated) {
+    if (!user) {
         return (
             <div className="account-dropdown-container">
                 <button
