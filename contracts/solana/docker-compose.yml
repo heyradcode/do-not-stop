@@ -1,4 +1,21 @@
 services:
+  # Ngrok tunnel for exposing local RPC
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: solana-ngrok
+    command:
+      - "http"
+      - "solana-dev:8899"
+      - "--log=stdout"
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    depends_on:
+      - solana-dev
+    networks:
+      - solana-network
+    ports:
+      - "4040:4040" # Ngrok web interface
+
   # Solana development environment using pre-built image
   solana-dev:
     image: tchambard/solana-test-validator:latest
