@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAccount, useConnect, useDisconnect, usePublicClient } from 'wagmi';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
+import { useDynamicContext, useIsLoggedIn } from '@dynamic-labs/sdk-react-core';
 import { useAuth } from '../../contexts';
 import { getPopularTokens } from '../../constants/tokens';
 import { EthereumNetworkSwitcher, SolanaNetworkSwitcher } from './NetworkSwitcher';
@@ -15,6 +15,7 @@ const AccountDropdown: React.FC = () => {
     const { disconnect } = useDisconnect();
     const { publicKey: solanaPublicKey, connected: solanaConnected, disconnect: solanaDisconnect } = useWallet();
     const { setShowAuthFlow, user } = useDynamicContext();
+    const isDynamicLoggedIn = useIsLoggedIn();
     const [isOpen, setIsOpen] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
 
@@ -176,10 +177,8 @@ const AccountDropdown: React.FC = () => {
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
     };
 
-    console.log({ user })
-
     // Show connect button if not authenticated via Dynamic.xyz
-    if (!user) {
+    if (!isDynamicLoggedIn) {
         return (
             <div className="account-dropdown-container">
                 <button
