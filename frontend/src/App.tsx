@@ -10,6 +10,7 @@ import { injected } from 'wagmi/connectors';
 
 import Main from './components/layout/Main';
 import { AuthProvider, SolanaWalletProvider } from './contexts';
+import { DynamicProvider } from './contexts/dynamic';
 import { CHAINS } from './constants/chains';
 import './App.css';
 
@@ -48,15 +49,17 @@ const queryClient = new QueryClient({
 
 const App: React.FC = () => {
   return (
-    <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <SolanaWalletProvider network="Solana Local">
-          <AuthProvider>
-            <Main />
-          </AuthProvider>
-        </SolanaWalletProvider>
-      </QueryClientProvider>
-    </WagmiProvider>
+    <DynamicProvider>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <SolanaWalletProvider network="Solana Local">
+            <AuthProvider>
+              <Main />
+            </AuthProvider>
+          </SolanaWalletProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
+    </DynamicProvider>
   );
 };
 

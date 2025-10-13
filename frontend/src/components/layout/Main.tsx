@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { useAuth } from '../../contexts';
+import { useDynamicContext } from '../../contexts/dynamic';
 
 import AccountDropdown from '../wallet/AccountDropdown';
 import SolanaWalletTrigger from '../wallet/SolanaWalletTrigger';
@@ -10,6 +11,7 @@ import './Main.css';
 
 const Main: React.FC = () => {
   const { isAuthenticated } = useAuth();
+  const { isLoggedIn } = useDynamicContext();
 
   return (
     <div className="main-container">
@@ -20,8 +22,8 @@ const Main: React.FC = () => {
         </div>
       </div>
 
-      <div className={`main-content ${isAuthenticated ? 'authenticated' : ''}`}>
-        {isAuthenticated ? (
+      <div className={`main-content ${isAuthenticated || isLoggedIn ? 'authenticated' : ''}`}>
+        {isAuthenticated || isLoggedIn ? (
           <>
             <ZombieGallery />
             <ZombieInteractions />

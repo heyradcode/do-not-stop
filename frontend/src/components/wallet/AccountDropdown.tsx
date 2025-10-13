@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAccount, useConnect, useDisconnect, usePublicClient } from 'wagmi';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { useAuth } from '../../contexts';
 import { getPopularTokens } from '../../constants/tokens';
 import { EthereumNetworkSwitcher, SolanaNetworkSwitcher } from './NetworkSwitcher';
@@ -13,6 +14,7 @@ const AccountDropdown: React.FC = () => {
     const { connect, connectors, isPending: isConnecting } = useConnect();
     const { disconnect } = useDisconnect();
     const { publicKey: solanaPublicKey, connected: solanaConnected, disconnect: solanaDisconnect } = useWallet();
+    const { setShowAuthFlow, isAuthenticated: isDynamicAuthenticated } = useDynamicContext();
     const [isOpen, setIsOpen] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
     const [showWalletOptions, setShowWalletOptions] = useState(false);
@@ -176,58 +178,13 @@ const AccountDropdown: React.FC = () => {
     };
 
 
-    // Show wallet options if neither EVM nor Solana is connected
-    if ((!isConnected || !address) && (!solanaConnected || !solanaPublicKey)) {
-        if (showWalletOptions) {
-            return (
-                <div className="account-dropdown-container">
-                    <div className="wallet-options">
-                        <h3>Choose Blockchain</h3>
-                        <div className="wallet-options-grid">
-                            <button
-                                className="wallet-option-btn evm"
-                                onClick={handleConnect}
-                                disabled={isConnecting}
-                            >
-                                <div className="wallet-icon">🔗</div>
-                                <div className="wallet-info">
-                                    <div className="wallet-name">Ethereum & EVM Chains</div>
-                                    <div className="wallet-description">Ethereum, Polygon, BSC, Arbitrum, etc.</div>
-                                </div>
-                                {isConnecting && <div className="loading-spinner"></div>}
-                            </button>
-
-                            <button
-                                className="wallet-option-btn solana"
-                                onClick={() => {
-                                    // Trigger Solana wallet connection
-                                    const event = new CustomEvent('solana-connect');
-                                    window.dispatchEvent(event);
-                                }}
-                            >
-                                <div className="wallet-icon">☀️</div>
-                                <div className="wallet-info">
-                                    <div className="wallet-name">Solana</div>
-                                    <div className="wallet-description">Solana blockchain</div>
-                                </div>
-                            </button>
-                        </div>
-                        <button
-                            className="back-btn"
-                            onClick={() => setShowWalletOptions(false)}
-                        >
-                            ← Back
-                        </button>
-                    </div>
-                </div>
-            );
-        }
-
+    // Show connect button if not authenticated via Dynamic.xyz
+    if (!isDynamicAuthenticated) {
         return (
             <div className="account-dropdown-container">
                 <button
                     className="connect-wallet-btn"
-                    onClick={() => setShowWalletOptions(true)}
+                    onClick={() => setShowAuthFlow(true)}
                 >
                     Connect Wallet
                 </button>
