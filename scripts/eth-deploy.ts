@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env tsx
 
 import { execSync } from 'child_process';
 import { setTimeout } from 'timers/promises';
@@ -16,11 +16,11 @@ try {
     // Extract contract address and inject into frontend
     await injectContractAddress();
 } catch (error) {
-    console.error('❌ Contract deployment failed:', error.message);
+    console.error('❌ Contract deployment failed:', error instanceof Error ? error.message : 'Unknown error');
     process.exit(1);
 }
 
-async function injectContractAddress() {
+async function injectContractAddress(): Promise<void> {
     try {
         // Read deployed addresses
         const deployedAddressesPath = join(process.cwd(), 'contracts', 'ethereum', 'ignition', 'deployments', 'chain-31337', 'deployed_addresses.json');
@@ -73,6 +73,6 @@ async function injectContractAddress() {
         console.log(`🔗 Frontend will use contract: ${contractAddress}`);
 
     } catch (error) {
-        console.error('❌ Failed to inject contract address:', error.message);
+        console.error('❌ Failed to inject contract address:', error instanceof Error ? error.message : 'Unknown error');
     }
 }
