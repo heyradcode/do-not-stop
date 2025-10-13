@@ -2,6 +2,7 @@ import React from 'react';
 import { DynamicContextProvider } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
 import { SolanaWalletConnectors } from '@dynamic-labs/solana';
+import { DynamicWagmiConnector } from '@dynamic-labs/wagmi-connector';
 import { CHAINS, SOLANA_NETWORKS } from '../../constants/chains';
 
 interface DynamicProviderProps {
@@ -60,7 +61,9 @@ export const DynamicProvider: React.FC<DynamicProviderProps> = ({ children }) =>
                 initialAuthenticationMode: 'connect-only'
             }}
         >
-            {children}
+            <DynamicWagmiConnector>
+                {children}
+            </DynamicWagmiConnector>
         </DynamicContextProvider>
     );
 };

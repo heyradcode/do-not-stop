@@ -49,17 +49,17 @@ const queryClient = new QueryClient({
 
 const App: React.FC = () => {
   return (
-    <DynamicProvider>
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <DynamicProvider>
           <SolanaWalletProvider network="Solana Local">
             <AuthProvider>
               <Main />
             </AuthProvider>
           </SolanaWalletProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
-    </DynamicProvider>
+        </DynamicProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 };
 
