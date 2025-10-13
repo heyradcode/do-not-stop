@@ -8,48 +8,77 @@
     border-radius: 6px;
     font-size: 14px;
     min-height: 40px;
-}
 
-.balance-info {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-}
+    .balance-info {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+    }
 
-.balance-amount {
-    font-weight: 600;
-    color: #333;
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    line-height: 1;
-}
+    .balance-amount {
+        font-weight: 600;
+        color: #333;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1;
+    }
 
-.balance-symbol {
-    font-weight: 500;
-    color: #666;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    line-height: 1;
-    margin-top: 1px;
-    /* Slight adjustment to align with the number */
-}
+    .balance-symbol {
+        font-weight: 500;
+        color: #666;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        line-height: 1;
+        margin-top: 1px;
+        /* Slight adjustment to align with the number */
+    }
 
-.balance-loading {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: #666;
-    font-size: 12px;
-}
+    .balance-loading {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #666;
+        font-size: 12px;
+        height: 20px;
+        line-height: 1;
 
-.loading-spinner {
-    width: 12px;
-    height: 12px;
-    border: 2px solid #e9ecef;
-    border-top: 2px solid #007bff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+        .loading-spinner {
+            width: 6px !important;
+            height: 6px !important;
+            border: 1px solid #e9ecef !important;
+            border-top: 1px solid #007bff !important;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            flex-shrink: 0;
+            align-self: center;
+            margin: 0;
+        }
+    }
+
+    .balance-error {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #dc3545;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-height: 36px;
+
+        .balance-amount {
+            font-size: 13px;
+        }
+
+        .balance-symbol {
+            font-size: 11px;
+        }
+    }
 }
 
 @keyframes spin {
@@ -59,31 +88,5 @@
 
     100% {
         transform: rotate(360deg);
-    }
-}
-
-.balance-error {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #dc3545;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-/* Responsive */
-@media (max-width: 480px) {
-    .native-balance {
-        padding: 6px 10px;
-        font-size: 12px;
-        min-height: 36px;
-    }
-
-    .balance-amount {
-        font-size: 13px;
-    }
-
-    .balance-symbol {
-        font-size: 11px;
     }
 }
