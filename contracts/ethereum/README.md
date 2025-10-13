@@ -34,7 +34,7 @@ From the project root:
 ```bash
 # Install all dependencies and start everything
 pnpm install
-pnpm dev:full
+pnpm dev
 ```
 
 ### Manual Setup
@@ -51,8 +51,8 @@ pnpm test
 # Start local network
 pnpm node
 
-# Deploy to local network
-pnpm deploy:local
+# Deploy to local network (from root)
+pnpm dev
 ```
 
 ## 📋 Available Commands
@@ -62,10 +62,7 @@ pnpm deploy:local
 | `pnpm compile` | Compile Solidity contracts |
 | `pnpm test` | Run contract tests |
 | `pnpm node` | Start Hardhat local network |
-| `pnpm deploy:local` | Deploy to local network |
-| `pnpm deploy:sepolia` | Deploy to Sepolia testnet |
-| `pnpm deploy:status` | Check deployment status |
-| `pnpm deploy:visualize` | Visualize deployment plan |
+| `pnpm clean` | Clean build artifacts |
 
 ## 🧟‍♂️ CryptoZombies Contract
 
@@ -95,13 +92,7 @@ The main contract implements a zombie game with the following features:
 - **Network**: Hardhat Local
 - **RPC URL**: http://localhost:8545
 - **Chain ID**: 31337
-- **Deploy Command**: `pnpm deploy:local`
-
-### Testnet
-- **Network**: Sepolia
-- **RPC URL**: Set in `.env` file
-- **Chain ID**: 11155111
-- **Deploy Command**: `pnpm deploy:sepolia`
+- **Deploy Command**: `pnpm dev` (from root)
 
 ## 🔧 Configuration
 
@@ -112,8 +103,9 @@ The main contract implements a zombie game with the following features:
 - **Plugins**: Hardhat Toolbox with Viem
 
 ### Environment Variables
-Create `.env` file in the `contracts/` directory:
+Create `.env` file in the `contracts/ethereum/` directory:
 ```bash
+# Optional: For testnet deployment
 SEPOLIA_URL=https://sepolia.infura.io/v3/YOUR_PROJECT_ID
 PRIVATE_KEY=your_private_key_here
 ```
@@ -135,27 +127,19 @@ npx hardhat test test/CryptoZombies.test.ts
 
 ### Local Network
 ```bash
-# Start local network
+# Start everything including deployment (from root)
+pnpm dev
+
+# Or manually:
 pnpm node
-
-# Deploy contracts
-pnpm deploy:local
-```
-
-### Sepolia Testnet
-```bash
-# Deploy to Sepolia
-pnpm deploy:sepolia
-
-# Check deployment status
-pnpm deploy:status
+# Then run deployment script from root
 ```
 
 ## 🔍 Contract Addresses
 
 After deployment, contract addresses are stored in:
 - `ignition/deployments/chain-31337/deployed_addresses.json` (local)
-- `ignition/deployments/chain-11155111/deployed_addresses.json` (sepolia)
+- Contract address is automatically injected into `frontend/.env.local`
 
 ## 📚 Learn More
 

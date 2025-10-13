@@ -38,7 +38,7 @@ From the project root:
 ```bash
 # Install all dependencies and start everything
 pnpm install
-pnpm dev:full
+pnpm dev
 ```
 
 ### Manual Setup
@@ -71,10 +71,10 @@ The server will run on `http://localhost:3001`
 ### From Project Root
 ```bash
 # Start backend only
-pnpm dev:backend
+pnpm dev:be
 
 # Or start everything
-pnpm dev:full
+pnpm dev
 ```
 
 ## Environment Variables

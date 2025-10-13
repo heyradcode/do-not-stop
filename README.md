@@ -39,15 +39,14 @@ do-not-stop/
 | Command | What it does |
 |---------|-------------|
 | `pnpm dev` | Start everything (Ethereum + Solana + Backend + Frontend) |
-| `pnpm dev:no-deploy` | Start everything except contract deployment |
-| `pnpm dev:frontend` | Frontend only |
-| `pnpm dev:backend` | Backend only |
-| `pnpm dev:contracts` | Ethereum contracts only |
-| `pnpm dev:solana` | Solana validator with logs |
-| `pnpm solana:start` | Start Solana validator (detached, quiet) |
-| `pnpm solana:stop` | Stop Solana validator |
-| `pnpm solana:logs` | View Solana logs |
+| `pnpm dev:fe` | Frontend only |
+| `pnpm dev:be` | Backend only |
+| `pnpm eth:node` | Ethereum local node only |
+| `pnpm solana:start` | Start Solana validator (detached) |
+| `pnpm sol:inject-ngrok` | Inject ngrok URL for Solana |
 | `pnpm build` | Build everything |
+| `pnpm clean` | Clean all build artifacts |
+| `pnpm reset` | Clean and rebuild everything |
 
 ## Environment Setup
 

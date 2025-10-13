@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
 console.log('⏳ Waiting for Hardhat node to be ready...');
-await setTimeout(5000); // Wait 5 seconds for Hardhat node to start
+await setTimeout(10000); // Wait 5 seconds for Hardhat node to start
 
 console.log('🚀 Deploying contracts to local network...');
 try {

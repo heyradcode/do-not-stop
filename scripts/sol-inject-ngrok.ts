@@ -22,7 +22,7 @@ interface NgrokResponse {
 async function injectNgrokUrl(): Promise<string | null> {
     try {
         console.log('⏳ Waiting for ngrok to be ready...');
-        await new Promise(resolve => setTimeout(resolve, 15000)); // Wait 15 seconds for ngrok to be ready
+        await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds for ngrok to be ready
 
         console.log('🔍 Fetching ngrok tunnels...');
 
