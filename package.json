@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "install": "pnpm install && pnpm --prefix frontend install && pnpm --prefix backend install && pnpm --prefix contracts/ethereum install",
+    "install:all": "pnpm install && pnpm --prefix frontend install && pnpm --prefix backend install && pnpm --prefix contracts/ethereum install",
     "dev:fe": "pnpm --prefix frontend dev",
     "dev:be": "pnpm --prefix backend dev",
     "eth:node": "pnpm --prefix contracts/ethereum node",
