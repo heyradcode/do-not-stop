@@ -5,24 +5,26 @@
   "type": "module",
   "scripts": {
     "install": "pnpm install && pnpm --prefix frontend install && pnpm --prefix backend install && pnpm --prefix contracts/ethereum install",
-    "dev:frontend": "pnpm --prefix frontend dev",
-    "dev:backend": "pnpm --prefix backend dev",
-    "dev:contracts": "pnpm --prefix contracts/ethereum node",
-    "dev": "concurrently --kill-others-on-fail --names \"HARDHAT,CONTRACTS,BACKEND,FRONTEND,SOLANA\" \"pnpm dev:contracts\" \"node scripts/deploy-with-delay.js\" \"pnpm dev:backend\" \"pnpm dev:frontend \" \"docker-compose -f contracts/solana/docker-compose.yml up -d solana-dev\"",
-    "dev:no-deploy": "concurrently --kill-others-on-fail --names \"HARDHAT,BACKEND,FRONTEND,SOLANA\" \"pnpm dev:contracts\" \"pnpm dev:backend\" \"pnpm dev:frontend \" \"docker-compose -f contracts/solana/docker-compose.yml up -d solana-dev\"",
-    "dev:solana": "docker-compose -f contracts/solana/docker-compose.yml up solana-dev",
+    "dev:fe": "pnpm --prefix frontend dev",
+    "dev:be": "pnpm --prefix backend dev",
+    "eth:node": "pnpm --prefix contracts/ethereum node",
+    "dev": "concurrently --kill-others-on-fail --names \"HH,ETH,BE,FE,SOL\" \"pnpm eth:node\" \"tsx scripts/eth-deploy.ts\" \"pnpm dev:be\" \"pnpm dev:fe \" \"docker-compose -f contracts/solana/docker-compose.yml up -d solana-dev\"",
     "compile": "pnpm --prefix contracts/ethereum compile",
     "test": "pnpm --prefix contracts/ethereum test",
     "deploy:local": "pnpm --prefix contracts/ethereum deploy:local",
     "deploy:sepolia": "pnpm --prefix contracts/ethereum deploy:sepolia",
-    "solana:start": "docker-compose -f contracts/solana/docker-compose.yml up -d solana-dev",
+    "solana:start": "docker-compose -f contracts/solana/docker-compose.yml up -d",
     "solana:stop": "docker-compose -f contracts/solana/docker-compose.yml down",
-    "solana:logs": "docker-compose -f contracts/solana/docker-compose.yml logs -f solana-dev",
+    "solana:logs": "docker-compose -f contracts/solana/docker-compose.yml logs -f",
+    "dev:solana": "pnpm solana:start && sleep 15 && pnpm sol:inject-ngrok && pnpm dev:fe",
+    "sol:inject-ngrok": "tsx scripts/sol-inject-ngrok.ts",
     "build": "pnpm compile && pnpm --prefix backend build && pnpm --prefix frontend build",
     "clean": "pnpm --prefix contracts clean && pnpm --prefix frontend clean && pnpm --prefix backend clean",
     "reset": "pnpm clean && pnpm install"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "tsx": "^4.7.0",
+    "dotenv": "^16.4.5"
   }
 }
