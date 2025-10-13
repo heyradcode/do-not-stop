@@ -10,7 +10,7 @@
     "eth:node": "pnpm --prefix contracts/ethereum node",
     "solana:start": "docker-compose -f contracts/solana/docker-compose.yml up -d",
     "sol:inject-ngrok": "tsx scripts/sol-inject-ngrok.ts",
-    "dev": "concurrently --kill-others-on-fail --names \"HH,ETH,BE,FE,SOL\" \"pnpm eth:node\" \"tsx scripts/eth-deploy.ts\" \"pnpm dev:be\" \"pnpm dev:fe\" \"pnpm solana:start && sleep 15 && pnpm sol:inject-ngrok\"",
+    "dev": "concurrently --kill-others-on-fail --names \"HH,ETH,BE,FE,SOL\" \"pnpm eth:node\" \"tsx scripts/eth-deploy.ts\" \"pnpm dev:be\" \"pnpm dev:fe\" \"pnpm solana:start && pnpm sol:inject-ngrok\"",
     "compile": "pnpm --prefix contracts/ethereum compile",
     "test": "pnpm --prefix contracts/ethereum test",
     "deploy:local": "pnpm --prefix contracts/ethereum deploy:local",

@@ -21,6 +21,9 @@ interface NgrokResponse {
 
 async function injectNgrokUrl(): Promise<string | null> {
     try {
+        console.log('⏳ Waiting for ngrok to be ready...');
+        await new Promise(resolve => setTimeout(resolve, 15000)); // Wait 15 seconds for ngrok to be ready
+
         console.log('🔍 Fetching ngrok tunnels...');
 
         // Fetch ngrok tunnels
@@ -42,7 +45,7 @@ async function injectNgrokUrl(): Promise<string | null> {
             console.log(`🌐 Found ngrok URL: ${ngrokUrl}`);
 
             // Update the .env file using dotenv
-            const envPath = path.join(__dirname, '../frontend/.env.local');
+            const envPath = path.join(process.cwd(), 'frontend/.env.local');
 
             // Read existing .env file and parse it
             let envConfig: Record<string, string> = {};
@@ -73,15 +76,11 @@ async function injectNgrokUrl(): Promise<string | null> {
     }
 }
 
-// Run if called directly
-if (require.main === module) {
-    injectNgrokUrl().then(url => {
-        if (url) {
-            console.log(`🎉 Successfully injected ngrok URL: ${url}`);
-        } else {
-            console.log('💡 Make sure ngrok is running with: pnpm solana:start');
-        }
-    });
-}
-
-export { injectNgrokUrl };
+// Run the script
+injectNgrokUrl().then(url => {
+    if (url) {
+        console.log(`🎉 Successfully injected ngrok URL: ${url}`);
+    } else {
+        console.log('💡 Make sure ngrok is running with: pnpm solana:start');
+    }
+});
