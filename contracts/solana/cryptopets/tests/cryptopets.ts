@@ -1,14 +1,14 @@
 // @ts-nocheck
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { Cryptozombies } from "../target/types/cryptozombies";
+import { Cryptopets } from "../target/types/cryptopets";
 import { expect } from "chai";
 
-describe("cryptozombies", () => {
+describe("cryptopets", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const program = anchor.workspace.cryptozombies as Program<Cryptozombies>;
+  const program = anchor.workspace.cryptopets as Program<Cryptopets>;
 
   it("initializes global state", async () => {
     const [globalState] = anchor.web3.PublicKey.findProgramAddressSync(

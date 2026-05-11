@@ -1,12 +1,9 @@
 use anchor_lang::prelude::*;
 
-use crate::{
-    errors::ErrorCode,
-    state::{GlobalState, PlayerProfile, ZombieAccount},
-};
+use crate::{errors::ErrorCode, state::ZombieAccount};
 
 pub fn handler(
-    ctx: Context<CreateStarterZombie>,
+    ctx: Context<crate::CreateStarterZombie>,
     name: String,
     dna: u64,
     rarity: u8,
@@ -49,33 +46,3 @@ pub fn handler(
 
     Ok(())
 }
-
-#[derive(Accounts)]
-pub struct CreateStarterZombie<'info> {
-    #[account(
-        mut,
-        seeds = [GlobalState::SEED],
-        bump = global_state.bump,
-    )]
-    pub global_state: Account<'info, GlobalState>,
-    #[account(
-        init_if_needed,
-        payer = owner,
-        seeds = [PlayerProfile::SEED, owner.key().as_ref()],
-        bump,
-        space = PlayerProfile::SPACE,
-    )]
-    pub player_profile: Account<'info, PlayerProfile>,
-    #[account(
-        init,
-        payer = owner,
-        seeds = [ZombieAccount::SEED, owner.key().as_ref(), &global_state.next_zombie_id.to_le_bytes()],
-        bump,
-        space = ZombieAccount::SPACE,
-    )]
-    pub zombie: Account<'info, ZombieAccount>,
-    #[account(mut)]
-    pub owner: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-

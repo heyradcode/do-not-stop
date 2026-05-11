@@ -424,7 +424,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cryptozombies"
+name = "cryptopets"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",

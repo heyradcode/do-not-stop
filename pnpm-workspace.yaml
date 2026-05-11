@@ -4,4 +4,4 @@ packages:
   - 'mobile'
   - 'shared'
   - 'contracts/ethereum'
-  - 'contracts/solana/cryptozombies'
+  - 'contracts/solana/cryptopets'

@@ -1,6 +1,6 @@
 {
-    "name": "cryptozombies",
-    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}/contracts/solana/cryptozombies",
+    "name": "cryptopets",
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}/contracts/solana/cryptopets",
   
     "features": {
       "ghcr.io/devcontainers/features/rust:1": {},

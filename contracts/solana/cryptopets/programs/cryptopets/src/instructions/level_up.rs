@@ -1,8 +1,6 @@
-use anchor_lang::{prelude::*, solana_program::system_program};
+use anchor_lang::prelude::*;
 
-use crate::state::{GlobalState, ZombieAccount};
-
-pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
+pub fn handler(ctx: Context<crate::LevelUp>) -> Result<()> {
     let global_state = &mut ctx.accounts.global_state;
     let zombie = &mut ctx.accounts.zombie;
 
@@ -33,26 +31,6 @@ pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
     Ok(())
 }
 
-#[derive(Accounts)]
-pub struct LevelUp<'info> {
-    #[account(
-        mut,
-        seeds = [GlobalState::SEED],
-        bump = global_state.bump,
-    )]
-    pub global_state: Account<'info, GlobalState>,
-    #[account(
-        mut,
-        seeds = [ZombieAccount::SEED, owner.key().as_ref(), &zombie.id.to_le_bytes()],
-        bump = zombie.bump,
-    )]
-    pub zombie: Account<'info, ZombieAccount>,
-    #[account(mut)]
-    pub owner: Signer<'info>,
-    #[account(address = system_program::ID)]
-    pub system_program: Program<'info, System>,
-}
-
 #[error_code]
 pub enum LevelUpError {
     #[msg("Zombie fee invalid")]
@@ -60,4 +38,3 @@ pub enum LevelUpError {
     #[msg("Not authorized to level this zombie")]
     Unauthorized,
 }
-

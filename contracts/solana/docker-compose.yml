@@ -26,7 +26,7 @@ services:
       - "8900:8900" # WebSocket port
       - "9900:9900" # Metrics port
     volumes:
-      - ./cryptozombies:/home/ubuntu/cryptozombies
+      - ./cryptopets:/home/ubuntu/cryptopets
       - .pnpm-store:/home/ubuntu/.pnpm-store
       - solana-cache:/root/.cache/solana
     working_dir: /home/ubuntu

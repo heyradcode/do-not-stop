@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-cryptozombies = "DVqmS2WV2epdEncuweNryuqyhbzLXtEQhnxDgQt7ccC6"
+cryptopets = "3f27FrpJ9yYTWqWbqq83x3XTSmQHXwJfLKzNjfNj2P6g"
 
 [programs.devnet]
-cryptozombies = "DVqmS2WV2epdEncuweNryuqyhbzLXtEQhnxDgQt7ccC6"
+cryptopets = "3f27FrpJ9yYTWqWbqq83x3XTSmQHXwJfLKzNjfNj2P6g"
 
 [provider]
 cluster = "devnet"
