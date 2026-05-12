@@ -1,11 +1,13 @@
 use anchor_lang::prelude::*;
 
-pub fn handler(ctx: Context<crate::LevelUp>) -> Result<()> {
+use crate::{errors::ErrorCode, state::GlobalState, state::PetAccount};
+
+pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
     let global_state = &mut ctx.accounts.global_state;
     let pet = &mut ctx.accounts.pet;
 
     // enforce pause
-    require!(!global_state.paused, crate::errors::ErrorCode::Paused);
+    require!(!global_state.paused, ErrorCode::Paused);
 
     require_keys_eq!(
         pet.owner,
@@ -43,19 +45,19 @@ pub enum LevelUpError {
 pub struct LevelUp<'info> {
     #[account(
         mut,
-        seeds = [state::GlobalState::SEED],
+        seeds = [  GlobalState::SEED],
         bump = global_state.bump,
     )]
-    pub global_state: Account<'info, state::GlobalState>,
+    pub global_state: Account<'info, GlobalState>,
     #[account(
         mut,
-        seeds = [state::PetAccount::SEED, owner.key().as_ref(), &pet.id.to_le_bytes()],
+        seeds = [
+            PetAccount::SEED, owner.key().as_ref(), &pet.id.to_le_bytes()],
         bump = pet.bump,
     )]
-    pub pet: Account<'info, state::PetAccount>,
+    pub pet: Account<'info, PetAccount>,
     #[account(mut)]
     pub owner: Signer<'info>,
     #[account(address = system_program::ID)]
     pub system_program: Program<'info, System>,
 }
-

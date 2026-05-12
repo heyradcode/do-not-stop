@@ -1,9 +1,11 @@
+use crate::{errors::ErrorCode, state::GlobalState, state::PetAccount};
 use anchor_lang::prelude::*;
 
-use crate::{errors::ErrorCode, state::PetAccount};
-
-pub fn handler(ctx: Context<crate::RenamePet>, name: String) -> Result<()> {
-    require!(name.len() <= PetAccount::MAX_NAME_LEN, ErrorCode::NameTooLong);
+pub fn handler(ctx: Context<RenamePet>, name: String) -> Result<()> {
+    require!(
+        name.len() <= PetAccount::MAX_NAME_LEN,
+        ErrorCode::NameTooLong
+    );
 
     let pet = &mut ctx.accounts.pet;
 
@@ -17,16 +19,16 @@ pub fn handler(ctx: Context<crate::RenamePet>, name: String) -> Result<()> {
 #[derive(Accounts)]
 pub struct RenamePet<'info> {
     #[account(
-        seeds = [state::GlobalState::SEED],
+        seeds = [GlobalState::SEED],
         bump = global_state.bump,
     )]
-    pub global_state: Account<'info, state::GlobalState>,
+    pub global_state: Account<'info, GlobalState>,
     #[account(
         mut,
-        seeds = [state::PetAccount::SEED, owner.key().as_ref(), &pet.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, owner.key().as_ref(), &pet.id.to_le_bytes()],
         bump = pet.bump,
     )]
-    pub pet: Account<'info, state::PetAccount>,
+    pub pet: Account<'info, PetAccount>,
     #[account(mut)]
     pub owner: Signer<'info>,
 }

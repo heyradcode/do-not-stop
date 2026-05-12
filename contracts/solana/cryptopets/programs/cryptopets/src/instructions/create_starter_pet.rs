@@ -1,13 +1,8 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::ErrorCode, state::PetAccount};
+use crate::{errors::ErrorCode, state::GlobalState, state::PetAccount, state::PlayerProfile};
 
-pub fn handler(
-    ctx: Context<crate::CreateStarterPet>,
-    name: String,
-    dna: u64,
-    rarity: u8,
-) -> Result<()> {
+pub fn handler(ctx: Context<CreateStarterPet>, name: String, dna: u64, rarity: u8) -> Result<()> {
     require!(
         name.len() <= PetAccount::MAX_NAME_LEN,
         ErrorCode::NameTooLong
@@ -31,7 +26,7 @@ pub fn handler(
     player_profile.bump = ctx.bumps.player_profile;
 
     let pet_id = global_state.next_pet_id;
-    global_state.next_zpet_id = global_state.next_pet_id.checked_add(1).unwrap();
+    global_state.next_pet_id = global_state.next_pet_id.checked_add(1).unwrap();
 
     pet.id = pet_id;
     pet.owner = ctx.accounts.owner.key();
@@ -45,4 +40,33 @@ pub fn handler(
     pet.set_name(&name)?;
 
     Ok(())
+}
+
+#[derive(Accounts)]
+pub struct CreateStarterPet<'info> {
+    #[account(
+        mut,
+        seeds = [GlobalState::SEED],
+        bump = global_state.bump,
+    )]
+    pub global_state: Account<'info, GlobalState>,
+    #[account(
+        init_if_needed,
+        payer = owner,
+        seeds = [PlayerProfile::SEED, owner.key().as_ref()],
+        bump,
+        space = PlayerProfile::SPACE,
+    )]
+    pub player_profile: Account<'info, PlayerProfile>,
+    #[account(
+        init,
+        payer = owner,
+        seeds = [PetAccount::SEED, owner.key().as_ref(), &global_state.next_pet_id.to_le_bytes()],
+        bump,
+        space = PetAccount::SPACE,
+    )]
+    pub pet: Account<'info, PetAccount>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
