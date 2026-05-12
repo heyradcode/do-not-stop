@@ -6,7 +6,7 @@ use crate::errors::ErrorCode;
 pub struct GlobalState {
     pub admin: Pubkey,
     pub level_up_fee_lamports: u64,
-    pub next_zombie_id: u32,
+    pub next_pet_id: u32,
     pub paused: bool,
     pub bump: u8,
     pub _reserved: [u8; 2],
@@ -17,7 +17,7 @@ impl GlobalState {
     pub const SPACE: usize = 8 /* discriminator */
         + 32 /* admin */
         + 8 /* level_up_fee */
-        + 4 /* next_zombie_id */
+        + 4 /* next_pet_id */
         + 1 /* paused */
         + 1 /* bump */
         + 2; /* reserved */
@@ -26,7 +26,7 @@ impl GlobalState {
 #[account]
 pub struct PlayerProfile {
     pub owner: Pubkey,
-    pub zombie_count: u16,
+    pub pet_count: u16,
     pub starter_created: bool,
     pub bump: u8,
     pub _reserved: [u8; 4],
@@ -36,14 +36,14 @@ impl PlayerProfile {
     pub const SEED: &'static [u8] = b"player-profile";
     pub const SPACE: usize = 8 /* discriminator */
         + 32 /* owner */
-        + 2 /* zombie_count */
+        + 2 /* pet_count */
         + 1 /* starter_created */
         + 1 /* bump */
         + 4; /* reserved */
 }
 
 #[account]
-pub struct ZombieAccount {
+pub struct PetAccount {
     pub id: u32,
     pub owner: Pubkey,
     pub dna: u64,
@@ -53,12 +53,12 @@ pub struct ZombieAccount {
     pub win_count: u16,
     pub loss_count: u16,
     pub bump: u8,
-    pub name: [u8; ZombieAccount::MAX_NAME_LEN],
+    pub name: [u8; PetAccount::MAX_NAME_LEN],
     pub name_len: u8,
 }
 
-impl ZombieAccount {
-    pub const SEED: &'static [u8] = b"zombie";
+impl PetAccount {
+    pub const SEED: &'static [u8] = b"pet";
     pub const MAX_NAME_LEN: usize = 32;
     pub const SPACE: usize = 8 /* discriminator */
         + 4 /* id */
