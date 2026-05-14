@@ -1,4 +1,4 @@
-import { useAnchorWallet } from '@solana/wallet-adapter-react';
+import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
 import { usePetActions } from './usePetActions';
 import { useGlobalState } from './useGlobalState';
 import { usePets } from './usePets';
@@ -7,11 +7,11 @@ import { useProgram } from './useProgram';
 
 /** Composes Solana program hooks for screens that need the full surface area. */
 export function useSolana() {
-    const wallet = useAnchorWallet();
+    const { signingWallet } = useSolanaAnchor();
     const program = useProgram();
     const globalState = useGlobalState();
     const playerProfile = usePlayerProfile();
-    const pets = usePets(wallet?.publicKey ?? null);
+    const pets = usePets(signingWallet?.publicKey ?? null);
     const actions = usePetActions();
 
     return {

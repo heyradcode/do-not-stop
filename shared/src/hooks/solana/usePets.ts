@@ -1,9 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { PublicKey } from '@solana/web3.js';
+import { PET_ACCOUNT_OWNER_MEMCMP_OFFSET } from '../../utils/solana/constants';
 import { useProgram } from './useProgram';
-
-/** 8-byte discriminator + 4-byte `id` field before `owner` in `PetAccount`. */
-const PET_OWNER_MEMCMP_OFFSET = 12;
 
 export type PetRow = {
     publicKey: PublicKey;
@@ -25,7 +23,7 @@ export function usePets(owner: PublicKey | null) {
             return ns.all([
                 {
                     memcmp: {
-                        offset: PET_OWNER_MEMCMP_OFFSET,
+                        offset: PET_ACCOUNT_OWNER_MEMCMP_OFFSET,
                         bytes: owner!.toBase58(),
                     },
                 },

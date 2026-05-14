@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { useState, useEffect } from 'react';
-import { getStorageAdapter } from '../api';
-import { useApiClient } from '../contexts/ApiClientContext';
+import { getStorageAdapter } from '../../api';
+import { useApiClient } from '../../contexts/ApiClientContext';
 
 /**
  * Gets the user profile from the backend (requires {@link ApiClientProvider}).

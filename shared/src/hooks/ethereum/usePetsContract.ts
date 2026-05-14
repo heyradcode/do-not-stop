@@ -89,7 +89,7 @@ export const usePetsContract = ({
             args: [petId],
             value: 1000000000000000n,
             gas: 200000n,
-        });
+        } as unknown as Parameters<typeof writeContract>[0]);
     };
 
     const changeName = (petId: bigint, newName: string) => {

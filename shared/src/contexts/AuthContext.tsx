@@ -6,8 +6,8 @@ import {
     type ReactNode,
 } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
-import { useNonce } from '../hooks/useNonce';
-import { useVerifySignature } from '../hooks/useVerifySignature';
+import { useNonce } from '../hooks/ethereum';
+import { useVerifySignature } from '../hooks/ethereum';
 import { getStorageAdapter } from '../api';
 
 interface User {

@@ -1,32 +1,24 @@
-import { useConnection, useAnchorWallet, type AnchorWallet } from '@solana/wallet-adapter-react';
 import { Keypair } from '@solana/web3.js';
 import type { Idl } from '@coral-xyz/anchor';
-import { AnchorProvider, BN, Program } from '@coral-xyz/anchor';
+import { AnchorProvider, Program } from '@coral-xyz/anchor';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { getCryptopetsProgramId } from './cryptopetsConfig';
+import type { SolanaSigningWallet } from '../../contexts/SolanaAnchorContext';
+import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
+import { toU32 } from '../../utils/solana/numbers';
 
-const READ_ONLY_WALLET: AnchorWallet = {
+const READ_ONLY_WALLET: SolanaSigningWallet = {
     publicKey: Keypair.generate().publicKey,
     signTransaction: async (tx) => tx,
     signAllTransactions: async (txs) => txs,
 };
 
-function toU32(n: unknown): number {
-    if (BN.isBN(n)) {
-        return (n as BN).toNumber();
-    }
-    return Number(n);
-}
-
 export type SolanaProgram = Program<Idl>;
 
 export function useProgram() {
-    const { connection } = useConnection();
-    const wallet = useAnchorWallet();
-    const programId = useMemo(() => getCryptopetsProgramId(), []);
+    const { connection, programId, signingWallet } = useSolanaAnchor();
 
-    const providerWallet = wallet ?? READ_ONLY_WALLET;
+    const providerWallet = signingWallet ?? READ_ONLY_WALLET;
 
     const provider = useMemo(
         () =>
@@ -43,12 +35,12 @@ export function useProgram() {
             'program',
             connection.rpcEndpoint,
             programId?.toBase58() ?? 'none',
-            wallet?.publicKey?.toBase58() ?? 'read-only',
+            signingWallet?.publicKey?.toBase58() ?? 'read-only',
         ],
         enabled: programId !== null,
         queryFn: async (): Promise<SolanaProgram> => {
             if (!programId) {
-                throw new Error('VITE_CRYPTOPETS_PROGRAM_ID is not set');
+                throw new Error('Solana program id is not configured');
             }
             const idl = await Program.fetchIdl(programId, provider);
             if (!idl) {

@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { useAnchorWallet } from '@solana/wallet-adapter-react';
+import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
+import { playerProfilePda } from '../../utils/solana/pdas';
 import { useProgram } from './useProgram';
-import { playerProfilePda } from './pdas';
 
 export function usePlayerProfile() {
-    const wallet = useAnchorWallet();
-    const owner = wallet?.publicKey ?? null;
+    const { signingWallet } = useSolanaAnchor();
+    const owner = signingWallet?.publicKey ?? null;
     const { program, programId, isReady } = useProgram();
 
     const profilePk =
