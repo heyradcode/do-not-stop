@@ -1,15 +1,14 @@
+use crate::state::GlobalState;
 use anchor_lang::prelude::*;
 
-use crate::state::GlobalState;
-
-pub fn handler(ctx: Context<Unpause>) -> Result<()> {
+pub fn handler(ctx: Context<Pause>) -> Result<()> {
     let global_state = &mut ctx.accounts.global_state;
-    global_state.paused = false;
+    global_state.paused = true;
     Ok(())
 }
 
 #[derive(Accounts)]
-pub struct Unpause<'info> {
+pub struct Pause<'info> {
     #[account(mut, seeds = [GlobalState::SEED], bump = global_state.bump, has_one = admin)]
     pub global_state: Account<'info, GlobalState>,
     pub admin: Signer<'info>,
