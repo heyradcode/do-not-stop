@@ -17,5 +17,7 @@
         "wagmi": "^2.0.0"
     },
     "devDependencies": {},
-    "dependencies": {}
+    "dependencies": {
+        "buffer": "^6.0.3"
+    }
 }

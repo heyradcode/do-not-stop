@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { PublicKey } from '@solana/web3.js';
 
 const GLOBAL_STATE_SEED = Buffer.from('global-state');
