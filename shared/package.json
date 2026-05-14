@@ -10,6 +10,7 @@
     "peerDependencies": {
         "@tanstack/react-query": "^5.90.5",
         "axios": "^1.0.0",
+        "viem": "^2.0.0",
         "wagmi": "^2.0.0"
     },
     "devDependencies": {},

@@ -1,3 +1,4 @@
+import type { Abi } from 'viem';
 import { useAccount, useWriteContract, useReadContract, useReadContracts } from 'wagmi';
 
 export interface Pet {
@@ -12,7 +13,7 @@ export interface Pet {
 
 type UsePetsContractParams = {
     contractAddress?: `0x${string}`;
-    abi: readonly unknown[];
+    abi: Abi;
     enabled?: boolean;
 };
 
@@ -40,7 +41,7 @@ export const usePetsContract = ({
     const petReadContracts =
         ((petIdsData as bigint[] | undefined)?.map((petId: bigint) => ({
             address: safeAddress,
-            abi: abi as never,
+            abi,
             functionName: 'getById' as const,
             args: [petId],
         }))) ?? [];
