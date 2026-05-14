@@ -8,4 +8,8 @@ declare module '@env' {
      * If unset: Android emulator uses `10.0.2.2`; iOS simulator uses `127.0.0.1`.
      */
     export const HARDHAT_RPC_URL: string | undefined;
+    /** Same program id as frontend `VITE_CRYPTOPETS_PROGRAM_ID` (Anchor devnet deploy). */
+    export const CRYPTOPETS_PROGRAM_ID: string | undefined;
+    /** Optional custom RPC; default is public Solana devnet if unset. */
+    export const CRYPTOPETS_SOLANA_RPC: string | undefined;
 }
