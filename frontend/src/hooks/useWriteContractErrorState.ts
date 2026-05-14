@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { parseContractError } from '../utils/errorParser';
+import { parseContractError } from '@shared/core';
 
 /**
  * Mirrors wagmi `writeError` into local UI state for transaction panels.

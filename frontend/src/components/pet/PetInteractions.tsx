@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { usePetsContract } from '@shared/core';
+import { usePetsContract, getLifePercent, getReadyPets } from '@shared/core';
 import { petsContractParams } from '../../petsContractParams';
-import { getLifePercent } from '../../utils/petCard';
 import type { InteractionAction } from '../../constants/interactionRoutes';
 import {
     BATTLE_PATH,
@@ -15,7 +14,6 @@ import BattlePanel from './interactions/BattlePanel';
 import BreedPanel from './interactions/BreedPanel';
 import LevelUpPanel from './interactions/LevelUpPanel';
 import RenamePanel from './interactions/RenamePanel';
-import { getReadyPets } from '../../utils/readyPets';
 import StateCard from './interactions/StateCard';
 import './PetInteractions.css';
 

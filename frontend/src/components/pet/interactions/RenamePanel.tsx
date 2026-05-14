@@ -1,10 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '../../ui/TransactionStatus';
-import { usePetsContract } from '@shared/core';
+import { usePetsContract, getReadyPets } from '@shared/core';
 import { petsContractParams } from '../../../petsContractParams';
 import { DASHBOARD_HOME } from '../../../constants/interactionRoutes';
-import { getReadyPets } from '../../../utils/readyPets';
 import { useWriteContractErrorState } from '../../../hooks/useWriteContractErrorState';
 
 export type RenamePanelProps = {

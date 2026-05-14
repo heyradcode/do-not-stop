@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import TransactionStatus from '../ui/TransactionStatus';
 import { usePetsContract } from '@shared/core';
 import { petsContractParams } from '../../petsContractParams';
-import { parseContractError } from '../../utils/errorParser';
+import { parseContractError } from '@shared/core';
 import './PetCreator.css';
 
 const PetCreator: React.FC = () => {

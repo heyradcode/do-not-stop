@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { usePetsContract } from '@shared/core';
-import { petsContractParams } from '../../petsContractParams';
 import {
+    usePetsContract,
     getGeneration,
     getPropertyEmoji,
     getXpNumbers,
@@ -10,8 +9,10 @@ import {
     getPetClass,
     getPetElement,
     getPetProperties,
-} from '../../utils/petCard';
-import { getTimeUntilReady, isPetReady } from '../../utils/petReadyTime';
+    getTimeUntilReady,
+    isPetReady,
+} from '@shared/core';
+import { petsContractParams } from '../../petsContractParams';
 import CreatePetModal from './CreatePetModal';
 import PetCollectionLayout from './PetCollectionLayout';
 import SendPetModal from './SendPetModal';
