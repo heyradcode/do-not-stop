@@ -3,12 +3,19 @@ import {
     useContext,
     useState,
     useEffect,
+    useSyncExternalStore,
     type ReactNode,
 } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 import { useNonce } from '../hooks/ethereum';
 import { useVerifySignature } from '../hooks/ethereum';
 import { getStorageAdapter } from '../api';
+import {
+    getSolanaAuthSigner,
+    subscribeSolanaAuth,
+    getSolanaAuthAddressSnapshot,
+} from '../auth/solanaAuthBridge';
+import { normalizeSolanaSignatureToBase58 } from '../utils/solana/signatureAuthCodec';
 
 interface User {
     address: string;
@@ -41,10 +48,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setAuthenticated] = useState(false);
     const [user, setUser] = useState<User | null>(null);
     const [pendingNonce, setPendingNonce] = useState<string | null>(null);
+    const [solanaSigning, setSolanaSigning] = useState(false);
+
+    const solanaAuthAddress = useSyncExternalStore(
+        subscribeSolanaAuth,
+        getSolanaAuthAddressSnapshot,
+        () => null
+    );
 
     const { refetch: getNonce, isLoading: isNonceLoading } = useNonce();
     const {
         mutate: verifySignature,
+        mutateAsync: verifySignatureAsync,
         isPending: isVerifying,
         data: authData,
         error: verifyError,
@@ -58,18 +73,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } = useSignMessage();
 
     useEffect(() => {
-        const isWalletConnected = isConnected && !!address;
+        const evmConnected = isConnected && !!address;
+        const solConnected = Boolean(solanaAuthAddress);
 
-        if (!isWalletConnected) {
+        if (!evmConnected && !solConnected) {
             setAuthenticated(false);
             setUser(null);
             const adapter = getStorageAdapter();
             if (adapter) {
                 adapter.removeToken();
             }
-            return;
         }
-    }, [address, isConnected]);
+    }, [address, isConnected, solanaAuthAddress]);
 
     useEffect(() => {
         if (signature && pendingNonce && address && chainId) {
@@ -114,19 +129,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const signAndLogin = async () => {
-        if (!address) return;
+        const pullNonce = async (): Promise<string> => {
+            const res = await getNonce();
+            if (res.isError) {
+                console.error('Error getting nonce:', res.error);
+                throw res.error;
+            }
+            const body = res.data;
+            if (!body?.nonce) {
+                const err = new Error('Invalid nonce response from server');
+                console.error('Error getting nonce:', res);
+                throw err;
+            }
+            return body.nonce;
+        };
 
+        if (address) {
+            try {
+                const nonce = await pullNonce();
+
+                setPendingNonce(nonce);
+
+                const message = `Sign this message to authenticate: ${nonce}`;
+
+                signMessage({ message });
+            } catch (error) {
+                console.error('Error getting nonce:', error);
+            }
+            return;
+        }
+
+        const solSigner = getSolanaAuthSigner();
+        if (!solSigner) {
+            return;
+        }
+
+        setSolanaSigning(true);
         try {
-            const { data } = await getNonce();
-            const { nonce } = data;
-
-            setPendingNonce(nonce);
-
+            const nonce = await pullNonce();
             const message = `Sign this message to authenticate: ${nonce}`;
+            const bytes = new TextEncoder().encode(message);
+            const sigBytes = await solSigner.signMessage(bytes);
+            const signatureB58 = normalizeSolanaSignatureToBase58(sigBytes);
 
-            signMessage({ message });
+            await verifySignatureAsync({
+                address: solSigner.getAddress(),
+                signature: signatureB58,
+                nonce,
+                chainId: 0,
+            });
         } catch (error) {
-            console.error('Error getting nonce:', error);
+            console.error('Solana sign-in failed:', error);
+        } finally {
+            setSolanaSigning(false);
         }
     };
 
@@ -137,7 +192,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 user,
                 logout,
                 signAndLogin,
-                isSigning,
+                isSigning: isSigning || solanaSigning,
                 isVerifying,
                 isNonceLoading,
             }}

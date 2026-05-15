@@ -313,7 +313,7 @@ const AccountDropdown: React.FC = () => {
                                         fullWidth
                                     >
                                         {isNonceLoading ? 'Getting nonce...' :
-                                            isSigning ? 'Please sign in MetaMask...' :
+                                            isSigning ? 'Please approve the signature in your wallet...' :
                                                 isVerifying ? 'Verifying...' : 'Sign Message & Login'}
                                     </NeonButton>
                                 ) : (
