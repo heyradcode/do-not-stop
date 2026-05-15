@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { globalStatePda } from '../../utils/solana/pdas';
+import { getAccountClient } from '../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
 export function useGlobalState() {
@@ -10,13 +11,6 @@ export function useGlobalState() {
     return useQuery({
         queryKey: ['cryptopets', 'globalState', programId?.toBase58() ?? 'none', globalPk?.toBase58() ?? 'none'],
         enabled: Boolean(isReady && program && globalPk),
-        queryFn: async () => {
-            const acc = program!.account as Record<string, { fetchNullable: (k: unknown) => Promise<unknown> }>;
-            const ns = acc.globalState ?? acc.GlobalState;
-            if (!ns?.fetchNullable) {
-                throw new Error('IDL has no globalState account client');
-            }
-            return ns.fetchNullable(globalPk!);
-        },
+        queryFn: () => getAccountClient(program!, 'globalState').fetchNullable(globalPk!),
     });
 }

@@ -1,2 +1,1 @@
-// Re-export all Solana contexts
-export * from './WalletContext';
+export { SolanaWalletProvider } from './SolanaWalletProvider';

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C E:/Works/aichannode/do-not-stop log --oneline -5)",
+      "Bash(git -C E:/Works/aichannode/do-not-stop show --stat b0f6999)"
+    ]
+  }
+}

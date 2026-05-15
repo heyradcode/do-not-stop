@@ -74,30 +74,22 @@ export function SolanaAuthSigner() {
                 getAddress: () => publicKey.toBase58(),
                 signMessage: (msg) => signMessage(msg),
             });
-            return () => {
-                setSolanaAuthSigner(null);
-            };
+        } else if (dynamicSolanaWallet) {
+            setSolanaAuthSigner(null);
+            void signerFromDynamicWallet(dynamicSolanaWallet)
+                .then((signer) => {
+                    if (!cancelled) {
+                        setSolanaAuthSigner(signer);
+                    }
+                })
+                .catch(() => {
+                    if (!cancelled) {
+                        setSolanaAuthSigner(null);
+                    }
+                });
+        } else {
+            setSolanaAuthSigner(null);
         }
-
-        void (async () => {
-            if (!dynamicSolanaWallet) {
-                if (!cancelled) {
-                    setSolanaAuthSigner(null);
-                }
-                return;
-            }
-            try {
-                const s = await signerFromDynamicWallet(dynamicSolanaWallet);
-                if (cancelled) {
-                    return;
-                }
-                setSolanaAuthSigner(s);
-            } catch {
-                if (!cancelled) {
-                    setSolanaAuthSigner(null);
-                }
-            }
-        })();
 
         return () => {
             cancelled = true;

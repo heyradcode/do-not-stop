@@ -3,6 +3,7 @@ import { BN } from '@coral-xyz/anchor';
 import { SystemProgram } from '@solana/web3.js';
 import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
 import { globalStatePda, petPda, playerProfilePda } from '../../utils/solana/pdas';
+import { getAccountClient } from '../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
 export function usePetActions() {
@@ -12,22 +13,24 @@ export function usePetActions() {
 
     const invalidateProgramQueries = () => queryClient.invalidateQueries({ queryKey: ['cryptopets'] });
 
+    const requireReady = () => {
+        if (!program || !programId || !signingWallet?.publicKey) {
+            throw new Error('Connect a Solana wallet first');
+        }
+        return { program, programId, owner: signingWallet.publicKey };
+    };
+
     const createStarterPet = useMutation({
         mutationFn: async (args: { name: string; dna: bigint | number | string; rarity: number }) => {
-            if (!program || !programId || !signingWallet?.publicKey) {
-                throw new Error('Connect a Solana wallet first');
-            }
+            const { program, programId, owner } = requireReady();
             const [globalState] = globalStatePda(programId);
-            const [playerProfile] = playerProfilePda(programId, signingWallet.publicKey);
+            const [playerProfile] = playerProfilePda(programId, owner);
 
-            const acc = program.account as Record<string, { fetch: (k: unknown) => Promise<{ nextPetId?: unknown }> }>;
-            const gsClient = acc.globalState ?? acc.GlobalState;
-            if (!gsClient?.fetch) {
-                throw new Error('IDL has no globalState account client');
-            }
-            const gs = await gsClient.fetch(globalState);
+            const gs = (await getAccountClient(program, 'globalState').fetch(globalState)) as {
+                nextPetId?: unknown;
+            };
             const nextPetId = toU32(gs.nextPetId);
-            const [pet] = petPda(programId, signingWallet.publicKey, nextPetId);
+            const [pet] = petPda(programId, owner, nextPetId);
 
             return program.methods
                 .createStarterPet(args.name, new BN(args.dna.toString()), args.rarity)
@@ -35,7 +38,7 @@ export function usePetActions() {
                     globalState,
                     playerProfile,
                     pet,
-                    owner: signingWallet.publicKey,
+                    owner,
                     systemProgram: SystemProgram.programId,
                 })
                 .rpc();
@@ -45,18 +48,16 @@ export function usePetActions() {
 
     const levelUpPet = useMutation({
         mutationFn: async (args: { petId: number }) => {
-            if (!program || !programId || !signingWallet?.publicKey) {
-                throw new Error('Connect a Solana wallet first');
-            }
+            const { program, programId, owner } = requireReady();
             const [globalState] = globalStatePda(programId);
-            const [pet] = petPda(programId, signingWallet.publicKey, args.petId);
+            const [pet] = petPda(programId, owner, args.petId);
 
             return program.methods
                 .levelUp()
                 .accounts({
                     globalState,
                     pet,
-                    owner: signingWallet.publicKey,
+                    owner,
                     systemProgram: SystemProgram.programId,
                 })
                 .rpc();
@@ -66,18 +67,16 @@ export function usePetActions() {
 
     const renamePet = useMutation({
         mutationFn: async (args: { petId: number; name: string }) => {
-            if (!program || !programId || !signingWallet?.publicKey) {
-                throw new Error('Connect a Solana wallet first');
-            }
+            const { program, programId, owner } = requireReady();
             const [globalState] = globalStatePda(programId);
-            const [pet] = petPda(programId, signingWallet.publicKey, args.petId);
+            const [pet] = petPda(programId, owner, args.petId);
 
             return program.methods
                 .renamePet(args.name)
                 .accounts({
                     globalState,
                     pet,
-                    owner: signingWallet.publicKey,
+                    owner,
                 })
                 .rpc();
         },

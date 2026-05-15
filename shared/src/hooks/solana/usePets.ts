@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { PublicKey } from '@solana/web3.js';
 import { PET_ACCOUNT_OWNER_MEMCMP_OFFSET } from '../../utils/solana/constants';
+import { getAccountClient } from '../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
 export type PetRow = {
@@ -15,12 +16,7 @@ export function usePets(owner: PublicKey | null) {
         queryKey: ['cryptopets', 'pets', programId?.toBase58() ?? 'none', owner?.toBase58() ?? 'none'],
         enabled: Boolean(isReady && program && programId && owner),
         queryFn: async (): Promise<PetRow[]> => {
-            const acc = program!.account as Record<string, { all: (f?: unknown) => Promise<PetRow[]> }>;
-            const ns = acc.petAccount ?? acc.pet ?? acc.PetAccount;
-            if (!ns?.all) {
-                throw new Error('IDL has no pet account client (expected petAccount)');
-            }
-            return ns.all([
+            const rows = await getAccountClient(program!, 'petAccount').all([
                 {
                     memcmp: {
                         offset: PET_ACCOUNT_OWNER_MEMCMP_OFFSET,
@@ -28,6 +24,7 @@ export function usePets(owner: PublicKey | null) {
                     },
                 },
             ]);
+            return rows as PetRow[];
         },
     });
 }
