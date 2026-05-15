@@ -11,8 +11,8 @@ import { CHAINS } from './constants/chains';
 import { SolanaWalletProvider } from './contexts';
 import { DynamicProvider } from './contexts/dynamic';
 import { WalletAwareRoutes } from './router';
-import { SolanaWalletAdapterBridge } from './solana/SolanaWalletAdapterBridge';
-import SolanaAuthSignerRegistration from './solana/SolanaAuthSignerRegistration';
+import { SolanaAnchorWallet } from './solana/SolanaAnchorWallet';
+import { SolanaAuthSigner } from './solana/SolanaAuthSigner';
 import './App.css';
 
 const allChains = CHAINS.map((chainConfig) => chainConfig.chain);
@@ -30,8 +30,8 @@ const App: React.FC = () => {
             <QueryClientProvider client={queryClient}>
                 <DynamicProvider>
                     <SolanaWalletProvider network="Solana Local">
-                        <SolanaAuthSignerRegistration />
-                        <SolanaWalletAdapterBridge>
+                        <SolanaAuthSigner />
+                        <SolanaAnchorWallet>
                             <ApiClientProvider baseURL={API_URL}>
                                 <AuthProvider>
                                     <BrowserRouter>
@@ -39,7 +39,7 @@ const App: React.FC = () => {
                                     </BrowserRouter>
                                 </AuthProvider>
                             </ApiClientProvider>
-                        </SolanaWalletAdapterBridge>
+                        </SolanaAnchorWallet>
                     </SolanaWalletProvider>
                 </DynamicProvider>
             </QueryClientProvider>

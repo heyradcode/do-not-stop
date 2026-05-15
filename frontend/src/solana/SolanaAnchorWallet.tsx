@@ -2,8 +2,8 @@ import { useConnection, useAnchorWallet } from '@solana/wallet-adapter-react';
 import { useMemo, type ReactNode } from 'react';
 import { SolanaAnchorProvider, parseProgramId } from '@shared/core';
 
-/** Bridges `@solana/wallet-adapter-react` into `@shared/core` Solana hooks. */
-export function SolanaWalletAdapterBridge({ children }: { children: ReactNode }) {
+/** Supplies `SolanaAnchorProvider` from `@solana/wallet-adapter-react` (connection + signing wallet). */
+export function SolanaAnchorWallet({ children }: { children: ReactNode }) {
     const { connection } = useConnection();
     const wallet = useAnchorWallet();
     const programId = useMemo(
