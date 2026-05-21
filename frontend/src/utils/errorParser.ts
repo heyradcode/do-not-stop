@@ -30,7 +30,7 @@ export function parseContractError(error: any): ParsedError {
     errorMessage.includes('reverted with the following reason')) {
 
     // Extract the revert reason from the error message
-    let revertReason = extractRevertReason(errorMessage);
+    const revertReason = extractRevertReason(errorMessage);
 
     // Map common revert reasons to user-friendly messages
     const friendlyMessage = mapRevertReasonToFriendlyMessage(revertReason);

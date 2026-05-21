@@ -50,7 +50,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
         try {
             setIsConfirming(true);
             await transferPet(recipientAddress, petId);
-        } catch (err) {
+        } catch {
             setError('Failed to send pet. Please try again.');
             setIsConfirming(false);
         }
