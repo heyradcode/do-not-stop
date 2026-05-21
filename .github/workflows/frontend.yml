@@ -24,7 +24,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PNPM_VERSION: '9'
   NODE_VERSION: '20'
   # Required at build time (see frontend/src/config.ts)
   VITE_CONTRACT_ADDRESS: '0x0000000000000000000000000000000000000000'
@@ -39,8 +38,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -80,8 +77,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -137,8 +132,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
