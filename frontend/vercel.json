@@ -1,7 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd .. && pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm build",
+  "buildCommand": "cd .. && pnpm --filter frontend build",
   "outputDirectory": "dist",
-  "framework": "vite"
+  "framework": "vite",
+  "build": {
+    "env": {
+      "VITE_CONTRACT_ADDRESS": "0x0000000000000000000000000000000000000000",
+      "VITE_DYNAMIC_ENVIRONMENT_ID": "ci-placeholder",
+      "VITE_API_URL": "http://localhost:3001"
+    }
+  }
 }

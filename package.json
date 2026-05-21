@@ -2,6 +2,7 @@
   "name": "do-not-stop",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "pnpm@9.15.9",
   "type": "module",
   "scripts": {
     "install:all": "pnpm install && pnpm --prefix frontend install && pnpm --prefix backend install && pnpm --prefix mobile install && pnpm --prefix contracts/ethereum install",
