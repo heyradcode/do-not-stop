@@ -1,4 +1,5 @@
 import { useAccount, useWriteContract, useReadContract, useReadContracts } from 'wagmi';
+import type { Abi } from 'viem';
 
 export interface Pet {
     name: string;
@@ -12,7 +13,7 @@ export interface Pet {
 
 type UsePetsContractParams = {
     contractAddress?: `0x${string}`;
-    abi: readonly unknown[];
+    abi: Abi;
     enabled?: boolean;
 };
 
