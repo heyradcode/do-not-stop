@@ -148,7 +148,7 @@ jobs:
 
       - name: Build Vercel output
         working-directory: frontend
-        run: npx vercel@54.2.0 build --token="$VERCEL_TOKEN"
+        run: npx vercel@54.2.0 build --prod --token="$VERCEL_TOKEN"
 
       - name: Deploy prebuilt production
         working-directory: frontend
