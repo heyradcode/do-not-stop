@@ -5,11 +5,12 @@ import { http } from 'viem';
 import { createConfig, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
-import { ApiClientProvider, AuthProvider, queryClient } from '@shared/core';
+import { ApiClientProvider, AuthProvider, PetsConfigProvider, queryClient } from '@shared/core';
 import { API_URL } from './config';
 import { CHAINS } from './constants/chains';
 import { SolanaWalletProvider } from './contexts';
 import { DynamicProvider } from './contexts/dynamic';
+import { petsContractParams } from './petsContractParams';
 import { WalletAwareRoutes } from './router';
 import { SolanaAnchorWallet } from './solana/SolanaAnchorWallet';
 import { SolanaAuthSigner } from './solana/SolanaAuthSigner';
@@ -34,9 +35,11 @@ const App: React.FC = () => {
                         <SolanaAnchorWallet>
                             <ApiClientProvider baseURL={API_URL}>
                                 <AuthProvider>
-                                    <BrowserRouter>
-                                        <WalletAwareRoutes />
-                                    </BrowserRouter>
+                                    <PetsConfigProvider evm={petsContractParams}>
+                                        <BrowserRouter>
+                                            <WalletAwareRoutes />
+                                        </BrowserRouter>
+                                    </PetsConfigProvider>
                                 </AuthProvider>
                             </ApiClientProvider>
                         </SolanaAnchorWallet>

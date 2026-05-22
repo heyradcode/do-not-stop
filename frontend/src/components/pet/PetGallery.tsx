@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-    usePetsContract,
     getGeneration,
     getPropertyEmoji,
     getXpNumbers,
@@ -9,29 +8,34 @@ import {
     getPetClass,
     getPetElement,
     getPetProperties,
+    getRarityColor,
+    getRarityName,
     getTimeUntilReady,
     isPetReady,
+    useActiveChain,
+    usePetList,
+    type Pet,
 } from '@shared/core';
-import { petsContractParams } from '../../petsContractParams';
 import CreatePetModal from './CreatePetModal';
 import PetCollectionLayout from './PetCollectionLayout';
 import SendPetModal from './SendPetModal';
 import './PetGallery.css';
 
 const PetGallery: React.FC = () => {
-    const { isConnected, pets, petIds, isLoading, contractError, refetchPetIds, getRarityColor, getRarityName } =
-        usePetsContract(petsContractParams);
+    const chain = useActiveChain();
+    const isConnected = chain.kind !== 'none';
+    const { pets, isLoading, error, refetch } = usePetList();
     const [loading, setLoading] = useState(false);
     const [sendModalOpen, setSendModalOpen] = useState(false);
     const [createModalOpen, setCreateModalOpen] = useState(false);
-    const [sendSelection, setSendSelection] = useState<{ pet: any; petId: bigint } | null>(null);
+    const [sendSelection, setSendSelection] = useState<{ pet: Pet; petId: bigint } | null>(null);
 
     useEffect(() => {
         setLoading(isLoading);
     }, [isLoading]);
 
-    const handleSendClick = (pet: any, id: bigint) => {
-        setSendSelection({ pet, petId: id });
+    const handleSendClick = (pet: Pet) => {
+        setSendSelection({ pet, petId: BigInt(pet.id) });
         setSendModalOpen(true);
     };
 
@@ -56,7 +60,7 @@ const PetGallery: React.FC = () => {
                 actions={
                     <button
                         type="button"
-                        onClick={() => refetchPetIds()}
+                        onClick={() => refetch()}
                         className="refresh"
                         disabled={loading}
                         title={loading ? 'Loading...' : 'Refresh'}
@@ -72,23 +76,23 @@ const PetGallery: React.FC = () => {
                     </div>
                 )}
 
-                {contractError && (
+                {error && (
                     <div className="error-container">
-                        <p>❌ {contractError?.message || 'Failed to load pet data'}</p>
-                        <button type="button" onClick={() => refetchPetIds()} className="retry-button">
+                        <p>❌ {error.message || 'Failed to load pet data'}</p>
+                        <button type="button" onClick={() => refetch()} className="retry-button">
                             Try Again
                         </button>
                     </div>
                 )}
 
-                {!loading && !contractError && pets.length === 0 && (
+                {!loading && !error && pets.length === 0 && (
                     <div className="empty-state">
                         <div className="empty-icon">🐾</div>
                         <h3>No pets yet!</h3>
                     </div>
                 )}
 
-                {!loading && !contractError && pets.length === 0 && (
+                {!loading && !error && pets.length === 0 && (
                     <div className="create-button-container">
                         <button
                             type="button"
@@ -100,10 +104,10 @@ const PetGallery: React.FC = () => {
                     </div>
                 )}
 
-                {!loading && !contractError && pets.length > 0 && (
+                {!loading && !error && pets.length > 0 && (
                     <div className="pet-grid">
-                        {pets.map((pet, index) => (
-                            <div key={index} className="pet-card">
+                        {pets.map((pet) => (
+                            <div key={`${pet.chain}-${pet.id}`} className="pet-card">
                                 <div className="pet-visual">
                                     <div
                                         className="rarity-badge"
@@ -146,11 +150,11 @@ const PetGallery: React.FC = () => {
                                 </div>
 
                                 <div className="pet-status">
-                                    {isPetReady(pet.readyTime) ? (
+                                    {isPetReady(BigInt(pet.readyAt)) ? (
                                         <div className="status ready">✅ Ready for action!</div>
                                     ) : (
                                         <div className="status cooldown">
-                                            ⏰ Ready in {getTimeUntilReady(pet.readyTime)}
+                                            ⏰ Ready in {getTimeUntilReady(BigInt(pet.readyAt))}
                                         </div>
                                     )}
                                 </div>
@@ -159,7 +163,7 @@ const PetGallery: React.FC = () => {
                                     <button
                                         type="button"
                                         className="send-button"
-                                        onClick={() => handleSendClick(pet, petIds[index])}
+                                        onClick={() => handleSendClick(pet)}
                                     >
                                         📤 Send
                                     </button>

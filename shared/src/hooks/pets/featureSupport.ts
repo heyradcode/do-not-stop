@@ -1,0 +1,26 @@
+import type { PetChain } from '../../types/pet';
+import type { PetAction } from './errors';
+
+const SUPPORT: Record<PetChain, Record<PetAction, boolean>> = {
+    evm: {
+        create: true,
+        levelUp: true,
+        rename: true,
+        battle: true,
+        breed: true,
+        transfer: true,
+    },
+    solana: {
+        create: true,
+        levelUp: true,
+        rename: true,
+        battle: false,
+        breed: false,
+        transfer: false,
+    },
+};
+
+export function isActionSupported(chain: PetChain | null, action: PetAction): boolean {
+    if (!chain) return false;
+    return SUPPORT[chain][action];
+}

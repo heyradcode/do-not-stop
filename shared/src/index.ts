@@ -25,4 +25,12 @@ export {
     type SolanaAnchorProviderProps,
     type SolanaSigningWallet,
 } from './contexts/SolanaAnchorContext';
+export {
+    PetsConfigProvider,
+    usePetsConfig,
+    type PetsConfigContextValue,
+    type PetsConfigProviderProps,
+    type PetsEvmConfig,
+} from './contexts/PetsConfigContext';
+export type { Pet, PetChain } from './types/pet';
 export { queryClient } from './queryClient';
