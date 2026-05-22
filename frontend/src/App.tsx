@@ -7,7 +7,7 @@ import { injected } from 'wagmi/connectors';
 
 import { ApiClientProvider, AuthProvider, PetsConfigProvider, queryClient } from '@shared/core';
 import { API_URL } from './config';
-import { CHAINS } from './constants/chains';
+import { CHAINS, solanaNetworkNameFromCluster } from './constants/chains';
 import { SolanaWalletProvider } from './contexts';
 import { DynamicProvider } from './contexts/dynamic';
 import { petsContractParams } from './petsContractParams';
@@ -25,12 +25,14 @@ const config = createConfig({
     transports: Object.fromEntries(allChains.map((chain) => [chain.id, http(chain.rpcUrls.default.http[0])])),
 });
 
+const solanaNetwork = solanaNetworkNameFromCluster(import.meta.env.VITE_SOLANA_CLUSTER);
+
 const App: React.FC = () => {
     return (
         <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
                 <DynamicProvider>
-                    <SolanaWalletProvider network="Solana Local">
+                    <SolanaWalletProvider network={solanaNetwork}>
                         <SolanaAuthSigner />
                         <SolanaAnchorWallet>
                             <ApiClientProvider baseURL={API_URL}>

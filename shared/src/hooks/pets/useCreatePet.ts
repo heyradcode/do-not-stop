@@ -20,6 +20,8 @@ export interface PetMutationResult<TArgs> {
     isPending: boolean;
     error: Error | null;
     reset: () => void;
+    /** EVM tx hash (0x…) or Solana signature, once submitted. */
+    hash?: string | undefined;
 }
 
 export function useCreatePet(): PetMutationResult<CreatePetArgs> {
@@ -73,5 +75,10 @@ export function useCreatePet(): PetMutationResult<CreatePetArgs> {
             ? (evmHook.writeError as Error | null) ?? null
             : (solanaActions.createStarterPet.error as Error | null) ?? null);
 
-    return { isSupported, mutate, isPending, error, reset };
+    const hash =
+        chain.kind === 'evm'
+            ? (evmHook.hash as string | undefined)
+            : (solanaActions.createStarterPet.data as string | undefined);
+
+    return { isSupported, mutate, isPending, error, reset, hash };
 }

@@ -14,8 +14,14 @@ export function usePetActions() {
     const invalidateProgramQueries = () => queryClient.invalidateQueries({ queryKey: ['cryptopets'] });
 
     const requireReady = () => {
-        if (!program || !programId || !signingWallet?.publicKey) {
+        if (!signingWallet?.publicKey) {
             throw new Error('Connect a Solana wallet first');
+        }
+        if (!programId) {
+            throw new Error('Solana program id is not configured');
+        }
+        if (!program) {
+            throw new Error('Solana program is still loading. Try again in a moment.');
         }
         return { program, programId, owner: signingWallet.publicKey };
     };

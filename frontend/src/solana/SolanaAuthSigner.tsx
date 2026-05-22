@@ -1,17 +1,7 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useDynamicContext, useUserWallets } from '@dynamic-labs/sdk-react-core';
-import { isSolanaWallet } from '@dynamic-labs/solana';
 import { setSolanaAuthSigner, type SolanaAuthSigner } from '@shared/core';
-
-type DynamicSolanaSigner = {
-    signMessage: (message: Uint8Array, encoding?: string) => Promise<unknown>;
-};
-
-type DynamicSolanaLike = {
-    address: string;
-    getSigner?: () => Promise<DynamicSolanaSigner | undefined>;
-};
+import { useDynamicSolanaWallet, type DynamicSolanaWalletLike } from './useDynamicSolanaWallet';
 
 /**
  * Dynamic's `SolanaWallet.signMessage(string)` is the generic Dynamic API — it expects a string
@@ -19,18 +9,19 @@ type DynamicSolanaLike = {
  * `getSigner()` to reach the canonical `ISolana.signMessage(Uint8Array)` which returns
  * `{ signature: Uint8Array }`. Coercion to base58 is handled downstream by `signatureAuthCodec`.
  */
-async function signerFromDynamicWallet(wallet: DynamicSolanaLike): Promise<SolanaAuthSigner | null> {
+async function signerFromDynamicWallet(wallet: DynamicSolanaWalletLike): Promise<SolanaAuthSigner | null> {
     if (typeof wallet.getSigner !== 'function') {
         return null;
     }
     const signer = await wallet.getSigner();
-    if (!signer || typeof signer.signMessage !== 'function') {
+    const signMessage = signer?.signMessage;
+    if (!signer || typeof signMessage !== 'function') {
         return null;
     }
     return {
         getAddress: () => wallet.address,
         signMessage: async (msg) => {
-            const result = await signer.signMessage(msg);
+            const result = await signMessage(msg);
             if (result instanceof Uint8Array) {
                 return result;
             }
@@ -51,20 +42,7 @@ async function signerFromDynamicWallet(wallet: DynamicSolanaLike): Promise<Solan
  */
 export function SolanaAuthSigner() {
     const { publicKey, signMessage } = useWallet();
-    const { primaryWallet } = useDynamicContext();
-    const userWallets = useUserWallets();
-
-    const dynamicSolanaWallet = useMemo(() => {
-        const list = userWallets ?? [];
-        const fromList = list.find((w) => isSolanaWallet(w));
-        if (fromList) {
-            return fromList as unknown as DynamicSolanaLike;
-        }
-        if (primaryWallet && isSolanaWallet(primaryWallet)) {
-            return primaryWallet as unknown as DynamicSolanaLike;
-        }
-        return null;
-    }, [userWallets, primaryWallet]);
+    const dynamicSolanaWallet = useDynamicSolanaWallet();
 
     useEffect(() => {
         let cancelled = false;
