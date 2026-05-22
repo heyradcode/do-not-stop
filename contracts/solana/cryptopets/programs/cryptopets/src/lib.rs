@@ -32,6 +32,10 @@ pub mod cryptopets {
         rename_pet::handler(ctx, name)
     }
 
+    pub fn transfer_pet(ctx: Context<TransferPet>) -> Result<()> {
+        transfer_pet::handler(ctx)
+    }
+
     pub fn pause(ctx: Context<Pause>) -> Result<()> {
         pause::handler(ctx)
     }
