@@ -59,5 +59,10 @@ export function useRenamePet(): PetMutationResult<RenamePetArgs> {
             ? (evmHook.writeError as Error | null) ?? null
             : (solanaActions.renamePet.error as Error | null) ?? null);
 
-    return { isSupported, mutate, isPending, error, reset };
+    const hash =
+        chain.kind === 'evm'
+            ? (evmHook.hash as string | undefined)
+            : (solanaActions.renamePet.data as string | undefined);
+
+    return { isSupported, mutate, isPending, error, reset, hash };
 }

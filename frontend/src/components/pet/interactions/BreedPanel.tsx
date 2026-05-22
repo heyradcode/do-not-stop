@@ -4,6 +4,7 @@ import { useAccount, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import TransactionStatus from '../../ui/TransactionStatus';
 import {
+    useActiveChain,
     usePetsContract,
     useWatchPetsContract,
     type BreedSuccessPayload,
@@ -20,6 +21,7 @@ export type BreedPanelProps = {
 
 const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
+    const chain = useActiveChain();
     const { address } = useAccount();
 
     const {
@@ -43,6 +45,24 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const [pendingRequestId, setPendingRequestId] = useState<bigint | null>(null);
 
     const offspringNameRef = useRef('');
+
+    if (chain.kind === 'solana') {
+        return (
+            <div className="interface">
+                {!isStandaloneView && (
+                    <>
+                        <h4>🧬 Breed Pets</h4>
+                        <p>Breeding is not yet supported on Solana.</p>
+                    </>
+                )}
+                <div className="action-controls">
+                    <button type="button" onClick={() => navigate(DASHBOARD_HOME)} className="cancel-button">
+                        Back to dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const { data: requestReceipt } = useWaitForTransactionReceipt({
         hash: hash as `0x${string}` | undefined,

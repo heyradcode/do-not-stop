@@ -1,8 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '../../ui/TransactionStatus';
-import { usePetsContract, getReadyPets } from '@shared/core';
-import { petsContractParams } from '../../../petsContractParams';
+import {
+    getReadyPetsUnified,
+    useActiveChain,
+    usePetList,
+    useRenamePet,
+} from '@shared/core';
 import { DASHBOARD_HOME } from '../../../constants/interactionRoutes';
 import { useWriteContractErrorState } from '../../../hooks/useWriteContractErrorState';
 
@@ -12,14 +16,26 @@ export type RenamePanelProps = {
 
 const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const { changeName, petIds, pets, isReady, hash, isPending, writeError, refetchPetIds } =
-        usePetsContract(petsContractParams);
-    const readyPets = useMemo(() => getReadyPets(petIds, pets, isReady), [petIds, pets, isReady]);
-    const { error, setError, isUserRejection, isContractError, resetError } = useWriteContractErrorState(writeError);
+    const chain = useActiveChain();
+    const { pets, refetch } = usePetList();
+    const { mutate, isPending, error: hookError, hash, reset } = useRenamePet();
+    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+    const { error, setError, isUserRejection, isContractError, resetError } = useWriteContractErrorState(hookError);
 
-    const [selectedPet, setSelectedPet] = useState<bigint | null>(null);
+    const [selectedPet, setSelectedPet] = useState<string>('');
     const [newName, setNewName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (hookError) {
+            setError(hookError.message);
+        }
+    }, [hookError, setError]);
+
+    const selectablePets = useMemo(
+        () => (chain.kind === 'evm' ? readyPets.filter(({ pet }) => pet.level >= 2) : readyPets),
+        [readyPets, chain.kind]
+    );
 
     const handleChangeName = async () => {
         if (!selectedPet || !newName.trim()) {
@@ -28,10 +44,18 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
         }
 
         resetError();
+        reset();
         setSuccess(null);
 
         try {
-            await changeName(selectedPet, newName.trim());
+            await mutate({ petId: selectedPet, name: newName.trim() });
+            if (chain.kind === 'solana') {
+                setSuccess(`Pet name changed to "${newName}"!`);
+                setSelectedPet('');
+                setNewName('');
+                refetch();
+                navigate(DASHBOARD_HOME);
+            }
         } catch (err) {
             setError('Failed to change pet name. Please try again.');
             console.error('Error changing pet name:', err);
@@ -45,11 +69,11 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
 
     const handleTransactionComplete = () => {
         setSuccess(`Pet name changed to "${newName}"!`);
-        setSelectedPet(null);
+        setSelectedPet('');
         setNewName('');
         resetError();
+        refetch();
         navigate(DASHBOARD_HOME);
-        refetchPetIds();
     };
 
     return (
@@ -58,7 +82,11 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 {!isStandaloneView && (
                     <>
                         <h4>✏️ Change Pet Name</h4>
-                        <p>Change your pet&apos;s name (requires level 2+)</p>
+                        <p>
+                            {chain.kind === 'evm'
+                                ? "Change your pet's name (requires level 2+)"
+                                : "Change your pet's name"}
+                        </p>
                     </>
                 )}
 
@@ -66,17 +94,15 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                     <div className="field">
                         <label>Select Pet</label>
                         <select
-                            value={selectedPet?.toString() || ''}
-                            onChange={(e) => setSelectedPet(e.target.value ? BigInt(e.target.value) : null)}
+                            value={selectedPet}
+                            onChange={(e) => setSelectedPet(e.target.value)}
                         >
                             <option value="">Select pet...</option>
-                            {readyPets
-                                .filter(({ pet }) => pet.level >= 2)
-                                .map(({ id, pet }) => (
-                                    <option key={id.toString()} value={id.toString()}>
-                                        {pet.name} (Level {pet.level})
-                                    </option>
-                                ))}
+                            {selectablePets.map(({ id, pet }) => (
+                                <option key={id} value={id}>
+                                    {pet.name} (Level {pet.level})
+                                </option>
+                            ))}
                         </select>
                     </div>
 
@@ -114,7 +140,9 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
             )}
 
-            <TransactionStatus hash={hash} onComplete={handleTransactionComplete} onError={(e) => setError(e.message)} />
+            {chain.kind === 'evm' && (
+                <TransactionStatus hash={hash} onComplete={handleTransactionComplete} onError={(e) => setError(e.message)} />
+            )}
         </>
     );
 };

@@ -55,5 +55,10 @@ export function useLevelUpPet(): PetMutationResult<LevelUpPetArgs> {
             ? (evmHook.writeError as Error | null) ?? null
             : (solanaActions.levelUpPet.error as Error | null) ?? null);
 
-    return { isSupported, mutate, isPending, error, reset };
+    const hash =
+        chain.kind === 'evm'
+            ? (evmHook.hash as string | undefined)
+            : (solanaActions.levelUpPet.data as string | undefined);
+
+    return { isSupported, mutate, isPending, error, reset, hash };
 }
