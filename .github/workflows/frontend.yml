@@ -1,0 +1,155 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'shared/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - '.github/workflows/frontend.yml'
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'shared/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - '.github/workflows/frontend.yml'
+
+concurrency:
+  group: frontend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  # Required at build time (see frontend/src/config.ts)
+  VITE_CONTRACT_ADDRESS: '0x0000000000000000000000000000000000000000'
+
+jobs:
+  ci:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter frontend lint:check
+
+      - name: Build
+        run: pnpm --filter frontend build
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL || 'http://localhost:3001' }}
+          VITE_DYNAMIC_ENVIRONMENT_ID: ${{ vars.VITE_DYNAMIC_ENVIRONMENT_ID || 'ci-placeholder' }}
+
+  deploy-preview:
+    name: Deploy Preview (Vercel)
+    needs: ci
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VITE_API_URL: ${{ vars.VITE_API_URL || 'http://localhost:3001' }}
+      VITE_DYNAMIC_ENVIRONMENT_ID: ${{ vars.VITE_DYNAMIC_ENVIRONMENT_ID || 'ci-placeholder' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pull Vercel environment (preview)
+        working-directory: frontend
+        run: npx vercel@54.2.0 pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      - name: Build Vercel output
+        working-directory: frontend
+        run: npx vercel@54.2.0 build --token="$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt preview
+        id: deploy
+        working-directory: frontend
+        run: |
+          url=$(npx vercel@54.2.0 deploy --prebuilt --yes --token="$VERCEL_TOKEN")
+          echo "preview-url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 **Vercel preview:** ${process.env.PREVIEW_URL}`,
+            });
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview-url }}
+
+  deploy-production:
+    name: Deploy Production (Vercel)
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VITE_API_URL: ${{ vars.VITE_API_URL || 'http://localhost:3001' }}
+      VITE_DYNAMIC_ENVIRONMENT_ID: ${{ vars.VITE_DYNAMIC_ENVIRONMENT_ID || 'ci-placeholder' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pull Vercel environment (production)
+        working-directory: frontend
+        run: npx vercel@54.2.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build Vercel output
+        working-directory: frontend
+        run: npx vercel@54.2.0 build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt production
+        working-directory: frontend
+        run: npx vercel@54.2.0 deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
