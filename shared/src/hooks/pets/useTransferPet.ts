@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { usePetsContract } from '../ethereum/usePetsContract';
+import { usePetActions } from '../solana/usePetActions';
 import { usePetsConfig } from '../../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
 import { isActionSupported } from './featureSupport';
@@ -21,6 +22,7 @@ export function useTransferPet(): PetMutationResult<TransferPetArgs> {
         abi: evm?.abi ?? [],
         enabled: chain.kind === 'evm',
     });
+    const solanaActions = usePetActions();
 
     const [localError, setLocalError] = useState<Error | null>(null);
 
@@ -29,7 +31,14 @@ export function useTransferPet(): PetMutationResult<TransferPetArgs> {
         if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'transfer');
         try {
             setLocalError(null);
-            evmHook.transferPet(args.to, BigInt(args.petId));
+            if (chain.kind === 'evm') {
+                evmHook.transferPet(args.to, BigInt(args.petId));
+                return;
+            }
+            await solanaActions.transferPet.mutateAsync({
+                petId: Number(args.petId),
+                to: args.to,
+            });
         } catch (err) {
             const error = err instanceof Error ? err : new Error(String(err));
             setLocalError(error);
@@ -37,10 +46,24 @@ export function useTransferPet(): PetMutationResult<TransferPetArgs> {
         }
     };
 
-    const reset = () => setLocalError(null);
+    const reset = () => {
+        setLocalError(null);
+        solanaActions.transferPet.reset();
+    };
 
-    const isPending = chain.kind === 'evm' ? evmHook.isPending : false;
-    const error = localError ?? (chain.kind === 'evm' ? (evmHook.writeError as Error | null) ?? null : null);
+    const isPending =
+        chain.kind === 'evm' ? evmHook.isPending : solanaActions.transferPet.isPending;
 
-    return { isSupported, mutate, isPending, error, reset };
+    const error =
+        localError ??
+        (chain.kind === 'evm'
+            ? (evmHook.writeError as Error | null) ?? null
+            : (solanaActions.transferPet.error as Error | null) ?? null);
+
+    const hash =
+        chain.kind === 'evm'
+            ? (evmHook.hash as string | undefined)
+            : (solanaActions.transferPet.data as string | undefined);
+
+    return { isSupported, mutate, isPending, error, reset, hash };
 }

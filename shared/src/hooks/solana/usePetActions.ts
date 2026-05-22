@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BN } from '@coral-xyz/anchor';
-import { SystemProgram } from '@solana/web3.js';
+import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
 import { globalStatePda, petPda, playerProfilePda } from '../../utils/solana/pdas';
 import { getAccountClient } from '../../utils/solana/accountClient';
@@ -89,10 +89,38 @@ export function usePetActions() {
         onSuccess: invalidateProgramQueries,
     });
 
+    const transferPet = useMutation({
+        mutationFn: async (args: { petId: number; to: string }) => {
+            const { program, programId, owner } = requireReady();
+            const toOwner = new PublicKey(args.to);
+            const [globalState] = globalStatePda(programId);
+            const [fromPlayerProfile] = playerProfilePda(programId, owner);
+            const [fromPet] = petPda(programId, owner, args.petId);
+            const [toPlayerProfile] = playerProfilePda(programId, toOwner);
+            const [toPet] = petPda(programId, toOwner, args.petId);
+
+            return program.methods
+                .transferPet()
+                .accounts({
+                    globalState,
+                    fromPlayerProfile,
+                    fromPet,
+                    toOwner,
+                    toPlayerProfile,
+                    toPet,
+                    fromOwner: owner,
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc();
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
     return {
         createStarterPet,
         levelUpPet,
         renamePet,
+        transferPet,
         walletPublicKey: signingWallet?.publicKey ?? null,
         walletConnected: Boolean(signingWallet?.publicKey),
     };

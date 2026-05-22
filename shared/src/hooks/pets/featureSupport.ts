@@ -16,7 +16,7 @@ const SUPPORT: Record<PetChain, Record<PetAction, boolean>> = {
         rename: true,
         battle: false,
         breed: false,
-        transfer: false,
+        transfer: true,
     },
 };
 

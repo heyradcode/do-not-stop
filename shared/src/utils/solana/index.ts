@@ -1,4 +1,5 @@
 export { parseProgramId } from './programId';
+export { isValidSolanaAddress } from './isValidSolanaAddress';
 export { globalStatePda, playerProfilePda, petPda } from './pdas';
 export { toU32 } from './numbers';
 export { PET_ACCOUNT_OWNER_MEMCMP_OFFSET } from './constants';
