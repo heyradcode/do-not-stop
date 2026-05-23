@@ -16,6 +16,7 @@ export type LandingCommunityCard = {
   name: string;
   members: string;
   color: 'discord' | 'twitter' | 'telegram' | 'youtube';
+  href?: string;
 };
 
 export const LANDING_FEATURE_CARDS: LandingFeatureCard[] = [

@@ -78,6 +78,13 @@
   color: rgb(195 210 255 / 84%);
 }
 
+.community-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 @media (max-width: 1024px) {
   .community-grid {
     grid-template-columns: repeat(2, minmax(160px, 1fr));

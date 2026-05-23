@@ -4,8 +4,9 @@ import './FeatureInteractionsSection.css';
 
 export default function FeatureInteractionsSection() {
   return (
-    <section className="landing-section">
-      <h3 className="section-title">Pet Interactions</h3>
+    <section className="landing-section" id="features">
+      <h3 className="section-title">What You Can Do</h3>
+      <p className="section-subtitle">Every pet is a fully on-chain asset — yours to grow, fight, and trade.</p>
       <div className="feature-grid">
         {LANDING_FEATURE_CARDS.map((feature) => (
           <NeonCard key={feature.title} className="feature-card feature-card-media-left">

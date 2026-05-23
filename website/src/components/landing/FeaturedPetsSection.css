@@ -12,45 +12,114 @@
 .pet-showcase-card {
   background: linear-gradient(180deg, rgb(10 14 28 / 95%) 0%, rgb(7 11 24 / 95%) 100%);
   border: 1px solid rgb(100 132 255 / 20%);
-  padding: 22px;
-  text-align: left;
+  padding: 22px 22px 20px;
+  text-align: center;
   color: #eaf0ff;
   box-shadow: inset 0 0 22px rgb(55 68 148 / 12%);
   position: relative;
+  overflow: hidden;
 }
 
+.pet-showcase-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, transparent 40%, var(--pet-edge, rgb(120 150 255 / 45%)) 100%);
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0.85;
+}
+
+.pet-showcase-card.rarity-legendary { --pet-edge: rgb(255 207 92 / 70%); }
+.pet-showcase-card.rarity-epic { --pet-edge: rgb(184 120 255 / 70%); }
+.pet-showcase-card.rarity-rare { --pet-edge: rgb(80 184 255 / 70%); }
+
 .pet-showcase-card .pet-avatar {
-  width: 82px;
-  height: 82px;
-  margin: 0 0 14px;
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 14px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   background: radial-gradient(circle at 30% 20%, #171d38, #0f1430);
   border: 2px solid rgb(121 148 255 / 35%);
-  font-size: 2rem;
+  box-shadow: inset 0 0 14px rgb(80 110 220 / 18%);
+}
+
+.pet-showcase-card.rarity-legendary .pet-avatar {
+  border-color: rgb(255 207 92 / 70%);
+  box-shadow: inset 0 0 18px rgb(255 207 92 / 22%), 0 0 16px rgb(255 207 92 / 30%);
+}
+
+.pet-showcase-card.rarity-epic .pet-avatar {
+  border-color: rgb(184 120 255 / 70%);
+  box-shadow: inset 0 0 18px rgb(184 120 255 / 22%), 0 0 16px rgb(184 120 255 / 28%);
+}
+
+.pet-showcase-card.rarity-rare .pet-avatar {
+  border-color: rgb(80 184 255 / 70%);
+  box-shadow: inset 0 0 18px rgb(80 184 255 / 22%), 0 0 16px rgb(80 184 255 / 28%);
 }
 
 .pet-avatar-image {
-  width: 76px;
-  height: 76px;
+  width: 78px;
+  height: 78px;
   object-fit: contain;
   display: block;
 }
 
 .pet-showcase-card h4 {
   font-family: var(--title-font);
-  margin: 0;
-  font-size: 1.1rem;
+  margin: 0 0 10px;
+  font-size: 1.05rem;
+  letter-spacing: 0.4px;
 }
 
-.pet-showcase-card p {
+.pet-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pet-level {
   font-family: var(--content-font);
-  margin: 8px 0 14px;
-  color: #ffe370;
-  font-size: 0.92rem;
+  font-size: 0.78rem;
+  color: rgb(195 210 255 / 70%);
   text-transform: uppercase;
   letter-spacing: 0.7px;
+}
+
+.pet-rarity {
+  font-family: var(--content-font);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-weight: 700;
+  border: 1px solid currentColor;
+}
+
+.pet-rarity.rarity-legendary {
+  color: #ffd76b;
+  background: rgb(255 207 92 / 12%);
+  box-shadow: 0 0 10px rgb(255 207 92 / 28%);
+}
+
+.pet-rarity.rarity-epic {
+  color: #d6b4ff;
+  background: rgb(184 120 255 / 12%);
+  box-shadow: 0 0 10px rgb(184 120 255 / 28%);
+}
+
+.pet-rarity.rarity-rare {
+  color: #9ed7ff;
+  background: rgb(80 184 255 / 12%);
+  box-shadow: 0 0 10px rgb(80 184 255 / 28%);
 }
 
 @media (max-width: 1024px) {
@@ -61,6 +130,6 @@
 
 @media (max-width: 768px) {
   .pet-showcase-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
   }
 }
