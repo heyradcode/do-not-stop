@@ -1,0 +1,61 @@
+.neon-card {
+  position: relative;
+  border-radius: var(--border-radius, 12px);
+  overflow: hidden;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    filter 180ms ease;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    box-shadow:
+      inset 0 0 0 1px rgb(126 170 255 / 24%),
+      inset 0 0 22px rgb(86 136 255 / 12%);
+    transition: opacity 180ms ease, box-shadow 180ms ease;
+  }
+
+  &:hover::after {
+    opacity: 1;
+    box-shadow:
+      inset 0 0 0 1px rgb(148 191 255 / 42%),
+      inset 0 0 30px rgb(100 152 255 / 24%);
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.03);
+  }
+
+  &:active {
+    transform: translateY(0) scale(0.985);
+    filter: brightness(0.96);
+  }
+
+  &:active::after {
+    opacity: 1;
+    box-shadow:
+      inset 0 0 0 1px rgb(120 170 255 / 36%),
+      inset 0 0 18px rgb(84 136 255 / 16%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &::after {
+      transition: none;
+    }
+
+    &:hover,
+    &:active {
+      transform: none;
+      filter: none;
+    }
+  }
+}

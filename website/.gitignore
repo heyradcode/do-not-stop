@@ -1,0 +1,13 @@
+# Next.js
+.next/
+out/
+next-env.d.ts
+
+# Vercel
+.vercel
+
+# Build / cache
+*.tsbuildinfo
+
+# Env files
+.env*.local

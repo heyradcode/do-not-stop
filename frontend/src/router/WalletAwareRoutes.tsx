@@ -2,23 +2,20 @@ import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import MainPage from '../pages/main/MainPage';
-import LandingPage from '../pages/landing/LandingPage';
 import PetInteractions from '../components/pet/PetInteractions';
 import BattleRoute from './BattleRoute';
 import BreedRoute from './BreedRoute';
 import LevelUpRoute from './LevelUpRoute';
 import RenameRoute from './RenameRoute';
-import { PrivateRoute, useAppLoggedIn } from './PrivateRoute';
+import { PrivateRoute } from './PrivateRoute';
 
 /**
- * Auth-gated route tree: landing vs main app, nested interactions, standalone breed/battle/levelup/rename.
+ * Auth-gated route tree. Unauthenticated users are redirected to the marketing
+ * site (hosted in the `website/` workspace) by {@link PrivateRoute}.
  */
 const WalletAwareRoutes: React.FC = () => {
-    const isLoggedIn = useAppLoggedIn();
-
     return (
         <Routes>
-            <Route path="/landing" element={isLoggedIn ? <Navigate to="/main" replace /> : <LandingPage />} />
             <Route element={<PrivateRoute />}>
                 <Route path="/main" element={<MainPage />}>
                     <Route index element={<PetInteractions />} />

@@ -1,8 +1,10 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Outlet } from 'react-router-dom';
 import { useAuth } from '@shared/core';
 
 import { useDynamicContext } from '../contexts/dynamic';
+
+const WEBSITE_URL = import.meta.env.VITE_WEBSITE_URL || 'http://localhost:3002';
 
 /** JWT and/or Dynamic wallet session. */
 export function useAppLoggedIn(): boolean {
@@ -12,8 +14,8 @@ export function useAppLoggedIn(): boolean {
 }
 
 /**
- * Route guard: render wrapped children when logged in, otherwise redirect to `/landing`.
- * Falls back to an {@link Outlet} for nested-route usage.
+ * Route guard: render wrapped children when logged in, otherwise redirect to the
+ * external marketing website (now hosted in the `website/` workspace).
  */
 export type PrivateRouteProps = {
   children?: React.ReactElement;
@@ -22,8 +24,14 @@ export type PrivateRouteProps = {
 export function PrivateRoute({ children }: PrivateRouteProps) {
   const isLoggedIn = useAppLoggedIn();
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      window.location.replace(WEBSITE_URL);
+    }
+  }, [isLoggedIn]);
+
   if (!isLoggedIn) {
-    return <Navigate to="/landing" replace />;
+    return null;
   }
   return children ?? <Outlet />;
 }

@@ -12,7 +12,7 @@
   background-image:
     linear-gradient(105deg, rgb(6 9 20 / 90%) 0%, rgb(6 9 20 / 48%) 40%, rgb(10 12 24 / 22%) 62%, transparent 82%),
     linear-gradient(180deg, rgb(87 57 230 / 14%) 0%, rgb(10 12 24 / 76%) 100%),
-    url('../../assets/images/background.png');
+    url('/images/background.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

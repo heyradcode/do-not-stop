@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(git -C E:/Works/aichannode/do-not-stop log --oneline -5)",
-      "Bash(git -C E:/Works/aichannode/do-not-stop show --stat b0f6999)"
+      "Bash(git -C E:/Works/aichannode/do-not-stop show --stat b0f6999)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(pnpm install *)",
+      "PowerShell(Get-ChildItem -Path \"E:\\\\Works\\\\aichannode\\\\do-not-stop\\\\website\" -Recurse -Force -Exclude node_modules | Where-Object { -not $_.PSIsContainer } | Select-Object FullName)"
     ]
   }
 }
