@@ -16,16 +16,25 @@
 
 .stat-item strong {
   display: block;
-  font-family: var(--title-font);
+  font-family: var(--content-font);
   font-size: clamp(1.7rem, 3.3vw, 2.5rem);
+  font-weight: 800;
   line-height: 1.1;
+  letter-spacing: 0.5px;
+  color: #b6e2ff;
   background: linear-gradient(92deg, #7dd6ff 0%, #b58cff 60%, #ff7bcb 100%);
   background-clip: text;
   -webkit-background-clip: text;
-  color: transparent;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 12px rgb(170 140 255 / 35%));
-  letter-spacing: 0.5px;
+  text-shadow: 0 0 18px rgb(170 140 255 / 35%);
+}
+
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .stat-item strong {
+    color: #b6e2ff;
+    -webkit-text-fill-color: #b6e2ff;
+    background: none;
+  }
 }
 
 .stat-item span {
