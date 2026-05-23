@@ -1,6 +1,12 @@
+export { default as BackersSection } from './BackersSection';
 export { default as CommunitySection } from './CommunitySection';
+export { default as CtaBannerSection } from './CtaBannerSection';
+export { default as FaqSection } from './FaqSection';
 export { default as FeatureInteractionsSection } from './FeatureInteractionsSection';
 export { default as FeaturedPetsSection } from './FeaturedPetsSection';
 export { default as FooterSection } from './FooterSection';
 export { default as HeroSection } from './HeroSection';
+export { default as HowItWorksSection } from './HowItWorksSection';
+export { default as RoadmapSection } from './RoadmapSection';
 export { default as StatsBandSection } from './StatsBandSection';
+export { default as TestimonialsSection } from './TestimonialsSection';

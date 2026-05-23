@@ -1,9 +1,11 @@
 import './FooterSection.css';
 
 const NAV_LINKS = [
+  { label: 'How It Works', href: '#how' },
   { label: 'Features', href: '#features' },
   { label: 'Pets', href: '#pets' },
-  { label: 'Stats', href: '#stats' },
+  { label: 'Roadmap', href: '#roadmap' },
+  { label: 'FAQ', href: '#faq' },
   { label: 'Community', href: '#community' },
 ];
 
