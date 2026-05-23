@@ -13,9 +13,8 @@ export default function HeroSection({ onStartPlaying }: HeroSectionProps) {
         <p>10K+ handcrafted digital pets in the ultimate on-chain adventure.</p>
         <div className="hero-actions">
           <NeonButton type="button" tone="emerald" onClick={onStartPlaying}>
-            Start Playing
+            Play Now
           </NeonButton>
-          <NeonButton tone="azure">Watch Trailer</NeonButton>
         </div>
       </div>
     </section>
