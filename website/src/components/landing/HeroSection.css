@@ -73,7 +73,7 @@
 }
 
 .hero-copy h2 {
-  font-family: 'DragonHunter', 'Orbitron', 'Eurostile', 'Bank Gothic', 'Arial Black', system-ui, sans-serif;
+  font-family: var(--title-font);
   margin: 0 0 18px;
   color: #f3f7ff;
   font-size: clamp(2.2rem, 4.4vw, 3.6rem);
