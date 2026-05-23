@@ -1,0 +1,169 @@
+.roadmap {
+  & .track {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 0;
+    position: relative;
+    min-height: 360px;
+    align-items: center;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 3px;
+      transform: translateY(-50%);
+      background: linear-gradient(90deg, #6cf6c5 0%, #6cf6c5 50%, #ffd76b 50%, #ffd76b 75%, #b878ff 75%, #b878ff 100%);
+      box-shadow: 0 0 14px rgb(170 140 255 / 35%);
+      z-index: 0;
+      border-radius: 4px;
+    }
+  }
+
+  & .stop {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: center;
+    z-index: 1;
+
+    &.above .card { margin-bottom: auto; margin-top: 0; }
+    &.below .card { margin-top: auto; margin-bottom: 0; }
+
+    &.status-shipped { color: #6cf6c5; }
+    &.status-in-progress { color: #ffd76b; }
+    &.status-planned { color: #b878ff; }
+  }
+
+  & .pin {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 25%, #2a335a 0%, #0a0f25 70%);
+    border: 2px solid currentColor;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+  }
+
+  & .stop.status-shipped .pin {
+    box-shadow: 0 0 12px rgb(108 246 197 / 70%), inset 0 0 10px rgb(108 246 197 / 35%);
+  }
+  & .stop.status-in-progress .pin {
+    box-shadow: 0 0 12px rgb(255 215 107 / 70%), inset 0 0 10px rgb(255 215 107 / 35%);
+    animation: roadmap-pulse 1.6s ease-in-out infinite;
+  }
+  & .stop.status-planned .pin {
+    box-shadow: 0 0 12px rgb(184 120 255 / 60%), inset 0 0 10px rgb(184 120 255 / 30%);
+  }
+
+  & .card {
+    width: 92%;
+    padding: 18px 18px 16px;
+    background: linear-gradient(180deg, rgb(10 14 28 / 95%), rgb(7 11 24 / 96%));
+    border: 1px solid currentColor;
+    border-radius: 10px;
+    box-shadow: 0 0 18px color-mix(in srgb, currentColor 18%, transparent),
+                inset 0 0 22px rgb(55 68 148 / 12%);
+
+    & .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    & .quarter {
+      font-family: var(--title-font);
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #f6f3ff;
+      text-shadow: 0 0 12px rgb(174 150 255 / 35%);
+    }
+
+    & .status {
+      font-family: var(--content-font);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 999px;
+      color: currentColor;
+      background: color-mix(in srgb, currentColor 12%, transparent);
+      border: 1px solid currentColor;
+      box-shadow: 0 0 10px color-mix(in srgb, currentColor 30%, transparent);
+    }
+
+    & h4 {
+      font-family: var(--title-font);
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #f6f3ff;
+    }
+
+    & ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    & ul li {
+      font-family: var(--content-font);
+      font-size: 0.9rem;
+      color: rgb(195 210 255 / 78%);
+      padding-left: 14px;
+      position: relative;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 9px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.55;
+      }
+    }
+  }
+}
+
+@keyframes roadmap-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.25); }
+}
+
+@media (max-width: 1024px) {
+  .roadmap .track {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    gap: 18px;
+
+    &::before { display: none; }
+  }
+  .roadmap .stop {
+    height: auto;
+
+    &.above .card,
+    &.below .card { margin: 0; width: 100%; }
+  }
+  .roadmap .pin { display: none; }
+}

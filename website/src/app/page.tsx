@@ -1,44 +1,36 @@
-'use client';
-
-import Layout from '../components/layout/Layout';
+import Layout from '@/components/layout/Layout';
 import {
-  BackersSection,
-  CommunitySection,
-  CtaBannerSection,
-  FaqSection,
-  FeatureInteractionsSection,
-  FeaturedPetsSection,
-  FooterSection,
-  HeroSection,
-  HowItWorksSection,
-  RoadmapSection,
-  StatsBandSection,
-  TestimonialsSection,
-} from '../components/landing';
+  Backers,
+  Community,
+  Cta,
+  Faq,
+  Features,
+  Footer,
+  Hero,
+  HowItWorks,
+  Pets,
+  Roadmap,
+  Stats,
+  Testimonials,
+} from '@/components/landing';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:5173';
+const LandingPage = () => (
+  <Layout containerClassName="landing-layout">
+    <div className="landing">
+      <Hero />
+      <HowItWorks />
+      <Features />
+      <Pets />
+      <Stats />
+      <Cta />
+      <Roadmap />
+      <Testimonials />
+      <Faq />
+      <Backers />
+      <Community />
+      <Footer />
+    </div>
+  </Layout>
+);
 
-export default function LandingPage() {
-  const handleStartPlaying = () => {
-    window.location.href = APP_URL;
-  };
-
-  return (
-    <Layout containerClassName="landing-layout">
-      <div className="landing">
-        <HeroSection onStartPlaying={handleStartPlaying} />
-        <HowItWorksSection />
-        <FeatureInteractionsSection />
-        <FeaturedPetsSection />
-        <StatsBandSection />
-        <CtaBannerSection onStartPlaying={handleStartPlaying} />
-        <RoadmapSection />
-        <TestimonialsSection />
-        <FaqSection />
-        <BackersSection />
-        <CommunitySection />
-        <FooterSection />
-      </div>
-    </Layout>
-  );
-}
+export default LandingPage;

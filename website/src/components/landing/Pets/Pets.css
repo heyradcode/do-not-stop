@@ -1,0 +1,218 @@
+.pets {
+  & .rarity {
+    margin-bottom: 36px;
+  }
+
+  & .rarity-track {
+    display: flex;
+    width: 100%;
+    height: 18px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgb(255 255 255 / 4%);
+    border: 1px solid rgb(118 154 255 / 22%);
+    box-shadow: inset 0 0 14px rgb(0 0 0 / 35%);
+    margin-bottom: 20px;
+  }
+
+  & .rarity-segment {
+    flex: 0 0 auto;
+    height: 100%;
+    background: var(--tone);
+    box-shadow: inset 0 0 14px rgb(255 255 255 / 18%), 0 0 12px var(--tone);
+    transition: filter 200ms ease;
+
+    &:hover { filter: brightness(1.15); }
+
+    &.tone-silver { --tone: #b2c8eb; }
+    &.tone-cyan { --tone: #50b8ff; }
+    &.tone-violet { --tone: #b878ff; }
+    &.tone-gold { --tone: #ffcf5c; }
+  }
+
+  & .rarity-legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+
+    & li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: #e7efff;
+
+      &.tone-silver { --tone: #b2c8eb; }
+      &.tone-cyan { --tone: #50b8ff; }
+      &.tone-violet { --tone: #b878ff; }
+      &.tone-gold { --tone: #ffcf5c; }
+    }
+
+    & .dot {
+      flex: 0 0 auto;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-top: 7px;
+      background: var(--tone);
+      box-shadow: 0 0 10px var(--tone);
+    }
+
+    & strong {
+      font-family: var(--title-font);
+      font-size: 0.92rem;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: #f6f3ff;
+    }
+
+    & .share {
+      display: inline-block;
+      margin-left: 8px;
+      font-family: var(--content-font);
+      font-weight: 700;
+      color: var(--tone, #b6e2ff);
+    }
+
+    & p {
+      font-family: var(--content-font);
+      margin: 4px 0 0;
+      font-size: 0.86rem;
+      line-height: 1.45;
+      color: rgb(195 210 255 / 72%);
+    }
+  }
+
+  & .grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(130px, 1fr));
+    gap: 16px;
+  }
+
+  & .card {
+    background: linear-gradient(180deg, rgb(10 14 28 / 95%) 0%, rgb(7 11 24 / 95%) 100%);
+    border: 1px solid rgb(100 132 255 / 20%);
+    padding: 22px 22px 20px;
+    text-align: center;
+    color: #eaf0ff;
+    box-shadow: inset 0 0 22px rgb(55 68 148 / 12%);
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, transparent 40%, var(--edge, rgb(120 150 255 / 45%)) 100%);
+      pointer-events: none;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+      opacity: 0.85;
+    }
+
+    &.r-legendary { --edge: rgb(255 207 92 / 70%); }
+    &.r-epic { --edge: rgb(184 120 255 / 70%); }
+    &.r-rare { --edge: rgb(80 184 255 / 70%); }
+  }
+
+  & .avatar {
+    width: 92px;
+    height: 92px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 30% 20%, #171d38, #0f1430);
+    border: 2px solid rgb(121 148 255 / 35%);
+    box-shadow: inset 0 0 14px rgb(80 110 220 / 18%);
+
+    & img {
+      width: 78px;
+      height: 78px;
+      object-fit: contain;
+      display: block;
+    }
+  }
+
+  & .card.r-legendary .avatar {
+    border-color: rgb(255 207 92 / 70%);
+    box-shadow: inset 0 0 18px rgb(255 207 92 / 22%), 0 0 16px rgb(255 207 92 / 30%);
+  }
+  & .card.r-epic .avatar {
+    border-color: rgb(184 120 255 / 70%);
+    box-shadow: inset 0 0 18px rgb(184 120 255 / 22%), 0 0 16px rgb(184 120 255 / 28%);
+  }
+  & .card.r-rare .avatar {
+    border-color: rgb(80 184 255 / 70%);
+    box-shadow: inset 0 0 18px rgb(80 184 255 / 22%), 0 0 16px rgb(80 184 255 / 28%);
+  }
+
+  & .card h4 {
+    font-family: var(--title-font);
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+    letter-spacing: 0.4px;
+  }
+
+  & .meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  & .level {
+    font-family: var(--content-font);
+    font-size: 0.78rem;
+    color: rgb(195 210 255 / 70%);
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+  }
+
+  & .tag {
+    font-family: var(--content-font);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-weight: 700;
+    border: 1px solid currentColor;
+
+    &.r-legendary {
+      color: #ffd76b;
+      background: rgb(255 207 92 / 12%);
+      box-shadow: 0 0 10px rgb(255 207 92 / 28%);
+    }
+    &.r-epic {
+      color: #d6b4ff;
+      background: rgb(184 120 255 / 12%);
+      box-shadow: 0 0 10px rgb(184 120 255 / 28%);
+    }
+    &.r-rare {
+      color: #9ed7ff;
+      background: rgb(80 184 255 / 12%);
+      box-shadow: 0 0 10px rgb(80 184 255 / 28%);
+    }
+  }
+}
+
+@media (max-width: 1024px) {
+  .pets {
+    & .grid { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+    & .rarity-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+}
+
+@media (max-width: 768px) {
+  .pets .grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .pets .rarity-legend { grid-template-columns: 1fr; }
+}
