@@ -1,5 +1,5 @@
 .cta-banner {
-  padding: 40px var(--landing-gutter);
+  padding: var(--section-pad-block-band) var(--landing-gutter);
   background:
     radial-gradient(circle at 12% 50%, rgb(108 244 197 / 18%), transparent 38%),
     radial-gradient(circle at 88% 50%, rgb(155 100 255 / 26%), transparent 40%),

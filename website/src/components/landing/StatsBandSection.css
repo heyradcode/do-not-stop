@@ -3,7 +3,7 @@
   grid-template-columns: repeat(4, minmax(160px, 1fr));
   gap: 16px;
   align-items: center;
-  padding: 40px var(--landing-gutter);
+  padding: var(--section-pad-block-band) var(--landing-gutter);
   background: linear-gradient(90deg, rgb(88 35 188 / 40%) 0%, rgb(45 84 225 / 35%) 50%, rgb(15 149 180 / 34%) 100%);
   border-top: 1px solid rgb(102 132 255 / 20%);
   border-bottom: 1px solid rgb(102 132 255 / 20%);

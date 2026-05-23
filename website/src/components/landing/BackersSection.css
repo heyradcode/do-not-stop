@@ -1,5 +1,5 @@
 .backers {
-  padding: 24px 0 26px;
+  padding: var(--section-pad-block-band) 0;
   background: rgb(5 8 18 / 86%);
   border-top: 1px solid rgb(96 123 255 / 18%);
   border-bottom: 1px solid rgb(96 123 255 / 18%);

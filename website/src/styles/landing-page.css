@@ -13,6 +13,8 @@ html,
 
 .landing {
   --landing-gutter: clamp(44px, 7vw, 108px);
+  --section-pad-block: clamp(80px, 9vh, 120px);
+  --section-pad-block-band: clamp(56px, 6vh, 80px);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -25,7 +27,7 @@ html,
 
 .landing-section {
   position: relative;
-  padding: 64px var(--landing-gutter) 72px;
+  padding: var(--section-pad-block) var(--landing-gutter);
   background: transparent;
   scroll-margin-top: var(--main-header-offset);
 }
@@ -107,7 +109,11 @@ html,
 }
 
 @media (max-width: 768px) {
+  .landing {
+    --section-pad-block: 64px;
+    --section-pad-block-band: 44px;
+  }
   .landing-section {
-    padding: 44px 14px 52px;
+    padding-inline: 18px;
   }
 }
