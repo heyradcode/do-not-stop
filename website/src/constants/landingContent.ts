@@ -16,7 +16,6 @@ export type LandingCommunityCard = {
   name: string;
   members: string;
   color: 'discord' | 'twitter' | 'telegram' | 'youtube';
-  icon: string;
 };
 
 export const LANDING_FEATURE_CARDS: LandingFeatureCard[] = [
@@ -36,8 +35,8 @@ export const LANDING_FEATURED_PETS: LandingFeaturedPet[] = [
 ];
 
 export const LANDING_COMMUNITY_CARDS: LandingCommunityCard[] = [
-  { name: 'Discord', members: '150k+ Members', color: 'discord', icon: '💬' },
-  { name: 'Twitter', members: '250k+ Followers', color: 'twitter', icon: '🐦' },
-  { name: 'Telegram', members: '120k+ Members', color: 'telegram', icon: '✈️' },
-  { name: 'YouTube', members: '180k+ Members', color: 'youtube', icon: '▶️' },
+  { name: 'Discord', members: '150k+ Members', color: 'discord' },
+  { name: 'Twitter', members: '250k+ Followers', color: 'twitter' },
+  { name: 'Telegram', members: '120k+ Members', color: 'telegram' },
+  { name: 'YouTube', members: '180k+ Members', color: 'youtube' },
 ];

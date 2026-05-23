@@ -30,8 +30,38 @@
 }
 
 .community-icon {
-  font-size: 1.75rem;
-  margin-bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+}
+
+.community-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.community-card.discord .community-icon {
+  color: #5865f2;
+  filter: drop-shadow(0 0 8px rgb(88 101 242 / 55%));
+}
+
+.community-card.twitter .community-icon {
+  color: #ffffff;
+  filter: drop-shadow(0 0 8px rgb(255 255 255 / 35%));
+}
+
+.community-card.telegram .community-icon {
+  color: #29b6f6;
+  filter: drop-shadow(0 0 8px rgb(41 182 246 / 55%));
+}
+
+.community-card.youtube .community-icon {
+  color: #ff0033;
+  filter: drop-shadow(0 0 8px rgb(255 0 51 / 55%));
 }
 
 .community-card h4 {
