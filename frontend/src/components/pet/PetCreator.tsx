@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import {
+    parseContractError,
+    useActiveChain,
+    useCreatePet,
+    usePetList,
+} from '@shared/core';
 import TransactionStatus from '../ui/TransactionStatus';
-import { usePetsContract } from '@shared/core';
-import { petsContractParams } from '../../petsContractParams';
-import { parseContractError } from '../../utils/errorParser';
 import './PetCreator.css';
 
 const PetCreator: React.FC = () => {
-    const { isConnected, createRandomPet, hash, isPending, writeError } = usePetsContract(petsContractParams);
+    const chain = useActiveChain();
+    const isConnected = chain.kind !== 'none';
+    const { mutate, isPending, error: hookError, hash } = useCreatePet();
+    const { refetch } = usePetList();
+
     const [petName, setPetName] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -19,7 +26,8 @@ const PetCreator: React.FC = () => {
             return;
         }
 
-        if (!petName.trim()) {
+        const trimmed = petName.trim();
+        if (!trimmed) {
             setError('Please enter a pet name');
             return;
         }
@@ -30,30 +38,31 @@ const PetCreator: React.FC = () => {
         setIsContractError(false);
 
         try {
-            await createRandomPet(petName.trim());
+            await mutate({ name: trimmed });
+            if (chain.kind === 'solana') {
+                setSuccess(`Pet "${trimmed}" created successfully!`);
+                setPetName('');
+                refetch();
+            }
         } catch (err) {
-            setError('Failed to create pet. Please try again.');
             console.error('Error creating pet:', err);
         }
     };
 
-    const handleSuccess = () => {
+    const handleTransactionComplete = () => {
         setSuccess(`Pet "${petName}" created successfully!`);
         setPetName('');
+        refetch();
     };
 
-    const handleTransactionComplete = () => {
-        handleSuccess();
-    };
-
-    React.useEffect(() => {
-        if (writeError) {
-            const parsedError = parseContractError(writeError);
-            setError(parsedError.message);
-            setIsUserRejection(parsedError.isUserRejection);
-            setIsContractError(parsedError.isContractError);
+    useEffect(() => {
+        if (hookError) {
+            const parsed = parseContractError(hookError);
+            setError(parsed.message);
+            setIsUserRejection(parsed.isUserRejection);
+            setIsContractError(parsed.isContractError);
         }
-    }, [writeError]);
+    }, [hookError]);
 
     if (!isConnected) {
         return (
@@ -107,11 +116,13 @@ const PetCreator: React.FC = () => {
                     </div>
                 )}
 
-                <TransactionStatus
-                    hash={hash}
-                    onComplete={handleTransactionComplete}
-                    onError={(error) => setError(error.message)}
-                />
+                {chain.kind === 'evm' && (
+                    <TransactionStatus
+                        hash={hash}
+                        onComplete={handleTransactionComplete}
+                        onError={(error) => setError(error.message)}
+                    />
+                )}
             </div>
         </div>
     );

@@ -12,6 +12,8 @@
   "dependencies": {
     "@babel/runtime": "^7.28.4",
     "@shared/core": "workspace:*",
+    "@coral-xyz/anchor": "0.32.1",
+    "@solana/web3.js": "^1.95.2",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/netinfo": "^11.4.1",
     "@reown/appkit-react-native": "^2.0.1",
@@ -25,6 +27,7 @@
     "react-native-get-random-values": "^2.0.0",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-svg": "^15.14.0",
+    "bs58": "^6.0.0",
     "viem": "~2.38.3",
     "wagmi": "^2.18.2"
   },

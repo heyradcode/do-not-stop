@@ -1,10 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '../../ui/TransactionStatus';
-import { usePetsContract } from '@shared/core';
+import { useActiveChain, usePetsContract, getReadyPets } from '@shared/core';
 import { petsContractParams } from '../../../petsContractParams';
 import { DASHBOARD_HOME } from '../../../constants/interactionRoutes';
-import { getReadyPets } from '../../../utils/readyPets';
 import { useWriteContractErrorState } from '../../../hooks/useWriteContractErrorState';
 
 export type BattlePanelProps = {
@@ -13,6 +12,7 @@ export type BattlePanelProps = {
 
 const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
+    const chain = useActiveChain();
     const { battlePets, petIds, pets, isReady, hash, isPending, writeError, refetchPetIds } =
         usePetsContract(petsContractParams);
     const readyPets = useMemo(() => getReadyPets(petIds, pets, isReady), [petIds, pets, isReady]);
@@ -21,6 +21,24 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const [selectedPet1, setSelectedPet1] = useState<bigint | null>(null);
     const [selectedPet2, setSelectedPet2] = useState<bigint | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+
+    if (chain.kind === 'solana') {
+        return (
+            <div className="interface">
+                {!isStandaloneView && (
+                    <>
+                        <h4>⚔️ Battle Pets</h4>
+                        <p>Battles are not yet supported on Solana.</p>
+                    </>
+                )}
+                <div className="action-controls">
+                    <button type="button" onClick={() => navigate(DASHBOARD_HOME)} className="cancel-button">
+                        Back to dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const handleBattle = async () => {
         if (!selectedPet1 || !selectedPet2) {

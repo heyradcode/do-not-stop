@@ -1,8 +1,12 @@
 import React, { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { usePetsContract } from '@shared/core';
-import { petsContractParams } from '../../petsContractParams';
-import { getLifePercent } from '../../utils/petCard';
+import {
+    getLifePercent,
+    getReadyPetsUnified,
+    isActionSupported,
+    useActiveChain,
+    usePetList,
+} from '@shared/core';
 import type { InteractionAction } from '../../constants/interactionRoutes';
 import {
     BATTLE_PATH,
@@ -15,7 +19,6 @@ import BattlePanel from './interactions/BattlePanel';
 import BreedPanel from './interactions/BreedPanel';
 import LevelUpPanel from './interactions/LevelUpPanel';
 import RenamePanel from './interactions/RenamePanel';
-import { getReadyPets } from '../../utils/readyPets';
 import StateCard from './interactions/StateCard';
 import './PetInteractions.css';
 
@@ -34,10 +37,18 @@ function parseActionParam(raw: string | undefined): InteractionAction | null {
 const PetInteractions: React.FC = () => {
     const navigate = useNavigate();
     const { action: actionParam } = useParams<{ action?: string }>();
-    const { isConnected, pets, petIds, isLoading, isReady } = usePetsContract(petsContractParams);
+    const chain = useActiveChain();
+    const isConnected = chain.kind !== 'none';
+    const { pets, isLoading } = usePetList();
 
     const action = useMemo(() => parseActionParam(actionParam), [actionParam]);
-    const readyPets = useMemo(() => getReadyPets(petIds, pets, isReady), [petIds, pets, isReady]);
+    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+
+    const activeChainKind = chain.kind === 'none' ? null : chain.kind;
+    const breedSupported = isActionSupported(activeChainKind, 'breed');
+    const battleSupported = isActionSupported(activeChainKind, 'battle');
+    const levelUpSupported = isActionSupported(activeChainKind, 'levelUp');
+    const renameSupported = isActionSupported(activeChainKind, 'rename');
 
     useEffect(() => {
         if (actionParam !== undefined && actionParam !== '' && action === null) {
@@ -78,6 +89,8 @@ const PetInteractions: React.FC = () => {
     const previewParentA = readyPets[0]?.pet;
     const previewParentB = readyPets[1]?.pet;
     const availableBattles = Math.min(3, readyPets.length > 1 ? 3 : 0);
+    const breedDisabledHint = !breedSupported ? 'Coming soon on Solana' : undefined;
+    const battleDisabledHint = !battleSupported ? 'Coming soon on Solana' : undefined;
 
     return (
         <div className="pet-interactions">
@@ -106,9 +119,10 @@ const PetInteractions: React.FC = () => {
                                 type="button"
                                 onClick={() => navigate(BREED_PATH)}
                                 className="lab-breed-button"
-                                disabled={readyPets.length < 2}
+                                disabled={!breedSupported || readyPets.length < 2}
+                                title={breedDisabledHint}
                             >
-                                Start breeding
+                                {breedSupported ? 'Start breeding' : 'Coming soon on Solana'}
                             </button>
                         </div>
                         <div className="battle-arena-card">
@@ -139,9 +153,10 @@ const PetInteractions: React.FC = () => {
                                 type="button"
                                 onClick={() => navigate(BATTLE_PATH)}
                                 className="lab-breed-button start-button"
-                                disabled={readyPets.length < 2}
+                                disabled={!battleSupported || readyPets.length < 2}
+                                title={battleDisabledHint}
                             >
-                                Start battle
+                                {battleSupported ? 'Start battle' : 'Coming soon on Solana'}
                             </button>
                         </div>
                         <div className="feature-action-card">
@@ -150,13 +165,15 @@ const PetInteractions: React.FC = () => {
                             <div className="content">
                                 Boost your pet stats by leveling up.
                                 <br />
-                                Cost: 0.001 ETH per level.
+                                {chain.kind === 'solana'
+                                    ? 'Costs a small SOL fee per level.'
+                                    : 'Cost: 0.001 ETH per level.'}
                             </div>
                             <button
                                 type="button"
                                 onClick={() => navigate(LEVELUP_PATH)}
                                 className="lab-breed-button levelup-button"
-                                disabled={readyPets.length < 1}
+                                disabled={!levelUpSupported || readyPets.length < 1}
                             >
                                 Open level up
                             </button>
@@ -165,15 +182,17 @@ const PetInteractions: React.FC = () => {
                             <div className="header">✏️ Change Name</div>
                             <div className="hub-divider" />
                             <div className="content">
-                                Rename your pet once it reaches level 2.
+                                Rename your pet.
                                 <br />
-                                Pick a new identity for your companion.
+                                {chain.kind === 'evm'
+                                    ? 'Requires level 2 or higher.'
+                                    : 'Pick a new identity for your companion.'}
                             </div>
                             <button
                                 type="button"
                                 onClick={() => navigate(RENAME_PATH)}
                                 className="lab-breed-button changename-button"
-                                disabled={readyPets.length < 1}
+                                disabled={!renameSupported || readyPets.length < 1}
                             >
                                 Open rename
                             </button>

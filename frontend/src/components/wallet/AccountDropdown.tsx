@@ -13,7 +13,7 @@ import './AccountDropdown.css';
 const AccountDropdown: React.FC = () => {
     const { address, isConnected, chain } = useAccount();
     const { publicKey: solanaPublicKey, connected: solanaConnected, disconnect: solanaDisconnect } = useWallet();
-    const { setShowAuthFlow, handleLogOut } = useDynamicContext();
+    const { setShowAuthFlow, handleLogOut, user, primaryWallet } = useDynamicContext();
     const [isOpen, setIsOpen] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
 
@@ -166,8 +166,20 @@ const AccountDropdown: React.FC = () => {
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
     };
 
-    // Show connect button if not connected via Wagmi (which is connected through Dynamic.xyz)
-    if (!isConnected) {
+    /** Phantom (and others) opened via Dynamic’s modal live on `primaryWallet`, not on `@solana/wallet-adapter-react`. */
+    const dynamicWalletAddress = primaryWallet?.address ?? undefined;
+    const dynamicSession = Boolean(user || primaryWallet);
+
+    const headerTriggerLabel =
+        (address && formatAddress(address)) ||
+        (solanaPublicKey && formatAddress(solanaPublicKey.toString())) ||
+        (dynamicWalletAddress && formatAddress(dynamicWalletAddress)) ||
+        'Connected';
+
+    // Wagmi, wallet-adapter, or Dynamic “connect-only” session (incl. Solana-only via Dynamic modal).
+    const hasAnyWallet = isConnected || solanaConnected || dynamicSession;
+
+    if (!hasAnyWallet) {
         return (
             <div className="account-dropdown-container">
                 <NeonButton tone="azure" className="connect-wallet-btn" onClick={() => setShowAuthFlow(true)}>
@@ -189,9 +201,7 @@ const AccountDropdown: React.FC = () => {
                     tone="azure"
                     size="sm"
                 >
-                    {address && formatAddress(address)}
-                    {solanaPublicKey && formatAddress(solanaPublicKey.toString())}
-                    {' '}
+                    {headerTriggerLabel}{' '}
                     {isOpen ? '▲' : '▼'}
                 </NeonButton>
 
@@ -227,6 +237,24 @@ const AccountDropdown: React.FC = () => {
                                         </span>
                                     </div>
                                 )}
+                                {dynamicWalletAddress &&
+                                    dynamicWalletAddress !== address &&
+                                    dynamicWalletAddress !== solanaPublicKey?.toString() && (
+                                        <div
+                                            className={`user-address-full clickable-address ${isCopied ? 'copied' : ''}`}
+                                            onClick={() => {
+                                                void navigator.clipboard.writeText(dynamicWalletAddress);
+                                                setIsCopied(true);
+                                                setTimeout(() => setIsCopied(false), 2000);
+                                            }}
+                                            title={isCopied ? "Address copied!" : "Click to copy address"}
+                                        >
+                                            <span className="address-text">{dynamicWalletAddress}</span>
+                                            <span className="copy-icon">
+                                                {isCopied ? "✓" : "📋"}
+                                            </span>
+                                        </div>
+                                    )}
                             </div>
                         </div>
 
@@ -285,7 +313,7 @@ const AccountDropdown: React.FC = () => {
                                         fullWidth
                                     >
                                         {isNonceLoading ? 'Getting nonce...' :
-                                            isSigning ? 'Please sign in MetaMask...' :
+                                            isSigning ? 'Please approve the signature in your wallet...' :
                                                 isVerifying ? 'Verifying...' : 'Sign Message & Login'}
                                     </NeonButton>
                                 ) : (
@@ -300,7 +328,7 @@ const AccountDropdown: React.FC = () => {
                                     </NeonButton>
                                 )}
 
-                                {isConnected && (
+                                {(isConnected || user || primaryWallet) && (
                                     <NeonButton
                                         className="dropdown-neon-btn"
                                         onClick={handleDisconnect}

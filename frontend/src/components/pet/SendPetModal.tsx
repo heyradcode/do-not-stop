@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
-import { usePetsContract } from '@shared/core';
-import { petsContractParams } from '../../petsContractParams';
+import {
+    isValidEthAddress,
+    isValidSolanaAddress,
+    useActiveChain,
+    usePetList,
+    useTransferPet,
+} from '@shared/core';
 import TransactionStatus from '../ui/TransactionStatus';
-import { isValidEthAddress } from '../../utils/isValidEthAddress';
 import './SendPetModal.css';
 
 interface SendPetModalProps {
@@ -23,33 +27,63 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
     pet,
     petId,
 }) => {
+    const chain = useActiveChain();
+    const { refetch } = usePetList();
+    const { mutate, isPending, error: hookError, hash, reset } = useTransferPet();
+
     const [recipientAddress, setRecipientAddress] = useState('');
     const [isConfirming, setIsConfirming] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [txHash, setTxHash] = useState<string | undefined>(undefined);
-    const { transferPet, isPending, writeError, refetchPetIds, hash } = usePetsContract(petsContractParams);
+
+    const addressPlaceholder = chain.kind === 'solana' ? 'Solana address (base58)' : '0x...';
+    const addressLabel =
+        chain.kind === 'solana' ? 'Recipient Solana Address:' : 'Recipient Ethereum Address:';
+
+    const validateRecipient = (raw: string): string | null => {
+        const trimmed = raw.trim();
+        if (!trimmed) {
+            return 'Please enter a recipient address';
+        }
+
+        if (chain.kind === 'solana') {
+            if (!isValidSolanaAddress(trimmed)) {
+                return 'Please enter a valid Solana address';
+            }
+            if (chain.address === trimmed) {
+                return 'You cannot send a pet to yourself';
+            }
+            return null;
+        }
+
+        if (chain.kind === 'evm') {
+            if (!isValidEthAddress(trimmed)) {
+                return 'Please enter a valid Ethereum address';
+            }
+            if (trimmed.toLowerCase() === chain.address.toLowerCase()) {
+                return 'You cannot send a pet to yourself';
+            }
+            return null;
+        }
+
+        return 'Please connect your wallet first';
+    };
 
     const handleSend = async () => {
         setError(null);
 
-        if (!recipientAddress) {
-            setError('Please enter a recipient address');
-            return;
-        }
-
-        if (!isValidEthAddress(recipientAddress)) {
-            setError('Please enter a valid Ethereum address');
-            return;
-        }
-
-        if (recipientAddress.toLowerCase() === window.ethereum?.selectedAddress?.toLowerCase()) {
-            setError('You cannot send a pet to yourself');
+        const validationError = validateRecipient(recipientAddress);
+        if (validationError) {
+            setError(validationError);
             return;
         }
 
         try {
             setIsConfirming(true);
-            await transferPet(recipientAddress, petId);
+            await mutate({ to: recipientAddress.trim(), petId: petId.toString() });
+            if (chain.kind === 'solana') {
+                await handleTransactionComplete();
+            }
         } catch {
             setError('Failed to send pet. Please try again.');
             setIsConfirming(false);
@@ -61,6 +95,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
             setRecipientAddress('');
             setError(null);
             setTxHash(undefined);
+            reset();
             onClose();
         }
     };
@@ -71,8 +106,15 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
         }
     }, [hash]);
 
+    React.useEffect(() => {
+        if (hookError) {
+            setError(hookError.message);
+            setIsConfirming(false);
+        }
+    }, [hookError]);
+
     const handleTransactionComplete = async () => {
-        await refetchPetIds();
+        await refetch();
         setRecipientAddress('');
         setIsConfirming(false);
         setError(null);
@@ -107,24 +149,18 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                     </div>
 
                     <div className="recipient-input">
-                        <label htmlFor="recipient">Recipient Address:</label>
+                        <label htmlFor="recipient">{addressLabel}</label>
                         <input
                             id="recipient"
                             type="text"
                             value={recipientAddress}
                             onChange={(e) => setRecipientAddress(e.target.value)}
-                            placeholder="0x..."
+                            placeholder={addressPlaceholder}
                             disabled={isConfirming || isPending}
                             className={error ? 'error' : ''}
                         />
                         {error && <p className="error-message">{error}</p>}
                     </div>
-
-                    {writeError && (
-                        <div className="error-container">
-                            <p>❌ Transaction failed: {writeError.message}</p>
-                        </div>
-                    )}
 
                     <div className="modal-actions">
                         <button
@@ -144,15 +180,17 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                     </div>
                 </div>
 
-                <TransactionStatus
-                    hash={txHash}
-                    onComplete={handleTransactionComplete}
-                    onError={(err) => {
-                        setError(err.message);
-                        setIsConfirming(false);
-                        setTxHash(undefined);
-                    }}
-                />
+                {chain.kind === 'evm' && (
+                    <TransactionStatus
+                        hash={txHash}
+                        onComplete={handleTransactionComplete}
+                        onError={(err) => {
+                            setError(err.message);
+                            setIsConfirming(false);
+                            setTxHash(undefined);
+                        }}
+                    />
+                )}
             </div>
         </div>
     );

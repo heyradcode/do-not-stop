@@ -34,7 +34,7 @@
 
             h3 {
                 margin: 0;
-                font-size: var(--font-size-2xl, 1.5rem);
+                font-size: var(--font-size-3xl);
                 font-weight: 700;
                 color: var(--zi-text);
                 text-align: center;

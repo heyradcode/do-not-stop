@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import {
+    parseContractError,
+    useActiveChain,
+    useCreatePet,
+    usePetList,
+} from '@shared/core';
 import TransactionStatus from '../ui/TransactionStatus';
-import { usePetsContract } from '@shared/core';
-import { petsContractParams } from '../../petsContractParams';
-import { parseContractError } from '../../utils/errorParser';
 import './CreatePetModal.css';
 
 interface CreatePetModalProps {
@@ -11,8 +14,11 @@ interface CreatePetModalProps {
 }
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
-    const { isConnected, createRandomPet, hash, isPending, writeError, refetchPetIds } =
-        usePetsContract(petsContractParams);
+    const chain = useActiveChain();
+    const isConnected = chain.kind !== 'none';
+    const { mutate, isPending, error: hookError, hash, reset } = useCreatePet();
+    const { refetch } = usePetList();
+
     const [petName, setPetName] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -26,7 +32,8 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
             return;
         }
 
-        if (!petName.trim()) {
+        const trimmed = petName.trim();
+        if (!trimmed) {
             setError('Please enter a pet name');
             return;
         }
@@ -37,9 +44,15 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         setIsContractError(false);
 
         try {
-            await createRandomPet(petName.trim());
+            await mutate({ name: trimmed });
+
+            if (chain.kind === 'solana') {
+                setSuccess(`Pet "${trimmed}" created successfully!`);
+                setPetName('');
+                refetch();
+                onClose();
+            }
         } catch (err) {
-            setError('Failed to create pet. Please try again.');
             console.error('Error creating pet:', err);
         }
     };
@@ -49,11 +62,11 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         setPetName('');
     };
 
-    const handleTransactionComplete = async () => {
+    const handleTransactionComplete = () => {
         handleSuccess();
         onClose();
         setTxHash(undefined);
-        await refetchPetIds();
+        refetch();
     };
 
     const handleClose = () => {
@@ -63,23 +76,24 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         setIsUserRejection(false);
         setIsContractError(false);
         setTxHash(undefined);
+        reset();
         onClose();
     };
 
-    React.useEffect(() => {
-        if (hash) {
+    useEffect(() => {
+        if (hash && chain.kind === 'evm') {
             setTxHash(hash);
         }
-    }, [hash]);
+    }, [hash, chain.kind]);
 
-    React.useEffect(() => {
-        if (writeError) {
-            const parsedError = parseContractError(writeError);
-            setError(parsedError.message);
-            setIsUserRejection(parsedError.isUserRejection);
-            setIsContractError(parsedError.isContractError);
+    useEffect(() => {
+        if (hookError) {
+            const parsed = parseContractError(hookError);
+            setError(parsed.message);
+            setIsUserRejection(parsed.isUserRejection);
+            setIsContractError(parsed.isContractError);
         }
-    }, [writeError]);
+    }, [hookError]);
 
     if (!isOpen) return null;
 
@@ -131,14 +145,16 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                         </div>
                     )}
 
-                    <TransactionStatus
-                        hash={txHash}
-                        onComplete={handleTransactionComplete}
-                        onError={(error) => {
-                            setError(error.message);
-                            setTxHash(undefined);
-                        }}
-                    />
+                    {chain.kind === 'evm' && (
+                        <TransactionStatus
+                            hash={txHash}
+                            onComplete={handleTransactionComplete}
+                            onError={(error) => {
+                                setError(error.message);
+                                setTxHash(undefined);
+                            }}
+                        />
+                    )}
                 </div>
             </div>
         </div>

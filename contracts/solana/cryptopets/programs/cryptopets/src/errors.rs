@@ -10,5 +10,11 @@ pub enum ErrorCode {
     Unauthorized,
     #[msg("Program is paused")]
     Paused,
+    #[msg("Cannot transfer a pet to yourself")]
+    CannotTransferToSelf,
+    #[msg("Sender has no pets to transfer")]
+    PetCountUnderflow,
+    #[msg("Recipient pet count overflow")]
+    PetCountOverflow,
 }
 

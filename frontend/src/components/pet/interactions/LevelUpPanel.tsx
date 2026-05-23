@@ -1,10 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '../../ui/TransactionStatus';
-import { usePetsContract } from '@shared/core';
-import { petsContractParams } from '../../../petsContractParams';
+import {
+    getReadyPetsUnified,
+    useActiveChain,
+    useLevelUpPet,
+    usePetList,
+} from '@shared/core';
 import { DASHBOARD_HOME } from '../../../constants/interactionRoutes';
-import { getReadyPets } from '../../../utils/readyPets';
 import { useWriteContractErrorState } from '../../../hooks/useWriteContractErrorState';
 
 export type LevelUpPanelProps = {
@@ -13,13 +16,20 @@ export type LevelUpPanelProps = {
 
 const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const { levelUp, petIds, pets, isReady, hash, isPending, writeError, refetchPetIds } =
-        usePetsContract(petsContractParams);
-    const readyPets = useMemo(() => getReadyPets(petIds, pets, isReady), [petIds, pets, isReady]);
-    const { error, setError, isUserRejection, isContractError, resetError } = useWriteContractErrorState(writeError);
+    const chain = useActiveChain();
+    const { pets, refetch } = usePetList();
+    const { mutate, isPending, error: hookError, hash, reset } = useLevelUpPet();
+    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+    const { error, setError, isUserRejection, isContractError, resetError } = useWriteContractErrorState(hookError);
 
-    const [selectedPet, setSelectedPet] = useState<bigint | null>(null);
+    const [selectedPet, setSelectedPet] = useState<string>('');
     const [success, setSuccess] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (hookError) {
+            setError(hookError.message);
+        }
+    }, [hookError, setError]);
 
     const handleLevelUp = async () => {
         if (!selectedPet) {
@@ -28,10 +38,17 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         }
 
         resetError();
+        reset();
         setSuccess(null);
 
         try {
-            await levelUp(selectedPet);
+            await mutate({ petId: selectedPet });
+            if (chain.kind === 'solana') {
+                setSuccess('Pet leveled up successfully!');
+                setSelectedPet('');
+                refetch();
+                navigate(DASHBOARD_HOME);
+            }
         } catch (err) {
             setError('Failed to level up pet. Please try again.');
             console.error('Error leveling up pet:', err);
@@ -45,11 +62,17 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
     const handleTransactionComplete = () => {
         setSuccess('Pet leveled up successfully!');
-        setSelectedPet(null);
+        setSelectedPet('');
         resetError();
+        refetch();
         navigate(DASHBOARD_HOME);
-        refetchPetIds();
     };
+
+    const buttonLabel = isPending
+        ? 'Leveling Up...'
+        : chain.kind === 'solana'
+            ? 'Level Up'
+            : 'Level Up (0.001 ETH)';
 
     return (
         <>
@@ -57,7 +80,11 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 {!isStandaloneView && (
                     <>
                         <h4>⬆️ Level Up Pet</h4>
-                        <p>Pay 0.001 ETH to level up your pet</p>
+                        <p>
+                            {chain.kind === 'solana'
+                                ? 'Pay a small SOL fee to level up your pet'
+                                : 'Pay 0.001 ETH to level up your pet'}
+                        </p>
                     </>
                 )}
 
@@ -65,12 +92,12 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                     <div className="field">
                         <label>Select Pet</label>
                         <select
-                            value={selectedPet?.toString() || ''}
-                            onChange={(e) => setSelectedPet(e.target.value ? BigInt(e.target.value) : null)}
+                            value={selectedPet}
+                            onChange={(e) => setSelectedPet(e.target.value)}
                         >
                             <option value="">Select pet...</option>
                             {readyPets.map(({ id, pet }) => (
-                                <option key={id.toString()} value={id.toString()}>
+                                <option key={id} value={id}>
                                     {pet.name} (Level {pet.level})
                                 </option>
                             ))}
@@ -80,7 +107,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
                 <div className="action-controls">
                     <button type="button" onClick={handleLevelUp} disabled={isPending || !selectedPet}>
-                        {isPending ? 'Leveling Up...' : 'Level Up (0.001 ETH)'}
+                        {buttonLabel}
                     </button>
                     <button type="button" onClick={handleCancel} className="cancel-button">
                         Cancel
@@ -100,7 +127,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 </div>
             )}
 
-            <TransactionStatus hash={hash} onComplete={handleTransactionComplete} onError={(e) => setError(e.message)} />
+            {chain.kind === 'evm' && (
+                <TransactionStatus hash={hash} onComplete={handleTransactionComplete} onError={(e) => setError(e.message)} />
+            )}
         </>
     );
 };

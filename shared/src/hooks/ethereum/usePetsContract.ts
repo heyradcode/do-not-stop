@@ -1,3 +1,4 @@
+import type { Abi } from 'viem';
 import { useAccount, useWriteContract, useReadContract, useReadContracts } from 'wagmi';
 import type { Abi } from 'viem';
 
@@ -41,7 +42,7 @@ export const usePetsContract = ({
     const petReadContracts =
         ((petIdsData as bigint[] | undefined)?.map((petId: bigint) => ({
             address: safeAddress,
-            abi: abi as never,
+            abi,
             functionName: 'getById' as const,
             args: [petId],
         }))) ?? [];
@@ -89,7 +90,7 @@ export const usePetsContract = ({
             args: [petId],
             value: 1000000000000000n,
             gas: 200000n,
-        });
+        } as unknown as Parameters<typeof writeContract>[0]);
     };
 
     const changeName = (petId: bigint, newName: string) => {

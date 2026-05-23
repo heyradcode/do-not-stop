@@ -5,12 +5,15 @@ import { http } from 'viem';
 import { createConfig, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
-import { ApiClientProvider, AuthProvider, queryClient } from '@shared/core';
+import { ApiClientProvider, AuthProvider, PetsConfigProvider, queryClient } from '@shared/core';
 import { API_URL } from './config';
-import { CHAINS } from './constants/chains';
+import { CHAINS, solanaNetworkNameFromCluster } from './constants/chains';
 import { SolanaWalletProvider } from './contexts';
 import { DynamicProvider } from './contexts/dynamic';
+import { petsContractParams } from './petsContractParams';
 import { WalletAwareRoutes } from './router';
+import { SolanaAnchorWallet } from './solana/SolanaAnchorWallet';
+import { SolanaAuthSigner } from './solana/SolanaAuthSigner';
 import './App.css';
 
 const allChains = CHAINS.map((chainConfig) => chainConfig.chain);
@@ -22,19 +25,26 @@ const config = createConfig({
     transports: Object.fromEntries(allChains.map((chain) => [chain.id, http(chain.rpcUrls.default.http[0])])),
 });
 
+const solanaNetwork = solanaNetworkNameFromCluster(import.meta.env.VITE_SOLANA_CLUSTER);
+
 const App: React.FC = () => {
     return (
         <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
                 <DynamicProvider>
-                    <SolanaWalletProvider network="Solana Local">
-                        <ApiClientProvider baseURL={API_URL}>
-                            <AuthProvider>
-                                <BrowserRouter>
-                                    <WalletAwareRoutes />
-                                </BrowserRouter>
-                            </AuthProvider>
-                        </ApiClientProvider>
+                    <SolanaWalletProvider network={solanaNetwork}>
+                        <SolanaAuthSigner />
+                        <SolanaAnchorWallet>
+                            <ApiClientProvider baseURL={API_URL}>
+                                <AuthProvider>
+                                    <PetsConfigProvider evm={petsContractParams}>
+                                        <BrowserRouter>
+                                            <WalletAwareRoutes />
+                                        </BrowserRouter>
+                                    </PetsConfigProvider>
+                                </AuthProvider>
+                            </ApiClientProvider>
+                        </SolanaAnchorWallet>
                     </SolanaWalletProvider>
                 </DynamicProvider>
             </QueryClientProvider>
