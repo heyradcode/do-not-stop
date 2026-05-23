@@ -1,0 +1,55 @@
+/* =============================================================================
+   Palette primitives — landing-only subset of frontend tokens.
+   ============================================================================= */
+:root {
+  --cp-white: #ffffff;
+  --cp-text-body-dark: #f3f4f6;
+  --cp-text-muted-dark: #c7ccd4;
+  --cp-text-light-dark: #9ca3af;
+  --cp-border-dark: #2b3240;
+  --cp-bg-dark: #141923;
+  --cp-bg-muted-dark: #1d2430;
+  --cp-bg-hover-dark: #273244;
+
+  --cp-brand-primary: #667eea;
+  --cp-brand-secondary: #764ba2;
+
+  --cp-body-text-dark: #e5e7eb;
+  --cp-body-bg-dark: #0f1117;
+  --cp-link: #646cff;
+  --cp-link-hover: #535bf2;
+}
+
+/* =============================================================================
+   Semantic tokens
+   ============================================================================= */
+:root {
+  --color-primary: var(--cp-brand-primary);
+  --color-secondary: var(--cp-brand-secondary);
+  --color-text: var(--cp-text-body-dark);
+  --color-text-muted: var(--cp-text-muted-dark);
+  --color-text-light: var(--cp-text-light-dark);
+  --color-border: var(--cp-border-dark);
+  --color-background: var(--cp-bg-dark);
+  --color-background-light: var(--cp-bg-muted-dark);
+  --color-background-hover: var(--cp-bg-hover-dark);
+}
+
+/* =============================================================================
+   Layout scale used by landing sections and the fixed header.
+   ============================================================================= */
+:root {
+  --border-radius: 16px;
+  --border-radius-sm: 8px;
+
+  --z-header: 50;
+
+  /* Space reserved for fixed `.main-header` */
+  --main-header-offset: 100px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --main-header-offset: 128px;
+  }
+}

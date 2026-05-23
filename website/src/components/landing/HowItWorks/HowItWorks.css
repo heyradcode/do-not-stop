@@ -1,0 +1,101 @@
+.how-it-works {
+  & .track {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    gap: 18px;
+    position: relative;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 38px;
+      left: 6%;
+      right: 6%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #7dd6ff 12%, #b58cff 50%, #ff7bcb 88%, transparent);
+      box-shadow: 0 0 12px rgb(170 140 255 / 45%);
+      z-index: 0;
+    }
+  }
+
+  & .node {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+
+    & h4 {
+      font-family: var(--title-font);
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #f6f3ff;
+    }
+
+    & p {
+      font-family: var(--content-font);
+      margin: 0;
+      font-size: 0.94rem;
+      line-height: 1.55;
+      color: rgb(195 210 255 / 78%);
+      max-width: 240px;
+    }
+  }
+
+  & .circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 25%, #1a2244 0%, #0a0f25 70%);
+    border: 2px solid rgb(184 140 255 / 75%);
+    box-shadow: 0 0 22px rgb(184 140 255 / 38%), inset 0 0 18px rgb(125 214 255 / 18%);
+    font-family: var(--title-font);
+    font-weight: 800;
+    color: #f6f3ff;
+    margin-bottom: 16px;
+    position: relative;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 1px solid rgb(184 140 255 / 25%);
+      pointer-events: none;
+    }
+
+    & span {
+      font-size: 1.4rem;
+      letter-spacing: 1px;
+      background: linear-gradient(92deg, #7dd6ff, #b58cff, #ff7bcb);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  }
+}
+
+@media (max-width: 1024px) {
+  .how-it-works .track {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+    gap: 36px 18px;
+
+    &::before { display: none; }
+  }
+}
+
+@media (max-width: 600px) {
+  .how-it-works .track {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}

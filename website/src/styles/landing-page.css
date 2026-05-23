@@ -1,0 +1,119 @@
+/* Landing-only: lighter header chrome so the hero shows through */
+.landing-layout .main-header {
+  background: rgb(5 8 18 / 42%);
+  border-block-end-color: rgb(101 131 255 / 16%);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 22%);
+  backdrop-filter: blur(10px);
+}
+
+html,
+.landing-layout .main-content {
+  scroll-behavior: smooth;
+}
+
+.landing {
+  --landing-gutter: clamp(44px, 7vw, 108px);
+  --section-pad-block: clamp(80px, 9vh, 120px);
+  --section-pad-block-band: clamp(56px, 6vh, 80px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.03) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.03) 0 1px, transparent 1px 48px),
+    linear-gradient(180deg, #060912 0%, #070a16 100%);
+  scroll-behavior: smooth;
+}
+
+.landing-section {
+  position: relative;
+  padding: var(--section-pad-block) var(--landing-gutter);
+  background: transparent;
+  scroll-margin-top: var(--main-header-offset);
+}
+
+/* Alternating mood washes — every .landing-section cycles cyan / violet / magenta */
+.landing-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.55;
+}
+
+.landing-section > * {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-section:nth-of-type(3n + 1)::before {
+  background: radial-gradient(circle at 12% 0%, rgb(41 168 255 / 14%), transparent 42%),
+              radial-gradient(circle at 90% 100%, rgb(41 168 255 / 9%), transparent 38%);
+}
+
+.landing-section:nth-of-type(3n + 2)::before {
+  background: radial-gradient(circle at 88% 8%, rgb(155 100 255 / 16%), transparent 44%),
+              radial-gradient(circle at 6% 92%, rgb(155 100 255 / 10%), transparent 40%);
+}
+
+.landing-section:nth-of-type(3n)::before {
+  background: radial-gradient(circle at 50% 0%, rgb(255 110 196 / 12%), transparent 46%),
+              radial-gradient(circle at 20% 100%, rgb(255 110 196 / 8%), transparent 42%);
+}
+
+.section-title {
+  font-family: var(--title-font);
+  margin: 0 0 10px;
+  text-align: left;
+  padding-inline-start: 0;
+  color: #f6f3ff;
+  font-size: clamp(1.65rem, 3vw, 2.3rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  text-shadow: 0 0 10px rgb(174 150 255 / 35%);
+  position: relative;
+  display: inline-block;
+}
+
+.section-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -8px;
+  width: 56px;
+  height: 2px;
+  background: linear-gradient(90deg, #7dd6ff 0%, #b58cff 60%, #ff7bcb 100%);
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgb(170 140 255 / 65%);
+}
+
+.section-subtitle {
+  font-family: var(--content-font);
+  margin: 22px 0 28px;
+  color: rgb(195 210 255 / 70%);
+  font-size: 1rem;
+  max-width: 640px;
+  line-height: 1.55;
+}
+
+.landing .neon-btn.size-md {
+  padding: 14px 22px;
+  font-size: 0.9rem;
+}
+
+.landing .neon-btn.size-sm {
+  padding: 10px 16px;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 768px) {
+  .landing {
+    --section-pad-block: 64px;
+    --section-pad-block-band: 44px;
+  }
+  .landing-section {
+    padding-inline: 18px;
+  }
+}
