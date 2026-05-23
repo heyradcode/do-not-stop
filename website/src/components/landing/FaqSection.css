@@ -1,21 +1,29 @@
 .faq .faq-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   max-width: 860px;
 }
 
 .faq-item {
-  background: linear-gradient(180deg, rgb(10 14 28 / 92%), rgb(7 11 24 / 96%));
-  border: 1px solid rgb(118 154 255 / 26%);
-  border-radius: 10px;
-  padding: 18px 20px;
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 22px 4px;
+  position: relative;
+  transition: background 200ms ease;
+}
+
+.faq-item + .faq-item {
+  border-top: 1px solid transparent;
+  background-image: linear-gradient(90deg, transparent, rgb(118 154 255 / 22%) 22%, rgb(184 140 255 / 22%) 50%, rgb(255 123 203 / 22%) 78%, transparent);
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position: top left;
 }
 
 .faq-item[open] {
-  border-color: rgb(184 140 255 / 55%);
-  box-shadow: 0 0 18px rgb(184 140 255 / 20%);
+  background-color: rgb(184 140 255 / 6%);
+  box-shadow: none;
 }
 
 .faq-item summary {
@@ -26,9 +34,15 @@
   align-items: center;
   gap: 14px;
   font-family: var(--title-font);
-  font-size: 1rem;
+  font-size: 1.02rem;
   letter-spacing: 0.4px;
   color: #f6f3ff;
+  transition: color 180ms ease, text-shadow 180ms ease;
+}
+
+.faq-item summary:hover {
+  color: #d6e6ff;
+  text-shadow: 0 0 12px rgb(118 154 255 / 50%);
 }
 
 .faq-item summary::-webkit-details-marker {
@@ -37,8 +51,8 @@
 
 .faq-chevron {
   flex: 0 0 auto;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-right: 2px solid #b58cff;
   border-bottom: 2px solid #b58cff;
   transform: rotate(45deg);
@@ -52,8 +66,9 @@
 
 .faq-item p {
   font-family: var(--content-font);
-  margin: 14px 0 0;
+  margin: 12px 0 0;
   font-size: 0.98rem;
-  line-height: 1.6;
+  line-height: 1.65;
   color: rgb(195 210 255 / 80%);
+  max-width: 720px;
 }

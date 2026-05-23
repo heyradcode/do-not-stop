@@ -10,19 +10,29 @@ export default function FeaturedPetsSection() {
       <h3 className="section-title">Meet the Companions</h3>
       <p className="section-subtitle">Four rarity tiers, ten thousand creatures, one shot at the legendary roster.</p>
 
-      <div className="rarity-tiers">
-        {LANDING_RARITY_TIERS.map((tier) => (
-          <div className={`rarity-tier tone-${tier.tone}`} key={tier.name}>
-            <div className="rarity-tier-head">
-              <span className="rarity-tier-name">{tier.name}</span>
-              <span className="rarity-tier-share">{tier.share}</span>
-            </div>
-            <p>{tier.blurb}</p>
-            <div className="rarity-bar" aria-hidden="true">
-              <span style={{ width: tier.share }} />
-            </div>
-          </div>
-        ))}
+      <div className="rarity-bar-wrap" aria-label="Rarity tier distribution">
+        <div className="rarity-bar-track">
+          {LANDING_RARITY_TIERS.map((tier) => (
+            <div
+              key={tier.name}
+              className={`rarity-bar-segment tone-${tier.tone}`}
+              style={{ flexBasis: tier.share }}
+              title={`${tier.name} · ${tier.share}`}
+            />
+          ))}
+        </div>
+        <ul className="rarity-bar-legend">
+          {LANDING_RARITY_TIERS.map((tier) => (
+            <li key={tier.name} className={`tone-${tier.tone}`}>
+              <span className="legend-dot" aria-hidden="true" />
+              <div>
+                <strong>{tier.name}</strong>
+                <span className="legend-share">{tier.share}</span>
+                <p>{tier.blurb}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="pet-showcase-grid">

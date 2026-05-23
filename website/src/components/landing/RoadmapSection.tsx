@@ -12,19 +12,25 @@ export default function RoadmapSection() {
     <section className="landing-section roadmap" id="roadmap">
       <h3 className="section-title">Roadmap</h3>
       <p className="section-subtitle">Where we&apos;ve been, what&apos;s shipping next.</p>
-      <ol className="roadmap-grid">
-        {LANDING_ROADMAP.map((item) => (
-          <li className={`roadmap-card status-${item.status}`} key={item.quarter}>
-            <div className="roadmap-card-head">
-              <span className="roadmap-quarter">{item.quarter}</span>
-              <span className="roadmap-status">{STATUS_LABEL[item.status]}</span>
+      <ol className="roadmap-track">
+        {LANDING_ROADMAP.map((item, idx) => (
+          <li
+            className={`roadmap-stop status-${item.status} ${idx % 2 === 0 ? 'above' : 'below'}`}
+            key={item.quarter}
+          >
+            <div className="roadmap-card">
+              <div className="roadmap-card-head">
+                <span className="roadmap-quarter">{item.quarter}</span>
+                <span className="roadmap-status">{STATUS_LABEL[item.status]}</span>
+              </div>
+              <h4>{item.title}</h4>
+              <ul>
+                {item.bullets.map((bullet) => (
+                  <li key={bullet}>{bullet}</li>
+                ))}
+              </ul>
             </div>
-            <h4>{item.title}</h4>
-            <ul>
-              {item.bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
-              ))}
-            </ul>
+            <span className="roadmap-pin" aria-hidden="true" />
           </li>
         ))}
       </ol>
