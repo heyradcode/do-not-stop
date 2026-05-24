@@ -71,6 +71,9 @@ web_modules/
 # dotenv environment variable files
 .env
 .env.*
+
+# Vercel CLI (link/pull; use GitHub secrets in CI)
+.vercel
 !.env.example
 
 # parcel-bundler cache (https://parceljs.org/)

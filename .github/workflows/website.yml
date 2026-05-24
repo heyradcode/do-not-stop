@@ -1,0 +1,158 @@
+# Deploy the marketing site (website/) to Vercel.
+#
+# Required GitHub secrets (repo or environment):
+#   VERCEL_TOKEN              — https://vercel.com/account/tokens
+#   VERCEL_ORG_ID             — Team/user ID from Vercel project settings
+#   VERCEL_WEBSITE_PROJECT_ID — Project ID for the website Vercel project (separate from frontend)
+#
+# Recommended GitHub variable:
+#   NEXT_PUBLIC_APP_URL       — Production URL of the Vite app (Play Now / Connect Wallet CTAs)
+
+name: Website CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - '.vercelignore'
+      - 'scripts/vercel-website-link.mjs'
+      - '.github/workflows/website.yml'
+  pull_request:
+    paths:
+      - 'website/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - '.vercelignore'
+      - 'scripts/vercel-website-link.mjs'
+      - '.github/workflows/website.yml'
+
+concurrency:
+  group: website-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL || 'http://localhost:5173' }}
+
+jobs:
+  ci:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm --filter website lint
+
+      - name: Build
+        run: pnpm --filter website build
+
+  deploy-preview:
+    name: Deploy Preview (Vercel)
+    needs: ci
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_WEBSITE_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Monorepo: deploy from repo root so pnpm workspace + lockfile are uploaded.
+      # Root Directory must be website/ (see scripts/vercel-website-link.mjs + Vercel dashboard).
+      - name: Link Vercel project (rootDirectory=website)
+        run: node scripts/vercel-website-link.mjs
+
+      - name: Pull Vercel environment (preview)
+        run: npx vercel@54.2.0 pull --yes --environment=preview --token="$VERCEL_TOKEN"
+
+      - name: Deploy preview
+        id: deploy
+        run: |
+          url=$(npx vercel@54.2.0 deploy --yes --token="$VERCEL_TOKEN" \
+            --build-env "NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}")
+          echo "preview-url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview URL on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🌐 **Website preview:** ${process.env.PREVIEW_URL}`,
+            });
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview-url }}
+
+  deploy-production:
+    name: Deploy Production (Vercel)
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_WEBSITE_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Link Vercel project (rootDirectory=website)
+        run: node scripts/vercel-website-link.mjs
+
+      - name: Pull Vercel environment (production)
+        run: npx vercel@54.2.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Deploy production
+        run: |
+          npx vercel@54.2.0 deploy --prod --yes --token="$VERCEL_TOKEN" \
+            --build-env "NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}"
