@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWaitForTransactionReceipt } from 'wagmi';
+import Icon, { CheckIcon, CloseIcon, HourglassIcon } from '../common/Icon';
 import './TransactionStatus.css';
 
 interface TransactionStatusProps {
@@ -49,18 +50,16 @@ const TransactionStatus: React.FC<TransactionStatusProps> = ({
         return null;
     }
 
-    const getStatusIcon = () => {
+    const StatusIcon = () => {
         switch (status) {
             case 'pending':
-                return '⏳';
-            case 'confirming':
-                return '🔄';
+                return <Icon as={HourglassIcon} tone="amber" glow="soft" className="no-gap" />;
             case 'confirmed':
-                return '✅';
+                return <Icon as={CheckIcon} tone="emerald" glow="soft" className="no-gap" />;
             case 'error':
-                return '❌';
+                return <Icon as={CloseIcon} tone="magenta" glow="soft" className="no-gap" />;
             default:
-                return '⏳';
+                return <Icon as={HourglassIcon} tone="amber" glow="soft" className="no-gap" />;
         }
     };
 
@@ -90,7 +89,7 @@ const TransactionStatus: React.FC<TransactionStatusProps> = ({
                     {status === 'confirming' ? (
                         <div className="spinner"></div>
                     ) : (
-                        <span>{getStatusIcon()}</span>
+                        <StatusIcon />
                     )}
                 </div>
                 <div className="status-text">

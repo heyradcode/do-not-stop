@@ -13,6 +13,7 @@ import {
 import { petsContractParams } from '../../../petsContractParams';
 import { DASHBOARD_HOME } from '../../../constants/interactionRoutes';
 import { useWriteContractErrorState } from '../../../hooks/useWriteContractErrorState';
+import Icon, { CheckIcon, CloseIcon, DnaIcon, PauseIcon, WarningIcon } from '../../common/Icon';
 
 export type BreedPanelProps = {
     /** `false` when embedded under the dashboard interactions hub. */
@@ -51,7 +52,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
             <div className="interface">
                 {!isStandaloneView && (
                     <>
-                        <h4>🧬 Breed Pets</h4>
+                        <h4><Icon as={DnaIcon} tone="emerald" />Breed Pets</h4>
                         <p>Breeding is not yet supported on Solana.</p>
                     </>
                 )}
@@ -142,7 +143,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
             <div className="interface">
                 {!isStandaloneView && (
                     <>
-                        <h4>🧬 Breed Pets</h4>
+                        <h4><Icon as={DnaIcon} tone="emerald" />Breed Pets</h4>
                         <p>Select two pets to create a new one</p>
                     </>
                 )}
@@ -222,13 +223,18 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 <div
                     className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}
                 >
-                    {isUserRejection ? '⏸️' : isContractError ? '⚠️' : '❌'} {error}
+                    <Icon
+                        as={isUserRejection ? PauseIcon : isContractError ? WarningIcon : CloseIcon}
+                        tone={isUserRejection ? 'inherit' : isContractError ? 'amber' : 'magenta'}
+                    />
+                    {error}
                 </div>
             )}
 
             {success && (
                 <div className="success-message">
-                    ✅ {success}
+                    <Icon as={CheckIcon} tone="emerald" />
+                    {success}
                 </div>
             )}
 

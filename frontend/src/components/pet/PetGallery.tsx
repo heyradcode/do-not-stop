@@ -16,6 +16,7 @@ import {
     usePetList,
     type Pet,
 } from '@shared/core';
+import Icon, { CheckIcon, CloseIcon, PawIcon, SendIcon } from '../common/Icon';
 import CreatePetModal from './CreatePetModal';
 import PetCollectionLayout from './PetCollectionLayout';
 import SendPetModal from './SendPetModal';
@@ -47,7 +48,7 @@ const PetGallery: React.FC = () => {
     if (!isConnected) {
         return (
             <PetCollectionLayout
-                title="🐾 Your Pet Collection"
+                title={<><Icon as={PawIcon} tone="cyan" />Your Pet Collection</>}
                 description="Connect your wallet to view your pets"
             />
         );
@@ -56,7 +57,7 @@ const PetGallery: React.FC = () => {
     return (
         <>
             <PetCollectionLayout
-                title="🐾 Your Pets"
+                title={<><Icon as={PawIcon} tone="cyan" />Your Pets</>}
                 actions={
                     <button
                         type="button"
@@ -78,7 +79,7 @@ const PetGallery: React.FC = () => {
 
                 {error && (
                     <div className="error-container">
-                        <p>❌ {error.message || 'Failed to load pet data'}</p>
+                        <p><Icon as={CloseIcon} tone="magenta" />{error.message || 'Failed to load pet data'}</p>
                         <button type="button" onClick={() => refetch()} className="retry-button">
                             Try Again
                         </button>
@@ -87,7 +88,7 @@ const PetGallery: React.FC = () => {
 
                 {!loading && !error && pets.length === 0 && (
                     <div className="empty-state">
-                        <div className="empty-icon">🐾</div>
+                        <div className="empty-icon"><Icon as={PawIcon} tone="violet" glow="strong" className="no-gap" /></div>
                         <h3>No pets yet!</h3>
                     </div>
                 )}
@@ -99,7 +100,7 @@ const PetGallery: React.FC = () => {
                             className="create-first-pet-button"
                             onClick={() => setCreateModalOpen(true)}
                         >
-                            🐾 Create your first pet
+                            <Icon as={PawIcon} tone="cyan" />Create your first pet
                         </button>
                     </div>
                 )}
@@ -151,7 +152,7 @@ const PetGallery: React.FC = () => {
 
                                 <div className="pet-status">
                                     {isPetReady(BigInt(pet.readyAt)) ? (
-                                        <div className="status ready">✅ Ready for action!</div>
+                                        <div className="status ready"><Icon as={CheckIcon} tone="emerald" />Ready for action!</div>
                                     ) : (
                                         <div className="status cooldown">
                                             ⏰ Ready in {getTimeUntilReady(BigInt(pet.readyAt))}
@@ -165,7 +166,7 @@ const PetGallery: React.FC = () => {
                                         className="send-button"
                                         onClick={() => handleSendClick(pet)}
                                     >
-                                        📤 Send
+                                        <Icon as={SendIcon} tone="emerald" />Send
                                     </button>
                                 </div>
                             </div>

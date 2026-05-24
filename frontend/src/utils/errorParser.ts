@@ -59,7 +59,7 @@ export function parseContractError(error: any): ParsedError {
     errorMessage.includes('transaction ran out of gas') ||
     errorMessage.includes('insufficient funds')) {
     return {
-      message: '⛽ Transaction ran out of gas. Please try again with more gas.',
+      message: 'Transaction ran out of gas. Please try again with more gas.',
       isUserRejection: false,
       isContractError: false
     };
@@ -110,28 +110,28 @@ function mapRevertReasonToFriendlyMessage(revertReason: string): string {
   if (reason.includes('out of gas') ||
     reason.includes('gas required exceeds allowance') ||
     reason.includes('transaction ran out of gas')) {
-    return '⛽ Transaction ran out of gas. Please try again with more gas.';
+    return 'Transaction ran out of gas. Please try again with more gas.';
   }
 
   // Handle the most common contract revert reasons
   // On-chain revert text from deployed contract (legacy wording).
   if (reason.includes('you already have a zombie') || reason.includes('you already have a pet')) {
-    return '🐾 You already have a pet! Create a new one by breeding or battling.';
+    return 'You already have a pet! Create a new one by breeding or battling.';
   }
 
   if (reason.includes('insufficient funds')) {
-    return '💰 Insufficient funds for this transaction.';
+    return 'Insufficient funds for this transaction.';
   }
 
   if (reason.includes('unauthorized') || reason.includes('not the owner')) {
-    return '🔒 You are not authorized to perform this action.';
+    return 'You are not authorized to perform this action.';
   }
 
   // For generic RPC errors, provide a helpful message
   if (reason.includes('internal json-rpc error') ||
     reason.includes('execution reverted') ||
     reason.includes('transaction reverted')) {
-    return '⚠️ Transaction failed. This might be due to contract rules or insufficient gas.';
+    return 'Transaction failed. This might be due to contract rules or insufficient gas.';
   }
 
   // Return the original revert reason if no mapping found

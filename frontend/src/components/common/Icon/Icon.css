@@ -1,0 +1,49 @@
+.neon-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  color: inherit;
+  vertical-align: -0.18em;
+  margin-inline-end: 0.4em;
+  flex-shrink: 0;
+}
+
+.neon-icon.no-gap {
+  margin-inline-end: 0;
+  vertical-align: middle;
+}
+
+.neon-icon.tone-cyan {
+  color: var(--neon-cyan);
+}
+
+.neon-icon.tone-violet {
+  color: var(--neon-violet);
+}
+
+.neon-icon.tone-magenta {
+  color: var(--neon-magenta);
+}
+
+.neon-icon.tone-emerald {
+  color: #9effd4;
+}
+
+.neon-icon.tone-amber {
+  color: #ffd07b;
+}
+
+.neon-icon.glow-soft {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.neon-icon.glow-strong {
+  filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 18px currentColor);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neon-icon {
+    transition: none;
+  }
+}
