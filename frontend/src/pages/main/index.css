@@ -18,9 +18,9 @@
     width: 100%;
     max-width: none;
     min-height: 0;
+    min-width: 0;
   }
 
-  /* Pet collection takes whatever vertical space is left after the interactions hub. */
   & > .pet-collection {
     flex: 1 1 auto;
     min-height: 0;
@@ -28,9 +28,92 @@
   }
 }
 
+/* Dashboard view (interactions hub + pet gallery): split horizontally so neither
+   panel steals vertical space from the other and the pet cards render in full. */
+.main-content.authenticated:has(.pet-collection) {
+  flex-direction: row;
+  align-items: stretch;
+
+  & > .pet-interactions {
+    flex: 0 0 clamp(360px, 32vw, 460px);
+    width: clamp(360px, 32vw, 460px);
+    max-width: clamp(360px, 32vw, 460px);
+    height: 100%;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    & .interactions-card {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--neon-cyan) transparent;
+    }
+
+    & .interactions-card::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    & .interactions-card::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--neon-cyan), var(--neon-violet));
+      border-radius: 3px;
+      box-shadow: 0 0 8px rgb(125 214 255 / 32%);
+    }
+
+    & .action-buttons {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  & > .pet-collection {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    height: 100%;
+  }
+}
+
 @media (max-width: 1024px) {
   .main-content.authenticated {
     padding: var(--spacing-sm) var(--spacing-md);
     gap: var(--spacing-sm);
+  }
+
+  /* Stack panels vertically on narrow screens; allow the page to scroll
+     so both interactions and gallery remain usable. */
+  .main-content.authenticated:has(.pet-collection) {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    & > .pet-interactions {
+      flex: 0 0 auto;
+      width: 100%;
+      max-width: none;
+      height: auto;
+      overflow: visible;
+
+      & .interactions-card {
+        overflow: visible;
+      }
+
+      & .action-buttons {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    & > .pet-collection {
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 480px;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .main-content.authenticated:has(.pet-collection) > .pet-interactions .action-buttons {
+    grid-template-columns: 1fr;
   }
 }

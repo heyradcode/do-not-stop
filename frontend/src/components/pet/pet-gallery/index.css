@@ -246,7 +246,9 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: var(--spacing-md);
-    margin-block-start: var(--spacing-lg);
+    /* Symmetric padding inside the scroll area: vertical for hover-lift headroom,
+       horizontal so the cards feel inset from the surface edge. */
+    padding: var(--spacing-md);
     width: 100%;
     min-width: 0;
     contain: layout;
@@ -279,51 +281,39 @@
     @media (max-width: 480px) {
         grid-template-columns: 1fr;
         gap: var(--spacing-sm);
-        margin-block-start: var(--spacing-sm);
+        margin-block-start: 0;
+        padding-block: var(--spacing-sm);
+        padding-inline: var(--spacing-xs);
     }
 }
 
 /* Pet cards */
 .pet-card {
+    /* Fixed height keeps every card the same size regardless of cooldown state. */
+    height: 255px;
     background: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
     border-radius: var(--border-radius-lg);
     padding: 0;
-    box-shadow:
-        inset 0 0 18px rgb(125 214 255 / 6%),
-        0 6px 22px rgb(0 0 0 / 35%);
+    /* Elevation only — no inset cyan glow / no outer color halo. */
+    box-shadow: 0 6px 22px rgb(0 0 0 / 35%);
     border: 1px solid var(--neon-border-soft);
     transition: var(--transition);
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     container-type: inline-size;
     container-name: pet-card;
 
     &:hover {
         transform: translateY(-4px);
         border-color: var(--neon-border-strong);
-        box-shadow:
-            inset 0 0 22px rgb(181 140 255 / 10%),
-            0 12px 32px rgb(0 0 0 / 45%),
-            0 0 24px rgb(181 140 255 / 22%);
+        box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
     }
 
     &:focus-within {
         outline: 2px solid var(--neon-violet);
         outline-offset: 2px;
-    }
-
-    &::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(135deg, rgb(125 214 255 / 4%) 0%, transparent 40%, rgb(181 140 255 / 6%) 100%);
-        opacity: 0;
-        transition: var(--transition);
-        pointer-events: none;
-    }
-
-    &:hover::after {
-        opacity: 1;
     }
 
     @media (max-width: 480px) {
@@ -343,7 +333,8 @@
         #0a0f1c;
     border-block-end: 1px solid var(--neon-border-soft);
     border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
-    height: 150px;
+    height: 84px;
+    flex-shrink: 0;
     margin: 0;
     display: flex;
     align-items: center;
@@ -351,7 +342,7 @@
 }
 
 .pet-avatar {
-    font-size: 3.5rem;
+    font-size: 2rem;
     line-height: 1;
     filter: drop-shadow(0 0 12px rgb(181 140 255 / 45%));
 }
@@ -362,20 +353,23 @@
     justify-content: space-between;
     align-items: center;
     margin-block-end: 0;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
 
     & h3 {
         margin: 0;
         font-family: var(--title-font);
-        font-size: var(--font-size-xl);
+        font-size: var(--font-size-base);
         font-weight: 700;
         letter-spacing: 0.4px;
         color: #f6f3ff;
         text-shadow: 0 0 10px var(--neon-text-glow);
         flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
 
         @media (max-width: 480px) {
-            font-size: var(--font-size-base);
+            font-size: var(--font-size-sm);
         }
     }
 
@@ -387,34 +381,34 @@
 /* Rarity Badge */
 .rarity-badge {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 6px;
+    right: 6px;
     color: #fff;
-    padding: var(--spacing-xs) var(--spacing-sm);
+    padding: 2px 6px;
     border-radius: 2px;
     font-size: var(--font-size-xs);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.5px;
     box-shadow:
         inset 0 0 12px rgb(255 255 255 / 14%),
         0 0 14px rgb(255 255 255 / 22%);
     backdrop-filter: blur(4px);
 
     @media (max-width: 480px) {
-        top: 8px;
-        right: 8px;
+        top: 6px;
+        right: 6px;
     }
 }
 
 .level-badge {
     position: absolute;
-    left: 10px;
-    bottom: 10px;
+    left: 6px;
+    bottom: 6px;
     background: rgb(5 13 30 / 78%);
     color: var(--neon-cyan);
     border: 1px solid rgb(125 214 255 / 32%);
-    padding: 4px 10px;
+    padding: 2px 8px;
     border-radius: 999px;
     font-size: var(--font-size-xs);
     font-weight: 700;
@@ -426,12 +420,12 @@
 
 .element-tag {
     position: absolute;
-    right: 10px;
-    bottom: 10px;
+    right: 6px;
+    bottom: 6px;
     background: rgb(5 13 30 / 78%);
     color: var(--neon-magenta);
     border: 1px solid rgb(255 110 196 / 28%);
-    padding: 4px 10px;
+    padding: 2px 8px;
     border-radius: 999px;
     font-size: var(--font-size-xs);
     font-weight: 700;
@@ -442,9 +436,9 @@
 
 .pet-main-info {
     display: grid;
-    gap: 6px;
-    margin-bottom: 10px;
-    padding: 10px 14px 0;
+    gap: 4px;
+    margin-bottom: 6px;
+    padding: 6px 12px 0;
 }
 
 .pet-dna {
@@ -470,7 +464,7 @@
 }
 
 .xp-bar {
-    height: 8px;
+    height: 6px;
     background: rgb(5 13 30 / 78%);
     border-radius: 999px;
     overflow: hidden;
@@ -487,19 +481,19 @@
 .pet-properties {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-    margin-bottom: var(--spacing-sm);
-    padding: 0 14px;
+    gap: 4px;
+    margin-bottom: var(--spacing-xs);
+    padding: 0 12px;
 }
 
 .property-item {
     background: rgb(5 13 30 / 78%);
     border: 1px solid rgb(125 214 255 / 18%);
     border-radius: 2px;
-    padding: 8px 6px;
+    padding: 4px 4px;
     display: grid;
     justify-items: center;
-    gap: 2px;
+    gap: 0;
     transition: border-color 180ms ease, box-shadow 180ms ease;
 
     &:hover {
@@ -512,19 +506,21 @@
     text-transform: capitalize;
     color: rgb(195 210 255 / 60%);
     font-size: var(--font-size-xs);
+    line-height: 1.1;
 }
 
 .property-value {
     color: #f6f3ff;
     font-weight: 700;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
+    line-height: 1.1;
     text-shadow: 0 0 6px rgb(181 140 255 / 28%);
 }
 
 
 .pet-status {
-    padding: 0 14px;
-    margin-block-start: var(--spacing-sm);
+    padding: 0 12px;
+    margin-block-start: var(--spacing-xs);
 
     @media (max-width: 480px) {
         margin-block-start: var(--spacing-xs);
@@ -532,24 +528,11 @@
 }
 
 .status {
-    padding: var(--spacing-sm) var(--spacing-sm);
+    padding: 4px 8px;
     border-radius: var(--border-radius-sm);
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     font-weight: 600;
     text-align: center;
-
-    &.ready {
-        background: rgb(0 255 157 / 8%);
-        color: #9effd4;
-        border: 1px solid rgb(0 255 157 / 38%);
-        border-radius: 2px;
-        text-transform: uppercase;
-        letter-spacing: 0.6px;
-        box-shadow:
-            inset 0 0 12px rgb(0 255 157 / 14%),
-            0 0 12px rgb(0 255 157 / 22%);
-        text-shadow: 0 0 10px rgb(0 255 157 / 38%);
-    }
 
     &.cooldown {
         background: rgb(255 181 67 / 8%);
@@ -565,29 +548,24 @@
     }
 
     @media (max-width: 480px) {
-        padding: var(--spacing-xs);
+        padding: 4px 6px;
         font-size: var(--font-size-xs);
     }
 }
 
-/* Pet actions */
+/* Pet actions — anchored to the bottom so cards with/without cooldown align. */
 .pet-actions {
-    margin-block-start: var(--spacing-sm);
+    margin-block-start: auto;
+    padding: var(--spacing-xs) 12px 8px;
     display: flex;
     justify-content: center;
-
-    @media (max-width: 480px) {
-        margin-block-start: var(--spacing-xs);
-    }
 }
 
 .send-button {
     background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
-    color: #9effd4;
-    border: 1px solid rgb(0 255 157 / 42%);
     border-radius: 2px;
-    padding: var(--spacing-sm) var(--spacing-md);
-    font-size: var(--font-size-sm);
+    padding: 4px 12px;
+    font-size: var(--font-size-xs);
     font-weight: 700;
     letter-spacing: 0.6px;
     text-transform: uppercase;
@@ -596,10 +574,15 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
+
+    /* Default (ready) — emerald: pet is ready for action. */
+    color: #9effd4;
+    border: 1px solid rgb(0 255 157 / 42%);
     box-shadow:
         inset 0 0 12px rgb(0 255 157 / 12%),
         0 0 12px rgb(0 255 157 / 18%);
 
+    &.is-ready:hover,
     &:hover {
         transform: translateY(-1px);
         border-color: rgb(0 255 157 / 64%);
@@ -612,8 +595,24 @@
         transform: translateY(0);
     }
 
+    /* Cooldown — amber: same shape, color signals "not ready yet". */
+    &.on-cooldown {
+        color: #ffd07b;
+        border-color: rgb(255 181 67 / 44%);
+        box-shadow:
+            inset 0 0 12px rgb(255 181 67 / 12%),
+            0 0 12px rgb(255 181 67 / 20%);
+
+        &:hover {
+            border-color: rgb(255 181 67 / 70%);
+            box-shadow:
+                inset 0 0 18px rgb(255 181 67 / 22%),
+                0 0 18px rgb(255 181 67 / 32%);
+        }
+    }
+
     @media (max-width: 480px) {
-        padding: var(--spacing-xs) var(--spacing-sm);
+        padding: 4px 10px;
         font-size: var(--font-size-xs);
     }
 }

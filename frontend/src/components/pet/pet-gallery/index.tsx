@@ -17,7 +17,6 @@ import {
     type Pet,
 } from '@shared/core';
 import Icon, {
-    CheckIcon,
     CloseIcon,
     CrystalIcon,
     DragonIcon,
@@ -167,23 +166,21 @@ const PetGallery: React.FC = () => {
                                     ))}
                                 </div>
 
-                                <div className="pet-status">
-                                    {isPetReady(BigInt(pet.readyAt)) ? (
-                                        <div className="status ready"><Icon as={CheckIcon} tone="emerald" />Ready for action!</div>
-                                    ) : (
+                                {!isPetReady(BigInt(pet.readyAt)) && (
+                                    <div className="pet-status">
                                         <div className="status cooldown">
                                             ⏰ Ready in {getTimeUntilReady(BigInt(pet.readyAt))}
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
 
                                 <div className="pet-actions">
                                     <button
                                         type="button"
-                                        className="send-button"
+                                        className={`send-button${isPetReady(BigInt(pet.readyAt)) ? ' is-ready' : ' on-cooldown'}`}
                                         onClick={() => handleSendClick(pet)}
                                     >
-                                        <Icon as={SendIcon} tone="emerald" />Send
+                                        <Icon as={SendIcon} tone={isPetReady(BigInt(pet.readyAt)) ? 'emerald' : 'amber'} />Send
                                     </button>
                                 </div>
                             </div>
