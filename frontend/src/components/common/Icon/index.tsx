@@ -15,7 +15,7 @@ import {
   GiUpgrade,
 } from 'react-icons/gi';
 import { IoCheckmarkSharp, IoClose, IoCopy, IoPauseSharp, IoWarning } from 'react-icons/io5';
-import './Icon.css';
+import './index.css';
 
 export type IconTone = 'cyan' | 'violet' | 'magenta' | 'emerald' | 'amber' | 'inherit';
 export type IconGlow = 'none' | 'soft' | 'strong';

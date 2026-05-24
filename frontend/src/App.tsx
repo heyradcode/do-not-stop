@@ -12,8 +12,8 @@ import { SolanaWalletProvider } from './contexts';
 import { DynamicProvider } from './contexts/dynamic';
 import { petsContractParams } from './petsContractParams';
 import { WalletAwareRoutes } from './router';
-import { SolanaAnchorWallet } from './solana/SolanaAnchorWallet';
-import { SolanaAuthSigner } from './solana/SolanaAuthSigner';
+import { SolanaAnchorWallet } from './solana/solana-anchor-wallet';
+import { SolanaAuthSigner } from './solana/solana-auth-signer';
 import './App.css';
 
 const allChains = CHAINS.map((chainConfig) => chainConfig.chain);

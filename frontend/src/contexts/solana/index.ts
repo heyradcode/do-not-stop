@@ -1,1 +1,0 @@
-export { SolanaWalletProvider } from './SolanaWalletProvider';

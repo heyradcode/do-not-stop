@@ -5,7 +5,7 @@ import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { useAuth } from '@shared/core';
 import { getPopularTokens } from '../../../constants/tokens';
 import { NeonButton, NeonCard } from '../../common';
-import Icon, { CheckIcon, CopyIcon } from '../../common/Icon';
+import Icon, { CheckIcon, CopyIcon } from '../../common/icon';
 import { EthereumNetworkSwitcher, SolanaNetworkSwitcher } from '../network-switcher';
 import TokenBalance from '../token-balance';
 import NativeBalance from '../native-balance';

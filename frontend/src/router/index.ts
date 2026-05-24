@@ -1,6 +1,6 @@
 export { useAppLoggedIn } from './useAppLoggedIn';
-export { default as BattleRoute } from './BattleRoute';
-export { default as BreedRoute } from './BreedRoute';
-export { default as LevelUpRoute } from './LevelUpRoute';
-export { default as RenameRoute } from './RenameRoute';
-export { default as WalletAwareRoutes } from './WalletAwareRoutes';
+export { default as BattleRoute } from './battle-route';
+export { default as BreedRoute } from './breed-route';
+export { default as LevelUpRoute } from './level-up-route';
+export { default as RenameRoute } from './rename-route';
+export { default as WalletAwareRoutes } from './wallet-aware-routes';
