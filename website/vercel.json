@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "cd .. && pnpm install --frozen-lockfile",
-  "buildCommand": "cd .. && pnpm --filter website build",
   "framework": "nextjs",
+  "installCommand": "cd .. && pnpm install --frozen-lockfile",
+  "buildCommand": "next build",
   "build": {
     "env": {
       "NEXT_PUBLIC_APP_URL": "http://localhost:5173"

@@ -18,19 +18,22 @@ Use a **separate Vercel project** from the Vite `frontend/` app.
 ### 1. Create the Vercel project
 
 1. [New project](https://vercel.com/new) → import this GitHub repo.
-2. Set **Root Directory** to `website`.
+2. Set **Root Directory** to **`website`** (required — the repo root has no `next` dependency).
 3. Framework: **Next.js** (install/build commands come from `website/vercel.json`).
 4. Add environment variable **`NEXT_PUBLIC_APP_URL`** (production + preview) pointing at your deployed app, e.g. `https://app.example.com`.
 
+If Root Directory is left at `.`, deploys fail with *“No Next.js version detected”*.
+
 ### 2. Link the project for CI
 
-From `website/` with the [Vercel CLI](https://vercel.com/docs/cli):
+From the **repository root** (not `website/`):
 
 ```bash
+node scripts/vercel-website-link.mjs   # VERCEL_PROJECT_ID + VERCEL_ORG_ID in env
 npx vercel@54.2.0 link
 ```
 
-This creates `.vercel/project.json` locally (gitignored). For CI, copy IDs from the Vercel dashboard → Project → Settings → General.
+CI runs `vercel pull` / `vercel deploy` from the monorepo root so `pnpm-lock.yaml` and the workspace are available. Do **not** run `vercel deploy` only inside `website/` — that uploads ~60 files and breaks `cd .. && pnpm install`.
 
 ### 3. GitHub secrets and variables
 
@@ -46,6 +49,6 @@ Workflow: [`.github/workflows/website.yml`](../.github/workflows/website.yml)
 - **PRs** → Vercel preview + comment with URL  
 - **push to `main`** → production deploy (when `website/` or lockfile changes)
 
-Deploys use **remote builds on Vercel** (not `vercel deploy --prebuilt`), because pnpm monorepos often break prebuilt artifacts with missing `next` server paths.
+Deploys use **remote builds on Vercel** from the **repo root** with `rootDirectory: website` (not `vercel deploy --prebuilt`, and not `cd website && vercel deploy`).
 
 Set `NEXT_PUBLIC_APP_URL` in the Vercel project dashboard **and** as the GitHub Actions variable so production builds get the correct app link.

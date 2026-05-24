@@ -18,6 +18,8 @@ on:
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - 'package.json'
+      - '.vercelignore'
+      - 'scripts/vercel-website-link.mjs'
       - '.github/workflows/website.yml'
   pull_request:
     paths:
@@ -25,6 +27,8 @@ on:
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - 'package.json'
+      - '.vercelignore'
+      - 'scripts/vercel-website-link.mjs'
       - '.github/workflows/website.yml'
 
 concurrency:
@@ -89,14 +93,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Monorepo: deploy from repo root so pnpm workspace + lockfile are uploaded.
+      # Root Directory must be website/ (see scripts/vercel-website-link.mjs + Vercel dashboard).
+      - name: Link Vercel project (rootDirectory=website)
+        run: node scripts/vercel-website-link.mjs
+
       - name: Pull Vercel environment (preview)
-        working-directory: website
         run: npx vercel@54.2.0 pull --yes --environment=preview --token="$VERCEL_TOKEN"
 
-      # Remote build on Vercel (not --prebuilt): pnpm monorepos bake absolute .pnpm paths into prebuilt output.
       - name: Deploy preview
         id: deploy
-        working-directory: website
         run: |
           url=$(npx vercel@54.2.0 deploy --yes --token="$VERCEL_TOKEN" \
             --build-env "NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}")
@@ -140,12 +146,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Link Vercel project (rootDirectory=website)
+        run: node scripts/vercel-website-link.mjs
+
       - name: Pull Vercel environment (production)
-        working-directory: website
         run: npx vercel@54.2.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Deploy production
-        working-directory: website
         run: |
           npx vercel@54.2.0 deploy --prod --yes --token="$VERCEL_TOKEN" \
             --build-env "NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}"

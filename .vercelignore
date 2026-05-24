@@ -1,0 +1,10 @@
+# Website deploy uploads the monorepo root; exclude unrelated apps to keep uploads small.
+mobile/
+contracts/
+frontend/
+backend/
+**/.next/
+**/dist/
+**/.turbo/
+**/coverage/
+**/*.log
