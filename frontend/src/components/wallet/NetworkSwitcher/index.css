@@ -228,8 +228,10 @@
     }
 }
 
-/* Neon modal adjustments for network switcher */
-.network-neon-modal {
+/* Neon modal adjustments for network switcher.
+   Specificity bumped to win against `.neon-modal .dialog` / `.neon-modal .dialog .body`
+   from NeonModal.css's nested rules. */
+.neon-modal .dialog.network-neon-modal {
     width: min(100%, 430px);
 
     @media (max-width: 480px) {
@@ -237,7 +239,7 @@
     }
 }
 
-.network-neon-modal-content {
+.neon-modal .dialog .body.network-neon-modal-content {
     padding-top: 12px;
 }
 

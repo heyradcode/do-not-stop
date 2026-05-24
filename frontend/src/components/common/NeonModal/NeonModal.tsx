@@ -28,24 +28,24 @@ export default function NeonModal({
     Modal.setAppElement('#root');
   }, []);
 
-  const modalClassName = ['neon-modal', className].filter(Boolean).join(' ');
-  const bodyClassName = ['neon-modal-body', contentClassName].filter(Boolean).join(' ');
+  const dialogClassName = ['dialog', className].filter(Boolean).join(' ');
+  const bodyClassName = ['body', contentClassName].filter(Boolean).join(' ');
 
   return (
     <Modal
       isOpen={isOpen}
       onRequestClose={onRequestClose}
-      className={modalClassName}
-      overlayClassName="neon-modal-overlay"
+      className={dialogClassName}
+      overlayClassName="neon-modal"
       shouldCloseOnOverlayClick
       shouldCloseOnEsc
     >
-      <div className="neon-modal-header">
-        <h3 className="neon-modal-title">{title}</h3>
-        <div className="neon-modal-controls">
+      <div className="header">
+        <h3 className="title">{title}</h3>
+        <div className="controls">
           {headerActions}
           <NeonButton
-            className="neon-modal-close-btn"
+            className="close-btn"
             onClick={onRequestClose}
             tone="cyan"
             size="sm"
