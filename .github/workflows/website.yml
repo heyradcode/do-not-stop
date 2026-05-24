@@ -60,8 +60,6 @@ jobs:
 
       - name: Build
         run: pnpm --filter website build
-        env:
-          NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
 
   deploy-preview:
     name: Deploy Preview (Vercel)
@@ -75,7 +73,6 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_WEBSITE_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -99,8 +96,6 @@ jobs:
       - name: Build Vercel output
         working-directory: website
         run: npx vercel@54.2.0 build --token="$VERCEL_TOKEN"
-        env:
-          NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
 
       - name: Deploy prebuilt preview
         id: deploy
@@ -131,7 +126,6 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_WEBSITE_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -155,8 +149,6 @@ jobs:
       - name: Build Vercel output
         working-directory: website
         run: npx vercel@54.2.0 build --prod --token="$VERCEL_TOKEN"
-        env:
-          NEXT_PUBLIC_APP_URL: ${{ env.NEXT_PUBLIC_APP_URL }}
 
       - name: Deploy prebuilt production
         working-directory: website
