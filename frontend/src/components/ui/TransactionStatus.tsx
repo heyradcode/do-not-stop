@@ -84,22 +84,22 @@ const TransactionStatus: React.FC<TransactionStatusProps> = ({
 
     return (
         <div className={getStatusClass()}>
-            <div className="status-content">
-                <div className="status-icon">
+            <div className="content">
+                <div className="icon">
                     {status === 'confirming' ? (
                         <div className="spinner"></div>
                     ) : (
                         <StatusIcon />
                     )}
                 </div>
-                <div className="status-text">
-                    <div className="status-title">{getStatusText()}</div>
-                    <div className="transaction-hash">
+                <div className="text">
+                    <div className="title">{getStatusText()}</div>
+                    <div className="hash">
                         {hash.slice(0, 10)}...{hash.slice(-8)}
                     </div>
                 </div>
                 <button
-                    className="close-button"
+                    className="close"
                     onClick={() => setIsVisible(false)}
                     disabled={status === 'confirming'}
                 >

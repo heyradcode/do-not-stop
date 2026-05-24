@@ -125,12 +125,12 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay" onClick={handleClose}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
+        <div className="send-pet-modal" onClick={handleClose}>
+            <div className="dialog" onClick={(e) => e.stopPropagation()}>
+                <div className="header">
                     <h2>Send Pet</h2>
                     <button
-                        className="close-button"
+                        className="close"
                         onClick={handleClose}
                         disabled={isConfirming || isPending}
                     >
@@ -138,17 +138,17 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                     </button>
                 </div>
 
-                <div className="modal-body">
-                    <div className="pet-preview">
+                <div className="body">
+                    <div className="preview">
                         <h3>{pet.name}</h3>
-                        <div className="pet-details">
+                        <div className="details">
                             <p><strong>Level:</strong> {pet.level}</p>
                             <p><strong>DNA:</strong> {pet.dna.toString()}</p>
                             <p><strong>Rarity:</strong> {pet.rarity}</p>
                         </div>
                     </div>
 
-                    <div className="recipient-input">
+                    <div className="recipient">
                         <label htmlFor="recipient">{addressLabel}</label>
                         <input
                             id="recipient"
@@ -157,21 +157,21 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                             onChange={(e) => setRecipientAddress(e.target.value)}
                             placeholder={addressPlaceholder}
                             disabled={isConfirming || isPending}
-                            className={error ? 'error' : ''}
+                            className={error ? 'invalid' : ''}
                         />
                         {error && <p className="error-message">{error}</p>}
                     </div>
 
-                    <div className="modal-actions">
+                    <div className="actions">
                         <button
-                            className="cancel-button"
+                            className="cancel"
                             onClick={handleClose}
                             disabled={isConfirming || isPending}
                         >
                             Cancel
                         </button>
                         <button
-                            className="send-button"
+                            className="send"
                             onClick={handleSend}
                             disabled={!recipientAddress || isConfirming || isPending}
                         >

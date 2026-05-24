@@ -99,20 +99,20 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay" onClick={handleClose}>
-            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
+        <div className="create-pet-modal" onClick={handleClose}>
+            <div className="dialog" onClick={(e) => e.stopPropagation()}>
+                <div className="header">
                     <h2><Icon as={PawIcon} tone="cyan" />Create Your First Pet</h2>
-                    <button className="close-button" onClick={handleClose}>
+                    <button className="close" onClick={handleClose}>
                         ×
                     </button>
                 </div>
 
-                <div className="modal-body">
+                <div className="body">
                     <p>Give your pet a unique name and bring it to life! You can only create one pet initially — breed to grow your collection!</p>
 
-                    <div className="creator-form">
-                        <div className="input-group">
+                    <div className="form">
+                        <div className="field">
                             <label htmlFor="petName">Pet Name</label>
                             <input
                                 id="petName"
@@ -128,7 +128,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                         <button
                             onClick={handleCreatePet}
                             disabled={isPending || !petName.trim() || !isConnected}
-                            className="create-button"
+                            className="submit"
                         >
                             {isPending ? 'Creating...' : 'Create Pet'}
                         </button>

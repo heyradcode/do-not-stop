@@ -76,7 +76,7 @@
     }
   }
 
-  & .account-dropdown-container {
+  & .account-dropdown {
     position: relative;
     top: auto;
     right: auto;

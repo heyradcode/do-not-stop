@@ -68,7 +68,7 @@ const PetCreator: React.FC = () => {
     if (!isConnected) {
         return (
             <div className="pet-creator">
-                <div className="creator-card">
+                <div className="card">
                     <h3><Icon as={PawIcon} tone="cyan" />Create Your First Pet</h3>
                     <p>Connect your wallet to start creating pets!</p>
                 </div>
@@ -78,12 +78,12 @@ const PetCreator: React.FC = () => {
 
     return (
         <div className="pet-creator">
-            <div className="creator-card">
+            <div className="card">
                 <h3><Icon as={PawIcon} tone="cyan" />Create Your First Pet</h3>
                 <p>Give your pet a unique name and bring it to life! You can only create one pet initially — breed to grow your collection!</p>
 
-                <div className="creator-form">
-                    <div className="input-group">
+                <div className="form">
+                    <div className="field">
                         <label htmlFor="petNameCreator">Pet Name</label>
                         <input
                             id="petNameCreator"
@@ -99,7 +99,7 @@ const PetCreator: React.FC = () => {
                     <button
                         onClick={handleCreatePet}
                         disabled={isPending || !petName.trim()}
-                        className="create-button"
+                        className="submit"
                     >
                         {isPending ? 'Creating...' : 'Create Pet'}
                     </button>

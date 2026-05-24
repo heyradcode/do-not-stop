@@ -21,13 +21,13 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({ symbol, decimals, name, bal
 
     return (
         <div className="token-balance">
-            <div className="token-info">
-                <span className="token-symbol">{symbol}</span>
-                <span className="token-name">{name}</span>
+            <div className="info">
+                <span className="symbol">{symbol}</span>
+                <span className="name">{name}</span>
             </div>
-            <div className="token-amount">
-                <span className="balance-value">{displayBalance}</span>
-                <span className="balance-symbol">{symbol}</span>
+            <div className="amount">
+                <span className="value">{displayBalance}</span>
+                <span className="symbol">{symbol}</span>
             </div>
         </div>
     );

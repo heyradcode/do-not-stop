@@ -35,15 +35,15 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
     };
 
     return (
-        <div className={`network-switcher-compact ${className || ''}`}>
+        <div className={`network-switcher ${className || ''}`}>
             {switchError && (
-                <div className="network-error-compact">
+                <div className="error">
                     Error: {switchError.message}
                 </div>
             )}
 
             <NeonButton
-                className="network-trigger-neon-compact"
+                className="trigger"
                 onClick={() => setIsOpen(true)}
                 disabled={isPending}
                 tone="azure"
@@ -74,19 +74,19 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                     {visibleChains.map(({ chain: chainConfig, name, symbol, isTestnet }) => (
                         <NeonButton
                             key={chainConfig.id}
-                            className={`network-option ${chain.id === chainConfig.id ? 'active' : ''} ${isTestnet ? 'testnet' : ''}`}
+                            className={`option ${chain.id === chainConfig.id ? 'active' : ''} ${isTestnet ? 'testnet' : ''}`}
                             onClick={() => handleNetworkSelect(chainConfig.id)}
                             disabled={isPending}
                             tone="azure"
                             size="sm"
                             fullWidth
                         >
-                            <span className="network-option-info">
-                                <span className="network-option-name">{name}</span>
-                                <span className="network-option-symbol">{symbol}</span>
+                            <span className="option-info">
+                                <span className="option-name">{name}</span>
+                                <span className="option-symbol">{symbol}</span>
                             </span>
                             {chain.id === chainConfig.id && (
-                                <span className="network-check">
+                                <span className="option-check">
                                     <Icon as={CheckIcon} tone="emerald" glow="soft" className="no-gap" />
                                 </span>
                             )}
