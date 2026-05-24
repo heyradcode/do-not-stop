@@ -35,6 +35,11 @@ const config: HardhatUserConfig = {
       viaIR: true,
     },
   },
+  verify: {
+    etherscan: {
+      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
+    },
+  },
   networks: {
     hardhat: {
       type: "edr-simulated",

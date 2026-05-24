@@ -39,7 +39,17 @@ if (!IS_SEPOLIA) {
 
 console.log(`🚀 Deploying contracts to ${NETWORK} network...`);
 try {
-    execSync(DEPLOY_CMD, { stdio: 'inherit' });
+    execSync(DEPLOY_CMD, {
+        stdio: 'inherit',
+        env: {
+            ...process.env,
+            // Bypass Hardhat Ignition's interactive "Confirm deploy to network X?" prompt.
+            // Without this, prompts auto-cancels in a non-TTY parent and the deploy silently
+            // exits without running.
+            HARDHAT_IGNITION_CONFIRM_DEPLOYMENT: '1',
+            HARDHAT_IGNITION_CONFIRM_RESET: '1',
+        },
+    });
     console.log('✅ Contracts deployed successfully!');
 
     // Extract contract address and inject into frontend

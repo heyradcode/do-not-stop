@@ -12,6 +12,7 @@
         "deploy:local": "pnpm hh ignition deploy ignition/modules/CryptoPets.ts --network localhost",
         "deploy:sepolia": "pnpm hh ignition deploy ignition/modules/CryptoPetsSepolia.ts --network sepolia --parameters ignition/parameters/CryptoPetsSepolia.json",
         "deploy:sepolia:inject": "tsx scripts/deploy.ts --network=sepolia",
+        "verify:sepolia": "pnpm hh ignition verify chain-11155111 --network sepolia",
         "deploy:status": "pnpm hh ignition status",
         "deploy:visualize": "pnpm hh ignition visualize ignition/modules/CryptoPets.ts",
         "deploy:inject": "tsx scripts/deploy.ts",
