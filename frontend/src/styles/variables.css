@@ -22,12 +22,33 @@
 
   /* Splash / index root (slightly different from card `--color-background`) */
   --cp-body-text-dark: #e5e7eb;
-  --cp-body-bg-dark: #0f1117;
-  --cp-link: #646cff;
-  --cp-link-hover: #535bf2;
+  --cp-body-bg-dark: #050812;
+  --cp-link: #7dd6ff;
+  --cp-link-hover: #b58cff;
 
   --cp-shadow-button: rgba(102, 126, 234, 0.3);
   --cp-shadow-button-hover: rgba(102, 126, 234, 0.4);
+
+  /* Neon tri-color — mirrors website (cyan / violet / magenta) */
+  --neon-cyan: #7dd6ff;
+  --neon-cyan-strong: #29a8ff;
+  --neon-violet: #b58cff;
+  --neon-violet-strong: #8a62ff;
+  --neon-magenta: #ff7bcb;
+  --neon-magenta-strong: #ff6ec4;
+
+  --neon-grid-line: rgb(255 255 255 / 3%);
+  --neon-base-bg: #050812;
+  --neon-band-bg: #070a14;
+  --neon-border-soft: rgb(101 131 255 / 22%);
+  --neon-border-strong: rgb(148 191 255 / 42%);
+  --neon-text-glow: rgb(185 160 255 / 50%);
+
+  --neon-gradient-line: linear-gradient(90deg, #7dd6ff 0%, #b58cff 60%, #ff7bcb 100%);
+  --neon-gradient-wash:
+    radial-gradient(circle at 20% 0%, rgb(87 57 230 / 30%) 0%, transparent 38%),
+    radial-gradient(circle at 80% 20%, rgb(32 163 255 / 14%) 0%, transparent 44%),
+    var(--neon-base-bg);
 }
 
 /* =============================================================================
@@ -47,6 +68,14 @@
   --color-shadow-hover: var(--cp-shadow-50);
   --color-shadow-button: var(--cp-shadow-button);
   --color-shadow-button-hover: var(--cp-shadow-button-hover);
+}
+
+/* =============================================================================
+   Typography — matches `website/` (Orbitron titles + Inter body)
+   ============================================================================= */
+:root {
+  --title-font: 'Orbitron', 'Eurostile', 'Bank Gothic', system-ui, sans-serif;
+  --content-font: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
 /* =============================================================================

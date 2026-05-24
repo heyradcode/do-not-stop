@@ -4,6 +4,7 @@ import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { formatEther } from 'viem';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { getNativeTokenSymbol } from '../../constants/chains/ethereum';
+import Icon, { WarningIcon } from '../common/Icon';
 import './NativeBalance.css';
 
 export type BalanceType = 'ethereum' | 'solana';
@@ -95,7 +96,7 @@ const NativeBalance: React.FC<NativeBalanceProps> = ({ type, className }) => {
         return (
             <div className={`native-balance ${className || ''}`}>
                 <div className="balance-error">
-                    <span>❌ Error loading balance</span>
+                    <span><Icon as={WarningIcon} tone="amber" />Error loading balance</span>
                 </div>
             </div>
         );

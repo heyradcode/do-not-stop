@@ -2,6 +2,7 @@ import React from 'react';
 import { isActionSupported, useActiveChain, usePetList } from '@shared/core';
 import type { InteractionAction } from '../../constants/interactionRoutes';
 import { STANDALONE_INTERACTION_HEADERS } from '../../constants/interactionRoutes';
+import Icon, { BattleIcon } from '../common/Icon';
 import StateCard from './interactions/StateCard';
 import './PetInteractions.css';
 
@@ -31,7 +32,7 @@ const InteractionStandalonePage: React.FC<InteractionStandalonePageProps> = ({ a
     if (!isConnected) {
         return (
             <StateCard
-                title="⚔️ Pet Interactions"
+                title={<><Icon as={BattleIcon} tone="violet" />Pet Interactions</>}
                 description="Connect your wallet to interact with your pets"
             />
         );
@@ -52,7 +53,7 @@ const InteractionStandalonePage: React.FC<InteractionStandalonePageProps> = ({ a
         return (
             <StateCard
                 containerClassName="interaction-standalone"
-                title={header.title}
+                title={<><Icon as={header.Icon} tone="violet" />{header.label}</>}
                 description="You don't have any pets yet."
                 helpText="Go to the dashboard and create your first pet."
             />
@@ -63,7 +64,7 @@ const InteractionStandalonePage: React.FC<InteractionStandalonePageProps> = ({ a
         return (
             <StateCard
                 containerClassName="interaction-standalone"
-                title={header.title}
+                title={<><Icon as={header.Icon} tone="violet" />{header.label}</>}
                 sub={header.sub}
                 description={`This action is not yet supported on ${chain.kind === 'solana' ? 'Solana' : 'this chain'}.`}
                 helpText="Switch to a supported wallet/chain or check back later."
@@ -75,7 +76,7 @@ const InteractionStandalonePage: React.FC<InteractionStandalonePageProps> = ({ a
         return (
             <StateCard
                 containerClassName="interaction-standalone"
-                title={header.title}
+                title={<><Icon as={header.Icon} tone="violet" />{header.label}</>}
                 sub={header.sub}
                 description="You need at least two pets to breed or battle."
                 helpText="Create another pet from the dashboard, then come back here."

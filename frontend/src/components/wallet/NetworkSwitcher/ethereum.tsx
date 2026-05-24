@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAccount, useSwitchChain } from 'wagmi';
 import { CHAINS, getChainsByType, getChainConfig } from '../../../constants/chains/ethereum';
 import { NeonButton, NeonModal } from '../../common';
+import Icon, { CheckIcon } from '../../common/Icon';
 import './index.css';
 
 interface EthereumNetworkSwitcherProps {
@@ -85,7 +86,9 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                                 <span className="network-option-symbol">{symbol}</span>
                             </span>
                             {chain.id === chainConfig.id && (
-                                <span className="network-check">✓</span>
+                                <span className="network-check">
+                                    <Icon as={CheckIcon} tone="emerald" glow="soft" className="no-gap" />
+                                </span>
                             )}
                         </NeonButton>
                     ))}

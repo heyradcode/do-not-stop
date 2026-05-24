@@ -5,6 +5,7 @@ import {
     useCreatePet,
     usePetList,
 } from '@shared/core';
+import Icon, { CheckIcon, CloseIcon, PauseIcon, PawIcon, WarningIcon } from '../common/Icon';
 import TransactionStatus from '../ui/TransactionStatus';
 import './CreatePetModal.css';
 
@@ -101,7 +102,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         <div className="modal-overlay" onClick={handleClose}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>🐾 Create Your First Pet</h2>
+                    <h2><Icon as={PawIcon} tone="cyan" />Create Your First Pet</h2>
                     <button className="close-button" onClick={handleClose}>
                         ×
                     </button>
@@ -135,13 +136,18 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
 
                     {error && (
                         <div className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}>
-                            {isUserRejection ? '⏸️' : isContractError ? '⚠️' : '❌'} {error}
+                            <Icon
+                                as={isUserRejection ? PauseIcon : isContractError ? WarningIcon : CloseIcon}
+                                tone={isUserRejection ? 'inherit' : isContractError ? 'amber' : 'magenta'}
+                            />
+                            {error}
                         </div>
                     )}
 
                     {success && (
                         <div className="success-message">
-                            ✅ {success}
+                            <Icon as={CheckIcon} tone="emerald" />
+                            {success}
                         </div>
                     )}
 

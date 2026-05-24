@@ -1,12 +1,26 @@
+import type { ComponentType } from 'react';
+import {
+  BattleIcon,
+  EggIcon,
+  LevelUpIcon,
+  QuillIcon,
+} from '../components/common/Icon';
+
 /** Internal action id (`interactions/:action`; `rename` segment → changename). */
 export type InteractionAction = 'breed' | 'battle' | 'levelup' | 'changename';
 
+export type StandaloneInteractionHeader = {
+  Icon: ComponentType<{ size?: number | string }>;
+  label: string;
+  sub: string;
+};
+
 /** Standalone page titles for `/breed` … `/rename` (dashboard hub uses its own header). */
-export const STANDALONE_INTERACTION_HEADERS: Record<InteractionAction, { title: string; sub: string }> = {
-  breed: { title: '🥚 Breeding Lab', sub: 'Breed two pets to create a new one' },
-  battle: { title: '⚔️ Battle Arena', sub: 'Pick two pets to fight' },
-  levelup: { title: '⬆️ Level Up', sub: 'Pay a small fee to level up your pet' },
-  changename: { title: '✏️ Rename Pet', sub: "Change your pet's name" },
+export const STANDALONE_INTERACTION_HEADERS: Record<InteractionAction, StandaloneInteractionHeader> = {
+  breed: { Icon: EggIcon, label: 'Breeding Lab', sub: 'Breed two pets to create a new one' },
+  battle: { Icon: BattleIcon, label: 'Battle Arena', sub: 'Pick two pets to fight' },
+  levelup: { Icon: LevelUpIcon, label: 'Level Up', sub: 'Pay a small fee to level up your pet' },
+  changename: { Icon: QuillIcon, label: 'Rename Pet', sub: "Change your pet's name" },
 };
 
 /** Dashboard home (hub + gallery). */

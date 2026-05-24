@@ -8,21 +8,23 @@
 }
 
 .creator-card {
-    --creator-text: var(--cp-white, #fff);
-    --creator-muted-text: color-mix(in srgb, var(--creator-text) 90%, transparent);
-    --creator-edge: color-mix(in srgb, var(--creator-text) 20%, transparent);
-    --creator-input-bg: color-mix(in srgb, var(--creator-text) 90%, transparent);
+    --creator-text: #f6f3ff;
+    --creator-muted-text: rgb(195 210 255 / 75%);
+    --creator-edge: var(--neon-border-soft);
+    --creator-input-bg: rgb(5 13 30 / 78%);
     --creator-input-text: var(--cp-text-body-dark, #f3f4f6);
-    --creator-input-placeholder: var(--cp-text-muted-dark, #c7ccd4);
-    --creator-cta-gradient: linear-gradient(45deg, #ff6b6b, #ee5a24);
-    --creator-cta-shadow: 0 4px 15px rgb(255 107 107 / 0.3);
-    --creator-cta-shadow-hover: 0 6px 20px rgb(255 107 107 / 0.4);
-    --creator-focus-ring: 0 0 0 3px color-mix(in srgb, var(--creator-text) 30%, transparent);
+    --creator-input-placeholder: rgb(195 210 255 / 50%);
+    --creator-focus-ring: 0 0 0 2px var(--neon-cyan), 0 0 12px rgb(125 214 255 / 38%);
 
-    background: var(--gradient-primary);
+    background:
+        radial-gradient(circle at 100% 0%, rgb(181 140 255 / 16%), transparent 42%),
+        radial-gradient(circle at 0% 100%, rgb(125 214 255 / 14%), transparent 40%),
+        linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
     border-radius: var(--border-radius);
     padding: var(--spacing-lg);
-    box-shadow: 0 8px 32px var(--color-shadow);
+    box-shadow:
+        inset 0 0 24px rgb(125 214 255 / 6%),
+        0 12px 40px rgb(0 0 0 / 35%);
     backdrop-filter: blur(10px);
     border: 1px solid var(--creator-edge);
     width: 100%;
@@ -35,14 +37,17 @@
 
     & h3 {
         margin: 0 0 var(--spacing-sm);
+        font-family: var(--title-font);
         font-size: var(--font-size-3xl);
         font-weight: 700;
-        text-shadow: 0 2px 4px rgb(0 0 0 / 0.3);
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        text-shadow: 0 0 14px var(--neon-text-glow);
     }
 
     & p {
         margin: 0 0 var(--spacing-md);
-        opacity: 0.9;
+        opacity: 0.85;
         font-size: var(--font-size-sm);
     }
 }
@@ -67,8 +72,8 @@
 
     & input {
         padding: var(--spacing-sm) var(--spacing-md);
-        border: none;
-        border-radius: var(--border-radius-sm);
+        border: 1px solid rgb(125 214 255 / 24%);
+        border-radius: 2px;
         font-size: var(--font-size-base);
         background: var(--creator-input-bg);
         color: var(--creator-input-text);
@@ -76,7 +81,7 @@
         outline: none;
 
         &:focus {
-            background: var(--creator-text);
+            border-color: var(--neon-cyan);
             box-shadow: var(--creator-focus-ring);
             transform: translateY(-1px);
         }
@@ -89,21 +94,27 @@
 
 .create-button {
     padding: 14px var(--spacing-lg);
-    background: var(--creator-cta-gradient);
-    color: var(--creator-text);
-    border: none;
-    border-radius: var(--border-radius-sm);
+    background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
+    color: var(--neon-cyan);
+    border: 1px solid rgb(125 214 255 / 50%);
+    border-radius: 2px;
     font-size: var(--font-size-base);
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: var(--transition);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: var(--creator-cta-shadow);
+    letter-spacing: 0.95px;
+    box-shadow:
+        inset 0 0 16px rgb(125 214 255 / 18%),
+        0 0 16px rgb(125 214 255 / 24%);
 
     &:hover:not(:disabled) {
         transform: translateY(-2px);
-        box-shadow: var(--creator-cta-shadow-hover);
+        color: var(--neon-violet);
+        border-color: rgb(181 140 255 / 60%);
+        box-shadow:
+            inset 0 0 22px rgb(181 140 255 / 22%),
+            0 0 28px rgb(181 140 255 / 38%);
     }
 
     &:active:not(:disabled) {
@@ -111,25 +122,26 @@
     }
 
     &:disabled {
-        opacity: 0.6;
+        opacity: 0.55;
         cursor: not-allowed;
         transform: none;
-        box-shadow: none;
     }
 }
 
 .transaction-info {
-    background: color-mix(in srgb, var(--creator-text) 10%, transparent);
-    border-radius: var(--border-radius-sm);
+    background: rgb(5 13 30 / 78%);
+    border: 1px solid rgb(125 214 255 / 18%);
+    border-radius: 2px;
     padding: var(--spacing-sm);
     margin-block-start: var(--spacing-md);
     font-size: 0.75rem;
     font-family: ui-monospace, 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     word-break: break-all;
+    color: var(--neon-cyan);
 
     & p {
         margin: 4px 0;
-        opacity: 0.8;
+        opacity: 0.85;
     }
 }
 

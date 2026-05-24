@@ -5,6 +5,7 @@ import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { useAuth } from '@shared/core';
 import { getPopularTokens } from '../../constants/tokens';
 import { NeonButton, NeonCard } from '../common';
+import Icon, { CheckIcon, CopyIcon } from '../common/Icon';
 import { EthereumNetworkSwitcher, SolanaNetworkSwitcher } from './NetworkSwitcher';
 import TokenBalance from './TokenBalance';
 import NativeBalance from './NativeBalance';
@@ -217,7 +218,12 @@ const AccountDropdown: React.FC = () => {
                                     >
                                         <span className="address-text">{address}</span>
                                         <span className="copy-icon">
-                                            {isCopied ? "✓" : "📋"}
+                                            <Icon
+                                                as={isCopied ? CheckIcon : CopyIcon}
+                                                tone={isCopied ? 'emerald' : 'cyan'}
+                                                glow="none"
+                                                className="no-gap"
+                                            />
                                         </span>
                                     </div>
                                 )}
@@ -233,7 +239,12 @@ const AccountDropdown: React.FC = () => {
                                     >
                                         <span className="address-text">{solanaPublicKey.toString()}</span>
                                         <span className="copy-icon">
-                                            {isCopied ? "✓" : "📋"}
+                                            <Icon
+                                                as={isCopied ? CheckIcon : CopyIcon}
+                                                tone={isCopied ? 'emerald' : 'cyan'}
+                                                glow="none"
+                                                className="no-gap"
+                                            />
                                         </span>
                                     </div>
                                 )}
@@ -251,7 +262,12 @@ const AccountDropdown: React.FC = () => {
                                         >
                                             <span className="address-text">{dynamicWalletAddress}</span>
                                             <span className="copy-icon">
-                                                {isCopied ? "✓" : "📋"}
+                                                <Icon
+                                                    as={isCopied ? CheckIcon : CopyIcon}
+                                                    tone={isCopied ? 'emerald' : 'cyan'}
+                                                    glow="none"
+                                                    className="no-gap"
+                                                />
                                             </span>
                                         </div>
                                     )}

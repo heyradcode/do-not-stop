@@ -9,6 +9,7 @@ import {
 } from '@shared/core';
 import { DASHBOARD_HOME } from '../../../constants/interactionRoutes';
 import { useWriteContractErrorState } from '../../../hooks/useWriteContractErrorState';
+import Icon, { CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '../../common/Icon';
 
 export type LevelUpPanelProps = {
     isStandaloneView?: boolean;
@@ -117,13 +118,18 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
             {error && (
                 <div className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}>
-                    {isUserRejection ? '⏸️' : isContractError ? '⚠️' : '❌'} {error}
+                    <Icon
+                        as={isUserRejection ? PauseIcon : isContractError ? WarningIcon : CloseIcon}
+                        tone={isUserRejection ? 'inherit' : isContractError ? 'amber' : 'magenta'}
+                    />
+                    {error}
                 </div>
             )}
 
             {success && (
                 <div className="success-message">
-                    ✅ {success}
+                    <Icon as={CheckIcon} tone="emerald" />
+                    {success}
                 </div>
             )}
 
