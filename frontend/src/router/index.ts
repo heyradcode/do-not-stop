@@ -1,4 +1,4 @@
-export { PrivateRoute, useAppLoggedIn } from './PrivateRoute';
+export { useAppLoggedIn } from './useAppLoggedIn';
 export { default as BattleRoute } from './BattleRoute';
 export { default as BreedRoute } from './BreedRoute';
 export { default as LevelUpRoute } from './LevelUpRoute';
