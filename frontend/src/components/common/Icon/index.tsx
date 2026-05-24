@@ -1,13 +1,16 @@
 import React from 'react';
 import {
   GiCrossedSwords,
+  GiCrystalShine,
   GiDna1,
+  GiDragonHead,
   GiEggPod,
   GiFairyWand,
   GiPaperPlane,
   GiPawPrint,
   GiQuillInk,
   GiSandsOfTime,
+  GiSparkles,
   GiSpellBook,
   GiUpgrade,
 } from 'react-icons/gi';
@@ -62,13 +65,16 @@ export default Icon;
 
 export {
   GiCrossedSwords as BattleIcon,
+  GiCrystalShine as CrystalIcon,
   GiDna1 as DnaIcon,
+  GiDragonHead as DragonIcon,
   GiEggPod as EggIcon,
   GiFairyWand as MagicIcon,
   GiPaperPlane as SendIcon,
   GiPawPrint as PawIcon,
   GiQuillInk as QuillIcon,
   GiSandsOfTime as HourglassIcon,
+  GiSparkles as SparklesIcon,
   GiSpellBook as SpellbookIcon,
   GiUpgrade as LevelUpIcon,
   IoCheckmarkSharp as CheckIcon,

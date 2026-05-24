@@ -16,7 +16,17 @@ import {
     usePetList,
     type Pet,
 } from '@shared/core';
-import Icon, { CheckIcon, CloseIcon, PawIcon, SendIcon } from '../common/Icon';
+import Icon, {
+    CheckIcon,
+    CloseIcon,
+    CrystalIcon,
+    DragonIcon,
+    EggIcon,
+    MagicIcon,
+    PawIcon,
+    SendIcon,
+    SparklesIcon,
+} from '../common/Icon';
 import CreatePetModal from './CreatePetModal';
 import PetCollectionLayout from './PetCollectionLayout';
 import SendPetModal from './SendPetModal';
@@ -88,13 +98,20 @@ const PetGallery: React.FC = () => {
 
                 {!loading && !error && pets.length === 0 && (
                     <div className="empty-state">
-                        <div className="empty-icon"><Icon as={PawIcon} tone="violet" glow="strong" className="no-gap" /></div>
-                        <h3>No pets yet!</h3>
-                    </div>
-                )}
-
-                {!loading && !error && pets.length === 0 && (
-                    <div className="create-button-container">
+                        <div className="altar" aria-hidden>
+                            <span className="ring ring-outer" />
+                            <span className="ring ring-mid" />
+                            <span className="ring ring-inner" />
+                            <span className="orb orb-tl"><Icon as={CrystalIcon} tone="cyan" glow="strong" className="no-gap" /></span>
+                            <span className="orb orb-tr"><Icon as={SparklesIcon} tone="magenta" glow="strong" className="no-gap" /></span>
+                            <span className="orb orb-bl"><Icon as={EggIcon} tone="amber" glow="strong" className="no-gap" /></span>
+                            <span className="orb orb-br"><Icon as={MagicIcon} tone="violet" glow="strong" className="no-gap" /></span>
+                            <span className="core"><Icon as={DragonIcon} tone="violet" glow="strong" className="no-gap" /></span>
+                        </div>
+                        <div className="empty-copy">
+                            <h3>Awaken your first companion</h3>
+                            <p>Step into the altar — name a pet and bring it to life.</p>
+                        </div>
                         <button
                             type="button"
                             className="create-first-pet-button"
