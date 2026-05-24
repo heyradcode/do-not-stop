@@ -21,38 +21,41 @@
 /* Compact Network Trigger Button - For Ethereum */
 .network-trigger-compact {
     padding: 8px 12px;
-    border: 1px solid #e0e0e0;
-    border-radius: 12px;
-    background-color: white;
-    color: #333;
+    border: 1px solid rgb(125 214 255 / 32%);
+    border-radius: 2px;
+    background: rgb(5 13 30 / 92%);
+    color: var(--neon-cyan);
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow:
+        inset 0 0 12px rgb(125 214 255 / 12%),
+        0 0 10px rgb(125 214 255 / 18%);
     min-width: 120px;
+    letter-spacing: 0.4px;
 }
 
 .network-trigger-compact:hover:not(:disabled) {
-    border-color: #007bff;
-    background-color: #f8f9ff;
+    border-color: rgb(125 214 255 / 60%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.15);
+    box-shadow:
+        inset 0 0 16px rgb(125 214 255 / 18%),
+        0 0 16px rgb(125 214 255 / 28%);
 }
 
 .network-trigger-compact:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 12px rgb(125 214 255 / 32%);
 }
 
 .network-trigger-compact:disabled {
-    opacity: 0.6;
+    opacity: 0.55;
     cursor: not-allowed;
-    background-color: #f5f5f5;
 }
 
 .network-info-compact {
@@ -63,14 +66,14 @@
 }
 
 .network-name-compact {
-    font-weight: 500;
+    font-weight: 600;
     font-size: 14px;
     white-space: nowrap;
 }
 
 .dropdown-arrow-compact {
     font-size: 10px;
-    color: #666;
+    color: var(--neon-cyan);
     transition: transform 0.2s ease;
 }
 
@@ -82,14 +85,15 @@
     position: absolute;
     top: -40px;
     right: 0;
-    background-color: #fee;
-    border: 1px solid #fcc;
-    color: #c33;
+    background: rgb(255 110 196 / 12%);
+    border: 1px solid rgb(255 110 196 / 42%);
+    color: #ff9ad6;
     padding: 6px 10px;
-    border-radius: 6px;
+    border-radius: 2px;
     font-size: 11px;
+    font-weight: 600;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 12px rgb(255 110 196 / 28%);
     animation: errorShake 0.3s ease-in-out;
 }
 
@@ -99,22 +103,27 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
+    background: rgb(5 13 30 / 92%);
+    border: 1px solid rgb(181 140 255 / 32%);
+    border-radius: 2px;
     cursor: pointer;
     transition: all 0.2s ease;
     min-width: 200px;
     font-size: 14px;
+    box-shadow:
+        inset 0 0 12px rgb(181 140 255 / 12%),
+        0 0 10px rgb(181 140 255 / 18%);
 }
 
 .network-trigger:hover {
-    border-color: #9945ff;
-    box-shadow: 0 2px 8px rgba(153, 69, 255, 0.1);
+    border-color: var(--neon-violet);
+    box-shadow:
+        inset 0 0 16px rgb(181 140 255 / 18%),
+        0 0 16px rgb(181 140 255 / 28%);
 }
 
 .network-trigger:disabled {
-    opacity: 0.6;
+    opacity: 0.55;
     cursor: not-allowed;
 }
 
@@ -126,21 +135,23 @@
 }
 
 .network-name {
-    font-weight: 600;
-    color: #333;
+    font-weight: 700;
+    color: #f6f3ff;
+    letter-spacing: 0.4px;
 }
 
 .network-status {
     font-size: 12px;
-    color: #666;
+    color: rgb(195 210 255 / 65%);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .dropdown-arrow {
-    color: #666;
+    color: var(--neon-violet);
     transition: transform 0.2s ease;
     font-size: 12px;
+    text-shadow: 0 0 6px rgb(181 140 255 / 38%);
 }
 
 .network-trigger:hover .dropdown-arrow {
@@ -151,14 +162,15 @@
     position: absolute;
     top: -40px;
     right: 0;
-    background-color: #fee;
-    border: 1px solid #fcc;
-    color: #c33;
+    background: rgb(255 110 196 / 12%);
+    border: 1px solid rgb(255 110 196 / 42%);
+    color: #ff9ad6;
     padding: 6px 10px;
-    border-radius: 6px;
+    border-radius: 2px;
     font-size: 11px;
+    font-weight: 600;
     white-space: nowrap;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 12px rgb(255 110 196 / 28%);
     animation: errorShake 0.3s ease-in-out;
 }
 
@@ -257,14 +269,15 @@
 
 .network-option-status {
     font-size: 14px;
-    color: #666;
+    color: rgb(195 210 255 / 70%);
     font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .network-option.testnet .network-option-status {
-    color: #e65100;
+    color: #ffd07b;
+    text-shadow: 0 0 8px rgb(255 181 67 / 32%);
 }
 
 .network-check {

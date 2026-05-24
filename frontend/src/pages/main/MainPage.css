@@ -4,6 +4,10 @@
   flex-direction: column;
   gap: var(--spacing-2xl);
   text-align: start;
+  background:
+    repeating-linear-gradient(0deg, var(--neon-grid-line) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(90deg, var(--neon-grid-line) 0 1px, transparent 1px 48px),
+    linear-gradient(180deg, var(--neon-base-bg) 0%, var(--neon-band-bg) 100%);
 
   & > * {
     width: 100%;

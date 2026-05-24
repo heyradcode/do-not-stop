@@ -56,11 +56,13 @@
     }
 
     .surface {
-        background: var(--color-background);
+        background: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
         border-radius: var(--border-radius);
         padding: var(--spacing-xl);
-        box-shadow: var(--shadow-elevation-1);
-        border: 1px solid var(--color-border);
+        box-shadow:
+            inset 0 0 30px rgb(125 214 255 / 6%),
+            0 12px 40px rgb(0 0 0 / 35%);
+        border: 1px solid var(--neon-border-soft);
         height: 100%;
         display: flex;
         flex-direction: column;
@@ -72,8 +74,10 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, transparent 0%, rgba(102, 126, 234, 0.02) 100%);
-            opacity: 0;
+            background:
+                radial-gradient(circle at 0% 0%, rgb(125 214 255 / 8%), transparent 40%),
+                radial-gradient(circle at 100% 100%, rgb(181 140 255 / 7%), transparent 42%);
+            opacity: 0.8;
             transition: var(--transition);
             pointer-events: none;
         }
@@ -107,9 +111,13 @@
 
                 .heading {
                     margin: 0;
+                    font-family: var(--title-font);
                     font-size: var(--font-size-3xl);
                     font-weight: 700;
-                    color: var(--color-text);
+                    letter-spacing: 0.8px;
+                    text-transform: uppercase;
+                    color: #f6f3ff;
+                    text-shadow: 0 0 12px var(--neon-text-glow);
 
                     @media (max-width: 480px) {
                         font-size: var(--font-size-xl);
@@ -120,16 +128,16 @@
                     margin: var(--spacing-sm) 0 0;
                     font-size: var(--font-size-base);
                     font-weight: 400;
-                    color: var(--color-text-muted);
+                    color: rgb(195 210 255 / 70%);
                 }
             }
 
             .actions {
                 .refresh {
-                    background: var(--color-background-light);
-                    color: var(--color-text-muted);
-                    border: 1px solid var(--color-border);
-                    border-radius: var(--border-radius-sm);
+                    background: rgb(5 13 30 / 92%);
+                    color: var(--neon-cyan);
+                    border: 1px solid rgb(125 214 255 / 32%);
+                    border-radius: 2px;
                     padding: var(--spacing-sm);
                     font-size: var(--font-size-lg);
                     cursor: pointer;
@@ -142,13 +150,18 @@
                     position: absolute;
                     inset-block-start: 0;
                     inset-inline-end: 0;
+                    box-shadow:
+                        inset 0 0 12px rgb(125 214 255 / 14%),
+                        0 0 10px rgb(125 214 255 / 18%);
                 }
 
                 .refresh:hover:not(:disabled) {
-                    background: var(--color-background-hover);
-                    color: var(--color-text);
+                    color: var(--neon-violet);
+                    border-color: rgb(181 140 255 / 42%);
                     transform: translateY(-1px);
-                    box-shadow: 0 2px 8px var(--color-shadow);
+                    box-shadow:
+                        inset 0 0 16px rgb(181 140 255 / 18%),
+                        0 0 16px rgb(181 140 255 / 28%);
                 }
 
                 .refresh:disabled {

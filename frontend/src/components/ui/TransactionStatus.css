@@ -9,10 +9,14 @@
     inset-inline-end: var(--tx-inset);
     min-width: 300px;
     max-width: 400px;
-    border-radius: var(--radius-xl);
-    border: 1px solid var(--color-border);
-    background: var(--color-background);
-    box-shadow: 0 8px 32px var(--color-shadow-hover);
+    border-radius: 2px;
+    border: 1px solid var(--neon-border-soft);
+    background: linear-gradient(180deg, rgb(10 16 32 / 96%), rgb(6 10 22 / 98%));
+    box-shadow:
+        inset 0 0 18px rgb(125 214 255 / 8%),
+        0 0 20px rgb(125 214 255 / 20%),
+        0 16px 40px rgb(0 0 0 / 45%);
+    backdrop-filter: blur(8px);
     animation: tx-slide-in var(--tx-slide-duration) ease-out;
 }
 
@@ -47,32 +51,41 @@
 }
 
 .transaction-status.pending .status-icon {
-    background: color-mix(in srgb, #ffc107 24%, var(--color-background));
-    color: #92400e;
+    background: rgb(255 181 67 / 14%);
+    color: #ffd07b;
+    border: 1px solid rgb(255 181 67 / 38%);
+    box-shadow: 0 0 12px rgb(255 181 67 / 22%);
 }
 
 .transaction-status.confirming .status-icon {
-    background: color-mix(in srgb, var(--warning-color) 22%, var(--color-background));
-    color: color-mix(in srgb, var(--warning-color) 55%, #0a3d44);
+    background: rgb(125 214 255 / 14%);
+    color: var(--neon-cyan);
+    border: 1px solid rgb(125 214 255 / 38%);
+    box-shadow: 0 0 12px rgb(125 214 255 / 22%);
 }
 
 .transaction-status.confirmed .status-icon {
-    background: color-mix(in srgb, var(--success-color) 22%, var(--color-background));
-    color: var(--success-color);
+    background: rgb(0 255 157 / 14%);
+    color: #9effd4;
+    border: 1px solid rgb(0 255 157 / 42%);
+    box-shadow: 0 0 14px rgb(0 255 157 / 28%);
 }
 
 .transaction-status.error .status-icon {
-    background: color-mix(in srgb, var(--danger-color) 18%, var(--color-background));
-    color: var(--danger-color);
+    background: rgb(255 110 196 / 14%);
+    color: #ff9ad6;
+    border: 1px solid rgb(255 110 196 / 42%);
+    box-shadow: 0 0 14px rgb(255 110 196 / 28%);
 }
 
 .spinner {
     width: 1.25rem;
     height: 1.25rem;
-    border: 2px solid var(--color-border);
-    border-top-color: var(--warning-color);
+    border: 2px solid rgb(125 214 255 / 18%);
+    border-top-color: var(--neon-cyan);
     border-radius: 50%;
     animation: tx-spin 1s linear infinite;
+    box-shadow: 0 0 8px rgb(125 214 255 / 28%);
 }
 
 @keyframes tx-spin {
@@ -88,15 +101,16 @@
 
 .status-title {
     margin-block-end: 0.25rem;
-    font-weight: 600;
+    font-weight: 700;
     font-size: var(--font-sm);
-    color: var(--color-text);
+    color: #f6f3ff;
+    letter-spacing: 0.4px;
 }
 
 .transaction-hash {
     font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
     font-size: var(--font-xs);
-    color: var(--color-text-muted);
+    color: var(--neon-cyan);
     word-break: break-all;
 }
 
@@ -108,19 +122,20 @@
     width: 1.5rem;
     height: 1.5rem;
     padding: var(--radius-sm);
-    border: none;
-    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    border-radius: 2px;
     background: transparent;
     font-size: var(--font-xl);
     line-height: 1;
-    color: var(--color-text-light);
+    color: rgb(195 210 255 / 60%);
     cursor: pointer;
     transition: var(--transition-fast);
 }
 
 .close-button:hover:not(:disabled) {
-    background: var(--color-background-hover);
-    color: var(--color-text-muted);
+    color: var(--neon-cyan);
+    border-color: rgb(125 214 255 / 42%);
+    box-shadow: 0 0 10px rgb(125 214 255 / 24%);
 }
 
 .close-button:disabled {
@@ -203,6 +218,6 @@
 
     .spinner {
         animation: none;
-        border-top-color: var(--color-border);
+        border-top-color: var(--neon-border-soft);
     }
 }

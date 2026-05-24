@@ -13,11 +13,12 @@
 .loading-spinner {
     width: 40px;
     height: 40px;
-    border: 4px solid var(--color-border);
-    border-block-start: 4px solid var(--color-primary);
+    border: 3px solid rgb(125 214 255 / 18%);
+    border-block-start: 3px solid var(--neon-cyan);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-block-end: var(--spacing-sm);
+    box-shadow: 0 0 16px rgb(125 214 255 / 30%);
 }
 
 @keyframes spin {
@@ -29,24 +30,34 @@
 .error-container {
     text-align: center;
     padding: var(--spacing-2xl);
-    color: var(--danger-color, #dc3545);
+    color: #ff9aa9;
+    text-shadow: 0 0 12px rgb(255 110 196 / 32%);
 }
 
 .retry-button {
-    background: var(--danger-color, #dc3545);
-    color: var(--color-background);
-    border: none;
-    border-radius: var(--border-radius-sm);
+    background: rgb(5 13 30 / 92%);
+    color: var(--neon-magenta);
+    border: 1px solid rgb(255 110 196 / 42%);
+    border-radius: 2px;
     padding: var(--spacing-sm) var(--spacing-md);
     font-size: var(--font-size-sm);
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
     cursor: pointer;
     margin-block-start: var(--spacing-sm);
     transition: var(--transition);
+    box-shadow:
+        inset 0 0 12px rgb(255 110 196 / 14%),
+        0 0 12px rgb(255 110 196 / 18%);
 }
 
 .retry-button:hover {
-    background: color-mix(in srgb, var(--danger-color, #dc3545) 85%, #000);
     transform: translateY(-1px);
+    border-color: var(--neon-magenta);
+    box-shadow:
+        inset 0 0 16px rgb(255 110 196 / 22%),
+        0 0 18px rgb(255 110 196 / 32%);
 }
 
 /* Empty State */
@@ -70,8 +81,13 @@
 
 .empty-state h3 {
     margin: 0;
+    font-family: var(--title-font);
     font-size: var(--font-size-2xl);
-    color: var(--color-text);
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #f6f3ff;
+    text-shadow: 0 0 12px var(--neon-text-glow);
 }
 
 /* Create Button Container */
@@ -94,23 +110,29 @@
 }
 
 .create-first-pet-button {
-    background: var(--gradient-primary);
-    color: var(--color-background);
-    border: none;
-    border-radius: var(--border-radius-lg);
+    background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
+    color: var(--neon-cyan);
+    border: 1px solid rgb(125 214 255 / 50%);
+    border-radius: 2px;
     padding: var(--spacing-md) var(--spacing-xl);
     font-size: var(--font-size-base);
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: var(--transition);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 15px var(--color-shadow-button);
+    letter-spacing: 0.95px;
+    box-shadow:
+        inset 0 0 16px rgb(125 214 255 / 18%),
+        0 0 16px rgb(125 214 255 / 24%);
 }
 
 .create-first-pet-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px var(--color-shadow-button-hover);
+    color: var(--neon-violet);
+    border-color: rgb(181 140 255 / 60%);
+    box-shadow:
+        inset 0 0 22px rgb(181 140 255 / 22%),
+        0 0 28px rgb(181 140 255 / 38%);
 }
 
 .create-first-pet-button:active {
@@ -131,9 +153,8 @@
     container-type: inline-size;
     container-name: pet-grid;
 
-    /* Modern scrollbar styling */
     scrollbar-width: thin;
-    scrollbar-color: var(--color-primary) transparent;
+    scrollbar-color: var(--neon-cyan) transparent;
 
     &::-webkit-scrollbar {
         width: 6px;
@@ -144,22 +165,25 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: var(--color-primary);
+        background: linear-gradient(180deg, var(--neon-cyan), var(--neon-violet));
         border-radius: 3px;
+        box-shadow: 0 0 8px rgb(125 214 255 / 32%);
     }
 
     &::-webkit-scrollbar-thumb:hover {
-        background: var(--color-secondary);
+        background: linear-gradient(180deg, var(--neon-violet), var(--neon-magenta));
     }
 }
 
 /* Pet cards */
 .pet-card {
-    background: var(--color-background);
+    background: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
     border-radius: var(--border-radius-lg);
     padding: 0;
-    box-shadow: var(--shadow-elevation-1);
-    border: 1px solid var(--color-border);
+    box-shadow:
+        inset 0 0 18px rgb(125 214 255 / 6%),
+        0 6px 22px rgb(0 0 0 / 35%);
+    border: 1px solid var(--neon-border-soft);
     transition: var(--transition);
     position: relative;
     overflow: hidden;
@@ -168,21 +192,23 @@
 
     &:hover {
         transform: translateY(-4px);
-        box-shadow: var(--shadow-elevation-3);
+        border-color: var(--neon-border-strong);
+        box-shadow:
+            inset 0 0 22px rgb(181 140 255 / 10%),
+            0 12px 32px rgb(0 0 0 / 45%),
+            0 0 24px rgb(181 140 255 / 22%);
     }
 
-    /* Modern focus styles */
     &:focus-within {
-        outline: 2px solid var(--color-primary);
+        outline: 2px solid var(--neon-violet);
         outline-offset: 2px;
     }
 
-    /* Subtle gradient overlay on hover */
     &::after {
         content: '';
         position: absolute;
         inset: 0;
-        background: linear-gradient(135deg, transparent 0%, rgba(102, 126, 234, 0.05) 100%);
+        background: linear-gradient(135deg, rgb(125 214 255 / 4%) 0%, transparent 40%, rgb(181 140 255 / 6%) 100%);
         opacity: 0;
         transition: var(--transition);
         pointer-events: none;
@@ -195,14 +221,21 @@
 
 .pet-visual {
     position: relative;
-    background: radial-gradient(circle at 30% 30%, rgba(102, 126, 234, 0.25), transparent 60%), var(--color-background-light);
-    border: 1px solid var(--color-border);
+    background:
+        radial-gradient(circle at 30% 30%, rgb(125 214 255 / 24%), transparent 60%),
+        radial-gradient(circle at 80% 80%, rgb(181 140 255 / 22%), transparent 60%),
+        #0a0f1c;
+    border-block-end: 1px solid var(--neon-border-soft);
     border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
     height: 150px;
     margin: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.pet-avatar {
+    filter: drop-shadow(0 0 12px rgb(181 140 255 / 45%));
 }
 
 .pet-avatar {
@@ -221,9 +254,12 @@
 
 .pet-header h3 {
     margin: 0;
+    font-family: var(--title-font);
     font-size: var(--font-size-xl);
     font-weight: 700;
-    color: var(--color-text);
+    letter-spacing: 0.4px;
+    color: #f6f3ff;
+    text-shadow: 0 0 10px var(--neon-text-glow);
     flex: 1;
 }
 
@@ -234,36 +270,48 @@
     right: 10px;
     color: #fff;
     padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: 20px;
+    border-radius: 2px;
     font-size: var(--font-size-xs);
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
-    box-shadow: 0 2px 4px var(--color-shadow);
+    letter-spacing: 0.6px;
+    box-shadow:
+        inset 0 0 12px rgb(255 255 255 / 14%),
+        0 0 14px rgb(255 255 255 / 22%);
+    backdrop-filter: blur(4px);
 }
 
 .level-badge {
     position: absolute;
     left: 10px;
     bottom: 10px;
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    padding: 4px 8px;
+    background: rgb(5 13 30 / 78%);
+    color: var(--neon-cyan);
+    border: 1px solid rgb(125 214 255 / 32%);
+    padding: 4px 10px;
     border-radius: 999px;
     font-size: var(--font-size-xs);
     font-weight: 700;
+    letter-spacing: 0.4px;
+    box-shadow:
+        inset 0 0 10px rgb(125 214 255 / 14%),
+        0 0 10px rgb(125 214 255 / 22%);
 }
 
 .element-tag {
     position: absolute;
     right: 10px;
     bottom: 10px;
-    background: rgba(20, 25, 35, 0.82);
-    color: #fff;
-    padding: 4px 8px;
+    background: rgb(5 13 30 / 78%);
+    color: var(--neon-magenta);
+    border: 1px solid rgb(255 110 196 / 28%);
+    padding: 4px 10px;
     border-radius: 999px;
     font-size: var(--font-size-xs);
-    font-weight: 600;
+    font-weight: 700;
+    box-shadow:
+        inset 0 0 10px rgb(255 110 196 / 12%),
+        0 0 10px rgb(255 110 196 / 18%);
 }
 
 .pet-main-info {
@@ -274,9 +322,10 @@
 }
 
 .pet-dna {
-    color: var(--color-text-muted);
+    color: rgb(195 210 255 / 60%);
     font-size: var(--font-size-xs);
     font-weight: 500;
+    letter-spacing: 0.3px;
 }
 
 .xp-row {
@@ -284,25 +333,29 @@
     justify-content: space-between;
     align-items: center;
     font-size: var(--font-size-xs);
-    color: var(--color-text-muted);
+    color: rgb(195 210 255 / 70%);
+    letter-spacing: 0.4px;
 }
 
 .xp-value {
-    color: var(--color-text);
+    color: var(--neon-cyan);
     font-weight: 700;
+    text-shadow: 0 0 8px rgb(125 214 255 / 32%);
 }
 
 .xp-bar {
     height: 8px;
-    background: var(--color-background-light);
+    background: rgb(5 13 30 / 78%);
     border-radius: 999px;
     overflow: hidden;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--neon-border-soft);
+    box-shadow: inset 0 0 6px rgb(0 0 0 / 35%);
 }
 
 .xp-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+    background: var(--neon-gradient-line);
+    box-shadow: 0 0 10px rgb(181 140 255 / 45%);
 }
 
 .pet-properties {
@@ -314,25 +367,32 @@
 }
 
 .property-item {
-    background: var(--color-background-light);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
+    background: rgb(5 13 30 / 78%);
+    border: 1px solid rgb(125 214 255 / 18%);
+    border-radius: 2px;
     padding: 8px 6px;
     display: grid;
     justify-items: center;
     gap: 2px;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.property-item:hover {
+    border-color: rgb(181 140 255 / 36%);
+    box-shadow: 0 0 10px rgb(181 140 255 / 18%);
 }
 
 .property-name {
     text-transform: capitalize;
-    color: var(--color-text-muted);
+    color: rgb(195 210 255 / 60%);
     font-size: var(--font-size-xs);
 }
 
 .property-value {
-    color: var(--color-text);
+    color: #f6f3ff;
     font-weight: 700;
     font-size: var(--font-size-sm);
+    text-shadow: 0 0 6px rgb(181 140 255 / 28%);
 }
 
 
@@ -350,15 +410,29 @@
 }
 
 .status.ready {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+    background: rgb(0 255 157 / 8%);
+    color: #9effd4;
+    border: 1px solid rgb(0 255 157 / 38%);
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    box-shadow:
+        inset 0 0 12px rgb(0 255 157 / 14%),
+        0 0 12px rgb(0 255 157 / 22%);
+    text-shadow: 0 0 10px rgb(0 255 157 / 38%);
 }
 
 .status.cooldown {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
+    background: rgb(255 181 67 / 8%);
+    color: #ffd07b;
+    border: 1px solid rgb(255 181 67 / 36%);
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    box-shadow:
+        inset 0 0 12px rgb(255 181 67 / 12%),
+        0 0 12px rgb(255 181 67 / 18%);
+    text-shadow: 0 0 10px rgb(255 181 67 / 32%);
 }
 
 /* Pet actions */
@@ -369,24 +443,31 @@
 }
 
 .send-button {
-    background: linear-gradient(45deg, #28a745, #20c997);
-    color: var(--color-background);
-    border: none;
-    border-radius: var(--border-radius-sm);
+    background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
+    color: #9effd4;
+    border: 1px solid rgb(0 255 157 / 42%);
+    border-radius: 2px;
     padding: var(--spacing-sm) var(--spacing-md);
     font-size: var(--font-size-sm);
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
     cursor: pointer;
     transition: var(--transition);
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
+    box-shadow:
+        inset 0 0 12px rgb(0 255 157 / 12%),
+        0 0 12px rgb(0 255 157 / 18%);
 }
 
 .send-button:hover {
-    background: linear-gradient(45deg, #218838, #1ea085);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    border-color: rgb(0 255 157 / 64%);
+    box-shadow:
+        inset 0 0 18px rgb(0 255 157 / 20%),
+        0 0 18px rgb(0 255 157 / 32%);
 }
 
 .send-button:active {
