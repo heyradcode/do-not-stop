@@ -93,15 +93,13 @@ jobs:
         working-directory: website
         run: npx vercel@54.2.0 pull --yes --environment=preview --token="$VERCEL_TOKEN"
 
-      - name: Build Vercel output
-        working-directory: website
-        run: npx vercel@54.2.0 build --token="$VERCEL_TOKEN"
-
-      - name: Deploy prebuilt preview
+      # Remote build on Vercel (not --prebuilt): pnpm monorepos bake absolute .pnpm paths into prebuilt output.
+      - name: Deploy preview
         id: deploy
         working-directory: website
         run: |
-          url=$(npx vercel@54.2.0 deploy --prebuilt --yes --token="$VERCEL_TOKEN")
+          url=$(npx vercel@54.2.0 deploy --yes --token="$VERCEL_TOKEN" \
+            --build-env "NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}")
           echo "preview-url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Comment preview URL on PR
@@ -146,10 +144,8 @@ jobs:
         working-directory: website
         run: npx vercel@54.2.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Build Vercel output
+      - name: Deploy production
         working-directory: website
-        run: npx vercel@54.2.0 build --prod --token="$VERCEL_TOKEN"
-
-      - name: Deploy prebuilt production
-        working-directory: website
-        run: npx vercel@54.2.0 deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
+        run: |
+          npx vercel@54.2.0 deploy --prod --yes --token="$VERCEL_TOKEN" \
+            --build-env "NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}"

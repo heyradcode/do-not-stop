@@ -46,4 +46,6 @@ Workflow: [`.github/workflows/website.yml`](../.github/workflows/website.yml)
 - **PRs** → Vercel preview + comment with URL  
 - **push to `main`** → production deploy (when `website/` or lockfile changes)
 
-Also set `NEXT_PUBLIC_APP_URL` in the Vercel project dashboard so Vercel-hosted builds match production.
+Deploys use **remote builds on Vercel** (not `vercel deploy --prebuilt`), because pnpm monorepos often break prebuilt artifacts with missing `next` server paths.
+
+Set `NEXT_PUBLIC_APP_URL` in the Vercel project dashboard **and** as the GitHub Actions variable so production builds get the correct app link.
