@@ -9,10 +9,7 @@ import LevelUpRoute from './LevelUpRoute';
 import RenameRoute from './RenameRoute';
 import { PrivateRoute } from './PrivateRoute';
 
-/**
- * Auth-gated route tree. Unauthenticated users are redirected to the marketing
- * site (hosted in the `website/` workspace) by {@link PrivateRoute}.
- */
+/** Auth-gated route tree — unauthenticated users see nothing inside the gate. */
 const WalletAwareRoutes: React.FC = () => {
     return (
         <Routes>
