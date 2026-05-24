@@ -1,6 +1,6 @@
 import React from 'react';
-import { formatTokenBalance } from '../../constants/tokens';
-import './TokenBalance.css';
+import { formatTokenBalance } from '../../../constants/tokens';
+import './index.css';
 
 interface TokenBalanceProps {
     symbol: string;

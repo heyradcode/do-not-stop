@@ -3,13 +3,13 @@ import { useAccount, usePublicClient } from 'wagmi';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { useAuth } from '@shared/core';
-import { getPopularTokens } from '../../constants/tokens';
-import { NeonButton, NeonCard } from '../common';
-import Icon, { CheckIcon, CopyIcon } from '../common/Icon';
-import { EthereumNetworkSwitcher, SolanaNetworkSwitcher } from './NetworkSwitcher';
-import TokenBalance from './TokenBalance';
-import NativeBalance from './NativeBalance';
-import './AccountDropdown.css';
+import { getPopularTokens } from '../../../constants/tokens';
+import { NeonButton, NeonCard } from '../../common';
+import Icon, { CheckIcon, CopyIcon } from '../../common/Icon';
+import { EthereumNetworkSwitcher, SolanaNetworkSwitcher } from '../network-switcher';
+import TokenBalance from '../token-balance';
+import NativeBalance from '../native-balance';
+import './index.css';
 
 const AccountDropdown: React.FC = () => {
     const { address, isConnected, chain } = useAccount();
