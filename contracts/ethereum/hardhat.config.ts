@@ -1,15 +1,27 @@
+import "dotenv/config";
+
 import type { HardhatUserConfig } from "hardhat/config";
 
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 
 /** Public fallback so `url` is never empty (Hardhat HHE15). Prefer SEPOLIA_URL or INFURA_PROJECT_ID in env. */
-const SEPOLIA_PUBLIC_RPC = "https://rpc.sepolia.org";
+const SEPOLIA_PUBLIC_RPC = "https://ethereum-sepolia-rpc.publicnode.com";
 
 const sepoliaRpcUrl =
   process.env.SEPOLIA_URL ||
   (process.env.INFURA_PROJECT_ID
     ? `https://sepolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`
-    : SEPOLIA_PUBLIC_RPC);
+    : process.env.ALCHEMY_API_KEY
+      ? `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
+      : SEPOLIA_PUBLIC_RPC);
+
+const sepoliaAccounts = process.env.PRIVATE_KEY
+  ? [
+      process.env.PRIVATE_KEY.startsWith("0x")
+        ? process.env.PRIVATE_KEY
+        : `0x${process.env.PRIVATE_KEY}`,
+    ]
+  : [];
 
 const config: HardhatUserConfig = {
   plugins: [hardhatToolboxViemPlugin],
@@ -43,7 +55,8 @@ const config: HardhatUserConfig = {
     sepolia: {
       type: "http",
       url: sepoliaRpcUrl,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 11155111,
+      accounts: sepoliaAccounts,
     },
   },
   paths: {

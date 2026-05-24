@@ -7,6 +7,14 @@ import { join } from 'path';
 import { createPublicClient, http } from 'viem';
 import { hardhat } from 'viem/chains';
 
+const NETWORK =
+    process.argv.find((a) => a.startsWith('--network='))?.split('=')[1] ??
+    process.env.DEPLOY_NETWORK ??
+    'localhost';
+const IS_SEPOLIA = NETWORK === 'sepolia';
+const CHAIN_DIR = IS_SEPOLIA ? 'chain-11155111' : 'chain-31337';
+const DEPLOY_CMD = IS_SEPOLIA ? 'pnpm deploy:sepolia' : 'pnpm deploy:local';
+
 const localDeployerAbi = [
     {
         type: 'function',
@@ -24,12 +32,14 @@ const localDeployerAbi = [
     },
 ] as const;
 
-console.log('⏳ Waiting for Hardhat node to be ready...');
-await setTimeout(10000); // Wait 5 seconds for Hardhat node to start
+if (!IS_SEPOLIA) {
+    console.log('⏳ Waiting for Hardhat node to be ready...');
+    await setTimeout(10000);
+}
 
-console.log('🚀 Deploying contracts to local network...');
+console.log(`🚀 Deploying contracts to ${NETWORK} network...`);
 try {
-    execSync('pnpm deploy:local', { stdio: 'inherit' });
+    execSync(DEPLOY_CMD, { stdio: 'inherit' });
     console.log('✅ Contracts deployed successfully!');
 
     // Extract contract address and inject into frontend
@@ -42,7 +52,7 @@ try {
 async function injectContractAddress(): Promise<void> {
     try {
         // Read deployed addresses
-        const deployedAddressesPath = join(process.cwd(), 'ignition', 'deployments', 'chain-31337', 'deployed_addresses.json');
+        const deployedAddressesPath = join(process.cwd(), 'ignition', 'deployments', CHAIN_DIR, 'deployed_addresses.json');
 
         if (!existsSync(deployedAddressesPath)) {
             console.error('❌ Deployed addresses file not found');
@@ -59,7 +69,13 @@ async function injectContractAddress(): Promise<void> {
         ) as `0x${string}` | undefined;
         const sepoliaPetsAddr = deployedAddresses['CryptoPetsSepolia#cryptoPets'] as string | undefined;
 
-        if (localDeployerAddr) {
+        if (IS_SEPOLIA) {
+            if (!sepoliaPetsAddr) {
+                console.error('❌ CryptoPetsSepolia#cryptoPets not found in deployed_addresses.json');
+                return;
+            }
+            contractAddress = sepoliaPetsAddr;
+        } else if (localDeployerAddr) {
             const client = createPublicClient({
                 chain: hardhat,
                 transport: http('http://127.0.0.1:8545'),
