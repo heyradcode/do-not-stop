@@ -26,11 +26,11 @@ a {
   color: var(--cp-link);
   text-decoration: inherit;
   transition: color 0.2s ease, text-shadow 0.2s ease;
-}
 
-a:hover {
-  color: var(--cp-link-hover);
-  text-shadow: 0 0 8px var(--neon-text-glow);
+  &:hover {
+    color: var(--cp-link-hover);
+    text-shadow: 0 0 8px var(--neon-text-glow);
+  }
 }
 
 body {
@@ -58,15 +58,15 @@ button {
   color: var(--cp-text-body-dark);
   cursor: pointer;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
 
-button:hover {
-  border-color: var(--cp-link);
-  box-shadow: 0 0 12px rgb(125 214 255 / 24%);
-}
+  &:hover {
+    border-color: var(--cp-link);
+    box-shadow: 0 0 12px rgb(125 214 255 / 24%);
+  }
 
-button:focus,
-button:focus-visible {
-  outline: 2px solid var(--cp-link);
-  outline-offset: 2px;
+  &:focus,
+  &:focus-visible {
+    outline: 2px solid var(--cp-link);
+    outline-offset: 2px;
+  }
 }

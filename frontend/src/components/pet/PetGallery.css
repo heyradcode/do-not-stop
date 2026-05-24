@@ -8,6 +8,10 @@
     justify-content: center;
     padding: var(--spacing-2xl);
     color: var(--color-text-muted);
+
+    @media (max-width: 480px) {
+        padding: var(--spacing-lg);
+    }
 }
 
 .loading-spinner {
@@ -32,6 +36,10 @@
     padding: var(--spacing-2xl);
     color: #ff9aa9;
     text-shadow: 0 0 12px rgb(255 110 196 / 32%);
+
+    @media (max-width: 480px) {
+        padding: var(--spacing-lg);
+    }
 }
 
 .retry-button {
@@ -50,14 +58,14 @@
     box-shadow:
         inset 0 0 12px rgb(255 110 196 / 14%),
         0 0 12px rgb(255 110 196 / 18%);
-}
 
-.retry-button:hover {
-    transform: translateY(-1px);
-    border-color: var(--neon-magenta);
-    box-shadow:
-        inset 0 0 16px rgb(255 110 196 / 22%),
-        0 0 18px rgb(255 110 196 / 32%);
+    &:hover {
+        transform: translateY(-1px);
+        border-color: var(--neon-magenta);
+        box-shadow:
+            inset 0 0 16px rgb(255 110 196 / 22%),
+            0 0 18px rgb(255 110 196 / 32%);
+    }
 }
 
 /* Empty State — summoning altar hero. Fits the remaining surface height. */
@@ -164,6 +172,15 @@
         color: rgb(195 210 255 / 60%);
         letter-spacing: 0.2px;
     }
+
+    @media (max-width: 480px) {
+        padding: 16px 12px 12px;
+        gap: 10px;
+
+        & .altar {
+            --altar-size: 160px;
+        }
+    }
 }
 
 @keyframes altar-spin {
@@ -204,19 +221,24 @@
         inset 0 0 12px rgb(125 214 255 / 16%),
         0 0 12px rgb(125 214 255 / 20%);
     flex-shrink: 0;
-}
 
-.create-first-pet-button:hover {
-    transform: translateY(-2px);
-    color: var(--neon-violet);
-    border-color: rgb(181 140 255 / 60%);
-    box-shadow:
-        inset 0 0 22px rgb(181 140 255 / 22%),
-        0 0 28px rgb(181 140 255 / 38%);
-}
+    &:hover {
+        transform: translateY(-2px);
+        color: var(--neon-violet);
+        border-color: rgb(181 140 255 / 60%);
+        box-shadow:
+            inset 0 0 22px rgb(181 140 255 / 22%),
+            0 0 28px rgb(181 140 255 / 38%);
+    }
 
-.create-first-pet-button:active {
-    transform: translateY(0);
+    &:active {
+        transform: translateY(0);
+    }
+
+    @media (max-width: 480px) {
+        padding: 8px 14px;
+        font-size: var(--font-size-xs);
+    }
 }
 
 /* Pet grid with container queries */
@@ -252,6 +274,12 @@
 
     &::-webkit-scrollbar-thumb:hover {
         background: linear-gradient(180deg, var(--neon-violet), var(--neon-magenta));
+    }
+
+    @media (max-width: 480px) {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+        margin-block-start: var(--spacing-sm);
     }
 }
 
@@ -297,6 +325,14 @@
     &:hover::after {
         opacity: 1;
     }
+
+    @media (max-width: 480px) {
+        padding: var(--spacing-sm);
+    }
+
+    @media (prefers-contrast: more) {
+        border: 2px solid var(--color-text);
+    }
 }
 
 .pet-visual {
@@ -315,12 +351,9 @@
 }
 
 .pet-avatar {
-    filter: drop-shadow(0 0 12px rgb(181 140 255 / 45%));
-}
-
-.pet-avatar {
     font-size: 3.5rem;
     line-height: 1;
+    filter: drop-shadow(0 0 12px rgb(181 140 255 / 45%));
 }
 
 /* Pet card header */
@@ -330,17 +363,25 @@
     align-items: center;
     margin-block-end: 0;
     gap: var(--spacing-sm);
-}
 
-.pet-header h3 {
-    margin: 0;
-    font-family: var(--title-font);
-    font-size: var(--font-size-xl);
-    font-weight: 700;
-    letter-spacing: 0.4px;
-    color: #f6f3ff;
-    text-shadow: 0 0 10px var(--neon-text-glow);
-    flex: 1;
+    & h3 {
+        margin: 0;
+        font-family: var(--title-font);
+        font-size: var(--font-size-xl);
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        color: #f6f3ff;
+        text-shadow: 0 0 10px var(--neon-text-glow);
+        flex: 1;
+
+        @media (max-width: 480px) {
+            font-size: var(--font-size-base);
+        }
+    }
+
+    @media (max-width: 480px) {
+        margin-block-end: 0;
+    }
 }
 
 /* Rarity Badge */
@@ -359,6 +400,11 @@
         inset 0 0 12px rgb(255 255 255 / 14%),
         0 0 14px rgb(255 255 255 / 22%);
     backdrop-filter: blur(4px);
+
+    @media (max-width: 480px) {
+        top: 8px;
+        right: 8px;
+    }
 }
 
 .level-badge {
@@ -455,11 +501,11 @@
     justify-items: center;
     gap: 2px;
     transition: border-color 180ms ease, box-shadow 180ms ease;
-}
 
-.property-item:hover {
-    border-color: rgb(181 140 255 / 36%);
-    box-shadow: 0 0 10px rgb(181 140 255 / 18%);
+    &:hover {
+        border-color: rgb(181 140 255 / 36%);
+        box-shadow: 0 0 10px rgb(181 140 255 / 18%);
+    }
 }
 
 .property-name {
@@ -479,6 +525,10 @@
 .pet-status {
     padding: 0 14px;
     margin-block-start: var(--spacing-sm);
+
+    @media (max-width: 480px) {
+        margin-block-start: var(--spacing-xs);
+    }
 }
 
 .status {
@@ -487,32 +537,37 @@
     font-size: var(--font-size-sm);
     font-weight: 600;
     text-align: center;
-}
 
-.status.ready {
-    background: rgb(0 255 157 / 8%);
-    color: #9effd4;
-    border: 1px solid rgb(0 255 157 / 38%);
-    border-radius: 2px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    box-shadow:
-        inset 0 0 12px rgb(0 255 157 / 14%),
-        0 0 12px rgb(0 255 157 / 22%);
-    text-shadow: 0 0 10px rgb(0 255 157 / 38%);
-}
+    &.ready {
+        background: rgb(0 255 157 / 8%);
+        color: #9effd4;
+        border: 1px solid rgb(0 255 157 / 38%);
+        border-radius: 2px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        box-shadow:
+            inset 0 0 12px rgb(0 255 157 / 14%),
+            0 0 12px rgb(0 255 157 / 22%);
+        text-shadow: 0 0 10px rgb(0 255 157 / 38%);
+    }
 
-.status.cooldown {
-    background: rgb(255 181 67 / 8%);
-    color: #ffd07b;
-    border: 1px solid rgb(255 181 67 / 36%);
-    border-radius: 2px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    box-shadow:
-        inset 0 0 12px rgb(255 181 67 / 12%),
-        0 0 12px rgb(255 181 67 / 18%);
-    text-shadow: 0 0 10px rgb(255 181 67 / 32%);
+    &.cooldown {
+        background: rgb(255 181 67 / 8%);
+        color: #ffd07b;
+        border: 1px solid rgb(255 181 67 / 36%);
+        border-radius: 2px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        box-shadow:
+            inset 0 0 12px rgb(255 181 67 / 12%),
+            0 0 12px rgb(255 181 67 / 18%);
+        text-shadow: 0 0 10px rgb(255 181 67 / 32%);
+    }
+
+    @media (max-width: 480px) {
+        padding: var(--spacing-xs);
+        font-size: var(--font-size-xs);
+    }
 }
 
 /* Pet actions */
@@ -520,6 +575,10 @@
     margin-block-start: var(--spacing-sm);
     display: flex;
     justify-content: center;
+
+    @media (max-width: 480px) {
+        margin-block-start: var(--spacing-xs);
+    }
 }
 
 .send-button {
@@ -540,83 +599,22 @@
     box-shadow:
         inset 0 0 12px rgb(0 255 157 / 12%),
         0 0 12px rgb(0 255 157 / 18%);
-}
 
-.send-button:hover {
-    transform: translateY(-1px);
-    border-color: rgb(0 255 157 / 64%);
-    box-shadow:
-        inset 0 0 18px rgb(0 255 157 / 20%),
-        0 0 18px rgb(0 255 157 / 32%);
-}
-
-.send-button:active {
-    transform: translateY(0);
-}
-
-/* Responsive Design */
-@media (max-width: 480px) {
-    .pet-grid {
-        grid-template-columns: 1fr;
-        gap: var(--spacing-sm);
-        margin-block-start: var(--spacing-sm);
+    &:hover {
+        transform: translateY(-1px);
+        border-color: rgb(0 255 157 / 64%);
+        box-shadow:
+            inset 0 0 18px rgb(0 255 157 / 20%),
+            0 0 18px rgb(0 255 157 / 32%);
     }
 
-    .pet-card {
-        padding: var(--spacing-sm);
+    &:active {
+        transform: translateY(0);
     }
 
-    .pet-header {
-        margin-block-end: 0;
-    }
-
-    .pet-header h3 {
-        font-size: var(--font-size-base);
-    }
-
-    .pet-status {
-        margin-block-start: var(--spacing-xs);
-    }
-
-    .status {
-        padding: var(--spacing-xs);
-        font-size: var(--font-size-xs);
-    }
-
-    .pet-actions {
-        margin-block-start: var(--spacing-xs);
-    }
-
-    .send-button {
+    @media (max-width: 480px) {
         padding: var(--spacing-xs) var(--spacing-sm);
         font-size: var(--font-size-xs);
-    }
-
-    .empty-state {
-        padding: 16px 12px 12px;
-        gap: 10px;
-    }
-
-    .empty-state .altar {
-        --altar-size: 160px;
-    }
-
-    .create-first-pet-button {
-        padding: 8px 14px;
-        font-size: var(--font-size-xs);
-    }
-
-    .loading-container {
-        padding: var(--spacing-lg);
-    }
-
-    .error-container {
-        padding: var(--spacing-lg);
-    }
-
-    .rarity-badge {
-        top: 8px;
-        right: 8px;
     }
 }
 
@@ -631,12 +629,6 @@
 
     .pet-card:hover {
         transform: none;
-    }
-}
-
-@media (prefers-contrast: more) {
-    .pet-card {
-        border: 2px solid var(--color-text);
     }
 }
 

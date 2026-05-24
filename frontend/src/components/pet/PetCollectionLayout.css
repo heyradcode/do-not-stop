@@ -158,22 +158,22 @@
                     box-shadow:
                         inset 0 0 12px rgb(125 214 255 / 14%),
                         0 0 10px rgb(125 214 255 / 18%);
-                }
 
-                .refresh:hover:not(:disabled) {
-                    color: var(--neon-violet);
-                    border-color: rgb(181 140 255 / 42%);
-                    transform: translateY(-1px);
-                    box-shadow:
-                        inset 0 0 16px rgb(181 140 255 / 18%),
-                        0 0 16px rgb(181 140 255 / 28%);
-                }
+                    &:hover:not(:disabled) {
+                        color: var(--neon-violet);
+                        border-color: rgb(181 140 255 / 42%);
+                        transform: translateY(-1px);
+                        box-shadow:
+                            inset 0 0 16px rgb(181 140 255 / 18%),
+                            0 0 16px rgb(181 140 255 / 28%);
+                    }
 
-                .refresh:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                    transform: none;
-                    animation: refresh-spin 1s linear infinite;
+                    &:disabled {
+                        opacity: 0.6;
+                        cursor: not-allowed;
+                        transform: none;
+                        animation: refresh-spin 1s linear infinite;
+                    }
                 }
             }
         }

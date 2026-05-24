@@ -18,6 +18,49 @@
         0 16px 40px rgb(0 0 0 / 45%);
     backdrop-filter: blur(8px);
     animation: tx-slide-in var(--tx-slide-duration) ease-out;
+
+    &.pending .status-icon {
+        background: rgb(255 181 67 / 14%);
+        color: #ffd07b;
+        border: 1px solid rgb(255 181 67 / 38%);
+        box-shadow: 0 0 12px rgb(255 181 67 / 22%);
+    }
+
+    &.confirming .status-icon {
+        background: rgb(125 214 255 / 14%);
+        color: var(--neon-cyan);
+        border: 1px solid rgb(125 214 255 / 38%);
+        box-shadow: 0 0 12px rgb(125 214 255 / 22%);
+    }
+
+    &.confirmed {
+        animation: tx-success-pulse var(--tx-state-duration) ease-out;
+
+        .status-icon {
+            background: rgb(0 255 157 / 14%);
+            color: #9effd4;
+            border: 1px solid rgb(0 255 157 / 42%);
+            box-shadow: 0 0 14px rgb(0 255 157 / 28%);
+        }
+    }
+
+    &.error {
+        animation: tx-error-shake var(--tx-state-duration) ease-out;
+
+        .status-icon {
+            background: rgb(255 110 196 / 14%);
+            color: #ff9ad6;
+            border: 1px solid rgb(255 110 196 / 42%);
+            box-shadow: 0 0 14px rgb(255 110 196 / 28%);
+        }
+    }
+
+    @media (max-width: 768px) {
+        --tx-inset: 0.625rem;
+        inset-inline: var(--tx-inset);
+        min-width: 0;
+        max-width: none;
+    }
 }
 
 @keyframes tx-slide-in {
@@ -37,6 +80,10 @@
     align-items: center;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm);
+
+    @media (max-width: 768px) {
+        padding: 0.75rem;
+    }
 }
 
 .status-icon {
@@ -48,34 +95,12 @@
     height: 2rem;
     border-radius: 50%;
     font-size: var(--font-size-base);
-}
 
-.transaction-status.pending .status-icon {
-    background: rgb(255 181 67 / 14%);
-    color: #ffd07b;
-    border: 1px solid rgb(255 181 67 / 38%);
-    box-shadow: 0 0 12px rgb(255 181 67 / 22%);
-}
-
-.transaction-status.confirming .status-icon {
-    background: rgb(125 214 255 / 14%);
-    color: var(--neon-cyan);
-    border: 1px solid rgb(125 214 255 / 38%);
-    box-shadow: 0 0 12px rgb(125 214 255 / 22%);
-}
-
-.transaction-status.confirmed .status-icon {
-    background: rgb(0 255 157 / 14%);
-    color: #9effd4;
-    border: 1px solid rgb(0 255 157 / 42%);
-    box-shadow: 0 0 14px rgb(0 255 157 / 28%);
-}
-
-.transaction-status.error .status-icon {
-    background: rgb(255 110 196 / 14%);
-    color: #ff9ad6;
-    border: 1px solid rgb(255 110 196 / 42%);
-    box-shadow: 0 0 14px rgb(255 110 196 / 28%);
+    @media (max-width: 768px) {
+        width: 1.75rem;
+        height: 1.75rem;
+        font-size: var(--font-sm);
+    }
 }
 
 .spinner {
@@ -86,6 +111,11 @@
     border-radius: 50%;
     animation: tx-spin 1s linear infinite;
     box-shadow: 0 0 8px rgb(125 214 255 / 28%);
+
+    @media (max-width: 768px) {
+        width: 1rem;
+        height: 1rem;
+    }
 }
 
 @keyframes tx-spin {
@@ -105,6 +135,10 @@
     font-size: var(--font-sm);
     color: #f6f3ff;
     letter-spacing: 0.4px;
+
+    @media (max-width: 768px) {
+        font-size: 0.8125rem;
+    }
 }
 
 .transaction-hash {
@@ -112,6 +146,10 @@
     font-size: var(--font-xs);
     color: var(--neon-cyan);
     word-break: break-all;
+
+    @media (max-width: 768px) {
+        font-size: 0.6875rem;
+    }
 }
 
 .close-button {
@@ -130,21 +168,17 @@
     color: rgb(195 210 255 / 60%);
     cursor: pointer;
     transition: var(--transition-fast);
-}
 
-.close-button:hover:not(:disabled) {
-    color: var(--neon-cyan);
-    border-color: rgb(125 214 255 / 42%);
-    box-shadow: 0 0 10px rgb(125 214 255 / 24%);
-}
+    &:hover:not(:disabled) {
+        color: var(--neon-cyan);
+        border-color: rgb(125 214 255 / 42%);
+        box-shadow: 0 0 10px rgb(125 214 255 / 24%);
+    }
 
-.close-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.transaction-status.confirmed {
-    animation: tx-success-pulse var(--tx-state-duration) ease-out;
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
 }
 
 @keyframes tx-success-pulse {
@@ -156,10 +190,6 @@
     50% {
         transform: scale(1.05);
     }
-}
-
-.transaction-status.error {
-    animation: tx-error-shake var(--tx-state-duration) ease-out;
 }
 
 @keyframes tx-error-shake {
@@ -174,38 +204,6 @@
 
     75% {
         transform: translateX(5px);
-    }
-}
-
-@media (max-width: 768px) {
-    .transaction-status {
-        --tx-inset: 0.625rem;
-        inset-inline: var(--tx-inset);
-        min-width: 0;
-        max-width: none;
-    }
-
-    .status-content {
-        padding: 0.75rem;
-    }
-
-    .status-icon {
-        width: 1.75rem;
-        height: 1.75rem;
-        font-size: var(--font-sm);
-    }
-
-    .spinner {
-        width: 1rem;
-        height: 1rem;
-    }
-
-    .status-title {
-        font-size: 0.8125rem;
-    }
-
-    .transaction-hash {
-        font-size: 0.6875rem;
     }
 }
 

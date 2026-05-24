@@ -4,12 +4,20 @@
 .network-switcher-compact {
     position: relative;
     display: inline-block;
+
+    @media (max-width: 480px) {
+        position: static;
+    }
 }
 
 /* Ethereum trigger uses NeonButton visuals; keep only layout constraints */
 .network-trigger-neon-compact.neon-btn {
     min-width: 120px;
     justify-content: center;
+
+    @media (max-width: 480px) {
+        min-width: 100px;
+    }
 }
 
 /* Full Network Switcher - For Solana */
@@ -37,25 +45,29 @@
         0 0 10px rgb(125 214 255 / 18%);
     min-width: 120px;
     letter-spacing: 0.4px;
-}
 
-.network-trigger-compact:hover:not(:disabled) {
-    border-color: rgb(125 214 255 / 60%);
-    transform: translateY(-1px);
-    box-shadow:
-        inset 0 0 16px rgb(125 214 255 / 18%),
-        0 0 16px rgb(125 214 255 / 28%);
-}
+    &:hover:not(:disabled) {
+        border-color: rgb(125 214 255 / 60%);
+        transform: translateY(-1px);
+        box-shadow:
+            inset 0 0 16px rgb(125 214 255 / 18%),
+            0 0 16px rgb(125 214 255 / 28%);
+    }
 
-.network-trigger-compact:focus {
-    outline: none;
-    border-color: var(--neon-cyan);
-    box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 12px rgb(125 214 255 / 32%);
-}
+    &:hover .dropdown-arrow-compact {
+        transform: translateY(1px);
+    }
 
-.network-trigger-compact:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
+    &:focus {
+        outline: none;
+        border-color: var(--neon-cyan);
+        box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 12px rgb(125 214 255 / 32%);
+    }
+
+    &:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
 }
 
 .network-info-compact {
@@ -69,16 +81,16 @@
     font-weight: 600;
     font-size: 14px;
     white-space: nowrap;
+
+    @media (max-width: 480px) {
+        font-size: 12px;
+    }
 }
 
 .dropdown-arrow-compact {
     font-size: 10px;
     color: var(--neon-cyan);
     transition: transform 0.2s ease;
-}
-
-.network-trigger-compact:hover .dropdown-arrow-compact {
-    transform: translateY(1px);
 }
 
 .network-error-compact {
@@ -95,6 +107,12 @@
     white-space: nowrap;
     box-shadow: 0 0 12px rgb(255 110 196 / 28%);
     animation: errorShake 0.3s ease-in-out;
+
+    @media (max-width: 480px) {
+        top: -35px;
+        font-size: 10px;
+        padding: 4px 8px;
+    }
 }
 
 /* Full Network Trigger - For Solana */
@@ -113,18 +131,28 @@
     box-shadow:
         inset 0 0 12px rgb(181 140 255 / 12%),
         0 0 10px rgb(181 140 255 / 18%);
-}
 
-.network-trigger:hover {
-    border-color: var(--neon-violet);
-    box-shadow:
-        inset 0 0 16px rgb(181 140 255 / 18%),
-        0 0 16px rgb(181 140 255 / 28%);
-}
+    &:hover {
+        border-color: var(--neon-violet);
+        box-shadow:
+            inset 0 0 16px rgb(181 140 255 / 18%),
+            0 0 16px rgb(181 140 255 / 28%);
+    }
 
-.network-trigger:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
+    &:hover .dropdown-arrow {
+        transform: rotate(180deg);
+    }
+
+    &:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
+
+    @media (max-width: 480px) {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-width: 150px;
+    }
 }
 
 .network-info {
@@ -138,6 +166,10 @@
     font-weight: 700;
     color: #f6f3ff;
     letter-spacing: 0.4px;
+
+    @media (max-width: 480px) {
+        font-size: 12px;
+    }
 }
 
 .network-status {
@@ -145,6 +177,10 @@
     color: rgb(195 210 255 / 65%);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+
+    @media (max-width: 480px) {
+        font-size: 10px;
+    }
 }
 
 .dropdown-arrow {
@@ -152,10 +188,6 @@
     transition: transform 0.2s ease;
     font-size: 12px;
     text-shadow: 0 0 6px rgb(181 140 255 / 38%);
-}
-
-.network-trigger:hover .dropdown-arrow {
-    transform: rotate(180deg);
 }
 
 .network-error {
@@ -172,6 +204,12 @@
     white-space: nowrap;
     box-shadow: 0 0 12px rgb(255 110 196 / 28%);
     animation: errorShake 0.3s ease-in-out;
+
+    @media (max-width: 480px) {
+        top: -35px;
+        font-size: 10px;
+        padding: 4px 8px;
+    }
 }
 
 @keyframes errorShake {
@@ -193,6 +231,10 @@
 /* Neon modal adjustments for network switcher */
 .network-neon-modal {
     width: min(100%, 430px);
+
+    @media (max-width: 480px) {
+        width: 100%;
+    }
 }
 
 .network-neon-modal-content {
@@ -206,12 +248,12 @@
     font-size: 12px;
     color: #8ed1ff;
     cursor: pointer;
-}
 
-.testnet-toggle input[type="checkbox"] {
-    margin: 0;
-    cursor: pointer;
-    accent-color: #1e9dff;
+    & input[type="checkbox"] {
+        margin: 0;
+        cursor: pointer;
+        accent-color: #1e9dff;
+    }
 }
 
 .network-list {
@@ -228,29 +270,38 @@
     align-items: center;
     text-align: left;
     text-transform: none;
-}
 
-.network-option.neon-btn {
-    border-radius: 8px;
-    padding: 12px 14px;
-    letter-spacing: 0.25px;
-}
+    &.neon-btn {
+        border-radius: 8px;
+        padding: 12px 14px;
+        letter-spacing: 0.25px;
 
-.network-option.neon-btn .label {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
+        & .label {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+    }
 
-.network-option.active {
-    box-shadow:
-        inset 0 0 18px rgb(0 255 157 / 18%),
-        0 0 18px rgb(0 255 157 / 26%);
-}
+    &.active {
+        box-shadow:
+            inset 0 0 18px rgb(0 255 157 / 18%),
+            0 0 18px rgb(0 255 157 / 26%);
+    }
 
-.network-option.testnet {
-    opacity: 0.96;
+    &.testnet {
+        opacity: 0.96;
+
+        & .network-option-status {
+            color: #ffd07b;
+            text-shadow: 0 0 8px rgb(255 181 67 / 32%);
+        }
+    }
+
+    @media (max-width: 480px) {
+        padding: 12px;
+    }
 }
 
 .network-option-info {
@@ -275,63 +326,9 @@
     letter-spacing: 0.5px;
 }
 
-.network-option.testnet .network-option-status {
-    color: #ffd07b;
-    text-shadow: 0 0 8px rgb(255 181 67 / 32%);
-}
-
 .network-check {
     color: #9effd4;
     font-weight: bold;
     font-size: 18px;
     margin-left: 10px;
-}
-
-/* Responsive */
-@media (max-width: 480px) {
-    .network-switcher-compact {
-        position: static;
-    }
-
-    .network-trigger-neon-compact.neon-btn {
-        min-width: 100px;
-    }
-
-    .network-name-compact {
-        font-size: 12px;
-    }
-
-    .network-error-compact {
-        top: -35px;
-        font-size: 10px;
-        padding: 4px 8px;
-    }
-
-    .network-trigger {
-        padding: 8px 12px;
-        font-size: 12px;
-        min-width: 150px;
-    }
-
-    .network-name {
-        font-size: 12px;
-    }
-
-    .network-status {
-        font-size: 10px;
-    }
-
-    .network-error {
-        top: -35px;
-        font-size: 10px;
-        padding: 4px 8px;
-    }
-
-    .network-neon-modal {
-        width: 100%;
-    }
-
-    .network-option {
-        padding: 12px;
-    }
 }

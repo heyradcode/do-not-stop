@@ -155,12 +155,12 @@
     text-transform: uppercase;
     cursor: pointer;
     transition: all 0.2s ease;
-}
 
-.back-btn:hover {
-    color: var(--neon-cyan);
-    border-color: rgb(125 214 255 / 50%);
-    box-shadow: 0 0 12px rgb(125 214 255 / 22%);
+    &:hover {
+        color: var(--neon-cyan);
+        border-color: rgb(125 214 255 / 50%);
+        box-shadow: 0 0 12px rgb(125 214 255 / 22%);
+    }
 }
 
 /* User trigger uses NeonButton visuals; keep only layout constraints */
