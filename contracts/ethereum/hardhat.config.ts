@@ -1,15 +1,33 @@
+import "dotenv/config";
+
 import type { HardhatUserConfig } from "hardhat/config";
 
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 
-/** Public fallback so `url` is never empty (Hardhat HHE15). Prefer SEPOLIA_URL or INFURA_PROJECT_ID in env. */
-const SEPOLIA_PUBLIC_RPC = "https://rpc.sepolia.org";
+import { NETWORKS, resolveRpcUrl } from "./scripts/networks.js";
 
-const sepoliaRpcUrl =
-  process.env.SEPOLIA_URL ||
-  (process.env.INFURA_PROJECT_ID
-    ? `https://sepolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`
-    : SEPOLIA_PUBLIC_RPC);
+const sharedAccounts = process.env.PRIVATE_KEY
+  ? [
+      process.env.PRIVATE_KEY.startsWith("0x")
+        ? process.env.PRIVATE_KEY
+        : `0x${process.env.PRIVATE_KEY}`,
+    ]
+  : [];
+
+const liveNetworks = Object.fromEntries(
+  NETWORKS.map((n) => [
+    n.name,
+    {
+      type: "http" as const,
+      // Hardhat HHE15 forbids empty URLs; fall back to a placeholder when env
+      // is not set so unused networks don't break config loading. The deploy
+      // script validates the URL before actually using it.
+      url: resolveRpcUrl(n) ?? `https://invalid.${n.name}.rpc.unset`,
+      chainId: n.chainId,
+      accounts: sharedAccounts,
+    },
+  ])
+);
 
 const config: HardhatUserConfig = {
   plugins: [hardhatToolboxViemPlugin],
@@ -21,6 +39,11 @@ const config: HardhatUserConfig = {
         runs: 1,
       },
       viaIR: true,
+    },
+  },
+  verify: {
+    etherscan: {
+      apiKey: process.env.ETHERSCAN_API_KEY ?? "",
     },
   },
   networks: {
@@ -40,11 +63,7 @@ const config: HardhatUserConfig = {
         "0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a"
       ]
     },
-    sepolia: {
-      type: "http",
-      url: sepoliaRpcUrl,
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-    },
+    ...liveNetworks,
   },
   paths: {
     sources: "./src",
