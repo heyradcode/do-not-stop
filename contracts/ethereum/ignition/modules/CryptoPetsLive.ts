@@ -1,10 +1,13 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 /**
- * Sepolia / production VRF: set parameters before deploy, e.g.
- * `pnpm hh ignition deploy ignition/modules/CryptoPetsSepolia.ts --network sepolia --parameters '{"CryptoPetsSepolia":{"vrfSubscriptionId":"…","vrfKeyHash":"0x…","vrfCoordinator":"0x…","vrfNativePayment":"false"}}'`
+ * Generic CryptoPets deployment for any EVM network with Chainlink VRF v2.5.
+ *
+ * All VRF parameters are required and must be supplied via a parameters file,
+ * which `scripts/deploy.ts` generates from per-network env vars. See
+ * `scripts/networks.ts` for the env-var convention.
  */
-const CryptoPetsSepoliaModule = buildModule("CryptoPetsSepolia", (m) => {
+const CryptoPetsLiveModule = buildModule("CryptoPetsLive", (m) => {
     const vrfSubscriptionId = m.getParameter("vrfSubscriptionId");
     const vrfKeyHash = m.getParameter("vrfKeyHash");
     const vrfCoordinator = m.getParameter("vrfCoordinator");
@@ -20,4 +23,4 @@ const CryptoPetsSepoliaModule = buildModule("CryptoPetsSepolia", (m) => {
     return { cryptoPets };
 });
 
-export default CryptoPetsSepoliaModule;
+export default CryptoPetsLiveModule;

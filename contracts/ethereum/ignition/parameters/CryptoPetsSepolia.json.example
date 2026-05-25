@@ -1,8 +1,10 @@
 {
   "CryptoPetsSepolia": {
-    "vrfSubscriptionId": "YOUR_SUBSCRIPTION_ID_UINT256",
-    "vrfKeyHash": "0xYOUR_GAS_LANE_KEY_HASH",
-    "vrfCoordinator": "0xYOUR_VRF_COORDINATOR_V2_5",
-    "vrfNativePayment": false
+    "vrfSubscriptionId": "111590939014689107046079508135767071542806121354569782569208766455335253338867",
+
+    "_optional_overrides": "Defaults below are baked into ignition/modules/CryptoPetsSepolia.ts. Uncomment only if you need a different gas lane, the native-LINK payment mode, or a coordinator override.",
+    "//vrfCoordinator": "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B",
+    "//vrfKeyHash": "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae",
+    "//vrfNativePayment": false
   }
 }
