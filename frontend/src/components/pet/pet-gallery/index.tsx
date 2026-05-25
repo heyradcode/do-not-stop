@@ -57,6 +57,7 @@ const PetGallery: React.FC = () => {
     if (!isConnected) {
         return (
             <PetCollectionLayout
+                className="wallet-disconnected"
                 title={<><Icon as={PawIcon} tone="cyan" />Your Pet Collection</>}
                 description="Connect your wallet to view your pets"
             />

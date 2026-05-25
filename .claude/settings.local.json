@@ -6,7 +6,23 @@
       "PowerShell(New-Item *)",
       "PowerShell(Remove-Item *)",
       "PowerShell(pnpm install *)",
-      "PowerShell(Get-ChildItem -Path \"E:\\\\Works\\\\aichannode\\\\do-not-stop\\\\website\" -Recurse -Force -Exclude node_modules | Where-Object { -not $_.PSIsContainer } | Select-Object FullName)"
+      "PowerShell(Get-ChildItem -Path \"E:\\\\Works\\\\aichannode\\\\do-not-stop\\\\website\" -Recurse -Force -Exclude node_modules | Where-Object { -not $_.PSIsContainer } | Select-Object FullName)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Get-CimInstance *)",
+      "PowerShell(pnpm config *)",
+      "PowerShell(Get-ChildItem *)",
+      "Bash(pnpm compile *)",
+      "Bash(tasklist)",
+      "Bash(pnpm deploy:sepolia:inject)",
+      "Bash(pnpm hh *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(pnpm verify:sepolia)",
+      "Bash(node *)",
+      "Bash(tar -xzf nomicfoundation-hardhat-verify-3.0.18.tgz)",
+      "Bash(git check-ignore *)",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "Skill(update-config)"
     ]
   }
 }

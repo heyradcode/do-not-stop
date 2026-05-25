@@ -32,6 +32,7 @@ const InteractionStandalonePage: React.FC<InteractionStandalonePageProps> = ({ a
     if (!isConnected) {
         return (
             <StateCard
+                containerClassName="interaction-standalone wallet-disconnected"
                 title={<><Icon as={BattleIcon} tone="violet" />Pet Interactions</>}
                 description="Connect your wallet to interact with your pets"
             />

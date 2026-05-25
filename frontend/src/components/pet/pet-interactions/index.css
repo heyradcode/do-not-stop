@@ -41,17 +41,30 @@
             h3 {
                 margin: 0;
                 font-family: var(--title-font);
-                font-size: var(--font-size-3xl);
+                /* Matches `.pet-collection .heading` and `.interactions-card .card-header h3`. */
+                font-size: clamp(1.25rem, 1.5rem, 1.75rem);
                 font-weight: 700;
-                letter-spacing: 0.6px;
+                letter-spacing: 0.5px;
                 text-transform: uppercase;
                 color: var(--zi-text);
                 text-align: center;
-                text-shadow: 0 0 14px var(--neon-text-glow);
+                text-shadow: 0 0 12px var(--neon-text-glow);
+
+                @media (max-width: 480px) {
+                    font-size: 20px;
+                }
             }
         }
 
-        p {
+        .description {
+            margin: 4px 0 0;
+            font-size: clamp(0.625rem, 0.75rem, 0.875rem);
+            font-weight: 400;
+            color: var(--zi-text-muted);
+            text-align: center;
+        }
+
+        p:not(.description):not(.sub):not(.help-text) {
             margin: 0 0 20px 0;
             color: var(--zi-text-muted);
             text-align: center;
@@ -142,6 +155,36 @@
 
     @media (max-width: 768px) {
         padding: 16px;
+    }
+
+    &.wallet-disconnected {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+
+        .card {
+            flex: 1 1 auto;
+            min-height: 0;
+
+            .header {
+                margin-block-end: var(--spacing-md);
+                flex-shrink: 0;
+            }
+
+            .state-body {
+                flex: 1 1 auto;
+                min-height: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+
+                .description {
+                    margin: 0;
+                }
+            }
+        }
     }
 }
 

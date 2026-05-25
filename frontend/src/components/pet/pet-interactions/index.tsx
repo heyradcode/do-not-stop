@@ -60,6 +60,7 @@ const PetInteractions: React.FC = () => {
     if (!isConnected) {
         return (
             <StateCard
+                containerClassName="wallet-disconnected"
                 title={<><Icon as={BattleIcon} tone="violet" />Pet Interactions</>}
                 description="Connect your wallet to interact with your pets"
             />

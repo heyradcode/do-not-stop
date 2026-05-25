@@ -120,3 +120,14 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Standalone interaction routes: fill viewport; title stays at top, message centers below. */
+.main-content.authenticated:not(:has(.pet-collection)) > .pet-interactions.wallet-disconnected {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.main-content.authenticated:not(:has(.pet-collection)) > .pet-interactions.wallet-disconnected .card {
+  height: 100%;
+  flex: 1 1 auto;
+}

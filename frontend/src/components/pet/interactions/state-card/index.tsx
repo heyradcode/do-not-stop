@@ -25,13 +25,21 @@ const StateCard: React.FC<StateCardProps> = ({
     children,
     containerClassName,
 }) => {
+    const isWalletDisconnected = containerClassName?.includes('wallet-disconnected');
+
     return (
         <div className={`pet-interactions${containerClassName ? ` ${containerClassName}` : ''}`}>
             <div className="card">
                 <div className="header">
                     <h3>{title}</h3>
                 </div>
-                {description ? <p>{description}</p> : null}
+                {description && isWalletDisconnected ? (
+                    <div className="state-body">
+                        <p className="description">{description}</p>
+                    </div>
+                ) : description ? (
+                    <p className="description">{description}</p>
+                ) : null}
                 {sub ? <p className="sub">{sub}</p> : null}
                 {helpText ? <p className="help-text">{helpText}</p> : null}
                 {children}
