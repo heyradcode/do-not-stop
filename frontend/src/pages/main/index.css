@@ -100,6 +100,8 @@
       }
 
       & .action-buttons {
+        display: grid;
+        flex: 0 0 auto;
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
@@ -114,6 +116,7 @@
 
 @media (max-width: 640px) {
   .main-content.authenticated:has(.pet-collection) > .pet-interactions .action-buttons {
+    display: grid;
     grid-template-columns: 1fr;
   }
 }
