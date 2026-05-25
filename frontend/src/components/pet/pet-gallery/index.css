@@ -244,11 +244,9 @@
 /* Pet grid with container queries */
 .pet-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    align-items: start;
     gap: var(--spacing-md);
-    /* Symmetric padding inside the scroll area: vertical for hover-lift headroom,
-       horizontal so the cards feel inset from the surface edge. */
-    padding: var(--spacing-md);
     width: 100%;
     min-width: 0;
     contain: layout;
@@ -289,8 +287,9 @@
 
 /* Pet cards */
 .pet-card {
-    /* Fixed height keeps every card the same size regardless of cooldown state. */
-    height: 255px;
+    /* Size to content (the cooldown status row just makes a card a touch taller);
+       a floor keeps cards comfortably large. */
+    min-height: 260px;
     background: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
     border-radius: var(--border-radius-lg);
     padding: 0;
@@ -306,7 +305,6 @@
     container-name: pet-card;
 
     &:hover {
-        transform: translateY(-4px);
         border-color: var(--neon-border-strong);
         box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
     }
@@ -333,7 +331,7 @@
         #0a0f1c;
     border-block-end: 1px solid var(--neon-border-soft);
     border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
-    height: 84px;
+    height: 140px;
     flex-shrink: 0;
     margin: 0;
     display: flex;
@@ -342,7 +340,7 @@
 }
 
 .pet-avatar {
-    font-size: 2rem;
+    font-size: 3rem;
     line-height: 1;
     filter: drop-shadow(0 0 12px rgb(181 140 255 / 45%));
 }
@@ -436,9 +434,9 @@
 
 .pet-main-info {
     display: grid;
-    gap: 4px;
-    margin-bottom: 6px;
-    padding: 6px 12px 0;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 12px 16px 0;
 }
 
 .pet-dna {
@@ -481,16 +479,16 @@
 .pet-properties {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
+    gap: 6px;
     margin-bottom: var(--spacing-xs);
-    padding: 0 12px;
+    padding: 0 16px;
 }
 
 .property-item {
     background: rgb(5 13 30 / 78%);
     border: 1px solid rgb(125 214 255 / 18%);
     border-radius: 2px;
-    padding: 4px 4px;
+    padding: 6px 4px;
     display: grid;
     justify-items: center;
     gap: 0;
@@ -555,8 +553,7 @@
 
 /* Pet actions — anchored to the bottom so cards with/without cooldown align. */
 .pet-actions {
-    margin-block-start: auto;
-    padding: var(--spacing-xs) 12px 8px;
+    padding: var(--spacing-sm) 16px 14px;
     display: flex;
     justify-content: center;
 }
@@ -564,8 +561,8 @@
 .send-button {
     background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
     border-radius: 2px;
-    padding: 4px 12px;
-    font-size: var(--font-size-xs);
+    padding: 9px 24px;
+    font-size: var(--font-size-sm);
     font-weight: 700;
     letter-spacing: 0.6px;
     text-transform: uppercase;
@@ -573,7 +570,8 @@
     transition: var(--transition);
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    justify-content: center;
+    gap: var(--spacing-sm);
 
     /* Default (ready) — emerald: pet is ready for action. */
     color: #9effd4;
@@ -612,8 +610,8 @@
     }
 
     @media (max-width: 480px) {
-        padding: 4px 10px;
-        font-size: var(--font-size-xs);
+        padding: 8px 18px;
+        font-size: var(--font-size-sm);
     }
 }
 
