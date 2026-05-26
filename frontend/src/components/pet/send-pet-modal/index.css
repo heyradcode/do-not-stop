@@ -88,7 +88,13 @@
     }
 
     .body {
-        /* Reserved for body-scoped overrides; layout already controlled by .dialog */
+        padding: var(--spacing-xl);
+        overflow-y: auto;
+        box-sizing: border-box;
+
+        @media (max-width: 768px) {
+            padding: 1.25rem;
+        }
     }
 
     .preview {
