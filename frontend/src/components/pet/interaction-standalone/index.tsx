@@ -7,7 +7,7 @@ import DashboardPanel from '@components/pet/dashboard-panel';
 import StateCard from '@components/pet/interactions/state-card';
 import '@components/pet/pet-interactions/index.css';
 
-export type InteractionStandalonePageProps = {
+export type InteractionStandaloneProps = {
     action: InteractionAction;
     minPets: number;
     children: React.ReactNode;
@@ -20,7 +20,7 @@ const ACTION_TO_FEATURE = {
     changename: 'rename',
 } as const;
 
-const InteractionStandalonePage: React.FC<InteractionStandalonePageProps> = ({ action, minPets, children }) => {
+const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, minPets, children }) => {
     const chain = useActiveChain();
     const isConnected = chain.kind !== 'none';
     const { pets, isLoading } = usePetList();
@@ -96,4 +96,4 @@ const InteractionStandalonePage: React.FC<InteractionStandalonePageProps> = ({ a
     );
 };
 
-export default InteractionStandalonePage;
+export default InteractionStandalone;

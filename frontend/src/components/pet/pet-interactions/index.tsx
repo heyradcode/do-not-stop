@@ -34,7 +34,7 @@ function parseActionParam(raw: string | undefined): InteractionAction | null {
 
 /**
  * Dashboard interactions hub (`/dashboard`, `/dashboard/interactions/:action?`).
- * Standalone `/breed` … `/rename` are separate router entries + `InteractionStandalonePage`.
+ * Standalone `/breed` … `/rename` are separate router entries + `InteractionStandalone`.
  */
 const PetInteractions: React.FC = () => {
     const navigate = useNavigate();
