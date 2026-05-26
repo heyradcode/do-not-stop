@@ -15,6 +15,22 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Path aliases — keep in sync with `vite.config.ts#resolve.alias`. */
+    "baseUrl": ".",
+    "paths": {
+      "@/*":            ["src/*"],
+      "@assets/*":      ["src/assets/*"],
+      "@chains/*":      ["src/chains/*"],
+      "@components/*":  ["src/components/*"],
+      "@constants/*":   ["src/constants/*"],
+      "@contexts/*":    ["src/contexts/*"],
+      "@hooks/*":       ["src/hooks/*"],
+      "@pages/*":       ["src/pages/*"],
+      "@router/*":      ["src/router/*"],
+      "@styles/*":      ["src/styles/*"],
+      "@utils/*":       ["src/utils/*"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

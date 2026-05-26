@@ -1,4 +1,4 @@
-import type { Pet } from '../../hooks/ethereum/usePetsContract';
+import type { Pet } from '../../hooks/chains/ethereum/usePetsContract';
 
 /** Pet id + record, only for pets that are ready for interaction. */
 export type ReadyPetOption = { id: bigint; pet: Pet };

@@ -1,0 +1,63 @@
+import React from 'react';
+import './index.css';
+
+export type PetContainerProps = {
+    title: React.ReactNode;
+    /** Muted line under the title (e.g. “Connect your wallet…”). */
+    description?: React.ReactNode;
+    /** Controls aligned to the header corner (e.g. refresh). */
+    actions?: React.ReactNode;
+    /** Renders below the title bar; intended for the main panel content. */
+    children?: React.ReactNode;
+    /** Extra classes on the outer `.pet-container` section. */
+    className?: string;
+    /** Optional id for the heading element (for aria-labelledby). */
+    headingId?: string;
+    /** Render the description vertically centered in the surface instead of under the title. */
+    centerDescription?: boolean;
+};
+
+/**
+ * Shared container for dashboard pet panels (e.g. Pet Interactions, Your Pet Collection).
+ *
+ * Owns the surface, title bar, heading + caption rhythm, and action slot so the
+ * two main dashboard columns line up visually. Panel-specific styles compose by
+ * passing `className` (e.g. `pet-collection`, `pet-interactions`).
+ */
+const PetContainer: React.FC<PetContainerProps> = ({
+    title,
+    description,
+    actions,
+    children,
+    className,
+    headingId = 'pet-container-heading',
+    centerDescription = false,
+}) => {
+    const rootClass = `pet-container${className ? ` ${className}` : ''}`;
+
+    return (
+        <section className={rootClass} aria-labelledby={headingId}>
+            <div className="surface">
+                <header className="title-bar">
+                    <div className="intro">
+                        <h2 id={headingId} className="heading">
+                            {title}
+                        </h2>
+                        {description && !centerDescription ? (
+                            <p className="caption">{description}</p>
+                        ) : null}
+                    </div>
+                    {actions != null ? <div className="actions">{actions}</div> : null}
+                </header>
+                {description && centerDescription ? (
+                    <div className="state-body">
+                        <p className="caption">{description}</p>
+                    </div>
+                ) : null}
+                {children}
+            </div>
+        </section>
+    );
+};
+
+export default PetContainer;

@@ -1,35 +1,25 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { http } from 'viem';
-import { createConfig, WagmiProvider } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { WagmiProvider } from 'wagmi';
 
 import { ApiClientProvider, AuthProvider, PetsConfigProvider, queryClient } from '@shared/core';
-import { API_URL } from './config';
-import { CHAINS, solanaNetworkNameFromCluster } from './constants/chains';
-import { SolanaWalletProvider } from './contexts';
-import { DynamicProvider } from './contexts/dynamic';
-import { petsContractParams } from './petsContractParams';
-import { WalletAwareRoutes } from './router';
-import { SolanaAnchorWallet } from './solana/SolanaAnchorWallet';
-import { SolanaAuthSigner } from './solana/SolanaAuthSigner';
+import { wagmiConfig } from '@chains/ethereum/wagmi';
+import { SolanaAnchorWallet } from '@chains/solana/anchor-wallet';
+import { SolanaAuthSigner } from '@chains/solana/auth-signer';
+import { SolanaWalletProvider } from '@chains/solana/provider';
+import { API_URL } from '@/config';
+import { solanaNetworkNameFromCluster } from '@constants/chains';
+import { DynamicProvider } from '@contexts/dynamic';
+import { petsContractParams } from '@/petsContractParams';
+import { AppRoutes } from '@router';
 import './App.css';
-
-const allChains = CHAINS.map((chainConfig) => chainConfig.chain);
-
-const config = createConfig({
-    chains: allChains as any,
-    connectors: [injected()],
-    multiInjectedProviderDiscovery: false,
-    transports: Object.fromEntries(allChains.map((chain) => [chain.id, http(chain.rpcUrls.default.http[0])])),
-});
 
 const solanaNetwork = solanaNetworkNameFromCluster(import.meta.env.VITE_SOLANA_CLUSTER);
 
 const App: React.FC = () => {
     return (
-        <WagmiProvider config={config}>
+        <WagmiProvider config={wagmiConfig}>
             <QueryClientProvider client={queryClient}>
                 <DynamicProvider>
                     <SolanaWalletProvider network={solanaNetwork}>
@@ -39,7 +29,7 @@ const App: React.FC = () => {
                                 <AuthProvider>
                                     <PetsConfigProvider evm={petsContractParams}>
                                         <BrowserRouter>
-                                            <WalletAwareRoutes />
+                                            <AppRoutes />
                                         </BrowserRouter>
                                     </PetsConfigProvider>
                                 </AuthProvider>

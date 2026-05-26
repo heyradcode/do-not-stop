@@ -7,14 +7,13 @@ import {
     type ReactNode,
 } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
-import { useNonce } from '../hooks/ethereum';
-import { useVerifySignature } from '../hooks/ethereum';
+import { useNonce, useVerifySignature } from '../hooks/chains/ethereum';
 import { getStorageAdapter } from '../api';
 import {
     getSolanaAuthSigner,
     subscribeSolanaAuth,
-    getSolanaAuthAddressSnapshot,
-} from '../auth/solanaAuthBridge';
+    getSolanaAuthAddress,
+} from '../auth/solanaAuthStore';
 import { normalizeSolanaSignatureToBase58 } from '../utils/solana/signatureAuthCodec';
 
 interface User {
@@ -48,11 +47,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setAuthenticated] = useState(false);
     const [user, setUser] = useState<User | null>(null);
     const [pendingNonce, setPendingNonce] = useState<string | null>(null);
-    const [solanaSigning, setSolanaSigning] = useState(false);
+    const [isSolanaSigning, setSolanaSigning] = useState(false);
 
     const solanaAuthAddress = useSyncExternalStore(
         subscribeSolanaAuth,
-        getSolanaAuthAddressSnapshot,
+        getSolanaAuthAddress,
         () => null
     );
 
@@ -67,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const {
         signMessage,
-        isPending: isSigning,
+        isPending: isEvmSigning,
         data: signature,
         error: signError,
     } = useSignMessage();
@@ -192,7 +191,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 user,
                 logout,
                 signAndLogin,
-                isSigning: isSigning || solanaSigning,
+                isSigning: isEvmSigning || isSolanaSigning,
                 isVerifying,
                 isNonceLoading,
             }}

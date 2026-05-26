@@ -1,0 +1,28 @@
+.neon-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  color: inherit;
+  vertical-align: -0.18em;
+  margin-inline-end: 0.4em;
+  flex-shrink: 0;
+
+  &.no-gap {
+    margin-inline-end: 0;
+    vertical-align: middle;
+  }
+
+  &.tone-cyan    { color: var(--neon-cyan); }
+  &.tone-violet  { color: var(--neon-violet); }
+  &.tone-magenta { color: var(--neon-magenta); }
+  &.tone-emerald { color: #9effd4; }
+  &.tone-amber   { color: #ffd07b; }
+
+  &.glow-soft   { filter: drop-shadow(0 0 6px currentColor); }
+  &.glow-strong { filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 18px currentColor); }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}

@@ -2,9 +2,9 @@ export {
     setSolanaAuthSigner,
     getSolanaAuthSigner,
     subscribeSolanaAuth,
-    getSolanaAuthAddressSnapshot,
+    getSolanaAuthAddress,
     type SolanaAuthSigner,
-} from './auth/solanaAuthBridge';
+} from './auth/solanaAuthStore';
 export { createAuthApiClient, setStorageAdapter, getStorageAdapter } from './api';
 export type { AuthApiClient, StorageAdapter } from './api';
 export * from './hooks';
@@ -32,5 +32,5 @@ export {
     type PetsConfigProviderProps,
     type PetsEvmConfig,
 } from './contexts/PetsConfigContext';
-export type { Pet, PetChain } from './types/pet';
+export type { Pet, PetChain, PetAction } from './types/pet';
 export { queryClient } from './queryClient';
