@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useApiClient } from '../../../contexts/ApiClientContext';
+import { useApiClient } from '../contexts/ApiClientContext';
 
 /**
  * Fetches a nonce from the auth API (requires {@link ApiClientProvider}).
