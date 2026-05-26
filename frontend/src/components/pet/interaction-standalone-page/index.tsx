@@ -3,6 +3,7 @@ import { isActionSupported, useActiveChain, usePetList } from '@shared/core';
 import type { InteractionAction } from '../../../constants/interactionRoutes';
 import { STANDALONE_INTERACTION_HEADERS } from '../../../constants/interactionRoutes';
 import Icon, { BattleIcon } from '../../common/icon';
+import DashboardPanel from '../dashboard-panel';
 import StateCard from '../interactions/state-card';
 import '../pet-interactions/index.css';
 
@@ -41,12 +42,15 @@ const InteractionStandalonePage: React.FC<InteractionStandalonePageProps> = ({ a
 
     if (isLoading && pets.length === 0) {
         return (
-            <div className="pet-interactions">
+            <DashboardPanel
+                className="pet-interactions interaction-standalone"
+                title={<><Icon as={header.Icon} tone="violet" />{header.label}</>}
+            >
                 <div className="loading-container">
                     <div className="loading-spinner"></div>
                     <p>Loading your pets...</p>
                 </div>
-            </div>
+            </DashboardPanel>
         );
     }
 

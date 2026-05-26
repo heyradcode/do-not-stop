@@ -1,4 +1,5 @@
 import React from 'react';
+import DashboardPanel from '../../dashboard-panel';
 
 export type StateCardProps = {
     title: React.ReactNode;
@@ -6,16 +7,18 @@ export type StateCardProps = {
     sub?: React.ReactNode;
     helpText?: React.ReactNode;
     children?: React.ReactNode;
-    /** Extra classes applied to the outer `.pet-interactions` container. */
+    /** Extra classes on the outer panel (e.g. `wallet-disconnected`, `interaction-standalone`). */
     containerClassName?: string;
 };
 
 /**
- * Shared wrapper for simple interaction “state” screens:
+ * Shared wrapper for simple interaction "state" screens:
  * - not connected
  * - no pets yet
  * - not enough pets
  * - header + arbitrary children
+ *
+ * Composes the shared `DashboardPanel` with a `pet-interactions` modifier.
  */
 const StateCard: React.FC<StateCardProps> = ({
     title,
@@ -26,25 +29,23 @@ const StateCard: React.FC<StateCardProps> = ({
     containerClassName,
 }) => {
     const isWalletDisconnected = containerClassName?.includes('wallet-disconnected');
+    const composedClass = `pet-interactions${containerClassName ? ` ${containerClassName}` : ''}`;
 
     return (
-        <div className={`pet-interactions${containerClassName ? ` ${containerClassName}` : ''}`}>
-            <div className="card">
-                <div className="header">
-                    <h3>{title}</h3>
-                </div>
-                {description && isWalletDisconnected ? (
-                    <div className="state-body">
-                        <p className="description">{description}</p>
-                    </div>
-                ) : description ? (
-                    <p className="description">{description}</p>
-                ) : null}
-                {sub ? <p className="sub">{sub}</p> : null}
-                {helpText ? <p className="help-text">{helpText}</p> : null}
-                {children}
-            </div>
-        </div>
+        <DashboardPanel
+            title={title}
+            className={composedClass}
+            headingId="pet-interactions-heading"
+            description={isWalletDisconnected ? description : undefined}
+            centerDescription={isWalletDisconnected}
+        >
+            {!isWalletDisconnected && description ? (
+                <p className="description">{description}</p>
+            ) : null}
+            {sub ? <p className="sub">{sub}</p> : null}
+            {helpText ? <p className="help-text">{helpText}</p> : null}
+            {children}
+        </DashboardPanel>
     );
 };
 

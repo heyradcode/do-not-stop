@@ -1,0 +1,173 @@
+/* Shared shell for dashboard panels (Pet Interactions, Your Pet Collection).
+   Page-specific styles live in their own files and compose via extra classes
+   on the same root (e.g. `.dashboard-panel.pet-collection`). */
+
+@keyframes dashboard-panel-refresh-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.dashboard-panel {
+    --dp-spacing-xs: clamp(0.125rem, 0.25rem, 0.375rem);
+    --dp-spacing-sm: clamp(0.25rem, 0.5rem, 0.75rem);
+    --dp-spacing-md: clamp(0.5rem, 1rem, 1.25rem);
+    --dp-spacing-lg: clamp(0.75rem, 1.5rem, 2rem);
+    --dp-spacing-xl: clamp(1rem, 2rem, 2.5rem);
+    --dp-radius: 1rem;
+    --dp-font-xs: clamp(0.625rem, 0.75rem, 0.875rem);
+    --dp-font-title: clamp(1.25rem, 1.5rem, 1.75rem);
+    --dp-text: #f6f3ff;
+    --dp-text-muted: rgb(195 210 255 / 70%);
+    --dp-border: var(--neon-border-soft);
+    --dp-surface-bg: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
+    --dp-refresh-size: 36px;
+    --dp-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    padding: 0;
+    max-width: 100%;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .surface {
+        background: var(--dp-surface-bg);
+        border-radius: var(--dp-radius);
+        padding: var(--dp-spacing-lg);
+        box-shadow: 0 12px 40px rgb(0 0 0 / 35%);
+        border: 1px solid var(--dp-border);
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        position: relative;
+        overflow: hidden;
+        box-sizing: border-box;
+
+        @media (max-width: 480px) {
+            padding: 20px;
+        }
+
+        @media (prefers-contrast: more) {
+            border: 2px solid var(--color-text);
+        }
+    }
+
+    .title-bar {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-block-end: var(--dp-spacing-md);
+        flex-shrink: 0;
+        position: relative;
+
+        @media (max-width: 480px) {
+            margin-block-end: var(--dp-spacing-sm);
+        }
+
+        .intro {
+            width: 100%;
+            text-align: center;
+        }
+
+        .heading {
+            margin: 0;
+            font-family: var(--title-font);
+            font-size: var(--dp-font-title);
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--dp-text);
+            text-shadow: 0 0 12px var(--neon-text-glow);
+
+            @media (max-width: 480px) {
+                font-size: 20px;
+            }
+        }
+
+        .caption {
+            margin: 4px 0 0;
+            font-size: var(--dp-font-xs);
+            font-weight: 400;
+            color: var(--dp-text-muted);
+        }
+
+        .actions {
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline-end: 0;
+        }
+    }
+
+    .state-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .caption {
+            margin: 0;
+            text-align: center;
+            font-size: var(--dp-font-xs);
+            color: var(--dp-text-muted);
+        }
+    }
+
+    /* Generic refresh-style action button used by gallery (kept here so any
+       panel that opts into a `.refresh` action gets the same look). */
+    .refresh {
+        background: rgb(5 13 30 / 92%);
+        color: var(--neon-cyan);
+        border: 1px solid rgb(125 214 255 / 32%);
+        border-radius: 2px;
+        padding: var(--dp-spacing-sm);
+        font-size: 1.125rem;
+        cursor: pointer;
+        transition: var(--dp-transition);
+        width: var(--dp-refresh-size);
+        height: var(--dp-refresh-size);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow:
+            inset 0 0 12px rgb(125 214 255 / 14%),
+            0 0 10px rgb(125 214 255 / 18%);
+
+        &:hover:not(:disabled) {
+            color: var(--neon-violet);
+            border-color: rgb(181 140 255 / 42%);
+            transform: translateY(-1px);
+            box-shadow:
+                inset 0 0 16px rgb(181 140 255 / 18%),
+                0 0 16px rgb(181 140 255 / 28%);
+        }
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            animation: dashboard-panel-refresh-spin 1s linear infinite;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .refresh {
+            transition: none;
+            transform: none;
+        }
+
+        .refresh:disabled {
+            animation: none;
+        }
+    }
+}

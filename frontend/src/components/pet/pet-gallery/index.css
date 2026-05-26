@@ -244,7 +244,9 @@
 /* Pet grid with container queries */
 .pet-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    /* `min(320px, 100%)` lets each track shrink below 320px when the panel is
+       narrower than one card, preventing horizontal overflow in the 50/50 split. */
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
     align-items: start;
     gap: var(--spacing-md);
     width: 100%;
@@ -252,6 +254,7 @@
     contain: layout;
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     container-type: inline-size;
     container-name: pet-grid;
 

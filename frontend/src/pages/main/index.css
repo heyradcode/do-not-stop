@@ -21,7 +21,7 @@
     min-width: 0;
   }
 
-  & > .pet-collection {
+  & > .dashboard-panel {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
@@ -30,11 +30,11 @@
 
 /* Dashboard view (interactions hub + pet gallery): split horizontally 50/50 so
    both panels share equal width and the pet cards render in full. */
-.main-content.authenticated:has(.pet-collection) {
+.main-content.authenticated:has(.dashboard-panel.pet-collection) {
   flex-direction: row;
   align-items: stretch;
 
-  & > .pet-interactions {
+  & > .dashboard-panel {
     flex: 1 1 0;
     width: auto;
     max-width: none;
@@ -44,20 +44,20 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
 
-    & .interactions-card {
-      flex: 1 1 auto;
-      min-height: 0;
+  & > .dashboard-panel.pet-interactions {
+    & .surface {
       overflow-y: auto;
       scrollbar-width: thin;
       scrollbar-color: var(--neon-cyan) transparent;
     }
 
-    & .interactions-card::-webkit-scrollbar {
+    & .surface::-webkit-scrollbar {
       width: 6px;
     }
 
-    & .interactions-card::-webkit-scrollbar-thumb {
+    & .surface::-webkit-scrollbar-thumb {
       background: linear-gradient(180deg, var(--neon-cyan), var(--neon-violet));
       border-radius: 3px;
       box-shadow: 0 0 8px rgb(125 214 255 / 32%);
@@ -79,13 +79,6 @@
       height: auto;
     }
   }
-
-  & > .pet-collection {
-    flex: 1 1 0;
-    width: auto;
-    min-width: 0;
-    height: 100%;
-  }
 }
 
 @media (max-width: 1024px) {
@@ -96,19 +89,19 @@
 
   /* Stack panels vertically on narrow screens; allow the page to scroll
      so both interactions and gallery remain usable. */
-  .main-content.authenticated:has(.pet-collection) {
+  .main-content.authenticated:has(.dashboard-panel.pet-collection) {
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
 
-    & > .pet-interactions {
+    & > .dashboard-panel.pet-interactions {
       flex: 0 0 auto;
       width: 100%;
       max-width: none;
       height: auto;
       overflow: visible;
 
-      & .interactions-card {
+      & .surface {
         overflow: visible;
       }
 
@@ -119,7 +112,7 @@
       }
     }
 
-    & > .pet-collection {
+    & > .dashboard-panel.pet-collection {
       flex: 1 1 auto;
       width: 100%;
       min-height: 480px;
@@ -128,19 +121,9 @@
 }
 
 @media (max-width: 640px) {
-  .main-content.authenticated:has(.pet-collection) > .pet-interactions .action-buttons {
+  .main-content.authenticated:has(.dashboard-panel.pet-collection)
+    > .dashboard-panel.pet-interactions .action-buttons {
     display: grid;
     grid-template-columns: 1fr;
   }
-}
-
-/* Standalone interaction routes: fill viewport; title stays at top, message centers below. */
-.main-content.authenticated:not(:has(.pet-collection)) > .pet-interactions.wallet-disconnected {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.main-content.authenticated:not(:has(.pet-collection)) > .pet-interactions.wallet-disconnected .card {
-  height: 100%;
-  flex: 1 1 auto;
 }

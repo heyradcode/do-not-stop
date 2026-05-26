@@ -1,4 +1,5 @@
 import React from 'react';
+import DashboardPanel from '../dashboard-panel';
 import './index.css';
 
 export type PetCollectionLayoutProps = {
@@ -8,13 +9,13 @@ export type PetCollectionLayoutProps = {
     /** Controls aligned to the header corner (e.g. refresh). */
     actions?: React.ReactNode;
     children?: React.ReactNode;
-    /** Extra classes on the outer `.pet-collection` section (e.g. `wallet-disconnected`). */
+    /** Extra classes on the outer panel (e.g. `wallet-disconnected`). */
     className?: string;
 };
 
 /**
- * Shell for the dashboard pet list: section + surface + title bar.
- * Styles: `./index.css` (classes scoped under `.pet-collection`).
+ * Shell for the dashboard pet list. Composes the shared `DashboardPanel` with
+ * a `pet-collection` modifier so list-specific styles can scope to this panel.
  */
 const PetCollectionLayout: React.FC<PetCollectionLayoutProps> = ({
     title,
@@ -24,29 +25,19 @@ const PetCollectionLayout: React.FC<PetCollectionLayoutProps> = ({
     className,
 }) => {
     const isWalletDisconnected = className?.includes('wallet-disconnected');
+    const composedClass = `pet-collection${className ? ` ${className}` : ''}`;
 
     return (
-        <section className={`pet-collection${className ? ` ${className}` : ''}`} aria-labelledby="heading">
-            <div className="surface">
-                <header className="title-bar">
-                    <div className="intro">
-                        <h2 id="heading" className="heading">
-                            {title}
-                        </h2>
-                        {description && !isWalletDisconnected ? (
-                            <p className="caption">{description}</p>
-                        ) : null}
-                    </div>
-                    {actions != null ? <div className="actions">{actions}</div> : null}
-                </header>
-                {isWalletDisconnected && description ? (
-                    <div className="state-body">
-                        <p className="caption">{description}</p>
-                    </div>
-                ) : null}
-                {children}
-            </div>
-        </section>
+        <DashboardPanel
+            title={title}
+            description={description}
+            actions={actions}
+            className={composedClass}
+            headingId="pet-collection-heading"
+            centerDescription={isWalletDisconnected}
+        >
+            {children}
+        </DashboardPanel>
     );
 };
 
