@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 import { FEATURES } from '@/content/landing';
 import { NeonCard } from '../../common';
 import './Features.css';
@@ -10,7 +12,7 @@ const Features = () => (
       {FEATURES.map(({ title, text, iconImage }) => (
         <NeonCard key={title} className="card">
           <div className="icon" aria-hidden="true">
-            {iconImage && <img src={iconImage} alt="" />}
+            {iconImage && <Image src={iconImage} alt="" width={96} height={96} />}
           </div>
           <div className="copy">
             <h4>{title}</h4>
