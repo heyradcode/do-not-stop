@@ -8,6 +8,7 @@ import {
     usePetList,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { Tones } from '@constants/tones';
 import { useWriteContractErrorState } from '@hooks/useWriteContractErrorState';
 import Icon, { CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/common/icon';
 
@@ -120,7 +121,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 <div className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}>
                     <Icon
                         as={isUserRejection ? PauseIcon : isContractError ? WarningIcon : CloseIcon}
-                        tone={isUserRejection ? 'inherit' : isContractError ? 'amber' : 'magenta'}
+                        tone={isUserRejection ? Tones.Inherit : isContractError ? Tones.Amber : Tones.Magenta}
                     />
                     {error}
                 </div>
@@ -128,7 +129,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
             {success && (
                 <div className="success-message">
-                    <Icon as={CheckIcon} tone="emerald" />
+                    <Icon as={CheckIcon} tone={Tones.Emerald} />
                     {success}
                 </div>
             )}

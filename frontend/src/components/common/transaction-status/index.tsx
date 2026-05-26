@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWaitForTransactionReceipt } from 'wagmi';
+import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, CloseIcon, HourglassIcon } from '@components/common/icon';
 import './index.css';
 
@@ -53,13 +54,13 @@ const TransactionStatus: React.FC<TransactionStatusProps> = ({
     const StatusIcon = () => {
         switch (status) {
             case 'pending':
-                return <Icon as={HourglassIcon} tone="amber" glow="soft" className="no-gap" />;
+                return <Icon as={HourglassIcon} tone={Tones.Amber} glow="soft" className="no-gap" />;
             case 'confirmed':
-                return <Icon as={CheckIcon} tone="emerald" glow="soft" className="no-gap" />;
+                return <Icon as={CheckIcon} tone={Tones.Emerald} glow="soft" className="no-gap" />;
             case 'error':
-                return <Icon as={CloseIcon} tone="magenta" glow="soft" className="no-gap" />;
+                return <Icon as={CloseIcon} tone={Tones.Magenta} glow="soft" className="no-gap" />;
             default:
-                return <Icon as={HourglassIcon} tone="amber" glow="soft" className="no-gap" />;
+                return <Icon as={HourglassIcon} tone={Tones.Amber} glow="soft" className="no-gap" />;
         }
     };
 

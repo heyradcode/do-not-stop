@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { SOLANA_NETWORKS } from '@constants/chains/solana';
+import { Tones } from '@constants/tones';
 import { NeonModal } from '@components/common';
 import Icon, { CheckIcon } from '@components/common/icon';
 import './index.css';
@@ -58,7 +59,7 @@ const SolanaNetworkSwitcher: React.FC<SolanaNetworkSwitcherProps> = ({ className
                                 </div>
                                 {isActive && (
                                     <div className="option-check">
-                                        <Icon as={CheckIcon} tone="emerald" glow="soft" className="no-gap" />
+                                        <Icon as={CheckIcon} tone={Tones.Emerald} glow="soft" className="no-gap" />
                                     </div>
                                 )}
                             </button>

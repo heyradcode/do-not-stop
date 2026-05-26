@@ -1,9 +1,10 @@
 import type { ButtonHTMLAttributes } from 'react';
 import clsx from 'clsx';
+import { type Tone } from '@constants/tones';
 
 import './index.css';
 
-export type NeonButtonTone = 'emerald' | 'azure' | 'amber' | 'cyan';
+export type NeonButtonTone = Extract<Tone, 'emerald' | 'azure' | 'amber' | 'cyan'>;
 export type NeonButtonSize = 'md' | 'sm';
 
 export type NeonButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {

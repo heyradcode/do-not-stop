@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import Modal from 'react-modal';
 
+import { Tones } from '@constants/tones';
 import NeonButton from '@components/common/neon-button';
 import './index.css';
 
@@ -47,7 +48,7 @@ export default function NeonModal({
           <NeonButton
             className="close-btn"
             onClick={onRequestClose}
-            tone="cyan"
+            tone={Tones.Cyan}
             size="sm"
             aria-label="Close modal"
           >

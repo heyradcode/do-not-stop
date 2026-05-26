@@ -8,6 +8,7 @@ import {
     useRenamePet,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { Tones } from '@constants/tones';
 import { useWriteContractErrorState } from '@hooks/useWriteContractErrorState';
 import Icon, { CheckIcon, CloseIcon, PauseIcon, QuillIcon, WarningIcon } from '@components/common/icon';
 
@@ -82,7 +83,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
             <div className="interface">
                 {!isStandaloneView && (
                     <>
-                        <h4><Icon as={QuillIcon} tone="cyan" />Change Pet Name</h4>
+                        <h4><Icon as={QuillIcon} tone={Tones.Cyan} />Change Pet Name</h4>
                         <p>
                             {chain.kind === 'evm'
                                 ? "Change your pet's name (requires level 2+)"
@@ -133,7 +134,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 <div className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}>
                     <Icon
                         as={isUserRejection ? PauseIcon : isContractError ? WarningIcon : CloseIcon}
-                        tone={isUserRejection ? 'inherit' : isContractError ? 'amber' : 'magenta'}
+                        tone={isUserRejection ? Tones.Inherit : isContractError ? Tones.Amber : Tones.Magenta}
                     />
                     {error}
                 </div>
@@ -141,7 +142,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
 
             {success && (
                 <div className="success-message">
-                    <Icon as={CheckIcon} tone="emerald" />
+                    <Icon as={CheckIcon} tone={Tones.Emerald} />
                     {success}
                 </div>
             )}

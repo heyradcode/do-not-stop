@@ -15,6 +15,7 @@ import {
     LEVELUP_PATH,
     RENAME_PATH,
 } from '@constants/interactionRoutes';
+import { Tones } from '@constants/tones';
 import Icon, { BattleIcon, EggIcon, LevelUpIcon, QuillIcon } from '@components/common/icon';
 import PetContainer from '@components/pet/pet-container';
 import BattlePanel from '@components/pet/interactions/battle-panel';
@@ -62,7 +63,7 @@ const PetInteractions: React.FC = () => {
         return (
             <StateCard
                 containerClassName="wallet-disconnected"
-                title={<><Icon as={BattleIcon} tone="violet" />Pet Interactions</>}
+                title={<><Icon as={BattleIcon} tone={Tones.Violet} />Pet Interactions</>}
                 description="Connect your wallet to interact with your pets"
             />
         );
@@ -73,7 +74,7 @@ const PetInteractions: React.FC = () => {
             <PetContainer
                 className="pet-interactions"
                 headingId="pet-interactions-heading"
-                title={<><Icon as={BattleIcon} tone="violet" />Pet Interactions</>}
+                title={<><Icon as={BattleIcon} tone={Tones.Violet} />Pet Interactions</>}
             >
                 <div className="loading-container">
                     <div className="loading-spinner"></div>
@@ -86,7 +87,7 @@ const PetInteractions: React.FC = () => {
     if (pets.length === 0) {
         return (
             <StateCard
-                title={<><Icon as={BattleIcon} tone="violet" />Pet Interactions</>}
+                title={<><Icon as={BattleIcon} tone={Tones.Violet} />Pet Interactions</>}
                 description="You don't have any pets yet."
                 helpText="Go to the dashboard and create your first pet."
             />
@@ -103,19 +104,19 @@ const PetInteractions: React.FC = () => {
         <PetContainer
             className="pet-interactions"
             headingId="pet-interactions-heading"
-            title={<><Icon as={BattleIcon} tone="violet" />Pet Interactions</>}
+            title={<><Icon as={BattleIcon} tone={Tones.Violet} />Pet Interactions</>}
         >
             {!action && (
                 <div className="action-buttons">
                     <div className="breeding-lab-card">
-                        <div className="header"><Icon as={EggIcon} tone="amber" />Breeding Lab</div>
+                        <div className="header"><Icon as={EggIcon} tone={Tones.Amber} />Breeding Lab</div>
                         <div className="hub-divider" />
                         <div className="content">
                             <div className="parent-item">
                                 <span className="parent-name">{previewParentA?.name ?? 'Parent A'}</span>
                                 <span className="parent-meta">{previewParentA ? `Lv.${previewParentA.level}` : 'Select'}</span>
                             </div>
-                            <div className="egg"><Icon as={EggIcon} tone="amber" glow="strong" className="no-gap" /></div>
+                            <div className="egg"><Icon as={EggIcon} tone={Tones.Amber} glow="strong" className="no-gap" /></div>
                             <div className="parent-item">
                                 <span className="parent-name">{previewParentB?.name ?? 'Parent B'}</span>
                                 <span className="parent-meta">{previewParentB ? `Lv.${previewParentB.level}` : 'Select'}</span>
@@ -133,7 +134,7 @@ const PetInteractions: React.FC = () => {
                     </div>
                     <div className="battle-arena-card">
                         <div className="header">
-                            <span><Icon as={BattleIcon} tone="magenta" />Battle Arena</span>
+                            <span><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Arena</span>
                             <span className="left-badge">{availableBattles} left</span>
                         </div>
                         <div className="hub-divider" />
@@ -145,7 +146,7 @@ const PetInteractions: React.FC = () => {
                                 </div>
                             </div>
                             <div className="center">
-                                <div className="icon"><Icon as={BattleIcon} tone="magenta" glow="strong" className="no-gap" size={18} /></div>
+                                <div className="icon"><Icon as={BattleIcon} tone={Tones.Magenta} glow="strong" className="no-gap" size={18} /></div>
                                 <div className="vs">VS</div>
                             </div>
                             <div className="pet-item">
@@ -166,7 +167,7 @@ const PetInteractions: React.FC = () => {
                         </button>
                     </div>
                     <div className="feature-action-card">
-                        <div className="header"><Icon as={LevelUpIcon} tone="violet" />Level Up</div>
+                        <div className="header"><Icon as={LevelUpIcon} tone={Tones.Violet} />Level Up</div>
                         <div className="hub-divider" />
                         <div className="content">
                             Boost your pet stats by leveling up.
@@ -185,7 +186,7 @@ const PetInteractions: React.FC = () => {
                         </button>
                     </div>
                     <div className="feature-action-card">
-                        <div className="header"><Icon as={QuillIcon} tone="cyan" />Change Name</div>
+                        <div className="header"><Icon as={QuillIcon} tone={Tones.Cyan} />Change Name</div>
                         <div className="hub-divider" />
                         <div className="content">
                             Rename your pet.

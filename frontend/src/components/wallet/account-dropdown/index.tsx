@@ -4,6 +4,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { useAuth } from '@shared/core';
 import { getPopularTokens } from '@constants/tokens';
+import { Tones } from '@constants/tones';
 import { NeonButton, NeonCard } from '@components/common';
 import Icon, { CheckIcon, CopyIcon } from '@components/common/icon';
 import { EthereumNetworkSwitcher, SolanaNetworkSwitcher } from '@components/wallet/network-switcher';
@@ -183,7 +184,7 @@ const AccountDropdown: React.FC = () => {
     if (!hasAnyWallet) {
         return (
             <div className="account-dropdown">
-                <NeonButton tone="azure" className="connect-btn" onClick={() => setShowAuthFlow(true)}>
+                <NeonButton tone={Tones.Azure} className="connect-btn" onClick={() => setShowAuthFlow(true)}>
                     Connect Wallet
                 </NeonButton>
             </div>
@@ -199,7 +200,7 @@ const AccountDropdown: React.FC = () => {
                 <NeonButton
                     className="trigger"
                     onClick={() => setIsOpen(!isOpen)}
-                    tone="azure"
+                    tone={Tones.Azure}
                     size="sm"
                 >
                     {headerTriggerLabel}{' '}
@@ -220,7 +221,7 @@ const AccountDropdown: React.FC = () => {
                                         <span className="copy-icon">
                                             <Icon
                                                 as={isCopied ? CheckIcon : CopyIcon}
-                                                tone={isCopied ? 'emerald' : 'cyan'}
+                                                tone={isCopied ? Tones.Emerald : Tones.Cyan}
                                                 glow="none"
                                                 className="no-gap"
                                             />
@@ -241,7 +242,7 @@ const AccountDropdown: React.FC = () => {
                                         <span className="copy-icon">
                                             <Icon
                                                 as={isCopied ? CheckIcon : CopyIcon}
-                                                tone={isCopied ? 'emerald' : 'cyan'}
+                                                tone={isCopied ? Tones.Emerald : Tones.Cyan}
                                                 glow="none"
                                                 className="no-gap"
                                             />
@@ -264,7 +265,7 @@ const AccountDropdown: React.FC = () => {
                                             <span className="copy-icon">
                                                 <Icon
                                                     as={isCopied ? CheckIcon : CopyIcon}
-                                                    tone={isCopied ? 'emerald' : 'cyan'}
+                                                    tone={isCopied ? Tones.Emerald : Tones.Cyan}
                                                     glow="none"
                                                     className="no-gap"
                                                 />
@@ -324,7 +325,7 @@ const AccountDropdown: React.FC = () => {
                                         className="action"
                                         onClick={handleSignAndLogin}
                                         disabled={isNonceLoading || isSigning || isVerifying}
-                                        tone="azure"
+                                        tone={Tones.Azure}
                                         size="sm"
                                         fullWidth
                                     >
@@ -336,7 +337,7 @@ const AccountDropdown: React.FC = () => {
                                     <NeonButton
                                         className="action"
                                         onClick={handleLogout}
-                                        tone="cyan"
+                                        tone={Tones.Cyan}
                                         size="sm"
                                         fullWidth
                                     >
@@ -348,7 +349,7 @@ const AccountDropdown: React.FC = () => {
                                     <NeonButton
                                         className="action"
                                         onClick={handleDisconnect}
-                                        tone="amber"
+                                        tone={Tones.Amber}
                                         size="sm"
                                         fullWidth
                                     >
@@ -363,7 +364,7 @@ const AccountDropdown: React.FC = () => {
                                             solanaDisconnect();
                                             setIsOpen(false);
                                         }}
-                                        tone="amber"
+                                        tone={Tones.Amber}
                                         size="sm"
                                         fullWidth
                                     >

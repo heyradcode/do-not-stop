@@ -5,6 +5,7 @@ import {
     useCreatePet,
     usePetList,
 } from '@shared/core';
+import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, CloseIcon, PauseIcon, PawIcon, WarningIcon } from '@components/common/icon';
 import TransactionStatus from '@components/common/transaction-status';
 import './index.css';
@@ -102,7 +103,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         <div className="create-pet-modal" onClick={handleClose}>
             <div className="dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="header">
-                    <h2><Icon as={PawIcon} tone="cyan" />Create Your First Pet</h2>
+                    <h2><Icon as={PawIcon} tone={Tones.Cyan} />Create Your First Pet</h2>
                     <button className="close" onClick={handleClose}>
                         ×
                     </button>
@@ -138,7 +139,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                         <div className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}>
                             <Icon
                                 as={isUserRejection ? PauseIcon : isContractError ? WarningIcon : CloseIcon}
-                                tone={isUserRejection ? 'inherit' : isContractError ? 'amber' : 'magenta'}
+                                tone={isUserRejection ? Tones.Inherit : isContractError ? Tones.Amber : Tones.Magenta}
                             />
                             {error}
                         </div>
@@ -146,7 +147,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
 
                     {success && (
                         <div className="success-message">
-                            <Icon as={CheckIcon} tone="emerald" />
+                            <Icon as={CheckIcon} tone={Tones.Emerald} />
                             {success}
                         </div>
                     )}

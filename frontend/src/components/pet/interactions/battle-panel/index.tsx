@@ -4,6 +4,7 @@ import TransactionStatus from '@components/common/transaction-status';
 import { useActiveChain, usePetsContract, getReadyPets } from '@shared/core';
 import { petsContractParams } from '@/petsContractParams';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { Tones } from '@constants/tones';
 import { useWriteContractErrorState } from '@hooks/useWriteContractErrorState';
 import Icon, { BattleIcon, CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/common/icon';
 
@@ -28,7 +29,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
             <div className="interface">
                 {!isStandaloneView && (
                     <>
-                        <h4><Icon as={BattleIcon} tone="magenta" />Battle Pets</h4>
+                        <h4><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Pets</h4>
                         <p>Battles are not yet supported on Solana.</p>
                     </>
                 )}
@@ -77,7 +78,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
             <div className="interface">
                 {!isStandaloneView && (
                     <>
-                        <h4><Icon as={BattleIcon} tone="magenta" />Battle Pets</h4>
+                        <h4><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Pets</h4>
                         <p>Select two pets to battle</p>
                     </>
                 )}
@@ -130,7 +131,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 <div className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}>
                     <Icon
                         as={isUserRejection ? PauseIcon : isContractError ? WarningIcon : CloseIcon}
-                        tone={isUserRejection ? 'inherit' : isContractError ? 'amber' : 'magenta'}
+                        tone={isUserRejection ? Tones.Inherit : isContractError ? Tones.Amber : Tones.Magenta}
                     />
                     {error}
                 </div>
@@ -138,7 +139,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
 
             {success && (
                 <div className="success-message">
-                    <Icon as={CheckIcon} tone="emerald" />
+                    <Icon as={CheckIcon} tone={Tones.Emerald} />
                     {success}
                 </div>
             )}

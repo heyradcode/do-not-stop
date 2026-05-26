@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAccount, useSwitchChain } from 'wagmi';
 import { CHAINS, getChainsByType, getChainConfig } from '@constants/chains/ethereum';
+import { Tones } from '@constants/tones';
 import { NeonButton, NeonModal } from '@components/common';
 import Icon, { CheckIcon } from '@components/common/icon';
 import './index.css';
@@ -46,7 +47,7 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                 className="trigger"
                 onClick={() => setIsOpen(true)}
                 disabled={isPending}
-                tone="azure"
+                tone={Tones.Azure}
                 size="sm"
             >
                 {isPending ? 'Switching...' : (currentChainConfig?.name || 'Unknown')} ▼
@@ -77,7 +78,7 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                             className={`option ${chain.id === chainConfig.id ? 'active' : ''} ${isTestnet ? 'testnet' : ''}`}
                             onClick={() => handleNetworkSelect(chainConfig.id)}
                             disabled={isPending}
-                            tone="azure"
+                            tone={Tones.Azure}
                             size="sm"
                             fullWidth
                         >
@@ -87,7 +88,7 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                             </span>
                             {chain.id === chainConfig.id && (
                                 <span className="option-check">
-                                    <Icon as={CheckIcon} tone="emerald" glow="soft" className="no-gap" />
+                                    <Icon as={CheckIcon} tone={Tones.Emerald} glow="soft" className="no-gap" />
                                 </span>
                             )}
                         </NeonButton>

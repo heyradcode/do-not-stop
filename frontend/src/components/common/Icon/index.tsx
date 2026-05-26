@@ -15,9 +15,10 @@ import {
   GiUpgrade,
 } from 'react-icons/gi';
 import { IoCheckmarkSharp, IoClose, IoCopy, IoPauseSharp, IoWarning } from 'react-icons/io5';
+import { type Tone } from '@constants/tones';
 import './index.css';
 
-export type IconTone = 'cyan' | 'violet' | 'magenta' | 'emerald' | 'amber' | 'inherit';
+export type IconTone = Exclude<Tone, 'azure'>;
 export type IconGlow = 'none' | 'soft' | 'strong';
 export type IconSize = number | string;
 
