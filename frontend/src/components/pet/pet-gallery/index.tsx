@@ -25,10 +25,10 @@ import Icon, {
     PawIcon,
     SendIcon,
     SparklesIcon,
-} from '../../common/icon';
-import CreatePetModal from '../create-pet-modal';
-import PetCollectionLayout from '../pet-collection-layout';
-import SendPetModal from '../send-pet-modal';
+} from '@components/common/icon';
+import CreatePetModal from '@components/pet/create-pet-modal';
+import PetCollectionLayout from '@components/pet/pet-collection-layout';
+import SendPetModal from '@components/pet/send-pet-modal';
 import './index.css';
 
 const PetGallery: React.FC = () => {

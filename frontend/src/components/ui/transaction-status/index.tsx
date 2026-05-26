@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWaitForTransactionReceipt } from 'wagmi';
-import Icon, { CheckIcon, CloseIcon, HourglassIcon } from '../../common/icon';
+import Icon, { CheckIcon, CloseIcon, HourglassIcon } from '@components/common/icon';
 import './index.css';
 
 interface TransactionStatusProps {

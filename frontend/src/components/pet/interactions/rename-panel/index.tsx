@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import TransactionStatus from '../../../ui/transaction-status';
+import TransactionStatus from '@components/ui/transaction-status';
 import {
     getReadyPetsUnified,
     useActiveChain,
     usePetList,
     useRenamePet,
 } from '@shared/core';
-import { DASHBOARD_HOME } from '../../../../constants/interactionRoutes';
-import { useWriteContractErrorState } from '../../../../hooks/useWriteContractErrorState';
-import Icon, { CheckIcon, CloseIcon, PauseIcon, QuillIcon, WarningIcon } from '../../../common/icon';
+import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { useWriteContractErrorState } from '@hooks/useWriteContractErrorState';
+import Icon, { CheckIcon, CloseIcon, PauseIcon, QuillIcon, WarningIcon } from '@components/common/icon';
 
 export type RenamePanelProps = {
     isStandaloneView?: boolean;

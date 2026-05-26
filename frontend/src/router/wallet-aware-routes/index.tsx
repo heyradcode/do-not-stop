@@ -1,12 +1,12 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import MainPage from '../../pages/main';
-import PetInteractions from '../../components/pet/pet-interactions';
-import BattleRoute from '../battle-route';
-import BreedRoute from '../breed-route';
-import LevelUpRoute from '../level-up-route';
-import RenameRoute from '../rename-route';
+import MainPage from '@pages/main';
+import PetInteractions from '@components/pet/pet-interactions';
+import BattleRoute from '@router/battle-route';
+import BreedRoute from '@router/breed-route';
+import LevelUpRoute from '@router/level-up-route';
+import RenameRoute from '@router/rename-route';
 
 /** App route tree — pages render regardless of wallet state; features gate themselves via `useAppLoggedIn`. */
 const WalletAwareRoutes: React.FC = () => {

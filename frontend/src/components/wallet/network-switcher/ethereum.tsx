@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAccount, useSwitchChain } from 'wagmi';
-import { CHAINS, getChainsByType, getChainConfig } from '../../../constants/chains/ethereum';
-import { NeonButton, NeonModal } from '../../common';
-import Icon, { CheckIcon } from '../../common/icon';
+import { CHAINS, getChainsByType, getChainConfig } from '@constants/chains/ethereum';
+import { NeonButton, NeonModal } from '@components/common';
+import Icon, { CheckIcon } from '@components/common/icon';
 import './index.css';
 
 interface EthereumNetworkSwitcherProps {

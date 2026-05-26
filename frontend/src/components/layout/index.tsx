@@ -1,7 +1,7 @@
 import React from 'react';
 
-import AccountDropdown from '../wallet/account-dropdown';
-import SolanaWalletTrigger from '../wallet/solana-wallet-trigger';
+import AccountDropdown from '@components/wallet/account-dropdown';
+import SolanaWalletTrigger from '@components/wallet/solana-wallet-trigger';
 import './index.css';
 
 type LayoutProps = {

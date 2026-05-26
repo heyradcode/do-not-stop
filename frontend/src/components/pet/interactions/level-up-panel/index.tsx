@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import TransactionStatus from '../../../ui/transaction-status';
+import TransactionStatus from '@components/ui/transaction-status';
 import {
     getReadyPetsUnified,
     useActiveChain,
     useLevelUpPet,
     usePetList,
 } from '@shared/core';
-import { DASHBOARD_HOME } from '../../../../constants/interactionRoutes';
-import { useWriteContractErrorState } from '../../../../hooks/useWriteContractErrorState';
-import Icon, { CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '../../../common/icon';
+import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { useWriteContractErrorState } from '@hooks/useWriteContractErrorState';
+import Icon, { CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/common/icon';
 
 export type LevelUpPanelProps = {
     isStandaloneView?: boolean;

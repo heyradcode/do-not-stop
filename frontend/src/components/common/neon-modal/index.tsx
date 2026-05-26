@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import Modal from 'react-modal';
 
-import NeonButton from '../neon-button';
+import NeonButton from '@components/common/neon-button';
 import './index.css';
 
 type NeonModalProps = {

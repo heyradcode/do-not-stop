@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import TransactionStatus from '../../../ui/transaction-status';
+import TransactionStatus from '@components/ui/transaction-status';
 import { useActiveChain, usePetsContract, getReadyPets } from '@shared/core';
-import { petsContractParams } from '../../../../petsContractParams';
-import { DASHBOARD_HOME } from '../../../../constants/interactionRoutes';
-import { useWriteContractErrorState } from '../../../../hooks/useWriteContractErrorState';
-import Icon, { BattleIcon, CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '../../../common/icon';
+import { petsContractParams } from '@/petsContractParams';
+import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { useWriteContractErrorState } from '@hooks/useWriteContractErrorState';
+import Icon, { BattleIcon, CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/common/icon';
 
 export type BattlePanelProps = {
     isStandaloneView?: boolean;

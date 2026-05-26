@@ -2,7 +2,7 @@ import { useConnection, useAnchorWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SolanaAnchorProvider, parseProgramId, type SolanaSigningWallet } from '@shared/core';
-import { useDynamicSolanaWallet } from './useDynamicSolanaWallet';
+import { useDynamicSolanaWallet } from '@chains/solana/useDynamicSolanaWallet';
 
 /**
  * Supplies `SolanaAnchorProvider` with a signing wallet from wallet-adapter when connected,

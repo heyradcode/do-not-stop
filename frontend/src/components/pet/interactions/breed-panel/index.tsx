@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useAccount, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEventLogs } from 'viem';
-import TransactionStatus from '../../../ui/transaction-status';
+import TransactionStatus from '@components/ui/transaction-status';
 import {
     useActiveChain,
     usePetsContract,
@@ -10,10 +10,10 @@ import {
     type BreedSuccessPayload,
     getReadyPets,
 } from '@shared/core';
-import { petsContractParams } from '../../../../petsContractParams';
-import { DASHBOARD_HOME } from '../../../../constants/interactionRoutes';
-import { useWriteContractErrorState } from '../../../../hooks/useWriteContractErrorState';
-import Icon, { CheckIcon, CloseIcon, DnaIcon, PauseIcon, WarningIcon } from '../../../common/icon';
+import { petsContractParams } from '@/petsContractParams';
+import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { useWriteContractErrorState } from '@hooks/useWriteContractErrorState';
+import Icon, { CheckIcon, CloseIcon, DnaIcon, PauseIcon, WarningIcon } from '@components/common/icon';
 
 export type BreedPanelProps = {
     /** `false` when embedded under the dashboard interactions hub. */

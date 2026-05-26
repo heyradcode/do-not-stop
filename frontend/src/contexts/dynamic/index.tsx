@@ -3,7 +3,7 @@ import { DynamicContextProvider } from '@dynamic-labs/sdk-react-core';
 import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
 import { SolanaWalletConnectors } from '@dynamic-labs/solana';
 import { DynamicWagmiConnector } from '@dynamic-labs/wagmi-connector';
-import { CHAINS, SOLANA_NETWORKS } from '../../constants/chains';
+import { CHAINS, SOLANA_NETWORKS } from '@constants/chains';
 
 interface DynamicProviderProps {
     children: React.ReactNode;

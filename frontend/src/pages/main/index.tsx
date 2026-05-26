@@ -1,9 +1,9 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 
-import Layout from '../../components/layout';
-import PetGallery from '../../components/pet/pet-gallery';
-import { isInteractionRoute } from '../../constants/interactionRoutes';
+import Layout from '@components/layout';
+import PetGallery from '@components/pet/pet-gallery';
+import { isInteractionRoute } from '@constants/interactionRoutes';
 import './index.css';
 
 const MainPage: React.FC = () => {

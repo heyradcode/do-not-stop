@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { setSolanaAuthSigner, type SolanaAuthSigner as SharedSolanaAuthSigner } from '@shared/core';
-import { useDynamicSolanaWallet, type DynamicSolanaWalletLike } from './useDynamicSolanaWallet';
+import { useDynamicSolanaWallet, type DynamicSolanaWalletLike } from '@chains/solana/useDynamicSolanaWallet';
 
 /**
  * Dynamic's `SolanaWallet.signMessage(string)` is the generic Dynamic API — it expects a string

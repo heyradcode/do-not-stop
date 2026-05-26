@@ -1,5 +1,5 @@
 import React from 'react';
-import DashboardPanel from '../../dashboard-panel';
+import DashboardPanel from '@components/pet/dashboard-panel';
 
 export type StateCardProps = {
     title: React.ReactNode;

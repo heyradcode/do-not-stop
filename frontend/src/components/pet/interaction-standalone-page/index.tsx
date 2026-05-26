@@ -1,11 +1,11 @@
 import React from 'react';
 import { isActionSupported, useActiveChain, usePetList } from '@shared/core';
-import type { InteractionAction } from '../../../constants/interactionRoutes';
-import { STANDALONE_INTERACTION_HEADERS } from '../../../constants/interactionRoutes';
-import Icon, { BattleIcon } from '../../common/icon';
-import DashboardPanel from '../dashboard-panel';
-import StateCard from '../interactions/state-card';
-import '../pet-interactions/index.css';
+import type { InteractionAction } from '@constants/interactionRoutes';
+import { STANDALONE_INTERACTION_HEADERS } from '@constants/interactionRoutes';
+import Icon, { BattleIcon } from '@components/common/icon';
+import DashboardPanel from '@components/pet/dashboard-panel';
+import StateCard from '@components/pet/interactions/state-card';
+import '@components/pet/pet-interactions/index.css';
 
 export type InteractionStandalonePageProps = {
     action: InteractionAction;

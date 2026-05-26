@@ -7,21 +7,21 @@ import {
     useActiveChain,
     usePetList,
 } from '@shared/core';
-import type { InteractionAction } from '../../../constants/interactionRoutes';
+import type { InteractionAction } from '@constants/interactionRoutes';
 import {
     BATTLE_PATH,
     BREED_PATH,
     DASHBOARD_HOME,
     LEVELUP_PATH,
     RENAME_PATH,
-} from '../../../constants/interactionRoutes';
-import Icon, { BattleIcon, EggIcon, LevelUpIcon, QuillIcon } from '../../common/icon';
-import DashboardPanel from '../dashboard-panel';
-import BattlePanel from '../interactions/battle-panel';
-import BreedPanel from '../interactions/breed-panel';
-import LevelUpPanel from '../interactions/level-up-panel';
-import RenamePanel from '../interactions/rename-panel';
-import StateCard from '../interactions/state-card';
+} from '@constants/interactionRoutes';
+import Icon, { BattleIcon, EggIcon, LevelUpIcon, QuillIcon } from '@components/common/icon';
+import DashboardPanel from '@components/pet/dashboard-panel';
+import BattlePanel from '@components/pet/interactions/battle-panel';
+import BreedPanel from '@components/pet/interactions/breed-panel';
+import LevelUpPanel from '@components/pet/interactions/level-up-panel';
+import RenamePanel from '@components/pet/interactions/rename-panel';
+import StateCard from '@components/pet/interactions/state-card';
 import './index.css';
 
 /** Map `interactions/:action` segment (e.g. `rename`) to internal action id. */

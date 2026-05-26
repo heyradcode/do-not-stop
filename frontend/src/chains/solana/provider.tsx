@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import { SOLANA_NETWORKS } from '../../constants/chains';
+import { SOLANA_NETWORKS } from '@constants/chains';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
 

@@ -1,6 +1,6 @@
 import { useAuth } from '@shared/core';
 
-import { useDynamicContext } from '../contexts/dynamic';
+import { useDynamicContext } from '@contexts/dynamic';
 
 /** JWT and/or Dynamic wallet session. */
 export function useAppLoggedIn(): boolean {

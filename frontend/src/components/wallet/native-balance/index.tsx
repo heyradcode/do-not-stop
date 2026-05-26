@@ -3,8 +3,8 @@ import { useAccount, useBalance } from 'wagmi';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { formatEther } from 'viem';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { getNativeTokenSymbol } from '../../../constants/chains/ethereum';
-import Icon, { WarningIcon } from '../../common/icon';
+import { getNativeTokenSymbol } from '@constants/chains/ethereum';
+import Icon, { WarningIcon } from '@components/common/icon';
 import './index.css';
 
 export type BalanceType = 'ethereum' | 'solana';

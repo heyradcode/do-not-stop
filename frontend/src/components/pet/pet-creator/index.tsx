@@ -5,8 +5,8 @@ import {
     useCreatePet,
     usePetList,
 } from '@shared/core';
-import Icon, { CheckIcon, CloseIcon, PauseIcon, PawIcon, WarningIcon } from '../../common/icon';
-import TransactionStatus from '../../ui/transaction-status';
+import Icon, { CheckIcon, CloseIcon, PauseIcon, PawIcon, WarningIcon } from '@components/common/icon';
+import TransactionStatus from '@components/ui/transaction-status';
 import './index.css';
 
 const PetCreator: React.FC = () => {

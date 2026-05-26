@@ -1,5 +1,5 @@
 import React from 'react';
-import DashboardPanel from '../dashboard-panel';
+import DashboardPanel from '@components/pet/dashboard-panel';
 import './index.css';
 
 export type PetCollectionLayoutProps = {

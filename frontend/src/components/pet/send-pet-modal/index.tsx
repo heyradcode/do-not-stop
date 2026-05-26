@@ -6,7 +6,7 @@ import {
     usePetList,
     useTransferPet,
 } from '@shared/core';
-import TransactionStatus from '../../ui/transaction-status';
+import TransactionStatus from '@components/ui/transaction-status';
 import './index.css';
 
 interface SendPetModalProps {

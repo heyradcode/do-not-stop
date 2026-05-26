@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { SOLANA_NETWORKS } from '../../../constants/chains/solana';
-import { NeonModal } from '../../common';
-import Icon, { CheckIcon } from '../../common/icon';
+import { SOLANA_NETWORKS } from '@constants/chains/solana';
+import { NeonModal } from '@components/common';
+import Icon, { CheckIcon } from '@components/common/icon';
 import './index.css';
 
 interface SolanaNetworkSwitcherProps {

@@ -1,7 +1,7 @@
 import { http } from 'viem';
 import { createConfig } from 'wagmi';
 import { injected } from 'wagmi/connectors';
-import { CHAINS } from '../../constants/chains';
+import { CHAINS } from '@constants/chains';
 
 const allChains = CHAINS.map((chainConfig) => chainConfig.chain);
 
