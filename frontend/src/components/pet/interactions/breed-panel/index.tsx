@@ -48,24 +48,8 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
 
     const offspringNameRef = useRef('');
 
-    if (chain.kind === 'solana') {
-        return (
-            <div className="interface">
-                {!isStandaloneView && (
-                    <>
-                        <h4><Icon as={DnaIcon} tone={Tones.Emerald} />Breed Pets</h4>
-                        <p>Breeding is not yet supported on Solana.</p>
-                    </>
-                )}
-                <div className="action-controls">
-                    <button type="button" onClick={() => navigate(DASHBOARD_HOME)} className="cancel-button">
-                        Back to dashboard
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
+    // EVM-only flow below. Called unconditionally to satisfy rules-of-hooks;
+    // each hook self-defends via `address`/`hash` guards so it no-ops on Solana.
     const { data: requestReceipt } = useWaitForTransactionReceipt({
         hash: hash as `0x${string}` | undefined,
     });
@@ -109,6 +93,24 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         pendingRequestId,
         onBreedSuccess: handleBreedSuccess,
     });
+
+    if (chain.kind === 'solana') {
+        return (
+            <div className="interface">
+                {!isStandaloneView && (
+                    <>
+                        <h4><Icon as={DnaIcon} tone={Tones.Emerald} />Breed Pets</h4>
+                        <p>Breeding is not yet supported on Solana.</p>
+                    </>
+                )}
+                <div className="action-controls">
+                    <button type="button" onClick={() => navigate(DASHBOARD_HOME)} className="cancel-button">
+                        Back to dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const handleBreed = () => {
         if (!selectedPet1 || !selectedPet2 || !newPetName.trim()) {

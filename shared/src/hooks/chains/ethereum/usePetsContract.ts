@@ -1,6 +1,5 @@
 import type { Abi } from 'viem';
 import { useAccount, useWriteContract, useReadContract, useReadContracts } from 'wagmi';
-import type { Abi } from 'viem';
 
 export interface Pet {
     name: string;
