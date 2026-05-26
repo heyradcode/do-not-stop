@@ -14,7 +14,7 @@ import {
     getSolanaAuthSigner,
     subscribeSolanaAuth,
     getSolanaAuthAddress,
-} from '../auth/solanaAuthBridge';
+} from '../auth/solanaAuthStore';
 import { normalizeSolanaSignatureToBase58 } from '../utils/solana/signatureAuthCodec';
 
 interface User {

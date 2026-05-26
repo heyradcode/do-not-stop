@@ -3,7 +3,7 @@ import { useAccount } from 'wagmi';
 import {
     getSolanaAuthAddress,
     subscribeSolanaAuth,
-} from '../auth/solanaAuthBridge';
+} from '../auth/solanaAuthStore';
 
 export type ActiveChain =
     | { kind: 'evm'; address: `0x${string}` }
