@@ -1,8 +1,8 @@
 /* Pet-interactions specific tokens + content styles.
    Shared surface / title-bar / heading / description / state-body styles live in
-   `dashboard-panel/index.css`. */
+   `pet-container/index.css`. */
 
-.dashboard-panel.pet-interactions {
+.pet-container.pet-interactions {
     --zi-card-bg: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
     --zi-surface-bg: rgb(5 13 30 / 78%);
     --zi-text: #f6f3ff;
@@ -131,7 +131,7 @@
 }
 
 .action-buttons {
-    padding-block-start: var(--dp-spacing-sm);
+    padding-block-start: var(--pc-spacing-sm);
     display: flex;
     flex-direction: column;
     gap: 10px;

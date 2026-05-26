@@ -1,7 +1,7 @@
 import React from 'react';
 import './index.css';
 
-export type DashboardPanelProps = {
+export type PetContainerProps = {
     title: React.ReactNode;
     /** Muted line under the title (e.g. “Connect your wallet…”). */
     description?: React.ReactNode;
@@ -9,7 +9,7 @@ export type DashboardPanelProps = {
     actions?: React.ReactNode;
     /** Renders below the title bar; intended for the main panel content. */
     children?: React.ReactNode;
-    /** Extra classes on the outer `.dashboard-panel` section. */
+    /** Extra classes on the outer `.pet-container` section. */
     className?: string;
     /** Optional id for the heading element (for aria-labelledby). */
     headingId?: string;
@@ -18,22 +18,22 @@ export type DashboardPanelProps = {
 };
 
 /**
- * Shared shell for dashboard panels (e.g. Pet Interactions, Your Pet Collection).
+ * Shared container for dashboard pet panels (e.g. Pet Interactions, Your Pet Collection).
  *
  * Owns the surface, title bar, heading + caption rhythm, and action slot so the
- * two main dashboard columns line up visually. Page-specific styles compose by
+ * two main dashboard columns line up visually. Panel-specific styles compose by
  * passing `className` (e.g. `pet-collection`, `pet-interactions`).
  */
-const DashboardPanel: React.FC<DashboardPanelProps> = ({
+const PetContainer: React.FC<PetContainerProps> = ({
     title,
     description,
     actions,
     children,
     className,
-    headingId = 'dashboard-panel-heading',
+    headingId = 'pet-container-heading',
     centerDescription = false,
 }) => {
-    const rootClass = `dashboard-panel${className ? ` ${className}` : ''}`;
+    const rootClass = `pet-container${className ? ` ${className}` : ''}`;
 
     return (
         <section className={rootClass} aria-labelledby={headingId}>
@@ -60,4 +60,4 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({
     );
 };
 
-export default DashboardPanel;
+export default PetContainer;

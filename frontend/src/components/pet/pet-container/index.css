@@ -1,28 +1,28 @@
-/* Shared shell for dashboard panels (Pet Interactions, Your Pet Collection).
-   Page-specific styles live in their own files and compose via extra classes
-   on the same root (e.g. `.dashboard-panel.pet-collection`). */
+/* Shared container for dashboard pet panels (Pet Interactions, Your Pet Collection).
+   Panel-specific styles live in their own files and compose via extra classes
+   on the same root (e.g. `.pet-container.pet-collection`). */
 
-@keyframes dashboard-panel-refresh-spin {
+@keyframes pet-container-refresh-spin {
     to {
         transform: rotate(360deg);
     }
 }
 
-.dashboard-panel {
-    --dp-spacing-xs: clamp(0.125rem, 0.25rem, 0.375rem);
-    --dp-spacing-sm: clamp(0.25rem, 0.5rem, 0.75rem);
-    --dp-spacing-md: clamp(0.5rem, 1rem, 1.25rem);
-    --dp-spacing-lg: clamp(0.75rem, 1.5rem, 2rem);
-    --dp-spacing-xl: clamp(1rem, 2rem, 2.5rem);
-    --dp-radius: 1rem;
-    --dp-font-xs: clamp(0.625rem, 0.75rem, 0.875rem);
-    --dp-font-title: clamp(1.25rem, 1.5rem, 1.75rem);
-    --dp-text: #f6f3ff;
-    --dp-text-muted: rgb(195 210 255 / 70%);
-    --dp-border: var(--neon-border-soft);
-    --dp-surface-bg: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
-    --dp-refresh-size: 36px;
-    --dp-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.pet-container {
+    --pc-spacing-xs: clamp(0.125rem, 0.25rem, 0.375rem);
+    --pc-spacing-sm: clamp(0.25rem, 0.5rem, 0.75rem);
+    --pc-spacing-md: clamp(0.5rem, 1rem, 1.25rem);
+    --pc-spacing-lg: clamp(0.75rem, 1.5rem, 2rem);
+    --pc-spacing-xl: clamp(1rem, 2rem, 2.5rem);
+    --pc-radius: 1rem;
+    --pc-font-xs: clamp(0.625rem, 0.75rem, 0.875rem);
+    --pc-font-title: clamp(1.25rem, 1.5rem, 1.75rem);
+    --pc-text: #f6f3ff;
+    --pc-text-muted: rgb(195 210 255 / 70%);
+    --pc-border: var(--neon-border-soft);
+    --pc-surface-bg: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
+    --pc-refresh-size: 36px;
+    --pc-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     padding: 0;
     max-width: 100%;
@@ -37,11 +37,11 @@
     overflow: hidden;
 
     .surface {
-        background: var(--dp-surface-bg);
-        border-radius: var(--dp-radius);
-        padding: var(--dp-spacing-lg);
+        background: var(--pc-surface-bg);
+        border-radius: var(--pc-radius);
+        padding: var(--pc-spacing-lg);
         box-shadow: 0 12px 40px rgb(0 0 0 / 35%);
-        border: 1px solid var(--dp-border);
+        border: 1px solid var(--pc-border);
         flex: 1 1 auto;
         width: 100%;
         max-width: 100%;
@@ -66,12 +66,12 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        margin-block-end: var(--dp-spacing-md);
+        margin-block-end: var(--pc-spacing-md);
         flex-shrink: 0;
         position: relative;
 
         @media (max-width: 480px) {
-            margin-block-end: var(--dp-spacing-sm);
+            margin-block-end: var(--pc-spacing-sm);
         }
 
         .intro {
@@ -82,11 +82,11 @@
         .heading {
             margin: 0;
             font-family: var(--title-font);
-            font-size: var(--dp-font-title);
+            font-size: var(--pc-font-title);
             font-weight: 700;
             letter-spacing: 0.5px;
             text-transform: uppercase;
-            color: var(--dp-text);
+            color: var(--pc-text);
             text-shadow: 0 0 12px var(--neon-text-glow);
 
             @media (max-width: 480px) {
@@ -96,9 +96,9 @@
 
         .caption {
             margin: 4px 0 0;
-            font-size: var(--dp-font-xs);
+            font-size: var(--pc-font-xs);
             font-weight: 400;
-            color: var(--dp-text-muted);
+            color: var(--pc-text-muted);
         }
 
         .actions {
@@ -118,8 +118,8 @@
         .caption {
             margin: 0;
             text-align: center;
-            font-size: var(--dp-font-xs);
-            color: var(--dp-text-muted);
+            font-size: var(--pc-font-xs);
+            color: var(--pc-text-muted);
         }
     }
 
@@ -130,12 +130,12 @@
         color: var(--neon-cyan);
         border: 1px solid rgb(125 214 255 / 32%);
         border-radius: 2px;
-        padding: var(--dp-spacing-sm);
+        padding: var(--pc-spacing-sm);
         font-size: 1.125rem;
         cursor: pointer;
-        transition: var(--dp-transition);
-        width: var(--dp-refresh-size);
-        height: var(--dp-refresh-size);
+        transition: var(--pc-transition);
+        width: var(--pc-refresh-size);
+        height: var(--pc-refresh-size);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -156,7 +156,7 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
-            animation: dashboard-panel-refresh-spin 1s linear infinite;
+            animation: pet-container-refresh-spin 1s linear infinite;
         }
     }
 

@@ -3,7 +3,7 @@ import { isActionSupported, useActiveChain, usePetList } from '@shared/core';
 import type { InteractionAction } from '@constants/interactionRoutes';
 import { STANDALONE_INTERACTION_HEADERS } from '@constants/interactionRoutes';
 import Icon, { BattleIcon } from '@components/common/icon';
-import DashboardPanel from '@components/pet/dashboard-panel';
+import PetContainer from '@components/pet/pet-container';
 import StateCard from '@components/pet/interactions/state-card';
 import '@components/pet/pet-interactions/index.css';
 
@@ -42,7 +42,7 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
 
     if (isLoading && pets.length === 0) {
         return (
-            <DashboardPanel
+            <PetContainer
                 className="pet-interactions interaction-standalone"
                 title={<><Icon as={header.Icon} tone="violet" />{header.label}</>}
             >
@@ -50,7 +50,7 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
                     <div className="loading-spinner"></div>
                     <p>Loading your pets...</p>
                 </div>
-            </DashboardPanel>
+            </PetContainer>
         );
     }
 
