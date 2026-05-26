@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useAccount, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEventLogs } from 'viem';
-import TransactionStatus from '@components/ui/transaction-status';
+import TransactionStatus from '@components/common/transaction-status';
 import {
     useActiveChain,
     usePetsContract,

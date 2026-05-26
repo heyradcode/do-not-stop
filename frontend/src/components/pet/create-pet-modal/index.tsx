@@ -6,7 +6,7 @@ import {
     usePetList,
 } from '@shared/core';
 import Icon, { CheckIcon, CloseIcon, PauseIcon, PawIcon, WarningIcon } from '@components/common/icon';
-import TransactionStatus from '@components/ui/transaction-status';
+import TransactionStatus from '@components/common/transaction-status';
 import './index.css';
 
 interface CreatePetModalProps {

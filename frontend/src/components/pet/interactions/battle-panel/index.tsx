@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import TransactionStatus from '@components/ui/transaction-status';
+import TransactionStatus from '@components/common/transaction-status';
 import { useActiveChain, usePetsContract, getReadyPets } from '@shared/core';
 import { petsContractParams } from '@/petsContractParams';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
