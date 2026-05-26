@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { usePetsContract } from '../ethereum/usePetsContract';
-import { usePetActions } from '../solana/usePetActions';
-import { usePetsConfig } from '../../contexts/PetsConfigContext';
+import { usePetsContract } from './chains/ethereum/usePetsContract';
+import { usePetActions } from './chains/solana/usePetActions';
+import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
-import { isActionSupported } from './featureSupport';
-import { FeatureNotSupportedError, NoActiveChainError } from './errors';
+import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
 import type { PetMutationResult } from './useCreatePet';
 
 export interface LevelUpPetArgs {

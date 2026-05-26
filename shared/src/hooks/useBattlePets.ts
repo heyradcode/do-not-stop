@@ -1,21 +1,19 @@
 import { useState } from 'react';
-import { usePetsContract } from '../ethereum/usePetsContract';
-import { usePetsConfig } from '../../contexts/PetsConfigContext';
+import { usePetsContract } from './chains/ethereum/usePetsContract';
+import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
-import { isActionSupported } from './featureSupport';
-import { FeatureNotSupportedError, NoActiveChainError } from './errors';
+import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
 import type { PetMutationResult } from './useCreatePet';
 
-export interface BreedPetsArgs {
-    parentId1: string;
-    parentId2: string;
-    name: string;
+export interface BattlePetsArgs {
+    petId1: string;
+    petId2: string;
 }
 
-export function useBreedPets(): PetMutationResult<BreedPetsArgs> {
+export function useBattlePets(): PetMutationResult<BattlePetsArgs> {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
-    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'breed');
+    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'battle');
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
@@ -25,12 +23,12 @@ export function useBreedPets(): PetMutationResult<BreedPetsArgs> {
 
     const [localError, setLocalError] = useState<Error | null>(null);
 
-    const mutate = async (args: BreedPetsArgs) => {
-        if (chain.kind === 'none') throw new NoActiveChainError('breed');
-        if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'breed');
+    const mutate = async (args: BattlePetsArgs) => {
+        if (chain.kind === 'none') throw new NoActiveChainError('battle');
+        if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'battle');
         try {
             setLocalError(null);
-            evmHook.requestBreedFromDNA(BigInt(args.parentId1), BigInt(args.parentId2), args.name);
+            evmHook.battlePets(BigInt(args.petId1), BigInt(args.petId2));
         } catch (err) {
             const error = err instanceof Error ? err : new Error(String(err));
             setLocalError(error);

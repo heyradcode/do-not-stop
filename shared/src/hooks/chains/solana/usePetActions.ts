@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BN } from '@coral-xyz/anchor';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
-import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
-import { globalStatePda, petPda, playerProfilePda } from '../../utils/solana/pdas';
-import { getAccountClient } from '../../utils/solana/accountClient';
+import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
+import { globalStatePda, petPda, playerProfilePda } from '../../../utils/solana/pdas';
+import { getAccountClient } from '../../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
 export function usePetActions() {

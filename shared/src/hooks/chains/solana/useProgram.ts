@@ -3,9 +3,9 @@ import type { Idl } from '@coral-xyz/anchor';
 import { AnchorProvider, Program } from '@coral-xyz/anchor';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import type { SolanaSigningWallet } from '../../contexts/SolanaAnchorContext';
-import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
-import { toU32 } from '../../utils/solana/numbers';
+import type { SolanaSigningWallet } from '../../../contexts/SolanaAnchorContext';
+import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
+import { toU32 } from '../../../utils/solana/numbers';
 
 /** Stand-in wallet for read-only paths — never signs, so an all-zero pubkey is sufficient. */
 const READ_ONLY_WALLET: SolanaSigningWallet = {

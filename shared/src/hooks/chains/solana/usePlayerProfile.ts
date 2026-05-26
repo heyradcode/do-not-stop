@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
-import { playerProfilePda } from '../../utils/solana/pdas';
-import { getAccountClient } from '../../utils/solana/accountClient';
+import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
+import { playerProfilePda } from '../../../utils/solana/pdas';
+import { getAccountClient } from '../../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
 export function usePlayerProfile() {

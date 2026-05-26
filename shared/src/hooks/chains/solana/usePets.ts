@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { PublicKey } from '@solana/web3.js';
-import { PET_ACCOUNT_OWNER_MEMCMP_OFFSET } from '../../utils/solana/constants';
-import { getAccountClient } from '../../utils/solana/accountClient';
+import { PET_ACCOUNT_OWNER_MEMCMP_OFFSET } from '../../../utils/solana/constants';
+import { getAccountClient } from '../../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
 export type PetRow = {

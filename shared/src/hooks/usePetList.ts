@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import type { Pet } from '../../types/pet';
-import { usePetsContract } from '../ethereum/usePetsContract';
-import { usePets as useSolanaPets } from '../solana/usePets';
-import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
-import { usePetsConfig } from '../../contexts/PetsConfigContext';
-import { mapEvmPet, type EvmRawPet } from '../../utils/pets/mapEvmPet';
-import { mapSolanaPet, type SolanaPetAccountRow } from '../../utils/pets/mapSolanaPet';
+import type { Pet } from '../types/pet';
+import { usePetsContract } from './chains/ethereum/usePetsContract';
+import { usePets as useSolanaPets } from './chains/solana/usePets';
+import { useSolanaAnchor } from '../contexts/SolanaAnchorContext';
+import { usePetsConfig } from '../contexts/PetsConfigContext';
+import { mapEvmPet, type EvmRawPet } from '../utils/pets/mapEvmPet';
+import { mapSolanaPet, type SolanaPetAccountRow } from '../utils/pets/mapSolanaPet';
 import { useActiveChain } from './useActiveChain';
 
 export interface PetListResult {

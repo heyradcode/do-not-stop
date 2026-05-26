@@ -1,4 +1,4 @@
-import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
+import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
 import { usePetActions } from './usePetActions';
 import { useGlobalState } from './useGlobalState';
 import { usePets } from './usePets';

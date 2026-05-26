@@ -1,5 +1,13 @@
 export type PetChain = 'evm' | 'solana';
 
+export type PetAction =
+    | 'create'
+    | 'levelUp'
+    | 'rename'
+    | 'battle'
+    | 'breed'
+    | 'transfer';
+
 export interface Pet {
     id: string;
     chain: PetChain;

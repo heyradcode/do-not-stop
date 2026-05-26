@@ -1,5 +1,4 @@
-import type { PetChain } from '../../types/pet';
-import type { PetAction } from './errors';
+import type { PetAction, PetChain } from '../../types/pet';
 
 const SUPPORT: Record<PetChain, Record<PetAction, boolean>> = {
     evm: {

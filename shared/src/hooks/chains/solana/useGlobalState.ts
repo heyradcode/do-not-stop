@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { globalStatePda } from '../../utils/solana/pdas';
-import { getAccountClient } from '../../utils/solana/accountClient';
+import { globalStatePda } from '../../../utils/solana/pdas';
+import { getAccountClient } from '../../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
 export function useGlobalState() {

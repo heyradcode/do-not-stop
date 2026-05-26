@@ -1,20 +1,20 @@
 import { useState } from 'react';
-import { usePetsContract } from '../ethereum/usePetsContract';
-import { usePetsConfig } from '../../contexts/PetsConfigContext';
+import { usePetsContract } from './chains/ethereum/usePetsContract';
+import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
-import { isActionSupported } from './featureSupport';
-import { FeatureNotSupportedError, NoActiveChainError } from './errors';
+import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
 import type { PetMutationResult } from './useCreatePet';
 
-export interface BattlePetsArgs {
-    petId1: string;
-    petId2: string;
+export interface BreedPetsArgs {
+    parentId1: string;
+    parentId2: string;
+    name: string;
 }
 
-export function useBattlePets(): PetMutationResult<BattlePetsArgs> {
+export function useBreedPets(): PetMutationResult<BreedPetsArgs> {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
-    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'battle');
+    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'breed');
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
@@ -24,12 +24,12 @@ export function useBattlePets(): PetMutationResult<BattlePetsArgs> {
 
     const [localError, setLocalError] = useState<Error | null>(null);
 
-    const mutate = async (args: BattlePetsArgs) => {
-        if (chain.kind === 'none') throw new NoActiveChainError('battle');
-        if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'battle');
+    const mutate = async (args: BreedPetsArgs) => {
+        if (chain.kind === 'none') throw new NoActiveChainError('breed');
+        if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'breed');
         try {
             setLocalError(null);
-            evmHook.battlePets(BigInt(args.petId1), BigInt(args.petId2));
+            evmHook.requestBreedFromDNA(BigInt(args.parentId1), BigInt(args.parentId2), args.name);
         } catch (err) {
             const error = err instanceof Error ? err : new Error(String(err));
             setLocalError(error);

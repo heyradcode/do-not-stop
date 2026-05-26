@@ -1,21 +1,20 @@
 import { useState } from 'react';
-import { usePetsContract } from '../ethereum/usePetsContract';
-import { usePetActions } from '../solana/usePetActions';
-import { usePetsConfig } from '../../contexts/PetsConfigContext';
+import { usePetsContract } from './chains/ethereum/usePetsContract';
+import { usePetActions } from './chains/solana/usePetActions';
+import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
-import { isActionSupported } from './featureSupport';
-import { FeatureNotSupportedError, NoActiveChainError } from './errors';
+import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
 import type { PetMutationResult } from './useCreatePet';
 
-export interface TransferPetArgs {
-    to: string;
+export interface RenamePetArgs {
     petId: string;
+    name: string;
 }
 
-export function useTransferPet(): PetMutationResult<TransferPetArgs> {
+export function useRenamePet(): PetMutationResult<RenamePetArgs> {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
-    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'transfer');
+    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'rename');
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
@@ -26,18 +25,18 @@ export function useTransferPet(): PetMutationResult<TransferPetArgs> {
 
     const [localError, setLocalError] = useState<Error | null>(null);
 
-    const mutate = async (args: TransferPetArgs) => {
-        if (chain.kind === 'none') throw new NoActiveChainError('transfer');
-        if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'transfer');
+    const mutate = async (args: RenamePetArgs) => {
+        if (chain.kind === 'none') throw new NoActiveChainError('rename');
+        if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'rename');
         try {
             setLocalError(null);
             if (chain.kind === 'evm') {
-                evmHook.transferPet(args.to, BigInt(args.petId));
+                evmHook.changeName(BigInt(args.petId), args.name);
                 return;
             }
-            await solanaActions.transferPet.mutateAsync({
+            await solanaActions.renamePet.mutateAsync({
                 petId: Number(args.petId),
-                to: args.to,
+                name: args.name,
             });
         } catch (err) {
             const error = err instanceof Error ? err : new Error(String(err));
@@ -48,22 +47,21 @@ export function useTransferPet(): PetMutationResult<TransferPetArgs> {
 
     const reset = () => {
         setLocalError(null);
-        solanaActions.transferPet.reset();
+        solanaActions.renamePet.reset();
     };
 
     const isPending =
-        chain.kind === 'evm' ? evmHook.isPending : solanaActions.transferPet.isPending;
-
+        chain.kind === 'evm' ? evmHook.isPending : solanaActions.renamePet.isPending;
     const error =
         localError ??
         (chain.kind === 'evm'
             ? (evmHook.writeError as Error | null) ?? null
-            : (solanaActions.transferPet.error as Error | null) ?? null);
+            : (solanaActions.renamePet.error as Error | null) ?? null);
 
     const hash =
         chain.kind === 'evm'
             ? (evmHook.hash as string | undefined)
-            : (solanaActions.transferPet.data as string | undefined);
+            : (solanaActions.renamePet.data as string | undefined);
 
     return { isSupported, mutate, isPending, error, reset, hash };
 }

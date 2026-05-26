@@ -1,12 +1,4 @@
-import type { PetChain } from '../../types/pet';
-
-export type PetAction =
-    | 'create'
-    | 'levelUp'
-    | 'rename'
-    | 'battle'
-    | 'breed'
-    | 'transfer';
+import type { PetAction, PetChain } from '../../types/pet';
 
 export class FeatureNotSupportedError extends Error {
     readonly chain: PetChain;
