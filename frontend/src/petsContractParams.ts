@@ -1,6 +1,6 @@
 import type { Abi } from 'viem';
 import { CONTRACT_ADDRESS } from './config';
-import ethereumAbi from './contracts/ethereumAbi.json';
+import ethereumAbi from './chains/ethereum/ethereumAbi.json';
 
 /** Arguments for `usePetsContract` from `@shared/core`. */
 export const petsContractParams = {
