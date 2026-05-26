@@ -7,8 +7,7 @@ import {
     type ReactNode,
 } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
-import { useNonce } from '../hooks/chains/ethereum';
-import { useVerifySignature } from '../hooks/chains/ethereum';
+import { useNonce, useVerifySignature } from '../hooks/chains/ethereum';
 import { getStorageAdapter } from '../api';
 import {
     getSolanaAuthSigner,

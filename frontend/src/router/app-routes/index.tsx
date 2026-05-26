@@ -3,13 +3,13 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import MainPage from '@pages/main';
 import PetInteractions from '@components/pet/pet-interactions';
-import BattleRoute from '@router/battle-route';
-import BreedRoute from '@router/breed-route';
-import LevelUpRoute from '@router/level-up-route';
-import RenameRoute from '@router/rename-route';
+import BattleRoute from '@router/routes/battle-route';
+import BreedRoute from '@router/routes/breed-route';
+import LevelUpRoute from '@router/routes/level-up-route';
+import RenameRoute from '@router/routes/rename-route';
 
-/** App route tree — pages render regardless of wallet state; features gate themselves via `useAppLoggedIn`. */
-const WalletAwareRoutes: React.FC = () => {
+/** App route tree — pages render regardless of wallet state; features gate themselves via `useIsLoggedIn`. */
+const AppRoutes: React.FC = () => {
     return (
         <Routes>
             <Route path="/main" element={<MainPage />}>
@@ -32,4 +32,4 @@ const WalletAwareRoutes: React.FC = () => {
     );
 };
 
-export default WalletAwareRoutes;
+export default AppRoutes;
