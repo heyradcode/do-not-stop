@@ -29,10 +29,6 @@ export function subscribeSolanaAuth(onStoreChange: () => void): () => void {
     };
 }
 
-export function getSolanaAuthAddressSnapshot(): string | null {
-    try {
-        return signer?.getAddress() ?? null;
-    } catch {
-        return null;
-    }
+export function getSolanaAuthAddress(): string | null {
+    return signer?.getAddress() ?? null;
 }

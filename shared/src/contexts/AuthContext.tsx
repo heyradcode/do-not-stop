@@ -13,7 +13,7 @@ import { getStorageAdapter } from '../api';
 import {
     getSolanaAuthSigner,
     subscribeSolanaAuth,
-    getSolanaAuthAddressSnapshot,
+    getSolanaAuthAddress,
 } from '../auth/solanaAuthBridge';
 import { normalizeSolanaSignatureToBase58 } from '../utils/solana/signatureAuthCodec';
 
@@ -48,11 +48,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setAuthenticated] = useState(false);
     const [user, setUser] = useState<User | null>(null);
     const [pendingNonce, setPendingNonce] = useState<string | null>(null);
-    const [solanaSigning, setSolanaSigning] = useState(false);
+    const [isSolanaSigning, setSolanaSigning] = useState(false);
 
     const solanaAuthAddress = useSyncExternalStore(
         subscribeSolanaAuth,
-        getSolanaAuthAddressSnapshot,
+        getSolanaAuthAddress,
         () => null
     );
 
@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const {
         signMessage,
-        isPending: isSigning,
+        isPending: isEvmSigning,
         data: signature,
         error: signError,
     } = useSignMessage();
@@ -192,7 +192,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 user,
                 logout,
                 signAndLogin,
-                isSigning: isSigning || solanaSigning,
+                isSigning: isEvmSigning || isSolanaSigning,
                 isVerifying,
                 isNonceLoading,
             }}

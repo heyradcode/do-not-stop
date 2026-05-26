@@ -2,7 +2,7 @@ export {
     setSolanaAuthSigner,
     getSolanaAuthSigner,
     subscribeSolanaAuth,
-    getSolanaAuthAddressSnapshot,
+    getSolanaAuthAddress,
     type SolanaAuthSigner,
 } from './auth/solanaAuthBridge';
 export { createAuthApiClient, setStorageAdapter, getStorageAdapter } from './api';

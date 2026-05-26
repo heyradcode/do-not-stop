@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { useAccount } from 'wagmi';
 import {
-    getSolanaAuthAddressSnapshot,
+    getSolanaAuthAddress,
     subscribeSolanaAuth,
 } from '../auth/solanaAuthBridge';
 
@@ -18,7 +18,7 @@ export function useActiveChain(): ActiveChain {
     const { address, isConnected } = useAccount();
     const solanaAddress = useSyncExternalStore(
         subscribeSolanaAuth,
-        getSolanaAuthAddressSnapshot,
+        getSolanaAuthAddress,
         () => null
     );
 
