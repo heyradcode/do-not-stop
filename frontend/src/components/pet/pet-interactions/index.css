@@ -131,7 +131,6 @@
 }
 
 .action-buttons {
-    padding-block-start: var(--pc-spacing-sm);
     display: flex;
     flex-direction: column;
     gap: 10px;
