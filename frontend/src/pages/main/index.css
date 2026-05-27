@@ -79,6 +79,12 @@
       height: auto;
     }
   }
+
+  & > .pet-container.pet-collection {
+    & .panel-body {
+      min-height: 0;
+    }
+  }
 }
 
 @media (max-width: 1024px) {

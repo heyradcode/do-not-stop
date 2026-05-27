@@ -123,6 +123,15 @@
         }
     }
 
+    .panel-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
     /* Generic refresh-style action button used by gallery (kept here so any
        panel that opts into a `.refresh` action gets the same look). */
     .refresh {

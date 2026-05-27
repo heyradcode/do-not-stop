@@ -54,7 +54,9 @@ const PetContainer: React.FC<PetContainerProps> = ({
                         <p className="caption">{description}</p>
                     </div>
                 ) : null}
-                {children}
+                {children != null && !centerDescription ? (
+                    <div className="panel-body">{children}</div>
+                ) : null}
             </div>
         </section>
     );
