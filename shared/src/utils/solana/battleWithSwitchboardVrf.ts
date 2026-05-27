@@ -53,15 +53,6 @@ export async function battleWithSwitchboardVrf(args: BattleWithVrfArgs): Promise
         owner
     );
 
-    const createTx = await sb.asV0Tx({
-        connection,
-        ixs: [createIx],
-        payer: owner,
-        computeUnitPrice: 75_000,
-        computeUnitLimitMultiple: 1.3,
-    });
-    await sendSignedTx(provider, createTx, [rngKp]);
-
     const commitIx = await randomness.commitIx(queue.pubkey, owner);
     const commitBattleIx = await program.methods
         .commitBattle(rngKp.publicKey)
@@ -77,14 +68,15 @@ export async function battleWithSwitchboardVrf(args: BattleWithVrfArgs): Promise
         })
         .instruction();
 
+    // Create + Switchboard commit + program commit in one tx (wallet prompt 1 of 2).
     const commitTx = await sb.asV0Tx({
         connection,
-        ixs: [commitIx, commitBattleIx],
+        ixs: [createIx, commitIx, commitBattleIx],
         payer: owner,
         computeUnitPrice: 75_000,
         computeUnitLimitMultiple: 1.3,
     });
-    await sendSignedTx(provider, commitTx);
+    await sendSignedTx(provider, commitTx, [rngKp]);
 
     await new Promise((r) => setTimeout(r, COMMIT_REVEAL_WAIT_MS));
     const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
@@ -109,5 +101,6 @@ export async function battleWithSwitchboardVrf(args: BattleWithVrfArgs): Promise
         computeUnitPrice: 75_000,
         computeUnitLimitMultiple: 1.3,
     });
+    // Reveal + settle after oracle fulfills randomness (wallet prompt 2 of 2).
     return sendSignedTx(provider, settleTx);
 }

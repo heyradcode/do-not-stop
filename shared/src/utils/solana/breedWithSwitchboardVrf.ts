@@ -121,15 +121,6 @@ export async function breedWithSwitchboardVrf(args: BreedWithVrfArgs): Promise<s
         owner
     );
 
-    const createTx = await sb.asV0Tx({
-        connection,
-        ixs: [createIx],
-        payer: owner,
-        computeUnitPrice: 75_000,
-        computeUnitLimitMultiple: 1.3,
-    });
-    await sendSignedTx(provider, createTx, [rngKp]);
-
     const commitIx = await randomness.commitIx(queue.pubkey, owner);
     const commitBreedIx = await program.methods
         .commitBreed(rngKp.publicKey, name)
@@ -145,14 +136,15 @@ export async function breedWithSwitchboardVrf(args: BreedWithVrfArgs): Promise<s
         })
         .instruction();
 
+    // Create + Switchboard commit + program commit in one tx (wallet prompt 1 of 2).
     const commitTx = await sb.asV0Tx({
         connection,
-        ixs: [commitIx, commitBreedIx],
+        ixs: [createIx, commitIx, commitBreedIx],
         payer: owner,
         computeUnitPrice: 75_000,
         computeUnitLimitMultiple: 1.3,
     });
-    await sendSignedTx(provider, commitTx);
+    await sendSignedTx(provider, commitTx, [rngKp]);
 
     await new Promise((r) => setTimeout(r, COMMIT_REVEAL_WAIT_MS));
     const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);

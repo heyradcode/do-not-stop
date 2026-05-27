@@ -12,6 +12,8 @@ export const COMMIT_REVEAL_WAIT_MS = 3_000;
 export const REVEAL_RETRIES = 5;
 export const REVEAL_BACKOFF_MS = 2_000;
 
+/** Switchboard VRF needs commit → (wait) → reveal; two wallet signatures is the minimum. */
+
 function recentBlockhashFromTx(tx: Transaction | VersionedTransaction): string | undefined {
     if ('version' in tx) {
         return tx.message.recentBlockhash;
