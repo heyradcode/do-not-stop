@@ -116,11 +116,74 @@ export function usePetActions() {
         onSuccess: invalidateProgramQueries,
     });
 
+    /**
+     * Same-owner battle: signer fights two of their own pets (matches the existing UI which
+     * only picks from the connected wallet's pets). Cross-owner battle would require an
+     * additional `defenderOwner` arg here and a UI affordance for picking foreign pets.
+     */
+    const battlePets = useMutation({
+        mutationFn: async (args: { attackerPetId: number; defenderPetId: number }) => {
+            const { program, programId, owner } = requireReady();
+            const [globalState] = globalStatePda(programId);
+            const [attackerPet] = petPda(programId, owner, args.attackerPetId);
+            const [defenderPet] = petPda(programId, owner, args.defenderPetId);
+
+            return program.methods
+                .battle()
+                .accounts({
+                    globalState,
+                    attackerOwner: owner,
+                    attackerPet,
+                    defenderOwner: owner,
+                    defenderPet,
+                })
+                .rpc();
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
+    /**
+     * Breed two of the signer's pets into a new child PDA. Solana lacks native VRF, so the
+     * program mixes parent DNAs with `Clock`-derived entropy synchronously — no two-step
+     * VRF dance like the EVM flow.
+     */
+    const breedPets = useMutation({
+        mutationFn: async (args: { parent1Id: number; parent2Id: number; name: string }) => {
+            const { program, programId, owner } = requireReady();
+            const [globalState] = globalStatePda(programId);
+            const [playerProfile] = playerProfilePda(programId, owner);
+            const [parent1] = petPda(programId, owner, args.parent1Id);
+            const [parent2] = petPda(programId, owner, args.parent2Id);
+
+            const gs = (await getAccountClient(program, 'globalState').fetch(globalState)) as {
+                nextPetId?: unknown;
+            };
+            const nextPetId = toU32(gs.nextPetId);
+            const [child] = petPda(programId, owner, nextPetId);
+
+            return program.methods
+                .breed(args.name)
+                .accounts({
+                    globalState,
+                    owner,
+                    playerProfile,
+                    parent1,
+                    parent2,
+                    child,
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc();
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
     return {
         createStarterPet,
         levelUpPet,
         renamePet,
         transferPet,
+        battlePets,
+        breedPets,
         walletPublicKey: signingWallet?.publicKey ?? null,
         walletConnected: Boolean(signingWallet?.publicKey),
     };
