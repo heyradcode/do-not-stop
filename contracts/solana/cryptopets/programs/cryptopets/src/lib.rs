@@ -1,5 +1,6 @@
 pub mod errors;
 pub mod instructions;
+pub mod rarity;
 pub mod state;
 pub mod util;
 

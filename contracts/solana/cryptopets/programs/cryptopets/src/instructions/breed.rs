@@ -2,8 +2,9 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
+    rarity::Rarity,
     state::{GlobalState, PetAccount, PlayerProfile},
-    util::{calculate_rarity, pseudo_random},
+    util::pseudo_random,
 };
 
 pub fn handler(ctx: Context<Breed>, name: String) -> Result<()> {
@@ -40,7 +41,7 @@ pub fn handler(ctx: Context<Breed>, name: String) -> Result<()> {
         &now.to_le_bytes(),
         &ctx.accounts.owner.key().to_bytes(),
     ]);
-    let rarity = calculate_rarity(new_dna).as_u8();
+    let rarity = Rarity::from_dna(new_dna).into();
 
     let global_state = &mut ctx.accounts.global_state;
     let child_id = global_state.next_pet_id;
