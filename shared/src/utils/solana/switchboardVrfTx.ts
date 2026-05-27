@@ -12,27 +12,56 @@ export const COMMIT_REVEAL_WAIT_MS = 3_000;
 export const REVEAL_RETRIES = 5;
 export const REVEAL_BACKOFF_MS = 2_000;
 
+function recentBlockhashFromTx(tx: Transaction | VersionedTransaction): string | undefined {
+    if ('version' in tx) {
+        return tx.message.recentBlockhash;
+    }
+    return (tx as Transaction).recentBlockhash ?? undefined;
+}
+
+/** Local keypairs sign before the wallet so PDAs / new accounts are valid at sign time. */
+function applyExtraSigners(
+    tx: Transaction | VersionedTransaction,
+    extraSigners: Keypair[]
+): void {
+    if (extraSigners.length === 0) return;
+    if ('version' in tx) {
+        tx.sign(extraSigners);
+        return;
+    }
+    for (const signer of extraSigners) {
+        (tx as Transaction).partialSign(signer);
+    }
+}
+
 export async function sendSignedTx(
     provider: AnchorProvider,
     tx: Transaction | VersionedTransaction,
     extraSigners: Keypair[] = []
 ): Promise<string> {
     const connection = provider.connection;
+
+    applyExtraSigners(tx, extraSigners);
     const signed = await provider.wallet.signTransaction(tx);
-    if (extraSigners.length > 0) {
-        if ('version' in signed) {
-            signed.sign(extraSigners);
-        } else {
-            for (const signer of extraSigners) {
-                (signed as Transaction).partialSign(signer);
-            }
-        }
+
+    const blockhash = recentBlockhashFromTx(signed);
+    if (!blockhash) {
+        throw new Error('Transaction is missing a recent blockhash');
     }
+
     const sig = await connection.sendRawTransaction(signed.serialize(), {
         skipPreflight: false,
         maxRetries: 3,
     });
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+
+    const blockhashStatus = await connection.isBlockhashValid(blockhash, { commitment: 'confirmed' });
+    const lastValidBlockHeight = blockhashStatus.value?.lastValidBlockHeight;
+
+    if (lastValidBlockHeight == null) {
+        await connection.confirmTransaction(sig, 'confirmed');
+        return sig;
+    }
+
     await connection.confirmTransaction(
         { signature: sig, blockhash, lastValidBlockHeight },
         'confirmed'

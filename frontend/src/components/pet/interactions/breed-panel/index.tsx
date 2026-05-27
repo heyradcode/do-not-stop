@@ -12,6 +12,7 @@ import {
     type BreedSuccessPayload,
     getReadyPets,
     getReadyPetsUnified,
+    formatSolanaActionError,
 } from '@shared/core';
 import { petsContractParams } from '@/petsContractParams';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
@@ -54,8 +55,9 @@ const SolanaBreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }
             setNewPetName('');
             void refetch();
             navigate(DASHBOARD_HOME);
-        } catch {
-            setLocalError('Failed to breed pets. Please try again.');
+        } catch (err) {
+            setLocalError(formatSolanaActionError(err, 'Failed to breed pets. Please try again.'));
+            console.error('Solana breed failed:', err);
         }
     };
 

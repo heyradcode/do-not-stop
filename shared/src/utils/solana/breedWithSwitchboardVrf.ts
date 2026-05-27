@@ -27,11 +27,74 @@ export type BreedWithVrfArgs = {
     name: string;
 };
 
+function toPublicKey(value: unknown): PublicKey {
+    if (value instanceof PublicKey) return value;
+    if (value && typeof value === 'object' && 'toBase58' in value) {
+        return new PublicKey((value as { toBase58: () => string }).toBase58());
+    }
+    return new PublicKey(String(value));
+}
+
+/** Completes a breed whose commit phase succeeded but settle was never submitted. */
+async function trySettlePendingBreed(args: BreedWithVrfArgs): Promise<string | null> {
+    const { program, provider, programId, owner } = args;
+    const connection = provider.connection;
+    const [breedRequestKey] = breedRequestPda(programId, owner);
+    const pending = await getAccountClient(program, 'breedRequest').fetchNullable(breedRequestKey);
+    if (!pending) return null;
+
+    const req = pending as Record<string, unknown>;
+    const parent1Id = toU32(req.parent1Id);
+    const parent2Id = toU32(req.parent2Id);
+    const childId = toU32(req.childId);
+    const randomnessPk = toPublicKey(req.randomnessAccount);
+
+    const [globalState] = globalStatePda(programId);
+    const [playerProfile] = playerProfilePda(programId, owner);
+    const [parent1] = petPda(programId, owner, parent1Id);
+    const [parent2] = petPda(programId, owner, parent2Id);
+    const [child] = petPda(programId, owner, childId);
+    const [breedRequest] = breedRequestPda(programId, owner);
+
+    const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
+    const randomness = new sb.Randomness(queue.program, randomnessPk);
+
+    await new Promise((r) => setTimeout(r, COMMIT_REVEAL_WAIT_MS));
+    const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
+
+    const settleBreedIx = await program.methods
+        .settleBreed()
+        .accounts({
+            globalState,
+            owner,
+            playerProfile,
+            parent1,
+            parent2,
+            child,
+            breedRequest,
+            randomnessAccountData: randomnessPk,
+            systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+
+    const settleTx = await sb.asV0Tx({
+        connection,
+        ixs: [revealIx, settleBreedIx],
+        payer: owner,
+        computeUnitPrice: 75_000,
+        computeUnitLimitMultiple: 1.3,
+    });
+    return sendSignedTx(provider, settleTx);
+}
+
 /**
  * Two-phase breed using Switchboard On-Demand VRF (commit → reveal).
  * Returns the settle transaction signature (child minted).
  */
 export async function breedWithSwitchboardVrf(args: BreedWithVrfArgs): Promise<string> {
+    const resumed = await trySettlePendingBreed(args);
+    if (resumed) return resumed;
+
     const { program, provider, programId, owner, parent1Id, parent2Id, name } = args;
     const connection = provider.connection;
 
