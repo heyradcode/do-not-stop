@@ -24,10 +24,8 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
         ctx.accounts.parent2.id == breed_request.parent2_id,
         ErrorCode::Unauthorized
     );
-    require!(
-        ctx.accounts.child.id == breed_request.child_id,
-        ErrorCode::Unauthorized
-    );
+    // Child is `init` here — id is assigned below. PDA seeds already bind the account
+    // to `breed_request.child_id`.
 
     let parent1_dna = ctx.accounts.parent1.dna;
     let parent2_dna = ctx.accounts.parent2.dna;
