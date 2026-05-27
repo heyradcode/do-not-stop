@@ -5,10 +5,13 @@ import { parseEventLogs } from 'viem';
 import TransactionStatus from '@components/common/transaction-status';
 import {
     useActiveChain,
+    useBreedPets,
+    usePetList,
     usePetsContract,
     useWatchPetsContract,
     type BreedSuccessPayload,
     getReadyPets,
+    getReadyPetsUnified,
 } from '@shared/core';
 import { petsContractParams } from '@/petsContractParams';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
@@ -21,9 +24,130 @@ export type BreedPanelProps = {
     isStandaloneView?: boolean;
 };
 
-const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
+const SolanaBreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const chain = useActiveChain();
+    const { pets, refetch } = usePetList();
+    const { mutate, isPending, error, hash } = useBreedPets();
+    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+    const [selectedPet1, setSelectedPet1] = useState<string | null>(null);
+    const [selectedPet2, setSelectedPet2] = useState<string | null>(null);
+    const [newPetName, setNewPetName] = useState('');
+    const [success, setSuccess] = useState<string | null>(null);
+    const [localError, setLocalError] = useState<string | null>(null);
+
+    const handleBreed = async () => {
+        if (!selectedPet1 || !selectedPet2 || !newPetName.trim()) {
+            setLocalError('Please select two pets and enter a name for the offspring');
+            return;
+        }
+        setLocalError(null);
+        setSuccess(null);
+        try {
+            await mutate({
+                parentId1: selectedPet1,
+                parentId2: selectedPet2,
+                name: newPetName.trim(),
+            });
+            setSuccess(`Pet "${newPetName.trim()}" created successfully!`);
+            setSelectedPet1(null);
+            setSelectedPet2(null);
+            setNewPetName('');
+            void refetch();
+            navigate(DASHBOARD_HOME);
+        } catch {
+            setLocalError('Failed to breed pets. Please try again.');
+        }
+    };
+
+    const displayError = localError ?? error?.message ?? null;
+
+    return (
+        <>
+            <div className="interface">
+                {!isStandaloneView && (
+                    <>
+                        <h4><Icon as={DnaIcon} tone={Tones.Emerald} />Breed Pets</h4>
+                        <p>Select two pets to create a new one (Switchboard VRF)</p>
+                    </>
+                )}
+                <div className="picker">
+                    <div className="field">
+                        <label>First Parent</label>
+                        <select
+                            value={selectedPet1 ?? ''}
+                            onChange={(e) => setSelectedPet1(e.target.value || null)}
+                        >
+                            <option value="">Select pet...</option>
+                            {readyPets.map(({ id, pet }) => (
+                                <option key={id} value={id}>
+                                    {pet.name} (Level {pet.level})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="field">
+                        <label>Second Parent</label>
+                        <select
+                            value={selectedPet2 ?? ''}
+                            onChange={(e) => setSelectedPet2(e.target.value || null)}
+                        >
+                            <option value="">Select pet...</option>
+                            {readyPets
+                                .filter(({ id }) => id !== selectedPet1)
+                                .map(({ id, pet }) => (
+                                    <option key={id} value={id}>
+                                        {pet.name} (Level {pet.level})
+                                    </option>
+                                ))}
+                        </select>
+                    </div>
+                </div>
+                <div className="name-input">
+                    <label>Offspring Name</label>
+                    <input
+                        type="text"
+                        value={newPetName}
+                        onChange={(e) => setNewPetName(e.target.value)}
+                        placeholder="Enter name for the new pet..."
+                        maxLength={20}
+                    />
+                </div>
+                <div className="action-controls">
+                    <button
+                        type="button"
+                        onClick={() => void handleBreed()}
+                        disabled={isPending || !selectedPet1 || !selectedPet2 || !newPetName.trim()}
+                    >
+                        {isPending ? 'Generating randomness…' : 'Breed Pets'}
+                    </button>
+                    <button type="button" onClick={() => navigate(DASHBOARD_HOME)} className="cancel-button">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+            {displayError && (
+                <div className="error-message contract-error">
+                    <Icon as={WarningIcon} tone={Tones.Amber} />
+                    {displayError}
+                </div>
+            )}
+            {success && (
+                <div className="success-message">
+                    <Icon as={CheckIcon} tone={Tones.Emerald} />
+                    {success}
+                </div>
+            )}
+            {hash && (
+                <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>
+                    Transaction: {hash.slice(0, 8)}…
+                </p>
+            )}
+        </>
+    );
+};
+
+const EvmBreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
+    const navigate = useNavigate();
     const { address } = useAccount();
 
     const {
@@ -94,23 +218,6 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         onBreedSuccess: handleBreedSuccess,
     });
 
-    if (chain.kind === 'solana') {
-        return (
-            <div className="interface">
-                {!isStandaloneView && (
-                    <>
-                        <h4><Icon as={DnaIcon} tone={Tones.Emerald} />Breed Pets</h4>
-                        <p>Breeding is not yet supported on Solana.</p>
-                    </>
-                )}
-                <div className="action-controls">
-                    <button type="button" onClick={() => navigate(DASHBOARD_HOME)} className="cancel-button">
-                        Back to dashboard
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
     const handleBreed = () => {
         if (!selectedPet1 || !selectedPet2 || !newPetName.trim()) {
@@ -244,6 +351,14 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
             <TransactionStatus hash={hash} onComplete={handleTransactionComplete} onError={(e) => setError(e.message)} />
         </>
     );
+};
+
+const BreedPanel: React.FC<BreedPanelProps> = (props) => {
+    const chain = useActiveChain();
+    if (chain.kind === 'solana') {
+        return <SolanaBreedPanel {...props} />;
+    }
+    return <EvmBreedPanel {...props} />;
 };
 
 export default BreedPanel;

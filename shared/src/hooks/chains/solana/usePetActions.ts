@@ -3,13 +3,15 @@ import { BN } from '@coral-xyz/anchor';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
 import { globalStatePda, petPda, playerProfilePda } from '../../../utils/solana/pdas';
+import { battleWithSwitchboardVrf } from '../../../utils/solana/battleWithSwitchboardVrf';
+import { breedWithSwitchboardVrf } from '../../../utils/solana/breedWithSwitchboardVrf';
 import { getAccountClient } from '../../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
 export function usePetActions() {
     const queryClient = useQueryClient();
     const { signingWallet } = useSolanaAnchor();
-    const { program, programId, toU32 } = useProgram();
+    const { program, programId, provider, toU32 } = useProgram();
 
     const invalidateProgramQueries = () => queryClient.invalidateQueries({ queryKey: ['cryptopets'] });
 
@@ -124,55 +126,39 @@ export function usePetActions() {
     const battlePets = useMutation({
         mutationFn: async (args: { attackerPetId: number; defenderPetId: number }) => {
             const { program, programId, owner } = requireReady();
-            const [globalState] = globalStatePda(programId);
-            const [attackerPet] = petPda(programId, owner, args.attackerPetId);
-            const [defenderPet] = petPda(programId, owner, args.defenderPetId);
-
-            return program.methods
-                .battle()
-                .accounts({
-                    globalState,
-                    attackerOwner: owner,
-                    attackerPet,
-                    defenderOwner: owner,
-                    defenderPet,
-                })
-                .rpc();
+            if (!provider) {
+                throw new Error('Solana provider is not ready');
+            }
+            return battleWithSwitchboardVrf({
+                program,
+                provider,
+                programId,
+                owner,
+                attackerPetId: args.attackerPetId,
+                defenderPetId: args.defenderPetId,
+            });
         },
         onSuccess: invalidateProgramQueries,
     });
 
     /**
-     * Breed two of the signer's pets into a new child PDA. Solana lacks native VRF, so the
-     * program mixes parent DNAs with `Clock`-derived entropy synchronously — no two-step
-     * VRF dance like the EVM flow.
+     * Breed via Switchboard On-Demand VRF (commit + reveal), matching the EVM Chainlink flow.
      */
     const breedPets = useMutation({
         mutationFn: async (args: { parent1Id: number; parent2Id: number; name: string }) => {
             const { program, programId, owner } = requireReady();
-            const [globalState] = globalStatePda(programId);
-            const [playerProfile] = playerProfilePda(programId, owner);
-            const [parent1] = petPda(programId, owner, args.parent1Id);
-            const [parent2] = petPda(programId, owner, args.parent2Id);
-
-            const gs = (await getAccountClient(program, 'globalState').fetch(globalState)) as {
-                nextPetId?: unknown;
-            };
-            const nextPetId = toU32(gs.nextPetId);
-            const [child] = petPda(programId, owner, nextPetId);
-
-            return program.methods
-                .breed(args.name)
-                .accounts({
-                    globalState,
-                    owner,
-                    playerProfile,
-                    parent1,
-                    parent2,
-                    child,
-                    systemProgram: SystemProgram.programId,
-                })
-                .rpc();
+            if (!provider) {
+                throw new Error('Solana provider is not ready');
+            }
+            return breedWithSwitchboardVrf({
+                program,
+                provider,
+                programId,
+                owner,
+                parent1Id: args.parent1Id,
+                parent2Id: args.parent2Id,
+                name: args.name,
+            });
         },
         onSuccess: invalidateProgramQueries,
     });
