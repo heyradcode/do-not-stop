@@ -24,5 +24,7 @@ pub enum ErrorCode {
     CannotBreedSelf,
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
+    #[msg("Rarity must be in 1..=5")]
+    InvalidRarity,
 }
 

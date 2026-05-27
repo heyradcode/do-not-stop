@@ -40,7 +40,7 @@ pub fn handler(ctx: Context<Breed>, name: String) -> Result<()> {
         &now.to_le_bytes(),
         &ctx.accounts.owner.key().to_bytes(),
     ]);
-    let rarity = calculate_rarity(new_dna);
+    let rarity = calculate_rarity(new_dna).as_u8();
 
     let global_state = &mut ctx.accounts.global_state;
     let child_id = global_state.next_pet_id;
