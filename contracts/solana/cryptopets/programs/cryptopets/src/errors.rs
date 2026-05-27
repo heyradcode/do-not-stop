@@ -26,5 +26,21 @@ pub enum ErrorCode {
     ArithmeticOverflow,
     #[msg("Rarity must be in 1..=5")]
     InvalidRarity,
+    #[msg("Breed request already pending for this wallet")]
+    BreedRequestAlreadyPending,
+    #[msg("No pending breed request for this wallet")]
+    BreedRequestNotFound,
+    #[msg("Battle request already pending for this wallet")]
+    BattleRequestAlreadyPending,
+    #[msg("No pending battle request for this wallet")]
+    BattleRequestNotFound,
+    #[msg("Invalid Switchboard randomness account")]
+    InvalidRandomnessAccount,
+    #[msg("Switchboard randomness has expired")]
+    RandomnessExpired,
+    #[msg("Switchboard randomness already revealed")]
+    RandomnessAlreadyRevealed,
+    #[msg("Switchboard randomness not yet revealed")]
+    RandomnessNotResolved,
 }
 

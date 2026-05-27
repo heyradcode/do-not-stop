@@ -2,40 +2,39 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
-    state::{GlobalState, PetAccount, ATTACK_VICTORY_PROBABILITY},
-    util::pseudo_random,
+    state::{BattleRequest, GlobalState, PetAccount, ATTACK_VICTORY_PROBABILITY},
+    util::{battle_roll_from_vrf, read_revealed_randomness},
 };
 
-pub fn handler(ctx: Context<Battle>) -> Result<()> {
+pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
     require!(!ctx.accounts.global_state.paused, ErrorCode::Paused);
 
-    let now = Clock::get()?.unix_timestamp;
-    let slot = Clock::get()?.slot;
-
+    let battle_request = &ctx.accounts.battle_request;
+    require_keys_eq!(
+        battle_request.attacker_owner,
+        ctx.accounts.attacker_owner.key(),
+        ErrorCode::Unauthorized
+    );
+    require_keys_eq!(
+        battle_request.defender_owner,
+        ctx.accounts.defender_owner.key(),
+        ErrorCode::Unauthorized
+    );
     require!(
-        ctx.accounts.attacker_pet.key() != ctx.accounts.defender_pet.key(),
-        ErrorCode::CannotBattleSelf
+        ctx.accounts.attacker_pet.id == battle_request.attacker_pet_id,
+        ErrorCode::Unauthorized
+    );
+    require!(
+        ctx.accounts.defender_pet.id == battle_request.defender_pet_id,
+        ErrorCode::Unauthorized
     );
 
-    {
-        let attacker_pet = &ctx.accounts.attacker_pet;
-        let defender_pet = &ctx.accounts.defender_pet;
-        require_keys_eq!(
-            attacker_pet.owner,
-            ctx.accounts.attacker_owner.key(),
-            ErrorCode::Unauthorized
-        );
-        require!(attacker_pet.is_ready(now), ErrorCode::PetNotReady);
-        require!(defender_pet.is_ready(now), ErrorCode::PetNotReady);
-    }
-
-    let rand = pseudo_random(&[
-        &slot.to_le_bytes(),
-        &now.to_le_bytes(),
-        &ctx.accounts.attacker_owner.key().to_bytes(),
-        &ctx.accounts.attacker_pet.id.to_le_bytes(),
-        &ctx.accounts.defender_pet.id.to_le_bytes(),
-    ]);
+    let vrf = read_revealed_randomness(
+        &ctx.accounts.randomness_account_data.to_account_info(),
+        battle_request.randomness_account,
+        battle_request.commit_slot,
+    )?;
+    let rand = battle_roll_from_vrf(&vrf);
     let attacker_wins = (rand % 100) < ATTACK_VICTORY_PROBABILITY as u64;
 
     let attacker_pet = &mut ctx.accounts.attacker_pet;
@@ -69,9 +68,6 @@ pub fn handler(ctx: Context<Battle>) -> Result<()> {
             .ok_or(ErrorCode::ArithmeticOverflow)?;
     }
 
-    attacker_pet.trigger_cooldown(now);
-    defender_pet.trigger_cooldown(now);
-
     emit!(BattleResult {
         attacker_pet_id: attacker_pet.id,
         defender_pet_id: defender_pet.id,
@@ -89,7 +85,7 @@ pub struct BattleResult {
 }
 
 #[derive(Accounts)]
-pub struct Battle<'info> {
+pub struct SettleBattle<'info> {
     #[account(seeds = [GlobalState::SEED], bump = global_state.bump)]
     pub global_state: Account<'info, GlobalState>,
 
@@ -101,14 +97,14 @@ pub struct Battle<'info> {
         seeds = [
             PetAccount::SEED,
             attacker_owner.key().as_ref(),
-            &attacker_pet.id.to_le_bytes(),
+            &battle_request.attacker_pet_id.to_le_bytes(),
         ],
         bump = attacker_pet.bump,
         constraint = attacker_pet.owner == attacker_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub attacker_pet: Account<'info, PetAccount>,
 
-    /// CHECK: defender wallet pubkey is used purely as a PDA seed for `defender_pet`.
+    /// CHECK: must match `battle_request.defender_owner`.
     pub defender_owner: UncheckedAccount<'info>,
 
     #[account(
@@ -116,10 +112,22 @@ pub struct Battle<'info> {
         seeds = [
             PetAccount::SEED,
             defender_owner.key().as_ref(),
-            &defender_pet.id.to_le_bytes(),
+            &battle_request.defender_pet_id.to_le_bytes(),
         ],
         bump = defender_pet.bump,
         constraint = defender_pet.owner == defender_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub defender_pet: Account<'info, PetAccount>,
+
+    #[account(
+        mut,
+        close = attacker_owner,
+        seeds = [BattleRequest::SEED, attacker_owner.key().as_ref()],
+        bump = battle_request.bump,
+        constraint = battle_request.attacker_owner == attacker_owner.key() @ ErrorCode::Unauthorized,
+    )]
+    pub battle_request: Account<'info, BattleRequest>,
+
+    /// CHECK: parsed as Switchboard `RandomnessAccountData` in the handler.
+    pub randomness_account_data: UncheckedAccount<'info>,
 }
