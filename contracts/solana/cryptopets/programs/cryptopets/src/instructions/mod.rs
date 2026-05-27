@@ -1,3 +1,5 @@
+pub mod battle;
+pub mod breed;
 pub mod create_starter_pet;
 pub mod initialize;
 pub mod level_up;
@@ -6,7 +8,8 @@ pub mod rename_pet;
 pub mod transfer_pet;
 pub mod unpause;
 
-// 🔥 THIS is what Anchor needs
+pub use battle::*;
+pub use breed::*;
 pub use create_starter_pet::*;
 pub use initialize::*;
 pub use level_up::*;

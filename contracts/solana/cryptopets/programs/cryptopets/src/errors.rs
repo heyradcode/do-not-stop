@@ -16,5 +16,13 @@ pub enum ErrorCode {
     PetCountUnderflow,
     #[msg("Recipient pet count overflow")]
     PetCountOverflow,
+    #[msg("Pet is on cooldown")]
+    PetNotReady,
+    #[msg("Cannot battle the same pet")]
+    CannotBattleSelf,
+    #[msg("Cannot breed a pet with itself")]
+    CannotBreedSelf,
+    #[msg("Arithmetic overflow")]
+    ArithmeticOverflow,
 }
 

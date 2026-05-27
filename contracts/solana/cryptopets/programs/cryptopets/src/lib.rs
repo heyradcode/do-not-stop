@@ -1,6 +1,7 @@
 pub mod errors;
 pub mod instructions;
 pub mod state;
+pub mod util;
 
 use anchor_lang::{prelude::*, solana_program::system_program};
 use instructions::*;
@@ -42,5 +43,13 @@ pub mod cryptopets {
 
     pub fn unpause(ctx: Context<Unpause>) -> Result<()> {
         unpause::handler(ctx)
+    }
+
+    pub fn battle(ctx: Context<Battle>) -> Result<()> {
+        battle::handler(ctx)
+    }
+
+    pub fn breed(ctx: Context<Breed>, name: String) -> Result<()> {
+        breed::handler(ctx, name)
     }
 }

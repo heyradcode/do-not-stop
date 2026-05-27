@@ -2,6 +2,9 @@ use anchor_lang::prelude::*;
 
 use crate::errors::ErrorCode;
 
+pub const BATTLE_COOLDOWN_SECONDS: i64 = 5;
+pub const ATTACK_VICTORY_PROBABILITY: u8 = 70;
+
 #[account]
 pub struct GlobalState {
     pub admin: Pubkey,
@@ -85,6 +88,14 @@ impl PetAccount {
     pub fn name(&self) -> String {
         let len = self.name_len as usize;
         String::from_utf8_lossy(&self.name[..len]).to_string()
+    }
+
+    pub fn is_ready(&self, now: i64) -> bool {
+        now >= self.ready_time
+    }
+
+    pub fn trigger_cooldown(&mut self, now: i64) {
+        self.ready_time = now.saturating_add(BATTLE_COOLDOWN_SECONDS);
     }
 }
 
