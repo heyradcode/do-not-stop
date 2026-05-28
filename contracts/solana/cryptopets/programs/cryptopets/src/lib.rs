@@ -1,6 +1,8 @@
 pub mod errors;
 pub mod instructions;
+pub mod rarity;
 pub mod state;
+pub mod util;
 
 use anchor_lang::{prelude::*, solana_program::system_program};
 use instructions::*;
@@ -42,5 +44,28 @@ pub mod cryptopets {
 
     pub fn unpause(ctx: Context<Unpause>) -> Result<()> {
         unpause::handler(ctx)
+    }
+
+    pub fn commit_battle(
+        ctx: Context<CommitBattle>,
+        randomness_account: Pubkey,
+    ) -> Result<()> {
+        commit_battle::handler(ctx, randomness_account)
+    }
+
+    pub fn settle_battle(ctx: Context<SettleBattle>) -> Result<()> {
+        settle_battle::handler(ctx)
+    }
+
+    pub fn commit_breed(
+        ctx: Context<CommitBreed>,
+        randomness_account: Pubkey,
+        name: String,
+    ) -> Result<()> {
+        commit_breed::handler(ctx, randomness_account, name)
+    }
+
+    pub fn settle_breed(ctx: Context<SettleBreed>) -> Result<()> {
+        settle_breed::handler(ctx)
     }
 }

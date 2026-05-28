@@ -1,6 +1,7 @@
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 /** Per-folder import aliases. Mirrors `tsconfig.app.json#compilerOptions.paths`. */
 const aliases = {
@@ -19,7 +20,14 @@ const aliases = {
 
 // https://vite.dev/config/
 export default defineConfig({
-    plugins: [react()],
+    plugins: [react(),
+        nodePolyfills({
+            include: ['buffer', 'process', 'http', 'https', 'crypto', 'stream'],
+        }),
+    ],
+    define: {
+        'process.env': {}
+    },
     resolve: {
         alias: Object.entries(aliases).map(([find, target]) => ({
             find,

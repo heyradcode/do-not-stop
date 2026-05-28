@@ -3,13 +3,15 @@ import { BN } from '@coral-xyz/anchor';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
 import { globalStatePda, petPda, playerProfilePda } from '../../../utils/solana/pdas';
+import { battleWithSwitchboardVrf } from '../../../utils/solana/battleWithSwitchboardVrf';
+import { breedWithSwitchboardVrf } from '../../../utils/solana/breedWithSwitchboardVrf';
 import { getAccountClient } from '../../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
 export function usePetActions() {
     const queryClient = useQueryClient();
     const { signingWallet } = useSolanaAnchor();
-    const { program, programId, toU32 } = useProgram();
+    const { program, programId, provider, toU32 } = useProgram();
 
     const invalidateProgramQueries = () => queryClient.invalidateQueries({ queryKey: ['cryptopets'] });
 
@@ -116,11 +118,58 @@ export function usePetActions() {
         onSuccess: invalidateProgramQueries,
     });
 
+    /**
+     * Same-owner battle: signer fights two of their own pets (matches the existing UI which
+     * only picks from the connected wallet's pets). Cross-owner battle would require an
+     * additional `defenderOwner` arg here and a UI affordance for picking foreign pets.
+     */
+    const battlePets = useMutation({
+        mutationFn: async (args: { attackerPetId: number; defenderPetId: number }) => {
+            const { program, programId, owner } = requireReady();
+            if (!provider) {
+                throw new Error('Solana provider is not ready');
+            }
+            return battleWithSwitchboardVrf({
+                program,
+                provider,
+                programId,
+                owner,
+                attackerPetId: args.attackerPetId,
+                defenderPetId: args.defenderPetId,
+            });
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
+    /**
+     * Breed via Switchboard On-Demand VRF (commit + reveal), matching the EVM Chainlink flow.
+     */
+    const breedPets = useMutation({
+        mutationFn: async (args: { parent1Id: number; parent2Id: number; name: string }) => {
+            const { program, programId, owner } = requireReady();
+            if (!provider) {
+                throw new Error('Solana provider is not ready');
+            }
+            return breedWithSwitchboardVrf({
+                program,
+                provider,
+                programId,
+                owner,
+                parent1Id: args.parent1Id,
+                parent2Id: args.parent2Id,
+                name: args.name,
+            });
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
     return {
         createStarterPet,
         levelUpPet,
         renamePet,
         transferPet,
+        battlePets,
+        breedPets,
         walletPublicKey: signingWallet?.publicKey ?? null,
         walletConnected: Boolean(signingWallet?.publicKey),
     };

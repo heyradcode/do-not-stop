@@ -56,7 +56,7 @@ export function useProgram() {
     return {
         programId,
         program: query.data ?? null,
-        provider,
+        provider: signingWallet ? provider : null,
         isConfigured: programId !== null,
         isLoading: query.isPending,
         isFetching: query.isFetching,

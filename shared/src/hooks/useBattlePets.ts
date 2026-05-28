@@ -1,16 +1,20 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { usePetsContract } from './chains/ethereum/usePetsContract';
+import { usePetActions } from './chains/solana/usePetActions';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
 import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
-import type { PetMutationResult } from './useCreatePet';
 
 export interface BattlePetsArgs {
     petId1: string;
     petId2: string;
 }
 
-export function useBattlePets(): PetMutationResult<BattlePetsArgs> {
+export type UseBattlePetsOptions = {
+    onSuccess?: () => void;
+};
+
+export function useBattlePets(options?: UseBattlePetsOptions) {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
     const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'battle');
@@ -20,26 +24,89 @@ export function useBattlePets(): PetMutationResult<BattlePetsArgs> {
         abi: evm?.abi ?? [],
         enabled: chain.kind === 'evm',
     });
+    const solanaActions = usePetActions();
+
+    const onSuccessRef = useRef(options?.onSuccess);
+    onSuccessRef.current = options?.onSuccess;
 
     const [localError, setLocalError] = useState<Error | null>(null);
+    const [receiptError, setReceiptError] = useState<Error | null>(null);
+
+    const mutationError =
+        localError ??
+        (chain.kind === 'evm'
+            ? (evmHook.writeError as Error | null) ?? null
+            : (solanaActions.battlePets.error as Error | null) ?? null);
+
+    const hash =
+        chain.kind === 'evm'
+            ? (evmHook.hash as string | undefined)
+            : (solanaActions.battlePets.data as string | undefined);
+
+    const isPending =
+        chain.kind === 'evm' ? evmHook.isPending : solanaActions.battlePets.isPending;
+
+    const tracksEvmReceipt = chain.kind === 'evm';
+
+    const reset = useCallback(() => {
+        setLocalError(null);
+        setReceiptError(null);
+        solanaActions.battlePets.reset();
+    }, [solanaActions.battlePets]);
+
+    const clearErrors = useCallback(() => {
+        setLocalError(null);
+        setReceiptError(null);
+        solanaActions.battlePets.reset();
+    }, [solanaActions.battlePets]);
+
+    const notifySuccess = useCallback(() => {
+        onSuccessRef.current?.();
+    }, []);
 
     const mutate = async (args: BattlePetsArgs) => {
         if (chain.kind === 'none') throw new NoActiveChainError('battle');
         if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'battle');
+
+        setLocalError(null);
+        setReceiptError(null);
+
         try {
-            setLocalError(null);
-            evmHook.battlePets(BigInt(args.petId1), BigInt(args.petId2));
+            if (chain.kind === 'evm') {
+                evmHook.battlePets(BigInt(args.petId1), BigInt(args.petId2));
+                return;
+            }
+            await solanaActions.battlePets.mutateAsync({
+                attackerPetId: Number(args.petId1),
+                defenderPetId: Number(args.petId2),
+            });
+            notifySuccess();
         } catch (err) {
             const error = err instanceof Error ? err : new Error(String(err));
             setLocalError(error);
-            throw error;
         }
     };
 
-    const reset = () => setLocalError(null);
+    const onEvmReceiptComplete = useCallback(() => {
+        notifySuccess();
+        reset();
+    }, [notifySuccess, reset]);
 
-    const isPending = chain.kind === 'evm' ? evmHook.isPending : false;
-    const error = localError ?? (chain.kind === 'evm' ? (evmHook.writeError as Error | null) ?? null : null);
+    const onEvmReceiptError = useCallback((error: Error) => {
+        setReceiptError(error);
+    }, []);
 
-    return { isSupported, mutate, isPending, error, reset };
+    return {
+        isSupported,
+        mutate,
+        isPending,
+        reset,
+        clearErrors,
+        hash,
+        error: mutationError,
+        receiptError,
+        tracksEvmReceipt,
+        onEvmReceiptComplete,
+        onEvmReceiptError,
+    };
 }

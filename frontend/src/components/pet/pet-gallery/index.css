@@ -247,12 +247,14 @@
     /* `min(320px, 100%)` lets each track shrink below 320px when the panel is
        narrower than one card, preventing horizontal overflow in the 50/50 split. */
     grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+    grid-auto-rows: min-content;
+    align-content: start;
     align-items: start;
     gap: var(--spacing-md);
     width: 100%;
     min-width: 0;
-    contain: layout;
-    flex: 1;
+    min-height: 0;
+    flex: 1 1 auto;
     overflow-y: auto;
     overflow-x: hidden;
     container-type: inline-size;
@@ -290,9 +292,10 @@
 
 /* Pet cards */
 .pet-card {
-    /* Size to content (the cooldown status row just makes a card a touch taller);
-       a floor keeps cards comfortably large. */
+    /* Size to content (the cooldown status row just makes a card a touch taller). */
     min-height: 260px;
+    height: auto;
+    width: 100%;
     background: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
     border-radius: var(--border-radius-lg);
     padding: 0;
@@ -556,6 +559,7 @@
 
 /* Pet actions — anchored to the bottom so cards with/without cooldown align. */
 .pet-actions {
+    margin-top: auto;
     padding: var(--spacing-sm) 16px 14px;
     display: flex;
     justify-content: center;

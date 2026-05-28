@@ -5,6 +5,14 @@ export { usePetList, type PetListResult } from './usePetList';
 export { useCreatePet, type CreatePetArgs, type PetMutationResult } from './useCreatePet';
 export { useLevelUpPet, type LevelUpPetArgs } from './useLevelUpPet';
 export { useRenamePet, type RenamePetArgs } from './useRenamePet';
-export { useBattlePets, type BattlePetsArgs } from './useBattlePets';
-export { useBreedPets, type BreedPetsArgs } from './useBreedPets';
+export {
+    useBattlePets,
+    type BattlePetsArgs,
+    type UseBattlePetsOptions,
+} from './useBattlePets';
+export {
+    useBreedPets,
+    type BreedPetsArgs,
+    type UseBreedPetsOptions,
+} from './useBreedPets';
 export { useTransferPet, type TransferPetArgs } from './useTransferPet';

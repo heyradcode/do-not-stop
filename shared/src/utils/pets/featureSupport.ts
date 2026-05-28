@@ -13,8 +13,8 @@ const SUPPORT: Record<PetChain, Record<PetAction, boolean>> = {
         create: true,
         levelUp: true,
         rename: true,
-        battle: false,
-        breed: false,
+        battle: true,
+        breed: true,
         transfer: true,
     },
 };

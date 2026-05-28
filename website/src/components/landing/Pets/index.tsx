@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 import { PETS, RARITY_TIERS } from '@/content/landing';
 import { NeonCard } from '../../common';
 import './Pets.css';
@@ -38,7 +40,7 @@ const Pets = () => (
       {PETS.map(({ name, level, rarity, image }) => (
         <NeonCard key={name} className={`card r-${rarityMod(rarity)}`}>
           <div className="avatar">
-            <img src={image} alt={name} />
+            <Image src={image} alt={name} width={78} height={78} />
           </div>
           <h4>{name}</h4>
           <div className="meta">

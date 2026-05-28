@@ -1,12 +1,18 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::ErrorCode, state::GlobalState, state::PetAccount, state::PlayerProfile};
+use crate::{
+    errors::ErrorCode,
+    rarity::Rarity,
+    state::{GlobalState, PetAccount, PlayerProfile},
+};
 
 pub fn handler(ctx: Context<CreateStarterPet>, name: String, dna: u64, rarity: u8) -> Result<()> {
     require!(
         name.len() <= PetAccount::MAX_NAME_LEN,
         ErrorCode::NameTooLong
     );
+
+    let rarity: Rarity = rarity.try_into()?;
 
     let global_state = &mut ctx.accounts.global_state;
     let player_profile = &mut ctx.accounts.player_profile;
@@ -31,7 +37,7 @@ pub fn handler(ctx: Context<CreateStarterPet>, name: String, dna: u64, rarity: u
     pet.id = pet_id;
     pet.owner = ctx.accounts.owner.key();
     pet.dna = dna;
-    pet.rarity = rarity;
+    pet.rarity = rarity.into();
     pet.level = 1;
     pet.ready_time = Clock::get()?.unix_timestamp;
     pet.win_count = 0;

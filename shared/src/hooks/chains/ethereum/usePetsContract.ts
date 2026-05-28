@@ -1,6 +1,5 @@
 import type { Abi } from 'viem';
 import { useAccount, useWriteContract, useReadContract, useReadContracts } from 'wagmi';
-import type { Abi } from 'viem';
 
 export interface Pet {
     name: string;
@@ -154,65 +153,6 @@ export const usePetsContract = ({
         });
     };
 
-    const getPet = (petId: bigint) => {
-        return useReadContract({
-            address: safeAddress,
-            abi,
-            functionName: 'getById',
-            args: [petId],
-            query: {
-                enabled: !!petId && canRead,
-            },
-        });
-    };
-
-    const getPetStats = (petId: bigint) => {
-        return useReadContract({
-            address: safeAddress,
-            abi,
-            functionName: 'getStats',
-            args: [petId],
-            query: {
-                enabled: !!petId && canRead,
-            },
-        });
-    };
-
-    const getBattleStats = (petId: bigint) => {
-        return useReadContract({
-            address: safeAddress,
-            abi,
-            functionName: 'getBattleStats',
-            args: [petId],
-            query: {
-                enabled: !!petId && canRead,
-            },
-        });
-    };
-
-    const getTotalPetsCount = () => {
-        return useReadContract({
-            address: safeAddress,
-            abi,
-            functionName: 'getTotalCount',
-            query: {
-                enabled: canRead,
-            },
-        });
-    };
-
-    const getOwnerPetCount = (owner: string) => {
-        return useReadContract({
-            address: safeAddress,
-            abi,
-            functionName: 'ownerPetCount',
-            args: [owner as `0x${string}`],
-            query: {
-                enabled: !!owner && canRead,
-            },
-        });
-    };
-
     const isReady = (readyTime: bigint): boolean => {
         return Number(readyTime) <= Date.now() / 1000;
     };
@@ -255,11 +195,6 @@ export const usePetsContract = ({
         attack,
         changeDna,
         transferPet,
-        getPet,
-        getPetStats,
-        getBattleStats,
-        getTotalPetsCount,
-        getOwnerPetCount,
         hash,
         txHash: hash,
         isPending,

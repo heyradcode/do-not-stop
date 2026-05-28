@@ -1,4 +1,8 @@
 pub mod create_starter_pet;
+pub mod commit_battle;
+pub mod commit_breed;
+pub mod settle_battle;
+pub mod settle_breed;
 pub mod initialize;
 pub mod level_up;
 pub mod pause;
@@ -6,8 +10,11 @@ pub mod rename_pet;
 pub mod transfer_pet;
 pub mod unpause;
 
-// 🔥 THIS is what Anchor needs
 pub use create_starter_pet::*;
+pub use commit_battle::*;
+pub use commit_breed::*;
+pub use settle_battle::*;
+pub use settle_breed::*;
 pub use initialize::*;
 pub use level_up::*;
 pub use pause::*;

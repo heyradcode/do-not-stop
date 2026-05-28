@@ -97,8 +97,8 @@ const PetInteractions: React.FC = () => {
     const previewParentA = readyPets[0]?.pet;
     const previewParentB = readyPets[1]?.pet;
     const availableBattles = Math.min(3, readyPets.length > 1 ? 3 : 0);
-    const breedDisabledHint = !breedSupported ? 'Coming soon on Solana' : undefined;
-    const battleDisabledHint = !battleSupported ? 'Coming soon on Solana' : undefined;
+    const breedDisabledHint = !breedSupported ? 'Breeding unavailable on this chain' : undefined;
+    const battleDisabledHint = readyPets.length < 2 ? 'You need at least two ready pets' : undefined;
 
     return (
         <PetContainer
@@ -129,7 +129,7 @@ const PetInteractions: React.FC = () => {
                             disabled={!breedSupported || readyPets.length < 2}
                             title={breedDisabledHint}
                         >
-                            {breedSupported ? 'Start breeding' : 'Coming soon on Solana'}
+                            {breedSupported ? 'Start breeding' : 'Breeding unavailable'}
                         </button>
                     </div>
                     <div className="battle-arena-card">
@@ -163,7 +163,7 @@ const PetInteractions: React.FC = () => {
                             disabled={!battleSupported || readyPets.length < 2}
                             title={battleDisabledHint}
                         >
-                            {battleSupported ? 'Start battle' : 'Coming soon on Solana'}
+                            Start battle
                         </button>
                     </div>
                     <div className="feature-action-card">

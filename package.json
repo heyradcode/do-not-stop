@@ -22,12 +22,23 @@
     "dev:be:mobile": "concurrently --kill-others-on-fail --names \"BE,MB\" \"pnpm dev:be\" \"pnpm dev:mobile\"",
     "compile": "pnpm --prefix contracts/ethereum compile",
     "test": "pnpm --prefix contracts/ethereum test",
-    "build": "pnpm compile && pnpm --prefix backend build && pnpm --prefix frontend build && pnpm --prefix website build"
+    "build": "pnpm compile && pnpm --prefix backend build && pnpm --prefix frontend build && pnpm --prefix website build",
+    "lint": "pnpm --filter frontend lint:check && pnpm --filter @shared/core lint && pnpm --filter website lint && pnpm --filter mobile lint",
+    "eslint": "pnpm lint",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "frontend/**/*.{ts,tsx}":       "pnpm --filter frontend exec eslint --fix --max-warnings 0",
+    "website/**/*.{ts,tsx,js,jsx}": "pnpm --filter website  exec eslint --fix --max-warnings 0",
+    "mobile/**/*.{ts,tsx,js,jsx}":  "pnpm --filter mobile   exec eslint --fix --max-warnings 0",
+    "shared/**/*.{ts,tsx}":         "pnpm --filter @shared/core exec eslint --fix --max-warnings 0"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
-    "tsx": "^4.7.0",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.5",
+    "tsx": "^4.7.0"
   },
   "pnpm": {
     "overrides": {
