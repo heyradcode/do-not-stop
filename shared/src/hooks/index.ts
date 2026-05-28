@@ -12,5 +12,11 @@ export {
     type BattlePetsTransactionTracker,
     type UseBattlePetsOptions,
 } from './useBattlePets';
-export { useBreedPets, type BreedPetsArgs } from './useBreedPets';
+export {
+    useBreedPets,
+    type BreedPetsArgs,
+    type BreedPetsErrorDisplay,
+    type BreedPetsTransactionTracker,
+    type UseBreedPetsOptions,
+} from './useBreedPets';
 export { useTransferPet, type TransferPetArgs } from './useTransferPet';
