@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useBreedPets, usePetList } from '@shared/core';
+import { getReadyPetsUnified, useActiveChain, useBreedPets, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
+import { formatTxHashHint, usePetActionErrorDisplay } from '@hooks/usePetActionErrorDisplay';
 import Icon, { CheckIcon, CloseIcon, DnaIcon, PauseIcon, WarningIcon } from '@components/common/icon';
 
 export type BreedPanelProps = {
@@ -11,13 +12,19 @@ export type BreedPanelProps = {
     isStandaloneView?: boolean;
 };
 
+const VALIDATION_MESSAGE = 'Please select two pets and enter a name for the offspring';
+const BREED_FAIL_MESSAGE = 'Failed to breed pets. Please try again.';
+const AWAITING_HINT = 'Hang tight—your new pet will show up in a moment.';
+
 const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
+    const chain = useActiveChain();
     const { pets, refetch } = usePetList();
     const [selectedPet1, setSelectedPet1] = useState('');
     const [selectedPet2, setSelectedPet2] = useState('');
     const [newPetName, setNewPetName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     const handleSuccess = useCallback(
         ({ name }: { name: string }) => {
@@ -34,9 +41,39 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const breed = useBreedPets({ onSuccess: handleSuccess });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
+    const displayError = usePetActionErrorDisplay(
+        breed.error,
+        breed.receiptError,
+        validationError,
+        BREED_FAIL_MESSAGE,
+    );
+
+    const usesSwitchboardVrf = chain.kind === 'solana';
+    const subtitle = usesSwitchboardVrf
+        ? 'Select two pets to create a new one (Switchboard VRF)'
+        : 'Select two pets to create a new one';
+    const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Submitting…';
+    const creatingLabel = 'Creating…';
+    const submitLabel = 'Breed Pets';
+    const buttonLabel = breed.isPending
+        ? pendingLabel
+        : breed.isAwaitingFulfillment
+          ? creatingLabel
+          : submitLabel;
+    const hashHint = chain.kind === 'solana' ? formatTxHashHint(breed.hash) : null;
+
+    const canSubmit = Boolean(selectedPet1 && selectedPet2 && newPetName.trim());
+
     const handleBreed = () => {
         breed.clearErrors();
         setSuccess(null);
+        setValidationError(null);
+
+        if (!canSubmit) {
+            setValidationError(VALIDATION_MESSAGE);
+            return;
+        }
+
         void breed.mutate({
             parentId1: selectedPet1,
             parentId2: selectedPet2,
@@ -46,15 +83,21 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
 
     const handleCancel = () => {
         setSuccess(null);
+        setValidationError(null);
         breed.reset();
         navigate(DASHBOARD_HOME);
     };
 
-    const { error } = breed;
-    const ErrorIcon = error.isUserRejection ? PauseIcon : error.isContractError ? WarningIcon : CloseIcon;
-    const errorTone = error.isUserRejection ? Tones.Inherit : error.isContractError ? Tones.Amber : Tones.Magenta;
-
-    const canSubmit = Boolean(selectedPet1 && selectedPet2 && newPetName.trim());
+    const ErrorIcon = displayError.isUserRejection
+        ? PauseIcon
+        : displayError.isContractError
+          ? WarningIcon
+          : CloseIcon;
+    const errorTone = displayError.isUserRejection
+        ? Tones.Inherit
+        : displayError.isContractError
+          ? Tones.Amber
+          : Tones.Magenta;
 
     return (
         <>
@@ -62,7 +105,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 {!isStandaloneView && (
                     <>
                         <h4><Icon as={DnaIcon} tone={Tones.Emerald} />Breed Pets</h4>
-                        <p>{breed.subtitle}</p>
+                        <p>{subtitle}</p>
                     </>
                 )}
 
@@ -117,26 +160,26 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                         onClick={handleBreed}
                         disabled={breed.isPending || breed.isAwaitingFulfillment || !canSubmit}
                     >
-                        {breed.buttonLabel}
+                        {buttonLabel}
                     </button>
                     <button type="button" onClick={handleCancel} className="cancel-button">
                         Cancel
                     </button>
                 </div>
 
-                {breed.awaitingHint && (
+                {breed.isAwaitingFulfillment && (
                     <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>
-                        {breed.awaitingHint}
+                        {AWAITING_HINT}
                     </p>
                 )}
             </div>
 
-            {error.message && (
+            {displayError.message && (
                 <div
-                    className={`error-message ${error.isUserRejection ? 'user-rejection' : ''} ${error.isContractError ? 'contract-error' : ''}`}
+                    className={`error-message ${displayError.isUserRejection ? 'user-rejection' : ''} ${displayError.isContractError ? 'contract-error' : ''}`}
                 >
                     <Icon as={ErrorIcon} tone={errorTone} />
-                    {error.message}
+                    {displayError.message}
                 </div>
             )}
 
@@ -147,17 +190,17 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 </div>
             )}
 
-            {breed.hashHint && (
+            {hashHint && (
                 <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>
-                    Transaction: {breed.hashHint}
+                    Transaction: {hashHint}
                 </p>
             )}
 
-            {breed.transactionTracker && (
+            {breed.tracksEvmReceipt && breed.hash && (
                 <TransactionStatus
-                    hash={breed.transactionTracker.hash}
-                    onComplete={breed.transactionTracker.onComplete}
-                    onError={breed.transactionTracker.onError}
+                    hash={breed.hash}
+                    onComplete={breed.onEvmReceiptComplete}
+                    onError={breed.onEvmReceiptError}
                 />
             )}
         </>

@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useBattlePets, usePetList } from '@shared/core';
+import { getReadyPetsUnified, useActiveChain, useBattlePets, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
+import { formatTxHashHint, usePetActionErrorDisplay } from '@hooks/usePetActionErrorDisplay';
 import Icon, { BattleIcon, CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/common/icon';
 
 export type BattlePanelProps = {
@@ -11,15 +12,21 @@ export type BattlePanelProps = {
     isStandaloneView?: boolean;
 };
 
+const VALIDATION_MESSAGE = 'Please select two pets to battle';
+const BATTLE_FAIL_MESSAGE = 'Failed to start battle. Please try again.';
+const SUCCESS_MESSAGE = 'Battle completed! Check your pets for level ups.';
+
 const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
+    const chain = useActiveChain();
     const { pets, refetch } = usePetList();
     const [selectedPet1, setSelectedPet1] = useState('');
     const [selectedPet2, setSelectedPet2] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     const handleSuccess = useCallback(() => {
-        setSuccess('Battle completed! Check your pets for level ups.');
+        setSuccess(SUCCESS_MESSAGE);
         setSelectedPet1('');
         setSelectedPet2('');
         void refetch();
@@ -29,20 +36,49 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const battle = useBattlePets({ onSuccess: handleSuccess });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
+    const displayError = usePetActionErrorDisplay(
+        battle.error,
+        battle.receiptError,
+        validationError,
+        BATTLE_FAIL_MESSAGE,
+    );
+
+    const usesSwitchboardVrf = chain.kind === 'solana';
+    const subtitle = usesSwitchboardVrf
+        ? 'Select two pets to battle (Switchboard VRF)'
+        : 'Select two pets to battle';
+    const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Starting Battle...';
+    const submitLabel = 'Start Battle';
+    const hashHint = chain.kind === 'solana' ? formatTxHashHint(battle.hash) : null;
+
     const handleBattle = () => {
         battle.clearErrors();
         setSuccess(null);
+
+        if (!selectedPet1 || !selectedPet2) {
+            setValidationError(VALIDATION_MESSAGE);
+            return;
+        }
+        setValidationError(null);
         void battle.mutate({ petId1: selectedPet1, petId2: selectedPet2 });
     };
 
     const handleCancel = () => {
         setSuccess(null);
+        setValidationError(null);
         navigate(DASHBOARD_HOME);
     };
 
-    const { error } = battle;
-    const ErrorIcon = error.isUserRejection ? PauseIcon : error.isContractError ? WarningIcon : CloseIcon;
-    const errorTone = error.isUserRejection ? Tones.Inherit : error.isContractError ? Tones.Amber : Tones.Magenta;
+    const ErrorIcon = displayError.isUserRejection
+        ? PauseIcon
+        : displayError.isContractError
+          ? WarningIcon
+          : CloseIcon;
+    const errorTone = displayError.isUserRejection
+        ? Tones.Inherit
+        : displayError.isContractError
+          ? Tones.Amber
+          : Tones.Magenta;
 
     return (
         <>
@@ -50,7 +86,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 {!isStandaloneView && (
                     <>
                         <h4><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Pets</h4>
-                        <p>{battle.subtitle}</p>
+                        <p>{subtitle}</p>
                     </>
                 )}
 
@@ -94,7 +130,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                         onClick={handleBattle}
                         disabled={battle.isPending || !selectedPet1 || !selectedPet2}
                     >
-                        {battle.isPending ? battle.pendingLabel : battle.submitLabel}
+                        {battle.isPending ? pendingLabel : submitLabel}
                     </button>
                     <button type="button" onClick={handleCancel} className="cancel-button">
                         Cancel
@@ -102,12 +138,12 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
             </div>
 
-            {error.message && (
+            {displayError.message && (
                 <div
-                    className={`error-message ${error.isUserRejection ? 'user-rejection' : ''} ${error.isContractError ? 'contract-error' : ''}`}
+                    className={`error-message ${displayError.isUserRejection ? 'user-rejection' : ''} ${displayError.isContractError ? 'contract-error' : ''}`}
                 >
                     <Icon as={ErrorIcon} tone={errorTone} />
-                    {error.message}
+                    {displayError.message}
                 </div>
             )}
 
@@ -118,17 +154,17 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
             )}
 
-            {battle.hashHint && (
+            {hashHint && (
                 <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>
-                    Transaction: {battle.hashHint}
+                    Transaction: {hashHint}
                 </p>
             )}
 
-            {battle.transactionTracker && (
+            {battle.tracksEvmReceipt && battle.hash && (
                 <TransactionStatus
-                    hash={battle.transactionTracker.hash}
-                    onComplete={battle.transactionTracker.onComplete}
-                    onError={battle.transactionTracker.onError}
+                    hash={battle.hash}
+                    onComplete={battle.onEvmReceiptComplete}
+                    onError={battle.onEvmReceiptError}
                 />
             )}
         </>

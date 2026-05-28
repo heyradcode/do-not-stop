@@ -8,15 +8,11 @@ export { useRenamePet, type RenamePetArgs } from './useRenamePet';
 export {
     useBattlePets,
     type BattlePetsArgs,
-    type BattlePetsErrorDisplay,
-    type BattlePetsTransactionTracker,
     type UseBattlePetsOptions,
 } from './useBattlePets';
 export {
     useBreedPets,
     type BreedPetsArgs,
-    type BreedPetsErrorDisplay,
-    type BreedPetsTransactionTracker,
     type UseBreedPetsOptions,
 } from './useBreedPets';
 export { useTransferPet, type TransferPetArgs } from './useTransferPet';
