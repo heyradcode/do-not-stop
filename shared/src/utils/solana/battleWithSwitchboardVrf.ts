@@ -9,6 +9,7 @@ import {
     sendSignedTx,
     waitForRevealIx,
 } from './switchboardVrfTx';
+import { sleep } from '../common';
 
 export type BattleWithVrfArgs = {
     program: Program<Idl>;
@@ -78,7 +79,7 @@ export async function battleWithSwitchboardVrf(args: BattleWithVrfArgs): Promise
     });
     await sendSignedTx(provider, commitTx, [rngKp]);
 
-    await new Promise((r) => setTimeout(r, COMMIT_REVEAL_WAIT_MS));
+    await sleep(COMMIT_REVEAL_WAIT_MS);
     const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
 
     const settleBattleIx = await program.methods

@@ -7,6 +7,7 @@ import {
     type TransactionInstruction,
     type VersionedTransaction,
 } from '@solana/web3.js';
+import { sleep } from '../common';
 
 export const COMMIT_REVEAL_WAIT_MS = 3_000;
 export const REVEAL_RETRIES = 5;
@@ -84,7 +85,7 @@ export async function waitForRevealIx(
             if (attempt === maxRetries) {
                 throw new Error('Switchboard oracle did not produce a reveal instruction in time');
             }
-            await new Promise((r) => setTimeout(r, backoffMs));
+            await sleep(backoffMs);
         }
     }
     throw new Error('Switchboard oracle did not produce a reveal instruction');

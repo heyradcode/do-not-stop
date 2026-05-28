@@ -16,6 +16,7 @@ import {
     sendSignedTx,
     waitForRevealIx,
 } from './switchboardVrfTx';
+import { sleep } from '../common';
 
 export type BreedWithVrfArgs = {
     program: Program<Idl>;
@@ -59,7 +60,7 @@ async function trySettlePendingBreed(args: BreedWithVrfArgs): Promise<string | n
     const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
     const randomness = new sb.Randomness(queue.program, randomnessPk);
 
-    await new Promise((r) => setTimeout(r, COMMIT_REVEAL_WAIT_MS));
+    await sleep(COMMIT_REVEAL_WAIT_MS);
     const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
 
     const settleBreedIx = await program.methods
@@ -146,7 +147,7 @@ export async function breedWithSwitchboardVrf(args: BreedWithVrfArgs): Promise<s
     });
     await sendSignedTx(provider, commitTx, [rngKp]);
 
-    await new Promise((r) => setTimeout(r, COMMIT_REVEAL_WAIT_MS));
+    await sleep(COMMIT_REVEAL_WAIT_MS);
     const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
 
     const settleBreedIx = await program.methods
