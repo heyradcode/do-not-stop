@@ -8,11 +8,11 @@ import { wagmiConfig } from '@chains/ethereum/wagmi';
 import { SolanaAnchorWallet } from '@chains/solana/anchor-wallet';
 import { SolanaAuthSigner } from '@chains/solana/auth-signer';
 import { SolanaWalletProvider } from '@chains/solana/provider';
-import { API_URL } from '@/config';
 import { solanaNetworkNameFromCluster } from '@constants/chains';
 import { DynamicProvider } from '@contexts/dynamic';
-import { petsContractParams } from '@/petsContractParams';
 import { AppRoutes } from '@router';
+import { API_URL } from './config';
+import { petsContractParams } from './petsContractParams';
 import './App.css';
 
 const solanaNetwork = solanaNetworkNameFromCluster(import.meta.env.VITE_SOLANA_CLUSTER);

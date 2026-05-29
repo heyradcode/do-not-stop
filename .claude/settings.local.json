@@ -22,7 +22,13 @@
       "Bash(git check-ignore *)",
       "Bash(npx tsc *)",
       "Bash(npx vite *)",
-      "Skill(update-config)"
+      "Skill(update-config)",
+      "Bash(pnpm exec *)",
+      "Bash(git config *)",
+      "Bash(HUSKY=0 sh .husky/_/pre-commit)",
+      "Bash(echo \"exit code: $? \\(0 = hook resolved cleanly, no env error\\)\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(pnpm install *)"
     ]
   }
 }

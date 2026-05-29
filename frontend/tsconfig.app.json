@@ -18,7 +18,6 @@
     /* Path aliases — keep in sync with `vite.config.ts#resolve.alias`. */
     "baseUrl": ".",
     "paths": {
-      "@/*":            ["src/*"],
       "@assets/*":      ["src/assets/*"],
       "@chains/*":      ["src/chains/*"],
       "@components/*":  ["src/components/*"],
@@ -28,12 +27,14 @@
       "@pages/*":       ["src/pages/*"],
       "@router":        ["src/router/index.ts"],
       "@router/*":      ["src/router/*"],
+      "@shared/core":   ["../shared/src/index.ts"],
       "@styles/*":      ["src/styles/*"],
       "@utils/*":       ["src/utils/*"]
     },
 
     /* Linting */
     "strict": true,
+    "forceConsistentCasingInFileNames": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
