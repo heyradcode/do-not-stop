@@ -10,7 +10,16 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+const corsOrigin = process.env.CORS_ORIGIN;
+app.use(
+    cors(
+        corsOrigin
+            ? {
+                  origin: corsOrigin.split(',').map((origin) => origin.trim()),
+              }
+            : undefined
+    )
+);
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);

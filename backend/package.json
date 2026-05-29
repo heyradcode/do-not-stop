@@ -4,6 +4,9 @@
   "description": "Backend for Web3 authentication example",
   "main": "dist/server.js",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",

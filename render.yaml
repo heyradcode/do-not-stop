@@ -1,0 +1,20 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploy: connect this repo in the Render dashboard and apply the blueprint,
+# or create a Web Service manually using the settings below.
+#
+# After deploy, set your frontend VITE_API_URL to the Render service URL.
+
+services:
+  - type: web
+    name: do-not-stop-api
+    runtime: node
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter backend build
+    startCommand: pnpm --filter backend start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true

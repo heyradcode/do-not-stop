@@ -80,7 +80,45 @@ pnpm dev
 ## Environment Variables
 
 - `JWT_SECRET`: Secret key for JWT signing (required)
-- `PORT`: Server port (default: 3001)
+- `PORT`: Server port (default: 3001; Render sets this automatically)
+- `CORS_ORIGIN`: Optional comma-separated allowed origins for production CORS
+
+## Deploy to Render
+
+This repo includes a [`render.yaml`](../render.yaml) blueprint at the monorepo root.
+
+### Option A — Blueprint (recommended)
+
+1. Push the repo to GitHub/GitLab.
+2. In [Render](https://render.com), click **New → Blueprint** and connect the repo.
+3. Render creates a **Web Service** named `do-not-stop-api` with:
+   - **Build:** `pnpm install --frozen-lockfile && pnpm --filter backend build`
+   - **Start:** `pnpm --filter backend start`
+   - **Health check:** `/api/health`
+4. `JWT_SECRET` is auto-generated; override it in the service **Environment** tab if needed.
+5. Copy the service URL (e.g. `https://do-not-stop-api.onrender.com`) into your frontend:
+   ```bash
+   VITE_API_URL=https://do-not-stop-api.onrender.com
+   ```
+6. Optional: set `CORS_ORIGIN` on Render to your frontend URL(s).
+
+### Option B — Manual Web Service
+
+| Setting | Value |
+|--------|--------|
+| Root Directory | *(leave empty — monorepo root)* |
+| Runtime | Node |
+| Build Command | `pnpm install --frozen-lockfile && pnpm --filter backend build` |
+| Start Command | `pnpm --filter backend start` |
+| Health Check Path | `/api/health` |
+
+Add environment variables: `JWT_SECRET` (required), `NODE_ENV=production`, and optionally `CORS_ORIGIN`.
+
+### Verify
+
+```bash
+curl https://YOUR-SERVICE.onrender.com/api/health
+```
 
 ## How It Works
 
