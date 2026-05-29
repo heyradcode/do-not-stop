@@ -91,7 +91,11 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
     }
 
     return (
-        <StateCard containerClassName="interaction-standalone" title={header.title} sub={header.sub}>
+        <StateCard
+            containerClassName="interaction-standalone"
+            title={<><Icon as={header.Icon} tone={Tones.Violet} />{header.label}</>}
+            sub={header.sub}
+        >
             {children}
         </StateCard>
     );

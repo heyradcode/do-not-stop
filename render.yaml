@@ -1,0 +1,31 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# IMPORTANT: Leave "Root Directory" empty in the Render dashboard (monorepo root).
+# Do NOT set Root Directory to `backend` — the pnpm lockfile lives at the repo root.
+#
+# After deploy, set VITE_API_URL on the frontend to your Render service URL.
+
+services:
+  - type: web
+    name: do-not-stop-api
+    runtime: node
+    plan: free
+    # Do not set NODE_ENV=production here — it skips devDependencies (typescript) at install time.
+    #
+    # Render's base image ships pnpm as a corepack shim in the read-only /usr/bin. Invoking that
+    # shim while package.json has a "packageManager" field makes corepack try to rewrite the shim
+    # in place → "EROFS: read-only file system, unlink '/usr/bin/pnpm'". So we install a standalone
+    # pnpm into a writable prefix and put it first on PATH, never touching the corepack shim.
+    buildCommand: |
+      export PNPM_PREFIX="$HOME/.npm-global"
+      export PATH="$PNPM_PREFIX/bin:$PATH"
+      npm install -g --prefix "$PNPM_PREFIX" pnpm@9.15.9
+      HUSKY=0 pnpm install --frozen-lockfile --prod=false --filter backend... && pnpm --filter backend build
+    # Start node directly so runtime never invokes the corepack pnpm shim.
+    startCommand: NODE_ENV=production node backend/dist/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: HUSKY
+        value: "0"
+      - key: JWT_SECRET
+        generateValue: true

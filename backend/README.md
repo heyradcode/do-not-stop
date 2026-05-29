@@ -80,7 +80,55 @@ pnpm dev
 ## Environment Variables
 
 - `JWT_SECRET`: Secret key for JWT signing (required)
-- `PORT`: Server port (default: 3001)
+- `PORT`: Server port (default: 3001; Render sets this automatically)
+- `CORS_ORIGIN`: Optional comma-separated allowed origins for production CORS
+
+## Deploy to Render
+
+This repo includes a [`render.yaml`](../render.yaml) blueprint at the monorepo root.
+
+### Option A — Blueprint (recommended)
+
+1. Push the repo to GitHub/GitLab.
+2. In [Render](https://render.com), click **New → Blueprint** and connect the repo.
+3. Render creates a **Web Service** named `do-not-stop-api` with:
+   - **Build:** `pnpm install --frozen-lockfile && pnpm --filter backend build`
+   - **Start:** `pnpm --filter backend start`
+   - **Health check:** `/api/health`
+4. `JWT_SECRET` is auto-generated; override it in the service **Environment** tab if needed.
+5. Copy the service URL (e.g. `https://do-not-stop-api.onrender.com`) into your frontend:
+   ```bash
+   VITE_API_URL=https://do-not-stop-api.onrender.com
+   ```
+6. Optional: set `CORS_ORIGIN` on Render to your frontend URL(s).
+
+### Option B — Manual Web Service
+
+| Setting | Value |
+|--------|--------|
+| Root Directory | *(leave empty — monorepo root)* |
+| Runtime | Node |
+| Build Command | `HUSKY=0 pnpm install --frozen-lockfile --filter backend... && pnpm --filter backend build` |
+| Start Command | `pnpm --filter backend start` |
+| Health Check Path | `/api/health` |
+
+Add environment variables: `JWT_SECRET` (required), `NODE_ENV=production`, and optionally `CORS_ORIGIN`.
+
+### Verify
+
+```bash
+curl https://YOUR-SERVICE.onrender.com/api/health
+```
+
+### Troubleshooting
+
+| Symptom | Fix |
+|--------|-----|
+| `tsc` / `@types/*` not found | Remove `NODE_ENV=production` from Render **Environment** (it skips devDependencies during install). Use the updated `render.yaml` — `NODE_ENV` is only set at **start**, not build. |
+| `pnpm: command not found` | Ensure root `package.json` has `"packageManager": "pnpm@9.15.9"` — Render installs pnpm via Corepack automatically. Do **not** run `corepack prepare` in the build command (Render's `/usr/bin` is read-only). |
+| `husky` / `prepare` script failed | Set `HUSKY=0` in Render environment (included in `render.yaml`). |
+| Lockfile errors | Ensure `pnpm-lock.yaml` is committed at the repo root. |
+| Wrong root | **Root Directory** must be empty (repo root), not `backend`. |
 
 ## How It Works
 

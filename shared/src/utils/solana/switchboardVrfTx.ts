@@ -57,18 +57,7 @@ export async function sendSignedTx(
         maxRetries: 3,
     });
 
-    const blockhashStatus = await connection.isBlockhashValid(blockhash, { commitment: 'confirmed' });
-    const lastValidBlockHeight = blockhashStatus.value?.lastValidBlockHeight;
-
-    if (lastValidBlockHeight == null) {
-        await connection.confirmTransaction(sig, 'confirmed');
-        return sig;
-    }
-
-    await connection.confirmTransaction(
-        { signature: sig, blockhash, lastValidBlockHeight },
-        'confirmed'
-    );
+    await connection.confirmTransaction(sig, 'confirmed');
     return sig;
 }
 

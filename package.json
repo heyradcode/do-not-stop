@@ -23,6 +23,7 @@
     "compile": "pnpm --prefix contracts/ethereum compile",
     "test": "pnpm --prefix contracts/ethereum test",
     "build": "pnpm compile && pnpm --prefix backend build && pnpm --prefix frontend build && pnpm --prefix website build",
+    "build:backend": "pnpm --filter backend build",
     "lint": "pnpm --filter frontend lint:check && pnpm --filter @shared/core lint && pnpm --filter website lint && pnpm --filter mobile lint",
     "eslint": "pnpm lint",
     "prepare": "husky"

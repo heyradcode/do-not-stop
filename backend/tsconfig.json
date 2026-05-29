@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
         "target": "ES2022",
-        "module": "ESNext",
-        "moduleResolution": "bundler",
+        "module": "CommonJS",
+        "moduleResolution": "node",
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
         "allowJs": true,
@@ -23,7 +23,6 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
-        "allowImportingTsExtensions": true,
         "noEmit": false
     },
     "include": [

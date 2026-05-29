@@ -26,6 +26,7 @@
       "@contexts/*":    ["src/contexts/*"],
       "@hooks/*":       ["src/hooks/*"],
       "@pages/*":       ["src/pages/*"],
+      "@router":        ["src/router/index.ts"],
       "@router/*":      ["src/router/*"],
       "@styles/*":      ["src/styles/*"],
       "@utils/*":       ["src/utils/*"]
