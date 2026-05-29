@@ -7,6 +7,7 @@
         "vite": "node ../node_modules/vite/bin/vite.js",
         "dev": "pnpm vite --host",
         "build": "tsc -b && pnpm vite build",
+        "prebuild": "node ./scripts/ensure-workspace-link.mjs",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "lint:check": "eslint . --max-warnings 0",

@@ -1,1 +1,1 @@
-export { default as AppRoutes } from '@router/app-routes';
+export { default as AppRoutes } from './app-routes';

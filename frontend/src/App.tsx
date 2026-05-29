@@ -12,7 +12,7 @@ import { API_URL } from '@/config';
 import { solanaNetworkNameFromCluster } from '@constants/chains';
 import { DynamicProvider } from '@contexts/dynamic';
 import { petsContractParams } from '@/petsContractParams';
-import { AppRoutes } from '@router';
+import { AppRoutes } from '@/router';
 import './App.css';
 
 const solanaNetwork = solanaNetworkNameFromCluster(import.meta.env.VITE_SOLANA_CLUSTER);

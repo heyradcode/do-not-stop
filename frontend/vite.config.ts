@@ -29,9 +29,15 @@ export default defineConfig({
         'process.env': {}
     },
     resolve: {
-        alias: Object.entries(aliases).map(([find, target]) => ({
-            find,
-            replacement: fileURLToPath(new URL(`./${target}`, import.meta.url)),
-        })),
+        alias: [
+            ...Object.entries(aliases).map(([find, target]) => ({
+                find,
+                replacement: fileURLToPath(new URL(`./${target}`, import.meta.url)),
+            })),
+            {
+                find: '@shared/core',
+                replacement: fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)),
+            },
+        ],
     },
 });
