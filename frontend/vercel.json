@@ -6,12 +6,5 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "build": {
-    "env": {
-      "VITE_CONTRACT_ADDRESS": "0x0000000000000000000000000000000000000000",
-      "VITE_DYNAMIC_ENVIRONMENT_ID": "ci-placeholder",
-      "VITE_API_URL": "http://localhost:3001"
-    }
-  }
+  ]
 }
