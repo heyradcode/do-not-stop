@@ -20,7 +20,7 @@ services:
       export PNPM_PREFIX="$HOME/.npm-global"
       export PATH="$PNPM_PREFIX/bin:$PATH"
       npm install -g --prefix "$PNPM_PREFIX" pnpm@9.15.9
-      HUSKY=0 pnpm install --frozen-lockfile --filter backend... && pnpm --filter backend build
+      HUSKY=0 pnpm install --frozen-lockfile --prod=false --filter backend... && pnpm --filter backend build
     # Start node directly so runtime never invokes the corepack pnpm shim.
     startCommand: NODE_ENV=production node backend/dist/server.js
     healthCheckPath: /api/health
