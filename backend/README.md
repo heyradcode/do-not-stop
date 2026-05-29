@@ -108,7 +108,7 @@ This repo includes a [`render.yaml`](../render.yaml) blueprint at the monorepo r
 |--------|--------|
 | Root Directory | *(leave empty — monorepo root)* |
 | Runtime | Node |
-| Build Command | `pnpm install --frozen-lockfile && pnpm --filter backend build` |
+| Build Command | `HUSKY=0 pnpm install --frozen-lockfile --filter backend... && pnpm --filter backend build` |
 | Start Command | `pnpm --filter backend start` |
 | Health Check Path | `/api/health` |
 
@@ -125,7 +125,7 @@ curl https://YOUR-SERVICE.onrender.com/api/health
 | Symptom | Fix |
 |--------|-----|
 | `tsc` / `@types/*` not found | Remove `NODE_ENV=production` from Render **Environment** (it skips devDependencies during install). Use the updated `render.yaml` — `NODE_ENV` is only set at **start**, not build. |
-| `pnpm: command not found` | Build command must include `corepack enable && corepack prepare pnpm@9.15.9 --activate` (included in `render.yaml`). |
+| `pnpm: command not found` | Ensure root `package.json` has `"packageManager": "pnpm@9.15.9"` — Render installs pnpm via Corepack automatically. Do **not** run `corepack prepare` in the build command (Render's `/usr/bin` is read-only). |
 | `husky` / `prepare` script failed | Set `HUSKY=0` in Render environment (included in `render.yaml`). |
 | Lockfile errors | Ensure `pnpm-lock.yaml` is committed at the repo root. |
 | Wrong root | **Root Directory** must be empty (repo root), not `backend`. |

@@ -11,7 +11,7 @@ services:
     runtime: node
     plan: free
     # Do not set NODE_ENV=production here — it skips devDependencies (typescript) at install time.
-    buildCommand: corepack enable && corepack prepare pnpm@9.15.9 --activate && HUSKY=0 pnpm install --frozen-lockfile --filter backend... && pnpm --filter backend build
+    buildCommand: HUSKY=0 pnpm install --frozen-lockfile --filter backend... && pnpm --filter backend build
     startCommand: NODE_ENV=production pnpm --filter backend start
     healthCheckPath: /api/health
     envVars:
