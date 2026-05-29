@@ -11,8 +11,18 @@ services:
     runtime: node
     plan: free
     # Do not set NODE_ENV=production here — it skips devDependencies (typescript) at install time.
-    buildCommand: HUSKY=0 pnpm install --frozen-lockfile --filter backend... && pnpm --filter backend build
-    startCommand: NODE_ENV=production pnpm --filter backend start
+    #
+    # Render's base image ships pnpm as a corepack shim in the read-only /usr/bin. Invoking that
+    # shim while package.json has a "packageManager" field makes corepack try to rewrite the shim
+    # in place → "EROFS: read-only file system, unlink '/usr/bin/pnpm'". So we install a standalone
+    # pnpm into a writable prefix and put it first on PATH, never touching the corepack shim.
+    buildCommand: |
+      export PNPM_PREFIX="$HOME/.npm-global"
+      export PATH="$PNPM_PREFIX/bin:$PATH"
+      npm install -g --prefix "$PNPM_PREFIX" pnpm@9.15.9
+      HUSKY=0 pnpm install --frozen-lockfile --filter backend... && pnpm --filter backend build
+    # Start node directly so runtime never invokes the corepack pnpm shim.
+    startCommand: NODE_ENV=production node backend/dist/server.js
     healthCheckPath: /api/health
     envVars:
       - key: HUSKY
