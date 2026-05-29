@@ -25,20 +25,14 @@
     "build": "pnpm compile && pnpm --prefix backend build && pnpm --prefix frontend build && pnpm --prefix website build",
     "build:backend": "pnpm --filter backend build",
     "lint": "pnpm --filter frontend lint:check && pnpm --filter @shared/core lint && pnpm --filter website lint && pnpm --filter mobile lint",
+    "lint:fix": "pnpm --filter frontend lint:fix && pnpm --filter @shared/core lint:fix && pnpm --filter website lint:fix && pnpm --filter mobile lint:fix",
     "eslint": "pnpm lint",
     "prepare": "husky"
-  },
-  "lint-staged": {
-    "frontend/**/*.{ts,tsx}":       "pnpm --filter frontend exec eslint --fix --max-warnings 0",
-    "website/**/*.{ts,tsx,js,jsx}": "pnpm --filter website  exec eslint --fix --max-warnings 0",
-    "mobile/**/*.{ts,tsx,js,jsx}":  "pnpm --filter mobile   exec eslint --fix --max-warnings 0",
-    "shared/**/*.{ts,tsx}":         "pnpm --filter @shared/core exec eslint --fix --max-warnings 0"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
     "dotenv": "^16.4.5",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.5",
     "tsx": "^4.7.0"
   },
   "pnpm": {
