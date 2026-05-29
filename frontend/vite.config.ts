@@ -5,7 +5,6 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 /** Per-folder import aliases. Mirrors `tsconfig.app.json#compilerOptions.paths`. */
 const aliases = {
-    '@': 'src',
     '@assets': 'src/assets',
     '@chains': 'src/chains',
     '@components': 'src/components',

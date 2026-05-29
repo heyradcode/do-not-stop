@@ -43,4 +43,12 @@ export default tseslint.config(
             react: { version: 'detect' },
         },
     },
+    {
+        files: ['scripts/**/*.{js,mjs,cjs}', '*.{js,mjs,cjs}'],
+        languageOptions: {
+            ecmaVersion: 'latest',
+            sourceType: 'module',
+            globals: globals.node,
+        },
+    },
 );

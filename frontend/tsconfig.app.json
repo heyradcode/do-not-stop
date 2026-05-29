@@ -18,7 +18,6 @@
     /* Path aliases — keep in sync with `vite.config.ts#resolve.alias`. */
     "baseUrl": ".",
     "paths": {
-      "@/*":            ["src/*"],
       "@assets/*":      ["src/assets/*"],
       "@chains/*":      ["src/chains/*"],
       "@components/*":  ["src/components/*"],

@@ -1,5 +1,5 @@
 import type { Abi } from 'viem';
-import { CONTRACT_ADDRESS } from '@/config';
+import { CONTRACT_ADDRESS } from './config';
 import ethereumAbi from '@chains/ethereum/ethereumAbi.json';
 
 /** Arguments for `usePetsContract` from `@shared/core`. */
