@@ -1,20 +1,21 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 #
-# Deploy: connect this repo in the Render dashboard and apply the blueprint,
-# or create a Web Service manually using the settings below.
+# IMPORTANT: Leave "Root Directory" empty in the Render dashboard (monorepo root).
+# Do NOT set Root Directory to `backend` — the pnpm lockfile lives at the repo root.
 #
-# After deploy, set your frontend VITE_API_URL to the Render service URL.
+# After deploy, set VITE_API_URL on the frontend to your Render service URL.
 
 services:
   - type: web
     name: do-not-stop-api
     runtime: node
     plan: free
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter backend build
-    startCommand: pnpm --filter backend start
+    # Do not set NODE_ENV=production here — it skips devDependencies (typescript) at install time.
+    buildCommand: corepack enable && corepack prepare pnpm@9.15.9 --activate && HUSKY=0 pnpm install --frozen-lockfile --filter backend... && pnpm --filter backend build
+    startCommand: NODE_ENV=production pnpm --filter backend start
     healthCheckPath: /api/health
     envVars:
-      - key: NODE_ENV
-        value: production
+      - key: HUSKY
+        value: "0"
       - key: JWT_SECRET
         generateValue: true

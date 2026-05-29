@@ -120,6 +120,16 @@ Add environment variables: `JWT_SECRET` (required), `NODE_ENV=production`, and o
 curl https://YOUR-SERVICE.onrender.com/api/health
 ```
 
+### Troubleshooting
+
+| Symptom | Fix |
+|--------|-----|
+| `tsc` / `@types/*` not found | Remove `NODE_ENV=production` from Render **Environment** (it skips devDependencies during install). Use the updated `render.yaml` — `NODE_ENV` is only set at **start**, not build. |
+| `pnpm: command not found` | Build command must include `corepack enable && corepack prepare pnpm@9.15.9 --activate` (included in `render.yaml`). |
+| `husky` / `prepare` script failed | Set `HUSKY=0` in Render environment (included in `render.yaml`). |
+| Lockfile errors | Ensure `pnpm-lock.yaml` is committed at the repo root. |
+| Wrong root | **Root Directory** must be empty (repo root), not `backend`. |
+
 ## How It Works
 
 1. Frontend requests a nonce from `/api/auth/nonce`
