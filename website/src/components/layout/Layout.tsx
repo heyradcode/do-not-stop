@@ -1,4 +1,9 @@
+'use client';
+
 import React from 'react';
+
+import { NeonButton } from '@/components/common';
+import { openApp } from '@/lib/openApp';
 
 type LayoutProps = {
   children: React.ReactNode;
@@ -22,7 +27,11 @@ const Layout: React.FC<LayoutProps> = ({
         <div className="title">
           <h1>{title}</h1>
         </div>
-        <div className="wallet-section" />
+        <div className="wallet-section">
+          <NeonButton type="button" tone="emerald" onClick={openApp}>
+            Play Now
+          </NeonButton>
+        </div>
       </div>
 
       <div className={contentClass}>{children}</div>
