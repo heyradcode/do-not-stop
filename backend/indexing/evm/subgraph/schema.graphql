@@ -1,15 +1,6 @@
-# CryptoPets subgraph schema (sketch — see PVP_BATTLE.md §2.bis).
-#
-# This is the entity model a subgraph would expose for PvP matchmaking. It pairs
-# with:
-#   - subgraph.yaml      data source = CryptoPets address + ABI, event handlers
-#   - src/mapping.ts     AssemblyScript that Pet.load()/save() on each event
-#
-# Fields mirror `pet_roster` (backend/prisma/schema.prisma) so the backend's
-# `subgraphIndexer.ts` can map a Pet 1:1 into the table.
-#
-# `immutable: false` because a pet's state (level, win/loss, owner, readyAt)
-# changes over its lifetime.
+# Pet entities for PvP matchmaking. Fields mirror `pet_roster` in the backend DB.
+# Source definitions: backend/indexing/evm/substreams → backend/indexing/evm/subgraph
+# Consumed by `backend/src/indexer/subgraphIndexer.ts`.
 
 type Pet @entity(immutable: false) {
   "Token id as a string (matches pet_roster.pet_id)."

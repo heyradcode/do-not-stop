@@ -1,0 +1,84 @@
+specVersion: 1.3.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: CryptoPets
+    network: {{NETWORK}}
+    source:
+      address: "{{CRYPTOPETS_ADDRESS}}"
+      abi: CryptoPets
+      startBlock: {{START_BLOCK}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Pet
+      abis:
+        - name: CryptoPets
+          file: ./abis/CryptoPets.json
+        - name: Battle
+          file: ./abis/Battle.json
+        - name: Inventory
+          file: ./abis/Inventory.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,indexed uint256)
+          handler: handleTransfer
+        - event: BreedFulfilled(indexed address,indexed uint256,indexed uint256)
+          handler: handleBreedFulfilled
+      file: ./src/crypto-pets.ts
+
+  - kind: ethereum
+    name: Battle
+    network: {{NETWORK}}
+    source:
+      address: "{{BATTLE_ADDRESS}}"
+      abi: Battle
+      startBlock: {{START_BLOCK}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Pet
+      abis:
+        - name: CryptoPets
+          file: ./abis/CryptoPets.json
+        - name: Battle
+          file: ./abis/Battle.json
+      eventHandlers:
+        - event: FightResult(uint256,uint256,bool)
+          handler: handleFightResult
+      file: ./src/battle.ts
+
+  - kind: ethereum
+    name: Inventory
+    network: {{NETWORK}}
+    source:
+      address: "{{INVENTORY_ADDRESS}}"
+      abi: Inventory
+      startBlock: {{START_BLOCK}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - Pet
+      abis:
+        - name: CryptoPets
+          file: ./abis/CryptoPets.json
+        - name: Inventory
+          file: ./abis/Inventory.json
+      eventHandlers:
+        - event: NewPet(uint256,string,uint256,uint8)
+          handler: handleNewPet
+        - event: PetLevelUp(uint256,uint32)
+          handler: handlePetLevelUp
+        - event: PetNameChanged(uint256,string)
+          handler: handlePetNameChanged
+        - event: PetDnaChanged(uint256,uint256)
+          handler: handlePetDnaChanged
+      file: ./src/inventory.ts

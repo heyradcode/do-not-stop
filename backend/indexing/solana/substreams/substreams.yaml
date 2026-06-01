@@ -1,0 +1,39 @@
+specVersion: v0.1.0
+package:
+  name: cryptopets_solana
+  version: v0.1.0
+
+imports:
+  solana: https://spkg.io/streamingfast/solana-common-v0.3.0.spkg
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ./target/wasm32-unknown-unknown/release/cryptopets_solana.wasm
+
+modules:
+  - name: map_pets
+    kind: map
+    inputs:
+      - params: string
+      - source: sf.solana.type.v1.Block
+    output:
+      type: proto:cryptopets.v1.Pets
+
+networks:
+  solana-devnet:
+    params:
+      map_pets: program={{PROGRAM_ID}}&account=PetAccount
+    initialBlocks:
+      map_pets: 0
+  solana-mainnet-beta:
+    params:
+      map_pets: program={{PROGRAM_ID}}&account=PetAccount
+    initialBlocks:
+      map_pets: 0
+
+protobuf:
+  files:
+    - cryptopets.proto
+  importPaths:
+    - ./proto

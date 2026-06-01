@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package cryptopets.v1;
+
+message Pet {
+  string id = 1;
+  string owner = 2;
+  string name = 3;
+  string dna = 4;
+  uint32 level = 5;
+  uint32 rarity = 6;
+  uint32 win_count = 7;
+  uint32 loss_count = 8;
+  string ready_at = 9;
+}
+
+message Pets {
+  repeated Pet pets = 1;
+}
