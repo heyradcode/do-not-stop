@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useActiveChain, useBattlePets, usePetList } from '@shared/core';
+import { getReadyPetsUnified, useActiveChain, useBattlePets, useOpponents, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { formatTxHashHint, usePetActionErrorDisplay } from '@hooks/usePetActionErrorDisplay';
@@ -12,29 +12,46 @@ export type BattlePanelProps = {
     isStandaloneView?: boolean;
 };
 
-const VALIDATION_MESSAGE = 'Please select two pets to battle';
+const VALIDATION_MESSAGE = 'Please select your pet and an opponent';
 const BATTLE_FAIL_MESSAGE = 'Failed to start battle. Please try again.';
 const SUCCESS_MESSAGE = 'Battle completed! Check your pets for level ups.';
+
+/** Stable select value for an opponent (pet ids are not globally unique on Solana). */
+const opponentKey = (owner: string, id: string) => `${owner}::${id}`;
+const shortAddress = (addr: string) =>
+    addr.length > 12 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
 
 const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
     const chain = useActiveChain();
     const { pets, refetch } = usePetList();
     const [selectedPet1, setSelectedPet1] = useState('');
-    const [selectedPet2, setSelectedPet2] = useState('');
+    const [selectedOpponent, setSelectedOpponent] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
     const [validationError, setValidationError] = useState<string | null>(null);
+
+    const activeChainKind = chain.kind === 'none' ? null : chain.kind;
+    const {
+        opponents,
+        isLoading: opponentsLoading,
+        refetch: refetchOpponents,
+    } = useOpponents({ chain: activeChainKind });
 
     const handleSuccess = useCallback(() => {
         setSuccess(SUCCESS_MESSAGE);
         setSelectedPet1('');
-        setSelectedPet2('');
+        setSelectedOpponent('');
         void refetch();
+        void refetchOpponents();
         navigate(DASHBOARD_HOME);
-    }, [navigate, refetch]);
+    }, [navigate, refetch, refetchOpponents]);
 
     const battle = useBattlePets({ onSuccess: handleSuccess });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+    const opponent = useMemo(
+        () => opponents.find((o) => opponentKey(o.owner, o.id) === selectedOpponent),
+        [opponents, selectedOpponent],
+    );
 
     const displayError = usePetActionErrorDisplay(
         battle.error,
@@ -45,8 +62,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
 
     const usesSwitchboardVrf = chain.kind === 'solana';
     const subtitle = usesSwitchboardVrf
-        ? 'Select two pets to battle (Switchboard VRF)'
-        : 'Select two pets to battle';
+        ? 'Pick your fighter and an opponent (Switchboard VRF)'
+        : 'Pick your fighter and an opponent';
     const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Starting Battle...';
     const submitLabel = 'Start Battle';
     const hashHint = chain.kind === 'solana' ? formatTxHashHint(battle.hash) : null;
@@ -55,12 +72,16 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         battle.clearErrors();
         setSuccess(null);
 
-        if (!selectedPet1 || !selectedPet2) {
+        if (!selectedPet1 || !opponent) {
             setValidationError(VALIDATION_MESSAGE);
             return;
         }
         setValidationError(null);
-        void battle.mutate({ petId1: selectedPet1, petId2: selectedPet2 });
+        void battle.mutate({
+            petId1: selectedPet1,
+            petId2: opponent.id,
+            defenderOwner: opponent.owner,
+        });
     };
 
     const handleCancel = () => {
@@ -107,19 +128,24 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                     </div>
 
                     <div className="field">
-                        <label>Second Fighter</label>
+                        <label>Opponent</label>
                         <select
-                            value={selectedPet2}
-                            onChange={(e) => setSelectedPet2(e.target.value)}
+                            value={selectedOpponent}
+                            onChange={(e) => setSelectedOpponent(e.target.value)}
+                            disabled={opponentsLoading || opponents.length === 0}
                         >
-                            <option value="">Select pet...</option>
-                            {readyPets
-                                .filter(({ id }) => id !== selectedPet1)
-                                .map(({ id, pet }) => (
-                                    <option key={id} value={id}>
-                                        {pet.name} (Level {pet.level})
-                                    </option>
-                                ))}
+                            <option value="">
+                                {opponentsLoading
+                                    ? 'Finding opponents…'
+                                    : opponents.length === 0
+                                      ? 'No opponents available'
+                                      : 'Select opponent...'}
+                            </option>
+                            {opponents.map((o) => (
+                                <option key={opponentKey(o.owner, o.id)} value={opponentKey(o.owner, o.id)}>
+                                    {o.name} (Level {o.level}) · {shortAddress(o.owner)} · {o.winCount}W/{o.lossCount}L
+                                </option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -128,7 +154,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                     <button
                         type="button"
                         onClick={handleBattle}
-                        disabled={battle.isPending || !selectedPet1 || !selectedPet2}
+                        disabled={battle.isPending || !selectedPet1 || !selectedOpponent}
                     >
                         {battle.isPending ? pendingLabel : submitLabel}
                     </button>

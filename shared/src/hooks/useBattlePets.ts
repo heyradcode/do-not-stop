@@ -6,8 +6,15 @@ import { useActiveChain } from './useActiveChain';
 import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
 
 export interface BattlePetsArgs {
+    /** Attacker — must be a pet the caller owns. */
     petId1: string;
+    /** Defender — may belong to another player. */
     petId2: string;
+    /**
+     * Owner of the defender pet. Required for cross-owner Solana battles (used to
+     * derive the defender pet PDA). Ignored on EVM, where `petId2` is a global id.
+     */
+    defenderOwner?: string;
 }
 
 export type UseBattlePetsOptions = {
@@ -79,6 +86,7 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
             await solanaActions.battlePets.mutateAsync({
                 attackerPetId: Number(args.petId1),
                 defenderPetId: Number(args.petId2),
+                ...(args.defenderOwner ? { defenderOwner: args.defenderOwner } : {}),
             });
             notifySuccess();
         } catch (err) {
