@@ -5,6 +5,9 @@
     flex-direction: column;
     gap: 16px;
     padding: 16px;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
 }
 
 .battle-setup-arena {
@@ -46,13 +49,17 @@
 
 .battle-setup-arena .arena-slot {
     background: var(--zi-card-bg);
-    border: 1px solid var(--zi-border);
+    border: 2px solid var(--zi-border);
     border-radius: 8px;
     padding: 8px;
     display: grid;
     gap: 6px;
     min-width: 0;
+    max-width: 100%;
+    width: 100%;
     min-height: 72px;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .battle-setup-arena .arena-slot.is-empty {
@@ -68,10 +75,8 @@
 }
 
 .battle-setup-arena .arena-slot.is-selected {
-    border-color: rgb(255 110 196 / 55%);
-    box-shadow:
-        inset 0 0 12px rgb(255 110 196 / 12%),
-        0 0 12px rgb(255 110 196 / 18%);
+    border-color: rgb(255 110 196 / 65%);
+    box-shadow: inset 0 0 14px rgb(255 110 196 / 18%);
     animation: battle-slot-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -99,9 +104,20 @@
 
 .battle-setup-arena.is-result {
     border-color: rgb(0 255 157 / 38%);
-    box-shadow:
-        inset 0 0 18px rgb(0 255 157 / 8%),
-        0 0 16px rgb(0 255 157 / 16%);
+    box-shadow: inset 0 0 18px rgb(0 255 157 / 10%);
+}
+
+.battle-setup-arena .content {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.battle-setup-arena .center {
+    flex-shrink: 0;
+}
+
+.battle-setup-arena .center .icon {
+    box-shadow: inset 0 0 10px rgb(255 110 196 / 24%);
 }
 
 .battle-setup-arena .slot-placeholder {
@@ -167,7 +183,7 @@
 .battle-setup-arena .life-fill {
     height: 100%;
     background: linear-gradient(90deg, #0fffae, #9effd4);
-    box-shadow: 0 0 10px rgb(0 255 157 / 45%);
+    box-shadow: inset 0 0 6px rgb(0 255 157 / 35%);
 }
 
 .battle-picker-section {
@@ -175,6 +191,8 @@
     flex-direction: column;
     gap: 10px;
     min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
 }
 
 .battle-picker-section .section-head {
@@ -238,23 +256,33 @@
 .battle-picker-strip {
     display: flex;
     gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     overflow-x: auto;
-    padding-block: 2px 4px;
+    overflow-y: hidden;
+    padding: 6px;
+    scroll-padding: 6px;
     scrollbar-width: thin;
     scrollbar-color: var(--neon-cyan) transparent;
 }
 
 .battle-picker-strip .battle-picker-card {
-    flex: 0 0 min(168px, 78vw);
+    flex: 0 0 min(168px, calc(100% - 12px));
+    max-width: calc(100% - 12px);
 }
 
 .battle-opponent-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(148px, 100%), 1fr));
     gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     max-height: min(42vh, 320px);
-    overflow-y: auto;
-    padding-inline-end: 2px;
+    overflow: auto;
+    padding: 6px;
+    scroll-padding: 6px;
     scrollbar-width: thin;
     scrollbar-color: var(--neon-cyan) transparent;
 }
@@ -262,34 +290,46 @@
 .battle-picker-card {
     appearance: none;
     background: var(--zi-card-bg);
-    border: 1px solid var(--zi-border);
+    border: 2px solid var(--zi-border);
     border-radius: 10px;
     padding: 10px;
     display: grid;
     gap: 8px;
     min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
     text-align: left;
     cursor: pointer;
     color: inherit;
-    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.battle-opponent-grid .battle-picker-card {
+    width: 100%;
 }
 
 .battle-picker-card:hover:not(:disabled) {
-    transform: translateY(-1px);
     border-color: rgb(125 214 255 / 45%);
 }
 
 .battle-picker-card:focus-visible {
-    outline: 2px solid var(--neon-cyan);
-    outline-offset: 2px;
+    outline: none;
+    border-color: var(--neon-cyan);
+    box-shadow: inset 0 0 0 1px rgb(125 214 255 / 55%), inset 0 0 12px rgb(125 214 255 / 16%);
 }
 
 .battle-picker-card.is-selected {
-    border-color: rgb(255 110 196 / 65%);
-    box-shadow:
-        inset 0 0 14px rgb(255 110 196 / 14%),
-        0 0 14px rgb(255 110 196 / 22%);
+    border-color: rgb(255 110 196 / 70%);
+    box-shadow: inset 0 0 16px rgb(255 110 196 / 20%);
     animation: battle-card-select 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.battle-picker-card.is-selected:focus-visible {
+    border-color: rgb(255 110 196 / 85%);
+    box-shadow:
+        inset 0 0 0 1px rgb(255 110 196 / 55%),
+        inset 0 0 16px rgb(255 110 196 / 24%);
 }
 
 .battle-picker-card:disabled {
@@ -558,57 +598,46 @@
 
 @keyframes battle-slot-enter {
     from {
-        opacity: 0;
-        transform: translateY(8px) scale(0.96);
+        opacity: 0.7;
     }
 
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
     }
 }
 
 @keyframes battle-slot-flash {
     0% {
-        box-shadow: 0 0 0 rgb(255 110 196 / 0%);
+        box-shadow: inset 0 0 0 rgb(255 110 196 / 0%);
     }
 
     40% {
-        box-shadow:
-            inset 0 0 16px rgb(255 110 196 / 24%),
-            0 0 22px rgb(255 110 196 / 42%);
+        box-shadow: inset 0 0 18px rgb(255 110 196 / 30%);
     }
 
     100% {
-        box-shadow:
-            inset 0 0 12px rgb(255 110 196 / 12%),
-            0 0 12px rgb(255 110 196 / 18%);
+        box-shadow: inset 0 0 14px rgb(255 110 196 / 18%);
     }
 }
 
 @keyframes battle-card-select {
-    0% {
-        transform: scale(1);
+    0%,
+    100% {
+        box-shadow: inset 0 0 16px rgb(255 110 196 / 20%);
     }
 
     45% {
-        transform: scale(1.03);
-    }
-
-    100% {
-        transform: scale(1);
+        box-shadow: inset 0 0 22px rgb(255 110 196 / 32%);
     }
 }
 
 @keyframes battle-vs-pulse {
     0%,
     100% {
-        transform: scale(1);
         opacity: 0.85;
     }
 
     50% {
-        transform: scale(1.12);
         opacity: 1;
     }
 }
@@ -616,15 +645,11 @@
 @keyframes battle-vs-glow {
     0%,
     100% {
-        box-shadow:
-            inset 0 0 10px rgb(255 110 196 / 24%),
-            0 0 14px rgb(255 110 196 / 32%);
+        box-shadow: inset 0 0 10px rgb(255 110 196 / 24%);
     }
 
     50% {
-        box-shadow:
-            inset 0 0 16px rgb(255 110 196 / 34%),
-            0 0 22px rgb(255 110 196 / 48%);
+        box-shadow: inset 0 0 16px rgb(255 110 196 / 38%);
     }
 }
 
