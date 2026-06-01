@@ -17,6 +17,10 @@
         margin-inline: auto;
     }
 
+    &.interaction-standalone:has(.battle-setup) {
+        max-width: 760px;
+    }
+
     .description {
         margin: 4px 0 0;
         font-size: clamp(0.625rem, 0.75rem, 0.875rem);

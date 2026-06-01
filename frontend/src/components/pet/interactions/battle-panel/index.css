@@ -1,0 +1,357 @@
+/* Battle setup — arena VS header + card pickers (scoped under `.battle-setup`). */
+
+.pet-container.pet-interactions .interface.battle-setup {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+}
+
+.battle-setup-arena {
+    margin: 0;
+}
+
+.battle-setup-arena .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--zi-text);
+}
+
+.battle-setup-arena .arena-badge {
+    background: rgb(255 110 196 / 10%);
+    color: #ff9ad6;
+    border: 1px solid rgb(255 110 196 / 44%);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    box-shadow: 0 0 8px rgb(255 110 196 / 22%);
+    white-space: nowrap;
+}
+
+.battle-setup-arena .arena-slot {
+    background: var(--zi-card-bg);
+    border: 1px solid var(--zi-border);
+    border-radius: 8px;
+    padding: 8px;
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    min-height: 72px;
+}
+
+.battle-setup-arena .arena-slot.is-empty {
+    border-style: dashed;
+    border-color: rgb(125 214 255 / 28%);
+    align-content: center;
+    justify-items: center;
+    text-align: center;
+}
+
+.battle-setup-arena .arena-slot.is-selected {
+    border-color: rgb(255 110 196 / 55%);
+    box-shadow:
+        inset 0 0 12px rgb(255 110 196 / 12%),
+        0 0 12px rgb(255 110 196 / 18%);
+}
+
+.battle-setup-arena .slot-placeholder {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--zi-text-muted);
+}
+
+.battle-setup-arena .slot-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.battle-setup-arena .slot-avatar {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    line-height: 1;
+    border-radius: 8px;
+    background: rgb(5 13 30 / 78%);
+    border: 1px solid rgb(125 214 255 / 18%);
+}
+
+.battle-setup-arena .slot-meta {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.battle-setup-arena .slot-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--zi-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.battle-setup-arena .slot-sub {
+    font-size: 10px;
+    color: var(--zi-text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.battle-setup-arena .life-track {
+    height: 7px;
+    background: rgb(5 13 30 / 78%);
+    border: 1px solid rgb(0 255 157 / 18%);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.battle-setup-arena .life-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0fffae, #9effd4);
+    box-shadow: 0 0 10px rgb(0 255 157 / 45%);
+}
+
+.battle-picker-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.battle-picker-section .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.battle-picker-section .section-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--zi-text-muted);
+}
+
+.battle-picker-section .section-action {
+    background: transparent;
+    border: 1px solid rgb(125 214 255 / 28%);
+    border-radius: 2px;
+    color: var(--neon-cyan);
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: var(--transition, all 0.2s ease);
+}
+
+.battle-picker-section .section-action:hover:not(:disabled) {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 10px rgb(125 214 255 / 24%);
+}
+
+.battle-picker-section .section-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.battle-picker-strip {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-block: 2px 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--neon-cyan) transparent;
+}
+
+.battle-picker-strip .battle-picker-card {
+    flex: 0 0 min(168px, 78vw);
+}
+
+.battle-opponent-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(148px, 100%), 1fr));
+    gap: 10px;
+    max-height: min(42vh, 320px);
+    overflow-y: auto;
+    padding-inline-end: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--neon-cyan) transparent;
+}
+
+.battle-picker-card {
+    appearance: none;
+    background: var(--zi-card-bg);
+    border: 1px solid var(--zi-border);
+    border-radius: 10px;
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.battle-picker-card:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: rgb(125 214 255 / 45%);
+}
+
+.battle-picker-card:focus-visible {
+    outline: 2px solid var(--neon-cyan);
+    outline-offset: 2px;
+}
+
+.battle-picker-card.is-selected {
+    border-color: rgb(255 110 196 / 65%);
+    box-shadow:
+        inset 0 0 14px rgb(255 110 196 / 14%),
+        0 0 14px rgb(255 110 196 / 22%);
+}
+
+.battle-picker-card:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.battle-picker-card .card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+}
+
+.battle-picker-card .card-avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    line-height: 1;
+    border-radius: 10px;
+    background:
+        radial-gradient(circle at 30% 30%, rgb(125 214 255 / 20%), transparent 60%),
+        rgb(5 13 30 / 82%);
+    border: 1px solid rgb(125 214 255 / 18%);
+}
+
+.battle-picker-card .card-body {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+}
+
+.battle-picker-card .card-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--zi-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.battle-picker-card .card-meta {
+    font-size: 11px;
+    color: var(--zi-text-muted);
+}
+
+.battle-picker-card .card-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.battle-picker-card .stat-pill {
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 1px solid rgb(125 214 255 / 22%);
+    color: rgb(195 210 255 / 85%);
+    background: rgb(5 13 30 / 72%);
+}
+
+.battle-picker-card .stat-pill.rarity {
+    color: #fff;
+    border-color: transparent;
+}
+
+.battle-picker-empty {
+    padding: 16px;
+    border: 1px dashed rgb(125 214 255 / 24%);
+    border-radius: 10px;
+    text-align: center;
+    color: var(--zi-text-muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.battle-setup .action-controls {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.battle-setup .action-controls button[type='button']:not(.cancel-button) {
+    background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
+    border: 1px solid rgb(255 110 196 / 48%);
+    border-radius: 2px;
+    color: #ff9ad6;
+    padding: 10px 18px;
+    font-weight: 700;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow:
+        inset 0 0 12px rgb(255 110 196 / 14%),
+        0 0 12px rgb(255 110 196 / 22%);
+}
+
+.battle-setup .action-controls button[type='button']:not(.cancel-button):hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: rgb(255 110 196 / 70%);
+}
+
+.battle-setup .action-controls button[type='button']:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .battle-setup-arena .content {
+        grid-template-columns: 1fr !important;
+    }
+
+    .battle-setup-arena .center {
+        flex-direction: row !important;
+        justify-content: center;
+        gap: 8px;
+    }
+}
