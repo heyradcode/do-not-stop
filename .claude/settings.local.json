@@ -42,7 +42,13 @@
       "Bash(curl -s 'http://localhost:3001/api/battle/opponents?chain=evm&minLevel=5' -H 'Authorization: Bearer __TRACKED_VAR__')",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3001/api/battle/opponents?chain=evm\")",
       "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/api/battle/opponents?chain=foo -H 'Authorization: Bearer __TRACKED_VAR__')",
-      "Bash(kill %1)"
+      "Bash(kill %1)",
+      "Bash(env -u EVM_CONTRACT_ADDRESS node ../node_modules/tsx/dist/cli.mjs src/scripts/indexOnce.ts)",
+      "Bash(pnpm eth:node)",
+      "Bash(echo \"started node pid $!\")",
+      "Read(//tmp/**)",
+      "Bash(timeout 240 pnpm eth:deploy)",
+      "Bash(export EVM_CONTRACT_ADDRESS=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 EVM_RPC_URL=http://localhost:8545)"
     ]
   }
 }

@@ -16,7 +16,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:push": "prisma db push",
-    "seed:roster": "node ../node_modules/tsx/dist/cli.mjs src/scripts/seedRoster.ts"
+    "seed:roster": "node ../node_modules/tsx/dist/cli.mjs src/scripts/seedRoster.ts",
+    "index:once": "node ../node_modules/tsx/dist/cli.mjs src/scripts/indexOnce.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
