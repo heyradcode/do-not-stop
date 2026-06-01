@@ -18,6 +18,13 @@ import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { formatTxHashHint, usePetActionErrorDisplay } from '@hooks/usePetActionErrorDisplay';
 import Icon, { BattleIcon, CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/common/icon';
+import {
+    getLevelDelta,
+    getMatchLabel,
+    getMatchTier,
+    pickRandomOpponent,
+    sortOpponentsByMatch,
+} from './battleMatchmaking';
 import './index.css';
 
 export type BattlePanelProps = {
@@ -106,17 +113,26 @@ const FighterPickerCard: React.FC<FighterPickerCardProps> = ({ pet, petId, selec
 
 type OpponentPickerCardProps = {
     opponent: OpponentPet;
+    fighterLevel: number | null;
     selected: boolean;
     onSelect: (key: string) => void;
 };
 
-const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({ opponent, selected, onSelect }) => {
+const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({
+    opponent,
+    fighterLevel,
+    selected,
+    onSelect,
+}) => {
     const key = opponentKey(opponent.owner, opponent.id);
+    const levelDelta = getLevelDelta(fighterLevel, opponent.level);
+    const matchTier = getMatchTier(levelDelta);
+    const matchLabel = getMatchLabel(matchTier, levelDelta);
 
     return (
         <button
             type="button"
-            className={`battle-picker-card${selected ? ' is-selected' : ''}`}
+            className={`battle-picker-card${selected ? ' is-selected' : ''}${matchTier !== 'unknown' ? ` match-${matchTier}` : ''}`}
             aria-pressed={selected}
             onClick={() => onSelect(key)}
         >
@@ -132,6 +148,9 @@ const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({ opponent, selec
                 </div>
             </div>
             <div className="card-stats">
+                {matchLabel ? (
+                    <span className={`stat-pill match-${matchTier}`}>{matchLabel}</span>
+                ) : null}
                 <span className="stat-pill rarity" style={{ backgroundColor: getRarityColor(opponent.rarity) }}>
                     {getRarityName(opponent.rarity)}
                 </span>
@@ -178,6 +197,12 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         () => opponents.find((o) => opponentKey(o.owner, o.id) === selectedOpponent),
         [opponents, selectedOpponent],
     );
+    const fighterLevel = selectedFighter?.level ?? null;
+    const sortedOpponents = useMemo(
+        () => sortOpponentsByMatch(opponents, fighterLevel),
+        [opponents, fighterLevel],
+    );
+    const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
 
     const displayError = usePetActionErrorDisplay(
         battle.error,
@@ -220,6 +245,19 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         void refetchOpponents();
     };
 
+    const handleRandomMatch = () => {
+        if (!selectedFighter) {
+            setValidationError('Choose your fighter before using random match');
+            return;
+        }
+
+        const pick = pickRandomOpponent(opponents, selectedFighter.level);
+        if (!pick) return;
+
+        setValidationError(null);
+        setSelectedOpponent(opponentKey(pick.owner, pick.id));
+    };
+
     const ErrorIcon = displayError.isUserRejection
         ? PauseIcon
         : displayError.isContractError
@@ -244,9 +282,24 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 <div className="battle-arena-card battle-setup-arena">
                     <div className="header">
                         <span><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Arena</span>
-                        <span className="arena-badge">
-                            {selectedFighter && opponent ? 'Ready' : 'Setup'}
-                        </span>
+                        <div className="arena-actions">
+                            <button
+                                type="button"
+                                className="section-action section-action-primary"
+                                onClick={handleRandomMatch}
+                                disabled={!canRandomMatch || battle.isPending}
+                                title={
+                                    selectedFighter
+                                        ? 'Pick a random opponent near your fighter level'
+                                        : 'Select your fighter first'
+                                }
+                            >
+                                Random match
+                            </button>
+                            <span className="arena-badge">
+                                {selectedFighter && opponent ? 'Ready' : 'Setup'}
+                            </span>
+                        </div>
                     </div>
                     <div className="hub-divider" />
                     <div className="content">
@@ -290,7 +343,12 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
 
                 <section className="battle-picker-section" aria-label="Opponents">
                     <div className="section-head">
-                        <h5 className="section-title">Opponents</h5>
+                        <h5 className="section-title">
+                            Opponents
+                            {fighterLevel != null ? (
+                                <span className="section-hint"> · sorted by level match</span>
+                            ) : null}
+                        </h5>
                         <button
                             type="button"
                             className="section-action"
@@ -308,10 +366,11 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                         </div>
                     ) : (
                         <div className="battle-opponent-grid">
-                            {opponents.map((o) => (
+                            {sortedOpponents.map((o) => (
                                 <OpponentPickerCard
                                     key={opponentKey(o.owner, o.id)}
                                     opponent={o}
+                                    fighterLevel={fighterLevel}
                                     selected={selectedOpponent === opponentKey(o.owner, o.id)}
                                     onSelect={setSelectedOpponent}
                                 />
