@@ -48,7 +48,10 @@
       "Bash(echo \"started node pid $!\")",
       "Read(//tmp/**)",
       "Bash(timeout 240 pnpm eth:deploy)",
-      "Bash(export EVM_CONTRACT_ADDRESS=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 EVM_RPC_URL=http://localhost:8545)"
+      "Bash(export EVM_CONTRACT_ADDRESS=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 EVM_RPC_URL=http://localhost:8545)",
+      "Bash(CI=1 pnpm --filter backend add @coral-xyz/anchor@0.32.1 @solana/web3.js@^1.95.2)",
+      "Bash(env -u EVM_CONTRACT_ADDRESS SOLANA_PROGRAM_ID=78AXV46ks5oFoJHkukvbsfZTJixdj2MeStzuC6thiUry SOLANA_RPC_URL=http://localhost:8899 node ../node_modules/tsx/dist/cli.mjs -e 'import '\\\\''dotenv/config'\\\\''; import { runOnce } from '\\\\''./src/indexer'\\\\''; import { prisma } from '\\\\''./src/lib/prisma'\\\\''; runOnce\\(\\).then\\(\\(\\)=>console.log\\('\\\\''ran ok'\\\\''\\)\\).catch\\(e=>console.log\\('\\\\''aggregated failure:'\\\\'', e.message\\)\\).finally\\(\\(\\)=>prisma.$disconnect\\(\\)\\);')",
+      "Bash(env EVM_CONTRACT_ADDRESS=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 EVM_RPC_URL=http://localhost:8545 SOLANA_PROGRAM_ID=78AXV46ks5oFoJHkukvbsfZTJixdj2MeStzuC6thiUry SOLANA_RPC_URL=http://localhost:8899 node ../node_modules/tsx/dist/cli.mjs -e 'import '\\\\''dotenv/config'\\\\''; import { runOnce } from '\\\\''./src/indexer'\\\\''; import { prisma } from '\\\\''./src/lib/prisma'\\\\''; runOnce\\(\\).then\\(\\(\\)=>console.log\\('\\\\''ran ok'\\\\''\\)\\).catch\\(e=>console.log\\('\\\\''aggregated failure:'\\\\'', e.message\\)\\).finally\\(\\(\\)=>prisma.$disconnect\\(\\)\\);')"
     ]
   }
 }
