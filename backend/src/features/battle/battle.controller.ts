@@ -1,14 +1,13 @@
 import type { Request, Response } from 'express';
 import type { AuthenticatedRequest } from '../../middleware/auth';
 import { parseIntParam } from '../../utils/parseIntParam';
+import { SUPPORTED_CHAINS, isSupportedChain } from '../../types/chain';
 import { findOpponents } from './battle.service';
 import {
     DEFAULT_PAGE_SIZE,
     MAX_PAGE_SIZE,
-    SUPPORTED_CHAINS,
     type BattleErrorResponse,
     type OpponentsResponse,
-    type SupportedChain,
 } from './battle.types';
 
 /**
@@ -25,7 +24,7 @@ export async function getOpponents(
     const caller = authReq.user?.address ?? '';
 
     const chain = String(req.query.chain ?? '');
-    if (!SUPPORTED_CHAINS.includes(chain as SupportedChain)) {
+    if (!isSupportedChain(chain)) {
         res.status(400).json({ error: `chain must be one of: ${SUPPORTED_CHAINS.join(', ')}` });
         return;
     }
@@ -36,7 +35,7 @@ export async function getOpponents(
 
     try {
         const { opponents, total } = await findOpponents({
-            chain: chain as SupportedChain,
+            chain,
             caller,
             minLevel,
             page,

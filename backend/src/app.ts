@@ -1,22 +1,19 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 
+import { env } from './config/env';
 import authRoutes from './features/auth/auth.routes';
 import protectedRoutes from './features/protected/protected.routes';
 import healthRoutes from './features/health/health.routes';
 import battleRoutes from './features/battle/battle.routes';
 
-dotenv.config();
-
 const app = express();
 
-const corsOrigin = process.env.CORS_ORIGIN;
 app.use(
     cors(
-        corsOrigin
+        env.corsOrigin
             ? {
-                  origin: corsOrigin.split(',').map((origin) => origin.trim()),
+                  origin: env.corsOrigin.split(',').map((origin) => origin.trim()),
               }
             : undefined
     )

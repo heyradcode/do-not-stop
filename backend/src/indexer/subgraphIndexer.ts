@@ -1,13 +1,14 @@
-import { upsertPet, type PetChain } from './rosterRepository';
+import { upsertPet } from '../repositories/roster.repository';
+import type { Chain } from '../types/chain';
 
 /**
  * Roster source: Substreams-powered subgraphs on The Graph (one deployment per chain).
  * Queries each subgraph's GraphQL `pets` collection and upserts into `pet_roster`.
  *
- * Subgraph schemas live under `backend/indexing/{evm,solana}/subgraph/schema.graphql`.
+ * Subgraph schemas live under `backend/graph/{evm,solana}/subgraph/schema.graphql`.
  */
 export interface SubgraphIndexerConfig {
-    chain: PetChain;
+    chain: Chain;
     /** Subgraph GraphQL query endpoint (Studio or decentralized network). */
     url: string;
     /** Page size; The Graph caps `first` at 1000. */
@@ -49,7 +50,7 @@ const PETS_QUERY = `
 
 const DEFAULT_PAGE_SIZE = 1000;
 
-function normalizeOwner(chain: PetChain, owner: string): string {
+function normalizeOwner(chain: Chain, owner: string): string {
     return chain === 'evm' ? owner.toLowerCase() : owner;
 }
 

@@ -2,16 +2,13 @@ import jwt from 'jsonwebtoken';
 import { ethers } from 'ethers';
 import bs58 from 'bs58';
 import nacl from 'tweetnacl';
+import { env } from '../../config/env';
 import type { User } from './auth.types';
 
 /** In-memory storage for demo (use database in production). */
 export const users = new Map<string, User>();
 
 const ED25519_SIG_LEN = 64;
-
-function jwtSecret(): string {
-    return process.env.JWT_SECRET || 'fallback-secret-key';
-}
 
 export function isEvmAddress(address: string): boolean {
     return /^0x[a-fA-F0-9]{40}$/i.test(address);
@@ -117,7 +114,7 @@ export function issueToken(storageKey: string): string {
             address: storageKey,
             userId: storageKey,
         },
-        jwtSecret(),
+        env.jwtSecret,
         { expiresIn: '24h' }
     );
 }

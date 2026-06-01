@@ -2,7 +2,7 @@
 /**
  * Prepare subgraph.yaml for the Solana Substreams-powered subgraph.
  *
- * Usage (from backend/indexing/solana/subgraph):
+ * Usage (from backend/graph/solana/subgraph):
  *   pnpm configure
  *
  * Env:
@@ -56,7 +56,7 @@ function main() {
     if (!fs.existsSync(path.join(SUBGRAPH_DIR, '..', 'substreams', 'substreams.spkg'))) {
         console.warn(
             '⚠️  Missing ../substreams/substreams.spkg — build and pack the Substreams module first:\n' +
-                '   cd backend/indexing/solana/substreams && substreams build && substreams pack'
+                '   cd backend/graph/solana/substreams && substreams build && substreams pack'
         );
     }
 }

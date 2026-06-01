@@ -1,8 +1,9 @@
 import { scanSubgraphRoster } from './subgraphIndexer';
-import { countByChain, type PetChain } from './rosterRepository';
+import { countByChain } from '../repositories/roster.repository';
+import type { Chain } from '../types/chain';
 
 interface SubgraphSource {
-    chain: PetChain;
+    chain: Chain;
     url: string;
 }
 
@@ -14,7 +15,7 @@ interface IndexerConfig {
 
 const DEFAULT_INTERVAL_MS = 30_000;
 
-function readSubgraphUrl(chain: PetChain): string | undefined {
+function readSubgraphUrl(chain: Chain): string | undefined {
     if (chain === 'evm') {
         return (
             process.env.SUBGRAPH_URL_EVM?.trim() ??

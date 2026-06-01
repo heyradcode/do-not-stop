@@ -2,7 +2,7 @@
 /**
  * Prepare subgraph.yaml + src/addresses.ts + abis/ from Hardhat artifacts.
  *
- * Usage (from backend/indexing/evm/subgraph):
+ * Usage (from backend/graph/evm/subgraph):
  *   pnpm configure
  *
  * Env (optional — auto-read from ignition/deployments when present):

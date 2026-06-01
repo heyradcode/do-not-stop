@@ -1,12 +1,11 @@
-export const SUPPORTED_CHAINS = ['evm', 'solana'] as const;
-export type SupportedChain = (typeof SUPPORTED_CHAINS)[number];
+import type { Chain } from '../../types/chain';
 
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 50;
 
 export interface OpponentDto {
     id: string;
-    chain: SupportedChain;
+    chain: Chain;
     owner: string;
     name: string;
     dna: string;
@@ -25,7 +24,7 @@ export interface OpponentsResponse {
 }
 
 export interface OpponentsQuery {
-    chain: SupportedChain;
+    chain: Chain;
     caller: string;
     minLevel: number;
     page: number;

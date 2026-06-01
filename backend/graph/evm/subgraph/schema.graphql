@@ -1,5 +1,5 @@
 # Pet entities for PvP matchmaking. Fields mirror `pet_roster` in the backend DB.
-# Source definitions: backend/indexing/evm/substreams → backend/indexing/evm/subgraph
+# Source definitions: backend/graph/evm/substreams → backend/graph/evm/subgraph
 # Consumed by `backend/src/indexer/subgraphIndexer.ts`.
 
 type Pet @entity(immutable: false) {

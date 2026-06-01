@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import '../config/env';
 import { runOnce } from '../indexer';
 import { prisma } from '../config/prisma';
 

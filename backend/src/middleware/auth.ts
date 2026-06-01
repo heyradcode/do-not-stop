@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { env } from '../config/env';
 
 /** Request augmented with the verified JWT payload. */
 export interface AuthenticatedRequest extends Request {
@@ -26,10 +27,10 @@ export const verifyToken = (
     }
 
     try {
-        const decoded = jwt.verify(
-            token,
-            process.env.JWT_SECRET || 'fallback-secret-key'
-        ) as { address: string; userId: string };
+        const decoded = jwt.verify(token, env.jwtSecret) as {
+            address: string;
+            userId: string;
+        };
         (req as AuthenticatedRequest).user = decoded;
         next();
     } catch {

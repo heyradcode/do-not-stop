@@ -1,4 +1,5 @@
-import 'dotenv/config';
+import '../config/env';
+import { upsertPet, countByChain, type RosterPet } from '../repositories/roster.repository';
 import { prisma } from '../config/prisma';
 
 /**
@@ -9,7 +10,7 @@ import { prisma } from '../config/prisma';
  */
 const now = Math.floor(Date.now() / 1000);
 
-const demoPets = [
+const demoPets: Omit<RosterPet, 'readyAt'>[] = [
     { chain: 'evm', petId: '101', owner: '0xfa11deadbeef00000000000000000000000000ff', name: 'Cinder', level: 2, rarity: 1, dna: '8473920184756', winCount: 3, lossCount: 1 },
     { chain: 'evm', petId: '102', owner: '0xb0bb0000000000000000000000000000000b0b00', name: 'Nimbus', level: 5, rarity: 2, dna: '99120384756102', winCount: 8, lossCount: 2 },
     { chain: 'evm', petId: '103', owner: '0xcafe000000000000000000000000000000cafe00', name: 'Volt', level: 9, rarity: 3, dna: '55501928374650', winCount: 14, lossCount: 5 },
@@ -19,19 +20,15 @@ const demoPets = [
 
 async function main() {
     for (const pet of demoPets) {
-        await prisma.petRoster.upsert({
-            where: { chain_petId: { chain: pet.chain, petId: pet.petId } },
-            create: { ...pet, readyAt: BigInt(now) },
-            update: { ...pet, readyAt: BigInt(now) },
-        });
+        await upsertPet({ ...pet, readyAt: BigInt(now) });
     }
-    const total = await prisma.petRoster.count();
+    const total = (await countByChain('evm')) + (await countByChain('solana'));
     console.log(`✅ Seeded ${demoPets.length} demo pets. Roster now has ${total} rows.`);
 }
 
 main()
     .catch((err) => {
         console.error('Seed failed:', err);
-        process.exit(1);
+        process.exitCode = 1;
     })
     .finally(() => prisma.$disconnect());
