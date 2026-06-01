@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { verifyToken } from '../../middleware/auth';
+import { verifyToken } from '@middleware/auth';
 import { getOpponents } from './battle.controller';
 
 const router: Router = express.Router();

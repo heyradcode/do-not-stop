@@ -1,4 +1,4 @@
-import { findReadyOpponents } from '../../repositories/roster.repository';
+import { findReadyOpponents } from '@repositories/roster.repository';
 import type { OpponentDto, OpponentsQuery } from './battle.types';
 
 export async function findOpponents(

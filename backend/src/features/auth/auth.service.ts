@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { ethers } from 'ethers';
 import bs58 from 'bs58';
 import nacl from 'tweetnacl';
-import { env } from '../../config/env';
+import { env } from '@config/env';
 import type { User } from './auth.types';
 
 /** In-memory storage for demo (use database in production). */

@@ -1,6 +1,7 @@
-import '../config/env';
-import { runOnce } from '../indexer';
-import { prisma } from '../config/prisma';
+import '../register-path-aliases';
+import '@config/env';
+import { runOnce } from '@indexer';
+import { prisma } from '@config/prisma';
 
 /**
  * Run a single roster scan and exit. Useful for one-off refreshes or debugging

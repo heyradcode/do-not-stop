@@ -1,5 +1,5 @@
-import { prisma } from '../config/prisma';
-import type { Chain } from '../types/chain';
+import { prisma } from '@config/prisma';
+import type { Chain } from '@typings/chain';
 
 /**
  * Single data-access layer for the `pet_roster` table. Both the indexer (writes)

@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { getUserCount } from '../auth/auth.service';
+import { getUserCount } from '@features/auth/auth.service';
 
 interface HealthResponse {
     status: string;

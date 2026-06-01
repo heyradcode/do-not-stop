@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { env } from '../config/env';
+import { env } from '@config/env';
 
 /** Request augmented with the verified JWT payload. */
 export interface AuthenticatedRequest extends Request {

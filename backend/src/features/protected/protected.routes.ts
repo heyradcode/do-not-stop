@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { verifyToken } from '../../middleware/auth';
+import { verifyToken } from '@middleware/auth';
 import { getProfile, getUsers } from './protected.controller';
 
 const router: Router = express.Router();

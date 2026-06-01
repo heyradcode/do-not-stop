@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import type { AuthenticatedRequest } from '../../middleware/auth';
+import type { AuthenticatedRequest } from '@middleware/auth';
 import { getUserProfile, listUsers } from './protected.service';
 import type { ProfileResponse, ProtectedErrorResponse, UsersResponse } from './protected.types';
 

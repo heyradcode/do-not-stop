@@ -1,6 +1,7 @@
-import { env } from './config/env';
+import './register-path-aliases';
+import { env } from '@config/env';
 import app from './app';
-import { startIndexers } from './indexer';
+import { startIndexers } from '@indexer';
 
 app.listen(env.port, () => {
     const { port } = env;

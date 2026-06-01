@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
-import type { AuthenticatedRequest } from '../../middleware/auth';
-import { parseIntParam } from '../../utils/parseIntParam';
-import { SUPPORTED_CHAINS, isSupportedChain } from '../../types/chain';
+import type { AuthenticatedRequest } from '@middleware/auth';
+import { parseIntParam } from '@utils';
+import { SUPPORTED_CHAINS, isSupportedChain } from '@typings/chain';
 import { findOpponents } from './battle.service';
 import {
     DEFAULT_PAGE_SIZE,

@@ -1,5 +1,5 @@
-import { upsertPet } from '../repositories/roster.repository';
-import type { Chain } from '../types/chain';
+import { upsertPet } from '@repositories/roster.repository';
+import type { Chain } from '@typings/chain';
 
 /**
  * Roster source: Substreams-powered subgraphs on The Graph (one deployment per chain).

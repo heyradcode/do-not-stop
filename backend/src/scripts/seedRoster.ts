@@ -1,6 +1,7 @@
-import '../config/env';
-import { upsertPet, countByChain, type RosterPet } from '../repositories/roster.repository';
-import { prisma } from '../config/prisma';
+import '../register-path-aliases';
+import '@config/env';
+import { upsertPet, countByChain, type RosterPet } from '@repositories/roster.repository';
+import { prisma } from '@config/prisma';
 
 /**
  * Dev-only: seed a handful of opponent pets so `GET /api/battle/opponents`

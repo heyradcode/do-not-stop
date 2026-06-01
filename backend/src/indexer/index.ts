@@ -1,6 +1,6 @@
 import { scanSubgraphRoster } from './subgraphIndexer';
-import { countByChain } from '../repositories/roster.repository';
-import type { Chain } from '../types/chain';
+import { countByChain } from '@repositories/roster.repository';
+import type { Chain } from '@typings/chain';
 
 interface SubgraphSource {
     chain: Chain;

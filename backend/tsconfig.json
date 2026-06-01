@@ -3,6 +3,18 @@
         "target": "ES2022",
         "module": "CommonJS",
         "moduleResolution": "node",
+        "baseUrl": ".",
+        "paths": {
+            "@config/*": ["src/config/*"],
+            "@features/*": ["src/features/*"],
+            "@middleware/*": ["src/middleware/*"],
+            "@indexer": ["src/indexer/index.ts"],
+            "@indexer/*": ["src/indexer/*"],
+            "@repositories/*": ["src/repositories/*"],
+            "@utils": ["src/utils/index.ts"],
+            "@typings/*": ["src/types/*"],
+            "@generated/*": ["src/generated/*"]
+        },
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
         "allowJs": true,

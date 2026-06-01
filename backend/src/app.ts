@@ -1,11 +1,11 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 
-import { env } from './config/env';
-import authRoutes from './features/auth/auth.routes';
-import protectedRoutes from './features/protected/protected.routes';
-import healthRoutes from './features/health/health.routes';
-import battleRoutes from './features/battle/battle.routes';
+import { env } from '@config/env';
+import authRoutes from '@features/auth/auth.routes';
+import protectedRoutes from '@features/protected/protected.routes';
+import healthRoutes from '@features/health/health.routes';
+import battleRoutes from '@features/battle/battle.routes';
 
 const app = express();
 
