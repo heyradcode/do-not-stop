@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { runOnce } from '../indexer';
-import { prisma } from '../lib/prisma';
+import { prisma } from '../config/prisma';
 
 /**
  * Run a single roster scan and exit. Useful for one-off refreshes or debugging

@@ -2,10 +2,10 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-import authRoutes from './routes/auth';
-import protectedRoutes from './routes/protected';
-import healthRoutes from './routes/health';
-import battleRoutes from './routes/battle';
+import authRoutes from './features/auth/auth.routes';
+import protectedRoutes from './features/protected/protected.routes';
+import healthRoutes from './features/health/health.routes';
+import battleRoutes from './features/battle/battle.routes';
 
 dotenv.config();
 

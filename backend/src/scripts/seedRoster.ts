@@ -1,9 +1,9 @@
 import 'dotenv/config';
-import { prisma } from '../lib/prisma';
+import { prisma } from '../config/prisma';
 
 /**
  * Dev-only: seed a handful of opponent pets so `GET /api/battle/opponents`
- * returns data before the real indexer (PVP_BATTLE.md §2) is built.
+ * returns data before subgraph URLs are configured.
  *
  * Run: pnpm --filter backend seed:roster
  */

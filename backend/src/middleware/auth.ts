@@ -11,8 +11,7 @@ export interface AuthenticatedRequest extends Request {
 
 /**
  * Express middleware that verifies the `Authorization: Bearer <jwt>` header and
- * attaches the decoded payload to `req.user`. Mirrors the check in
- * `routes/protected.ts` so new routes can share one implementation.
+ * attaches the decoded payload to `req.user`. Shared by battle and protected routes.
  */
 export const verifyToken = (
     req: Request,
