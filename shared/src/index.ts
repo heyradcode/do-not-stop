@@ -32,5 +32,5 @@ export {
     type PetsConfigProviderProps,
     type PetsEvmConfig,
 } from './contexts/PetsConfigContext';
-export type { Pet, PetChain, PetAction } from './types/pet';
+export type { Pet, PetChain, PetAction, OpponentPet } from './types/pet';
 export { queryClient } from './queryClient';

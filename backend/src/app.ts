@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import protectedRoutes from './routes/protected';
 import healthRoutes from './routes/health';
+import battleRoutes from './routes/battle';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/api/battle', battleRoutes);
 
 app.get('/', (req: Request, res: Response) => {
     res.json({
@@ -34,6 +36,7 @@ app.get('/', (req: Request, res: Response) => {
             auth: '/api/auth',
             protected: '/api/protected',
             health: '/api/health',
+            battle: '/api/battle',
         },
     });
 });
