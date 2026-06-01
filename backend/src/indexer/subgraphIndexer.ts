@@ -1,18 +1,14 @@
-import { upsertPet } from './rosterRepository';
+import { upsertPet, type PetChain } from './rosterRepository';
 
 /**
- * Alternative EVM roster source: a subgraph (The Graph) instead of polling RPC.
- * See PVP_BATTLE.md §2.bis. Queries the subgraph's GraphQL `pets` collection and
- * upserts into the same `pet_roster` table, so the matchmaking endpoint and the
- * frontend are unchanged.
+ * Roster source: Substreams-powered subgraphs on The Graph (one deployment per chain).
+ * Queries each subgraph's GraphQL `pets` collection and upserts into `pet_roster`.
  *
- * To use instead of (or alongside) the RPC poller, wire it into the runner in
- * `index.ts`: read `SUBGRAPH_URL` from env and call `scanSubgraphRoster` for EVM.
- *
- * Schema mirrors `contracts/ethereum/subgraph/schema.graphql`.
+ * Subgraph schemas live under `backend/indexing/{evm,solana}/subgraph/schema.graphql`.
  */
 export interface SubgraphIndexerConfig {
-    /** Subgraph GraphQL query endpoint. */
+    chain: PetChain;
+    /** Subgraph GraphQL query endpoint (Studio or decentralized network). */
     url: string;
     /** Page size; The Graph caps `first` at 1000. */
     pageSize?: number;
@@ -22,12 +18,12 @@ interface SubgraphPet {
     id: string;
     owner: string;
     name: string;
-    dna: string; // BigInt serialized as string
+    dna: string;
     level: number;
     rarity: number;
     winCount: number;
     lossCount: number;
-    readyAt: string; // BigInt serialized as string
+    readyAt: string;
 }
 
 interface GraphQLResponse {
@@ -35,9 +31,6 @@ interface GraphQLResponse {
     errors?: { message: string }[];
 }
 
-// Cursor pagination via `id_gt` (stable; avoids The Graph's skip ceiling).
-// Ordering and filtering both use the ID's lexicographic order, so every pet is
-// visited exactly once even though token ids are numeric strings.
 const PETS_QUERY = `
   query Pets($first: Int!, $lastId: ID!) {
     pets(first: $first, orderBy: id, orderDirection: asc, where: { id_gt: $lastId }) {
@@ -55,6 +48,10 @@ const PETS_QUERY = `
 `;
 
 const DEFAULT_PAGE_SIZE = 1000;
+
+function normalizeOwner(chain: PetChain, owner: string): string {
+    return chain === 'evm' ? owner.toLowerCase() : owner;
+}
 
 export async function scanSubgraphRoster(
     config: SubgraphIndexerConfig
@@ -74,12 +71,16 @@ export async function scanSubgraphRoster(
         });
 
         if (!res.ok) {
-            throw new Error(`subgraph request failed: HTTP ${res.status}`);
+            throw new Error(
+                `${config.chain} subgraph request failed: HTTP ${res.status}`
+            );
         }
 
         const json = (await res.json()) as GraphQLResponse;
         if (json.errors?.length) {
-            throw new Error(`subgraph errors: ${json.errors.map((e) => e.message).join('; ')}`);
+            throw new Error(
+                `${config.chain} subgraph errors: ${json.errors.map((e) => e.message).join('; ')}`
+            );
         }
 
         const pets = json.data?.pets ?? [];
@@ -89,9 +90,9 @@ export async function scanSubgraphRoster(
 
         for (const pet of pets) {
             await upsertPet({
-                chain: 'evm',
+                chain: config.chain,
                 petId: pet.id,
-                owner: pet.owner.toLowerCase(),
+                owner: normalizeOwner(config.chain, pet.owner),
                 name: pet.name,
                 level: pet.level,
                 rarity: pet.rarity,
@@ -101,11 +102,11 @@ export async function scanSubgraphRoster(
                 readyAt: BigInt(pet.readyAt),
             });
             scanned++;
-            lastId = pet.id; // advance the cursor; last assignment wins
+            lastId = pet.id;
         }
 
         if (pets.length < pageSize) {
-            break; // last page
+            break;
         }
     }
 

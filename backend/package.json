@@ -20,10 +20,8 @@
     "index:once": "node ../node_modules/tsx/dist/cli.mjs src/scripts/indexOnce.ts"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "0.32.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
-    "@solana/web3.js": "^1.95.2",
     "bs58": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

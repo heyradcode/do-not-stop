@@ -1,8 +1,10 @@
 import { prisma } from '../lib/prisma';
 
+export type PetChain = 'evm' | 'solana';
+
 /** A roster row as the indexer produces it (pre-persistence). */
 export interface RosterPet {
-    chain: string;
+    chain: PetChain;
     petId: string;
     owner: string;
     name: string;
@@ -26,6 +28,6 @@ export async function upsertPet(pet: RosterPet): Promise<void> {
     });
 }
 
-export async function countByChain(chain: string): Promise<number> {
+export async function countByChain(chain: PetChain): Promise<number> {
     return prisma.petRoster.count({ where: { chain } });
 }
