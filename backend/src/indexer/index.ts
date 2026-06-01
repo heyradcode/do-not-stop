@@ -1,10 +1,16 @@
-import { scanEvmRoster, type EvmIndexerConfig } from './evmIndexer';
+import { scanEvmRoster } from './evmIndexer';
+import { scanSubgraphRoster } from './subgraphIndexer';
 import { countByChain } from './rosterRepository';
+
+/** Where EVM roster data comes from. Subgraph is preferred when configured. */
+type EvmSource =
+    | { kind: 'subgraph'; url: string }
+    | { kind: 'rpc'; rpcUrl: string; contractAddress: string };
 
 interface IndexerConfig {
     enabled: boolean;
     intervalMs: number;
-    evm?: EvmIndexerConfig;
+    evm?: EvmSource;
 }
 
 const DEFAULT_INTERVAL_MS = 30_000;
@@ -15,11 +21,20 @@ function readConfig(): IndexerConfig {
     const intervalMs =
         Number.isFinite(parsedInterval) && parsedInterval > 0 ? parsedInterval : DEFAULT_INTERVAL_MS;
 
+    const subgraphUrl = process.env.SUBGRAPH_URL?.trim();
     const contractAddress = process.env.EVM_CONTRACT_ADDRESS?.trim();
     const rpcUrl = process.env.EVM_RPC_URL?.trim() || 'http://localhost:8545';
 
+    // Prefer the subgraph when set; otherwise fall back to the RPC poller.
+    let evm: EvmSource | undefined;
+    if (subgraphUrl) {
+        evm = { kind: 'subgraph', url: subgraphUrl };
+    } else if (contractAddress) {
+        evm = { kind: 'rpc', rpcUrl, contractAddress };
+    }
+
     const base = { enabled, intervalMs };
-    return contractAddress ? { ...base, evm: { rpcUrl, contractAddress } } : base;
+    return evm ? { ...base, evm } : base;
 }
 
 /** Run a single scan of every configured chain. Used by the timer and the CLI. */
@@ -27,9 +42,15 @@ export async function runOnce(): Promise<void> {
     const config = readConfig();
 
     if (config.evm) {
-        const { total, scanned } = await scanEvmRoster(config.evm);
-        const inDb = await countByChain('evm');
-        console.log(`[indexer] evm: scanned ${scanned}/${total} pets; roster now has ${inDb}`);
+        if (config.evm.kind === 'subgraph') {
+            const { scanned } = await scanSubgraphRoster({ url: config.evm.url });
+            const inDb = await countByChain('evm');
+            console.log(`[indexer] evm (subgraph): scanned ${scanned} pets; roster now has ${inDb}`);
+        } else {
+            const { total, scanned } = await scanEvmRoster(config.evm);
+            const inDb = await countByChain('evm');
+            console.log(`[indexer] evm (rpc): scanned ${scanned}/${total} pets; roster now has ${inDb}`);
+        }
     }
     // Solana scan slots in here once implemented (see solanaIndexer.ts).
 }
@@ -49,7 +70,9 @@ export function startIndexers(): void {
         return;
     }
     if (!config.evm) {
-        console.log('[indexer] no chains configured (set EVM_CONTRACT_ADDRESS); not starting');
+        console.log(
+            '[indexer] no chains configured (set SUBGRAPH_URL or EVM_CONTRACT_ADDRESS); not starting'
+        );
         return;
     }
 
@@ -65,7 +88,7 @@ export function startIndexers(): void {
         }
     };
 
-    console.log(`[indexer] starting; interval ${config.intervalMs}ms`);
+    console.log(`[indexer] starting (evm source: ${config.evm.kind}); interval ${config.intervalMs}ms`);
     void tick(); // run immediately on boot
     timer = setInterval(() => void tick(), config.intervalMs);
 }
