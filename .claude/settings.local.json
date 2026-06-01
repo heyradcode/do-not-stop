@@ -28,7 +28,14 @@
       "Bash(HUSKY=0 sh .husky/_/pre-commit)",
       "Bash(echo \"exit code: $? \\(0 = hook resolved cleanly, no env error\\)\")",
       "Bash(echo \"exit: $?\")",
-      "Bash(pnpm install *)"
+      "Bash(pnpm install *)",
+      "Bash(pnpm --filter backend add -D prisma)",
+      "Bash(pnpm --filter backend add @prisma/client)",
+      "Bash(ls prisma *)",
+      "Bash(cat .gitignore)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(CI=1 pnpm --filter backend add @prisma/adapter-pg pg)",
+      "Bash(CI=1 pnpm --filter backend add -D @types/pg)"
     ]
   }
 }

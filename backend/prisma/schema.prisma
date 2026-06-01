@@ -1,0 +1,36 @@
+// Prisma schema for the CryptoPets backend.
+// Docs: https://pris.ly/d/prisma-schema
+// The DATABASE_URL is configured in ../prisma.config.ts (loaded from .env).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  runtime      = "nodejs"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// One row per on-chain pet, across every owner and chain.
+/// Populated by the indexer (see PVP_BATTLE.md §2) so the frontend can
+/// discover opponents it does not own.
+model PetRoster {
+  chain     String // 'evm' | 'solana'
+  petId     String @map("pet_id") // on-chain id as string
+  owner     String // address / pubkey of the current owner
+  name      String
+  level     Int
+  rarity    Int
+  dna       String // bigint serialized as string
+  winCount  Int    @map("win_count")
+  lossCount Int    @map("loss_count")
+  readyAt   BigInt @map("ready_at") // unix seconds the pet is next battle-ready
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([chain, petId])
+  @@index([chain, owner])
+  @@index([chain, readyAt])
+  @@map("pet_roster")
+}
