@@ -16,8 +16,9 @@ import {
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
-import { formatTxHashHint, usePetActionErrorDisplay } from '@hooks/usePetActionErrorDisplay';
-import Icon, { BattleIcon, CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/common/icon';
+import { formatTxHashHint } from '@hooks/usePetActionErrorDisplay';
+import { usePetActionErrorToast } from '@hooks/usePetActionErrorToast';
+import Icon, { BattleIcon, CheckIcon } from '@components/common/icon';
 import {
     getLevelDelta,
     getMatchLabel,
@@ -216,11 +217,10 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         () => sortOpponentsByMatch(opponents, fighterLevel),
         [opponents, fighterLevel],
     );
-    const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
     const isArenaReady = Boolean(selectedFighter && opponent && !battle.isPending && !showResult);
     const isArenaFighting = battle.isPending;
 
-    const displayError = usePetActionErrorDisplay(
+    usePetActionErrorToast(
         battle.error,
         battle.receiptError,
         validationError,
@@ -228,6 +228,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     );
 
     const usesSwitchboardVrf = chain.kind === 'solana';
+    const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
     const subtitle = usesSwitchboardVrf
         ? 'Pick your fighter and an opponent (Switchboard VRF)'
         : 'Pick your fighter and an opponent';
@@ -362,17 +363,6 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         opponents,
         battle,
     ]);
-
-    const ErrorIcon = displayError.isUserRejection
-        ? PauseIcon
-        : displayError.isContractError
-          ? WarningIcon
-          : CloseIcon;
-    const errorTone = displayError.isUserRejection
-        ? Tones.Inherit
-        : displayError.isContractError
-          ? Tones.Amber
-          : Tones.Magenta;
 
     const arenaClassName = [
         'battle-arena-card',
@@ -543,15 +533,6 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                     </button>
                 </div>
             </div>
-
-            {displayError.message && (
-                <div
-                    className={`error-message ${displayError.isUserRejection ? 'user-rejection' : ''} ${displayError.isContractError ? 'contract-error' : ''}`}
-                >
-                    <Icon as={ErrorIcon} tone={errorTone} />
-                    {displayError.message}
-                </div>
-            )}
 
             {hashHint && (
                 <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>

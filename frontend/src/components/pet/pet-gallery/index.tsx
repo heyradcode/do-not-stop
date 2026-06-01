@@ -30,12 +30,14 @@ import Icon, {
 import CreatePetModal from '@components/pet/create-pet-modal';
 import PetCollectionLayout from '@components/pet/pet-collection-layout';
 import SendPetModal from '@components/pet/send-pet-modal';
+import { useNotifyError } from '@hooks/useNotifyError';
 import './index.css';
 
 const PetGallery: React.FC = () => {
     const chain = useActiveChain();
     const isConnected = chain.kind !== 'none';
     const { pets, isLoading, error, refetch } = usePetList();
+    const notifyError = useNotifyError();
     const [loading, setLoading] = useState(false);
     const [sendModalOpen, setSendModalOpen] = useState(false);
     const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -44,6 +46,11 @@ const PetGallery: React.FC = () => {
     useEffect(() => {
         setLoading(isLoading);
     }, [isLoading]);
+
+    useEffect(() => {
+        if (!error) return;
+        notifyError('Failed to load pet data. Please try again.', error, 'pet-list');
+    }, [error, notifyError]);
 
     const handleSendClick = (pet: Pet) => {
         setSendSelection({ pet, petId: BigInt(pet.id) });
@@ -90,7 +97,7 @@ const PetGallery: React.FC = () => {
 
                 {error && (
                     <div className="error-container">
-                        <p><Icon as={CloseIcon} tone={Tones.Magenta} />{error.message || 'Failed to load pet data'}</p>
+                        <p><Icon as={CloseIcon} tone={Tones.Magenta} />Failed to load pet data. Please try again.</p>
                         <button type="button" onClick={() => refetch()} className="retry-button">
                             Try Again
                         </button>

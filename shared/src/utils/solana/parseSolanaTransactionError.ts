@@ -46,11 +46,11 @@ export function formatSolanaActionError(error: unknown, fallback = 'Transaction 
     }
 
     if (lower.includes('simulation failed') || lower.includes('custom program error')) {
-        return `On-chain program rejected the transaction: ${message}`;
+        return fallback;
     }
 
     if (message.trim()) {
-        return message;
+        return fallback;
     }
 
     return fallback;

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
@@ -8,9 +8,10 @@ import {
     usePetList,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useWriteContractErrorToast } from '@hooks/useWriteContractErrorToast';
+import Icon, { CheckIcon } from '@components/common/icon';
 import { Tones } from '@constants/tones';
-import { useWriteContractErrorState } from '@hooks/useWriteContractErrorState';
-import Icon, { CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/common/icon';
 
 export type LevelUpPanelProps = {
     isStandaloneView?: boolean;
@@ -22,24 +23,20 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     const { pets, refetch } = usePetList();
     const { mutate, isPending, error: hookError, hash, reset } = useLevelUpPet();
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
-    const { error, setError, isUserRejection, isContractError, resetError } = useWriteContractErrorState(hookError);
+    const notifyError = useNotifyError();
+    const notifyReceiptError = useNotifyReceiptError();
+
+    useWriteContractErrorToast(hookError);
 
     const [selectedPet, setSelectedPet] = useState<string>('');
     const [success, setSuccess] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (hookError) {
-            setError(hookError.message);
-        }
-    }, [hookError, setError]);
-
     const handleLevelUp = async () => {
         if (!selectedPet) {
-            setError('Please select a pet to level up');
+            notifyError('Please select a pet to level up', undefined, 'level-up-validation');
             return;
         }
 
-        resetError();
         reset();
         setSuccess(null);
 
@@ -52,8 +49,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 navigate(DASHBOARD_HOME);
             }
         } catch (err) {
-            setError('Failed to level up pet. Please try again.');
-            console.error('Error leveling up pet:', err);
+            console.error('[level-up]', err);
         }
     };
 
@@ -65,7 +61,6 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     const handleTransactionComplete = () => {
         setSuccess('Pet leveled up successfully!');
         setSelectedPet('');
-        resetError();
         refetch();
         navigate(DASHBOARD_HOME);
     };
@@ -117,16 +112,6 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 </div>
             </div>
 
-            {error && (
-                <div className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}>
-                    <Icon
-                        as={isUserRejection ? PauseIcon : isContractError ? WarningIcon : CloseIcon}
-                        tone={isUserRejection ? Tones.Inherit : isContractError ? Tones.Amber : Tones.Magenta}
-                    />
-                    {error}
-                </div>
-            )}
-
             {success && (
                 <div className="success-message">
                     <Icon as={CheckIcon} tone={Tones.Emerald} />
@@ -135,7 +120,11 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
             )}
 
             {chain.kind === 'evm' && (
-                <TransactionStatus hash={hash} onComplete={handleTransactionComplete} onError={(e) => setError(e.message)} />
+                <TransactionStatus
+                    hash={hash}
+                    onComplete={handleTransactionComplete}
+                    onError={notifyReceiptError}
+                />
             )}
         </>
     );

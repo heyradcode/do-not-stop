@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
@@ -8,9 +8,10 @@ import {
     useRenamePet,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useWriteContractErrorToast } from '@hooks/useWriteContractErrorToast';
+import Icon, { CheckIcon, QuillIcon } from '@components/common/icon';
 import { Tones } from '@constants/tones';
-import { useWriteContractErrorState } from '@hooks/useWriteContractErrorState';
-import Icon, { CheckIcon, CloseIcon, PauseIcon, QuillIcon, WarningIcon } from '@components/common/icon';
 
 export type RenamePanelProps = {
     isStandaloneView?: boolean;
@@ -22,17 +23,14 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
     const { pets, refetch } = usePetList();
     const { mutate, isPending, error: hookError, hash, reset } = useRenamePet();
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
-    const { error, setError, isUserRejection, isContractError, resetError } = useWriteContractErrorState(hookError);
+    const notifyError = useNotifyError();
+    const notifyReceiptError = useNotifyReceiptError();
+
+    useWriteContractErrorToast(hookError);
 
     const [selectedPet, setSelectedPet] = useState<string>('');
     const [newName, setNewName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (hookError) {
-            setError(hookError.message);
-        }
-    }, [hookError, setError]);
 
     const selectablePets = useMemo(
         () => (chain.kind === 'evm' ? readyPets.filter(({ pet }) => pet.level >= 2) : readyPets),
@@ -41,11 +39,10 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
 
     const handleChangeName = async () => {
         if (!selectedPet || !newName.trim()) {
-            setError('Please select a pet and enter a new name');
+            notifyError('Please select a pet and enter a new name', undefined, 'rename-validation');
             return;
         }
 
-        resetError();
         reset();
         setSuccess(null);
 
@@ -59,8 +56,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 navigate(DASHBOARD_HOME);
             }
         } catch (err) {
-            setError('Failed to change pet name. Please try again.');
-            console.error('Error changing pet name:', err);
+            console.error('[rename]', err);
         }
     };
 
@@ -73,7 +69,6 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
         setSuccess(`Pet name changed to "${newName}"!`);
         setSelectedPet('');
         setNewName('');
-        resetError();
         refetch();
         navigate(DASHBOARD_HOME);
     };
@@ -130,16 +125,6 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
             </div>
 
-            {error && (
-                <div className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}>
-                    <Icon
-                        as={isUserRejection ? PauseIcon : isContractError ? WarningIcon : CloseIcon}
-                        tone={isUserRejection ? Tones.Inherit : isContractError ? Tones.Amber : Tones.Magenta}
-                    />
-                    {error}
-                </div>
-            )}
-
             {success && (
                 <div className="success-message">
                     <Icon as={CheckIcon} tone={Tones.Emerald} />
@@ -148,7 +133,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
             )}
 
             {chain.kind === 'evm' && (
-                <TransactionStatus hash={hash} onComplete={handleTransactionComplete} onError={(e) => setError(e.message)} />
+                <TransactionStatus hash={hash} onComplete={handleTransactionComplete} onError={notifyReceiptError} />
             )}
         </>
     );

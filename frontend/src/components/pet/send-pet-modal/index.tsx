@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     isValidEthAddress,
     isValidSolanaAddress,
@@ -7,6 +7,8 @@ import {
     useTransferPet,
 } from '@shared/core';
 import TransactionStatus from '@components/common/transaction-status';
+import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useWriteContractErrorToast } from '@hooks/useWriteContractErrorToast';
 import './index.css';
 
 interface SendPetModalProps {
@@ -30,10 +32,14 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
     const chain = useActiveChain();
     const { refetch } = usePetList();
     const { mutate, isPending, error: hookError, hash, reset } = useTransferPet();
+    const notifyError = useNotifyError();
+    const notifyReceiptError = useNotifyReceiptError();
+
+    useWriteContractErrorToast(hookError);
 
     const [recipientAddress, setRecipientAddress] = useState('');
     const [isConfirming, setIsConfirming] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [inputInvalid, setInputInvalid] = useState(false);
     const [txHash, setTxHash] = useState<string | undefined>(undefined);
 
     const addressPlaceholder = chain.kind === 'solana' ? 'Solana address (base58)' : '0x...';
@@ -70,13 +76,14 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
     };
 
     const handleSend = async () => {
-        setError(null);
-
-        const validationError = validateRecipient(recipientAddress);
-        if (validationError) {
-            setError(validationError);
+        const validationMessage = validateRecipient(recipientAddress);
+        if (validationMessage) {
+            setInputInvalid(true);
+            notifyError(validationMessage, undefined, 'send-pet-validation');
             return;
         }
+
+        setInputInvalid(false);
 
         try {
             setIsConfirming(true);
@@ -84,8 +91,8 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
             if (chain.kind === 'solana') {
                 await handleTransactionComplete();
             }
-        } catch {
-            setError('Failed to send pet. Please try again.');
+        } catch (err) {
+            console.error('[send-pet]', err);
             setIsConfirming(false);
         }
     };
@@ -93,31 +100,24 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
     const handleClose = () => {
         if (!isConfirming && !isPending) {
             setRecipientAddress('');
-            setError(null);
+            setInputInvalid(false);
             setTxHash(undefined);
             reset();
             onClose();
         }
     };
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (hash) {
             setTxHash(hash);
         }
     }, [hash]);
 
-    React.useEffect(() => {
-        if (hookError) {
-            setError(hookError.message);
-            setIsConfirming(false);
-        }
-    }, [hookError]);
-
     const handleTransactionComplete = async () => {
         await refetch();
         setRecipientAddress('');
         setIsConfirming(false);
-        setError(null);
+        setInputInvalid(false);
         setTxHash(undefined);
         onClose();
     };
@@ -154,12 +154,14 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                             id="recipient"
                             type="text"
                             value={recipientAddress}
-                            onChange={(e) => setRecipientAddress(e.target.value)}
+                            onChange={(e) => {
+                                setRecipientAddress(e.target.value);
+                                setInputInvalid(false);
+                            }}
                             placeholder={addressPlaceholder}
                             disabled={isConfirming || isPending}
-                            className={error ? 'invalid' : ''}
+                            className={inputInvalid ? 'invalid' : ''}
                         />
-                        {error && <p className="error-message">{error}</p>}
                     </div>
 
                     <div className="actions">
@@ -185,7 +187,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                         hash={txHash}
                         onComplete={handleTransactionComplete}
                         onError={(err) => {
-                            setError(err.message);
+                            notifyReceiptError(err);
                             setIsConfirming(false);
                             setTxHash(undefined);
                         }}

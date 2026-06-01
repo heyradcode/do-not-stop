@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import {
-    parseContractError,
     useActiveChain,
     useCreatePet,
     usePetList,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
-import Icon, { CheckIcon, CloseIcon, PauseIcon, PawIcon, WarningIcon } from '@components/common/icon';
+import Icon, { CheckIcon, PawIcon } from '@components/common/icon';
 import TransactionStatus from '@components/common/transaction-status';
+import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useWriteContractErrorToast } from '@hooks/useWriteContractErrorToast';
 import './index.css';
 
 interface CreatePetModalProps {
@@ -20,30 +21,28 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const isConnected = chain.kind !== 'none';
     const { mutate, isPending, error: hookError, hash, reset } = useCreatePet();
     const { refetch } = usePetList();
+    const notifyError = useNotifyError();
+    const notifyReceiptError = useNotifyReceiptError();
+
+    useWriteContractErrorToast(hookError);
 
     const [petName, setPetName] = useState('');
-    const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
-    const [isUserRejection, setIsUserRejection] = useState(false);
-    const [isContractError, setIsContractError] = useState(false);
     const [txHash, setTxHash] = useState<string | undefined>(undefined);
 
     const handleCreatePet = async () => {
         if (!isConnected) {
-            setError('Please connect your wallet first');
+            notifyError('Please connect your wallet first', undefined, 'create-pet-validation');
             return;
         }
 
         const trimmed = petName.trim();
         if (!trimmed) {
-            setError('Please enter a pet name');
+            notifyError('Please enter a pet name', undefined, 'create-pet-validation');
             return;
         }
 
-        setError(null);
         setSuccess(null);
-        setIsUserRejection(false);
-        setIsContractError(false);
 
         try {
             await mutate({ name: trimmed });
@@ -55,7 +54,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                 onClose();
             }
         } catch (err) {
-            console.error('Error creating pet:', err);
+            console.error('[create-pet]', err);
         }
     };
 
@@ -73,10 +72,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
 
     const handleClose = () => {
         setPetName('');
-        setError(null);
         setSuccess(null);
-        setIsUserRejection(false);
-        setIsContractError(false);
         setTxHash(undefined);
         reset();
         onClose();
@@ -87,15 +83,6 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
             setTxHash(hash);
         }
     }, [hash, chain.kind]);
-
-    useEffect(() => {
-        if (hookError) {
-            const parsed = parseContractError(hookError);
-            setError(parsed.message);
-            setIsUserRejection(parsed.isUserRejection);
-            setIsContractError(parsed.isContractError);
-        }
-    }, [hookError]);
 
     if (!isOpen) return null;
 
@@ -135,16 +122,6 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                         </button>
                     </div>
 
-                    {error && (
-                        <div className={`error-message ${isUserRejection ? 'user-rejection' : ''} ${isContractError ? 'contract-error' : ''}`}>
-                            <Icon
-                                as={isUserRejection ? PauseIcon : isContractError ? WarningIcon : CloseIcon}
-                                tone={isUserRejection ? Tones.Inherit : isContractError ? Tones.Amber : Tones.Magenta}
-                            />
-                            {error}
-                        </div>
-                    )}
-
                     {success && (
                         <div className="success-message">
                             <Icon as={CheckIcon} tone={Tones.Emerald} />
@@ -157,7 +134,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                             hash={txHash}
                             onComplete={handleTransactionComplete}
                             onError={(error) => {
-                                setError(error.message);
+                                notifyReceiptError(error);
                                 setTxHash(undefined);
                             }}
                         />

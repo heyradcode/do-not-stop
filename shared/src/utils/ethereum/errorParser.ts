@@ -135,5 +135,5 @@ function mapRevertReasonToFriendlyMessage(revertReason: string): string {
         return '⚠️ Transaction failed. This might be due to contract rules or insufficient gas.';
     }
 
-    return revertReason;
+    return 'Transaction failed. Please try again.';
 }

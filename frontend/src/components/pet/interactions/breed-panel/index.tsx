@@ -4,8 +4,9 @@ import TransactionStatus from '@components/common/transaction-status';
 import { getReadyPetsUnified, useActiveChain, useBreedPets, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
-import { formatTxHashHint, usePetActionErrorDisplay } from '@hooks/usePetActionErrorDisplay';
-import Icon, { CheckIcon, CloseIcon, DnaIcon, PauseIcon, WarningIcon } from '@components/common/icon';
+import { formatTxHashHint } from '@hooks/usePetActionErrorDisplay';
+import { usePetActionErrorToast } from '@hooks/usePetActionErrorToast';
+import Icon, { CheckIcon, DnaIcon } from '@components/common/icon';
 
 export type BreedPanelProps = {
     /** `false` when embedded under the dashboard interactions hub. */
@@ -41,7 +42,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const breed = useBreedPets({ onSuccess: handleSuccess });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
-    const displayError = usePetActionErrorDisplay(
+    usePetActionErrorToast(
         breed.error,
         breed.receiptError,
         validationError,
@@ -87,17 +88,6 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         breed.reset();
         navigate(DASHBOARD_HOME);
     };
-
-    const ErrorIcon = displayError.isUserRejection
-        ? PauseIcon
-        : displayError.isContractError
-          ? WarningIcon
-          : CloseIcon;
-    const errorTone = displayError.isUserRejection
-        ? Tones.Inherit
-        : displayError.isContractError
-          ? Tones.Amber
-          : Tones.Magenta;
 
     return (
         <>
@@ -173,15 +163,6 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                     </p>
                 )}
             </div>
-
-            {displayError.message && (
-                <div
-                    className={`error-message ${displayError.isUserRejection ? 'user-rejection' : ''} ${displayError.isContractError ? 'contract-error' : ''}`}
-                >
-                    <Icon as={ErrorIcon} tone={errorTone} />
-                    {displayError.message}
-                </div>
-            )}
 
             {success && (
                 <div className="success-message">
