@@ -9,6 +9,8 @@
 
 .battle-setup-arena {
     margin: 0;
+    position: relative;
+    overflow: hidden;
 }
 
 .battle-setup-arena .header {
@@ -61,11 +63,45 @@
     text-align: center;
 }
 
+.battle-setup-arena .arena-slot.is-empty .slot-placeholder {
+    animation: battle-slot-pulse 2.4s ease-in-out infinite;
+}
+
 .battle-setup-arena .arena-slot.is-selected {
     border-color: rgb(255 110 196 / 55%);
     box-shadow:
         inset 0 0 12px rgb(255 110 196 / 12%),
         0 0 12px rgb(255 110 196 / 18%);
+    animation: battle-slot-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.battle-setup-arena .arena-slot.is-flash {
+    animation: battle-slot-flash 0.52s ease;
+}
+
+.battle-setup-arena.is-ready .center .icon {
+    animation: battle-vs-glow 1.8s ease-in-out infinite;
+}
+
+.battle-setup-arena.is-ready .center .vs {
+    animation: battle-vs-pulse 1.8s ease-in-out infinite;
+    color: #ff9ad6;
+    text-shadow: 0 0 10px rgb(255 110 196 / 45%);
+}
+
+.battle-setup-arena.is-fighting {
+    animation: battle-arena-clash 0.55s ease-in-out infinite;
+}
+
+.battle-setup-arena.is-fighting .center .icon {
+    animation: battle-vs-spin 0.85s linear infinite;
+}
+
+.battle-setup-arena.is-result {
+    border-color: rgb(0 255 157 / 38%);
+    box-shadow:
+        inset 0 0 18px rgb(0 255 157 / 8%),
+        0 0 16px rgb(0 255 157 / 16%);
 }
 
 .battle-setup-arena .slot-placeholder {
@@ -253,6 +289,7 @@
     box-shadow:
         inset 0 0 14px rgb(255 110 196 / 14%),
         0 0 14px rgb(255 110 196 / 22%);
+    animation: battle-card-select 0.38s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .battle-picker-card:disabled {
@@ -403,6 +440,263 @@
 .battle-setup .action-controls button[type='button']:disabled {
     opacity: 0.55;
     cursor: not-allowed;
+}
+
+.battle-result-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgb(4 8 22 / 72%);
+    backdrop-filter: blur(4px);
+    animation: battle-result-enter 0.35s ease;
+}
+
+.battle-result-card {
+    width: min(100%, 320px);
+    background: linear-gradient(180deg, rgb(10 16 32 / 96%), rgb(6 10 22 / 98%));
+    border: 1px solid rgb(0 255 157 / 42%);
+    border-radius: 12px;
+    padding: 18px 16px;
+    text-align: center;
+    box-shadow:
+        inset 0 0 20px rgb(0 255 157 / 10%),
+        0 0 24px rgb(0 255 157 / 18%);
+    animation: battle-result-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.battle-result-icon {
+    display: inline-flex;
+    margin-bottom: 8px;
+    animation: battle-result-icon 0.6s ease;
+}
+
+.battle-result-title {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #9effd4;
+}
+
+.battle-result-message {
+    margin: 0 0 8px;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--zi-text);
+}
+
+.battle-result-opponent {
+    margin: 0 0 14px;
+    font-size: 12px;
+    color: var(--zi-text-muted);
+}
+
+.battle-result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.battle-result-rematch,
+.battle-result-done {
+    appearance: none;
+    border-radius: 2px;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.battle-result-rematch {
+    background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
+    border: 1px solid rgb(255 110 196 / 55%);
+    color: #ff9ad6;
+    box-shadow:
+        inset 0 0 12px rgb(255 110 196 / 14%),
+        0 0 12px rgb(255 110 196 / 22%);
+}
+
+.battle-result-rematch:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: rgb(255 110 196 / 75%);
+}
+
+.battle-result-rematch:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.battle-result-done {
+    background: transparent;
+    border: 1px solid rgb(125 214 255 / 28%);
+    color: var(--neon-cyan);
+}
+
+.battle-result-done:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 10px rgb(125 214 255 / 22%);
+}
+
+@keyframes battle-slot-pulse {
+    0%,
+    100% {
+        opacity: 0.55;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes battle-slot-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes battle-slot-flash {
+    0% {
+        box-shadow: 0 0 0 rgb(255 110 196 / 0%);
+    }
+
+    40% {
+        box-shadow:
+            inset 0 0 16px rgb(255 110 196 / 24%),
+            0 0 22px rgb(255 110 196 / 42%);
+    }
+
+    100% {
+        box-shadow:
+            inset 0 0 12px rgb(255 110 196 / 12%),
+            0 0 12px rgb(255 110 196 / 18%);
+    }
+}
+
+@keyframes battle-card-select {
+    0% {
+        transform: scale(1);
+    }
+
+    45% {
+        transform: scale(1.03);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes battle-vs-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.85;
+    }
+
+    50% {
+        transform: scale(1.12);
+        opacity: 1;
+    }
+}
+
+@keyframes battle-vs-glow {
+    0%,
+    100% {
+        box-shadow:
+            inset 0 0 10px rgb(255 110 196 / 24%),
+            0 0 14px rgb(255 110 196 / 32%);
+    }
+
+    50% {
+        box-shadow:
+            inset 0 0 16px rgb(255 110 196 / 34%),
+            0 0 22px rgb(255 110 196 / 48%);
+    }
+}
+
+@keyframes battle-vs-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes battle-arena-clash {
+    0%,
+    100% {
+        box-shadow: inset 0 0 0 rgb(255 110 196 / 0%);
+    }
+
+    50% {
+        box-shadow: inset 0 0 28px rgb(255 110 196 / 16%);
+    }
+}
+
+@keyframes battle-result-enter {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes battle-result-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.92) translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes battle-result-icon {
+    0% {
+        transform: scale(0.6);
+        opacity: 0;
+    }
+
+    60% {
+        transform: scale(1.08);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .battle-setup-arena .arena-slot.is-empty .slot-placeholder,
+    .battle-setup-arena .arena-slot.is-selected,
+    .battle-setup-arena .arena-slot.is-flash,
+    .battle-setup-arena.is-ready .center .icon,
+    .battle-setup-arena.is-ready .center .vs,
+    .battle-setup-arena.is-fighting,
+    .battle-setup-arena.is-fighting .center .icon,
+    .battle-picker-card.is-selected,
+    .battle-result-overlay,
+    .battle-result-card,
+    .battle-result-icon {
+        animation: none !important;
+    }
 }
 
 @media (max-width: 768px) {

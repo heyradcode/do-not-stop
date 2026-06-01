@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
@@ -35,6 +35,8 @@ export type BattlePanelProps = {
 const VALIDATION_MESSAGE = 'Please select your pet and an opponent';
 const BATTLE_FAIL_MESSAGE = 'Failed to start battle. Please try again.';
 const SUCCESS_MESSAGE = 'Battle completed! Check your pets for level ups.';
+const REMATCH_COOLDOWN_MESSAGE = 'Your fighter is on cooldown. Pick another pet or wait.';
+const REMATCH_OPPONENT_GONE_MESSAGE = 'That opponent is no longer available. Choose another challenger.';
 
 /** Stable select value for an opponent (pet ids are not globally unique on Solana). */
 const opponentKey = (owner: string, id: string) => `${owner}::${id}`;
@@ -45,19 +47,24 @@ type ArenaSlotProps = {
     pet?: Pet | OpponentPet | null;
     placeholder: string;
     ownerLabel?: string;
+    side: 'fighter' | 'opponent';
+    flash?: boolean;
 };
 
-const ArenaSlot: React.FC<ArenaSlotProps> = ({ pet, placeholder, ownerLabel }) => {
+const ArenaSlot: React.FC<ArenaSlotProps> = ({ pet, placeholder, ownerLabel, side, flash }) => {
     if (!pet) {
         return (
-            <div className="arena-slot is-empty">
+            <div className={`arena-slot is-empty arena-slot-${side}`}>
                 <span className="slot-placeholder">{placeholder}</span>
             </div>
         );
     }
 
     return (
-        <div className="arena-slot is-selected">
+        <div
+            key={`${side}-${pet.id}`}
+            className={`arena-slot is-selected arena-slot-${side}${flash ? ' is-flash' : ''}`}
+        >
             <div className="slot-row">
                 <span className="slot-avatar" aria-hidden>
                     {getPetAvatar(pet.dna)}
@@ -116,6 +123,7 @@ type OpponentPickerCardProps = {
     fighterLevel: number | null;
     selected: boolean;
     onSelect: (key: string) => void;
+    cardRef?: React.Ref<HTMLButtonElement>;
 };
 
 const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({
@@ -123,6 +131,7 @@ const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({
     fighterLevel,
     selected,
     onSelect,
+    cardRef,
 }) => {
     const key = opponentKey(opponent.owner, opponent.id);
     const levelDelta = getLevelDelta(fighterLevel, opponent.level);
@@ -131,6 +140,7 @@ const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({
 
     return (
         <button
+            ref={cardRef}
             type="button"
             className={`battle-picker-card${selected ? ' is-selected' : ''}${matchTier !== 'unknown' ? ` match-${matchTier}` : ''}`}
             aria-pressed={selected}
@@ -165,27 +175,31 @@ const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({
 const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
     const chain = useActiveChain();
-    const { pets, refetch } = usePetList();
+    const { pets, refetch, isLoading: petsLoading } = usePetList();
     const [selectedPet1, setSelectedPet1] = useState('');
     const [selectedOpponent, setSelectedOpponent] = useState('');
-    const [success, setSuccess] = useState<string | null>(null);
+    const [showResult, setShowResult] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
+    const [opponentSlotFlash, setOpponentSlotFlash] = useState(false);
+    const [rematchPending, setRematchPending] = useState(false);
+
+    const selectedOpponentCardRef = useRef<HTMLButtonElement>(null);
+    const rematchSnapshotRef = useRef<{ petId1: string; opponentKey: string } | null>(null);
 
     const activeChainKind = chain.kind === 'none' ? null : chain.kind;
     const {
         opponents,
         isLoading: opponentsLoading,
+        isFetching: opponentsFetching,
         refetch: refetchOpponents,
     } = useOpponents({ chain: activeChainKind });
 
     const handleSuccess = useCallback(() => {
-        setSuccess(SUCCESS_MESSAGE);
-        setSelectedPet1('');
-        setSelectedOpponent('');
+        setShowResult(true);
+        setValidationError(null);
         void refetch();
         void refetchOpponents();
-        navigate(DASHBOARD_HOME);
-    }, [navigate, refetch, refetchOpponents]);
+    }, [refetch, refetchOpponents]);
 
     const battle = useBattlePets({ onSuccess: handleSuccess });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
@@ -203,6 +217,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         [opponents, fighterLevel],
     );
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
+    const isArenaReady = Boolean(selectedFighter && opponent && !battle.isPending && !showResult);
+    const isArenaFighting = battle.isPending;
 
     const displayError = usePetActionErrorDisplay(
         battle.error,
@@ -219,31 +235,61 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const submitLabel = 'Start Battle';
     const hashHint = chain.kind === 'solana' ? formatTxHashHint(battle.hash) : null;
 
-    const handleBattle = () => {
-        battle.clearErrors();
-        setSuccess(null);
-
+    const startBattle = useCallback(() => {
         if (!selectedPet1 || !opponent) {
             setValidationError(VALIDATION_MESSAGE);
-            return;
+            return false;
         }
+
+        rematchSnapshotRef.current = {
+            petId1: selectedPet1,
+            opponentKey: opponentKey(opponent.owner, opponent.id),
+        };
         setValidationError(null);
         void battle.mutate({
             petId1: selectedPet1,
             petId2: opponent.id,
             defenderOwner: opponent.owner,
         });
+        return true;
+    }, [battle, opponent, selectedPet1]);
+
+    const handleBattle = () => {
+        battle.clearErrors();
+        setShowResult(false);
+        startBattle();
     };
 
     const handleCancel = () => {
-        setSuccess(null);
+        setShowResult(false);
         setValidationError(null);
+        navigate(DASHBOARD_HOME);
+    };
+
+    const handleDone = () => {
+        setShowResult(false);
+        setValidationError(null);
+        setSelectedPet1('');
+        setSelectedOpponent('');
         navigate(DASHBOARD_HOME);
     };
 
     const handleRefreshOpponents = () => {
         void refetchOpponents();
     };
+
+    const flashOpponentSlot = useCallback(() => {
+        setOpponentSlotFlash(true);
+        window.setTimeout(() => setOpponentSlotFlash(false), 520);
+    }, []);
+
+    const handleSelectOpponent = useCallback(
+        (key: string) => {
+            setSelectedOpponent(key);
+            flashOpponentSlot();
+        },
+        [flashOpponentSlot],
+    );
 
     const handleRandomMatch = () => {
         if (!selectedFighter) {
@@ -255,8 +301,67 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         if (!pick) return;
 
         setValidationError(null);
-        setSelectedOpponent(opponentKey(pick.owner, pick.id));
+        handleSelectOpponent(opponentKey(pick.owner, pick.id));
     };
+
+    const handleRematch = () => {
+        battle.clearErrors();
+        setShowResult(false);
+        setValidationError(null);
+        setRematchPending(true);
+        refetch();
+        void refetchOpponents();
+    };
+
+    useEffect(() => {
+        if (!selectedOpponent) return;
+        selectedOpponentCardRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest',
+        });
+    }, [selectedOpponent]);
+
+    useEffect(() => {
+        if (!rematchPending || petsLoading || opponentsLoading || opponentsFetching) return;
+
+        setRematchPending(false);
+        const snapshot = rematchSnapshotRef.current;
+        if (!snapshot) return;
+
+        const fighterReady = readyPets.some(({ id }) => id === snapshot.petId1);
+        const opponentMatch = opponents.find(
+            (o) => opponentKey(o.owner, o.id) === snapshot.opponentKey,
+        );
+
+        if (!fighterReady) {
+            setValidationError(REMATCH_COOLDOWN_MESSAGE);
+            return;
+        }
+
+        if (!opponentMatch) {
+            setSelectedOpponent('');
+            setValidationError(REMATCH_OPPONENT_GONE_MESSAGE);
+            return;
+        }
+
+        setSelectedPet1(snapshot.petId1);
+        setSelectedOpponent(snapshot.opponentKey);
+        setValidationError(null);
+        void battle.mutate({
+            petId1: snapshot.petId1,
+            petId2: opponentMatch.id,
+            defenderOwner: opponentMatch.owner,
+        });
+    }, [
+        rematchPending,
+        petsLoading,
+        opponentsLoading,
+        opponentsFetching,
+        readyPets,
+        opponents,
+        battle,
+    ]);
 
     const ErrorIcon = displayError.isUserRejection
         ? PauseIcon
@@ -269,6 +374,16 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
           ? Tones.Amber
           : Tones.Magenta;
 
+    const arenaClassName = [
+        'battle-arena-card',
+        'battle-setup-arena',
+        isArenaReady ? 'is-ready' : '',
+        isArenaFighting ? 'is-fighting' : '',
+        showResult ? 'is-result' : '',
+    ]
+        .filter(Boolean)
+        .join(' ');
+
     return (
         <>
             <div className="interface battle-setup">
@@ -279,7 +394,37 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                     </>
                 )}
 
-                <div className="battle-arena-card battle-setup-arena">
+                <div className={arenaClassName}>
+                    {showResult && (
+                        <div className="battle-result-overlay" role="status" aria-live="polite">
+                            <div className="battle-result-card">
+                                <span className="battle-result-icon" aria-hidden>
+                                    <Icon as={CheckIcon} tone={Tones.Emerald} glow="strong" />
+                                </span>
+                                <p className="battle-result-title">Victory screen</p>
+                                <p className="battle-result-message">{SUCCESS_MESSAGE}</p>
+                                {opponent ? (
+                                    <p className="battle-result-opponent">
+                                        Rematch vs {opponent.name} (Lv.{opponent.level})
+                                    </p>
+                                ) : null}
+                                <div className="battle-result-actions">
+                                    <button
+                                        type="button"
+                                        className="battle-result-rematch"
+                                        onClick={handleRematch}
+                                        disabled={battle.isPending || rematchPending}
+                                    >
+                                        {rematchPending ? 'Preparing…' : 'Rematch'}
+                                    </button>
+                                    <button type="button" className="battle-result-done" onClick={handleDone}>
+                                        Back to dashboard
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="header">
                         <span><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Arena</span>
                         <div className="arena-actions">
@@ -287,7 +432,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                                 type="button"
                                 className="section-action section-action-primary"
                                 onClick={handleRandomMatch}
-                                disabled={!canRandomMatch || battle.isPending}
+                                disabled={!canRandomMatch || battle.isPending || showResult}
                                 title={
                                     selectedFighter
                                         ? 'Pick a random opponent near your fighter level'
@@ -297,13 +442,13 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                                 Random match
                             </button>
                             <span className="arena-badge">
-                                {selectedFighter && opponent ? 'Ready' : 'Setup'}
+                                {isArenaFighting ? 'Fighting' : showResult ? 'Complete' : isArenaReady ? 'Ready' : 'Setup'}
                             </span>
                         </div>
                     </div>
                     <div className="hub-divider" />
                     <div className="content">
-                        <ArenaSlot pet={selectedFighter} placeholder="Choose fighter" />
+                        <ArenaSlot pet={selectedFighter} placeholder="Choose fighter" side="fighter" />
                         <div className="center">
                             <div className="icon">
                                 <Icon as={BattleIcon} tone={Tones.Magenta} glow="strong" className="no-gap" size={18} />
@@ -314,6 +459,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                             pet={opponent}
                             placeholder="Select opponent"
                             ownerLabel={opponent ? shortAddress(opponent.owner) : undefined}
+                            side="opponent"
+                            flash={opponentSlotFlash}
                         />
                     </div>
                 </div>
@@ -366,15 +513,19 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                         </div>
                     ) : (
                         <div className="battle-opponent-grid">
-                            {sortedOpponents.map((o) => (
-                                <OpponentPickerCard
-                                    key={opponentKey(o.owner, o.id)}
-                                    opponent={o}
-                                    fighterLevel={fighterLevel}
-                                    selected={selectedOpponent === opponentKey(o.owner, o.id)}
-                                    onSelect={setSelectedOpponent}
-                                />
-                            ))}
+                            {sortedOpponents.map((o) => {
+                                const key = opponentKey(o.owner, o.id);
+                                return (
+                                    <OpponentPickerCard
+                                        key={key}
+                                        opponent={o}
+                                        fighterLevel={fighterLevel}
+                                        selected={selectedOpponent === key}
+                                        onSelect={handleSelectOpponent}
+                                        cardRef={selectedOpponent === key ? selectedOpponentCardRef : undefined}
+                                    />
+                                );
+                            })}
                         </div>
                     )}
                 </section>
@@ -383,7 +534,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                     <button
                         type="button"
                         onClick={handleBattle}
-                        disabled={battle.isPending || !selectedPet1 || !selectedOpponent}
+                        disabled={battle.isPending || rematchPending || !selectedPet1 || !selectedOpponent || showResult}
                     >
                         {battle.isPending ? pendingLabel : submitLabel}
                     </button>
@@ -399,13 +550,6 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 >
                     <Icon as={ErrorIcon} tone={errorTone} />
                     {displayError.message}
-                </div>
-            )}
-
-            {success && (
-                <div className="success-message">
-                    <Icon as={CheckIcon} tone={Tones.Emerald} />
-                    {success}
                 </div>
             )}
 
