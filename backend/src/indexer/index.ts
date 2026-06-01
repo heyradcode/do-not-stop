@@ -1,4 +1,4 @@
-import { scanSubgraphRoster } from './subgraphIndexer';
+import { scanSubgraphRoster } from './subgraph';
 import { countByChain } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';
 

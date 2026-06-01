@@ -9,15 +9,15 @@
   "scripts": {
     "build": "prisma generate && tsc",
     "start": "node dist/server.js",
-    "dev": "node ../node_modules/tsx/dist/cli.mjs watch src/server.ts",
+    "dev": "nodemon",
     "clean": "rm -rf dist",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:push": "prisma db push",
-    "seed:roster": "node ../node_modules/tsx/dist/cli.mjs src/scripts/seedRoster.ts",
-    "index:once": "node ../node_modules/tsx/dist/cli.mjs src/scripts/indexOnce.ts"
+    "seed:roster": "tsx src/scripts/seedRoster.ts",
+    "index:once": "tsx src/scripts/indexOnce.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -38,6 +38,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^22.18.6",
     "@types/pg": "^8.20.0",
+    "nodemon": "^3.1.10",
     "prisma": "^7.8.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"

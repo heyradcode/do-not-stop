@@ -1,5 +1,5 @@
 # Pet entities for PvP matchmaking. Fields mirror `pet_roster` in the backend DB.
-# Consumed by `backend/src/indexer/subgraphIndexer.ts`.
+# Consumed by `backend/src/indexer/subgraph.ts`.
 
 type Pet @entity(immutable: false) {
   id: ID!
