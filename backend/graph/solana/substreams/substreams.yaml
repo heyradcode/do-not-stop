@@ -9,7 +9,8 @@ network: solana-devnet
 imports:
   # Foundational module that streams the program-owned accounts we filter on.
   accounts: https://spkg.io/streamingfast/solana-accounts-foundational-v0.0.2.spkg
-  entities_change: https://github.com/streamingfast/substreams-sink-entity-changes/releases/download/v2.0.0/substreams-entity-change-v2.0.0.spkg
+  # Provides the sf.substreams.sink.sql.v1.Service type for the sink block below.
+  sql: https://github.com/streamingfast/substreams-sink-sql/releases/download/protodefs-v1.0.7/substreams-sink-sql-protodefs-v1.0.7.spkg
 
 binaries:
   default:
@@ -26,22 +27,35 @@ modules:
     output:
       type: proto:cryptopets.v1.Pets
 
-  # Translate Pets into graph entity changes for the subgraph sink.
-  - name: graph_out
+  # Translate Pets into database changes for substreams-sink-sql.
+  - name: db_out
     kind: map
     initialBlock: 0
     inputs:
       - map: map_pets
     output:
-      type: proto:sf.substreams.sink.entity.v1.EntityChanges
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
 
 # Filter upstream accounts to those owned by the cryptopets program.
 # Keep this in sync with `declare_id!` in the Anchor program.
 params:
   accounts:filtered_accounts: owner:78AXV46ks5oFoJHkukvbsfZTJixdj2MeStzuC6thiUry
 
+# substreams-sink-sql config (embedded in the spkg). `setup` reads schema.sql
+# and creates the tables + a cursors table; `run` streams db_out into them.
+sink:
+  module: db_out
+  type: sf.substreams.sink.sql.v1.Service
+  config:
+    schema: "../sink/schema.sql"
+    engine: postgres
+
 protobuf:
   files:
     - cryptopets.proto
+    # Vendored from substreams-database-change (kept out of ./proto so buf
+    # doesn't regenerate it — we use the crate's Rust types).
+    - sf/substreams/sink/database/v1/database.proto
   importPaths:
     - ./proto
+    - ./proto-imports

@@ -6,5 +6,4 @@ packages:
   - 'shared'
   - 'contracts/ethereum'
   - 'backend/graph/evm/subgraph'
-  - 'backend/graph/solana/subgraph'
   - 'contracts/solana/cryptopets'

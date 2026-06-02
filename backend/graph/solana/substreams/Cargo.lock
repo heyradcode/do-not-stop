@@ -24,12 +24,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
-name = "base64"
-version = "0.13.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
-
-[[package]]
 name = "bigdecimal"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -99,7 +93,7 @@ dependencies = [
  "prost",
  "prost-types",
  "substreams",
- "substreams-entity-change",
+ "substreams-database-change",
  "substreams-solana",
 ]
 
@@ -622,12 +616,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "substreams-entity-change"
-version = "2.0.0"
+name = "substreams-database-change"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0587b8d5dd7bffb0415d544c31e742c4cabdb81bbe9a3abfffff125185e4e9e8"
+checksum = "a93bcd1a0cda40746b8c3a3d64b0945986722b2ca3b686595cfbb3f295246d7d"
 dependencies = [
- "base64",
  "prost",
  "prost-types",
  "substreams",

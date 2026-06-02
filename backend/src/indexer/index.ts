@@ -1,29 +1,29 @@
 import { scanSubgraphRoster } from './subgraph';
+import { scanHasuraRoster } from './hasura';
 import { countByChain } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';
 
-interface SubgraphSource {
+/**
+ * A roster source per chain. EVM still uses a Substreams-powered subgraph on
+ * The Graph; Solana uses Hasura GraphQL over the substreams-sink-sql Postgres
+ * (see backend/graph/solana). Both expose a `pets` GraphQL collection we poll
+ * and upsert into `pet_roster`.
+ */
+interface RosterSource {
     chain: Chain;
+    kind: 'subgraph' | 'hasura';
     url: string;
+    /** Hasura admin secret (hasura sources only). */
+    adminSecret?: string;
 }
 
 interface IndexerConfig {
     enabled: boolean;
     intervalMs: number;
-    sources: SubgraphSource[];
+    sources: RosterSource[];
 }
 
 const DEFAULT_INTERVAL_MS = 30_000;
-
-function readSubgraphUrl(chain: Chain): string | undefined {
-    if (chain === 'evm') {
-        return (
-            process.env.SUBGRAPH_URL_EVM?.trim() ??
-            process.env.SUBGRAPH_URL?.trim()
-        );
-    }
-    return process.env.SUBGRAPH_URL_SOLANA?.trim();
-}
 
 function readConfig(): IndexerConfig {
     const enabled = (process.env.INDEXER_ENABLED ?? 'true').toLowerCase() !== 'false';
@@ -31,22 +31,41 @@ function readConfig(): IndexerConfig {
     const intervalMs =
         Number.isFinite(parsedInterval) && parsedInterval > 0 ? parsedInterval : DEFAULT_INTERVAL_MS;
 
-    const sources: SubgraphSource[] = [];
-    const evmUrl = readSubgraphUrl('evm');
-    const solanaUrl = readSubgraphUrl('solana');
+    const sources: RosterSource[] = [];
 
+    const evmUrl =
+        process.env.SUBGRAPH_URL_EVM?.trim() ?? process.env.SUBGRAPH_URL?.trim();
     if (evmUrl) {
-        sources.push({ chain: 'evm', url: evmUrl });
+        sources.push({ chain: 'evm', kind: 'subgraph', url: evmUrl });
     }
+
+    const solanaUrl = process.env.HASURA_URL_SOLANA?.trim();
     if (solanaUrl) {
-        sources.push({ chain: 'solana', url: solanaUrl });
+        const adminSecret = process.env.HASURA_ADMIN_SECRET?.trim();
+        sources.push({
+            chain: 'solana',
+            kind: 'hasura',
+            url: solanaUrl,
+            ...(adminSecret ? { adminSecret } : {}),
+        });
     }
 
     return { enabled, intervalMs, sources };
 }
 
+function scanSource(source: RosterSource): Promise<{ scanned: number }> {
+    if (source.kind === 'hasura') {
+        return scanHasuraRoster({
+            chain: source.chain,
+            url: source.url,
+            ...(source.adminSecret ? { adminSecret: source.adminSecret } : {}),
+        });
+    }
+    return scanSubgraphRoster({ chain: source.chain, url: source.url });
+}
+
 /**
- * Run a single scan of every configured subgraph. Used by the timer and the CLI.
+ * Run a single scan of every configured source. Used by the timer and the CLI.
  * Each chain runs independently — one chain failing doesn't skip the other.
  */
 export async function runOnce(): Promise<void> {
@@ -55,13 +74,10 @@ export async function runOnce(): Promise<void> {
 
     for (const source of config.sources) {
         try {
-            const { scanned } = await scanSubgraphRoster({
-                chain: source.chain,
-                url: source.url,
-            });
+            const { scanned } = await scanSource(source);
             const inDb = await countByChain(source.chain);
             console.log(
-                `[indexer] ${source.chain} (subgraph): scanned ${scanned} pets; roster now has ${inDb}`
+                `[indexer] ${source.chain} (${source.kind}): scanned ${scanned} pets; roster now has ${inDb}`
             );
         } catch (err) {
             failures.push(`${source.chain}: ${(err as Error).message}`);
@@ -88,7 +104,7 @@ export function startIndexers(): void {
     }
     if (config.sources.length === 0) {
         console.log(
-            '[indexer] no subgraph URLs configured (set SUBGRAPH_URL_EVM and/or SUBGRAPH_URL_SOLANA); not starting'
+            '[indexer] no sources configured (set SUBGRAPH_URL_EVM and/or HASURA_URL_SOLANA); not starting'
         );
         return;
     }
@@ -105,8 +121,8 @@ export function startIndexers(): void {
         }
     };
 
-    const chains = config.sources.map((s) => s.chain).join(', ');
-    console.log(`[indexer] starting (subgraph: ${chains}); interval ${config.intervalMs}ms`);
+    const sources = config.sources.map((s) => `${s.chain}:${s.kind}`).join(', ');
+    console.log(`[indexer] starting (${sources}); interval ${config.intervalMs}ms`);
     void tick();
     timer = setInterval(() => void tick(), config.intervalMs);
 }

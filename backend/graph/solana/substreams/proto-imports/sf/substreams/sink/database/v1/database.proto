@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package sf.substreams.sink.database.v1;
+
+option go_package = "github.com/streamingfast/substreams-sink-database-changes/pb/sf/substreams/sink/database/v1;pbdatabase";
+
+message DatabaseChanges {
+  repeated TableChange table_changes = 1;
+}
+
+message TableChange {
+  string table = 1;
+  oneof primary_key {
+    string pk = 2;
+    CompositePrimaryKey composite_pk = 6;
+  }
+  uint64 ordinal = 3;
+  enum Operation {
+    OPERATION_UNSPECIFIED = 0;    // Protobuf default should not be used, this is used so that the consume can ensure that the value was actually specified
+    OPERATION_CREATE = 1;
+    OPERATION_UPDATE = 2;
+    OPERATION_DELETE = 3;
+
+    // The upsert might not be supported by all drivers the sink supports,
+    // refer to https://github.com/streamingfast/substreams-sink-sql for
+    // which drivers support it.
+    //
+    // At time of writing, the Postgres driver supports was the only one supporting
+    // it.
+    OPERATION_UPSERT = 4;
+  }
+  Operation operation = 4;
+  repeated Field fields = 5;
+}
+
+message CompositePrimaryKey {
+  map<string, string> keys = 1;
+}
+
+message Field {
+  string name = 1;
+  string new_value = 2;
+  string old_value = 3;
+}

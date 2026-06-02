@@ -1,0 +1,19 @@
+# Hasura GraphQL over the substreams-sink-sql Postgres (the `solana` schema in
+# the backend database). Hasura auto-generates the GraphQL API the backend
+# indexer polls — the "subgraph replacement". Run `./apply-metadata.sh` once
+# after `docker compose up` to track the `pet` table.
+#
+# Config comes from sink/.env (see .env.example). Hasura stores its own
+# metadata in an `hdb_catalog` schema in the same database.
+
+services:
+  hasura:
+    image: hasura/graphql-engine:v2.42.0
+    ports:
+      - "8080:8080"
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: ${HASURA_GRAPHQL_DATABASE_URL:?set in sink/.env}
+      HASURA_GRAPHQL_ADMIN_SECRET: ${HASURA_GRAPHQL_ADMIN_SECRET:?set in sink/.env}
+      HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+      HASURA_GRAPHQL_DEV_MODE: "true"
+    restart: unless-stopped

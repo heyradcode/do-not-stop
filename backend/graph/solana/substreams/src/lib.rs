@@ -4,8 +4,8 @@ use pb::cryptopets::v1::{Pet, Pets};
 use pb::sf::substreams::solana::r#type::v1::FilteredAccounts;
 use substreams::errors::Error;
 use substreams::Hex;
-use substreams_entity_change::pb::entity::EntityChanges;
-use substreams_entity_change::tables::Tables;
+use substreams_database_change::pb::database::DatabaseChanges;
+use substreams_database_change::tables::Tables;
 
 /// Anchor discriminator for `PetAccount` — sha256("account:PetAccount")[..8].
 const PET_ACCOUNT_DISCRIMINATOR: [u8; 8] = [223, 222, 129, 89, 70, 231, 141, 184];
@@ -29,26 +29,29 @@ fn map_pets(accounts: FilteredAccounts) -> Result<Pets, Error> {
     Ok(Pets { pets })
 }
 
-/// Emit one `Pet` entity row per account for the subgraph sink.
+/// Emit one upsert per pet for the `pet` table consumed by substreams-sink-sql.
+/// `upsert_row` (INSERT … ON CONFLICT DO UPDATE) handles mutable account state,
+/// which is re-emitted on every change. Columns are snake_case to match the SQL
+/// schema (and the GraphQL fields Hasura derives from it).
 #[substreams::handlers::map]
-fn graph_out(pets: Pets) -> Result<EntityChanges, Error> {
+fn db_out(pets: Pets) -> Result<DatabaseChanges, Error> {
     let mut tables = Tables::new();
 
     for pet in pets.pets {
         tables
-            .update_row("Pet", &pet.id)
+            .upsert_row("pet", &pet.id)
             .set("owner", &format!("0x{}", Hex(&pet.owner)))
             .set("name", &pet.name)
             .set("dna", &pet.dna)
             .set("level", pet.level)
             .set("rarity", pet.rarity)
-            .set("winCount", pet.win_count)
-            .set("lossCount", pet.loss_count)
-            .set("readyAt", &pet.ready_at)
-            .set("updatedAt", &pet.updated_at);
+            .set("win_count", pet.win_count)
+            .set("loss_count", pet.loss_count)
+            .set("ready_at", &pet.ready_at)
+            .set("updated_at", &pet.updated_at);
     }
 
-    Ok(tables.to_entity_changes())
+    Ok(tables.to_database_changes())
 }
 
 /// Borsh layout after the 8-byte discriminator, in `PetAccount` declaration
