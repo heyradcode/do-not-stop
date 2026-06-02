@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package sf.solana.type.v1;
+
+// Vendored subset of the `solana-accounts-foundational` package
+// (https://spkg.io/streamingfast/solana-accounts-foundational). We redefine
+// only the message our mapping consumes so codegen stays minimal — the wire
+// format (field numbers/types) must match the upstream package exactly.
+message Account {
+  bytes address = 1;
+  bytes owner = 2;
+  bytes data = 3;
+  uint64 source_slot = 4;
+  uint64 rent_epoch = 5;
+  uint64 write_version = 6;
+}

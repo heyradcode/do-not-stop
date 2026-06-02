@@ -2,9 +2,14 @@ specVersion: v0.1.0
 package:
   name: cryptopets_solana
   version: v0.1.0
+  description: Indexes CryptoPets PetAccount state from the Solana program.
+
+network: solana-devnet
 
 imports:
-  solana: https://spkg.io/streamingfast/solana-common-v0.3.0.spkg
+  # Foundational module that streams the program-owned accounts we filter on.
+  accounts: https://spkg.io/streamingfast/solana-accounts-foundational-v0.0.2.spkg
+  entities_change: https://github.com/streamingfast/substreams-sink-entity-changes/releases/download/v2.0.0/substreams-entity-change-v2.0.0.spkg
 
 binaries:
   default:
@@ -12,25 +17,28 @@ binaries:
     file: ./target/wasm32-unknown-unknown/release/cryptopets_solana.wasm
 
 modules:
+  # Decode every owned PetAccount into our domain Pet message.
   - name: map_pets
     kind: map
+    initialBlock: 0
     inputs:
-      - params: string
-      - source: sf.solana.type.v1.Block
+      - map: accounts:filtered_accounts
     output:
       type: proto:cryptopets.v1.Pets
 
-networks:
-  solana-devnet:
-    params:
-      map_pets: program={{PROGRAM_ID}}&account=PetAccount
-    initialBlocks:
-      map_pets: 0
-  solana-mainnet-beta:
-    params:
-      map_pets: program={{PROGRAM_ID}}&account=PetAccount
-    initialBlocks:
-      map_pets: 0
+  # Translate Pets into graph entity changes for the subgraph sink.
+  - name: graph_out
+    kind: map
+    initialBlock: 0
+    inputs:
+      - map: map_pets
+    output:
+      type: proto:sf.substreams.sink.entity.v1.EntityChanges
+
+# Filter upstream accounts to those owned by the cryptopets program.
+# Keep this in sync with `declare_id!` in the Anchor program.
+params:
+  accounts:filtered_accounts: owner:78AXV46ks5oFoJHkukvbsfZTJixdj2MeStzuC6thiUry
 
 protobuf:
   files:

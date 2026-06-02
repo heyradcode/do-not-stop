@@ -6,7 +6,7 @@ schema:
 dataSources:
   - kind: substreams
     name: CryptoPetsSolana
-    network: {{NETWORK}}
+    network: solana-devnet
     source:
       package:
         moduleName: graph_out
