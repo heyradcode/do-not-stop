@@ -70,7 +70,14 @@
       "WebSearch",
       "WebFetch(domain:thegraph.com)",
       "Bash(graph --version)",
-      "Bash(graph deploy *)"
+      "Bash(graph deploy *)",
+      "Bash(substreams --version)",
+      "Bash(substreams info *)",
+      "Bash(curl *)",
+      "Bash(grep -iA1 \"network\\\\|params\")",
+      "Bash(substreams-sink-sql run *)",
+      "Bash(bash -n ../sink/run.sh)",
+      "Bash(rm -f /tmp/test.spkg /tmp/test-devnet.spkg /tmp/test-mainnet.spkg)"
     ]
   }
 }

@@ -4,7 +4,22 @@ package:
   version: v0.1.0
   description: Indexes CryptoPets PetAccount state from the Solana program.
 
+# Default network; run.sh derives the active one from SOLANA_NETWORK (sink/.env)
+# and passes `--network` to pack/run.
 network: solana-devnet
+
+# Per-network initialBlock overrides, selected by the active `network`. Devnet's
+# hosted AccountBlock Firehose only streams from block 455457500 onward — an
+# earlier start is rejected with "must be >= 455457500".
+networks:
+  solana-mainnet:
+    initialBlock:
+      map_pets: 0
+      db_out: 0
+  solana-devnet:
+    initialBlock:
+      map_pets: 455457500
+      db_out: 455457500
 
 imports:
   # Foundational module that streams the program-owned accounts we filter on.

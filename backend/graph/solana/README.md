@@ -34,29 +34,51 @@ Hasura  (GraphQL `pets`)  →  backend indexer (src/indexer/hasura.ts)  →  pet
 
 ## Prerequisites
 
-- A Solana **devnet** Substreams/Firehose provider endpoint + API token
-  (`SUBSTREAMS_ENDPOINT`, `SUBSTREAMS_API_TOKEN`). This is the same hosted-network
-  caveat as before — if no devnet provider is available, point the sink at a
-  self-hosted Firehose or mainnet-beta.
-- `substreams-sink-sql` and `docker` installed.
+- A Substreams API token (`SUBSTREAMS_API_TOKEN`). The endpoint itself is derived
+  from `SOLANA_NETWORK` (see below) — you do **not** hardcode it.
+
+  > **Important — use the *accounts* Firehose host.** This pipeline reads the
+  > foundational `AccountBlock` stream, which is only served by the
+  > `accounts.<network>.sol.streamingfast.io` hosts. The plain block hosts
+  > (`devnet.sol.streamingfast.io` / `mainnet.sol.streamingfast.io`) reject it
+  > with `input source "sf.solana.type.v1.AccountBlock" not supported`. This is
+  > why pointing devnet at the plain block host fails while mainnet (already on
+  > the accounts host) worked. Devnet also only streams AccountBlocks from block
+  > **455457500** onward.
+
+- `substreams` + `substreams-sink-sql` and `docker` installed.
 - Reuses the backend Postgres (`DATABASE_URL`) under a dedicated `solana` schema.
 
-## Build & run (devnet)
+## Network selection
+
+One variable, `SOLANA_NETWORK` (in `sink/.env`), drives everything — `run.sh`
+derives the endpoint, the start block, and the `--network` passed to the sink:
+
+| `SOLANA_NETWORK` | endpoint                                   | start block |
+| ---------------- | ------------------------------------------ | ----------- |
+| `devnet`         | `accounts.devnet.sol.streamingfast.io:443`  | 455457500   |
+| `mainnet`        | `accounts.mainnet.sol.streamingfast.io:443` | module init |
+
+A single `substreams.spkg` serves both: its `networks:` block carries each
+network's `initialBlock` overrides, and `substreams-sink-sql run --network`
+selects between them. Override the derived defaults with `SUBSTREAMS_ENDPOINT` /
+`SUBSTREAMS_START_BLOCK` if needed.
+
+## Build & run
 
 ```bash
-# 1. Build the Substreams package (schema.sql is embedded into the spkg)
-cd substreams
-cargo build --target wasm32-unknown-unknown --release
-substreams pack -o substreams.spkg substreams.yaml
+# 0. Pick the network (sink/.env): SOLANA_NETWORK=devnet  (or mainnet)
+cp sink/.env.example sink/.env   # set SOLANA_NETWORK, SINK_DSN, SUBSTREAMS_API_TOKEN, Hasura vars
+
+# 1. Build + pack the Substreams package (schema.sql is embedded into the spkg)
+cd sink
+./run.sh pack          # cargo build (wasm) + substreams pack
 
 # 2. Sink: create tables, then stream
-cd ../sink
-cp .env.example .env   # set SINK_DSN, SUBSTREAMS_* , Hasura vars
 ./run.sh setup         # one-time: creates solana.pet + cursors
 ./run.sh run           # long-running: streams db_out into Postgres
 
-# 3. Hasura GraphQL over the same Postgres
-cp .env.example .env  # fill HASURA_GRAPHQL_DATABASE_URL + HASURA_GRAPHQL_ADMIN_SECRET
+# 3. Hasura GraphQL over the same Postgres (reuses the sink/.env from step 0)
 docker compose up -d
 ./apply-metadata.sh   # tracks solana.pet, names its select root field `pets`
 ```
