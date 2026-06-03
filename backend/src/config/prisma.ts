@@ -16,7 +16,14 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient(): PrismaClient {
-    const adapter = new PrismaPg({ connectionString: env.databaseUrl });
+    // Supabase (and other managed Postgres) require TLS; the pg driver doesn't
+    // enable it from the URL alone, so turn it on for those hosts. Local Postgres
+    // (no sslmode / non-supabase host) keeps a plain connection.
+    const needsSsl = /supabase\.|sslmode=require/.test(env.databaseUrl);
+    const adapter = new PrismaPg({
+        connectionString: env.databaseUrl,
+        ...(needsSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+    });
     return new PrismaClient({
         adapter,
         log: env.isProduction ? ['error'] : ['warn', 'error'],
