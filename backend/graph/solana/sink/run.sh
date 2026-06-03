@@ -6,15 +6,21 @@ set -euo pipefail
 #   ./run.sh setup   # one-time: create the `pet` + `cursors` tables (from schema.sql)
 #   ./run.sh run     # stream db_out into Postgres (long-running)
 #
-# Required env:
+# Config: copy sink/.env.example → sink/.env (run.sh sources it automatically).
 #   SINK_DSN              psql://<user>:<pass>@<host>:5432/cryptopets?schemaName=solana&sslmode=disable
-#                         (same instance as the backend DATABASE_URL; note the psql:// scheme
-#                          and the dedicated `solana` schema)
-#   SUBSTREAMS_ENDPOINT   a Solana devnet Substreams/Firehose provider (host:port)  [run only]
-#   SUBSTREAMS_API_TOKEN  auth token for that endpoint, if it requires one (read automatically)
+#   SUBSTREAMS_ENDPOINT   Solana devnet provider host:port  [run only]
+#   SUBSTREAMS_API_TOKEN    auth token for that endpoint  [run only]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SPKG="$SCRIPT_DIR/../substreams/substreams.spkg"
+
+# Load sink/.env when present (SINK_DSN, SUBSTREAMS_*, Hasura vars for compose).
+if [[ -f "$SCRIPT_DIR/.env" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$SCRIPT_DIR/.env"
+    set +a
+fi
 
 if ! command -v substreams-sink-sql >/dev/null 2>&1; then
     echo "substreams-sink-sql not found. Install it: https://github.com/streamingfast/substreams-sink-sql" >&2
@@ -29,26 +35,20 @@ fi
 
 : "${SINK_DSN:?set SINK_DSN (psql://...?schemaName=solana)}"
 
-# libpq URL for psql (strip psql:// scheme and sink-only schemaName param).
-sink_dsn_to_pg_url() {
-    local url="${1/psql:\/\//postgresql:\/\/}"
-    if [[ "$url" != *"?"* ]]; then
-        echo "$url"
-        return
+# Parse psql://user:pass@host:port/db?... from SINK_DSN into env vars for psql.
+parse_sink_dsn() {
+    local dsn="$1"
+    dsn="${dsn#psql://}"
+    if [[ "$dsn" =~ ^([^:]+):([^@]+)@([^:/]+):([0-9]+)/([^?]+) ]]; then
+        SINK_PGUSER="${BASH_REMATCH[1]}"
+        SINK_PGPASSWORD="${BASH_REMATCH[2]}"
+        SINK_PGHOST="${BASH_REMATCH[3]}"
+        SINK_PGPORT="${BASH_REMATCH[4]}"
+        SINK_PGDATABASE="${BASH_REMATCH[5]}"
+        return 0
     fi
-    local base="${url%%\?*}"
-    local qs="${url#*\?}"
-    local kept=""
-    local IFS='&'
-    for param in $qs; do
-        [[ "$param" == schemaName=* ]] && continue
-        kept+="${kept:+&}${param}"
-    done
-    if [[ -n "$kept" ]]; then
-        echo "${base}?${kept}"
-    else
-        echo "$base"
-    fi
+    echo "Could not parse SINK_DSN — expected psql://user:pass@host:port/db?..." >&2
+    return 1
 }
 
 schema_name_from_dsn() {
@@ -60,15 +60,18 @@ schema_name_from_dsn() {
 }
 
 ensure_postgres_schema() {
-    local pg_url schema
-    pg_url="$(sink_dsn_to_pg_url "$SINK_DSN")"
+    local schema
     schema="$(schema_name_from_dsn "$SINK_DSN")"
     if ! command -v psql >/dev/null 2>&1; then
         echo "psql not found — create the schema manually:" >&2
         echo "  CREATE SCHEMA IF NOT EXISTS ${schema};" >&2
         return 0
     fi
-    psql "$pg_url" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA IF NOT EXISTS \"${schema}\";"
+    parse_sink_dsn "$SINK_DSN"
+    PGPASSWORD="$SINK_PGPASSWORD" psql \
+        -h "$SINK_PGHOST" -p "$SINK_PGPORT" -U "$SINK_PGUSER" -d "$SINK_PGDATABASE" \
+        -v ON_ERROR_STOP=1 \
+        -c "CREATE SCHEMA IF NOT EXISTS \"${schema}\";"
 }
 
 case "${1:-}" in
