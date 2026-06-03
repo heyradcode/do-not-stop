@@ -2,12 +2,15 @@
 --
 -- Embedded into the spkg via the `sink.config.schema` block in
 -- ../substreams/substreams.yaml and applied by `substreams-sink-sql setup`
--- into the schema named in the DSN (`?schema=solana`). The sink also creates
+-- into the schema named in the DSN (`?schemaName=solana`). The sink also creates
 -- its own `cursors` table in that schema to track resumable progress.
 --
 -- Columns/types mirror `db_out` (../substreams/src/lib.rs) and the backend
 -- `pet_roster` table (backend/prisma/schema.prisma). db_out emits every value
 -- as a string; the sink casts it to the column type below.
+
+create schema if not exists solana;
+set search_path to solana;
 
 create table if not exists pet (
     id          text    not null,

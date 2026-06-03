@@ -51,7 +51,9 @@ substreams pack -o substreams.spkg substreams.yaml
 
 # 2. Sink: create tables, then stream (see sink/run.sh for the env it needs)
 cd ../sink
-export SINK_DSN='psql://<user>:<pass>@<host>:5432/cryptopets?schema=solana&sslmode=disable'
+chmod +x test-db.sh
+./test-db.sh 192.168.5.1          # find working Windows host IP first
+export SINK_DSN='psql://<user>:<pass>@<host>:5432/cryptopets?schemaName=solana&sslmode=disable'
 export SUBSTREAMS_ENDPOINT='<solana-devnet-substreams-endpoint>'
 export SUBSTREAMS_API_TOKEN='<token>'
 ./run.sh setup        # one-time: creates solana.pet + cursors
