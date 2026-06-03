@@ -16,13 +16,14 @@ export function isSolanaConfigured(): boolean {
 }
 
 /**
- * Constant-time-ish check of the shared secret Helius sends in `Authorization`.
- * When no secret is configured we accept all calls (local/dev) — set
- * `HELIUS_WEBHOOK_SECRET` and the matching webhook auth header in production.
+ * Check the shared secret Helius sends in `Authorization`. A configured secret
+ * must match. When none is set we accept all calls in dev only — in production a
+ * missing secret means reject (and env.ts also fails fast at startup, so this is
+ * belt-and-suspenders).
  */
 export function isAuthorized(authHeader: string | undefined): boolean {
     const expected = env.solana.webhookSecret;
-    if (!expected) return true;
+    if (!expected) return !env.isProduction;
     return authHeader === expected;
 }
 

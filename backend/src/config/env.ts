@@ -46,3 +46,12 @@ export const env = {
         webhookSecret: process.env.HELIUS_WEBHOOK_SECRET?.trim() || undefined,
     },
 } as const;
+
+// In production the webhook must not be left open: if Solana indexing is on, the
+// shared secret is mandatory so POST /api/webhooks/helius can reject forged calls.
+if (env.isProduction && env.solana.heliusRpcUrl && !env.solana.webhookSecret) {
+    throw new Error(
+        'HELIUS_WEBHOOK_SECRET is required in production when HELIUS_RPC_URL is set ' +
+            '(secures POST /api/webhooks/helius).'
+    );
+}

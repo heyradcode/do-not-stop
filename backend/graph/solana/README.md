@@ -55,7 +55,9 @@ HELIUS_WEBHOOK_SECRET=<random-long-string>   # optional but recommended in prod
 ```
 
 Solana indexing is a no-op unless `HELIUS_RPC_URL` and `SOLANA_PROGRAM_ID` are
-both set. Use the `mainnet.helius-rpc.com` host for mainnet.
+both set. Use the `mainnet.helius-rpc.com` host for mainnet. In production
+`HELIUS_WEBHOOK_SECRET` is **required** when `HELIUS_RPC_URL` is set — the server
+refuses to boot without it, so the webhook can't be left open.
 
 ## Setting up the Helius webhook
 
