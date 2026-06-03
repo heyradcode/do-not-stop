@@ -96,9 +96,10 @@ const PetInteractions: React.FC = () => {
 
     const previewParentA = readyPets[0]?.pet;
     const previewParentB = readyPets[1]?.pet;
-    const availableBattles = Math.min(3, readyPets.length > 1 ? 3 : 0);
+    const availableBattles = Math.min(3, readyPets.length > 0 ? 3 : 0);
     const breedDisabledHint = !breedSupported ? 'Breeding unavailable on this chain' : undefined;
-    const battleDisabledHint = readyPets.length < 2 ? 'You need at least two ready pets' : undefined;
+    // Battle only needs one ready pet — the opponent comes from the on-chain roster.
+    const battleDisabledHint = readyPets.length < 1 ? 'You need a ready pet to battle' : undefined;
 
     return (
         <PetContainer
@@ -160,7 +161,7 @@ const PetInteractions: React.FC = () => {
                             type="button"
                             onClick={() => navigate(BATTLE_PATH)}
                             className="lab-breed-button start-button"
-                            disabled={!battleSupported || readyPets.length < 2}
+                            disabled={!battleSupported || readyPets.length < 1}
                             title={battleDisabledHint}
                         >
                             Start battle
