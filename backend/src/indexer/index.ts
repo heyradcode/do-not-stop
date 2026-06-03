@@ -1,5 +1,5 @@
 import { scanSubgraphRoster } from './subgraph';
-import { scanSolanaRoster } from './solana';
+import { scanSolanaRoster } from '@solana/indexer';
 import { env } from '@config/env';
 import { countByChain } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';
@@ -7,7 +7,7 @@ import type { Chain } from '@typings/chain';
 /**
  * A roster source per chain. EVM uses a Substreams-powered subgraph on The
  * Graph; Solana reconciles `PetAccount` state directly over Helius RPC (the
- * Helius webhook in src/features/webhooks handles real-time updates, this is
+ * Helius webhook in indexing/solana/webhooks handles real-time updates, this is
  * the periodic backfill/safety-net). Both keep the `pet_roster` table fresh.
  */
 type RosterSource =

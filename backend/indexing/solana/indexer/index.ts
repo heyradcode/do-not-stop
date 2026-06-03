@@ -8,8 +8,8 @@ export { decodePetAccount } from './decode';
 /**
  * Solana roster source: a full reconciliation scan over Helius RPC. Replaces the
  * old Substreams → Postgres → Hasura pipeline. The Helius webhook
- * (src/features/webhooks) keeps `pet_roster` fresh in near-real-time; this
- * periodic scan is the backfill + safety net for any webhook delivery missed.
+ * (../webhooks) keeps `pet_roster` fresh in near-real-time; this periodic scan
+ * is the backfill + safety net for any webhook delivery missed.
  *
  * `getProgramAccounts` returns every `PetAccount`, so each pass is a complete
  * resync — no cursor/pagination needed (the roster is small and bounded).

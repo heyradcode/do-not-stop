@@ -2,13 +2,13 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "Backend for Web3 authentication example",
-  "main": "dist/server.js",
+  "main": "dist/src/server.js",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "build": "prisma generate && tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "dev": "nodemon",
     "clean": "rm -rf dist",
     "postinstall": "prisma generate",

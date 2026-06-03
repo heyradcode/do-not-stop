@@ -2,10 +2,9 @@ import bs58 from 'bs58';
 import type { RosterPet } from '@repositories/roster.repository';
 
 /**
- * Decode a raw on-chain `PetAccount` into a roster row. Ported from the old
- * Substreams `map_pets` decoder (backend/graph/solana/substreams/src/lib.rs) so
- * the byte layout stays identical — only the source changed (Helius RPC instead
- * of a Firehose stream).
+ * Decode a raw on-chain `PetAccount` into a roster row. The byte layout mirrors
+ * the on-chain account (it was originally ported from the now-removed Substreams
+ * decoder) — only the source changed (Helius RPC instead of a Firehose stream).
  *
  * If `PetAccount` in
  * `contracts/solana/cryptopets/programs/cryptopets/src/state.rs` changes, update

@@ -28,21 +28,30 @@ Helius RPC  getMultipleAccounts → decode PetAccount → upsert pet_roster
         ▲
         │  (safety net / backfill)
 periodic indexer scan  getProgramAccounts → decode all → upsert pet_roster
-        (src/indexer/solana, runs on the existing 30s tick)
+        (indexing/solana/indexer, runs on the existing 30s tick)
 ```
 
-Both paths share the same decoder (`src/indexer/solana/decode.ts`) and RPC
-client (`src/indexer/solana/rpc.ts`). The webhook gives near-real-time updates;
-the scan guarantees eventual consistency if a delivery is missed.
+Both paths share the same decoder (`indexer/decode.ts`) and RPC client
+(`indexer/rpc.ts`). The webhook gives near-real-time updates; the scan guarantees
+eventual consistency if a delivery is missed.
 
 ## Code
 
-| Location                                  | Role                                            |
-| ----------------------------------------- | ----------------------------------------------- |
-| `src/indexer/solana/decode.ts`            | Decode raw `PetAccount` bytes → roster row.     |
-| `src/indexer/solana/rpc.ts`               | Helius JSON-RPC client (program + account reads).|
-| `src/indexer/solana/index.ts`             | `scanSolanaRoster` — periodic reconciliation.   |
-| `src/features/webhooks/`                  | `POST /api/webhooks/helius` push handler.       |
+This code lives outside `src/` but is **compiled and run in-process by the
+backend** (the backend `tsconfig` includes `indexing/solana`, and it's reached
+via the `@solana/*` path alias). It is not a separate service — unlike
+`indexing/evm/subgraph`, which is an off-process subgraph deployed to The Graph.
+
+| Location (under `backend/indexing/solana/`) | Role                                          |
+| ------------------------------------------- | --------------------------------------------- |
+| `indexer/decode.ts`                         | Decode raw `PetAccount` bytes → roster row.   |
+| `indexer/rpc.ts`                            | Helius JSON-RPC client (program + account reads).|
+| `indexer/index.ts`                          | `scanSolanaRoster` — periodic reconciliation. |
+| `webhooks/`                                 | `POST /api/webhooks/helius` push handler.     |
+
+The orchestrator (`src/indexer/index.ts`) and the upsert repository
+(`src/repositories/roster.repository.ts`) stay in `src/` and call into this
+module via `@solana/indexer`.
 
 ## Configuration
 
@@ -77,5 +86,4 @@ type/parsing doesn't matter — it's only a "something changed" trigger.
 
 `decodePetAccount` reads the account by byte offset. If `PetAccount` in
 `contracts/solana/cryptopets/programs/cryptopets/src/state.rs` changes, update
-the discriminator, `PET_ACCOUNT_LEN`, and the offsets in
-`src/indexer/solana/decode.ts`.
+the discriminator, `PET_ACCOUNT_LEN`, and the offsets in `indexer/decode.ts`.

@@ -23,8 +23,6 @@
     "compile": "pnpm --prefix contracts/ethereum compile",
     "graph:evm:configure": "pnpm --filter cryptopets-subgraph-evm configure",
     "graph:evm:build": "pnpm --filter cryptopets-subgraph-evm build",
-    "graph:solana:configure": "pnpm --filter cryptopets-subgraph-solana configure",
-    "graph:solana:build": "pnpm --filter cryptopets-subgraph-solana build",
     "test": "pnpm --prefix contracts/ethereum test",
     "build": "pnpm compile && pnpm --prefix backend build && pnpm --prefix frontend build && pnpm --prefix website build",
     "build:backend": "pnpm --filter backend build",

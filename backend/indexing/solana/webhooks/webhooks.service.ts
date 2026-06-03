@@ -1,5 +1,5 @@
 import { env } from '@config/env';
-import { createHeliusRpc } from '@indexer/solana';
+import { createHeliusRpc } from '../indexer';
 import { upsertPet } from '@repositories/roster.repository';
 
 /**

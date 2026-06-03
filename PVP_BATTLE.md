@@ -113,7 +113,7 @@ subgraph's GraphQL and upserts into the **same** table — the endpoint,
 **Why not subgraph-only / now:**
 1. **EVM-only.** The Graph indexes EVM cleanly; Solana is indexed separately via
    Helius (RPC reconciliation scan + push webhook → `pet_roster`, see
-   `backend/src/indexer/solana` and `backend/graph/solana/README.md`). You'd
+   `backend/indexing/solana` and `backend/indexing/solana/README.md`). You'd
    still need that custom Solana path, so the unified backend matters.
 2. **Local dev.** The hosted/decentralized Graph network can't index
    `localhost:8545`. Local use requires running a dockerized `graph-node` + IPFS
@@ -301,7 +301,7 @@ do the VRF migration before any stakes/real competition.
 
 **Backend (new):**
 - DB migration for `pet_roster` (+ later `challenges`)
-- `src/indexer/evm.ts`, `src/indexer/solana.ts`
+- `src/indexer/subgraph.ts` (EVM), `indexing/solana/` (Solana indexer + webhook)
 - `src/routes/battle.ts` → `GET /api/battle/opponents`
 - mount in `src/app.ts`
 

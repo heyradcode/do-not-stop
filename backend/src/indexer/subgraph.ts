@@ -4,9 +4,9 @@ import type { Chain } from '@typings/chain';
 /**
  * Roster source: the EVM subgraph on The Graph. Queries its GraphQL `pets`
  * collection and upserts into `pet_roster`. (Solana is indexed via Helius — see
- * src/indexer/solana.)
+ * indexing/solana.)
  *
- * Subgraph schema lives under `backend/graph/evm/subgraph/schema.graphql`.
+ * Subgraph schema lives under `backend/indexing/evm/subgraph/schema.graphql`.
  */
 export interface SubgraphIndexerConfig {
     chain: Chain;

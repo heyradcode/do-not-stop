@@ -88,7 +88,7 @@ importers:
         specifier: ^5.7.2
         version: 5.8.3
 
-  backend/graph/evm/subgraph:
+  backend/indexing/evm/subgraph:
     devDependencies:
       '@graphprotocol/graph-cli':
         specifier: 0.98.1

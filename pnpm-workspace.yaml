@@ -5,5 +5,5 @@ packages:
   - 'mobile'
   - 'shared'
   - 'contracts/ethereum'
-  - 'backend/graph/evm/subgraph'
+  - 'backend/indexing/evm/subgraph'
   - 'contracts/solana/cryptopets'

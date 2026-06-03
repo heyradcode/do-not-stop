@@ -1,6 +1,6 @@
 import path from 'path';
 
-/** Resolve `@config/*`, `@features/*`, etc. from this file's directory (src/ or dist/). */
+/** Resolve `@config/*`, `@features/*`, etc. from this file's directory (src/ or dist/src/). */
 const root = __dirname;
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -13,4 +13,7 @@ require('module-alias').addAliases({
     '@utils': path.join(root, 'utils'),
     '@typings': path.join(root, 'types'),
     '@generated': path.join(root, 'generated'),
+    // Solana indexer lives outside src/ (a sibling under indexing/), so it
+    // resolves one level up: src/../indexing/solana → dist/src/../indexing/solana.
+    '@solana': path.join(root, '..', 'indexing', 'solana'),
 });
