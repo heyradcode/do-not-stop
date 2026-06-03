@@ -273,14 +273,13 @@
 }
 
 .battle-opponent-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(148px, 100%), 1fr));
+    display: flex;
     gap: 10px;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    max-height: min(42vh, 320px);
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
     padding: 6px;
     scroll-padding: 6px;
     scrollbar-width: thin;
@@ -306,7 +305,8 @@
 }
 
 .battle-opponent-grid .battle-picker-card {
-    width: 100%;
+    flex: 0 0 min(168px, calc(100% - 12px));
+    max-width: calc(100% - 12px);
 }
 
 .battle-picker-card:hover:not(:disabled) {
