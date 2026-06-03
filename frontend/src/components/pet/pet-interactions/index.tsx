@@ -5,6 +5,7 @@ import {
     getReadyPetsUnified,
     isActionSupported,
     useActiveChain,
+    useOpponents,
     usePetList,
 } from '@shared/core';
 import type { InteractionAction } from '@constants/interactionRoutes';
@@ -53,6 +54,10 @@ const PetInteractions: React.FC = () => {
     const levelUpSupported = isActionSupported(activeChainKind, 'levelUp');
     const renameSupported = isActionSupported(activeChainKind, 'rename');
 
+    // Preview an on-chain rival for the Battle Arena card (opponents come from
+    // the roster, not a second owned pet).
+    const { opponents } = useOpponents({ chain: activeChainKind });
+
     useEffect(() => {
         if (actionParam !== undefined && actionParam !== '' && action === null) {
             navigate(DASHBOARD_HOME, { replace: true });
@@ -96,6 +101,15 @@ const PetInteractions: React.FC = () => {
 
     const previewParentA = readyPets[0]?.pet;
     const previewParentB = readyPets[1]?.pet;
+    // Closest-level opponent to the fighter, for the Battle Arena VS preview.
+    const previewOpponent =
+        opponents.length > 0
+            ? [...opponents].sort(
+                  (a, b) =>
+                      Math.abs(a.level - (previewParentA?.level ?? a.level)) -
+                      Math.abs(b.level - (previewParentA?.level ?? b.level)),
+              )[0]
+            : undefined;
     const availableBattles = Math.min(3, readyPets.length > 0 ? 3 : 0);
     const breedDisabledHint = !breedSupported ? 'Breeding unavailable on this chain' : undefined;
     // Battle only needs one ready pet — the opponent comes from the on-chain roster.
@@ -151,9 +165,9 @@ const PetInteractions: React.FC = () => {
                                 <div className="vs">VS</div>
                             </div>
                             <div className="pet-item">
-                                <span className="pet-name">{previewParentB?.name ?? 'Fighter B'}</span>
+                                <span className="pet-name">{previewOpponent?.name ?? 'On-chain rival'}</span>
                                 <div className="life-track">
-                                    <div className="life-fill" style={{ width: `${getLifePercent(previewParentB)}%` }} />
+                                    <div className="life-fill" style={{ width: `${getLifePercent(previewOpponent)}%` }} />
                                 </div>
                             </div>
                         </div>
