@@ -31,4 +31,18 @@ export const env = {
 
     /** Comma-separated allowed CORS origins; unset = allow all (local dev). */
     corsOrigin: process.env.CORS_ORIGIN,
+
+    /**
+     * Solana indexing via Helius (RPC reconciliation scan + push webhook). All
+     * optional — Solana indexing is a no-op unless `heliusRpcUrl` and
+     * `programId` are both set.
+     */
+    solana: {
+        /** Full Helius RPC URL incl. `?api-key=`, e.g. https://devnet.helius-rpc.com/?api-key=<key>. */
+        heliusRpcUrl: process.env.HELIUS_RPC_URL?.trim() || undefined,
+        /** CryptoPets program id (base58). */
+        programId: process.env.SOLANA_PROGRAM_ID?.trim() || undefined,
+        /** Shared secret Helius sends in the webhook `Authorization` header. */
+        webhookSecret: process.env.HELIUS_WEBHOOK_SECRET?.trim() || undefined,
+    },
 } as const;

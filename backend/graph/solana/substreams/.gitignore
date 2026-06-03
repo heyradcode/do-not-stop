@@ -1,3 +1,0 @@
-# Build artifacts — regenerate with `cargo build` / `substreams pack`.
-/target/
-*.spkg

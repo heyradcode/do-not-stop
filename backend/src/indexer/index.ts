@@ -1,21 +1,18 @@
 import { scanSubgraphRoster } from './subgraph';
-import { scanHasuraRoster } from './hasura';
+import { scanSolanaRoster } from './solana';
+import { env } from '@config/env';
 import { countByChain } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';
 
 /**
- * A roster source per chain. EVM still uses a Substreams-powered subgraph on
- * The Graph; Solana uses Hasura GraphQL over the substreams-sink-sql Postgres
- * (see backend/graph/solana). Both expose a `pets` GraphQL collection we poll
- * and upsert into `pet_roster`.
+ * A roster source per chain. EVM uses a Substreams-powered subgraph on The
+ * Graph; Solana reconciles `PetAccount` state directly over Helius RPC (the
+ * Helius webhook in src/features/webhooks handles real-time updates, this is
+ * the periodic backfill/safety-net). Both keep the `pet_roster` table fresh.
  */
-interface RosterSource {
-    chain: Chain;
-    kind: 'subgraph' | 'hasura';
-    url: string;
-    /** Hasura admin secret (hasura sources only). */
-    adminSecret?: string;
-}
+type RosterSource =
+    | { chain: 'evm'; kind: 'subgraph'; url: string }
+    | { chain: 'solana'; kind: 'helius'; rpcUrl: string; programId: string };
 
 interface IndexerConfig {
     enabled: boolean;
@@ -39,27 +36,17 @@ function readConfig(): IndexerConfig {
         sources.push({ chain: 'evm', kind: 'subgraph', url: evmUrl });
     }
 
-    const solanaUrl = process.env.HASURA_URL_SOLANA?.trim();
-    if (solanaUrl) {
-        const adminSecret = process.env.HASURA_ADMIN_SECRET?.trim();
-        sources.push({
-            chain: 'solana',
-            kind: 'hasura',
-            url: solanaUrl,
-            ...(adminSecret ? { adminSecret } : {}),
-        });
+    const { heliusRpcUrl, programId } = env.solana;
+    if (heliusRpcUrl && programId) {
+        sources.push({ chain: 'solana', kind: 'helius', rpcUrl: heliusRpcUrl, programId });
     }
 
     return { enabled, intervalMs, sources };
 }
 
 function scanSource(source: RosterSource): Promise<{ scanned: number }> {
-    if (source.kind === 'hasura') {
-        return scanHasuraRoster({
-            chain: source.chain,
-            url: source.url,
-            ...(source.adminSecret ? { adminSecret: source.adminSecret } : {}),
-        });
+    if (source.kind === 'helius') {
+        return scanSolanaRoster({ rpcUrl: source.rpcUrl, programId: source.programId });
     }
     return scanSubgraphRoster({ chain: source.chain, url: source.url });
 }
@@ -104,7 +91,7 @@ export function startIndexers(): void {
     }
     if (config.sources.length === 0) {
         console.log(
-            '[indexer] no sources configured (set SUBGRAPH_URL_EVM and/or HASURA_URL_SOLANA); not starting'
+            '[indexer] no sources configured (set SUBGRAPH_URL_EVM and/or HELIUS_RPC_URL + SOLANA_PROGRAM_ID); not starting'
         );
         return;
     }

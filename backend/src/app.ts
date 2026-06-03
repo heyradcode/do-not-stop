@@ -6,6 +6,7 @@ import authRoutes from '@features/auth/auth.routes';
 import protectedRoutes from '@features/protected/protected.routes';
 import healthRoutes from '@features/health/health.routes';
 import battleRoutes from '@features/battle/battle.routes';
+import webhookRoutes from '@features/webhooks/webhooks.routes';
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/battle', battleRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
 app.get('/', (req: Request, res: Response) => {
     res.json({
@@ -34,6 +36,7 @@ app.get('/', (req: Request, res: Response) => {
             protected: '/api/protected',
             health: '/api/health',
             battle: '/api/battle',
+            webhooks: '/api/webhooks',
         },
     });
 });

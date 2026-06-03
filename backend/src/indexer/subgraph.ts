@@ -2,10 +2,11 @@ import { upsertPet } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';
 
 /**
- * Roster source: Substreams-powered subgraphs on The Graph (one deployment per chain).
- * Queries each subgraph's GraphQL `pets` collection and upserts into `pet_roster`.
+ * Roster source: the EVM subgraph on The Graph. Queries its GraphQL `pets`
+ * collection and upserts into `pet_roster`. (Solana is indexed via Helius — see
+ * src/indexer/solana.)
  *
- * Subgraph schemas live under `backend/graph/{evm,solana}/subgraph/schema.graphql`.
+ * Subgraph schema lives under `backend/graph/evm/subgraph/schema.graphql`.
  */
 export interface SubgraphIndexerConfig {
     chain: Chain;

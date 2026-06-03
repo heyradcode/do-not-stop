@@ -111,9 +111,10 @@ subgraph's GraphQL and upserts into the **same** table — the endpoint,
 `useOpponents`, and the UI never change.
 
 **Why not subgraph-only / now:**
-1. **EVM-only.** The Graph indexes EVM cleanly; Solana needs the heavier
-   Substreams/Firehose path (different toolchain). You'd still need the custom
-   `solanaIndexer`, so the unified backend matters.
+1. **EVM-only.** The Graph indexes EVM cleanly; Solana is indexed separately via
+   Helius (RPC reconciliation scan + push webhook → `pet_roster`, see
+   `backend/src/indexer/solana` and `backend/graph/solana/README.md`). You'd
+   still need that custom Solana path, so the unified backend matters.
 2. **Local dev.** The hosted/decentralized Graph network can't index
    `localhost:8545`. Local use requires running a dockerized `graph-node` + IPFS
    + Postgres against the Hardhat node, and redeploying the subgraph on each

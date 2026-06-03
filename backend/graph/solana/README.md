@@ -1,115 +1,79 @@
 # CryptoPets — Solana indexing
 
 Indexes `PetAccount` state from the Solana program
-(`78AXV46ks5oFoJHkukvbsfZTJixdj2MeStzuC6thiUry`) into Postgres, exposed over
-GraphQL by Hasura, so the backend can sync Solana pets into `pet_roster` the
-same way it polls the EVM subgraph.
+(`78AXV46ks5oFoJHkukvbsfZTJixdj2MeStzuC6thiUry`) into the backend's `pet_roster`
+table (Supabase/Postgres), so the frontend can discover Solana opponents the
+same way it does EVM ones.
 
-Unlike EVM (event-handler subgraph on The Graph), The Graph's hosted Studio
-doesn't reliably index Solana substreams-powered subgraphs — so Solana uses the
-StreamingFast SQL pattern instead: **Substreams → Postgres (`substreams-sink-sql`)
-→ Hasura**. Hasura auto-generates the GraphQL the backend indexer consumes.
+Unlike EVM (an event-handler subgraph on The Graph), Solana is indexed **inside
+the existing backend** — there is no separate indexer service, no Substreams,
+and no Hasura. [Helius](https://helius.dev) pushes updates to a webhook on the
+backend, and a periodic RPC scan reconciles anything missed.
 
-```
-substreams/   Rust → wasm. Filters program-owned accounts, decodes PetAccount,
-              emits DatabaseChanges (substreams.spkg). Embeds the sink config.
-sink/         schema.sql (the `pet` table), run.sh (substreams-sink-sql
-              setup/run), docker-compose.yml + apply-metadata.sh (Hasura).
-```
+> Previously this used Substreams → Postgres (`substreams-sink-sql`) → Hasura.
+> That was dropped: Substreams' account-foundational stream requires an
+> expensive plan. Helius RPC + webhooks cover the same need far more cheaply, and
+> Supabase's built-in `pg_graphql` replaces Hasura for any GraphQL the frontend
+> needs.
 
 ## Data flow
 
 ```
-solana-accounts-foundational (filtered_accounts, owner:<programId>)
-        │  FilteredAccounts
+Helius webhook  (fires on txs touching the program)
+        │  POST /api/webhooks/helius   (transaction, not account state)
         ▼
-map_pets   decode PetAccount → cryptopets.v1.Pets
+webhooks.service  extract touched account addresses
         ▼
-db_out     Pets → DatabaseChanges (upsert per pet)
-        ▼
-substreams-sink-sql  →  Postgres  solana.pet
-        ▼
-Hasura  (GraphQL `pets`)  →  backend indexer (src/indexer/hasura.ts)  →  pet_roster
+Helius RPC  getMultipleAccounts → decode PetAccount → upsert pet_roster
+        ▲
+        │  (safety net / backfill)
+periodic indexer scan  getProgramAccounts → decode all → upsert pet_roster
+        (src/indexer/solana, runs on the existing 30s tick)
 ```
 
-## Prerequisites
+Both paths share the same decoder (`src/indexer/solana/decode.ts`) and RPC
+client (`src/indexer/solana/rpc.ts`). The webhook gives near-real-time updates;
+the scan guarantees eventual consistency if a delivery is missed.
 
-- A Substreams API token (`SUBSTREAMS_API_TOKEN`). The endpoint itself is derived
-  from `SOLANA_NETWORK` (see below) — you do **not** hardcode it.
+## Code
 
-  > **Important — use the *accounts* Firehose host.** This pipeline reads the
-  > foundational `AccountBlock` stream, which is only served by the
-  > `accounts.<network>.sol.streamingfast.io` hosts. The plain block hosts
-  > (`devnet.sol.streamingfast.io` / `mainnet.sol.streamingfast.io`) reject it
-  > with `input source "sf.solana.type.v1.AccountBlock" not supported`. This is
-  > why pointing devnet at the plain block host fails while mainnet (already on
-  > the accounts host) worked. Devnet also only streams AccountBlocks from block
-  > **455457500** onward.
+| Location                                  | Role                                            |
+| ----------------------------------------- | ----------------------------------------------- |
+| `src/indexer/solana/decode.ts`            | Decode raw `PetAccount` bytes → roster row.     |
+| `src/indexer/solana/rpc.ts`               | Helius JSON-RPC client (program + account reads).|
+| `src/indexer/solana/index.ts`             | `scanSolanaRoster` — periodic reconciliation.   |
+| `src/features/webhooks/`                  | `POST /api/webhooks/helius` push handler.       |
 
-- `substreams` + `substreams-sink-sql` and `docker` installed.
-- Reuses the backend Postgres (`DATABASE_URL`) under a dedicated `solana` schema.
+## Configuration
 
-## Network selection
-
-One variable, `SOLANA_NETWORK` (in `sink/.env`), drives everything — `run.sh`
-derives the endpoint, the start block, and the `--network` passed to the sink:
-
-| `SOLANA_NETWORK` | endpoint                                   | start block |
-| ---------------- | ------------------------------------------ | ----------- |
-| `devnet`         | `accounts.devnet.sol.streamingfast.io:443`  | 455457500   |
-| `mainnet`        | `accounts.mainnet.sol.streamingfast.io:443` | module init |
-
-A single `substreams.spkg` serves both: its `networks:` block carries each
-network's `initialBlock` overrides, and `substreams-sink-sql run --network`
-selects between them. Override the derived defaults with `SUBSTREAMS_ENDPOINT` /
-`SUBSTREAMS_START_BLOCK` if needed.
-
-## Build & run
-
-```bash
-# 0. Pick the network (sink/.env): SOLANA_NETWORK=devnet  (or mainnet)
-cp sink/.env.example sink/.env   # set SOLANA_NETWORK, SINK_DSN, SUBSTREAMS_API_TOKEN, Hasura vars
-
-# 1. Build + pack the Substreams package (schema.sql is embedded into the spkg)
-cd sink
-./run.sh pack          # cargo build (wasm) + substreams pack
-
-# 2. Sink: create tables, then stream
-./run.sh setup         # one-time: creates solana.pet + cursors
-./run.sh run           # long-running: streams db_out into Postgres
-
-# 3. Hasura GraphQL over the same Postgres (reuses the sink/.env from step 0)
-docker compose up -d
-./apply-metadata.sh   # tracks solana.pet, names its select root field `pets`
-```
-
-Then point the backend at Hasura (`backend/.env`):
+In `backend/.env` (see `backend/env.example`):
 
 ```
-HASURA_URL_SOLANA=http://localhost:8080/v1/graphql
-HASURA_ADMIN_SECRET=<same as HASURA_GRAPHQL_ADMIN_SECRET>
+HELIUS_RPC_URL=https://devnet.helius-rpc.com/?api-key=<your-helius-key>
+SOLANA_PROGRAM_ID=78AXV46ks5oFoJHkukvbsfZTJixdj2MeStzuC6thiUry
+HELIUS_WEBHOOK_SECRET=<random-long-string>   # optional but recommended in prod
 ```
 
-The indexer (`backend/src/indexer`) polls this `pets` query and upserts into
-`pet_roster` with `chain='solana'`.
+Solana indexing is a no-op unless `HELIUS_RPC_URL` and `SOLANA_PROGRAM_ID` are
+both set. Use the `mainnet.helius-rpc.com` host for mainnet.
 
-## Regenerating protobuf code (`substreams/src/pb`)
+## Setting up the Helius webhook
 
-`src/pb` is generated from `proto/` via `buf` — only the messages we consume
-(`cryptopets.proto` + a vendored subset of the foundational `Account` /
-`FilteredAccounts` types), so codegen stays to four small files. The
-`DatabaseChanges` proto is vendored separately under `proto-imports/` (used by
-`substreams pack` for the `db_out` output type, kept out of `proto/` so `buf`
-doesn't regenerate it — we use the `substreams-database-change` crate's types).
+Create the webhook once (Helius dashboard, or the Webhooks API), pointed at the
+deployed backend:
 
-```bash
-cd substreams
-buf generate          # rewrites src/pb from proto/
-```
+- **Webhook URL:** `https://<your-backend>/api/webhooks/helius`
+- **Type:** `enhanced` (or `raw`) — both are handled.
+- **Account addresses:** the program id above (Helius fires when it appears in a
+  transaction).
+- **Authorization Header:** the same value as `HELIUS_WEBHOOK_SECRET`.
+
+The backend re-reads account state over RPC on each delivery, so the webhook
+type/parsing doesn't matter — it's only a "something changed" trigger.
 
 ## Keeping decode in sync
 
-`map_pets` decodes the raw account by byte offset. If `PetAccount` in
+`decodePetAccount` reads the account by byte offset. If `PetAccount` in
 `contracts/solana/cryptopets/programs/cryptopets/src/state.rs` changes, update
-`PET_ACCOUNT_LEN`, the discriminator, and the offsets in `substreams/src/lib.rs`,
-and the column list in both `db_out` and `sink/schema.sql`.
+the discriminator, `PET_ACCOUNT_LEN`, and the offsets in
+`src/indexer/solana/decode.ts`.
