@@ -8,9 +8,11 @@ import {
     getRarityName,
     getReadyPetsUnified,
     useActiveChain,
+    useBattleDialogue,
     useBattlePets,
     useOpponents,
     usePetList,
+    type DialoguePetInput,
     type OpponentPet,
     type Pet,
 } from '@shared/core';
@@ -28,8 +30,20 @@ import {
     sortOpponentsByMatch,
 } from './battle-matchmaking';
 import BattleResultArt from './battle-result-art';
+import BattleDialogue from './battle-dialogue';
 import type { BattleOutcome } from './types';
 import './index.css';
+
+/** Map a pet/opponent to the persona input the dialogue endpoint expects. */
+const toDialoguePet = (pet: Pet | OpponentPet): DialoguePetInput => ({
+    petId: pet.id,
+    name: pet.name,
+    level: pet.level,
+    rarity: pet.rarity,
+    dna: pet.dna.toString(),
+    winCount: pet.winCount,
+    lossCount: pet.lossCount,
+});
 
 export type BattlePanelProps = {
     /** `false` when embedded under the dashboard interactions hub. */
@@ -257,6 +271,27 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         pendingOutcomeRef.current = false;
     }, [pets, selectedPet1, petsLoading]);
 
+    // AI battle dialogue — generated once the outcome is known, keyed by tx hash.
+    const dialogueWinner =
+        battleOutcome === null ? null : battleOutcome.result === 'victory' ? 'attacker' : 'defender';
+    const attackerDialogueInput = useMemo(
+        () => (selectedFighter ? toDialoguePet(selectedFighter) : null),
+        [selectedFighter],
+    );
+    const defenderDialogueInput = useMemo(
+        () => (opponent ? toDialoguePet(opponent) : null),
+        [opponent],
+    );
+    const { turns: dialogueTurns, isLoading: dialogueLoading } = useBattleDialogue({
+        chain: activeChainKind,
+        battleId: battle.hash ?? null,
+        attacker: attackerDialogueInput,
+        defender: defenderDialogueInput,
+        winner: dialogueWinner,
+        leveledUp: battleOutcome?.leveledUp ?? false,
+        enabled: showResult && battleOutcome !== null,
+    });
+
     const usesSwitchboardVrf = chain.kind === 'solana';
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
     const subtitle = usesSwitchboardVrf
@@ -463,6 +498,14 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                                     ? `vs ${opponent.name} (Lv.${opponent.level})`
                                     : `Lost to ${opponent.name} (Lv.${opponent.level})`}
                             </p>
+                        ) : null}
+                        {battleOutcome !== null && (dialogueLoading || dialogueTurns.length > 0) ? (
+                            <BattleDialogue
+                                turns={dialogueTurns}
+                                isLoading={dialogueLoading}
+                                attackerName={selectedFighter?.name ?? 'Your pet'}
+                                defenderName={opponent?.name ?? 'Opponent'}
+                            />
                         ) : null}
                         {battleOutcome !== null && (
                             <div className="battle-result-actions">
