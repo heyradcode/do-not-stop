@@ -55,17 +55,23 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
 
     const tracksEvmReceipt = chain.kind === 'evm';
 
+    // True while an EVM tx is submitted and waiting for on-chain confirmation
+    // (wallet is approved but block not yet mined).
+    const isEvmConfirming = chain.kind === 'evm' && !!evmHook.hash && !evmHook.isPending;
+
     const reset = useCallback(() => {
         setLocalError(null);
         setReceiptError(null);
         solanaActions.battlePets.reset();
-    }, [solanaActions.battlePets]);
+        evmHook.resetWrite();
+    }, [solanaActions.battlePets, evmHook.resetWrite]);
 
     const clearErrors = useCallback(() => {
         setLocalError(null);
         setReceiptError(null);
         solanaActions.battlePets.reset();
-    }, [solanaActions.battlePets]);
+        evmHook.resetWrite();
+    }, [solanaActions.battlePets, evmHook.resetWrite]);
 
     const notifySuccess = useCallback(() => {
         onSuccessRef.current?.();
@@ -102,12 +108,14 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
 
     const onEvmReceiptError = useCallback((error: Error) => {
         setReceiptError(error);
-    }, []);
+        evmHook.resetWrite();
+    }, [evmHook.resetWrite]);
 
     return {
         isSupported,
         mutate,
         isPending,
+        isEvmConfirming,
         reset,
         clearErrors,
         hash,

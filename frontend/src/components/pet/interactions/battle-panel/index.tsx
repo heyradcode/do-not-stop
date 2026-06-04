@@ -16,6 +16,7 @@ import {
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
+import { AuthActionButton } from '@components/common';
 import { formatTxHashHint } from '@hooks/usePetActionErrorDisplay';
 import { usePetActionErrorToast } from '@hooks/usePetActionErrorToast';
 import Icon, { BattleIcon } from '@components/common/icon';
@@ -262,6 +263,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         ? 'Pick your fighter and an opponent (Switchboard VRF)'
         : 'Pick your fighter and an opponent';
     const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Starting Battle...';
+    const confirmingLabel = 'Confirming...';
     const submitLabel = 'Start Battle';
     const hashHint = chain.kind === 'solana' ? formatTxHashHint(battle.hash) : null;
 
@@ -596,13 +598,12 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 </section>
 
                 <div className="action-controls">
-                    <button
-                        type="button"
+                    <AuthActionButton
                         onClick={handleBattle}
-                        disabled={battle.isPending || rematchPending || !selectedPet1 || !selectedOpponent || showResult}
+                        disabled={battle.isPending || battle.isEvmConfirming || rematchPending || !selectedPet1 || !selectedOpponent || showResult}
                     >
-                        {battle.isPending ? pendingLabel : submitLabel}
-                    </button>
+                        {battle.isPending ? pendingLabel : battle.isEvmConfirming ? confirmingLabel : submitLabel}
+                    </AuthActionButton>
                     <button type="button" onClick={handleCancel} className="cancel-button">
                         Cancel
                     </button>

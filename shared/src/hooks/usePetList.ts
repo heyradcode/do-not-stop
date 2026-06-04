@@ -52,6 +52,7 @@ export function usePetList(): PetListResult {
             error: (evmResult.contractError as Error | undefined) ?? null,
             refetch: () => {
                 evmResult.refetchPetIds();
+                void evmResult.refetchPetsData();
             },
             isSupported: true,
         };

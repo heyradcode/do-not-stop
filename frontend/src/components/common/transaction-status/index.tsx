@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useWaitForTransactionReceipt } from 'wagmi';
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, CloseIcon, HourglassIcon } from '@components/common/icon';
@@ -18,6 +18,14 @@ const TransactionStatus: React.FC<TransactionStatusProps> = ({
     const [isVisible, setIsVisible] = useState(false);
     const [status, setStatus] = useState<'pending' | 'confirming' | 'confirmed' | 'error'>('pending');
 
+    const onCompleteRef = useRef(onComplete);
+    const onErrorRef = useRef(onError);
+    onCompleteRef.current = onComplete;
+    onErrorRef.current = onError;
+
+    // Prevents the effect from firing onComplete/onError more than once per tx.
+    const completedRef = useRef(false);
+
     const { isLoading: isConfirming, isSuccess: isConfirmed, error } = useWaitForTransactionReceipt({
         hash: hash as `0x${string}`,
     });
@@ -26,26 +34,32 @@ const TransactionStatus: React.FC<TransactionStatusProps> = ({
         if (hash) {
             setIsVisible(true);
             setStatus('pending');
+            completedRef.current = false;
         }
     }, [hash]);
 
     useEffect(() => {
         if (isConfirming) {
             setStatus('confirming');
-        } else if (isConfirmed) {
-            setStatus('confirmed');
-            setTimeout(() => {
-                setIsVisible(false);
-                onComplete?.();
-            }, 2000);
-        } else if (error) {
-            setStatus('error');
-            onError?.(error);
-            setTimeout(() => {
-                setIsVisible(false);
-            }, 3000);
+            return;
         }
-    }, [isConfirming, isConfirmed, error, onComplete, onError]);
+        if (isConfirmed && !completedRef.current) {
+            completedRef.current = true;
+            setStatus('confirmed');
+            const t = setTimeout(() => {
+                setIsVisible(false);
+                onCompleteRef.current?.();
+            }, 2000);
+            return () => clearTimeout(t);
+        }
+        if (error && !completedRef.current) {
+            completedRef.current = true;
+            setStatus('error');
+            onErrorRef.current?.(error);
+            const t = setTimeout(() => setIsVisible(false), 3000);
+            return () => clearTimeout(t);
+        }
+    }, [isConfirming, isConfirmed, error]);
 
     if (!isVisible || !hash) {
         return null;

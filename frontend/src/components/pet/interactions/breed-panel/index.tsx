@@ -4,6 +4,7 @@ import TransactionStatus from '@components/common/transaction-status';
 import { getReadyPetsUnified, useActiveChain, useBreedPets, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
+import { AuthActionButton } from '@components/common';
 import { formatTxHashHint } from '@hooks/usePetActionErrorDisplay';
 import { usePetActionErrorToast } from '@hooks/usePetActionErrorToast';
 import Icon, { CheckIcon, DnaIcon } from '@components/common/icon';
@@ -145,13 +146,12 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 </div>
 
                 <div className="action-controls">
-                    <button
-                        type="button"
+                    <AuthActionButton
                         onClick={handleBreed}
                         disabled={breed.isPending || breed.isAwaitingFulfillment || !canSubmit}
                     >
                         {buttonLabel}
-                    </button>
+                    </AuthActionButton>
                     <button type="button" onClick={handleCancel} className="cancel-button">
                         Cancel
                     </button>

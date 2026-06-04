@@ -61,7 +61,7 @@ export async function findReadyOpponents(
         ...(params.minLevel > 0 ? { level: { gte: params.minLevel } } : {}),
     };
 
-    const [rows, total] = await prisma.$transaction([
+    const [rows, total] = await Promise.all([
         prisma.petRoster.findMany({
             where,
             orderBy: [{ level: 'asc' }, { petId: 'asc' }],

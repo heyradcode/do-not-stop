@@ -13,10 +13,9 @@
     "clean": "rm -rf dist",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate": "prisma migrate dev && tsx src/scripts/clearMockPets.ts",
     "prisma:studio": "prisma studio",
     "db:push": "prisma db push",
-    "seed:roster": "tsx src/scripts/seedRoster.ts",
     "index:once": "tsx src/scripts/indexOnce.ts"
   },
   "dependencies": {
