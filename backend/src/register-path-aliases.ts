@@ -6,6 +6,7 @@ const root = __dirname;
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 require('module-alias').addAliases({
     '@config': path.join(root, 'config'),
+    '@routes': path.join(root, 'routes'),
     '@features': path.join(root, 'features'),
     '@middleware': path.join(root, 'middleware'),
     '@indexer': path.join(root, 'indexer'),

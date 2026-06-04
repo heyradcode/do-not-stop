@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { getNonce, verify } from './auth.controller';
+import { getNonce, verify } from '@features/auth/auth.controller';
 
 const router: Router = express.Router();
 

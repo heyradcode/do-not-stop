@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { verifyToken } from '@middleware/auth';
-import { getProfile, getUsers } from './protected.controller';
+import { getProfile, getUsers } from '@features/protected/protected.controller';
 
 const router: Router = express.Router();
 

@@ -6,6 +6,7 @@
         "baseUrl": ".",
         "paths": {
             "@config/*": ["src/config/*"],
+            "@routes/*": ["src/routes/*"],
             "@features/*": ["src/features/*"],
             "@middleware/*": ["src/middleware/*"],
             "@indexer": ["src/indexer/index.ts"],

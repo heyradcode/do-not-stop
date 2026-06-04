@@ -2,12 +2,11 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 
 import { env } from '@config/env';
-import { verifyToken } from '@middleware/auth';
-import authRoutes from '@features/auth/auth.routes';
-import protectedRoutes from '@features/protected/protected.routes';
-import healthRoutes from '@features/health/health.routes';
-import { graphqlHandler } from '@graphql';
-import webhookRoutes from '@solana/webhooks/routes';
+import authRoutes from '@routes/auth';
+import healthRoutes from '@routes/health';
+import protectedRoutes from '@routes/protected';
+import graphqlRoutes from '@routes/graphql';
+import webhookRoutes from '@routes/webhooks';
 
 const app = express();
 
@@ -25,7 +24,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/health', healthRoutes);
-app.post('/graphql', verifyToken, graphqlHandler);
+app.use('/graphql', graphqlRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
