@@ -3,7 +3,7 @@
         "target": "ES2022",
         "module": "CommonJS",
         "moduleResolution": "node",
-        "ignoreDeprecations": "6.0",
+        "ignoreDeprecations": "5.0",
         "paths": {
             "@config/*": ["./src/config/*"],
             "@routes/*": ["./src/routes/*"],

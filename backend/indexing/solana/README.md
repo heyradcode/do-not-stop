@@ -86,6 +86,19 @@ type/parsing doesn't matter — it's only a "something changed" trigger.
 
 ## Keeping decode in sync
 
-`decodePetAccount` reads the account by byte offset. If `PetAccount` in
-`contracts/solana/cryptopets/programs/cryptopets/src/state.rs` changes, update
-the discriminator, `PET_ACCOUNT_LEN`, and the offsets in `scanner/decode.ts`.
+`decodePetAccount` is driven by the Anchor IDL at `indexing/solana/idl/cryptopets.json`.
+The discriminator, byte length, and field layout are all read from that file
+(`scanner/anchorIdl.ts` walks it), so there are no hardcoded offsets in code.
+
+When `PetAccount` in
+`contracts/solana/cryptopets/programs/cryptopets/src/state.rs` changes, just
+regenerate and drop in a fresh IDL — no code changes:
+
+```sh
+anchor build                 # emits contracts/solana/.../target/idl/cryptopets.json
+cp <...>/target/idl/cryptopets.json backend/indexing/solana/idl/cryptopets.json
+```
+
+The decoder supports fixed-size primitives + fixed `[u8; N]` arrays. If a future
+field uses a variable-length type (string/vec/option), `resolveAccountLayout`
+throws at startup so the gap is obvious rather than silently mis-decoded.
