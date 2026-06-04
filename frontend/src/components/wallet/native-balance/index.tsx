@@ -5,7 +5,7 @@ import { formatEther } from 'viem';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { getNativeTokenSymbol } from '@constants/chains/ethereum';
 import { Tones } from '@constants/tones';
-import Icon, { WarningIcon } from '@components/common/icon';
+import Icon, { WarningIcon } from '@components/ui/icon';
 import './index.css';
 
 export type BalanceType = 'ethereum' | 'solana';

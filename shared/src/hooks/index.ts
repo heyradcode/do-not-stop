@@ -16,3 +16,6 @@ export {
     type UseBreedPetsOptions,
 } from './useBreedPets';
 export { useTransferPet, type TransferPetArgs } from './useTransferPet';
+export { useOpponents, type UseOpponentsOptions } from './useOpponents';
+export { usePetError, type PetError } from './usePetError';
+export { useTxError, type TxError } from './useTxError';

@@ -21,7 +21,7 @@
     min-width: 0;
   }
 
-  & > .pet-container {
+  & > .dashboard-panel {
     flex: 1 1 auto;
     min-height: 0;
     display: flex;
@@ -30,11 +30,11 @@
 
 /* Dashboard view (interactions hub + pet gallery): split horizontally 50/50 so
    both panels share equal width and the pet cards render in full. */
-.main-content.authenticated:has(.pet-container.pet-collection) {
+.main-content.authenticated:has(.dashboard-panel.pet-collection) {
   flex-direction: row;
   align-items: stretch;
 
-  & > .pet-container {
+  & > .dashboard-panel {
     flex: 1 1 0;
     width: auto;
     max-width: none;
@@ -46,7 +46,7 @@
     overflow: hidden;
   }
 
-  & > .pet-container.pet-interactions {
+  & > .dashboard-panel.pet-interactions {
     & .surface {
       overflow-y: auto;
       scrollbar-width: thin;
@@ -80,7 +80,7 @@
     }
   }
 
-  & > .pet-container.pet-collection {
+  & > .dashboard-panel.pet-collection {
     & .panel-body {
       min-height: 0;
     }
@@ -95,12 +95,12 @@
 
   /* Stack panels vertically on narrow screens; allow the page to scroll
      so both interactions and gallery remain usable. */
-  .main-content.authenticated:has(.pet-container.pet-collection) {
+  .main-content.authenticated:has(.dashboard-panel.pet-collection) {
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
 
-    & > .pet-container.pet-interactions {
+    & > .dashboard-panel.pet-interactions {
       flex: 0 0 auto;
       width: 100%;
       max-width: none;
@@ -118,7 +118,7 @@
       }
     }
 
-    & > .pet-container.pet-collection {
+    & > .dashboard-panel.pet-collection {
       flex: 1 1 auto;
       width: 100%;
       min-height: 480px;
@@ -127,8 +127,8 @@
 }
 
 @media (max-width: 640px) {
-  .main-content.authenticated:has(.pet-container.pet-collection)
-    > .pet-container.pet-interactions .action-buttons {
+  .main-content.authenticated:has(.dashboard-panel.pet-collection)
+    > .dashboard-panel.pet-interactions .action-buttons {
     display: grid;
     grid-template-columns: 1fr;
   }

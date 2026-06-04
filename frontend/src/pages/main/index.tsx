@@ -2,7 +2,7 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 
 import Layout from '@components/layout';
-import PetGallery from '@components/pet/pet-gallery';
+import PetGallery from '@components/pet/collection/pet-gallery';
 import { isInteractionRoute } from '@constants/interactionRoutes';
 import './index.css';
 

@@ -19,3 +19,12 @@ export interface Pet {
     lossCount: number;
     readyAt: number;
 }
+
+/**
+ * A pet owned by another player, returned by the matchmaking API for PvP
+ * battles. Carries the opponent's `owner` address/pubkey, which the Solana
+ * battle flow needs to derive the defender pet PDA.
+ */
+export interface OpponentPet extends Pet {
+    owner: string;
+}

@@ -119,12 +119,16 @@ export function usePetActions() {
     });
 
     /**
-     * Same-owner battle: signer fights two of their own pets (matches the existing UI which
-     * only picks from the connected wallet's pets). Cross-owner battle would require an
-     * additional `defenderOwner` arg here and a UI affordance for picking foreign pets.
+     * Battle the signer's pet (attacker) against any pet. When `defenderOwner` is
+     * omitted it defaults to the signer (same-wallet battle); pass a foreign owner
+     * pubkey for PvP against another player's pet.
      */
     const battlePets = useMutation({
-        mutationFn: async (args: { attackerPetId: number; defenderPetId: number }) => {
+        mutationFn: async (args: {
+            attackerPetId: number;
+            defenderPetId: number;
+            defenderOwner?: string;
+        }) => {
             const { program, programId, owner } = requireReady();
             if (!provider) {
                 throw new Error('Solana provider is not ready');
@@ -136,6 +140,9 @@ export function usePetActions() {
                 owner,
                 attackerPetId: args.attackerPetId,
                 defenderPetId: args.defenderPetId,
+                ...(args.defenderOwner
+                    ? { defenderOwner: new PublicKey(args.defenderOwner) }
+                    : {}),
             });
         },
         onSuccess: invalidateProgramQueries,

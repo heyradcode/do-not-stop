@@ -1,0 +1,36 @@
+# Pet entities for PvP matchmaking. Fields mirror `pet_roster` in the backend DB.
+# Consumed by `backend/src/indexer/subgraph.ts`.
+
+type Pet @entity(immutable: false) {
+  "Token id as a string (matches pet_roster.pet_id)."
+  id: ID!
+
+  "Current owner address (lowercased by the backend on ingest)."
+  owner: Bytes!
+
+  name: String!
+
+  "On-chain DNA (uint256)."
+  dna: BigInt!
+
+  level: Int!
+  rarity: Int!
+  winCount: Int!
+  lossCount: Int!
+
+  "Unix seconds the pet is next battle-ready (Inventory.Pet.readyTime)."
+  readyAt: BigInt!
+
+  "Block timestamp of the last update (freshness/debugging)."
+  updatedAt: BigInt!
+}
+
+# Mapping plan (handlers in subgraph.yaml → src/mapping.ts):
+#   Transfer(from, to, tokenId)            mint → create Pet; transfer → owner = to
+#   FightResult(petId1, petId2, firstWins) update win/loss + level for both pets
+#   BreedFulfilled(owner, childId, reqId)  create the child Pet
+#
+# Until the contract emits dna/rarity/level on creation, mappings read missing
+# fields via a CryptoPets.getById(tokenId) contract call inside the handler.
+# Adding PetCreated(id, owner, dna, rarity) / LevelUp / NameChanged events
+# removes those calls entirely (see PVP_BATTLE.md §2.bis and §7).

@@ -1,21 +1,20 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 
-import authRoutes from './routes/auth';
-import protectedRoutes from './routes/protected';
-import healthRoutes from './routes/health';
-
-dotenv.config();
+import { env } from '@config/env';
+import authRoutes from '@routes/auth';
+import healthRoutes from '@routes/health';
+import protectedRoutes from '@routes/protected';
+import graphqlRoutes from '@routes/graphql';
+import webhookRoutes from '@routes/webhooks';
 
 const app = express();
 
-const corsOrigin = process.env.CORS_ORIGIN;
 app.use(
     cors(
-        corsOrigin
+        env.corsOrigin
             ? {
-                  origin: corsOrigin.split(',').map((origin) => origin.trim()),
+                  origin: env.corsOrigin.split(',').map((origin) => origin.trim()),
               }
             : undefined
     )
@@ -25,15 +24,19 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/protected', protectedRoutes);
 app.use('/api/health', healthRoutes);
+app.use('/graphql', graphqlRoutes);
+app.use('/api/webhooks', webhookRoutes);
 
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
     res.json({
-        message: 'Web3 Authentication API',
+        message: 'CryptoPets API',
         version: '1.0.0',
         endpoints: {
             auth: '/api/auth',
             protected: '/api/protected',
             health: '/api/health',
+            graphql: '/graphql',
+            webhooks: '/api/webhooks',
         },
     });
 });

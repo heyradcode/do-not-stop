@@ -3,11 +3,29 @@
         "target": "ES2022",
         "module": "CommonJS",
         "moduleResolution": "node",
+        "ignoreDeprecations": "5.0",
+        "paths": {
+            "@config/*": ["./src/config/*"],
+            "@routes/*": ["./src/routes/*"],
+            "@features/*": ["./src/features/*"],
+            "@middleware/*": ["./src/middleware/*"],
+            "@indexer": ["./src/indexer/index.ts"],
+            "@indexer/*": ["./src/indexer/*"],
+            "@repositories/*": ["./src/repositories/*"],
+            "@utils": ["./src/utils/index.ts"],
+            "@typings/*": ["./src/types/*"],
+            "@generated/*": ["./src/generated/*"],
+            "@solana/*": ["./indexing/solana/*"],
+            "@graphql": ["./src/graphql/index.ts"]
+        },
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
         "allowJs": true,
         "outDir": "./dist",
-        "rootDir": "./src",
+        // rootDir spans src/ (the app) and indexing/solana/ (the Solana indexer
+        // code), so the backend root is the common root → emits dist/src/... and
+        // dist/indexing/solana/... (entry: dist/src/server.js).
+        "rootDir": "./",
         "strict": true,
         "noImplicitAny": true,
         "strictNullChecks": true,
@@ -26,7 +44,8 @@
         "noEmit": false
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "indexing/solana/**/*"
     ],
     "exclude": [
         "node_modules",

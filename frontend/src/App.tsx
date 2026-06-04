@@ -9,6 +9,7 @@ import { SolanaAnchorWallet } from '@chains/solana/anchor-wallet';
 import { SolanaAuthSigner } from '@chains/solana/auth-signer';
 import { SolanaWalletProvider } from '@chains/solana/provider';
 import { solanaNetworkNameFromCluster } from '@constants/chains';
+import { ToastProvider } from '@components/ui/toast';
 import { DynamicProvider } from '@contexts/dynamic';
 import { AppRoutes } from '@router';
 import { API_URL } from './config';
@@ -28,9 +29,11 @@ const App: React.FC = () => {
                             <ApiClientProvider baseURL={API_URL}>
                                 <AuthProvider>
                                     <PetsConfigProvider evm={petsContractParams}>
-                                        <BrowserRouter>
-                                            <AppRoutes />
-                                        </BrowserRouter>
+                                        <ToastProvider>
+                                            <BrowserRouter>
+                                                <AppRoutes />
+                                            </BrowserRouter>
+                                        </ToastProvider>
                                     </PetsConfigProvider>
                                 </AuthProvider>
                             </ApiClientProvider>

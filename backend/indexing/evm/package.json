@@ -1,0 +1,16 @@
+{
+  "name": "cryptopets-subgraph-evm",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "configure": "node scripts/prepare-subgraph.mjs",
+    "codegen": "graph codegen",
+    "build": "pnpm configure && graph codegen && graph build",
+    "deploy:studio": "graph deploy cryptopets --node https://api.studio.thegraph.com/deploy/ --ipfs https://ipfs.thegraph.com/api/v0"
+  },
+  "devDependencies": {
+    "@graphprotocol/graph-cli": "0.98.1",
+    "@graphprotocol/graph-ts": "0.35.1",
+    "viem": "^2.37.8"
+  }
+}

@@ -23,7 +23,7 @@ export const usePetsContract = ({
     enabled = true,
 }: UsePetsContractParams) => {
     const { address, isConnected } = useAccount();
-    const { writeContract, data: hash, isPending, error: writeError } = useWriteContract();
+    const { writeContract, data: hash, isPending, error: writeError, reset: resetWrite } = useWriteContract();
     const isContractConfigured = Boolean(contractAddress);
     const canRead = Boolean(address && contractAddress && enabled);
     const safeAddress = (contractAddress ?? '0x0000000000000000000000000000000000000000') as `0x${string}`;
@@ -46,7 +46,7 @@ export const usePetsContract = ({
             args: [petId],
         }))) ?? [];
 
-    const { data: petsData, isLoading: isPetsLoading, error: petsError } = useReadContracts({
+    const { data: petsData, isLoading: isPetsLoading, error: petsError, refetch: refetchPetsData } = useReadContracts({
         contracts: petReadContracts,
         query: {
             enabled: canRead && petReadContracts.length > 0,
@@ -201,7 +201,9 @@ export const usePetsContract = ({
         isWritePending: isPending,
         isConfirming: false,
         writeError,
+        resetWrite,
         refetchPetIds,
+        refetchPetsData,
         isReady,
         getRarityColor,
         getRarityName,
