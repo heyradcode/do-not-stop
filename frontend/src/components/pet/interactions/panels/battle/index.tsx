@@ -207,6 +207,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const [rematchPending, setRematchPending] = useState(false);
     // Pre-fight taunts play before the wallet confirmation; non-empty = taunting.
     const [prefightTaunts, setPrefightTaunts] = useState<DialogueTurn[]>([]);
+    // The battle overlay stays open continuously: taunts → battling → result.
+    const [overlayOpen, setOverlayOpen] = useState(false);
 
     const selectedOpponentCardRef = useRef<HTMLButtonElement>(null);
     const rematchSnapshotRef = useRef<{ petId1: string; opponentKey: string } | null>(null);
@@ -354,21 +356,26 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         }
         setValidationError(null);
         setPrefightTaunts(buildPrefightTaunts(selectedFighter, opponent));
+        setOverlayOpen(true);
     };
 
+    // Taunts finished — keep the overlay open and fire the wallet confirmation.
     const handleTauntsComplete = () => {
-        setPrefightTaunts([]);
         startBattle();
     };
 
     const handleCancel = () => {
         setShowResult(false);
+        setOverlayOpen(false);
+        setPrefightTaunts([]);
         setValidationError(null);
         navigate(DASHBOARD_HOME);
     };
 
     const handleDone = () => {
         setShowResult(false);
+        setOverlayOpen(false);
+        setPrefightTaunts([]);
         setValidationError(null);
         setBattleOutcome(null);
         preBattleStatsRef.current = null;
@@ -410,6 +417,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const handleRematch = () => {
         battle.clearErrors();
         setShowResult(false);
+        setPrefightTaunts([]);
+        setOverlayOpen(true);
         setValidationError(null);
         setBattleOutcome(null);
         setRematchPending(true);
@@ -425,6 +434,15 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
             inline: 'nearest',
         });
     }, [selectedOpponent]);
+
+    // Close the overlay if the battle fails before a result (e.g. wallet rejected),
+    // so the user isn't stranded on the taunt/underway screen. The error toast still shows.
+    useEffect(() => {
+        if (!showResult && (battle.error || battle.receiptError)) {
+            setOverlayOpen(false);
+            setPrefightTaunts([]);
+        }
+    }, [battle.error, battle.receiptError, showResult]);
 
     useEffect(() => {
         if (!rematchPending || petsLoading || opponentsLoading || opponentsFetching) return;
@@ -489,74 +507,90 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         battleOutcome === null ? 'is-pending' : isVictory ? '' : 'is-defeat',
     ].filter(Boolean).join(' ');
 
+    // Pre-result phase (overlay stays open through taunts → battling).
+    const isBattling = battle.isPending || battle.isEvmConfirming || rematchPending;
+    const preResultTitle = isBattling ? 'The battle is underway…' : 'Face-off!';
+    const preResultStatus = rematchPending
+        ? 'Preparing rematch…'
+        : battle.isEvmConfirming
+            ? 'Confirming on-chain…'
+            : battle.isPending
+                ? 'Awaiting your wallet…'
+                : null;
+
     return (
         <>
-            {prefightTaunts.length > 0 && (
-                <div className="battle-result-overlay" role="status" aria-live="polite">
-                    <div className="battle-result-card">
-                        <p className="battle-result-title">Face-off!</p>
-                        <BattleDialogue
-                            turns={prefightTaunts}
-                            isLoading={false}
-                            attackerName={selectedFighter?.name ?? 'Your pet'}
-                            defenderName={opponent?.name ?? 'Opponent'}
-                            onComplete={handleTauntsComplete}
-                        />
-                    </div>
-                </div>
-            )}
-
-            {showResult && (
+            {overlayOpen && (
                 <div className="battle-result-overlay" role="status" aria-live="polite">
                     <div className={resultCardClass}>
-                        <div className="battle-result-art" aria-hidden>
-                            <BattleResultArt outcome={battleOutcome} />
-                        </div>
-                        <p className="battle-result-title">
-                            {battleOutcome === null
-                                ? 'Resolvingâ€¦'
-                                : isVictory
-                                    ? 'Victory!'
-                                    : 'Defeated'}
-                        </p>
-                        <p className="battle-result-message">
-                            {battleOutcome === null
-                                ? 'Checking battle outcomeâ€¦'
-                                : isVictory
-                                    ? battleOutcome.leveledUp
-                                        ? 'Your pet won and leveled up!'
-                                        : 'Your pet won the battle!'
-                                    : 'Your pet was defeated. Train harder and try again!'}
-                        </p>
-                        {opponent && battleOutcome !== null ? (
-                            <p className="battle-result-opponent">
-                                {isVictory
-                                    ? `vs ${opponent.name} (Lv.${opponent.level})`
-                                    : `Lost to ${opponent.name} (Lv.${opponent.level})`}
-                            </p>
-                        ) : null}
-                        {battleOutcome !== null && (dialogueLoading || resultTurns.length > 0) ? (
-                            <BattleDialogue
-                                turns={resultTurns}
-                                isLoading={dialogueLoading}
-                                attackerName={selectedFighter?.name ?? 'Your pet'}
-                                defenderName={opponent?.name ?? 'Opponent'}
-                            />
-                        ) : null}
-                        {battleOutcome !== null && (
-                            <div className="battle-result-actions">
-                                <button
-                                    type="button"
-                                    className={`battle-result-rematch${isDefeat ? ' is-defeat' : ''}`}
-                                    onClick={handleRematch}
-                                    disabled={battle.isPending || rematchPending}
-                                >
-                                    {rematchPending ? 'Preparingâ€¦' : 'Rematch'}
-                                </button>
-                                <button type="button" className="battle-result-done" onClick={handleDone}>
-                                    Leave
-                                </button>
-                            </div>
+                        {showResult ? (
+                            <>
+                                <div className="battle-result-art" aria-hidden>
+                                    <BattleResultArt outcome={battleOutcome} />
+                                </div>
+                                <p className="battle-result-title">
+                                    {battleOutcome === null
+                                        ? 'Resolving…'
+                                        : isVictory
+                                            ? 'Victory!'
+                                            : 'Defeated'}
+                                </p>
+                                <p className="battle-result-message">
+                                    {battleOutcome === null
+                                        ? 'Checking battle outcome…'
+                                        : isVictory
+                                            ? battleOutcome.leveledUp
+                                                ? 'Your pet won and leveled up!'
+                                                : 'Your pet won the battle!'
+                                            : 'Your pet was defeated. Train harder and try again!'}
+                                </p>
+                                {opponent && battleOutcome !== null ? (
+                                    <p className="battle-result-opponent">
+                                        {isVictory
+                                            ? `vs ${opponent.name} (Lv.${opponent.level})`
+                                            : `Lost to ${opponent.name} (Lv.${opponent.level})`}
+                                    </p>
+                                ) : null}
+                                {battleOutcome !== null && (dialogueLoading || resultTurns.length > 0) ? (
+                                    <BattleDialogue
+                                        turns={resultTurns}
+                                        isLoading={dialogueLoading}
+                                        attackerName={selectedFighter?.name ?? 'Your pet'}
+                                        defenderName={opponent?.name ?? 'Opponent'}
+                                    />
+                                ) : null}
+                                {battleOutcome !== null && (
+                                    <div className="battle-result-actions">
+                                        <button
+                                            type="button"
+                                            className={`battle-result-rematch${isDefeat ? ' is-defeat' : ''}`}
+                                            onClick={handleRematch}
+                                            disabled={battle.isPending || rematchPending}
+                                        >
+                                            {rematchPending ? 'Preparing…' : 'Rematch'}
+                                        </button>
+                                        <button type="button" className="battle-result-done" onClick={handleDone}>
+                                            Leave
+                                        </button>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                <p className="battle-result-title">{preResultTitle}</p>
+                                {prefightTaunts.length > 0 ? (
+                                    <BattleDialogue
+                                        turns={prefightTaunts}
+                                        isLoading={false}
+                                        attackerName={selectedFighter?.name ?? 'Your pet'}
+                                        defenderName={opponent?.name ?? 'Opponent'}
+                                        onComplete={handleTauntsComplete}
+                                    />
+                                ) : null}
+                                {preResultStatus ? (
+                                    <p className="battle-result-message">{preResultStatus}</p>
+                                ) : null}
+                            </>
                         )}
                     </div>
                 </div>
