@@ -19,10 +19,10 @@ import {
 import { Tones } from '@constants/tones';
 import Icon, { BattleIcon, EggIcon, LevelUpIcon, QuillIcon } from '@components/ui/icon';
 import DashboardPanel from '@components/common/dashboard-panel';
-import BattlePanel from '@components/pet/interactions/battle-panel';
-import BreedPanel from '@components/pet/interactions/breed-panel';
-import LevelUpPanel from '@components/pet/interactions/level-up-panel';
-import RenamePanel from '@components/pet/interactions/rename-panel';
+import BattlePanel from '@components/pet/interactions/panels/battle';
+import BreedPanel from '@components/pet/interactions/panels/breed';
+import LevelUpPanel from '@components/pet/interactions/panels/level-up';
+import RenamePanel from '@components/pet/interactions/panels/rename';
 import StateCard from '@components/pet/interactions/state-card';
 import './index.css';
 

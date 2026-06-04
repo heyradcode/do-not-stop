@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import MainPage from '@pages/main';
-import PetInteractions from '@components/pet/interactions/hub';
+import PetInteractions from '@components/pet/interactions/overview';
 import BattleRoute from '@router/routes/battle-route';
 import BreedRoute from '@router/routes/breed-route';
 import LevelUpRoute from '@router/routes/level-up-route';
