@@ -63,7 +63,7 @@ type PreBattleStats = { winCount: number; lossCount: number; level: number };
 /** Stable select value for an opponent (pet ids are not globally unique on Solana). */
 const opponentKey = (owner: string, id: string) => `${owner}::${id}`;
 const shortAddress = (addr: string) =>
-    addr.length > 12 ? `${addr.slice(0, 6)}â€¦${addr.slice(-4)}` : addr;
+    addr.length > 12 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
 
 type ArenaSlotProps = {
     pet?: Pet | OpponentPet | null;
@@ -95,7 +95,7 @@ const ArenaSlot: React.FC<ArenaSlotProps> = ({ pet, placeholder, ownerLabel, sid
                     <span className="slot-name">{pet.name}</span>
                     <span className="slot-sub">
                         Lv.{pet.level}
-                        {ownerLabel ? ` Â· ${ownerLabel}` : ''}
+                        {ownerLabel ? ` · ${ownerLabel}` : ''}
                     </span>
                 </div>
             </div>
@@ -175,7 +175,7 @@ const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({
                 <div className="card-body">
                     <span className="card-name">{opponent.name}</span>
                     <span className="card-meta">
-                        Lv.{opponent.level} Â· {shortAddress(opponent.owner)}
+                        Lv.{opponent.level} · {shortAddress(opponent.owner)}
                     </span>
                 </div>
             </div>
@@ -267,7 +267,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         if (!updatedFighter) return;
 
         const { winCount: prevWin, lossCount: prevLoss, level: prevLevel } = preBattleStatsRef.current;
-        // Stats haven't refreshed yet â€” wait for the next update.
+        // Stats haven't refreshed yet — wait for the next update.
         if (updatedFighter.winCount === prevWin && updatedFighter.lossCount === prevLoss) return;
 
         setBattleOutcome({
@@ -308,7 +308,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const subtitle = usesSwitchboardVrf
         ? 'Pick your fighter and an opponent (Switchboard VRF)'
         : 'Pick your fighter and an opponent';
-    const pendingLabel = usesSwitchboardVrf ? 'Generating randomnessâ€¦' : 'Starting Battle...';
+    const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Starting Battle...';
     const confirmingLabel = 'Confirming...';
     const submitLabel = 'Start Battle';
     const hashHint = chain.kind === 'solana' ? formatTxHashHint(battle.hash) : null;
@@ -673,7 +673,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                         <h5 className="section-title">
                             Opponents
                             {fighterLevel != null ? (
-                                <span className="section-hint"> Â· sorted by level match</span>
+                                <span className="section-hint"> · sorted by level match</span>
                             ) : null}
                         </h5>
                         <button
@@ -682,11 +682,11 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                             onClick={handleRefreshOpponents}
                             disabled={opponentsLoading}
                         >
-                            {opponentsLoading ? 'Loadingâ€¦' : 'Refresh'}
+                            {opponentsLoading ? 'Loading…' : 'Refresh'}
                         </button>
                     </div>
                     {opponentsLoading && opponents.length === 0 ? (
-                        <div className="battle-picker-empty">Finding challengers in the arenaâ€¦</div>
+                        <div className="battle-picker-empty">Finding challengers in the arena…</div>
                     ) : opponents.length === 0 ? (
                         <div className="battle-picker-empty">
                             No opponents available right now. Check back after more players join the roster.

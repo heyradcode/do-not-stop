@@ -16,7 +16,7 @@ export type BreedPanelProps = {
 
 const VALIDATION_MESSAGE = 'Please select two pets and enter a name for the offspring';
 const BREED_FAIL_MESSAGE = 'Failed to breed pets. Please try again.';
-const AWAITING_HINT = 'Hang tightâ€”your new pet will show up in a moment.';
+const AWAITING_HINT = 'Hang tight—your new pet will show up in a moment.';
 
 const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
@@ -54,8 +54,8 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const subtitle = usesSwitchboardVrf
         ? 'Select two pets to create a new one (Switchboard VRF)'
         : 'Select two pets to create a new one';
-    const pendingLabel = usesSwitchboardVrf ? 'Generating randomnessâ€¦' : 'Submittingâ€¦';
-    const creatingLabel = 'Creatingâ€¦';
+    const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Submitting…';
+    const creatingLabel = 'Creating…';
     const submitLabel = 'Breed Pets';
     const buttonLabel = breed.isPending
         ? pendingLabel

@@ -134,7 +134,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                         onClick={handleClose}
                         disabled={isConfirming || isPending}
                     >
-                        Ã—
+                        ×
                     </button>
                 </div>
 

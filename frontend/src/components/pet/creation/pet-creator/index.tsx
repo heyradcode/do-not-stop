@@ -71,7 +71,7 @@ const PetCreator: React.FC = () => {
         <div className="pet-creator">
             <div className="card">
                 <h3><Icon as={PawIcon} tone={Tones.Cyan} />Create Your First Pet</h3>
-                <p>Give your pet a unique name and bring it to life! You can only create one pet initially â€” breed to grow your collection!</p>
+                <p>Give your pet a unique name and bring it to life! You can only create one pet initially — breed to grow your collection!</p>
 
                 <div className="form">
                     <div className="field">

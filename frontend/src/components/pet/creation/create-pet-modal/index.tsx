@@ -92,12 +92,12 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                 <div className="header">
                     <h2><Icon as={PawIcon} tone={Tones.Cyan} />Create Your First Pet</h2>
                     <button className="close" onClick={handleClose}>
-                        Ã—
+                        ×
                     </button>
                 </div>
 
                 <div className="body">
-                    <p>Give your pet a unique name and bring it to life! You can only create one pet initially â€” breed to grow your collection!</p>
+                    <p>Give your pet a unique name and bring it to life! You can only create one pet initially — breed to grow your collection!</p>
 
                     <div className="form">
                         <div className="field">
