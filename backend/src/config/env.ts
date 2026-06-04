@@ -47,14 +47,17 @@ export const env = {
     },
 
     /**
-     * AI battle dialogue (see AI_BATTLE_DIALOGUE.md). Optional — when `apiKey` is
-     * unset the feature degrades gracefully to templated fallback lines, so the
-     * app runs fine without a key in local dev.
+     * AI battle dialogue (see AI_BATTLE_DIALOGUE.md), via the Hugging Face
+     * OpenAI-compatible chat router (called with plain fetch — no SDK). Optional:
+     * when `apiToken` is unset the feature degrades to templated fallback lines,
+     * so the app runs fine without a token in local dev.
      */
-    anthropic: {
-        apiKey: process.env.ANTHROPIC_API_KEY?.trim() || undefined,
-        /** Default model for battle banter — fast + cheap. */
-        model: process.env.ANTHROPIC_MODEL?.trim() || 'claude-haiku-4-5-20251001',
+    hf: {
+        apiToken: process.env.HF_API_TOKEN?.trim() || undefined,
+        /** Any chat-completion model on HF inference. Verify availability/tier. */
+        model: process.env.HF_MODEL?.trim() || 'meta-llama/Llama-3.1-8B-Instruct',
+        /** OpenAI-compatible chat-completions endpoint. */
+        apiUrl: process.env.HF_API_URL?.trim() || 'https://router.huggingface.co/v1/chat/completions',
     },
 } as const;
 

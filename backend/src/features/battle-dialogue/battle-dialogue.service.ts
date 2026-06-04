@@ -2,6 +2,7 @@ import { env } from '@config/env';
 import { getDialogue, saveDialogue } from '@repositories/dialogue.repository';
 import { buildPersona, type Persona } from './battle-dialogue.persona';
 import { fallbackDialogue } from './battle-dialogue.prompt';
+import { generateDialogueViaHf } from './battle-dialogue.client';
 import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from './battle-dialogue.types';
 
 /**
@@ -34,20 +35,22 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
 }
 
 /**
- * Produce the conversation turns. Uses Claude when configured, else deterministic
- * templated lines. The AI call is wired in the final step; until then (or when no
- * API key is set) this returns the fallback so the endpoint already works.
+ * Produce the conversation turns. Uses the Hugging Face model when configured,
+ * else (or on any error) deterministic templated lines so the endpoint always
+ * returns something usable.
  */
 async function generateTurns(
     input: GenerateDialogueInput,
     attacker: Persona,
     defender: Persona,
 ): Promise<{ turns: DialogueTurn[]; model: string }> {
-    if (!env.anthropic.apiKey) {
-        return { turns: fallbackDialogue(input, attacker, defender), model: 'fallback' };
+    if (env.hf.apiToken) {
+        try {
+            const turns = await generateDialogueViaHf(input, attacker, defender);
+            return { turns, model: env.hf.model };
+        } catch (err) {
+            console.error('[battle-dialogue] HF generation failed, using fallback:', err);
+        }
     }
-
-    // TODO(step 6): call the Anthropic client here (prompt caching + forced tool),
-    // and fall back on any error. Until that lands, degrade to templated lines.
     return { turns: fallbackDialogue(input, attacker, defender), model: 'fallback' };
 }
