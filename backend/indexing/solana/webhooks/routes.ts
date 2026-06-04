@@ -1,5 +1,5 @@
 import express, { Router } from 'express';
-import { postHeliusWebhook } from './webhooks.controller';
+import { postHeliusWebhook } from './controller';
 
 const router: Router = express.Router();
 

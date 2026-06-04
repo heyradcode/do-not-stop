@@ -4,9 +4,9 @@ How on-chain pets become rows the PvP matchmaker can query. Both chains feed one
 table, `pet_roster`, through one repository, so the API and frontend never care
 which chain a pet came from.
 
-- **EVM** → an event-handler **subgraph** on The Graph (`indexing/evm/subgraph`).
+- **EVM** → an event-handler **subgraph** on The Graph (`indexing/evm`).
 - **Solana** → **Helius** webhook + RPC scan, run in-process by the backend
-  (`indexing/solana/indexer`, `indexing/solana/webhooks`). See
+  (`indexing/solana/scanner`, `indexing/solana/webhooks`). See
   [`solana/README.md`](./solana/README.md) for the Solana-only detail.
 
 ## The shared interface (what makes the chains interchangeable)
@@ -51,7 +51,7 @@ The Graph subgraph                            │      → RPC re-read touched a
    ▼                                                 getProgramAccounts (30s tick)
 backend polls every 30s                              │
  src/indexer/subgraph.ts                       decode PetAccount → roster row
- (keyset pagination over id)                    indexing/solana/indexer/decode.ts
+ (keyset pagination over id)                    indexing/solana/scanner/decode.ts
    │                                                 │
    └──────────────► upsertPet() ◄──────────────────┘
                          │
@@ -70,10 +70,10 @@ backend polls every 30s                              │
 | Indexing model      | Event-driven; the subgraph derives `Pet` entities | State snapshot; we read & decode the account directly |
 | Infra               | The Graph (hosted Studio / decentralized net) | Helius (RPC + webhooks) — no separate indexer service |
 | Ingestion into backend | **Pull**: poll the subgraph's GraphQL every 30s | **Push** (webhook, real-time) **+ pull** (RPC scan, reconcile) |
-| Decode location     | Subgraph mappings (`indexing/evm/subgraph/src/*.ts`, AssemblyScript) | Backend TS (`indexing/solana/indexer/decode.ts`)   |
+| Decode location     | Subgraph mappings (`indexing/evm/src/*.ts`, AssemblyScript) | Backend TS (`indexing/solana/scanner/decode.ts`)   |
 | Freshness mechanism | Each poll re-reads everything `id_gt` cursor | Webhook = low latency; 30s scan = backfill/safety net |
 | `owner` format      | EVM address, **lowercased** on ingest         | base58 pubkey (matches the wallet / auth storageKey)  |
-| Source files        | `indexing/evm/subgraph/`, `src/indexer/subgraph.ts` | `indexing/solana/indexer/`, `indexing/solana/webhooks/` |
+| Source files        | `indexing/evm/`, `src/indexer/subgraph.ts` | `indexing/solana/scanner/`, `indexing/solana/webhooks/` |
 
 ### Why the two approaches differ
 
@@ -103,8 +103,8 @@ isn't starting.
 
 The `Pet` entity, the decoder, and `pet_roster` must agree field-for-field:
 
-- EVM: `indexing/evm/subgraph/schema.graphql`
-- Solana: `indexing/solana/indexer/decode.ts` (byte offsets — mirror
+- EVM: `indexing/evm/schema.graphql`
+- Solana: `indexing/solana/scanner/decode.ts` (byte offsets — mirror
   `contracts/solana/cryptopets/programs/cryptopets/src/state.rs`)
 - Store: `prisma/schema.prisma` (`PetRoster`)
 

@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { handleHeliusWebhook, isAuthorized, isSolanaConfigured } from './webhooks.service';
+import { handleHeliusWebhook, isAuthorized, isSolanaConfigured } from './service';
 
 /**
  * POST /api/webhooks/helius — Helius push endpoint for Solana `PetAccount`

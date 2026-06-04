@@ -1,5 +1,5 @@
 import { env } from '@config/env';
-import { createHeliusRpc } from '../indexer';
+import { createHeliusRpc } from '../scanner';
 import { upsertPet } from '@repositories/roster.repository';
 
 /**

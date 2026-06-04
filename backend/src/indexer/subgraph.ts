@@ -6,7 +6,7 @@ import type { Chain } from '@typings/chain';
  * collection and upserts into `pet_roster`. (Solana is indexed via Helius — see
  * indexing/solana.)
  *
- * Subgraph schema lives under `backend/indexing/evm/subgraph/schema.graphql`.
+ * Subgraph schema lives under `backend/indexing/evm/schema.graphql`.
  */
 export interface SubgraphIndexerConfig {
     chain: Chain;

@@ -1,5 +1,5 @@
 import { scanSubgraphRoster } from './subgraph';
-import { scanSolanaRoster } from '@solana/indexer';
+import { scanSolanaRoster } from '@solana/scanner';
 import { env } from '@config/env';
 import { countByChain } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';

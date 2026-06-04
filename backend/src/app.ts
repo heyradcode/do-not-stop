@@ -6,7 +6,7 @@ import authRoutes from '@features/auth/auth.routes';
 import protectedRoutes from '@features/protected/protected.routes';
 import healthRoutes from '@features/health/health.routes';
 import battleRoutes from '@features/battle/battle.routes';
-import webhookRoutes from '@solana/webhooks/webhooks.routes';
+import webhookRoutes from '@solana/webhooks/routes';
 
 const app = express();
 
