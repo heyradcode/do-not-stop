@@ -10,7 +10,7 @@ import {
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
 import { useWriteContractErrorToast } from '@hooks/useWriteContractErrorToast';
-import Icon, { CheckIcon } from '@components/common/icon';
+import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 
 export type LevelUpPanelProps = {

@@ -17,7 +17,7 @@ import {
     RENAME_PATH,
 } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
-import Icon, { BattleIcon, EggIcon, LevelUpIcon, QuillIcon } from '@components/common/icon';
+import Icon, { BattleIcon, EggIcon, LevelUpIcon, QuillIcon } from '@components/ui/icon';
 import PetContainer from '@components/pet/pet-container';
 import BattlePanel from '@components/pet/interactions/battle-panel';
 import BreedPanel from '@components/pet/interactions/breed-panel';

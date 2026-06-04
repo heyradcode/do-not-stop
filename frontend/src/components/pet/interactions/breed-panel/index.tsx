@@ -7,7 +7,7 @@ import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import { formatTxHashHint } from '@hooks/usePetActionErrorDisplay';
 import { usePetActionErrorToast } from '@hooks/usePetActionErrorToast';
-import Icon, { CheckIcon, DnaIcon } from '@components/common/icon';
+import Icon, { CheckIcon, DnaIcon } from '@components/ui/icon';
 
 export type BreedPanelProps = {
     /** `false` when embedded under the dashboard interactions hub. */

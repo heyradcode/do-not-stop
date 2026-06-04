@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import Icon, { CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/common/icon';
+import Icon, { CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/ui/icon';
 import { Tones, type Tone } from '@constants/tones';
 import './index.css';
 

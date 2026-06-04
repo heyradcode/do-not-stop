@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { formatSolanaActionError, parseContractError, useActiveChain } from '@shared/core';
-import { useToast } from '@components/common/toast';
+import { useToast } from '@components/ui/toast';
 
 /**
  * Shows write/contract errors as friendly toasts.

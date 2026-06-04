@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useToast } from '@components/common/toast';
+import { useToast } from '@components/ui/toast';
 import { usePetActionErrorDisplay } from './usePetActionErrorDisplay';
 
 /**

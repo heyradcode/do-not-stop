@@ -5,7 +5,7 @@ import {
     usePetList,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
-import Icon, { CheckIcon, PawIcon } from '@components/common/icon';
+import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
 import TransactionStatus from '@components/common/transaction-status';
 import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
 import { useWriteContractErrorToast } from '@hooks/useWriteContractErrorToast';

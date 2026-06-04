@@ -19,7 +19,7 @@ import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import { formatTxHashHint } from '@hooks/usePetActionErrorDisplay';
 import { usePetActionErrorToast } from '@hooks/usePetActionErrorToast';
-import Icon, { BattleIcon } from '@components/common/icon';
+import Icon, { BattleIcon } from '@components/ui/icon';
 import {
     getLevelDelta,
     getMatchLabel,

@@ -3,7 +3,7 @@ import { isActionSupported, useActiveChain, usePetList } from '@shared/core';
 import type { InteractionAction } from '@constants/interactionRoutes';
 import { STANDALONE_INTERACTION_HEADERS } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
-import Icon, { BattleIcon } from '@components/common/icon';
+import Icon, { BattleIcon } from '@components/ui/icon';
 import PetContainer from '@components/pet/pet-container';
 import StateCard from '@components/pet/interactions/state-card';
 import '@components/pet/pet-interactions/index.css';

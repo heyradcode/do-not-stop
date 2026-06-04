@@ -26,7 +26,7 @@ import Icon, {
     PawIcon,
     SendIcon,
     SparklesIcon,
-} from '@components/common/icon';
+} from '@components/ui/icon';
 import CreatePetModal from '@components/pet/create-pet-modal';
 import PetCollectionLayout from '@components/pet/pet-collection-layout';
 import SendPetModal from '@components/pet/send-pet-modal';

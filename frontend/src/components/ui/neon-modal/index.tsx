@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import Modal from 'react-modal';
 
 import { Tones } from '@constants/tones';
-import NeonButton from '@components/common/neon-button';
+import NeonButton from '@components/ui/neon-button';
 import './index.css';
 
 type NeonModalProps = {

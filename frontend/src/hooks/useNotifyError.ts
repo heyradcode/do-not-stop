@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useToast } from '@components/common/toast';
+import { useToast } from '@components/ui/toast';
 
 /** Logs technical details to the console and shows a friendly toast to the user. */
 export function useNotifyError() {

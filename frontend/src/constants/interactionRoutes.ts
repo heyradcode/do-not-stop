@@ -4,7 +4,7 @@ import {
   EggIcon,
   LevelUpIcon,
   QuillIcon,
-} from '@components/common/icon';
+} from '@components/ui/icon';
 
 /** Internal action id (`interactions/:action`; `rename` segment → changename). */
 export type InteractionAction = 'breed' | 'battle' | 'levelup' | 'changename';
