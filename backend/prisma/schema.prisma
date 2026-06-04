@@ -34,3 +34,20 @@ model PetRoster {
   @@index([chain, readyAt])
   @@map("pet_roster")
 }
+
+/// One generated conversation per settled battle — a generate-once cache so the
+/// dialogue is billed at most once and replays are reproducible.
+/// See AI_BATTLE_DIALOGUE.md.
+model BattleDialogue {
+  chain     String // 'evm' | 'solana'
+  battleId  String   @map("battle_id") // tx hash+log (EVM) / settle sig (Solana)
+  attacker  String   @map("attacker_pet_id")
+  defender  String   @map("defender_pet_id")
+  winner    String // 'attacker' | 'defender'
+  turns     Json // DialogueTurn[]
+  model     String // Claude model id, or 'fallback'
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([chain, battleId])
+  @@map("battle_dialogue")
+}

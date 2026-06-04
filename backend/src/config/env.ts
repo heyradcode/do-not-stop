@@ -45,6 +45,17 @@ export const env = {
         /** Shared secret Helius sends in the webhook `Authorization` header. */
         webhookSecret: process.env.HELIUS_WEBHOOK_SECRET?.trim() || undefined,
     },
+
+    /**
+     * AI battle dialogue (see AI_BATTLE_DIALOGUE.md). Optional — when `apiKey` is
+     * unset the feature degrades gracefully to templated fallback lines, so the
+     * app runs fine without a key in local dev.
+     */
+    anthropic: {
+        apiKey: process.env.ANTHROPIC_API_KEY?.trim() || undefined,
+        /** Default model for battle banter — fast + cheap. */
+        model: process.env.ANTHROPIC_MODEL?.trim() || 'claude-haiku-4-5-20251001',
+    },
 } as const;
 
 // In production the webhook must not be left open: if Solana indexing is on, the

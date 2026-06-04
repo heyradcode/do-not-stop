@@ -7,6 +7,7 @@ import healthRoutes from '@routes/health';
 import protectedRoutes from '@routes/protected';
 import graphqlRoutes from '@routes/graphql';
 import webhookRoutes from '@routes/webhooks';
+import battleDialogueRoutes from '@routes/battle-dialogue';
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use('/api/protected', protectedRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/graphql', graphqlRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/battle-dialogue', battleDialogueRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
     res.json({
@@ -37,6 +39,7 @@ app.get('/', (_req: Request, res: Response) => {
             health: '/api/health',
             graphql: '/graphql',
             webhooks: '/api/webhooks',
+            battleDialogue: '/api/battle-dialogue',
         },
     });
 });
