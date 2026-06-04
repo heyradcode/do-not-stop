@@ -1,7 +1,8 @@
 import { env } from '@config/env';
 import { getDialogue, saveDialogue } from '@repositories/dialogue.repository';
+import { getHeadToHead, getRecentForm } from '@repositories/battle-history.repository';
 import { buildPersona, type Persona } from './battle-dialogue.persona';
-import { fallbackDialogue } from './battle-dialogue.prompt';
+import { buildRivalryContext, fallbackDialogue } from './battle-dialogue.prompt';
 import { generateDialogueViaHf } from './battle-dialogue.client';
 import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from './battle-dialogue.types';
 
@@ -46,11 +47,33 @@ async function generateTurns(
 ): Promise<{ turns: DialogueTurn[]; model: string }> {
     if (env.hf.apiToken) {
         try {
-            const turns = await generateDialogueViaHf(input, attacker, defender);
+            const rivalry = await buildRivalry(input);
+            const turns = await generateDialogueViaHf(input, attacker, defender, rivalry);
             return { turns, model: env.hf.model };
         } catch (err) {
             console.error('[battle-dialogue] HF generation failed, using fallback:', err);
         }
     }
     return { turns: fallbackDialogue(input, attacker, defender), model: 'fallback' };
+}
+
+/**
+ * Compact rivalry/recent-form context from prior battles (the current battle is
+ * excluded). Returns '' if the history lookup fails so generation still proceeds.
+ */
+async function buildRivalry(input: GenerateDialogueInput): Promise<string> {
+    try {
+        const { chain, battleId } = input;
+        const attackerId = input.attacker.petId;
+        const defenderId = input.defender.petId;
+        const [headToHead, attackerForm, defenderForm] = await Promise.all([
+            getHeadToHead(chain, attackerId, defenderId, battleId),
+            getRecentForm(chain, attackerId, 5, battleId),
+            getRecentForm(chain, defenderId, 5, battleId),
+        ]);
+        return buildRivalryContext(headToHead, attackerForm, defenderForm, attackerId, defenderId);
+    } catch (err) {
+        console.error('[battle-dialogue] rivalry lookup failed, continuing without it:', err);
+        return '';
+    }
 }

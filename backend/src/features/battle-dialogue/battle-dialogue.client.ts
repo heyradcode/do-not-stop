@@ -88,13 +88,14 @@ export async function generateDialogueViaHf(
     input: GenerateDialogueInput,
     attacker: Persona,
     defender: Persona,
+    rivalry?: string,
 ): Promise<DialogueTurn[]> {
     if (!env.hf.apiToken) {
         throw new Error('HF_API_TOKEN not set');
     }
 
     const system = `${SYSTEM_PROMPT}\n\n${JSON_FORMAT_INSTRUCTION}`;
-    const user = buildUserMessage(input, attacker, defender);
+    const user = buildUserMessage(input, attacker, defender, rivalry);
 
     let lastError: unknown;
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
