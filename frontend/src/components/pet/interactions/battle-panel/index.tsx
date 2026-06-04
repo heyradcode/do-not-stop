@@ -18,7 +18,7 @@ import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { formatTxHashHint } from '@hooks/usePetActionErrorDisplay';
 import { usePetActionErrorToast } from '@hooks/usePetActionErrorToast';
-import Icon, { BattleIcon, CheckIcon } from '@components/common/icon';
+import Icon, { BattleIcon, CheckIcon, CloseIcon } from '@components/common/icon';
 import {
     getLevelDelta,
     getMatchLabel,
@@ -35,9 +35,13 @@ export type BattlePanelProps = {
 
 const VALIDATION_MESSAGE = 'Please select your pet and an opponent';
 const BATTLE_FAIL_MESSAGE = 'Failed to start battle. Please try again.';
-const SUCCESS_MESSAGE = 'Battle completed! Check your pets for level ups.';
 const REMATCH_COOLDOWN_MESSAGE = 'Your fighter is on cooldown. Pick another pet or wait.';
 const REMATCH_OPPONENT_GONE_MESSAGE = 'That opponent is no longer available. Choose another challenger.';
+
+/** win/loss/levelUp snapshot taken just before calling battle.mutate. */
+type PreBattleStats = { winCount: number; lossCount: number; level: number };
+/** Outcome determined by comparing pre/post stats after the tx settles. */
+type BattleOutcome = { result: 'victory' | 'defeat'; leveledUp: boolean } | null;
 
 /** Stable select value for an opponent (pet ids are not globally unique on Solana). */
 const opponentKey = (owner: string, id: string) => `${owner}::${id}`;
@@ -180,12 +184,17 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const [selectedPet1, setSelectedPet1] = useState('');
     const [selectedOpponent, setSelectedOpponent] = useState('');
     const [showResult, setShowResult] = useState(false);
+    const [battleOutcome, setBattleOutcome] = useState<BattleOutcome>(null);
     const [validationError, setValidationError] = useState<string | null>(null);
     const [opponentSlotFlash, setOpponentSlotFlash] = useState(false);
     const [rematchPending, setRematchPending] = useState(false);
 
     const selectedOpponentCardRef = useRef<HTMLButtonElement>(null);
     const rematchSnapshotRef = useRef<{ petId1: string; opponentKey: string } | null>(null);
+    // Snapshot taken before battle.mutate; cleared after outcome is resolved.
+    const preBattleStatsRef = useRef<PreBattleStats | null>(null);
+    // Set true in handleSuccess; cleared once the outcome useEffect resolves it.
+    const pendingOutcomeRef = useRef(false);
 
     const activeChainKind = chain.kind === 'none' ? null : chain.kind;
     const {
@@ -198,6 +207,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const handleSuccess = useCallback(() => {
         setShowResult(true);
         setValidationError(null);
+        pendingOutcomeRef.current = true;
         void refetch();
         void refetchOpponents();
     }, [refetch, refetchOpponents]);
@@ -227,6 +237,25 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         BATTLE_FAIL_MESSAGE,
     );
 
+    // After the settle tx, refetch() updates `pets` with the new on-chain stats.
+    // Compare against the pre-battle snapshot to determine victory or defeat.
+    useEffect(() => {
+        if (!pendingOutcomeRef.current || !selectedPet1 || !preBattleStatsRef.current || petsLoading) return;
+
+        const updatedFighter = pets.find((p) => p.id === selectedPet1);
+        if (!updatedFighter) return;
+
+        const { winCount: prevWin, lossCount: prevLoss, level: prevLevel } = preBattleStatsRef.current;
+        // Stats haven't refreshed yet — wait for the next update.
+        if (updatedFighter.winCount === prevWin && updatedFighter.lossCount === prevLoss) return;
+
+        setBattleOutcome({
+            result: updatedFighter.winCount > prevWin ? 'victory' : 'defeat',
+            leveledUp: updatedFighter.level > prevLevel,
+        });
+        pendingOutcomeRef.current = false;
+    }, [pets, selectedPet1, petsLoading]);
+
     const usesSwitchboardVrf = chain.kind === 'solana';
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
     const subtitle = usesSwitchboardVrf
@@ -236,11 +265,23 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const submitLabel = 'Start Battle';
     const hashHint = chain.kind === 'solana' ? formatTxHashHint(battle.hash) : null;
 
+    const snapshotFighterStats = useCallback((fighter: Pet) => {
+        preBattleStatsRef.current = {
+            winCount: fighter.winCount,
+            lossCount: fighter.lossCount,
+            level: fighter.level,
+        };
+        pendingOutcomeRef.current = false;
+        setBattleOutcome(null);
+    }, []);
+
     const startBattle = useCallback(() => {
         if (!selectedPet1 || !opponent) {
             setValidationError(VALIDATION_MESSAGE);
             return false;
         }
+
+        if (selectedFighter) snapshotFighterStats(selectedFighter);
 
         rematchSnapshotRef.current = {
             petId1: selectedPet1,
@@ -253,11 +294,12 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
             defenderOwner: opponent.owner,
         });
         return true;
-    }, [battle, opponent, selectedPet1]);
+    }, [battle, opponent, selectedFighter, selectedPet1, snapshotFighterStats]);
 
     const handleBattle = () => {
         battle.clearErrors();
         setShowResult(false);
+        setBattleOutcome(null);
         startBattle();
     };
 
@@ -270,6 +312,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const handleDone = () => {
         setShowResult(false);
         setValidationError(null);
+        setBattleOutcome(null);
+        preBattleStatsRef.current = null;
         setSelectedPet1('');
         setSelectedOpponent('');
         navigate(DASHBOARD_HOME);
@@ -309,6 +353,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         battle.clearErrors();
         setShowResult(false);
         setValidationError(null);
+        setBattleOutcome(null);
         setRematchPending(true);
         refetch();
         void refetchOpponents();
@@ -346,6 +391,9 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
             return;
         }
 
+        const rematchFighter = readyPets.find(({ id }) => id === snapshot.petId1)?.pet;
+        if (rematchFighter) snapshotFighterStats(rematchFighter);
+
         setSelectedPet1(snapshot.petId1);
         setSelectedOpponent(snapshot.opponentKey);
         setValidationError(null);
@@ -362,6 +410,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         readyPets,
         opponents,
         battle,
+        snapshotFighterStats,
     ]);
 
     const arenaClassName = [
@@ -373,6 +422,14 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     ]
         .filter(Boolean)
         .join(' ');
+
+    // Result overlay derivations
+    const isVictory = battleOutcome?.result === 'victory';
+    const isDefeat = battleOutcome?.result === 'defeat';
+    const resultCardClass = [
+        'battle-result-card',
+        battleOutcome === null ? 'is-pending' : isVictory ? '' : 'is-defeat',
+    ].filter(Boolean).join(' ');
 
     return (
         <>
@@ -387,21 +444,43 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 <div className={arenaClassName}>
                     {showResult && (
                         <div className="battle-result-overlay" role="status" aria-live="polite">
-                            <div className="battle-result-card">
+                            <div className={resultCardClass}>
                                 <span className="battle-result-icon" aria-hidden>
-                                    <Icon as={CheckIcon} tone={Tones.Emerald} glow="strong" />
+                                    {battleOutcome === null ? (
+                                        <Icon as={BattleIcon} tone={Tones.Cyan} />
+                                    ) : isVictory ? (
+                                        <Icon as={CheckIcon} tone={Tones.Emerald} glow="strong" />
+                                    ) : (
+                                        <Icon as={CloseIcon} tone={Tones.Magenta} glow="strong" />
+                                    )}
                                 </span>
-                                <p className="battle-result-title">Victory screen</p>
-                                <p className="battle-result-message">{SUCCESS_MESSAGE}</p>
-                                {opponent ? (
+                                <p className="battle-result-title">
+                                    {battleOutcome === null
+                                        ? 'Resolving…'
+                                        : isVictory
+                                            ? 'Victory!'
+                                            : 'Defeated'}
+                                </p>
+                                <p className="battle-result-message">
+                                    {battleOutcome === null
+                                        ? 'Checking battle outcome…'
+                                        : isVictory
+                                            ? battleOutcome.leveledUp
+                                                ? 'Your pet won and leveled up!'
+                                                : 'Your pet won the battle!'
+                                            : 'Your pet was defeated. Train harder and try again!'}
+                                </p>
+                                {opponent && battleOutcome !== null ? (
                                     <p className="battle-result-opponent">
-                                        Rematch vs {opponent.name} (Lv.{opponent.level})
+                                        {isVictory
+                                            ? `vs ${opponent.name} (Lv.${opponent.level})`
+                                            : `Lost to ${opponent.name} (Lv.${opponent.level})`}
                                     </p>
                                 ) : null}
                                 <div className="battle-result-actions">
                                     <button
                                         type="button"
-                                        className="battle-result-rematch"
+                                        className={`battle-result-rematch${isDefeat ? ' is-defeat' : ''}`}
                                         onClick={handleRematch}
                                         disabled={battle.isPending || rematchPending}
                                     >

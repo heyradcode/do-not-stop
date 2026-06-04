@@ -555,6 +555,25 @@
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
+.battle-result-card.is-defeat {
+    border-color: rgb(255 110 196 / 42%);
+    box-shadow:
+        inset 0 0 20px rgb(255 110 196 / 10%),
+        0 0 24px rgb(255 110 196 / 18%);
+}
+
+.battle-result-card.is-defeat .battle-result-title {
+    color: #ff9ad6;
+}
+
+.battle-result-card.is-pending {
+    border-color: rgb(125 214 255 / 28%);
+    box-shadow:
+        inset 0 0 16px rgb(125 214 255 / 6%),
+        0 0 18px rgb(125 214 255 / 10%);
+    animation: battle-result-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .battle-result-rematch {
     background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
     border: 1px solid rgb(255 110 196 / 55%);
@@ -562,6 +581,13 @@
     box-shadow:
         inset 0 0 12px rgb(255 110 196 / 14%),
         0 0 12px rgb(255 110 196 / 22%);
+}
+
+.battle-result-rematch.is-defeat {
+    border-color: rgb(255 110 196 / 38%);
+    box-shadow:
+        inset 0 0 10px rgb(255 110 196 / 10%),
+        0 0 8px rgb(255 110 196 / 16%);
 }
 
 .battle-result-rematch:hover:not(:disabled) {
