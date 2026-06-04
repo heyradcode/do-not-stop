@@ -1,5 +1,5 @@
 import React from 'react';
-import PetContainer from '@components/pet/pet-container';
+import DashboardPanel from '@components/common/dashboard-panel';
 
 export type StateCardProps = {
     title: React.ReactNode;
@@ -18,7 +18,7 @@ export type StateCardProps = {
  * - not enough pets
  * - header + arbitrary children
  *
- * Composes the shared `PetContainer` with a `pet-interactions` modifier.
+ * Composes the shared `DashboardPanel` with a `pet-interactions` modifier.
  */
 const StateCard: React.FC<StateCardProps> = ({
     title,
@@ -32,7 +32,7 @@ const StateCard: React.FC<StateCardProps> = ({
     const composedClass = `pet-interactions${containerClassName ? ` ${containerClassName}` : ''}`;
 
     return (
-        <PetContainer
+        <DashboardPanel
             title={title}
             className={composedClass}
             headingId="pet-interactions-heading"
@@ -45,7 +45,7 @@ const StateCard: React.FC<StateCardProps> = ({
             {sub ? <p className="sub">{sub}</p> : null}
             {helpText ? <p className="help-text">{helpText}</p> : null}
             {children}
-        </PetContainer>
+        </DashboardPanel>
     );
 };
 

@@ -27,9 +27,9 @@ import Icon, {
     SendIcon,
     SparklesIcon,
 } from '@components/ui/icon';
-import CreatePetModal from '@components/pet/create-pet-modal';
-import PetCollectionLayout from '@components/pet/pet-collection-layout';
-import SendPetModal from '@components/pet/send-pet-modal';
+import CreatePetModal from '@components/pet/creation/create-pet-modal';
+import PetCollectionLayout from '@components/pet/collection/pet-collection-layout';
+import SendPetModal from '@components/pet/transfer/send-pet-modal';
 import { useNotifyError } from '@hooks/useNotifyError';
 import './index.css';
 

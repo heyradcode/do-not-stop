@@ -1,6 +1,6 @@
 /* Battle setup — arena VS header + card pickers (scoped under `.battle-setup`). */
 
-.pet-container.pet-interactions .interface.battle-setup {
+.dashboard-panel.pet-interactions .interface.battle-setup {
     display: flex;
     flex-direction: column;
     gap: 16px;

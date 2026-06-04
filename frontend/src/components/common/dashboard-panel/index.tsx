@@ -1,15 +1,15 @@
 import React from 'react';
 import './index.css';
 
-export type PetContainerProps = {
+export type DashboardPanelProps = {
     title: React.ReactNode;
-    /** Muted line under the title (e.g. “Connect your wallet…”). */
+    /** Muted line under the title (e.g. "Connect your wallet…"). */
     description?: React.ReactNode;
     /** Controls aligned to the header corner (e.g. refresh). */
     actions?: React.ReactNode;
     /** Renders below the title bar; intended for the main panel content. */
     children?: React.ReactNode;
-    /** Extra classes on the outer `.pet-container` section. */
+    /** Extra classes on the outer `.dashboard-panel` section. */
     className?: string;
     /** Optional id for the heading element (for aria-labelledby). */
     headingId?: string;
@@ -18,22 +18,19 @@ export type PetContainerProps = {
 };
 
 /**
- * Shared container for dashboard pet panels (e.g. Pet Interactions, Your Pet Collection).
- *
- * Owns the surface, title bar, heading + caption rhythm, and action slot so the
- * two main dashboard columns line up visually. Panel-specific styles compose by
- * passing `className` (e.g. `pet-collection`, `pet-interactions`).
+ * Generic dashboard panel surface — title bar, caption, action slot, and panel body.
+ * Panel-specific styles compose by passing `className` (e.g. `pet-collection`, `pet-interactions`).
  */
-const PetContainer: React.FC<PetContainerProps> = ({
+const DashboardPanel: React.FC<DashboardPanelProps> = ({
     title,
     description,
     actions,
     children,
     className,
-    headingId = 'pet-container-heading',
+    headingId = 'dashboard-panel-heading',
     centerDescription = false,
 }) => {
-    const rootClass = `pet-container${className ? ` ${className}` : ''}`;
+    const rootClass = `dashboard-panel${className ? ` ${className}` : ''}`;
 
     return (
         <section className={rootClass} aria-labelledby={headingId}>
@@ -62,4 +59,4 @@ const PetContainer: React.FC<PetContainerProps> = ({
     );
 };
 
-export default PetContainer;
+export default DashboardPanel;

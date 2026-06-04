@@ -4,9 +4,9 @@ import type { InteractionAction } from '@constants/interactionRoutes';
 import { STANDALONE_INTERACTION_HEADERS } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import Icon, { BattleIcon } from '@components/ui/icon';
-import PetContainer from '@components/pet/pet-container';
+import DashboardPanel from '@components/common/dashboard-panel';
 import StateCard from '@components/pet/interactions/state-card';
-import '@components/pet/pet-interactions/index.css';
+import '@components/pet/interactions/hub/index.css';
 
 export type InteractionStandaloneProps = {
     action: InteractionAction;
@@ -43,7 +43,7 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
 
     if (isLoading && pets.length === 0) {
         return (
-            <PetContainer
+            <DashboardPanel
                 className="pet-interactions interaction-standalone"
                 title={<><Icon as={header.Icon} tone={Tones.Violet} />{header.label}</>}
             >
@@ -51,7 +51,7 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
                     <div className="loading-spinner"></div>
                     <p>Loading your pets...</p>
                 </div>
-            </PetContainer>
+            </DashboardPanel>
         );
     }
 

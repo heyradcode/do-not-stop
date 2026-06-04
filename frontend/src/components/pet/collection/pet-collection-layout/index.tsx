@@ -1,5 +1,5 @@
 import React from 'react';
-import PetContainer from '@components/pet/pet-container';
+import DashboardPanel from '@components/common/dashboard-panel';
 import './index.css';
 
 export type PetCollectionLayoutProps = {
@@ -14,7 +14,7 @@ export type PetCollectionLayoutProps = {
 };
 
 /**
- * Shell for the dashboard pet list. Composes the shared `PetContainer` with
+ * Shell for the dashboard pet list. Composes the shared `DashboardPanel` with
  * a `pet-collection` modifier so list-specific styles can scope to this panel.
  */
 const PetCollectionLayout: React.FC<PetCollectionLayoutProps> = ({
@@ -28,7 +28,7 @@ const PetCollectionLayout: React.FC<PetCollectionLayoutProps> = ({
     const composedClass = `pet-collection${className ? ` ${className}` : ''}`;
 
     return (
-        <PetContainer
+        <DashboardPanel
             title={title}
             description={description}
             actions={actions}
@@ -37,7 +37,7 @@ const PetCollectionLayout: React.FC<PetCollectionLayoutProps> = ({
             centerDescription={isWalletDisconnected}
         >
             {children}
-        </PetContainer>
+        </DashboardPanel>
     );
 };
 

@@ -18,7 +18,7 @@ import {
 } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import Icon, { BattleIcon, EggIcon, LevelUpIcon, QuillIcon } from '@components/ui/icon';
-import PetContainer from '@components/pet/pet-container';
+import DashboardPanel from '@components/common/dashboard-panel';
 import BattlePanel from '@components/pet/interactions/battle-panel';
 import BreedPanel from '@components/pet/interactions/breed-panel';
 import LevelUpPanel from '@components/pet/interactions/level-up-panel';
@@ -76,7 +76,7 @@ const PetInteractions: React.FC = () => {
 
     if (isLoading && pets.length === 0) {
         return (
-            <PetContainer
+            <DashboardPanel
                 className="pet-interactions"
                 headingId="pet-interactions-heading"
                 title={<><Icon as={BattleIcon} tone={Tones.Violet} />Pet Interactions</>}
@@ -85,7 +85,7 @@ const PetInteractions: React.FC = () => {
                     <div className="loading-spinner"></div>
                     <p>Loading your pets...</p>
                 </div>
-            </PetContainer>
+            </DashboardPanel>
         );
     }
 
@@ -116,7 +116,7 @@ const PetInteractions: React.FC = () => {
     const battleDisabledHint = readyPets.length < 1 ? 'You need a ready pet to battle' : undefined;
 
     return (
-        <PetContainer
+        <DashboardPanel
             className="pet-interactions"
             headingId="pet-interactions-heading"
             title={<><Icon as={BattleIcon} tone={Tones.Violet} />Pet Interactions</>}
@@ -229,7 +229,7 @@ const PetInteractions: React.FC = () => {
             {action === 'levelup' && <LevelUpPanel isStandaloneView={false} />}
 
             {action === 'changename' && <RenamePanel isStandaloneView={false} />}
-        </PetContainer>
+        </DashboardPanel>
     );
 };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import InteractionStandalone from '@components/pet/interaction-standalone';
+import InteractionStandalone from '@components/pet/interactions/standalone';
 import BreedPanel from '@components/pet/interactions/breed-panel';
 
 /** Top-level `/breed` — shell + breed panel (standalone UI). */

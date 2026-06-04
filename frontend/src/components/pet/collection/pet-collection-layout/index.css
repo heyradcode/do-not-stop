@@ -1,8 +1,8 @@
 /* Pet-collection-specific tokens + container scope.
-   Shared surface / title-bar / refresh styles live in `pet-container/index.css`.
+   Shared surface / title-bar / refresh styles live in `common/dashboard-panel/index.css`.
    Page-specific sizing lives in `pages/main/index.css`. */
 
-.pet-container.pet-collection {
+.dashboard-panel.pet-collection {
     --spacing-xs: clamp(0.125rem, 0.25rem, 0.375rem);
     --spacing-sm: clamp(0.25rem, 0.5rem, 0.75rem);
     --spacing-md: clamp(0.5rem, 1rem, 1.25rem);

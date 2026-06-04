@@ -1,14 +1,13 @@
-/* Shared container for dashboard pet panels (Pet Interactions, Your Pet Collection).
-   Panel-specific styles live in their own files and compose via extra classes
-   on the same root (e.g. `.pet-container.pet-collection`). */
+/* Generic dashboard panel surface. Panel-specific styles live in their own files
+   and compose via extra classes on the same root (e.g. `.dashboard-panel.pet-collection`). */
 
-@keyframes pet-container-refresh-spin {
+@keyframes dashboard-panel-refresh-spin {
     to {
         transform: rotate(360deg);
     }
 }
 
-.pet-container {
+.dashboard-panel {
     --pc-spacing-xs: clamp(0.125rem, 0.25rem, 0.375rem);
     --pc-spacing-sm: clamp(0.25rem, 0.5rem, 0.75rem);
     --pc-spacing-md: clamp(0.5rem, 1rem, 1.25rem);
@@ -165,7 +164,7 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
-            animation: pet-container-refresh-spin 1s linear infinite;
+            animation: dashboard-panel-refresh-spin 1s linear infinite;
         }
     }
 

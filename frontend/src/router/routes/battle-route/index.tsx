@@ -1,5 +1,5 @@
 import React from 'react';
-import InteractionStandalone from '@components/pet/interaction-standalone';
+import InteractionStandalone from '@components/pet/interactions/standalone';
 import BattlePanel from '@components/pet/interactions/battle-panel';
 
 const BattleRoute: React.FC = () => (

@@ -1,5 +1,5 @@
 import React from 'react';
-import InteractionStandalone from '@components/pet/interaction-standalone';
+import InteractionStandalone from '@components/pet/interactions/standalone';
 import LevelUpPanel from '@components/pet/interactions/level-up-panel';
 
 const LevelUpRoute: React.FC = () => (

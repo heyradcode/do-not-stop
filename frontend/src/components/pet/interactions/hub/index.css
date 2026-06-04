@@ -1,8 +1,8 @@
 /* Pet-interactions specific tokens + content styles.
    Shared surface / title-bar / heading / description / state-body styles live in
-   `pet-container/index.css`. */
+   `common/dashboard-panel/index.css`. */
 
-.pet-container.pet-interactions {
+.dashboard-panel.pet-interactions {
     --zi-card-bg: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
     --zi-surface-bg: rgb(5 13 30 / 78%);
     --zi-text: #f6f3ff;
