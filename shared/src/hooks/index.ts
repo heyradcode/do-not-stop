@@ -17,5 +17,13 @@ export {
 } from './useBreedPets';
 export { useTransferPet, type TransferPetArgs } from './useTransferPet';
 export { useOpponents, type UseOpponentsOptions } from './useOpponents';
+export {
+    useBattleDialogue,
+    type UseBattleDialogueOptions,
+    type DialogueTurn,
+    type DialoguePetInput,
+    type DialogueSpeaker,
+    type DialoguePhase,
+} from './useBattleDialogue';
 export { usePetError, type PetError } from './usePetError';
 export { useTxError, type TxError } from './useTxError';
