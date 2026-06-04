@@ -29,9 +29,22 @@ export const PET_ACCOUNT_DISCRIMINATOR_B58 = bs58.encode(PET_ACCOUNT_DISCRIMINAT
  * `null` when the bytes are not a `PetAccount`, so callers can safely pass any
  * account touched by a transaction and keep only the ones that decode.
  *
- * Borsh layout after the discriminator, in `state.rs` declaration order:
- *   id u32 | owner [u8;32] | dna u64 | rarity u8 | level u16 | ready_time i64 |
- *   win_count u16 | loss_count u16 | bump u8 | name [u8;32] | name_len u8.
+ * Borsh layout after the discriminator (body offsets), in `state.rs` declaration order:
+ *   0  u32        id
+ *   4  [u8;32]    owner
+ *  36  u64        dna
+ *  44  u8         rarity
+ *  45  u16        level
+ *  47  i64        ready_time
+ *  55  u16        win_count
+ *  57  u16        loss_count
+ *  59  u8         bump  (not indexed)
+ *  60  [u8;32]    name  (fixed-size buffer)
+ *  92  u8         name_len
+ *                 — total body: 93 bytes (PET_ACCOUNT_LEN - 8)
+ *
+ * If `PetAccount` in state.rs changes, update PET_ACCOUNT_LEN, the discriminator,
+ * and the offsets above. The nameLen guard below will catch accidental drift.
  */
 export function decodePetAccount(data: Buffer): RosterPet | null {
     if (data.length !== PET_ACCOUNT_LEN) return null;
@@ -40,7 +53,7 @@ export function decodePetAccount(data: Buffer): RosterPet | null {
     const body = data.subarray(8);
 
     const id = body.readUInt32LE(0);
-    const owner = bs58.encode(body.subarray(4, 36)); // base58 pubkey (matches auth storageKey)
+    const owner = bs58.encode(body.subarray(4, 36));
     const dna = body.readBigUInt64LE(36);
     const rarity = body.readUInt8(44);
     const level = body.readUInt16LE(45);
@@ -49,7 +62,13 @@ export function decodePetAccount(data: Buffer): RosterPet | null {
     const lossCount = body.readUInt16LE(57);
     // body[59] = bump (not indexed)
     const nameBytes = body.subarray(60, 92);
-    const nameLen = Math.min(body.readUInt8(92), nameBytes.length);
+    const nameLen = body.readUInt8(92);
+
+    // nameLen > 32 means the struct layout has drifted — the name buffer is only
+    // 32 bytes, so any larger value is physically impossible and indicates the
+    // offsets above no longer match the on-chain account.
+    if (nameLen > 32) return null;
+
     const name = nameBytes.subarray(0, nameLen).toString('utf8');
 
     return {

@@ -2,6 +2,10 @@ import { env } from '@config/env';
 import { createHeliusRpc } from '../scanner';
 import { upsertPet } from '@repositories/roster.repository';
 
+if (!env.isProduction && !env.solana.webhookSecret) {
+    console.warn('[webhooks] HELIUS_WEBHOOK_SECRET is not set — webhook auth is disabled in dev mode');
+}
+
 /**
  * Handle a Helius webhook delivery. Helius fires when a transaction touches the
  * CryptoPets program, but the payload carries the *transaction*, not decoded
