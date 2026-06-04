@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { DialogueTurn } from '@shared/core';
 import './battle-dialogue.css';
 
@@ -7,6 +7,8 @@ type BattleDialogueProps = {
     isLoading: boolean;
     attackerName: string;
     defenderName: string;
+    /** Fires once after the last turn finishes animating. */
+    onComplete?: () => void;
 };
 
 const CHAR_MS = 18; // per-character typing speed
@@ -18,15 +20,29 @@ const BattleDialogue: React.FC<BattleDialogueProps> = ({
     isLoading,
     attackerName,
     defenderName,
+    onComplete,
 }) => {
     const [shownTurns, setShownTurns] = useState(0);
     const [typed, setTyped] = useState('');
+
+    const onCompleteRef = useRef(onComplete);
+    onCompleteRef.current = onComplete;
+    const completedRef = useRef(false);
 
     // Restart the animation whenever a new conversation arrives.
     useEffect(() => {
         setShownTurns(0);
         setTyped('');
+        completedRef.current = false;
     }, [turns]);
+
+    // Fire onComplete once, after every turn has finished animating.
+    useEffect(() => {
+        if (turns.length > 0 && shownTurns >= turns.length && !completedRef.current) {
+            completedRef.current = true;
+            onCompleteRef.current?.();
+        }
+    }, [turns, shownTurns]);
 
     useEffect(() => {
         const current = turns[shownTurns];
