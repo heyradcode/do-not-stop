@@ -483,70 +483,90 @@
 }
 
 .battle-result-overlay {
-    position: absolute;
+    position: fixed;
     inset: 0;
-    z-index: 2;
+    z-index: 100;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
-    background: rgb(4 8 22 / 72%);
-    backdrop-filter: blur(4px);
-    animation: battle-result-enter 0.35s ease;
+    padding: 24px;
+    background: rgb(4 8 22 / 82%);
+    backdrop-filter: blur(8px);
+    animation: battle-result-enter 0.3s ease;
 }
 
 .battle-result-card {
-    width: min(100%, 320px);
-    background: linear-gradient(180deg, rgb(10 16 32 / 96%), rgb(6 10 22 / 98%));
+    width: min(100%, 480px);
+    background: linear-gradient(180deg, rgb(10 16 36 / 98%), rgb(6 10 24 / 99%));
     border: 1px solid rgb(0 255 157 / 42%);
-    border-radius: 12px;
-    padding: 18px 16px;
+    border-radius: 16px;
+    padding: 32px 28px 28px;
     text-align: center;
     box-shadow:
-        inset 0 0 20px rgb(0 255 157 / 10%),
-        0 0 24px rgb(0 255 157 / 18%);
+        inset 0 0 32px rgb(0 255 157 / 8%),
+        0 0 40px rgb(0 255 157 / 16%),
+        0 24px 60px rgb(0 0 0 / 55%);
     animation: battle-result-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.battle-result-icon {
-    display: inline-flex;
-    margin-bottom: 8px;
-    animation: battle-result-icon 0.6s ease;
+.battle-result-art {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.battle-result-art svg {
+    width: 160px;
+    height: 106px;
+    filter: drop-shadow(0 0 12px rgb(0 255 157 / 30%));
+}
+
+.battle-result-card.is-defeat .battle-result-art svg {
+    filter: drop-shadow(0 0 12px rgb(255 110 196 / 30%));
+}
+
+.battle-result-card.is-pending .battle-result-art svg {
+    filter: drop-shadow(0 0 10px rgb(125 214 255 / 28%));
+    animation: battle-result-pending-spin 2s linear infinite;
 }
 
 .battle-result-title {
-    margin: 0 0 6px;
-    font-size: 11px;
+    margin: 0 0 10px;
+    font-size: 26px;
     font-weight: 700;
-    letter-spacing: 0.8px;
+    letter-spacing: 1px;
     text-transform: uppercase;
     color: #9effd4;
 }
 
 .battle-result-message {
-    margin: 0 0 8px;
-    font-size: 14px;
-    line-height: 1.45;
+    margin: 0 0 10px;
+    font-size: 15px;
+    line-height: 1.5;
     color: var(--zi-text);
 }
 
 .battle-result-opponent {
-    margin: 0 0 14px;
-    font-size: 12px;
+    margin: 0 0 20px;
+    font-size: 13px;
     color: var(--zi-text-muted);
 }
 
 .battle-result-actions {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    flex-direction: row;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 4px;
 }
 
 .battle-result-rematch,
 .battle-result-done {
     appearance: none;
     border-radius: 2px;
-    padding: 10px 14px;
+    padding: 11px 22px;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.6px;
@@ -558,8 +578,9 @@
 .battle-result-card.is-defeat {
     border-color: rgb(255 110 196 / 42%);
     box-shadow:
-        inset 0 0 20px rgb(255 110 196 / 10%),
-        0 0 24px rgb(255 110 196 / 18%);
+        inset 0 0 32px rgb(255 110 196 / 8%),
+        0 0 40px rgb(255 110 196 / 16%),
+        0 24px 60px rgb(0 0 0 / 55%);
 }
 
 .battle-result-card.is-defeat .battle-result-title {
@@ -569,9 +590,9 @@
 .battle-result-card.is-pending {
     border-color: rgb(125 214 255 / 28%);
     box-shadow:
-        inset 0 0 16px rgb(125 214 255 / 6%),
-        0 0 18px rgb(125 214 255 / 10%);
-    animation: battle-result-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+        inset 0 0 24px rgb(125 214 255 / 5%),
+        0 0 28px rgb(125 214 255 / 10%),
+        0 24px 60px rgb(0 0 0 / 55%);
 }
 
 .battle-result-rematch {
@@ -718,20 +739,9 @@
     }
 }
 
-@keyframes battle-result-icon {
-    0% {
-        transform: scale(0.6);
-        opacity: 0;
-    }
-
-    60% {
-        transform: scale(1.08);
-        opacity: 1;
-    }
-
-    100% {
-        transform: scale(1);
-    }
+@keyframes battle-result-pending-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -745,7 +755,7 @@
     .battle-picker-card.is-selected,
     .battle-result-overlay,
     .battle-result-card,
-    .battle-result-icon {
+    .battle-result-card.is-pending .battle-result-art svg {
         animation: none !important;
     }
 }

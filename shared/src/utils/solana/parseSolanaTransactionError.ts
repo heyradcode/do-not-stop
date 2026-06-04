@@ -33,12 +33,20 @@ export function formatSolanaActionError(error: unknown, fallback = 'Transaction 
         return 'Switchboard randomness is still processing. Wait a few seconds and try again.';
     }
 
-    if (lower.includes('already in use') || lower.includes('breedrequestalreadypending')) {
+    if (lower.includes('breedrequestalreadypending')) {
         return 'A breed is already in progress for this wallet. Try again to finish it.';
     }
 
+    if (lower.includes('battlerequestalreadypending')) {
+        return 'A battle is already in progress for this wallet. Try again to finish it.';
+    }
+
+    if (lower.includes('already in use')) {
+        return 'A request is already in progress for this wallet. Try again to finish it.';
+    }
+
     if (lower.includes('petnotready') || lower.includes('pet is on cooldown')) {
-        return 'One or both parents are still on cooldown. Wait until they are ready and try again.';
+        return 'One or both pets are still on cooldown. Wait until they are ready and try again.';
     }
 
     if (lower.includes('cannotbreedself')) {

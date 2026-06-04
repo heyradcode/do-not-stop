@@ -18,14 +18,16 @@ import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { formatTxHashHint } from '@hooks/usePetActionErrorDisplay';
 import { usePetActionErrorToast } from '@hooks/usePetActionErrorToast';
-import Icon, { BattleIcon, CheckIcon, CloseIcon } from '@components/common/icon';
+import Icon, { BattleIcon } from '@components/common/icon';
 import {
     getLevelDelta,
     getMatchLabel,
     getMatchTier,
     pickRandomOpponent,
     sortOpponentsByMatch,
-} from './battleMatchmaking';
+} from './battle-matchmaking';
+import BattleResultArt from './battle-result-art';
+import type { BattleOutcome } from './types';
 import './index.css';
 
 export type BattlePanelProps = {
@@ -40,8 +42,6 @@ const REMATCH_OPPONENT_GONE_MESSAGE = 'That opponent is no longer available. Cho
 
 /** win/loss/levelUp snapshot taken just before calling battle.mutate. */
 type PreBattleStats = { winCount: number; lossCount: number; level: number };
-/** Outcome determined by comparing pre/post stats after the tx settles. */
-type BattleOutcome = { result: 'victory' | 'defeat'; leveledUp: boolean } | null;
 
 /** Stable select value for an opponent (pet ids are not globally unique on Solana). */
 const opponentKey = (owner: string, id: string) => `${owner}::${id}`;
@@ -433,6 +433,54 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
 
     return (
         <>
+            {showResult && (
+                <div className="battle-result-overlay" role="status" aria-live="polite">
+                    <div className={resultCardClass}>
+                        <div className="battle-result-art" aria-hidden>
+                            <BattleResultArt outcome={battleOutcome} />
+                        </div>
+                        <p className="battle-result-title">
+                            {battleOutcome === null
+                                ? 'Resolving…'
+                                : isVictory
+                                    ? 'Victory!'
+                                    : 'Defeated'}
+                        </p>
+                        <p className="battle-result-message">
+                            {battleOutcome === null
+                                ? 'Checking battle outcome…'
+                                : isVictory
+                                    ? battleOutcome.leveledUp
+                                        ? 'Your pet won and leveled up!'
+                                        : 'Your pet won the battle!'
+                                    : 'Your pet was defeated. Train harder and try again!'}
+                        </p>
+                        {opponent && battleOutcome !== null ? (
+                            <p className="battle-result-opponent">
+                                {isVictory
+                                    ? `vs ${opponent.name} (Lv.${opponent.level})`
+                                    : `Lost to ${opponent.name} (Lv.${opponent.level})`}
+                            </p>
+                        ) : null}
+                        {battleOutcome !== null && (
+                            <div className="battle-result-actions">
+                                <button
+                                    type="button"
+                                    className={`battle-result-rematch${isDefeat ? ' is-defeat' : ''}`}
+                                    onClick={handleRematch}
+                                    disabled={battle.isPending || rematchPending}
+                                >
+                                    {rematchPending ? 'Preparing…' : 'Rematch'}
+                                </button>
+                                <button type="button" className="battle-result-done" onClick={handleDone}>
+                                    Leave
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <div className="interface battle-setup">
                 {!isStandaloneView && (
                     <>
@@ -442,58 +490,6 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 )}
 
                 <div className={arenaClassName}>
-                    {showResult && (
-                        <div className="battle-result-overlay" role="status" aria-live="polite">
-                            <div className={resultCardClass}>
-                                <span className="battle-result-icon" aria-hidden>
-                                    {battleOutcome === null ? (
-                                        <Icon as={BattleIcon} tone={Tones.Cyan} />
-                                    ) : isVictory ? (
-                                        <Icon as={CheckIcon} tone={Tones.Emerald} glow="strong" />
-                                    ) : (
-                                        <Icon as={CloseIcon} tone={Tones.Magenta} glow="strong" />
-                                    )}
-                                </span>
-                                <p className="battle-result-title">
-                                    {battleOutcome === null
-                                        ? 'Resolving…'
-                                        : isVictory
-                                            ? 'Victory!'
-                                            : 'Defeated'}
-                                </p>
-                                <p className="battle-result-message">
-                                    {battleOutcome === null
-                                        ? 'Checking battle outcome…'
-                                        : isVictory
-                                            ? battleOutcome.leveledUp
-                                                ? 'Your pet won and leveled up!'
-                                                : 'Your pet won the battle!'
-                                            : 'Your pet was defeated. Train harder and try again!'}
-                                </p>
-                                {opponent && battleOutcome !== null ? (
-                                    <p className="battle-result-opponent">
-                                        {isVictory
-                                            ? `vs ${opponent.name} (Lv.${opponent.level})`
-                                            : `Lost to ${opponent.name} (Lv.${opponent.level})`}
-                                    </p>
-                                ) : null}
-                                <div className="battle-result-actions">
-                                    <button
-                                        type="button"
-                                        className={`battle-result-rematch${isDefeat ? ' is-defeat' : ''}`}
-                                        onClick={handleRematch}
-                                        disabled={battle.isPending || rematchPending}
-                                    >
-                                        {rematchPending ? 'Preparing…' : 'Rematch'}
-                                    </button>
-                                    <button type="button" className="battle-result-done" onClick={handleDone}>
-                                        Back to dashboard
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     <div className="header">
                         <span><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Arena</span>
                         <div className="arena-actions">
