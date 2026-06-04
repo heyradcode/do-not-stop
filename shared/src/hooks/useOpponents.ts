@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../contexts/ApiClientContext';
+import { useAuth } from '../contexts/AuthContext';
 import type { OpponentPet, PetChain } from '../types/pet';
 
 const OPPONENTS_QUERY = `
@@ -59,11 +60,12 @@ export interface UseOpponentsOptions {
  */
 export function useOpponents({ chain, minLevel, page = 0, enabled = true }: UseOpponentsOptions) {
     const apiClient = useApiClient();
+    const { isAuthenticated } = useAuth();
     const baseURL = apiClient.defaults.baseURL ?? '';
 
     const query = useQuery({
         queryKey: ['opponents', baseURL, chain, minLevel ?? null, page],
-        enabled: enabled && chain != null,
+        enabled: enabled && chain != null && isAuthenticated,
         queryFn: async () => {
             const { data } = await apiClient.post<GraphQLResponse>('/graphql', {
                 query: OPPONENTS_QUERY,
