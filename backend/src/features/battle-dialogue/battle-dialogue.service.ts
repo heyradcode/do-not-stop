@@ -1,6 +1,10 @@
 import { env } from '@config/env';
 import { getDialogue, saveDialogue } from '@repositories/dialogue.repository';
-import { getHeadToHead, getRecentForm } from '@repositories/battle-history.repository';
+import {
+    getHeadToHead,
+    getRecentForm,
+    recordBattle,
+} from '@repositories/battle-history.repository';
 import { buildPersona, type Persona } from './battle-dialogue.persona';
 import { buildRivalryContext, fallbackDialogue } from './battle-dialogue.prompt';
 import { generateDialogueViaHf } from './battle-dialogue.client';
@@ -16,6 +20,11 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
     if (cached) {
         return { turns: cached.turns, model: cached.model, cached: true };
     }
+
+    // Persist this settled battle to history so later bouts between these pets
+    // get real head-to-head / recent-form context. Idempotent (upsert on
+    // chain+battleId) and best-effort — never block dialogue on it.
+    await recordBattleHistory(input);
 
     const attacker = buildPersona(input.attacker);
     const defender = buildPersona(input.defender);
@@ -55,6 +64,29 @@ async function generateTurns(
         }
     }
     return { turns: fallbackDialogue(input, attacker, defender), model: 'fallback' };
+}
+
+/**
+ * Record the settled battle into `battle_history`. The winner is mapped from the
+ * attacker/defender role to the concrete pet id so head-to-head tallies stay
+ * correct when the pets swap roles across battles. Best-effort: a failure here
+ * must not stop us from returning the dialogue.
+ */
+async function recordBattleHistory(input: GenerateDialogueInput): Promise<void> {
+    try {
+        const winnerPetId =
+            input.winner === 'attacker' ? input.attacker.petId : input.defender.petId;
+        await recordBattle({
+            chain: input.chain,
+            battleId: input.battleId,
+            attacker: input.attacker.petId,
+            defender: input.defender.petId,
+            winnerPetId,
+            foughtAt: BigInt(Date.now()),
+        });
+    } catch (err) {
+        console.error('[battle-dialogue] failed to record battle history:', err);
+    }
 }
 
 /**
