@@ -35,6 +35,24 @@ model PetRoster {
   @@map("pet_roster")
 }
 
+/// Authoritative record of settled battles, ingested from on-chain events
+/// (EVM: Battle.FightResult; Solana: settle_battle BattleResult). Powers
+/// rivalry / head-to-head context for AI dialogue. See AI_BATTLE_DIALOGUE.md.
+model BattleHistory {
+  chain       String // 'evm' | 'solana'
+  battleId    String   @map("battle_id") // tx hash+log (EVM) / settle sig (Solana)
+  attacker    String   @map("attacker_pet_id")
+  defender    String   @map("defender_pet_id")
+  winnerPetId String   @map("winner_pet_id") // absolute id — head-to-head survives role swaps
+  foughtAt    BigInt   @map("fought_at") // unix seconds (block/tx time)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@id([chain, battleId])
+  @@index([chain, attacker])
+  @@index([chain, defender])
+  @@map("battle_history")
+}
+
 /// One generated conversation per settled battle — a generate-once cache so the
 /// dialogue is billed at most once and replays are reproducible.
 /// See AI_BATTLE_DIALOGUE.md.
