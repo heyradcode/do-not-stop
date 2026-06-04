@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
     isValidEthAddress,
     isValidSolanaAddress,
@@ -8,7 +8,7 @@ import {
 } from '@shared/core';
 import TransactionStatus from '@components/common/transaction-status';
 import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
-import { useWriteContractErrorToast } from '@hooks/useWriteContractErrorToast';
+import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
 
 interface SendPetModalProps {
@@ -35,7 +35,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
     const notifyError = useNotifyError();
     const notifyReceiptError = useNotifyReceiptError();
 
-    useWriteContractErrorToast(hookError);
+    useTxErrorToast(hookError);
 
     const [recipientAddress, setRecipientAddress] = useState('');
     const [isConfirming, setIsConfirming] = useState(false);
@@ -134,7 +134,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                         onClick={handleClose}
                         disabled={isConfirming || isPending}
                     >
-                        ×
+                        Ã—
                     </button>
                 </div>
 

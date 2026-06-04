@@ -1,19 +1,19 @@
 import { useEffect, useRef } from 'react';
 import { useToast } from '@components/ui/toast';
-import { usePetActionErrorDisplay } from './usePetActionErrorDisplay';
+import { usePetError } from '@shared/core';
 
 /**
  * Maps pet-action errors to friendly toast messages.
  * Raw transaction / contract errors are logged to the console only.
  */
-export function usePetActionErrorToast(
+export function usePetErrorToast(
     mutationError: Error | null | undefined,
     receiptError: Error | null | undefined,
     validationError: string | null,
     fallbackMessage: string,
 ): void {
     const toast = useToast();
-    const display = usePetActionErrorDisplay(
+    const display = usePetError(
         mutationError,
         receiptError,
         validationError,

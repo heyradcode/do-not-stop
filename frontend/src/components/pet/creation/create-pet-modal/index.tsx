@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
     useActiveChain,
     useCreatePet,
@@ -8,7 +8,7 @@ import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
 import TransactionStatus from '@components/common/transaction-status';
 import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
-import { useWriteContractErrorToast } from '@hooks/useWriteContractErrorToast';
+import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
 
 interface CreatePetModalProps {
@@ -24,7 +24,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const notifyError = useNotifyError();
     const notifyReceiptError = useNotifyReceiptError();
 
-    useWriteContractErrorToast(hookError);
+    useTxErrorToast(hookError);
 
     const [petName, setPetName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
@@ -92,12 +92,12 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                 <div className="header">
                     <h2><Icon as={PawIcon} tone={Tones.Cyan} />Create Your First Pet</h2>
                     <button className="close" onClick={handleClose}>
-                        ×
+                        Ã—
                     </button>
                 </div>
 
                 <div className="body">
-                    <p>Give your pet a unique name and bring it to life! You can only create one pet initially — breed to grow your collection!</p>
+                    <p>Give your pet a unique name and bring it to life! You can only create one pet initially â€” breed to grow your collection!</p>
 
                     <div className="form">
                         <div className="field">

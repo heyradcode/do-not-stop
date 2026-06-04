@@ -1,18 +1,20 @@
 import { useMemo } from 'react';
-import { useActiveChain, parseContractError, formatSolanaActionError } from '@shared/core';
+import { useActiveChain } from './useActiveChain';
+import { parseContractError } from '../utils/ethereum';
+import { formatSolanaActionError } from '../utils/solana';
 
-export type PetActionErrorDisplay = {
+export type PetError = {
     message: string | null;
     isUserRejection: boolean;
     isContractError: boolean;
 };
 
-export function usePetActionErrorDisplay(
+export function usePetError(
     mutationError: Error | null | undefined,
     receiptError: Error | null | undefined,
     validationError: string | null,
-    solanaFailMessage: string,
-): PetActionErrorDisplay {
+    fallbackMessage: string,
+): PetError {
     const chain = useActiveChain();
 
     return useMemo(() => {
@@ -27,7 +29,7 @@ export function usePetActionErrorDisplay(
 
         if (chain.kind === 'solana') {
             return {
-                message: formatSolanaActionError(err, solanaFailMessage),
+                message: formatSolanaActionError(err, fallbackMessage),
                 isUserRejection: false,
                 isContractError: true,
             };
@@ -39,9 +41,5 @@ export function usePetActionErrorDisplay(
             isUserRejection: parsed.isUserRejection,
             isContractError: parsed.isContractError,
         };
-    }, [validationError, mutationError, receiptError, chain.kind, solanaFailMessage]);
-}
-
-export function formatTxHashHint(hash: string | undefined): string | null {
-    return hash ? `${hash.slice(0, 8)}…` : null;
+    }, [validationError, mutationError, receiptError, chain.kind, fallbackMessage]);
 }

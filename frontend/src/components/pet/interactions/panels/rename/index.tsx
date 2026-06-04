@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
@@ -9,7 +9,7 @@ import {
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
-import { useWriteContractErrorToast } from '@hooks/useWriteContractErrorToast';
+import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon, QuillIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 
@@ -26,7 +26,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
     const notifyError = useNotifyError();
     const notifyReceiptError = useNotifyReceiptError();
 
-    useWriteContractErrorToast(hookError);
+    useTxErrorToast(hookError);
 
     const [selectedPet, setSelectedPet] = useState<string>('');
     const [newName, setNewName] = useState('');

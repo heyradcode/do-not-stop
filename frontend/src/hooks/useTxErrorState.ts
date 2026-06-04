@@ -4,7 +4,7 @@ import { parseContractError } from '@shared/core';
 /**
  * Mirrors wagmi `writeError` into local UI state for transaction panels.
  */
-export function useWriteContractErrorState(writeError: unknown) {
+export function useTxErrorState(writeError: unknown) {
     const [error, setError] = useState<string | null>(null);
     const [isUserRejection, setIsUserRejection] = useState(false);
     const [isContractError, setIsContractError] = useState(false);

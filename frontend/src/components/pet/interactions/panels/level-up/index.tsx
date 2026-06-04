@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
@@ -9,7 +9,7 @@ import {
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
-import { useWriteContractErrorToast } from '@hooks/useWriteContractErrorToast';
+import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 
@@ -26,7 +26,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     const notifyError = useNotifyError();
     const notifyReceiptError = useNotifyReceiptError();
 
-    useWriteContractErrorToast(hookError);
+    useTxErrorToast(hookError);
 
     const [selectedPet, setSelectedPet] = useState<string>('');
     const [success, setSuccess] = useState<string | null>(null);
@@ -76,7 +76,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
             <div className="interface">
                 {!isStandaloneView && (
                     <>
-                        <h4>⬆️ Level Up Pet</h4>
+                        <h4>â¬†ï¸ Level Up Pet</h4>
                         <p>
                             {chain.kind === 'solana'
                                 ? 'Pay a small SOL fee to level up your pet'

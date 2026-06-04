@@ -1,12 +1,12 @@
-import React, { useCallback, useMemo, useState } from 'react';
+﻿import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import { getReadyPetsUnified, useActiveChain, useBreedPets, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
-import { formatTxHashHint } from '@hooks/usePetActionErrorDisplay';
-import { usePetActionErrorToast } from '@hooks/usePetActionErrorToast';
+import { formatTxHashHint } from '@hooks/usePetError';
+import { usePetErrorToast } from '@hooks/usePetErrorToast';
 import Icon, { CheckIcon, DnaIcon } from '@components/ui/icon';
 
 export type BreedPanelProps = {
@@ -16,7 +16,7 @@ export type BreedPanelProps = {
 
 const VALIDATION_MESSAGE = 'Please select two pets and enter a name for the offspring';
 const BREED_FAIL_MESSAGE = 'Failed to breed pets. Please try again.';
-const AWAITING_HINT = 'Hang tight—your new pet will show up in a moment.';
+const AWAITING_HINT = 'Hang tightâ€”your new pet will show up in a moment.';
 
 const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
@@ -43,7 +43,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const breed = useBreedPets({ onSuccess: handleSuccess });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
-    usePetActionErrorToast(
+    usePetErrorToast(
         breed.error,
         breed.receiptError,
         validationError,
@@ -54,8 +54,8 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const subtitle = usesSwitchboardVrf
         ? 'Select two pets to create a new one (Switchboard VRF)'
         : 'Select two pets to create a new one';
-    const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Submitting…';
-    const creatingLabel = 'Creating…';
+    const pendingLabel = usesSwitchboardVrf ? 'Generating randomnessâ€¦' : 'Submittingâ€¦';
+    const creatingLabel = 'Creatingâ€¦';
     const submitLabel = 'Breed Pets';
     const buttonLabel = breed.isPending
         ? pendingLabel
