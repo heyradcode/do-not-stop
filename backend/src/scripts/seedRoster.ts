@@ -4,7 +4,7 @@ import { upsertPet, countByChain, type RosterPet } from '@repositories/roster.re
 import { prisma } from '@config/prisma';
 
 /**
- * Dev-only: seed a handful of opponent pets so `GET /api/battle/opponents`
+ * Dev-only: seed a handful of opponent pets so `POST /graphql  opponents(chain:...)`
  * returns data before subgraph URLs are configured.
  *
  * Run: pnpm --filter backend seed:roster

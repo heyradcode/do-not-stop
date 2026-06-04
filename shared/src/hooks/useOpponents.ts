@@ -3,7 +3,18 @@ import { useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../contexts/ApiClientContext';
 import type { OpponentPet, PetChain } from '../types/pet';
 
-/** Wire shape returned by `GET /api/battle/opponents` (dna as string). */
+const OPPONENTS_QUERY = `
+    query Opponents($chain: String!, $minLevel: Int, $page: Int, $pageSize: Int) {
+        opponents(chain: $chain, minLevel: $minLevel, page: $page, pageSize: $pageSize) {
+            opponents {
+                id chain owner name dna
+                level rarity winCount lossCount readyAt
+            }
+            total page pageSize
+        }
+    }
+`;
+
 interface OpponentDto {
     id: string;
     chain: PetChain;
@@ -17,11 +28,16 @@ interface OpponentDto {
     readyAt: number;
 }
 
-interface OpponentsResponse {
+interface OpponentsPage {
     opponents: OpponentDto[];
     total: number;
     page: number;
     pageSize: number;
+}
+
+interface GraphQLResponse {
+    data?: { opponents: OpponentsPage };
+    errors?: { message: string }[];
 }
 
 export interface UseOpponentsOptions {
@@ -36,9 +52,10 @@ export interface UseOpponentsOptions {
 }
 
 /**
- * Fetches battle-ready pets owned by OTHER players for PvP matchmaking.
- * Requires {@link ApiClientProvider} (and an authenticated session — the API
- * excludes the caller's own pets using the JWT address).
+ * Fetches battle-ready pets owned by OTHER players for PvP matchmaking via the
+ * backend's `/graphql` endpoint. Requires {@link ApiClientProvider} and an
+ * authenticated session (the JWT address is used server-side to exclude the
+ * caller's own pets).
  */
 export function useOpponents({ chain, minLevel, page = 0, enabled = true }: UseOpponentsOptions) {
     const apiClient = useApiClient();
@@ -48,10 +65,16 @@ export function useOpponents({ chain, minLevel, page = 0, enabled = true }: UseO
         queryKey: ['opponents', baseURL, chain, minLevel ?? null, page],
         enabled: enabled && chain != null,
         queryFn: async () => {
-            const { data } = await apiClient.get<OpponentsResponse>('/api/battle/opponents', {
-                params: { chain, minLevel, page },
+            const { data } = await apiClient.post<GraphQLResponse>('/graphql', {
+                query: OPPONENTS_QUERY,
+                variables: { chain, minLevel: minLevel ?? null, page },
             });
-            return data;
+
+            if (data.errors?.length) {
+                throw new Error(data.errors.map((e) => e.message).join('; '));
+            }
+
+            return data.data?.opponents ?? { opponents: [], total: 0, page, pageSize: 20 };
         },
     });
 
@@ -69,7 +92,7 @@ export function useOpponents({ chain, minLevel, page = 0, enabled = true }: UseO
                 lossCount: o.lossCount,
                 readyAt: o.readyAt,
             })),
-        [query.data]
+        [query.data],
     );
 
     return {

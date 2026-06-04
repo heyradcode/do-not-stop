@@ -9,7 +9,7 @@ app.listen(env.port, () => {
     console.log(`📊 Health check: http://localhost:${port}/api/health`);
     console.log(`🔐 Auth endpoints: http://localhost:${port}/api/auth`);
     console.log(`🛡️  Protected endpoints: http://localhost:${port}/api/protected`);
-    console.log(`⚔️  Battle endpoints: http://localhost:${port}/api/battle`);
+    console.log(`⚔️  GraphQL endpoint: http://localhost:${port}/graphql`);
 
     // Background roster indexer (PvP matchmaking). No-op unless a chain is configured.
     startIndexers();

@@ -18,7 +18,7 @@ Everything downstream of ingestion is chain-agnostic:
 | Store            | `pet_roster` (`prisma/schema.prisma`)     | One row per pet, keyed `(chain, petId)`.        |
 | Repository       | `src/repositories/roster.repository.ts`   | `upsertPet` (writes), `findReadyOpponents` (reads). |
 | Orchestrator     | `src/indexer/index.ts`                    | Runs each configured source on a 30s tick.      |
-| API              | `GET /api/battle/opponents`               | Reads the roster; identical for both chains.    |
+| API              | `POST /graphql  { opponents(chain: ...) }`               | Reads the roster; identical for both chains.    |
 
 Every source — no matter the chain — ends by calling `upsertPet` with the **same
 shape**:
@@ -57,7 +57,7 @@ backend polls every 30s                              │
                          │
                    pet_roster  (Supabase / Postgres)
                          │
-              GET /api/battle/opponents
+              POST /graphql  { opponents(chain: ...) }
                          │
                    frontend matchmaking
 ```

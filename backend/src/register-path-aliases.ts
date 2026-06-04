@@ -16,4 +16,5 @@ require('module-alias').addAliases({
     // Solana indexer lives outside src/ (a sibling under indexing/), so it
     // resolves one level up: src/../indexing/solana → dist/src/../indexing/solana.
     '@solana': path.join(root, '..', 'indexing', 'solana'),
+    '@graphql': path.join(root, 'graphql', 'index.js'),
 });

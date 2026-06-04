@@ -14,7 +14,8 @@
             "@utils": ["src/utils/index.ts"],
             "@typings/*": ["src/types/*"],
             "@generated/*": ["src/generated/*"],
-            "@solana/*": ["indexing/solana/*"]
+            "@solana/*": ["indexing/solana/*"],
+            "@graphql": ["src/graphql/index.ts"]
         },
         "allowSyntheticDefaultImports": true,
         "esModuleInterop": true,
