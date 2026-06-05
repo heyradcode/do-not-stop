@@ -49,7 +49,11 @@ function extractTurns(content: string): DialogueTurn[] {
         if (!raw || typeof raw !== 'object') continue;
         const t = raw as Record<string, unknown>;
         if (typeof t.text !== 'string') continue;
-        const speaker: DialogueSpeaker = t.speaker === 'defender' ? 'defender' : 'attacker';
+        const rawSpeaker = typeof t.speaker === 'string' ? t.speaker.toLowerCase().trim() : '';
+        const speaker: DialogueSpeaker =
+            (rawSpeaker === 'defender' || rawSpeaker === 'fighter_b' || rawSpeaker === 'b' || rawSpeaker === 'opponent')
+                ? 'defender'
+                : 'attacker';
         const phase: DialoguePhase = t.phase === 'result' ? 'result' : 'taunt';
         turns.push({ speaker, phase, text: t.text });
     }
