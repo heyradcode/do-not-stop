@@ -4,11 +4,11 @@ import {
     getHeadToHead,
     getRecentForm,
     recordBattle,
-} from '@repositories/battle-history.repository';
+} from '@repositories/history.repository';
 import {
     getRecentBanter,
     recordConversation,
-} from '@repositories/battle-conversation.repository';
+} from '@repositories/conversation.repository';
 import { buildPersona, type Persona } from './dialogue.persona';
 import { buildBanterContext, buildRivalryContext, fallbackDialogue } from './dialogue.prompt';
 import { generateDialogueViaHf, generateTauntsViaHf } from './dialogue.client';
