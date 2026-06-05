@@ -42,10 +42,10 @@ export async function upsertPet(pet: RosterPet): Promise<void> {
     });
 }
 
-/** Upsert a batch of pets in a single transaction. */
+/** Upsert a batch of pets concurrently. */
 export async function upsertManyPets(pets: RosterPet[]): Promise<void> {
     if (pets.length === 0) return;
-    await prisma.$transaction(
+    await Promise.all(
         pets.map((pet) =>
             prisma.petRoster.upsert({
                 where: { chain_petId: { chain: pet.chain, petId: pet.petId } },
