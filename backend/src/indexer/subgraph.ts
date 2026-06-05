@@ -1,5 +1,6 @@
-import { upsertPet } from '@repositories/roster.repository';
+import { upsertManyPets } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';
+import type { RosterPet } from '@repositories/roster.repository';
 
 export interface SubgraphIndexerConfig {
     chain: Chain;
@@ -70,25 +71,47 @@ async function fetchPage(
     return json.data?.pets ?? [];
 }
 
-async function upsertPage(chain: Chain, pets: SubgraphPet[]): Promise<bigint> {
-    let maxUpdatedAt = BigInt(0);
-    for (const pet of pets) {
-        await upsertPet({
-            chain,
-            petId: pet.id,
-            owner: normalizeOwner(chain, pet.owner),
-            name: pet.name,
-            level: pet.level,
-            rarity: pet.rarity,
-            dna: pet.dna,
-            winCount: pet.winCount,
-            lossCount: pet.lossCount,
-            readyAt: BigInt(pet.readyAt),
-        });
-        const ts = BigInt(pet.updatedAt);
-        if (ts > maxUpdatedAt) maxUpdatedAt = ts;
+/** Cursor-paginate through all matching pets using the given query and variable builder. */
+async function paginate(
+    url: string,
+    query: string,
+    buildVars: (lastId: string) => Record<string, unknown>,
+    pageSize: number,
+): Promise<SubgraphPet[]> {
+    let lastId = '';
+    const all: SubgraphPet[] = [];
+
+    for (;;) {
+        const page = await fetchPage(url, query, buildVars(lastId));
+        if (page.length === 0) break;
+        all.push(...page);
+        lastId = page[page.length - 1]?.id ?? lastId;
+        if (page.length < pageSize) break;
     }
-    return maxUpdatedAt;
+
+    return all;
+}
+
+async function upsertAll(chain: Chain, pets: SubgraphPet[]): Promise<bigint> {
+    const rows: RosterPet[] = pets.map((pet) => ({
+        chain,
+        petId: pet.id,
+        owner: normalizeOwner(chain, pet.owner),
+        name: pet.name,
+        level: pet.level,
+        rarity: pet.rarity,
+        dna: pet.dna,
+        winCount: pet.winCount,
+        lossCount: pet.lossCount,
+        readyAt: BigInt(pet.readyAt),
+    }));
+
+    await upsertManyPets(rows);
+
+    return pets.reduce((max, pet) => {
+        const ts = BigInt(pet.updatedAt);
+        return ts > max ? ts : max;
+    }, BigInt(0));
 }
 
 /**
@@ -99,23 +122,14 @@ export async function scanSubgraphRoster(
     config: SubgraphIndexerConfig,
 ): Promise<{ scanned: number; maxUpdatedAt: bigint }> {
     const pageSize = config.pageSize ?? DEFAULT_PAGE_SIZE;
-    let lastId = '';
-    let scanned = 0;
-    let maxUpdatedAt = BigInt(0);
-
-    for (;;) {
-        const pets = await fetchPage(config.url, FULL_SYNC_QUERY, { first: pageSize, lastId });
-        if (pets.length === 0) break;
-
-        const pageMax = await upsertPage(config.chain, pets);
-        if (pageMax > maxUpdatedAt) maxUpdatedAt = pageMax;
-
-        scanned += pets.length;
-        lastId = pets[pets.length - 1]?.id ?? lastId;
-        if (pets.length < pageSize) break;
-    }
-
-    return { scanned, maxUpdatedAt };
+    const pets = await paginate(
+        config.url,
+        FULL_SYNC_QUERY,
+        (lastId) => ({ first: pageSize, lastId }),
+        pageSize,
+    );
+    const maxUpdatedAt = await upsertAll(config.chain, pets);
+    return { scanned: pets.length, maxUpdatedAt };
 }
 
 /**
@@ -127,25 +141,12 @@ export async function syncSubgraphChanges(
     sinceUpdatedAt: bigint,
 ): Promise<{ synced: number; maxUpdatedAt: bigint }> {
     const pageSize = config.pageSize ?? DEFAULT_PAGE_SIZE;
-    let lastId = '';
-    let synced = 0;
-    let maxUpdatedAt = sinceUpdatedAt;
-
-    for (;;) {
-        const pets = await fetchPage(config.url, INCREMENTAL_QUERY, {
-            first: pageSize,
-            lastId,
-            since: sinceUpdatedAt.toString(),
-        });
-        if (pets.length === 0) break;
-
-        const pageMax = await upsertPage(config.chain, pets);
-        if (pageMax > maxUpdatedAt) maxUpdatedAt = pageMax;
-
-        synced += pets.length;
-        lastId = pets[pets.length - 1]?.id ?? lastId;
-        if (pets.length < pageSize) break;
-    }
-
-    return { synced, maxUpdatedAt };
+    const pets = await paginate(
+        config.url,
+        INCREMENTAL_QUERY,
+        (lastId) => ({ first: pageSize, lastId, since: sinceUpdatedAt.toString() }),
+        pageSize,
+    );
+    const maxUpdatedAt = pets.length > 0 ? await upsertAll(config.chain, pets) : sinceUpdatedAt;
+    return { synced: pets.length, maxUpdatedAt };
 }

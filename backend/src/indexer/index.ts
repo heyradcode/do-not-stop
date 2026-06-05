@@ -16,6 +16,7 @@ interface IndexerConfig {
 }
 
 const DEFAULT_INTERVAL_MS = 60_000;
+const stopFns: (() => void)[] = [];
 
 function readConfig(): IndexerConfig {
     const enabled = (process.env.INDEXER_ENABLED ?? 'true').toLowerCase() !== 'false';
@@ -35,6 +36,55 @@ function readConfig(): IndexerConfig {
     return { enabled, intervalMs, sources };
 }
 
+async function logScan(chain: Chain, scanned: number): Promise<void> {
+    const inDb = await countByChain(chain);
+    console.log(`[indexer] ${chain}: scanned ${scanned} pets; roster now has ${inDb}`);
+}
+
+// EVM: full sync on startup, then incremental ticks (only changed pets).
+function startEvmIndexer(source: Extract<RosterSource, { kind: 'subgraph' }>, intervalMs: number): void {
+    let watermark = BigInt(0);
+
+    void scanSubgraphRoster({ chain: source.chain, url: source.url })
+        .then(async ({ scanned, maxUpdatedAt }) => {
+            watermark = maxUpdatedAt;
+            await logScan(source.chain, scanned);
+        })
+        .catch((err: Error) => console.error(`[indexer] ${source.chain} initial sync failed:`, err.message));
+
+    console.log(`[indexer] ${source.chain} incremental sync every ${intervalMs}ms`);
+
+    const timer = setInterval(() => {
+        void syncSubgraphChanges({ chain: source.chain, url: source.url }, watermark)
+            .then(async ({ synced, maxUpdatedAt }) => {
+                watermark = maxUpdatedAt;
+                if (synced > 0) await logScan(source.chain, synced);
+            })
+            .catch((err: Error) => console.error(`[indexer] ${source.chain} sync failed:`, err.message));
+    }, intervalMs);
+
+    stopFns.push(() => clearInterval(timer));
+}
+
+// Solana: Helius webhooks handle real-time; this is a periodic backfill safety-net.
+function startSolanaIndexer(source: Extract<RosterSource, { kind: 'helius' }>, intervalMs: number): void {
+    const scan = () => scanSolanaRoster({ rpcUrl: source.rpcUrl, programId: source.programId });
+
+    void scan()
+        .then(async ({ scanned }) => logScan(source.chain, scanned))
+        .catch((err: Error) => console.error(`[indexer] ${source.chain} initial sync failed:`, err.message));
+
+    console.log(`[indexer] ${source.chain} backfill every ${intervalMs}ms`);
+
+    const timer = setInterval(() => {
+        void scan()
+            .then(async ({ scanned }) => logScan(source.chain, scanned))
+            .catch((err: Error) => console.error(`[indexer] ${source.chain} backfill failed:`, err.message));
+    }, intervalMs);
+
+    stopFns.push(() => clearInterval(timer));
+}
+
 /** Run a one-off full scan of every source — used by the CLI script. */
 export async function runOnce(): Promise<void> {
     const { sources } = readConfig();
@@ -44,12 +94,10 @@ export async function runOnce(): Promise<void> {
         try {
             if (source.kind === 'subgraph') {
                 const { scanned } = await scanSubgraphRoster({ chain: source.chain, url: source.url });
-                const inDb = await countByChain(source.chain);
-                console.log(`[indexer] ${source.chain}: scanned ${scanned} pets; roster now has ${inDb}`);
+                await logScan(source.chain, scanned);
             } else {
                 const { scanned } = await scanSolanaRoster({ rpcUrl: source.rpcUrl, programId: source.programId });
-                const inDb = await countByChain(source.chain);
-                console.log(`[indexer] ${source.chain}: scanned ${scanned} pets; roster now has ${inDb}`);
+                await logScan(source.chain, scanned);
             }
         } catch (err) {
             failures.push(`${source.chain}: ${(err as Error).message}`);
@@ -58,8 +106,6 @@ export async function runOnce(): Promise<void> {
 
     if (failures.length > 0) throw new Error(failures.join(' | '));
 }
-
-const stopFns: (() => void)[] = [];
 
 export function startIndexers(): void {
     const config = readConfig();
@@ -74,63 +120,8 @@ export function startIndexers(): void {
     }
 
     for (const source of config.sources) {
-        if (source.kind === 'subgraph') {
-            // EVM: full sync on startup, then incremental ticks (only changed pets).
-            let watermark = BigInt(0);
-
-            void scanSubgraphRoster({ chain: source.chain, url: source.url })
-                .then(async ({ scanned, maxUpdatedAt }) => {
-                    watermark = maxUpdatedAt;
-                    const inDb = await countByChain(source.chain);
-                    console.log(`[indexer] ${source.chain} initial sync: ${scanned} pets; roster now has ${inDb}`);
-                })
-                .catch((err: Error) =>
-                    console.error(`[indexer] ${source.chain} initial sync failed:`, err.message)
-                );
-
-            console.log(`[indexer] ${source.chain} incremental sync every ${config.intervalMs}ms`);
-
-            const timer = setInterval(() => {
-                void syncSubgraphChanges({ chain: source.chain, url: source.url }, watermark)
-                    .then(async ({ synced, maxUpdatedAt }) => {
-                        watermark = maxUpdatedAt;
-                        if (synced > 0) {
-                            const inDb = await countByChain(source.chain);
-                            console.log(`[indexer] ${source.chain} sync: ${synced} changed; roster now has ${inDb}`);
-                        }
-                    })
-                    .catch((err: Error) =>
-                        console.error(`[indexer] ${source.chain} sync failed:`, err.message)
-                    );
-            }, config.intervalMs);
-
-            stopFns.push(() => clearInterval(timer));
-        } else {
-            // Solana: Helius webhooks handle real-time; this is a periodic backfill safety-net.
-            void scanSolanaRoster({ rpcUrl: source.rpcUrl, programId: source.programId })
-                .then(async ({ scanned }) => {
-                    const inDb = await countByChain(source.chain);
-                    console.log(`[indexer] ${source.chain} initial sync: ${scanned} pets; roster now has ${inDb}`);
-                })
-                .catch((err: Error) =>
-                    console.error(`[indexer] ${source.chain} initial sync failed:`, err.message)
-                );
-
-            console.log(`[indexer] ${source.chain} backfill every ${config.intervalMs}ms`);
-
-            const timer = setInterval(() => {
-                void scanSolanaRoster({ rpcUrl: source.rpcUrl, programId: source.programId })
-                    .then(async ({ scanned }) => {
-                        const inDb = await countByChain(source.chain);
-                        console.log(`[indexer] ${source.chain} backfill: ${scanned} scanned; roster now has ${inDb}`);
-                    })
-                    .catch((err: Error) =>
-                        console.error(`[indexer] ${source.chain} backfill failed:`, err.message)
-                    );
-            }, config.intervalMs);
-
-            stopFns.push(() => clearInterval(timer));
-        }
+        if (source.kind === 'subgraph') startEvmIndexer(source, config.intervalMs);
+        else startSolanaIndexer(source, config.intervalMs);
     }
 }
 
