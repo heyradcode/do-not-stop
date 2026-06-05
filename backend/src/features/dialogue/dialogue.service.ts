@@ -6,14 +6,23 @@ import { buildPersona, type Persona } from './dialogue.persona';
 import { buildBanterContext, buildRivalryContext } from './dialogue.context';
 import { fallbackDialogue } from './dialogue.fallback';
 import { generateDialogueViaHf, generateTauntsViaHf } from './dialogue.client';
+import {
+    hasPregen,
+    setPregen,
+    pregenKey,
+    takePregen,
+    type PregenDialogue,
+} from './dialogue.pregen';
 import type {
     Chain,
 } from '@typings/chain';
 import type {
     DialogueResult,
+    DialogueSpeaker,
     DialogueTurn,
     GenerateDialogueInput,
     GenerateTauntsInput,
+    PrepareDialogueInput,
     TauntsResult,
 } from './dialogue.types';
 
@@ -35,14 +44,48 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
         return { turns, model: cached.model, cached: true };
     }
 
-    // Persist this settled battle to history so later bouts between these pets
-    // get real head-to-head / recent-form context. Idempotent (upsert on
-    // chain+battleId) and best-effort — never block dialogue on it.
-    await recordBattleHistory(input);
+    // Fast path: if this battle was pre-generated while it confirmed, pick the
+    // variant matching the real winner instead of generating now.
+    const prepared = await consumePregen(input);
+    if (prepared) return finalizeDialogue(input, prepared.turns, prepared.model);
 
     const { turns: rawTurns, model } = await generateTurns(input, attacker, defender);
     const turns = ensureResultCoverage(rawTurns, input, attacker, defender);
+    return finalizeDialogue(input, turns, model);
+}
 
+/**
+ * Take the pre-generated pair for this battle (if any) and return the turns for
+ * the actual winner. Returns null when nothing was prepared or the preparation
+ * failed, so the caller falls back to on-demand generation.
+ */
+async function consumePregen(
+    input: GenerateDialogueInput,
+): Promise<{ turns: DialogueTurn[]; model: string } | null> {
+    const promise = takePregen(pregenKey(input.chain, input.battleId));
+    if (!promise) return null;
+    try {
+        const pair = await promise;
+        const turns = input.winner === 'attacker' ? pair.attackerWins : pair.defenderWins;
+        return { turns, model: pair.model };
+    } catch (err) {
+        console.error('[dialogue] pre-generated consume failed, generating on demand:', err);
+        return null;
+    }
+}
+
+/**
+ * Persist a settled battle's dialogue and return the response. Records the
+ * battle to history (for future rivalry context) and appends the result lines
+ * to the rolling transcript — both idempotent and best-effort, never blocking
+ * the response. Shared by the on-demand and pre-generated paths.
+ */
+async function finalizeDialogue(
+    input: GenerateDialogueInput,
+    turns: DialogueTurn[],
+    model: string,
+): Promise<DialogueResult> {
+    await recordBattleHistory(input);
     await saveDialogue({
         chain: input.chain,
         battleId: input.battleId,
@@ -52,12 +95,44 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
         turns,
         model,
     });
-
-    // Append the result reactions to the rolling transcript (taunts were already
-    // recorded pre-fight). Best-effort — never block the response on it.
     await recordResultLines(input, turns);
-
     return { turns, model, cached: false };
+}
+
+/**
+ * Pre-generate BOTH outcomes for a battle while it confirms on-chain, caching
+ * the in-flight result keyed by chain+battleId. Fire-and-forget: the winner is
+ * unknown here, so we generate the attacker-wins and defender-wins dialogues in
+ * parallel and let `getOrGenerateDialogue` pick the right one once the result
+ * lands. No-op without AI configured (on-demand fallback covers it) or if a
+ * preparation is already in flight for this battle.
+ *
+ * `leveledUp` is unknown pre-settle (it depends on winning), so both variants
+ * are generated with `leveledUp: false`; the level-up nuance is minor flavor.
+ */
+export function prepareDialogue(input: PrepareDialogueInput): void {
+    if (!env.hf.apiToken) return;
+
+    const key = pregenKey(input.chain, input.battleId);
+    if (hasPregen(key)) return;
+
+    const attacker = buildPersona(input.attacker);
+    const defender = buildPersona(input.defender);
+
+    const variant = async (winner: DialogueSpeaker): Promise<{ turns: DialogueTurn[]; model: string }> => {
+        const variantInput: GenerateDialogueInput = { ...input, winner, leveledUp: false };
+        const { turns, model } = await generateTurns(variantInput, attacker, defender);
+        return { turns: ensureResultCoverage(turns, variantInput, attacker, defender), model };
+    };
+
+    const promise: Promise<PregenDialogue> = (async () => {
+        const [attackerWins, defenderWins] = await Promise.all([variant('attacker'), variant('defender')]);
+        return { attackerWins: attackerWins.turns, defenderWins: defenderWins.turns, model: attackerWins.model };
+    })();
+
+    // Guard against an unhandled rejection if no result ever consumes this.
+    promise.catch(() => undefined);
+    setPregen(key, promise);
 }
 
 /**

@@ -1,11 +1,12 @@
 import type { Request, Response } from 'express';
 import type { Chain } from '@typings/chain';
-import { getOrGenerateDialogue, getOrGenerateTaunts } from './dialogue.service';
+import { getOrGenerateDialogue, getOrGenerateTaunts, prepareDialogue } from './dialogue.service';
 import type {
     DialogueSpeaker,
     GenerateDialogueInput,
     GenerateTauntsInput,
     PetPersonaInput,
+    PrepareDialogueInput,
 } from './dialogue.types';
 
 function parsePet(value: unknown): PetPersonaInput | null {
@@ -72,6 +73,21 @@ function parseTauntInput(body: unknown): GenerateTauntsInput | null {
     return { chain: chain as Chain, attacker, defender };
 }
 
+function parsePrepareInput(body: unknown): PrepareDialogueInput | null {
+    if (!body || typeof body !== 'object') return null;
+    const b = body as Record<string, unknown>;
+
+    const chain = b.chain;
+    if (chain !== 'evm' && chain !== 'solana') return null;
+    if (typeof b.battleId !== 'string' || b.battleId.length === 0) return null;
+
+    const attacker = parsePet(b.attacker);
+    const defender = parsePet(b.defender);
+    if (!attacker || !defender) return null;
+
+    return { chain: chain as Chain, battleId: b.battleId, attacker, defender };
+}
+
 /**
  * POST /api/battle-dialogue — idempotent: first call generates and stores the
  * conversation, later calls for the same battleId return the cached one.
@@ -90,6 +106,22 @@ export async function postBattleDialogue(req: Request, res: Response): Promise<v
         console.error('[dialogue] generation failed:', err);
         res.status(500).json({ error: 'Failed to generate battle dialogue' });
     }
+}
+
+/**
+ * POST /api/battle-dialogue/prepare — pre-generate both outcomes for a
+ * battle while it confirms on-chain. Fire-and-forget: returns 202 immediately and
+ * generates in the background, so the eventual result read can be served instantly.
+ */
+export function postPrepareDialogue(req: Request, res: Response): void {
+    const input = parsePrepareInput(req.body);
+    if (!input) {
+        res.status(400).json({ error: 'Invalid prepare dialogue request' });
+        return;
+    }
+
+    prepareDialogue(input);
+    res.status(202).json({ ok: true });
 }
 
 /**

@@ -38,6 +38,18 @@ export interface GenerateTauntsInput {
     defender: PetPersonaInput;
 }
 
+/**
+ * Inputs to pre-generate a settled battle's dialogue while it confirms
+ * on-chain. No winner — both outcomes are generated and the right one is picked
+ * once the result is known.
+ */
+export interface PrepareDialogueInput {
+    chain: Chain;
+    battleId: string;
+    attacker: PetPersonaInput;
+    defender: PetPersonaInput;
+}
+
 /** Generated pre-fight taunts plus provenance. */
 export interface TauntsResult {
     turns: DialogueTurn[];

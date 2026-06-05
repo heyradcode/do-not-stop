@@ -13,6 +13,7 @@ import {
     useBattleTaunts,
     useOpponents,
     usePetList,
+    usePrepareDialogue,
     type DialoguePetInput,
     type OpponentPet,
     type Pet,
@@ -213,6 +214,10 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const preBattleStatsRef = useRef<PreBattleStats | null>(null);
     // Set true in handleSuccess; cleared once the outcome useEffect resolves it.
     const pendingOutcomeRef = useRef(false);
+    // Personas captured at battle start so result dialogue can be pre-generated
+    // once the tx hash is known. preparedHashRef dedupes the fire.
+    const battlePersonasRef = useRef<{ attacker: DialoguePetInput; defender: DialoguePetInput } | null>(null);
+    const preparedHashRef = useRef<string | null>(null);
 
     const activeChainKind = chain.kind === 'none' ? null : chain.kind;
     const {
@@ -233,6 +238,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const battle = useBattlePets({ onSuccess: handleSuccess });
     // AI pre-fight taunts — generated on Start Battle, in parallel with the wallet.
     const taunts = useBattleTaunts();
+    // Pre-generate result dialogue once the tx hash is known.
+    const { prepare: prepareDialogue } = usePrepareDialogue();
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const selectedFighter = useMemo(
         () => readyPets.find(({ id }) => id === selectedPet1)?.pet ?? null,
@@ -357,11 +364,12 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         }
         setValidationError(null);
         setOverlayOpen(true);
-        taunts.generate({
-            chain: activeChainKind,
+        const personas = {
             attacker: toDialoguePet(selectedFighter),
             defender: toDialoguePet(opponent),
-        });
+        };
+        battlePersonasRef.current = personas;
+        taunts.generate({ chain: activeChainKind, ...personas });
         startBattle();
     };
 
@@ -431,11 +439,12 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         const snapshot = rematchSnapshotRef.current;
         const tauntFighter = snapshot ? pets.find((p) => p.id === snapshot.petId1) : null;
         if (tauntFighter && opponent && activeChainKind) {
-            taunts.generate({
-                chain: activeChainKind,
+            const personas = {
                 attacker: toDialoguePet(tauntFighter),
                 defender: toDialoguePet(opponent),
-            });
+            };
+            battlePersonasRef.current = personas;
+            taunts.generate({ chain: activeChainKind, ...personas });
         }
 
         refetch();
@@ -505,6 +514,19 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         snapshotFighterStats,
         activeChainKind,
     ]);
+
+    // Once the tx hash exists (battle is confirming on-chain), pre-generate
+    // BOTH result outcomes so the result read is served instantly.
+    // Fires once per battle hash; the winner is unknown here, so the backend
+    // generates both and picks the right one when the result lands.
+    useEffect(() => {
+        const hash = battle.hash;
+        const personas = battlePersonasRef.current;
+        if (!hash || !activeChainKind || !personas) return;
+        if (preparedHashRef.current === hash) return;
+        preparedHashRef.current = hash;
+        prepareDialogue({ chain: activeChainKind, battleId: hash, ...personas });
+    }, [battle.hash, activeChainKind, prepareDialogue]);
 
     const arenaClassName = [
         'battle-arena-card',
