@@ -6,29 +6,35 @@ import {
     SYSTEM_PROMPT,
     TAUNT_SYSTEM_PROMPT,
     JSON_FORMAT_INSTRUCTION,
+    TAUNT_JSON_FORMAT_INSTRUCTION,
     buildUserMessage,
     buildTauntUserMessage,
 } from './dialogue.prompt';
 import { ResponseSchema } from './dialogue.schema';
-import type { DialoguePhase, DialogueTurn, GenerateDialogueInput } from './dialogue.types';
+import type { DialogueTurn, GenerateDialogueInput } from './dialogue.types';
 
 function hfModel() {
-    return createOpenAI({ apiKey: env.hf.apiToken ?? '', baseURL: env.hf.baseUrl })(env.hf.model);
+    // .chat() targets /v1/chat/completions — HF router uses chat completions, not the Responses API
+    return createOpenAI({ apiKey: env.hf.apiToken ?? '', baseURL: env.hf.baseUrl }).chat(env.hf.model);
 }
 
 async function generate(system: string, user: string): Promise<DialogueTurn[]> {
+    // output: 'no-schema' makes the OpenAI provider send response_format
+    // { type: 'json_object' } — JSON mode without a grammar. The HF router rejects
+    // the json_schema grammar, but json_object still constrains the decoder to emit
+    // syntactically valid JSON, so we get back a parseable object every time. We
+    // validate the shape ourselves with ResponseSchema.
     const { object } = await generateObject({
         model: hfModel(),
-        schema: ResponseSchema,
-        maxOutputTokens: 512,
+        output: 'no-schema',
+        maxOutputTokens: 1024,
         temperature: 0.8,
         maxRetries: 1,
-        messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: user },
-        ],
+        system,
+        prompt: user,
     });
-    return object.turns as DialogueTurn[];
+    const result = ResponseSchema.parse(object);
+    return result.turns as DialogueTurn[];
 }
 
 export async function generateDialogueViaHf(
@@ -55,8 +61,11 @@ export async function generateTauntsViaHf(
 ): Promise<DialogueTurn[]> {
     if (!env.hf.apiToken) throw new Error('HF_API_TOKEN not set');
     const turns = await generate(
-        `${TAUNT_SYSTEM_PROMPT}\n\n${JSON_FORMAT_INSTRUCTION}`,
+        `${TAUNT_SYSTEM_PROMPT}\n\n${TAUNT_JSON_FORMAT_INSTRUCTION}`,
         buildTauntUserMessage(attackerName, defenderName, attacker, defender, rivalry, banter),
     );
-    return turns.map((t) => ({ ...t, phase: 'taunt' as DialoguePhase }));
+    // Pre-fight: drop any result-phase line the model emitted anyway. Never
+    // relabel result text as a taunt — that leaks the outcome into the pre-fight
+    // dialog. If the model returned only result turns, return the taunts we have.
+    return turns.filter((t) => t.phase !== 'result');
 }

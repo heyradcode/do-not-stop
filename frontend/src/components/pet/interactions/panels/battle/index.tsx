@@ -423,6 +423,21 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         setValidationError(null);
         setBattleOutcome(null);
         setRematchPending(true);
+
+        // Generate taunts immediately (mirrors handleBattle) so the dialogue appears as soon as
+        // the overlay opens. Use `pets` instead of `readyPets` so a post-battle cooldown on the
+        // fighter doesn't prevent the taunt from starting (the cooldown check still blocks the
+        // actual battle.mutate call in the rematch useEffect).
+        const snapshot = rematchSnapshotRef.current;
+        const tauntFighter = snapshot ? pets.find((p) => p.id === snapshot.petId1) : null;
+        if (tauntFighter && opponent && activeChainKind) {
+            taunts.generate({
+                chain: activeChainKind,
+                attacker: toDialoguePet(tauntFighter),
+                defender: toDialoguePet(opponent),
+            });
+        }
+
         refetch();
         void refetchOpponents();
     };
@@ -474,13 +489,6 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         setSelectedPet1(snapshot.petId1);
         setSelectedOpponent(snapshot.opponentKey);
         setValidationError(null);
-        if (rematchFighter && activeChainKind) {
-            taunts.generate({
-                chain: activeChainKind,
-                attacker: toDialoguePet(rematchFighter),
-                defender: toDialoguePet(opponentMatch),
-            });
-        }
         void battle.mutate({
             petId1: snapshot.petId1,
             petId2: opponentMatch.id,
@@ -495,6 +503,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         opponents,
         battle,
         snapshotFighterStats,
+        activeChainKind,
     ]);
 
     const arenaClassName = [
