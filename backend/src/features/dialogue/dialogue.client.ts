@@ -10,7 +10,7 @@ import {
     buildUserMessage,
     buildTauntUserMessage,
 } from './dialogue.prompt';
-import { ResponseSchema } from './dialogue.schema';
+import { ResponseSchema, TAUNT_TURNS } from './dialogue.schema';
 import type { DialogueTurn, GenerateDialogueInput } from './dialogue.types';
 
 function hfModel() {
@@ -64,8 +64,8 @@ export async function generateTauntsViaHf(
         `${TAUNT_SYSTEM_PROMPT}\n\n${TAUNT_JSON_FORMAT_INSTRUCTION}`,
         buildTauntUserMessage(attackerName, defenderName, attacker, defender, rivalry, banter),
     );
-    // Pre-fight: drop any result-phase line the model emitted anyway. Never
-    // relabel result text as a taunt — that leaks the outcome into the pre-fight
-    // dialog. If the model returned only result turns, return the taunts we have.
-    return turns.filter((t) => t.phase !== 'result');
+    // Pre-fight: drop any result-phase line the model emitted anyway (never
+    // relabel result text as a taunt — that leaks the outcome), then cap to a
+    // tight 4-message back-and-forth even if the model over-produced.
+    return turns.filter((t) => t.phase !== 'result').slice(0, TAUNT_TURNS);
 }

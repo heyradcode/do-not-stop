@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 export const MAX_TURNS = 8;
 export const MAX_TURN_CHARS = 140;
+/** Pre-fight taunts are capped to a tight back-and-forth: 2 lines per fighter. */
+export const TAUNT_TURNS = 4;
 
 const DEFENDER_ALIASES = ['defender', 'fighter_b', 'b', 'opponent'] as const;
 

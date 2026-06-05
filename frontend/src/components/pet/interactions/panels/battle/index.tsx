@@ -286,12 +286,17 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     // AI battle dialogue — generated once the outcome is known, keyed by tx hash.
     const dialogueWinner =
         battleOutcome === null ? null : battleOutcome.result === 'victory' ? 'attacker' : 'defender';
+    // Fall back to the personas captured at battle start. After a battle the
+    // fighter goes on cooldown and drops out of readyPets (selectedFighter →
+    // null), which would otherwise disable the result dialogue query and the
+    // pre-generated result would never be fetched. The captured personas survive
+    // cooldown and match exactly what was pre-generated.
     const attackerDialogueInput = useMemo(
-        () => (selectedFighter ? toDialoguePet(selectedFighter) : null),
+        () => (selectedFighter ? toDialoguePet(selectedFighter) : battlePersonasRef.current?.attacker ?? null),
         [selectedFighter],
     );
     const defenderDialogueInput = useMemo(
-        () => (opponent ? toDialoguePet(opponent) : null),
+        () => (opponent ? toDialoguePet(opponent) : battlePersonasRef.current?.defender ?? null),
         [opponent],
     );
     const { turns: dialogueTurns, isLoading: dialogueLoading } = useBattleDialogue({
@@ -594,8 +599,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                                     <BattleDialogue
                                         turns={resultTurns}
                                         isLoading={dialogueLoading}
-                                        attackerName={selectedFighter?.name ?? 'Your pet'}
-                                        defenderName={opponent?.name ?? 'Opponent'}
+                                        attackerName={attackerDialogueInput?.name ?? 'Your pet'}
+                                        defenderName={defenderDialogueInput?.name ?? 'Opponent'}
                                     />
                                 ) : null}
                                 {battleOutcome !== null && (

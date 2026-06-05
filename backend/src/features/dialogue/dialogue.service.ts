@@ -175,7 +175,7 @@ export async function getOrGenerateTaunts(input: GenerateTauntsInput): Promise<T
     const defenderId = input.defender.petId;
     const [rivalry, banter] = await Promise.all([
         buildRivalry(input.chain, attackerId, defenderId),
-        buildBanter(input.chain, attackerId, defenderId),
+        buildBanter(input.chain, attackerId, defenderId, undefined, true),
     ]);
 
     const turns = await generateTauntsViaHf(
@@ -259,10 +259,14 @@ async function buildBanter(
     attackerId: string,
     defenderId: string,
     excludeBattleId?: string,
+    tauntsOnly = false,
 ): Promise<string> {
     try {
         const turns = await getRecentBanter(chain, attackerId, defenderId, 6, excludeBattleId);
-        return buildBanterContext(turns);
+        // For pre-fight taunts, drop prior result lines so the model isn't primed
+        // to echo an outcome into what must be outcome-free trash talk.
+        const relevant = tauntsOnly ? turns.filter((t) => t.phase !== 'result') : turns;
+        return buildBanterContext(relevant);
     } catch (err) {
         console.error('[dialogue] banter lookup failed, continuing without it:', err);
         return '';
