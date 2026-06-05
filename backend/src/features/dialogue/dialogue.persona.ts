@@ -1,4 +1,4 @@
-import type { PetPersonaInput } from './battle-dialogue.types';
+import type { PetPersonaInput } from './dialogue.types';
 
 /**
  * Derive a battle persona from a pet's on-chain attributes. Element/class use the

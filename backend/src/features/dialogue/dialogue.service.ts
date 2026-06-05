@@ -9,9 +9,9 @@ import {
     getRecentBanter,
     recordConversation,
 } from '@repositories/battle-conversation.repository';
-import { buildPersona, type Persona } from './battle-dialogue.persona';
-import { buildBanterContext, buildRivalryContext, fallbackDialogue } from './battle-dialogue.prompt';
-import { generateDialogueViaHf, generateTauntsViaHf } from './battle-dialogue.client';
+import { buildPersona, type Persona } from './dialogue.persona';
+import { buildBanterContext, buildRivalryContext, fallbackDialogue } from './dialogue.prompt';
+import { generateDialogueViaHf, generateTauntsViaHf } from './dialogue.client';
 import type {
     Chain,
 } from '@typings/chain';
@@ -21,7 +21,7 @@ import type {
     GenerateDialogueInput,
     GenerateTauntsInput,
     TauntsResult,
-} from './battle-dialogue.types';
+} from './dialogue.types';
 
 /**
  * Return a battle's conversation: served from the generate-once store if present,
@@ -149,7 +149,7 @@ async function generateTurns(
             const turns = await generateDialogueViaHf(input, attacker, defender, rivalry, banter);
             return { turns, model: env.hf.model };
         } catch (err) {
-            console.error('[battle-dialogue] HF generation failed, using fallback:', err);
+            console.error('[dialogue] HF generation failed, using fallback:', err);
         }
     }
     return { turns: fallbackDialogue(input, attacker, defender), model: 'fallback' };
@@ -177,7 +177,7 @@ async function recordConversationSafe(
     try {
         await recordConversation(meta, turns);
     } catch (err) {
-        console.error('[battle-dialogue] failed to record conversation:', err);
+        console.error('[dialogue] failed to record conversation:', err);
     }
 }
 
@@ -195,7 +195,7 @@ async function buildBanter(
         const turns = await getRecentBanter(chain, attackerId, defenderId, 6, excludeBattleId);
         return buildBanterContext(turns);
     } catch (err) {
-        console.error('[battle-dialogue] banter lookup failed, continuing without it:', err);
+        console.error('[dialogue] banter lookup failed, continuing without it:', err);
         return '';
     }
 }
@@ -219,7 +219,7 @@ async function recordBattleHistory(input: GenerateDialogueInput): Promise<void> 
             foughtAt: BigInt(Date.now()),
         });
     } catch (err) {
-        console.error('[battle-dialogue] failed to record battle history:', err);
+        console.error('[dialogue] failed to record battle history:', err);
     }
 }
 
@@ -241,7 +241,7 @@ async function buildRivalry(
         ]);
         return buildRivalryContext(headToHead, attackerForm, defenderForm, attackerId, defenderId);
     } catch (err) {
-        console.error('[battle-dialogue] rivalry lookup failed, continuing without it:', err);
+        console.error('[dialogue] rivalry lookup failed, continuing without it:', err);
         return '';
     }
 }

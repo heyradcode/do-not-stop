@@ -1,12 +1,12 @@
 import type { Request, Response } from 'express';
 import type { Chain } from '@typings/chain';
-import { getOrGenerateDialogue, getOrGenerateTaunts } from './battle-dialogue.service';
+import { getOrGenerateDialogue, getOrGenerateTaunts } from './dialogue.service';
 import type {
     DialogueSpeaker,
     GenerateDialogueInput,
     GenerateTauntsInput,
     PetPersonaInput,
-} from './battle-dialogue.types';
+} from './dialogue.types';
 
 function parsePet(value: unknown): PetPersonaInput | null {
     if (!value || typeof value !== 'object') return null;
@@ -87,7 +87,7 @@ export async function postBattleDialogue(req: Request, res: Response): Promise<v
         const result = await getOrGenerateDialogue(input);
         res.json(result);
     } catch (err) {
-        console.error('[battle-dialogue] generation failed:', err);
+        console.error('[dialogue] generation failed:', err);
         res.status(500).json({ error: 'Failed to generate battle dialogue' });
     }
 }
@@ -108,7 +108,7 @@ export async function postBattleTaunts(req: Request, res: Response): Promise<voi
         const result = await getOrGenerateTaunts(input);
         res.json(result);
     } catch (err) {
-        console.error('[battle-dialogue] taunt generation failed:', err);
+        console.error('[dialogue] taunt generation failed:', err);
         res.status(502).json({ error: 'Failed to generate battle taunts' });
     }
 }

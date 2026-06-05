@@ -1,6 +1,6 @@
 import { prisma } from '@config/prisma';
 import type { Chain } from '@typings/chain';
-import type { DialoguePhase, DialogueSpeaker, DialogueTurn } from '@features/battle-dialogue/battle-dialogue.types';
+import type { DialoguePhase, DialogueSpeaker, DialogueTurn } from '@features/dialogue/dialogue.types';
 
 /**
  * Append-only transcript of generated dialogue lines, keyed by the fighter pair.

@@ -1,5 +1,5 @@
 import { env } from '@config/env';
-import type { Persona } from './battle-dialogue.persona';
+import type { Persona } from './dialogue.persona';
 import {
     SYSTEM_PROMPT,
     TAUNT_SYSTEM_PROMPT,
@@ -7,13 +7,13 @@ import {
     buildUserMessage,
     buildTauntUserMessage,
     clampTurns,
-} from './battle-dialogue.prompt';
+} from './dialogue.prompt';
 import type {
     DialoguePhase,
     DialogueSpeaker,
     DialogueTurn,
     GenerateDialogueInput,
-} from './battle-dialogue.types';
+} from './dialogue.types';
 
 /**
  * Generate battle dialogue via the Hugging Face OpenAI-compatible chat router,

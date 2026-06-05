@@ -1,6 +1,6 @@
 import { prisma } from '@config/prisma';
 import type { Chain } from '@typings/chain';
-import type { DialogueSpeaker, DialogueTurn } from '@features/battle-dialogue/battle-dialogue.types';
+import type { DialogueSpeaker, DialogueTurn } from '@features/dialogue/dialogue.types';
 
 /**
  * Data-access layer for the `battle_dialogue` table (generate-once cache).
