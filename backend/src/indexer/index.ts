@@ -1,4 +1,4 @@
-import { scanSubgraphRoster, syncSubgraphChanges } from './subgraph';
+import { scanSubgraphRoster, syncSubgraphChanges } from './evm';
 import { scanSolanaRoster } from '@solana/scanner';
 import { env } from '@config/env';
 import { countByChain } from '@repositories/roster.repository';

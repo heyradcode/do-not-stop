@@ -1,16 +1,10 @@
 import { env } from '@config/env';
 import { getDialogue, saveDialogue } from '@repositories/dialogue.repository';
-import {
-    getHeadToHead,
-    getRecentForm,
-    recordBattle,
-} from '@repositories/history.repository';
-import {
-    getRecentBanter,
-    recordConversation,
-} from '@repositories/conversation.repository';
+import { getHeadToHead, getRecentForm, recordBattle } from '@repositories/history.repository';
+import { getRecentBanter, recordConversation } from '@repositories/conversation.repository';
 import { buildPersona, type Persona } from './dialogue.persona';
-import { buildBanterContext, buildRivalryContext, fallbackDialogue } from './dialogue.prompt';
+import { buildBanterContext, buildRivalryContext } from './dialogue.context';
+import { fallbackDialogue } from './dialogue.fallback';
 import { generateDialogueViaHf, generateTauntsViaHf } from './dialogue.client';
 import type {
     Chain,
