@@ -29,9 +29,16 @@ import type {
  * only narrate toward it (see AI_BATTLE_DIALOGUE.md).
  */
 export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promise<DialogueResult> {
+    // Build personas before the cache check so we can supplement cached turns too.
+    const attacker = buildPersona(input.attacker);
+    const defender = buildPersona(input.defender);
+
     const cached = await getDialogue(input.chain, input.battleId);
     if (cached) {
-        return { turns: cached.turns, model: cached.model, cached: true };
+        // Old cached dialogues may be missing the opponent's result line if the AI
+        // attributed every turn to the attacker. Supplement on read without re-saving.
+        const turns = ensureResultCoverage(cached.turns, input, attacker, defender);
+        return { turns, model: cached.model, cached: true };
     }
 
     // Persist this settled battle to history so later bouts between these pets
@@ -39,10 +46,8 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
     // chain+battleId) and best-effort — never block dialogue on it.
     await recordBattleHistory(input);
 
-    const attacker = buildPersona(input.attacker);
-    const defender = buildPersona(input.defender);
-
-    const { turns, model } = await generateTurns(input, attacker, defender);
+    const { turns: rawTurns, model } = await generateTurns(input, attacker, defender);
+    const turns = ensureResultCoverage(rawTurns, input, attacker, defender);
 
     await saveDialogue({
         chain: input.chain,
@@ -59,6 +64,29 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
     await recordResultLines(input, turns);
 
     return { turns, model, cached: false };
+}
+
+/**
+ * Guarantee that both fighters have at least one result-phase turn. If the AI
+ * only wrote the winner's reaction (a common failure mode), fill in the missing
+ * speaker from the deterministic fallback template so the result screen always
+ * shows both sides of the conversation.
+ */
+function ensureResultCoverage(
+    turns: DialogueTurn[],
+    input: GenerateDialogueInput,
+    attacker: Persona,
+    defender: Persona,
+): DialogueTurn[] {
+    const hasAttackerResult = turns.some((t) => t.phase === 'result' && t.speaker === 'attacker');
+    const hasDefenderResult = turns.some((t) => t.phase === 'result' && t.speaker === 'defender');
+    if (hasAttackerResult && hasDefenderResult) return turns;
+
+    const supplement = fallbackDialogue(input, attacker, defender)
+        .filter((t) => t.phase === 'result')
+        .filter((t) => (t.speaker === 'attacker' ? !hasAttackerResult : !hasDefenderResult));
+
+    return [...turns, ...supplement];
 }
 
 /**
