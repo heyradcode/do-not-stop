@@ -48,16 +48,16 @@ export const env = {
 
     /**
      * AI battle dialogue (see AI_BATTLE_DIALOGUE.md), via the Hugging Face
-     * OpenAI-compatible chat router (called with plain fetch — no SDK). Optional:
-     * when `apiToken` is unset the feature degrades to templated fallback lines,
-     * so the app runs fine without a token in local dev.
+     * OpenAI-compatible chat router (Vercel AI SDK). Optional: when `apiToken`
+     * is unset the feature degrades to templated fallback lines, so the app runs
+     * fine without a token in local dev.
      */
     hf: {
         apiToken: process.env.HF_API_TOKEN?.trim() || undefined,
         /** Any chat-completion model on HF inference. Verify availability/tier. */
         model: process.env.HF_MODEL?.trim() || 'meta-llama/Llama-3.1-8B-Instruct',
-        /** OpenAI-compatible chat-completions endpoint. */
-        apiUrl: process.env.HF_API_URL?.trim() || 'https://router.huggingface.co/v1/chat/completions',
+        /** Base URL for the OpenAI-compatible inference endpoint (no /chat/completions suffix). */
+        baseUrl: process.env.HF_API_URL?.trim().replace(/\/chat\/completions$/, '') || 'https://router.huggingface.co/v1',
     },
 } as const;
 

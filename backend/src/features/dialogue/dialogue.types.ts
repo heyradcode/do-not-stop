@@ -1,17 +1,11 @@
+import type { z } from 'zod';
 import type { Chain } from '@typings/chain';
+import type { TurnSchema } from './dialogue.schema';
 
-/** Which fighter is speaking. The attacker is the caller's pet; defender is the opponent. */
-export type DialogueSpeaker = 'attacker' | 'defender';
-
-/** `taunt` lines run before the fight; `result` lines react to the settled outcome. */
-export type DialoguePhase = 'taunt' | 'result';
-
-/** One line of the battle conversation. */
-export interface DialogueTurn {
-    speaker: DialogueSpeaker;
-    phase: DialoguePhase;
-    text: string;
-}
+/** One line of the battle conversation. Shape is derived from TurnSchema. */
+export type DialogueTurn = z.infer<typeof TurnSchema>;
+export type DialogueSpeaker = DialogueTurn['speaker'];
+export type DialoguePhase = DialogueTurn['phase'];
 
 /** Minimal pet attributes used to build a persona (subset of the roster row). */
 export interface PetPersonaInput {
