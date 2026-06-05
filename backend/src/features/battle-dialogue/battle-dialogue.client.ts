@@ -2,8 +2,10 @@ import { env } from '@config/env';
 import type { Persona } from './battle-dialogue.persona';
 import {
     SYSTEM_PROMPT,
+    TAUNT_SYSTEM_PROMPT,
     JSON_FORMAT_INSTRUCTION,
     buildUserMessage,
+    buildTauntUserMessage,
     clampTurns,
 } from './battle-dialogue.prompt';
 import type {
@@ -84,19 +86,7 @@ async function callOnce(system: string, user: string): Promise<DialogueTurn[]> {
     return extractTurns(content);
 }
 
-export async function generateDialogueViaHf(
-    input: GenerateDialogueInput,
-    attacker: Persona,
-    defender: Persona,
-    rivalry?: string,
-): Promise<DialogueTurn[]> {
-    if (!env.hf.apiToken) {
-        throw new Error('HF_API_TOKEN not set');
-    }
-
-    const system = `${SYSTEM_PROMPT}\n\n${JSON_FORMAT_INSTRUCTION}`;
-    const user = buildUserMessage(input, attacker, defender, rivalry);
-
+async function generateWithRetry(system: string, user: string): Promise<DialogueTurn[]> {
     let lastError: unknown;
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
         try {
@@ -108,4 +98,42 @@ export async function generateDialogueViaHf(
         }
     }
     throw lastError ?? new Error('HF dialogue generation failed');
+}
+
+export async function generateDialogueViaHf(
+    input: GenerateDialogueInput,
+    attacker: Persona,
+    defender: Persona,
+    rivalry?: string,
+    banter?: string,
+): Promise<DialogueTurn[]> {
+    if (!env.hf.apiToken) {
+        throw new Error('HF_API_TOKEN not set');
+    }
+
+    const system = `${SYSTEM_PROMPT}\n\n${JSON_FORMAT_INSTRUCTION}`;
+    const user = buildUserMessage(input, attacker, defender, rivalry, banter);
+    return generateWithRetry(system, user);
+}
+
+/**
+ * Generate PRE-FIGHT taunts only (no outcome). Every returned turn is forced to
+ * `phase: 'taunt'` so a stray `result` from the model can't leak the winner.
+ */
+export async function generateTauntsViaHf(
+    attackerName: string,
+    defenderName: string,
+    attacker: Persona,
+    defender: Persona,
+    rivalry?: string,
+    banter?: string,
+): Promise<DialogueTurn[]> {
+    if (!env.hf.apiToken) {
+        throw new Error('HF_API_TOKEN not set');
+    }
+
+    const system = `${TAUNT_SYSTEM_PROMPT}\n\n${JSON_FORMAT_INSTRUCTION}`;
+    const user = buildTauntUserMessage(attackerName, defenderName, attacker, defender, rivalry, banter);
+    const turns = await generateWithRetry(system, user);
+    return turns.map((t) => ({ ...t, phase: 'taunt' as DialoguePhase }));
 }

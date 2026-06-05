@@ -69,3 +69,24 @@ model BattleDialogue {
   @@id([chain, battleId])
   @@map("battle_dialogue")
 }
+
+/// Append-only log of every generated dialogue line, so prior banter between two
+/// pets can be replayed into future prompts for continuity ("callbacks"). Unlike
+/// battle_dialogue (a generate-once cache keyed by battle), this is a growing
+/// transcript keyed by the fighter pair. Pre-fight taunts are recorded before the
+/// battle settles, so `battleId` is null until (and unless) one is known.
+/// See AI_BATTLE_DIALOGUE.md.
+model BattleConversation {
+  id        Int      @id @default(autoincrement())
+  chain     String // 'evm' | 'solana'
+  attacker  String   @map("attacker_pet_id")
+  defender  String   @map("defender_pet_id")
+  battleId  String?  @map("battle_id") // null for pre-fight taunts (not yet settled)
+  phase     String // 'taunt' | 'result'
+  speaker   String // 'attacker' | 'defender'
+  text      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([chain, attacker, defender])
+  @@map("battle_conversation")
+}

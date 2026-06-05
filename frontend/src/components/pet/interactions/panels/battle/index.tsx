@@ -10,10 +10,10 @@ import {
     useActiveChain,
     useBattleDialogue,
     useBattlePets,
+    useBattleTaunts,
     useOpponents,
     usePetList,
     type DialoguePetInput,
-    type DialogueTurn,
     type OpponentPet,
     type Pet,
 } from '@shared/core';
@@ -32,7 +32,6 @@ import {
 } from './battle-matchmaking';
 import BattleResultArt from './battle-result-art';
 import BattleDialogue from './battle-dialogue';
-import { buildPrefightTaunts } from './prefight-taunts';
 import type { BattleOutcome } from './types';
 import './index.css';
 
@@ -205,8 +204,6 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const [validationError, setValidationError] = useState<string | null>(null);
     const [opponentSlotFlash, setOpponentSlotFlash] = useState(false);
     const [rematchPending, setRematchPending] = useState(false);
-    // Pre-fight taunts play before the wallet confirmation; non-empty = taunting.
-    const [prefightTaunts, setPrefightTaunts] = useState<DialogueTurn[]>([]);
     // The battle overlay stays open continuously: taunts → battling → result.
     const [overlayOpen, setOverlayOpen] = useState(false);
 
@@ -234,6 +231,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     }, [refetch, refetchOpponents]);
 
     const battle = useBattlePets({ onSuccess: handleSuccess });
+    // AI pre-fight taunts — generated on Start Battle, in parallel with the wallet.
+    const taunts = useBattleTaunts();
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const selectedFighter = useMemo(
         () => readyPets.find(({ id }) => id === selectedPet1)?.pet ?? null,
@@ -344,30 +343,32 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         return true;
     }, [battle, opponent, selectedFighter, selectedPet1, snapshotFighterStats]);
 
-    // Start Battle: play instant pre-fight taunts, then fire the wallet when they finish.
+    // Start Battle: generate AI pre-fight taunts and fire the wallet in parallel.
+    // The overlay shows a loader until the taunts arrive, then types them out.
     const handleBattle = () => {
         battle.clearErrors();
+        taunts.reset();
         setShowResult(false);
         setBattleOutcome(null);
 
-        if (!selectedPet1 || !opponent) {
+        if (!selectedPet1 || !opponent || !selectedFighter || !activeChainKind) {
             setValidationError(VALIDATION_MESSAGE);
             return;
         }
         setValidationError(null);
-        setPrefightTaunts(buildPrefightTaunts(selectedFighter, opponent));
         setOverlayOpen(true);
-    };
-
-    // Taunts finished — keep the overlay open and fire the wallet confirmation.
-    const handleTauntsComplete = () => {
+        taunts.generate({
+            chain: activeChainKind,
+            attacker: toDialoguePet(selectedFighter),
+            defender: toDialoguePet(opponent),
+        });
         startBattle();
     };
 
     const handleCancel = () => {
         setShowResult(false);
         setOverlayOpen(false);
-        setPrefightTaunts([]);
+        taunts.reset();
         setValidationError(null);
         navigate(DASHBOARD_HOME);
     };
@@ -375,7 +376,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const handleDone = () => {
         setShowResult(false);
         setOverlayOpen(false);
-        setPrefightTaunts([]);
+        taunts.reset();
         setValidationError(null);
         setBattleOutcome(null);
         preBattleStatsRef.current = null;
@@ -416,8 +417,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
 
     const handleRematch = () => {
         battle.clearErrors();
+        taunts.reset();
         setShowResult(false);
-        setPrefightTaunts([]);
         setOverlayOpen(true);
         setValidationError(null);
         setBattleOutcome(null);
@@ -440,7 +441,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     useEffect(() => {
         if (!showResult && (battle.error || battle.receiptError)) {
             setOverlayOpen(false);
-            setPrefightTaunts([]);
+            taunts.reset();
         }
     }, [battle.error, battle.receiptError, showResult]);
 
@@ -473,6 +474,13 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         setSelectedPet1(snapshot.petId1);
         setSelectedOpponent(snapshot.opponentKey);
         setValidationError(null);
+        if (rematchFighter && activeChainKind) {
+            taunts.generate({
+                chain: activeChainKind,
+                attacker: toDialoguePet(rematchFighter),
+                defender: toDialoguePet(opponentMatch),
+            });
+        }
         void battle.mutate({
             petId1: snapshot.petId1,
             petId2: opponentMatch.id,
@@ -578,13 +586,12 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                         ) : (
                             <>
                                 <p className="battle-result-title">{preResultTitle}</p>
-                                {prefightTaunts.length > 0 ? (
+                                {taunts.isLoading || taunts.turns.length > 0 ? (
                                     <BattleDialogue
-                                        turns={prefightTaunts}
-                                        isLoading={false}
+                                        turns={taunts.turns}
+                                        isLoading={taunts.isLoading}
                                         attackerName={selectedFighter?.name ?? 'Your pet'}
                                         defenderName={opponent?.name ?? 'Opponent'}
-                                        onComplete={handleTauntsComplete}
                                     />
                                 ) : null}
                                 {preResultStatus ? (
@@ -713,9 +720,9 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 <div className="action-controls">
                     <AuthActionButton
                         onClick={handleBattle}
-                        disabled={battle.isPending || battle.isEvmConfirming || rematchPending || prefightTaunts.length > 0 || !selectedPet1 || !selectedOpponent || showResult}
+                        disabled={battle.isPending || battle.isEvmConfirming || rematchPending || overlayOpen || !selectedPet1 || !selectedOpponent || showResult}
                     >
-                        {prefightTaunts.length > 0 ? 'Facing off…' : battle.isPending ? pendingLabel : battle.isEvmConfirming ? confirmingLabel : submitLabel}
+                        {taunts.isLoading ? 'Facing off…' : battle.isPending ? pendingLabel : battle.isEvmConfirming ? confirmingLabel : submitLabel}
                     </AuthActionButton>
                     <button type="button" onClick={handleCancel} className="cancel-button">
                         Cancel

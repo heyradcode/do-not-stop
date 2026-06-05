@@ -37,6 +37,19 @@ export interface GenerateDialogueInput {
     leveledUp?: boolean;
 }
 
+/** Inputs to generate pre-fight taunts. No winner — the outcome is unknown yet. */
+export interface GenerateTauntsInput {
+    chain: Chain;
+    attacker: PetPersonaInput;
+    defender: PetPersonaInput;
+}
+
+/** Generated pre-fight taunts plus provenance. */
+export interface TauntsResult {
+    turns: DialogueTurn[];
+    model: string;
+}
+
 /** Generated (or cached) conversation plus provenance. */
 export interface DialogueResult {
     turns: DialogueTurn[];

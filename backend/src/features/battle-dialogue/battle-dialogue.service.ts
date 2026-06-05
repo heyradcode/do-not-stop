@@ -5,10 +5,23 @@ import {
     getRecentForm,
     recordBattle,
 } from '@repositories/battle-history.repository';
+import {
+    getRecentBanter,
+    recordConversation,
+} from '@repositories/battle-conversation.repository';
 import { buildPersona, type Persona } from './battle-dialogue.persona';
-import { buildRivalryContext, fallbackDialogue } from './battle-dialogue.prompt';
-import { generateDialogueViaHf } from './battle-dialogue.client';
-import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from './battle-dialogue.types';
+import { buildBanterContext, buildRivalryContext, fallbackDialogue } from './battle-dialogue.prompt';
+import { generateDialogueViaHf, generateTauntsViaHf } from './battle-dialogue.client';
+import type {
+    Chain,
+} from '@typings/chain';
+import type {
+    DialogueResult,
+    DialogueTurn,
+    GenerateDialogueInput,
+    GenerateTauntsInput,
+    TauntsResult,
+} from './battle-dialogue.types';
 
 /**
  * Return a battle's conversation: served from the generate-once store if present,
@@ -41,7 +54,50 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
         model,
     });
 
+    // Append the result reactions to the rolling transcript (taunts were already
+    // recorded pre-fight). Best-effort — never block the response on it.
+    await recordResultLines(input, turns);
+
     return { turns, model, cached: false };
+}
+
+/**
+ * Generate pre-fight taunts (AI only — no templated fallback, by product choice).
+ * Throws on failure so the caller surfaces it; persists the taunts to the rolling
+ * transcript so future bouts can call back to them.
+ */
+export async function getOrGenerateTaunts(input: GenerateTauntsInput): Promise<TauntsResult> {
+    if (!env.hf.apiToken) {
+        throw new Error('HF inference is not configured (HF_API_TOKEN unset)');
+    }
+
+    const attacker = buildPersona(input.attacker);
+    const defender = buildPersona(input.defender);
+
+    const attackerId = input.attacker.petId;
+    const defenderId = input.defender.petId;
+    const [rivalry, banter] = await Promise.all([
+        buildRivalry(input.chain, attackerId, defenderId),
+        buildBanter(input.chain, attackerId, defenderId),
+    ]);
+
+    const turns = await generateTauntsViaHf(
+        input.attacker.name,
+        input.defender.name,
+        attacker,
+        defender,
+        rivalry,
+        banter,
+    );
+
+    await recordConversationSafe({
+        chain: input.chain,
+        attacker: attackerId,
+        defender: defenderId,
+        battleId: null,
+    }, turns);
+
+    return { turns, model: env.hf.model };
 }
 
 /**
@@ -56,14 +112,64 @@ async function generateTurns(
 ): Promise<{ turns: DialogueTurn[]; model: string }> {
     if (env.hf.apiToken) {
         try {
-            const rivalry = await buildRivalry(input);
-            const turns = await generateDialogueViaHf(input, attacker, defender, rivalry);
+            const attackerId = input.attacker.petId;
+            const defenderId = input.defender.petId;
+            const [rivalry, banter] = await Promise.all([
+                buildRivalry(input.chain, attackerId, defenderId, input.battleId),
+                buildBanter(input.chain, attackerId, defenderId, input.battleId),
+            ]);
+            const turns = await generateDialogueViaHf(input, attacker, defender, rivalry, banter);
             return { turns, model: env.hf.model };
         } catch (err) {
             console.error('[battle-dialogue] HF generation failed, using fallback:', err);
         }
     }
     return { turns: fallbackDialogue(input, attacker, defender), model: 'fallback' };
+}
+
+/** Append only the result-phase lines to the transcript (taunts came pre-fight). */
+async function recordResultLines(input: GenerateDialogueInput, turns: DialogueTurn[]): Promise<void> {
+    const resultTurns = turns.filter((t) => t.phase === 'result');
+    await recordConversationSafe(
+        {
+            chain: input.chain,
+            attacker: input.attacker.petId,
+            defender: input.defender.petId,
+            battleId: input.battleId,
+        },
+        resultTurns,
+    );
+}
+
+/** Persist transcript lines, swallowing failures so generation is never blocked. */
+async function recordConversationSafe(
+    meta: { chain: Chain; attacker: string; defender: string; battleId?: string | null },
+    turns: DialogueTurn[],
+): Promise<void> {
+    try {
+        await recordConversation(meta, turns);
+    } catch (err) {
+        console.error('[battle-dialogue] failed to record conversation:', err);
+    }
+}
+
+/**
+ * Recent banter between the pair, rendered for the prompt. Returns '' on any
+ * failure so generation still proceeds.
+ */
+async function buildBanter(
+    chain: Chain,
+    attackerId: string,
+    defenderId: string,
+    excludeBattleId?: string,
+): Promise<string> {
+    try {
+        const turns = await getRecentBanter(chain, attackerId, defenderId, 6, excludeBattleId);
+        return buildBanterContext(turns);
+    } catch (err) {
+        console.error('[battle-dialogue] banter lookup failed, continuing without it:', err);
+        return '';
+    }
 }
 
 /**
@@ -93,15 +199,17 @@ async function recordBattleHistory(input: GenerateDialogueInput): Promise<void> 
  * Compact rivalry/recent-form context from prior battles (the current battle is
  * excluded). Returns '' if the history lookup fails so generation still proceeds.
  */
-async function buildRivalry(input: GenerateDialogueInput): Promise<string> {
+async function buildRivalry(
+    chain: Chain,
+    attackerId: string,
+    defenderId: string,
+    excludeBattleId?: string,
+): Promise<string> {
     try {
-        const { chain, battleId } = input;
-        const attackerId = input.attacker.petId;
-        const defenderId = input.defender.petId;
         const [headToHead, attackerForm, defenderForm] = await Promise.all([
-            getHeadToHead(chain, attackerId, defenderId, battleId),
-            getRecentForm(chain, attackerId, 5, battleId),
-            getRecentForm(chain, defenderId, 5, battleId),
+            getHeadToHead(chain, attackerId, defenderId, excludeBattleId),
+            getRecentForm(chain, attackerId, 5, excludeBattleId),
+            getRecentForm(chain, defenderId, 5, excludeBattleId),
         ]);
         return buildRivalryContext(headToHead, attackerForm, defenderForm, attackerId, defenderId);
     } catch (err) {
