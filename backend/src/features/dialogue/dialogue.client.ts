@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { env } from '@config/env';
 import type { Persona } from './dialogue.persona';
 import {
@@ -6,14 +7,33 @@ import {
     JSON_FORMAT_INSTRUCTION,
     buildUserMessage,
     buildTauntUserMessage,
-    clampTurns,
+    MAX_TURNS,
+    MAX_TURN_CHARS,
 } from './dialogue.prompt';
 import type {
     DialoguePhase,
-    DialogueSpeaker,
     DialogueTurn,
     GenerateDialogueInput,
 } from './dialogue.types';
+
+const DEFENDER_ALIASES = ['defender', 'fighter_b', 'b', 'opponent'] as const;
+
+const TurnSchema = z.object({
+    speaker: z
+        .string()
+        .transform((v) => (DEFENDER_ALIASES.includes(v.toLowerCase().trim() as typeof DEFENDER_ALIASES[number]) ? 'defender' : 'attacker')),
+    phase: z
+        .string()
+        .transform((v) => (v === 'result' ? 'result' : 'taunt')),
+    text: z
+        .string()
+        .min(1)
+        .transform((v) => v.trim().slice(0, MAX_TURN_CHARS)),
+});
+
+const ResponseSchema = z.object({
+    turns: z.array(TurnSchema).min(1).max(MAX_TURNS),
+});
 
 /**
  * Generate battle dialogue via the Hugging Face OpenAI-compatible chat router,
@@ -30,7 +50,7 @@ const MAX_OUTPUT_TOKENS = 512;
 const TEMPERATURE = 0.8;
 const ATTEMPTS = 2; // small models occasionally wrap or malform JSON
 
-/** Pull `{ turns: [...] }` out of a model response, tolerating fences/extra prose. */
+/** Parse and validate the model's JSON response with Zod, tolerating fences/extra prose. */
 function extractTurns(content: string): DialogueTurn[] {
     const cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
     const start = cleaned.indexOf('{');
@@ -39,25 +59,9 @@ function extractTurns(content: string): DialogueTurn[] {
         throw new Error('no JSON object in model response');
     }
 
-    const parsed = JSON.parse(cleaned.slice(start, end + 1)) as { turns?: unknown };
-    if (!Array.isArray(parsed.turns)) {
-        throw new Error('model response missing turns array');
-    }
-
-    const turns: DialogueTurn[] = [];
-    for (const raw of parsed.turns) {
-        if (!raw || typeof raw !== 'object') continue;
-        const t = raw as Record<string, unknown>;
-        if (typeof t.text !== 'string') continue;
-        const rawSpeaker = typeof t.speaker === 'string' ? t.speaker.toLowerCase().trim() : '';
-        const speaker: DialogueSpeaker =
-            (rawSpeaker === 'defender' || rawSpeaker === 'fighter_b' || rawSpeaker === 'b' || rawSpeaker === 'opponent')
-                ? 'defender'
-                : 'attacker';
-        const phase: DialoguePhase = t.phase === 'result' ? 'result' : 'taunt';
-        turns.push({ speaker, phase, text: t.text });
-    }
-    return turns;
+    const raw = JSON.parse(cleaned.slice(start, end + 1));
+    const { turns } = ResponseSchema.parse(raw);
+    return turns as DialogueTurn[];
 }
 
 async function callOnce(system: string, user: string): Promise<DialogueTurn[]> {
@@ -94,7 +98,7 @@ async function generateWithRetry(system: string, user: string): Promise<Dialogue
     let lastError: unknown;
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
         try {
-            const turns = clampTurns(await callOnce(system, user));
+            const turns = await callOnce(system, user);
             if (turns.length > 0) return turns;
             lastError = new Error('model returned an empty conversation');
         } catch (err) {

@@ -29,7 +29,8 @@
     "jsonwebtoken": "^9.0.2",
     "module-alias": "^2.2.3",
     "pg": "^8.21.0",
-    "tweetnacl": "^1.0.3"
+    "tweetnacl": "^1.0.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
