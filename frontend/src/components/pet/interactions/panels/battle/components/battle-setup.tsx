@@ -8,7 +8,7 @@ import FighterPickerCard from './fighter-picker-card';
 import OpponentPickerCard from './opponent-picker-card';
 import { opponentKey, shortAddress } from '../battle-utils';
 
-type BattleSetupProps = {
+export type BattleSetupProps = {
     isStandaloneView: boolean;
     subtitle: string;
     arenaClassName: string;

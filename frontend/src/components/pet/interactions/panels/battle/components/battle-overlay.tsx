@@ -4,7 +4,7 @@ import BattleResultArt from '../battle-result-art';
 import BattleDialogue from '../battle-dialogue';
 import type { BattleOutcome } from '../types';
 
-type BattleOverlayProps = {
+export type BattleOverlayProps = {
     open: boolean;
     showResult: boolean;
     battleOutcome: BattleOutcome;
