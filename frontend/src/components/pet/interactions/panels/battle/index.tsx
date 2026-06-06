@@ -207,6 +207,9 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const [rematchPending, setRematchPending] = useState(false);
     // The battle overlay stays open continuously: taunts → battling → result.
     const [overlayOpen, setOverlayOpen] = useState(false);
+    // Gates the result actions (Rematch/Leave) until the post-battle dialogue
+    // has finished playing — or until we know there's no dialogue to wait for.
+    const [resultDialogueDone, setResultDialogueDone] = useState(false);
 
     const selectedOpponentCardRef = useRef<HTMLButtonElement>(null);
     const rematchSnapshotRef = useRef<{ petId1: string; opponentKey: string } | null>(null);
@@ -299,7 +302,11 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         () => (opponent ? toDialoguePet(opponent) : battlePersonasRef.current?.defender ?? null),
         [opponent],
     );
-    const { turns: dialogueTurns, isLoading: dialogueLoading } = useBattleDialogue({
+    const {
+        turns: dialogueTurns,
+        isLoading: dialogueLoading,
+        isFetched: dialogueFetched,
+    } = useBattleDialogue({
         chain: activeChainKind,
         battleId: battle.hash ?? null,
         attacker: attackerDialogueInput,
@@ -313,6 +320,15 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         () => dialogueTurns.filter((t) => t.phase === 'result'),
         [dialogueTurns],
     );
+
+    // If the dialogue query has settled but there's nothing to play (generation
+    // failed or returned no result lines), don't leave the actions gated — mark
+    // talking done. isFetched (not !isLoading) avoids the brief pre-fetch window.
+    useEffect(() => {
+        if (battleOutcome !== null && dialogueFetched && resultTurns.length === 0) {
+            setResultDialogueDone(true);
+        }
+    }, [battleOutcome, dialogueFetched, resultTurns.length]);
 
     const usesSwitchboardVrf = chain.kind === 'solana';
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
@@ -362,6 +378,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         taunts.reset();
         setShowResult(false);
         setBattleOutcome(null);
+        setResultDialogueDone(false);
 
         if (!selectedPet1 || !opponent || !selectedFighter || !activeChainKind) {
             setValidationError(VALIDATION_MESSAGE);
@@ -435,6 +452,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         setOverlayOpen(true);
         setValidationError(null);
         setBattleOutcome(null);
+        setResultDialogueDone(false);
         setRematchPending(true);
 
         // Generate taunts immediately (mirrors handleBattle) so the dialogue appears as soon as
@@ -601,6 +619,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                                         isLoading={dialogueLoading}
                                         attackerName={attackerDialogueInput?.name ?? 'Your pet'}
                                         defenderName={defenderDialogueInput?.name ?? 'Opponent'}
+                                        onComplete={() => setResultDialogueDone(true)}
                                     />
                                 ) : null}
                                 {battleOutcome !== null && (
@@ -609,11 +628,16 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                                             type="button"
                                             className={`battle-result-rematch${isDefeat ? ' is-defeat' : ''}`}
                                             onClick={handleRematch}
-                                            disabled={battle.isPending || rematchPending}
+                                            disabled={battle.isPending || rematchPending || !resultDialogueDone}
                                         >
                                             {rematchPending ? 'Preparing…' : 'Rematch'}
                                         </button>
-                                        <button type="button" className="battle-result-done" onClick={handleDone}>
+                                        <button
+                                            type="button"
+                                            className="battle-result-done"
+                                            onClick={handleDone}
+                                            disabled={!resultDialogueDone}
+                                        >
                                             Leave
                                         </button>
                                     </div>

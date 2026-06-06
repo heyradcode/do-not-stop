@@ -627,9 +627,14 @@
     color: var(--neon-cyan);
 }
 
-.battle-result-done:hover {
+.battle-result-done:hover:not(:disabled) {
     border-color: var(--neon-cyan);
     box-shadow: 0 0 10px rgb(125 214 255 / 22%);
+}
+
+.battle-result-done:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 @keyframes battle-slot-pulse {
