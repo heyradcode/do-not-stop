@@ -26,6 +26,5 @@ export {
     type DialoguePhase,
 } from './useBattleDialogue';
 export { useBattleTaunts, type GenerateTauntsVars } from './useBattleTaunts';
-export { usePrepareDialogue, type PrepareDialogueVars } from './usePrepareDialogue';
 export { usePetError, type PetError } from './usePetError';
 export { useTxError, type TxError } from './useTxError';

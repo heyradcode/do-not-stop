@@ -31,21 +31,13 @@ export interface GenerateDialogueInput {
     leveledUp?: boolean;
 }
 
-/** Inputs to generate pre-fight taunts. No winner — the outcome is unknown yet. */
+/**
+ * Inputs to generate pre-fight taunts. No winner — the outcome is unknown yet.
+ * Generating taunts also kicks off result pregen for both outcomes (keyed by
+ * this matchup), so no separate prepare call is needed.
+ */
 export interface GenerateTauntsInput {
     chain: Chain;
-    attacker: PetPersonaInput;
-    defender: PetPersonaInput;
-}
-
-/**
- * Inputs to pre-generate a settled battle's dialogue while it confirms
- * on-chain. No winner — both outcomes are generated and the right one is picked
- * once the result is known.
- */
-export interface PrepareDialogueInput {
-    chain: Chain;
-    battleId: string;
     attacker: PetPersonaInput;
     defender: PetPersonaInput;
 }

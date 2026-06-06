@@ -10,9 +10,8 @@ export type {
     PetPersonaInput,
     GenerateDialogueInput,
     GenerateTauntsInput,
-    PrepareDialogueInput,
     TauntsResult,
     DialogueResult,
 } from './dialogue.types';
 
-export { postBattleDialogue, postBattleTaunts, postPrepareDialogue } from './dialogue.controller';
+export { postBattleDialogue, postBattleTaunts } from './dialogue.controller';

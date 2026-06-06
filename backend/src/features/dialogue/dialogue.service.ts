@@ -9,7 +9,7 @@ import { generateDialogueViaHf, generateTauntsViaHf } from './generation/client'
 import {
     hasPregen,
     setPregen,
-    pregenKey,
+    matchupKey,
     takePregen,
     type PregenDialogue,
 } from './generation/pregen';
@@ -22,7 +22,6 @@ import type {
     DialogueTurn,
     GenerateDialogueInput,
     GenerateTauntsInput,
-    PrepareDialogueInput,
     TauntsResult,
 } from './dialogue.types';
 
@@ -44,7 +43,7 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
         return { turns, model: cached.model, cached: true };
     }
 
-    // Fast path: if this battle was pre-generated while it confirmed, pick the
+    // Fast path: if this matchup was pre-generated at taunt time, pick the
     // variant matching the real winner instead of generating now.
     const prepared = await consumePregen(input);
     if (prepared) return finalizeDialogue(input, prepared.turns, prepared.model);
@@ -55,14 +54,15 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
 }
 
 /**
- * Take the pre-generated pair for this battle (if any) and return the turns for
- * the actual winner. Returns null when nothing was prepared or the preparation
- * failed, so the caller falls back to on-demand generation.
+ * Take the pre-generated pair for this matchup (if any) and return the turns for
+ * the actual winner. The pair was prepared at taunt time and keyed by matchup
+ * (the tx hash didn't exist yet). Returns null when nothing was prepared or the
+ * preparation failed, so the caller falls back to on-demand generation.
  */
 async function consumePregen(
     input: GenerateDialogueInput,
 ): Promise<{ turns: DialogueTurn[]; model: string } | null> {
-    const promise = takePregen(pregenKey(input.chain, input.battleId));
+    const promise = takePregen(matchupKey(input.chain, input.attacker.petId, input.defender.petId));
     if (!promise) return null;
     try {
         const pair = await promise;
@@ -100,28 +100,50 @@ async function finalizeDialogue(
 }
 
 /**
- * Pre-generate BOTH outcomes for a battle while it confirms on-chain, caching
- * the in-flight result keyed by chain+battleId. Fire-and-forget: the winner is
- * unknown here, so we generate the attacker-wins and defender-wins dialogues in
- * parallel and let `getOrGenerateDialogue` pick the right one once the result
- * lands. No-op without AI configured (on-demand fallback covers it) or if a
- * preparation is already in flight for this battle.
+ * Pre-generate BOTH result outcomes the moment the pre-fight taunts exist —
+ * i.e. at "Start Battle", before the wallet is even confirmed. Keyed by matchup
+ * (the tx hash isn't known yet); `getOrGenerateDialogue` picks the variant
+ * matching the real winner once the battle settles. Fire-and-forget.
+ *
+ * Starting here (rather than at the tx hash) gives generation the whole
+ * wallet-confirm window, which matters on fast EVM L2s where the hash-to-settle
+ * window is too short for two LLM calls to finish.
+ *
+ * The just-generated taunts are passed in as the banter context so the result
+ * reactions continue from the exact lines the player saw — no DB round-trip and
+ * no race against the taunt write. No-op without AI configured (on-demand
+ * fallback covers it) or if a preparation is already in flight for this matchup.
  *
  * `leveledUp` is unknown pre-settle (it depends on winning), so both variants
  * are generated with `leveledUp: false`; the level-up nuance is minor flavor.
  */
-export function prepareDialogue(input: PrepareDialogueInput): void {
+function startResultPregen(
+    input: GenerateTauntsInput,
+    attacker: Persona,
+    defender: Persona,
+    taunts: DialogueTurn[],
+): void {
     if (!env.hf.apiToken) return;
 
-    const key = pregenKey(input.chain, input.battleId);
+    const key = matchupKey(input.chain, input.attacker.petId, input.defender.petId);
     if (hasPregen(key)) return;
 
-    const attacker = buildPersona(input.attacker);
-    const defender = buildPersona(input.defender);
+    // Seed the result generation with the taunts the player actually saw so the
+    // reactions are a coherent continuation of them.
+    const banter = buildBanterContext(taunts);
 
     const variant = async (winner: DialogueSpeaker): Promise<{ turns: DialogueTurn[]; model: string }> => {
-        const variantInput: GenerateDialogueInput = { ...input, winner, leveledUp: false };
-        const { turns, model } = await generateTurns(variantInput, attacker, defender);
+        const variantInput: GenerateDialogueInput = {
+            chain: input.chain,
+            // No tx hash at pregen time; battleId is only used to exclude the
+            // current battle from history/banter, which doesn't exist yet.
+            battleId: '',
+            attacker: input.attacker,
+            defender: input.defender,
+            winner,
+            leveledUp: false,
+        };
+        const { turns, model } = await generateTurns(variantInput, attacker, defender, { banterOverride: banter });
         return { turns: ensureResultCoverage(turns, variantInput, attacker, defender), model };
     };
 
@@ -194,6 +216,11 @@ export async function getOrGenerateTaunts(input: GenerateTauntsInput): Promise<T
         battleId: null,
     }, turns);
 
+    // Kick off result pregen now, seeded with these taunts, so the result read
+    // after the battle settles is served instantly and stays coherent with the
+    // banter the player saw. Fire-and-forget — failures fall back to on-demand.
+    startResultPregen(input, attacker, defender, turns);
+
     return { turns, model: env.hf.model };
 }
 
@@ -201,19 +228,27 @@ export async function getOrGenerateTaunts(input: GenerateTauntsInput): Promise<T
  * Produce the conversation turns. Uses the Hugging Face model when configured,
  * else (or on any error) deterministic templated lines so the endpoint always
  * returns something usable.
+ *
+ * `banterOverride` lets the pregen path supply the exact pre-fight taunts as
+ * banter context instead of reading the rolling transcript — keeps the result
+ * coherent with what the player saw and avoids a race against the taunt write.
  */
 async function generateTurns(
     input: GenerateDialogueInput,
     attacker: Persona,
     defender: Persona,
+    opts?: { banterOverride?: string },
 ): Promise<{ turns: DialogueTurn[]; model: string }> {
     if (env.hf.apiToken) {
         try {
             const attackerId = input.attacker.petId;
             const defenderId = input.defender.petId;
+            const excludeBattleId = input.battleId || undefined;
             const [rivalry, banter] = await Promise.all([
-                buildRivalry(input.chain, attackerId, defenderId, input.battleId),
-                buildBanter(input.chain, attackerId, defenderId, input.battleId),
+                buildRivalry(input.chain, attackerId, defenderId, excludeBattleId),
+                opts?.banterOverride !== undefined
+                    ? Promise.resolve(opts.banterOverride)
+                    : buildBanter(input.chain, attackerId, defenderId, excludeBattleId),
             ]);
             const turns = await generateDialogueViaHf(input, attacker, defender, rivalry, banter);
             return { turns, model: env.hf.model };

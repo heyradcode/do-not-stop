@@ -13,7 +13,6 @@ import {
     useBattleTaunts,
     useOpponents,
     usePetList,
-    usePrepareDialogue,
     type DialoguePetInput,
     type OpponentPet,
     type Pet,
@@ -221,10 +220,10 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const preBattleStatsRef = useRef<PreBattleStats | null>(null);
     // Set true in handleSuccess; cleared once the outcome useEffect resolves it.
     const pendingOutcomeRef = useRef(false);
-    // Personas captured at battle start so result dialogue can be pre-generated
-    // once the tx hash is known. preparedHashRef dedupes the fire.
+    // Personas captured at battle start. The backend pre-generates the result
+    // dialogue when the taunts are requested (keyed by matchup), so nothing
+    // hash-triggered is needed here — these are reused for the settle read.
     const battlePersonasRef = useRef<{ attacker: DialoguePetInput; defender: DialoguePetInput } | null>(null);
-    const preparedHashRef = useRef<string | null>(null);
 
     const activeChainKind = chain.kind === 'none' ? null : chain.kind;
     const {
@@ -244,9 +243,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
 
     const battle = useBattlePets({ onSuccess: handleSuccess });
     // AI pre-fight taunts — generated on Start Battle, in parallel with the wallet.
+    // Requesting taunts also kicks off result pregen on the backend.
     const taunts = useBattleTaunts();
-    // Pre-generate result dialogue once the tx hash is known.
-    const { prepare: prepareDialogue } = usePrepareDialogue();
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const selectedFighter = useMemo(
         () => readyPets.find(({ id }) => id === selectedPet1)?.pet ?? null,
@@ -545,23 +543,15 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         activeChainKind,
     ]);
 
-    // Once the tx hash exists (battle is confirming on-chain), pre-generate
-    // BOTH result outcomes so the result read is served instantly.
-    // Fires once per battle hash; the winner is unknown here, so the backend
-    // generates both and picks the right one when the result lands.
+    // Once the tx hash exists, retain it as the stable battleId for the result
+    // read. EVM clears battle.hash on receipt completion, so capture it here.
+    // Result dialogue was already pre-generated at taunt time (matchup-keyed), so
+    // there's nothing to trigger off the hash beyond keeping the id.
     useEffect(() => {
         const hash = battle.hash;
         if (!hash || !activeChainKind) return;
-        // Retain the hash before EVM clears it on receipt completion, so the
-        // result dialogue keeps a stable battleId once the battle settles.
         setSettledBattleId(hash);
-
-        const personas = battlePersonasRef.current;
-        if (!personas) return;
-        if (preparedHashRef.current === hash) return;
-        preparedHashRef.current = hash;
-        prepareDialogue({ chain: activeChainKind, battleId: hash, ...personas });
-    }, [battle.hash, activeChainKind, prepareDialogue]);
+    }, [battle.hash, activeChainKind]);
 
     const arenaClassName = [
         'battle-arena-card',
