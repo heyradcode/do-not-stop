@@ -1,7 +1,7 @@
 import React from 'react';
 import TransactionStatus from '@components/common/transaction-status';
-import BattleOverlay from './components/battle-overlay';
-import BattleSetup from './components/battle-setup';
+import BattleOverlay from './parts/battle-overlay';
+import BattleSetup from './parts/battle-setup';
 import { useBattlePanel } from './hooks/useBattlePanel';
 import './index.css';
 

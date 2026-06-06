@@ -23,8 +23,8 @@ import {
     toDialoguePet,
     type BattlePersonas,
 } from '../battle-utils';
-import type { BattleOverlayProps } from '../components/battle-overlay';
-import type { BattleSetupProps } from '../components/battle-setup';
+import type { BattleOverlayProps } from '../parts/battle-overlay';
+import type { BattleSetupProps } from '../parts/battle-setup';
 
 interface UseBattlePanelArgs {
     isStandaloneView: boolean;
