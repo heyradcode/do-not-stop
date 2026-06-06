@@ -1,7 +1,7 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import MainLayout from '@pages/main-layout';
+import Layout from '@components/layout';
 import HomePage from '@pages/home';
 import BreedPage from '@pages/breed';
 import BattlePage from '@pages/battle';
@@ -12,7 +12,7 @@ import RenamePage from '@pages/rename';
 const AppRoutes: React.FC = () => {
     return (
         <Routes>
-            <Route element={<MainLayout />}>
+            <Route element={<Layout />}>
                 <Route path="/main" element={<HomePage />} />
                 <Route path="/breed" element={<BreedPage />} />
                 <Route path="/battle" element={<BattlePage />} />
