@@ -210,6 +210,10 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     // Gates the result actions (Rematch/Leave) until the post-battle dialogue
     // has finished playing — or until we know there's no dialogue to wait for.
     const [resultDialogueDone, setResultDialogueDone] = useState(false);
+    // The battle's tx hash, retained in our own state. EVM clears battle.hash
+    // (resetWrite) on receipt completion, so we capture it during confirming to
+    // keep a stable battleId for the result dialogue after the battle settles.
+    const [settledBattleId, setSettledBattleId] = useState<string | null>(null);
 
     const selectedOpponentCardRef = useRef<HTMLButtonElement>(null);
     const rematchSnapshotRef = useRef<{ petId1: string; opponentKey: string } | null>(null);
@@ -308,7 +312,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         isFetched: dialogueFetched,
     } = useBattleDialogue({
         chain: activeChainKind,
-        battleId: battle.hash ?? null,
+        battleId: settledBattleId,
         attacker: attackerDialogueInput,
         defender: defenderDialogueInput,
         winner: dialogueWinner,
@@ -321,14 +325,15 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         [dialogueTurns],
     );
 
-    // If the dialogue query has settled but there's nothing to play (generation
-    // failed or returned no result lines), don't leave the actions gated — mark
-    // talking done. isFetched (not !isLoading) avoids the brief pre-fetch window.
+    // Don't leave the result actions gated when no dialogue will play: either the
+    // query settled with nothing (generation failed / no result lines), or it
+    // can't run at all (no battleId yet). isFetched (not !isLoading) avoids the
+    // brief pre-fetch window. onComplete handles the case where it does play.
     useEffect(() => {
-        if (battleOutcome !== null && dialogueFetched && resultTurns.length === 0) {
-            setResultDialogueDone(true);
-        }
-    }, [battleOutcome, dialogueFetched, resultTurns.length]);
+        if (battleOutcome === null) return;
+        const nothingToPlay = resultTurns.length === 0 && (dialogueFetched || settledBattleId === null);
+        if (nothingToPlay) setResultDialogueDone(true);
+    }, [battleOutcome, dialogueFetched, resultTurns.length, settledBattleId]);
 
     const usesSwitchboardVrf = chain.kind === 'solana';
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
@@ -379,6 +384,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         setShowResult(false);
         setBattleOutcome(null);
         setResultDialogueDone(false);
+        setSettledBattleId(null);
 
         if (!selectedPet1 || !opponent || !selectedFighter || !activeChainKind) {
             setValidationError(VALIDATION_MESSAGE);
@@ -453,6 +459,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         setValidationError(null);
         setBattleOutcome(null);
         setResultDialogueDone(false);
+        setSettledBattleId(null);
         setRematchPending(true);
 
         // Generate taunts immediately (mirrors handleBattle) so the dialogue appears as soon as
@@ -544,8 +551,13 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     // generates both and picks the right one when the result lands.
     useEffect(() => {
         const hash = battle.hash;
+        if (!hash || !activeChainKind) return;
+        // Retain the hash before EVM clears it on receipt completion, so the
+        // result dialogue keeps a stable battleId once the battle settles.
+        setSettledBattleId(hash);
+
         const personas = battlePersonasRef.current;
-        if (!hash || !activeChainKind || !personas) return;
+        if (!personas) return;
         if (preparedHashRef.current === hash) return;
         preparedHashRef.current = hash;
         prepareDialogue({ chain: activeChainKind, battleId: hash, ...personas });
