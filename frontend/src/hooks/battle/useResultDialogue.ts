@@ -7,8 +7,8 @@ import {
     type Pet,
     type PetChain,
 } from '@shared/core';
-import type { BattleOutcome } from '../types';
-import { toDialoguePet, type BattlePersonas } from '../battle-utils';
+import type { BattleOutcome } from '@components/pet/interactions/panels/battle/types';
+import { toDialoguePet, type BattlePersonas } from '@components/pet/interactions/panels/battle/battle-utils';
 
 interface UseResultDialogueArgs {
     activeChainKind: PetChain | null;

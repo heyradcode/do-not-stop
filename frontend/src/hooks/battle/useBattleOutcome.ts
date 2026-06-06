@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Pet } from '@shared/core';
-import type { BattleOutcome } from '../types';
-import type { PreBattleStats } from '../battle-utils';
+import type { BattleOutcome } from '@components/pet/interactions/panels/battle/types';
+import type { PreBattleStats } from '@components/pet/interactions/panels/battle/battle-utils';
 
 interface UseBattleOutcomeArgs {
     pets: Pet[];

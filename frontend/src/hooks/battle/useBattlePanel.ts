@@ -11,7 +11,7 @@ import {
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { formatTxHashHint } from '@hooks/usePetError';
 import { usePetErrorToast } from '@hooks/usePetErrorToast';
-import { pickRandomOpponent, sortOpponentsByMatch } from '../battle-matchmaking';
+import { pickRandomOpponent, sortOpponentsByMatch } from '@components/pet/interactions/panels/battle/battle-matchmaking';
 import { useBattleOutcome } from './useBattleOutcome';
 import { useResultDialogue } from './useResultDialogue';
 import {
@@ -22,9 +22,9 @@ import {
     opponentKey,
     toDialoguePet,
     type BattlePersonas,
-} from '../battle-utils';
-import type { BattleOverlayProps } from '../parts/battle-overlay';
-import type { BattleSetupProps } from '../parts/battle-setup';
+} from '@components/pet/interactions/panels/battle/battle-utils';
+import type { BattleOverlayProps } from '@components/pet/interactions/panels/battle/parts/battle-overlay';
+import type { BattleSetupProps } from '@components/pet/interactions/panels/battle/parts/battle-setup';
 
 interface UseBattlePanelArgs {
     isStandaloneView: boolean;
