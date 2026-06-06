@@ -10,7 +10,7 @@ import {
     buildUserMessage,
     buildTauntUserMessage,
 } from '../prompting/prompt';
-import { ResponseSchema, TAUNT_TURNS } from '../dialogue.schema';
+import { ResponseSchema, MAX_TURNS, TAUNT_TURNS } from '../dialogue.schema';
 import type { DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
 function hfModel() {
@@ -34,7 +34,9 @@ async function generate(system: string, user: string): Promise<DialogueTurn[]> {
         prompt: user,
     });
     const result = ResponseSchema.parse(object);
-    return result.turns as DialogueTurn[];
+    // Clamp over-produced turns instead of failing the parse. The settled path
+    // caps here; the taunt path trims further to TAUNT_TURNS in its caller.
+    return result.turns.slice(0, MAX_TURNS) as DialogueTurn[];
 }
 
 export async function generateDialogueViaHf(

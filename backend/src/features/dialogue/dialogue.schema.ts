@@ -20,5 +20,9 @@ export const TurnSchema = z.object({
 });
 
 export const ResponseSchema = z.object({
-    turns: z.array(TurnSchema).min(1).max(MAX_TURNS),
+    // No upper bound here on purpose: models sometimes over-produce turns. We
+    // accept them and clamp to MAX_TURNS in the client rather than rejecting the
+    // whole (otherwise valid) reply — the taunt path has no fallback, so a hard
+    // max would surface every over-production as a 502.
+    turns: z.array(TurnSchema).min(1),
 });
