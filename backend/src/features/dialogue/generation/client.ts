@@ -1,7 +1,7 @@
 import { generateObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { env } from '@config/env';
-import type { Persona } from './dialogue.persona';
+import type { Persona } from '../prompting/persona';
 import {
     SYSTEM_PROMPT,
     TAUNT_SYSTEM_PROMPT,
@@ -9,9 +9,9 @@ import {
     TAUNT_JSON_FORMAT_INSTRUCTION,
     buildUserMessage,
     buildTauntUserMessage,
-} from './dialogue.prompt';
-import { ResponseSchema, TAUNT_TURNS } from './dialogue.schema';
-import type { DialogueTurn, GenerateDialogueInput } from './dialogue.types';
+} from '../prompting/prompt';
+import { ResponseSchema, TAUNT_TURNS } from '../dialogue.schema';
+import type { DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
 function hfModel() {
     // .chat() targets /v1/chat/completions — HF router uses chat completions, not the Responses API

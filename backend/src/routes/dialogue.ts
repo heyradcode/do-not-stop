@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { verifyToken } from '@middleware/auth';
-import { postBattleDialogue, postBattleTaunts, postPrepareDialogue } from '@features/dialogue/dialogue.controller';
+import { postBattleDialogue, postBattleTaunts, postPrepareDialogue } from '@features/dialogue';
 
 const router: Router = express.Router();
 

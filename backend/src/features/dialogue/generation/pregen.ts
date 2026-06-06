@@ -1,5 +1,5 @@
 import type { Chain } from '@typings/chain';
-import type { DialogueTurn } from './dialogue.types';
+import type { DialogueTurn } from '../dialogue.types';
 
 /**
  * Ephemeral store for pre-generated battle dialogue.

@@ -2,17 +2,17 @@ import { env } from '@config/env';
 import { getDialogue, saveDialogue } from '@repositories/dialogue.repository';
 import { getHeadToHead, getRecentForm, recordBattle } from '@repositories/history.repository';
 import { getRecentBanter, recordConversation } from '@repositories/conversation.repository';
-import { buildPersona, type Persona } from './dialogue.persona';
-import { buildBanterContext, buildRivalryContext } from './dialogue.context';
-import { fallbackDialogue } from './dialogue.fallback';
-import { generateDialogueViaHf, generateTauntsViaHf } from './dialogue.client';
+import { buildPersona, type Persona } from './prompting/persona';
+import { buildBanterContext, buildRivalryContext } from './prompting/context';
+import { fallbackDialogue } from './generation/fallback';
+import { generateDialogueViaHf, generateTauntsViaHf } from './generation/client';
 import {
     hasPregen,
     setPregen,
     pregenKey,
     takePregen,
     type PregenDialogue,
-} from './dialogue.pregen';
+} from './generation/pregen';
 import type {
     Chain,
 } from '@typings/chain';

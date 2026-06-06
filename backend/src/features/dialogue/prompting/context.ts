@@ -1,5 +1,5 @@
 import type { HeadToHead, RecentForm } from '@repositories/history.repository';
-import type { DialogueTurn } from './dialogue.types';
+import type { DialogueTurn } from '../dialogue.types';
 
 export function buildRivalryContext(
     headToHead: HeadToHead,
