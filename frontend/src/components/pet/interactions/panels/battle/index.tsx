@@ -1,196 +1,36 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
-    getLifePercent,
-    getPetAvatar,
-    getRarityColor,
-    getRarityName,
     getReadyPetsUnified,
     useActiveChain,
-    useBattleDialogue,
     useBattlePets,
     useBattleTaunts,
     useOpponents,
     usePetList,
-    type DialoguePetInput,
-    type OpponentPet,
-    type Pet,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
-import { Tones } from '@constants/tones';
-import { AuthActionButton } from '@components/common';
 import { formatTxHashHint } from '@hooks/usePetError';
 import { usePetErrorToast } from '@hooks/usePetErrorToast';
-import Icon, { BattleIcon } from '@components/ui/icon';
+import { pickRandomOpponent, sortOpponentsByMatch } from './battle-matchmaking';
+import BattleOverlay from './components/battle-overlay';
+import BattleSetup from './components/battle-setup';
+import { useBattleOutcome } from './hooks/useBattleOutcome';
+import { useResultDialogue } from './hooks/useResultDialogue';
 import {
-    getLevelDelta,
-    getMatchLabel,
-    getMatchTier,
-    pickRandomOpponent,
-    sortOpponentsByMatch,
-} from './battle-matchmaking';
-import BattleResultArt from './battle-result-art';
-import BattleDialogue from './battle-dialogue';
-import type { BattleOutcome } from './types';
+    BATTLE_FAIL_MESSAGE,
+    REMATCH_COOLDOWN_MESSAGE,
+    REMATCH_OPPONENT_GONE_MESSAGE,
+    VALIDATION_MESSAGE,
+    opponentKey,
+    toDialoguePet,
+    type BattlePersonas,
+} from './battle-utils';
 import './index.css';
-
-/** Map a pet/opponent to the persona input the dialogue endpoint expects. */
-const toDialoguePet = (pet: Pet | OpponentPet): DialoguePetInput => ({
-    petId: pet.id,
-    name: pet.name,
-    level: pet.level,
-    rarity: pet.rarity,
-    dna: pet.dna.toString(),
-    winCount: pet.winCount,
-    lossCount: pet.lossCount,
-});
 
 export type BattlePanelProps = {
     /** `false` when embedded under the dashboard interactions hub. */
     isStandaloneView?: boolean;
-};
-
-const VALIDATION_MESSAGE = 'Please select your pet and an opponent';
-const BATTLE_FAIL_MESSAGE = 'Failed to start battle. Please try again.';
-const REMATCH_COOLDOWN_MESSAGE = 'Your fighter is on cooldown. Pick another pet or wait.';
-const REMATCH_OPPONENT_GONE_MESSAGE = 'That opponent is no longer available. Choose another challenger.';
-
-/** win/loss/levelUp snapshot taken just before calling battle.mutate. */
-type PreBattleStats = { winCount: number; lossCount: number; level: number };
-
-/** Stable select value for an opponent (pet ids are not globally unique on Solana). */
-const opponentKey = (owner: string, id: string) => `${owner}::${id}`;
-const shortAddress = (addr: string) =>
-    addr.length > 12 ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : addr;
-
-type ArenaSlotProps = {
-    pet?: Pet | OpponentPet | null;
-    placeholder: string;
-    ownerLabel?: string;
-    side: 'fighter' | 'opponent';
-    flash?: boolean;
-};
-
-const ArenaSlot: React.FC<ArenaSlotProps> = ({ pet, placeholder, ownerLabel, side, flash }) => {
-    if (!pet) {
-        return (
-            <div className={`arena-slot is-empty arena-slot-${side}`}>
-                <span className="slot-placeholder">{placeholder}</span>
-            </div>
-        );
-    }
-
-    return (
-        <div
-            key={`${side}-${pet.id}`}
-            className={`arena-slot is-selected arena-slot-${side}${flash ? ' is-flash' : ''}`}
-        >
-            <div className="slot-row">
-                <span className="slot-avatar" aria-hidden>
-                    {getPetAvatar(pet.dna)}
-                </span>
-                <div className="slot-meta">
-                    <span className="slot-name">{pet.name}</span>
-                    <span className="slot-sub">
-                        Lv.{pet.level}
-                        {ownerLabel ? ` · ${ownerLabel}` : ''}
-                    </span>
-                </div>
-            </div>
-            <div className="life-track" aria-hidden>
-                <div className="life-fill" style={{ width: `${getLifePercent(pet)}%` }} />
-            </div>
-        </div>
-    );
-};
-
-type FighterPickerCardProps = {
-    pet: Pet;
-    petId: string;
-    selected: boolean;
-    onSelect: (petId: string) => void;
-};
-
-const FighterPickerCard: React.FC<FighterPickerCardProps> = ({ pet, petId, selected, onSelect }) => (
-    <button
-        type="button"
-        className={`battle-picker-card${selected ? ' is-selected' : ''}`}
-        aria-pressed={selected}
-        onClick={() => onSelect(petId)}
-    >
-        <div className="card-top">
-            <span className="card-avatar" aria-hidden>
-                {getPetAvatar(pet.dna)}
-            </span>
-            <div className="card-body">
-                <span className="card-name">{pet.name}</span>
-                <span className="card-meta">Lv.{pet.level}</span>
-            </div>
-        </div>
-        <div className="card-stats">
-            <span className="stat-pill rarity" style={{ backgroundColor: getRarityColor(pet.rarity) }}>
-                {getRarityName(pet.rarity)}
-            </span>
-            <span className="stat-pill">
-                {pet.winCount}W / {pet.lossCount}L
-            </span>
-        </div>
-    </button>
-);
-
-type OpponentPickerCardProps = {
-    opponent: OpponentPet;
-    fighterLevel: number | null;
-    selected: boolean;
-    onSelect: (key: string) => void;
-    cardRef?: React.Ref<HTMLButtonElement>;
-};
-
-const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({
-    opponent,
-    fighterLevel,
-    selected,
-    onSelect,
-    cardRef,
-}) => {
-    const key = opponentKey(opponent.owner, opponent.id);
-    const levelDelta = getLevelDelta(fighterLevel, opponent.level);
-    const matchTier = getMatchTier(levelDelta);
-    const matchLabel = getMatchLabel(matchTier, levelDelta);
-
-    return (
-        <button
-            ref={cardRef}
-            type="button"
-            className={`battle-picker-card${selected ? ' is-selected' : ''}${matchTier !== 'unknown' ? ` match-${matchTier}` : ''}`}
-            aria-pressed={selected}
-            onClick={() => onSelect(key)}
-        >
-            <div className="card-top">
-                <span className="card-avatar" aria-hidden>
-                    {getPetAvatar(opponent.dna)}
-                </span>
-                <div className="card-body">
-                    <span className="card-name">{opponent.name}</span>
-                    <span className="card-meta">
-                        Lv.{opponent.level} · {shortAddress(opponent.owner)}
-                    </span>
-                </div>
-            </div>
-            <div className="card-stats">
-                {matchLabel ? (
-                    <span className={`stat-pill match-${matchTier}`}>{matchLabel}</span>
-                ) : null}
-                <span className="stat-pill rarity" style={{ backgroundColor: getRarityColor(opponent.rarity) }}>
-                    {getRarityName(opponent.rarity)}
-                </span>
-                <span className="stat-pill">
-                    {opponent.winCount}W / {opponent.lossCount}L
-                </span>
-            </div>
-        </button>
-    );
 };
 
 const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) => {
@@ -200,15 +40,11 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const [selectedPet1, setSelectedPet1] = useState('');
     const [selectedOpponent, setSelectedOpponent] = useState('');
     const [showResult, setShowResult] = useState(false);
-    const [battleOutcome, setBattleOutcome] = useState<BattleOutcome>(null);
     const [validationError, setValidationError] = useState<string | null>(null);
     const [opponentSlotFlash, setOpponentSlotFlash] = useState(false);
     const [rematchPending, setRematchPending] = useState(false);
     // The battle overlay stays open continuously: taunts → battling → result.
     const [overlayOpen, setOverlayOpen] = useState(false);
-    // Gates the result actions (Rematch/Leave) until the post-battle dialogue
-    // has finished playing — or until we know there's no dialogue to wait for.
-    const [resultDialogueDone, setResultDialogueDone] = useState(false);
     // The battle's tx hash, retained in our own state. EVM clears battle.hash
     // (resetWrite) on receipt completion, so we capture it during confirming to
     // keep a stable battleId for the result dialogue after the battle settles.
@@ -216,14 +52,10 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
 
     const selectedOpponentCardRef = useRef<HTMLButtonElement>(null);
     const rematchSnapshotRef = useRef<{ petId1: string; opponentKey: string } | null>(null);
-    // Snapshot taken before battle.mutate; cleared after outcome is resolved.
-    const preBattleStatsRef = useRef<PreBattleStats | null>(null);
-    // Set true in handleSuccess; cleared once the outcome useEffect resolves it.
-    const pendingOutcomeRef = useRef(false);
     // Personas captured at battle start. The backend pre-generates the result
     // dialogue when the taunts are requested (keyed by matchup), so nothing
     // hash-triggered is needed here — these are reused for the settle read.
-    const battlePersonasRef = useRef<{ attacker: DialoguePetInput; defender: DialoguePetInput } | null>(null);
+    const battlePersonasRef = useRef<BattlePersonas | null>(null);
 
     const activeChainKind = chain.kind === 'none' ? null : chain.kind;
     const {
@@ -233,18 +65,22 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         refetch: refetchOpponents,
     } = useOpponents({ chain: activeChainKind });
 
+    // Outcome detection (snapshot diff against refreshed on-chain stats).
+    const outcome = useBattleOutcome({ pets, selectedPet1, petsLoading });
+
     const handleSuccess = useCallback(() => {
         setShowResult(true);
         setValidationError(null);
-        pendingOutcomeRef.current = true;
+        outcome.markPendingOutcome();
         void refetch();
         void refetchOpponents();
-    }, [refetch, refetchOpponents]);
+    }, [outcome, refetch, refetchOpponents]);
 
     const battle = useBattlePets({ onSuccess: handleSuccess });
     // AI pre-fight taunts — generated on Start Battle, in parallel with the wallet.
     // Requesting taunts also kicks off result pregen on the backend.
     const taunts = useBattleTaunts();
+
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const selectedFighter = useMemo(
         () => readyPets.find(({ id }) => id === selectedPet1)?.pet ?? null,
@@ -262,76 +98,18 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
     const isArenaReady = Boolean(selectedFighter && opponent && !battle.isPending && !showResult);
     const isArenaFighting = battle.isPending;
 
-    usePetErrorToast(
-        battle.error,
-        battle.receiptError,
-        validationError,
-        BATTLE_FAIL_MESSAGE,
-    );
-
-    // After the settle tx, refetch() updates `pets` with the new on-chain stats.
-    // Compare against the pre-battle snapshot to determine victory or defeat.
-    useEffect(() => {
-        if (!pendingOutcomeRef.current || !selectedPet1 || !preBattleStatsRef.current || petsLoading) return;
-
-        const updatedFighter = pets.find((p) => p.id === selectedPet1);
-        if (!updatedFighter) return;
-
-        const { winCount: prevWin, lossCount: prevLoss, level: prevLevel } = preBattleStatsRef.current;
-        // Stats haven't refreshed yet — wait for the next update.
-        if (updatedFighter.winCount === prevWin && updatedFighter.lossCount === prevLoss) return;
-
-        setBattleOutcome({
-            result: updatedFighter.winCount > prevWin ? 'victory' : 'defeat',
-            leveledUp: updatedFighter.level > prevLevel,
-        });
-        pendingOutcomeRef.current = false;
-    }, [pets, selectedPet1, petsLoading]);
-
-    // AI battle dialogue — generated once the outcome is known, keyed by tx hash.
-    const dialogueWinner =
-        battleOutcome === null ? null : battleOutcome.result === 'victory' ? 'attacker' : 'defender';
-    // Fall back to the personas captured at battle start. After a battle the
-    // fighter goes on cooldown and drops out of readyPets (selectedFighter →
-    // null), which would otherwise disable the result dialogue query and the
-    // pre-generated result would never be fetched. The captured personas survive
-    // cooldown and match exactly what was pre-generated.
-    const attackerDialogueInput = useMemo(
-        () => (selectedFighter ? toDialoguePet(selectedFighter) : battlePersonasRef.current?.attacker ?? null),
-        [selectedFighter],
-    );
-    const defenderDialogueInput = useMemo(
-        () => (opponent ? toDialoguePet(opponent) : battlePersonasRef.current?.defender ?? null),
-        [opponent],
-    );
-    const {
-        turns: dialogueTurns,
-        isLoading: dialogueLoading,
-        isFetched: dialogueFetched,
-    } = useBattleDialogue({
-        chain: activeChainKind,
-        battleId: settledBattleId,
-        attacker: attackerDialogueInput,
-        defender: defenderDialogueInput,
-        winner: dialogueWinner,
-        leveledUp: battleOutcome?.leveledUp ?? false,
-        enabled: showResult && battleOutcome !== null,
+    // Settled-battle dialogue read + result-action gating.
+    const dialogue = useResultDialogue({
+        activeChainKind,
+        settledBattleId,
+        selectedFighter,
+        opponent,
+        personasRef: battlePersonasRef,
+        battleOutcome: outcome.battleOutcome,
+        showResult,
     });
-    // Taunts already played pre-fight — only show the AI result reactions here.
-    const resultTurns = useMemo(
-        () => dialogueTurns.filter((t) => t.phase === 'result'),
-        [dialogueTurns],
-    );
 
-    // Don't leave the result actions gated when no dialogue will play: either the
-    // query settled with nothing (generation failed / no result lines), or it
-    // can't run at all (no battleId yet). isFetched (not !isLoading) avoids the
-    // brief pre-fetch window. onComplete handles the case where it does play.
-    useEffect(() => {
-        if (battleOutcome === null) return;
-        const nothingToPlay = resultTurns.length === 0 && (dialogueFetched || settledBattleId === null);
-        if (nothingToPlay) setResultDialogueDone(true);
-    }, [battleOutcome, dialogueFetched, resultTurns.length, settledBattleId]);
+    usePetErrorToast(battle.error, battle.receiptError, validationError, BATTLE_FAIL_MESSAGE);
 
     const usesSwitchboardVrf = chain.kind === 'solana';
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
@@ -339,19 +117,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         ? 'Pick your fighter and an opponent (Switchboard VRF)'
         : 'Pick your fighter and an opponent';
     const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Starting Battle...';
-    const confirmingLabel = 'Confirming...';
-    const submitLabel = 'Start Battle';
     const hashHint = chain.kind === 'solana' ? formatTxHashHint(battle.hash) : null;
-
-    const snapshotFighterStats = useCallback((fighter: Pet) => {
-        preBattleStatsRef.current = {
-            winCount: fighter.winCount,
-            lossCount: fighter.lossCount,
-            level: fighter.level,
-        };
-        pendingOutcomeRef.current = false;
-        setBattleOutcome(null);
-    }, []);
 
     const startBattle = useCallback(() => {
         if (!selectedPet1 || !opponent) {
@@ -359,7 +125,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
             return false;
         }
 
-        if (selectedFighter) snapshotFighterStats(selectedFighter);
+        if (selectedFighter) outcome.snapshotFighterStats(selectedFighter);
 
         rematchSnapshotRef.current = {
             petId1: selectedPet1,
@@ -372,7 +138,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
             defenderOwner: opponent.owner,
         });
         return true;
-    }, [battle, opponent, selectedFighter, selectedPet1, snapshotFighterStats]);
+    }, [battle, opponent, selectedFighter, selectedPet1, outcome]);
 
     // Start Battle: generate AI pre-fight taunts and fire the wallet in parallel.
     // The overlay shows a loader until the taunts arrive, then types them out.
@@ -380,8 +146,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         battle.clearErrors();
         taunts.reset();
         setShowResult(false);
-        setBattleOutcome(null);
-        setResultDialogueDone(false);
+        outcome.resetOutcome();
+        dialogue.resetResultDialogue();
         setSettledBattleId(null);
 
         if (!selectedPet1 || !opponent || !selectedFighter || !activeChainKind) {
@@ -412,8 +178,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         setOverlayOpen(false);
         taunts.reset();
         setValidationError(null);
-        setBattleOutcome(null);
-        preBattleStatsRef.current = null;
+        outcome.resetOutcome();
+        outcome.clearSnapshot();
         setSelectedPet1('');
         setSelectedOpponent('');
         navigate(DASHBOARD_HOME);
@@ -455,8 +221,8 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         setShowResult(false);
         setOverlayOpen(true);
         setValidationError(null);
-        setBattleOutcome(null);
-        setResultDialogueDone(false);
+        outcome.resetOutcome();
+        dialogue.resetResultDialogue();
         setSettledBattleId(null);
         setRematchPending(true);
 
@@ -521,7 +287,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         }
 
         const rematchFighter = readyPets.find(({ id }) => id === snapshot.petId1)?.pet;
-        if (rematchFighter) snapshotFighterStats(rematchFighter);
+        if (rematchFighter) outcome.snapshotFighterStats(rematchFighter);
 
         setSelectedPet1(snapshot.petId1);
         setSelectedOpponent(snapshot.opponentKey);
@@ -539,7 +305,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         readyPets,
         opponents,
         battle,
-        snapshotFighterStats,
+        outcome,
         activeChainKind,
     ]);
 
@@ -563,14 +329,6 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
         .filter(Boolean)
         .join(' ');
 
-    // Result overlay derivations
-    const isVictory = battleOutcome?.result === 'victory';
-    const isDefeat = battleOutcome?.result === 'defeat';
-    const resultCardClass = [
-        'battle-result-card',
-        battleOutcome === null ? 'is-pending' : isVictory ? '' : 'is-defeat',
-    ].filter(Boolean).join(' ');
-
     // Pre-result phase (overlay stays open through taunts → battling).
     const isBattling = battle.isPending || battle.isEvmConfirming || rematchPending;
     const preResultTitle = isBattling ? 'The battle is underway…' : 'Face-off!';
@@ -582,215 +340,70 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 ? 'Awaiting your wallet…'
                 : null;
 
+    const battleButtonLabel = taunts.isLoading
+        ? 'Facing off…'
+        : battle.isPending
+            ? pendingLabel
+            : battle.isEvmConfirming
+                ? 'Confirming...'
+                : 'Start Battle';
+    const battleDisabled =
+        battle.isPending || battle.isEvmConfirming || rematchPending || overlayOpen ||
+        !selectedPet1 || !selectedOpponent || showResult;
+    const randomMatchDisabled = !canRandomMatch || battle.isPending || showResult;
+
     return (
         <>
-            {overlayOpen && (
-                <div className="battle-result-overlay" role="status" aria-live="polite">
-                    <div className={resultCardClass}>
-                        {showResult ? (
-                            <>
-                                <div className="battle-result-art" aria-hidden>
-                                    <BattleResultArt outcome={battleOutcome} />
-                                </div>
-                                <p className="battle-result-title">
-                                    {battleOutcome === null
-                                        ? 'Resolving…'
-                                        : isVictory
-                                            ? 'Victory!'
-                                            : 'Defeated'}
-                                </p>
-                                <p className="battle-result-message">
-                                    {battleOutcome === null
-                                        ? 'Checking battle outcome…'
-                                        : isVictory
-                                            ? battleOutcome.leveledUp
-                                                ? 'Your pet won and leveled up!'
-                                                : 'Your pet won the battle!'
-                                            : 'Your pet was defeated. Train harder and try again!'}
-                                </p>
-                                {opponent && battleOutcome !== null ? (
-                                    <p className="battle-result-opponent">
-                                        {isVictory
-                                            ? `vs ${opponent.name} (Lv.${opponent.level})`
-                                            : `Lost to ${opponent.name} (Lv.${opponent.level})`}
-                                    </p>
-                                ) : null}
-                                {battleOutcome !== null && (dialogueLoading || resultTurns.length > 0) ? (
-                                    <BattleDialogue
-                                        turns={resultTurns}
-                                        isLoading={dialogueLoading}
-                                        attackerName={attackerDialogueInput?.name ?? 'Your pet'}
-                                        defenderName={defenderDialogueInput?.name ?? 'Opponent'}
-                                        onComplete={() => setResultDialogueDone(true)}
-                                    />
-                                ) : null}
-                                {battleOutcome !== null && (
-                                    <div className="battle-result-actions">
-                                        <button
-                                            type="button"
-                                            className={`battle-result-rematch${isDefeat ? ' is-defeat' : ''}`}
-                                            onClick={handleRematch}
-                                            disabled={battle.isPending || rematchPending || !resultDialogueDone}
-                                        >
-                                            {rematchPending ? 'Preparing…' : 'Rematch'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="battle-result-done"
-                                            onClick={handleDone}
-                                            disabled={!resultDialogueDone}
-                                        >
-                                            Leave
-                                        </button>
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                <p className="battle-result-title">{preResultTitle}</p>
-                                {taunts.isLoading || taunts.turns.length > 0 ? (
-                                    <BattleDialogue
-                                        turns={taunts.turns}
-                                        isLoading={taunts.isLoading}
-                                        attackerName={selectedFighter?.name ?? 'Your pet'}
-                                        defenderName={opponent?.name ?? 'Opponent'}
-                                    />
-                                ) : null}
-                                {preResultStatus ? (
-                                    <p className="battle-result-message">{preResultStatus}</p>
-                                ) : null}
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
+            <BattleOverlay
+                open={overlayOpen}
+                showResult={showResult}
+                battleOutcome={outcome.battleOutcome}
+                opponent={opponent}
+                resultTurns={dialogue.resultTurns}
+                dialogueLoading={dialogue.dialogueLoading}
+                resultAttackerName={dialogue.attackerName}
+                resultDefenderName={dialogue.defenderName}
+                onResultComplete={dialogue.markResultDialogueDone}
+                resultDialogueDone={dialogue.resultDialogueDone}
+                onRematch={handleRematch}
+                onDone={handleDone}
+                rematchPending={rematchPending}
+                battlePending={battle.isPending}
+                preResultTitle={preResultTitle}
+                preResultStatus={preResultStatus}
+                tauntsLoading={taunts.isLoading}
+                tauntsTurns={taunts.turns}
+                fighterName={selectedFighter?.name ?? 'Your pet'}
+                opponentName={opponent?.name ?? 'Opponent'}
+            />
 
-            <div className="interface battle-setup">
-                {!isStandaloneView && (
-                    <>
-                        <h4><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Pets</h4>
-                        <p>{subtitle}</p>
-                    </>
-                )}
-
-                <div className={arenaClassName}>
-                    <div className="header">
-                        <span><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Arena</span>
-                        <div className="arena-actions">
-                            <button
-                                type="button"
-                                className="section-action section-action-primary"
-                                onClick={handleRandomMatch}
-                                disabled={!canRandomMatch || battle.isPending || showResult}
-                                title={
-                                    selectedFighter
-                                        ? 'Pick a random opponent near your fighter level'
-                                        : 'Select your fighter first'
-                                }
-                            >
-                                Random match
-                            </button>
-                            <span className="arena-badge">
-                                {isArenaFighting ? 'Fighting' : showResult ? 'Complete' : isArenaReady ? 'Ready' : 'Setup'}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="hub-divider" />
-                    <div className="content">
-                        <ArenaSlot pet={selectedFighter} placeholder="Choose fighter" side="fighter" />
-                        <div className="center">
-                            <div className="icon">
-                                <Icon as={BattleIcon} tone={Tones.Magenta} glow="strong" className="no-gap" size={18} />
-                            </div>
-                            <div className="vs">VS</div>
-                        </div>
-                        <ArenaSlot
-                            pet={opponent}
-                            placeholder="Select opponent"
-                            ownerLabel={opponent ? shortAddress(opponent.owner) : undefined}
-                            side="opponent"
-                            flash={opponentSlotFlash}
-                        />
-                    </div>
-                </div>
-
-                <section className="battle-picker-section" aria-label="Your fighters">
-                    <div className="section-head">
-                        <h5 className="section-title">Your fighters</h5>
-                    </div>
-                    {readyPets.length === 0 ? (
-                        <div className="battle-picker-empty">
-                            No ready pets. Wait for cooldowns to finish before battling.
-                        </div>
-                    ) : (
-                        <div className="battle-picker-strip">
-                            {readyPets.map(({ id, pet }) => (
-                                <FighterPickerCard
-                                    key={id}
-                                    pet={pet}
-                                    petId={id}
-                                    selected={selectedPet1 === id}
-                                    onSelect={setSelectedPet1}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </section>
-
-                <section className="battle-picker-section" aria-label="Opponents">
-                    <div className="section-head">
-                        <h5 className="section-title">
-                            Opponents
-                            {fighterLevel != null ? (
-                                <span className="section-hint"> · sorted by level match</span>
-                            ) : null}
-                        </h5>
-                        <button
-                            type="button"
-                            className="section-action"
-                            onClick={handleRefreshOpponents}
-                            disabled={opponentsLoading}
-                        >
-                            {opponentsLoading ? 'Loading…' : 'Refresh'}
-                        </button>
-                    </div>
-                    {opponentsLoading && opponents.length === 0 ? (
-                        <div className="battle-picker-empty">Finding challengers in the arena…</div>
-                    ) : opponents.length === 0 ? (
-                        <div className="battle-picker-empty">
-                            No opponents available right now. Check back after more players join the roster.
-                        </div>
-                    ) : (
-                        <div className="battle-opponent-grid">
-                            {sortedOpponents.map((o) => {
-                                const key = opponentKey(o.owner, o.id);
-                                return (
-                                    <OpponentPickerCard
-                                        key={key}
-                                        opponent={o}
-                                        fighterLevel={fighterLevel}
-                                        selected={selectedOpponent === key}
-                                        onSelect={handleSelectOpponent}
-                                        cardRef={selectedOpponent === key ? selectedOpponentCardRef : undefined}
-                                    />
-                                );
-                            })}
-                        </div>
-                    )}
-                </section>
-
-                <div className="action-controls">
-                    <AuthActionButton
-                        onClick={handleBattle}
-                        disabled={battle.isPending || battle.isEvmConfirming || rematchPending || overlayOpen || !selectedPet1 || !selectedOpponent || showResult}
-                    >
-                        {taunts.isLoading ? 'Facing off…' : battle.isPending ? pendingLabel : battle.isEvmConfirming ? confirmingLabel : submitLabel}
-                    </AuthActionButton>
-                    <button type="button" onClick={handleCancel} className="cancel-button">
-                        Cancel
-                    </button>
-                </div>
-            </div>
+            <BattleSetup
+                isStandaloneView={isStandaloneView}
+                subtitle={subtitle}
+                arenaClassName={arenaClassName}
+                isArenaFighting={isArenaFighting}
+                isArenaReady={isArenaReady}
+                showResult={showResult}
+                selectedFighter={selectedFighter}
+                opponent={opponent}
+                opponentSlotFlash={opponentSlotFlash}
+                randomMatchDisabled={randomMatchDisabled}
+                onRandomMatch={handleRandomMatch}
+                readyPets={readyPets}
+                selectedPet1={selectedPet1}
+                onSelectFighter={setSelectedPet1}
+                sortedOpponents={sortedOpponents}
+                fighterLevel={fighterLevel}
+                selectedOpponentKey={selectedOpponent}
+                onSelectOpponent={handleSelectOpponent}
+                selectedOpponentCardRef={selectedOpponentCardRef}
+                opponentsLoading={opponentsLoading}
+                onRefreshOpponents={handleRefreshOpponents}
+                onBattle={handleBattle}
+                battleDisabled={battleDisabled}
+                battleButtonLabel={battleButtonLabel}
+                onCancel={handleCancel}
+            />
 
             {hashHint && (
                 <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>
