@@ -6,7 +6,9 @@ import PetGallery from '@components/pet/collection/pet-gallery';
 import { isInteractionRoute } from '@constants/interactionRoutes';
 import './index.css';
 
-const MainPage: React.FC = () => {
+/** App shell shared by every page: layout chrome, the routed page (`<Outlet/>`),
+ * and the pet collection (hidden on full-page interaction routes). */
+const MainLayout: React.FC = () => {
   const location = useLocation();
   /** Full-page interaction routes hide the pet collection. */
   const isGalleryHidden = isInteractionRoute(location.pathname);
@@ -19,4 +21,4 @@ const MainPage: React.FC = () => {
   );
 };
 
-export default MainPage;
+export default MainLayout;
