@@ -1,3 +1,4 @@
+import { sanitizeName } from '@utils';
 import type { GenerateDialogueInput } from '../dialogue.types';
 import { renderPersona, type Persona } from './persona';
 
@@ -52,14 +53,6 @@ Rules:
 - If a <history> block is present, use the rivalry or recent form for callbacks (e.g. who leads the head-to-head, a win streak).
 - If a <recent_banter> block is present, it is what these two said to each other in earlier meetings — reference or escalate it for continuity, but do not repeat it verbatim.
 - Output only the conversation in the requested JSON format — no preamble, commentary, or markdown.`;
-
-/** Strip a user-supplied name down to safe, bounded text for an attribute slot. */
-function sanitizeName(name: string): string {
-    return name
-        .replace(/[<>"'\r\n\x00-\x1f]/g, ' ')
-        .trim()
-        .slice(0, 32) || 'Unnamed';
-}
 
 /** Build the per-battle user message. Names go in delimited slots, persona as content. */
 export function buildUserMessage(

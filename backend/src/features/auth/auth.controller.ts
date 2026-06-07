@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
+import { createNonce } from '@utils';
 import {
-    createNonce,
     issueToken,
     upsertUser,
     verifyWalletSignature,

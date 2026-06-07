@@ -1,3 +1,4 @@
+import { positiveMod } from '@utils';
 import type { PetPersonaInput } from '../dialogue.types';
 
 /**
@@ -41,7 +42,7 @@ export interface Persona {
 
 function dnaIndex(dna: string, mod: number): number {
     try {
-        return Number(((BigInt(dna) % BigInt(mod)) + BigInt(mod)) % BigInt(mod));
+        return positiveMod(BigInt(dna), mod);
     } catch {
         return 0;
     }
