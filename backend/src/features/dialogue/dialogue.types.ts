@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 import type {
-    DialogueRequestSchema,
+    ResultRequestSchema,
     PetPersonaSchema,
     TauntsRequestSchema,
     TurnSchema,
@@ -19,7 +19,7 @@ export type PetPersonaInput = z.infer<typeof PetPersonaSchema>;
  * the stable per-battle key (EVM: tx hash + log index; Solana: settle signature);
  * `winner` is the authoritative on-chain result the narrative is written toward.
  */
-export type GenerateDialogueInput = z.infer<typeof DialogueRequestSchema>;
+export type GenerateDialogueInput = z.infer<typeof ResultRequestSchema>;
 
 /**
  * Inputs to generate pre-fight taunts. No winner — the outcome is unknown yet.

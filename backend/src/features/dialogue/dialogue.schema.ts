@@ -43,7 +43,7 @@ export const PetPersonaSchema = z.object({
 });
 
 /** Body of POST /api/battle-dialogue/result (a settled battle). */
-export const DialogueRequestSchema = z.object({
+export const ResultRequestSchema = z.object({
     chain: ChainSchema,
     battleId: z.string().min(1),
     attacker: PetPersonaSchema,

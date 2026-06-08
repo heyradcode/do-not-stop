@@ -185,7 +185,7 @@ function ensureResultCoverage(
  * Throws on failure so the caller surfaces it; persists the taunts to the rolling
  * transcript so future bouts can call back to them.
  */
-export async function getOrGenerateTaunts(input: GenerateTauntsInput): Promise<TauntsResult> {
+export async function generateTaunts(input: GenerateTauntsInput): Promise<TauntsResult> {
     if (!env.hf.apiToken) {
         throw new Error('HF inference is not configured (HF_API_TOKEN unset)');
     }
