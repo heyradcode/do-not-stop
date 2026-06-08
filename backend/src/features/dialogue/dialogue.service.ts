@@ -5,7 +5,7 @@ import { getRecentBanter, recordConversation } from '@repositories/conversation.
 import { buildPersona, type Persona } from './prompting/persona';
 import { buildBanterContext, buildRivalryContext } from './prompting/context';
 import { fallbackDialogue } from './generation/fallback';
-import { generateDialogueViaHf, generateTauntsViaHf } from './generation/client';
+import { isHuggingFaceConfigured, generateDialogueViaHf, generateTauntsViaHf } from './generation/client';
 import {
     hasPregen,
     setPregen,
@@ -123,7 +123,7 @@ function startResultPregen(
     defender: Persona,
     taunts: DialogueTurn[],
 ): void {
-    if (!env.hf.apiToken) return;
+    if (!isHuggingFaceConfigured()) return;
 
     const key = matchupKey(input.chain, input.attacker.petId, input.defender.petId);
     if (hasPregen(key)) return;
@@ -186,35 +186,35 @@ function ensureResultCoverage(
  * transcript so future bouts can call back to them.
  */
 export async function generateTaunts(input: GenerateTauntsInput): Promise<TauntsResult> {
-    if (!env.hf.apiToken) {
+    if (!isHuggingFaceConfigured()) {
         throw new Error('HF inference is not configured (HF_API_TOKEN unset)');
     }
+
+    const { chain } = input;
+    const { petId: attackerId, name: attackerName } = input.attacker;
+    const { petId: defenderId, name: defenderName } = input.defender;
 
     const attacker = buildPersona(input.attacker);
     const defender = buildPersona(input.defender);
 
-    const attackerId = input.attacker.petId;
-    const defenderId = input.defender.petId;
     const [rivalry, banter] = await Promise.all([
-        buildRivalry(input.chain, attackerId, defenderId),
-        buildBanter(input.chain, attackerId, defenderId, undefined, true),
+        buildRivalry(chain, attackerId, defenderId),
+        buildBanter(chain, attackerId, defenderId, undefined, true),
     ]);
 
     const turns = await generateTauntsViaHf(
-        input.attacker.name,
-        input.defender.name,
+        attackerName,
+        defenderName,
         attacker,
         defender,
         rivalry,
         banter,
     );
 
-    await recordConversationSafe({
-        chain: input.chain,
-        attacker: attackerId,
-        defender: defenderId,
-        battleId: null,
-    }, turns);
+    await recordConversationSafe(
+        { chain, attacker: attackerId, defender: defenderId, battleId: null },
+        turns,
+    );
 
     // Kick off result pregen now, seeded with these taunts, so the result read
     // after the battle settles is served instantly and stays coherent with the
@@ -239,7 +239,7 @@ async function generateTurns(
     defender: Persona,
     opts?: { banterOverride?: string },
 ): Promise<{ turns: DialogueTurn[]; model: string }> {
-    if (env.hf.apiToken) {
+    if (isHuggingFaceConfigured()) {
         try {
             const attackerId = input.attacker.petId;
             const defenderId = input.defender.petId;

@@ -13,6 +13,11 @@ import {
 import { ResponseSchema, MAX_TURNS, TAUNT_TURNS } from '../dialogue.schema';
 import type { DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
+/** True when an HF token is configured (generation can run). */
+export function isHuggingFaceConfigured(): boolean {
+    return Boolean(env.hf.apiToken);
+}
+
 function hfModel() {
     // .chat() targets /v1/chat/completions — HF router uses chat completions, not the Responses API
     return createOpenAI({ apiKey: env.hf.apiToken ?? '', baseURL: env.hf.baseUrl }).chat(env.hf.model);
@@ -46,7 +51,9 @@ export async function generateDialogueViaHf(
     rivalry?: string,
     banter?: string,
 ): Promise<DialogueTurn[]> {
-    if (!env.hf.apiToken) throw new Error('HF_API_TOKEN not set');
+    if (!isHuggingFaceConfigured()) {
+        throw new Error('HF inference is not configured (HF_API_TOKEN unset)');
+    }
     return generate(
         `${SYSTEM_PROMPT}\n\n${JSON_FORMAT_INSTRUCTION}`,
         buildUserMessage(input, attacker, defender, rivalry, banter),
@@ -61,7 +68,9 @@ export async function generateTauntsViaHf(
     rivalry?: string,
     banter?: string,
 ): Promise<DialogueTurn[]> {
-    if (!env.hf.apiToken) throw new Error('HF_API_TOKEN not set');
+    if (!isHuggingFaceConfigured()) {
+        throw new Error('HF inference is not configured (HF_API_TOKEN unset)');
+    }
     const turns = await generate(
         `${TAUNT_SYSTEM_PROMPT}\n\n${TAUNT_JSON_FORMAT_INSTRUCTION}`,
         buildTauntUserMessage(attackerName, defenderName, attacker, defender, rivalry, banter),
