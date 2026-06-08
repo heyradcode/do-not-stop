@@ -25,6 +25,8 @@ export type BattleOverlayProps = {
     preResultStatus: string | null;
     tauntsLoading: boolean;
     tauntsTurns: DialogueTurn[];
+    /** Fires once the pre-fight taunts finish typing (gates the wallet prompt). */
+    onTauntsComplete: () => void;
     fighterName: string;
     opponentName: string;
 };
@@ -52,6 +54,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
     preResultStatus,
     tauntsLoading,
     tauntsTurns,
+    onTauntsComplete,
     fighterName,
     opponentName,
 }) => {
@@ -130,6 +133,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                                 isLoading={tauntsLoading}
                                 attackerName={fighterName}
                                 defenderName={opponentName}
+                                onComplete={onTauntsComplete}
                             />
                         ) : null}
                         {preResultStatus ? <p className="battle-result-message">{preResultStatus}</p> : null}

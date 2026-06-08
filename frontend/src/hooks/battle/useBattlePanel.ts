@@ -77,6 +77,9 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // dialogue when the taunts are requested (keyed by matchup), so nothing
     // hash-triggered is needed here — these are reused for the settle read.
     const battlePersonasRef = useRef<BattlePersonas | null>(null);
+    // Set when Start Battle is pressed: the wallet prompt is held until the
+    // pre-fight taunts finish playing (so it doesn't pop while they're typing).
+    const pendingBattleStartRef = useRef(false);
 
     const activeChainKind = chain.kind === 'none' ? null : chain.kind;
     const {
@@ -161,11 +164,15 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
         return true;
     }, [battle, opponent, selectedFighter, selectedPet1, outcome]);
 
-    // Start Battle: generate AI pre-fight taunts and fire the wallet in parallel.
-    // The overlay shows a loader until the taunts arrive, then types them out.
+    // Start Battle: generate AI pre-fight taunts, then hold the wallet prompt until
+    // they finish playing (handleTauntsComplete / the empty-taunts fallback effect
+    // fire startBattle). The overlay shows a loader until the taunts arrive, then
+    // types them out. The backend pregen still kicks off at taunt-request time, so
+    // the deferred wallet doesn't cost the result read any latency.
     const handleBattle = () => {
         battle.clearErrors();
         taunts.reset();
+        pendingBattleStartRef.current = false;
         setShowResult(false);
         outcome.resetOutcome();
         dialogue.resetResultDialogue();
@@ -182,13 +189,31 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
             defender: toDialoguePet(opponent),
         };
         battlePersonasRef.current = personas;
+        pendingBattleStartRef.current = true;
         taunts.generate({ chain: activeChainKind, ...personas });
-        startBattle();
     };
+
+    // The taunts finished typing — now prompt the wallet for the held battle.
+    const handleTauntsComplete = useCallback(() => {
+        if (!pendingBattleStartRef.current) return;
+        pendingBattleStartRef.current = false;
+        startBattle();
+    }, [startBattle]);
+
+    // Fallback: if the taunts errored / produced nothing, don't strand the battle —
+    // start it once generation settles empty (onComplete never fires with no turns).
+    useEffect(() => {
+        if (!pendingBattleStartRef.current) return;
+        if (!taunts.isLoading && taunts.turns.length === 0) {
+            pendingBattleStartRef.current = false;
+            startBattle();
+        }
+    }, [taunts.isLoading, taunts.turns.length, startBattle]);
 
     const handleCancel = () => {
         setShowResult(false);
         setOverlayOpen(false);
+        pendingBattleStartRef.current = false;
         taunts.reset();
         setValidationError(null);
         navigate(DASHBOARD_HOME);
@@ -280,6 +305,7 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
     useEffect(() => {
         if (!showResult && (battle.error || battle.receiptError)) {
             setOverlayOpen(false);
+            pendingBattleStartRef.current = false;
             taunts.reset();
         }
     }, [battle.error, battle.receiptError, showResult]);
@@ -392,6 +418,7 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
         preResultStatus,
         tauntsLoading: taunts.isLoading,
         tauntsTurns: taunts.turns,
+        onTauntsComplete: handleTauntsComplete,
         fighterName: selectedFighter?.name ?? 'Your pet',
         opponentName: opponent?.name ?? 'Opponent',
     };

@@ -29,20 +29,28 @@ const BattleDialogue: React.FC<BattleDialogueProps> = ({
     onCompleteRef.current = onComplete;
     const completedRef = useRef(false);
 
-    // Restart the animation whenever a new conversation arrives.
+    // Restart only when a *new* conversation begins — not when more turns stream
+    // into the current one. The first line stays stable as later lines arrive, so
+    // it identifies the conversation; appending more turns must not reset typing.
+    const conversationKey = turns.length > 0 ? `${turns[0].speaker}:${turns[0].text}` : '';
+    const keyRef = useRef(conversationKey);
     useEffect(() => {
+        if (keyRef.current === conversationKey) return;
+        keyRef.current = conversationKey;
         setShownTurns(0);
         setTyped('');
         completedRef.current = false;
-    }, [turns]);
+    }, [conversationKey]);
 
-    // Fire onComplete once, after every turn has finished animating.
+    // Fire onComplete once, after every turn has finished animating AND the stream
+    // has ended (!isLoading) — otherwise it could fire mid-stream when typing
+    // briefly catches up to the turns received so far.
     useEffect(() => {
-        if (turns.length > 0 && shownTurns >= turns.length && !completedRef.current) {
+        if (!isLoading && turns.length > 0 && shownTurns >= turns.length && !completedRef.current) {
             completedRef.current = true;
             onCompleteRef.current?.();
         }
-    }, [turns, shownTurns]);
+    }, [isLoading, turns, shownTurns]);
 
     useEffect(() => {
         const current = turns[shownTurns];
