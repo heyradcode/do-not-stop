@@ -115,7 +115,6 @@ function startResultPregen(
     if (!isHuggingFaceConfigured()) return;
 
     const key = matchupKey(input.chain, input.attacker.petId, input.defender.petId);
-    if (hasPregen(key)) return;
 
     // Seed the result generation with the taunts the player actually saw so the
     // reactions are a coherent continuation of them.
@@ -136,14 +135,22 @@ function startResultPregen(
         return { turns: ensureResultCoverage(turns, variantInput, attacker, defender), model };
     };
 
-    const promise: Promise<PregenDialogue> = (async () => {
-        const [attackerWins, defenderWins] = await Promise.all([variant('attacker'), variant('defender')]);
-        return { attackerWins: attackerWins.turns, defenderWins: defenderWins.turns, model: attackerWins.model };
+    // Fire-and-forget: claim the matchup slot, generate both outcomes, publish.
+    void (async () => {
+        const store = await getPregenStore();
+        if (!(await store.reserve(key))) return; // a preparation is already in flight/done
+        try {
+            const [attackerWins, defenderWins] = await Promise.all([variant('attacker'), variant('defender')]);
+            await store.fulfill(key, {
+                attackerWins: attackerWins.turns,
+                defenderWins: defenderWins.turns,
+                model: attackerWins.model,
+            });
+        } catch (err) {
+            console.error('[dialogue] result pregen failed:', err);
+            await store.release(key);
+        }
     })();
-
-    // Guard against an unhandled rejection if no result ever consumes this.
-    promise.catch(() => undefined);
-    setPregen(key, promise);
 }
 
 /**

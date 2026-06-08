@@ -92,12 +92,18 @@ class InMemoryPregenStore implements PregenStore {
     async take(key: string): Promise<PregenDialogue | null> {
         const entry = this.store.get(key);
         if (!entry) return null;
-        this.store.delete(key);
-        if (entry.expiresAt <= Date.now()) return null;
+        if (entry.expiresAt <= Date.now()) {
+            this.store.delete(key);
+            return null;
+        }
         try {
-            return await entry.promise; // resolves now, or when an in-flight gen finishes
+            // Keep the entry in the map while awaiting so a still-running fulfill()
+            // (which looks up by key) can resolve it; remove it once consumed.
+            return await entry.promise;
         } catch {
             return null;
+        } finally {
+            this.store.delete(key);
         }
     }
 
