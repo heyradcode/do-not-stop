@@ -5,14 +5,8 @@ import { getRecentBanter, recordConversation } from '@repositories/conversation.
 import { buildPersona, type Persona } from './prompting/persona';
 import { buildBanterContext, buildRivalryContext } from './prompting/context';
 import { fallbackDialogue } from './generation/fallback';
-import { isHuggingFaceConfigured, generateDialogueViaHf, generateTauntsViaHf } from './generation/client';
-import {
-    hasPregen,
-    setPregen,
-    matchupKey,
-    takePregen,
-    type PregenDialogue,
-} from './generation/pregen';
+import { isHuggingFaceConfigured, requestDialogue, requestTaunts, streamTaunts } from './generation/client';
+import { getPregenStore, matchupKey } from './generation/pregen';
 import type {
     Chain,
 } from '@typings/chain';
@@ -62,16 +56,11 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
 async function consumePregen(
     input: GenerateDialogueInput,
 ): Promise<{ turns: DialogueTurn[]; model: string } | null> {
-    const promise = takePregen(matchupKey(input.chain, input.attacker.petId, input.defender.petId));
-    if (!promise) return null;
-    try {
-        const pair = await promise;
-        const turns = input.winner === 'attacker' ? pair.attackerWins : pair.defenderWins;
-        return { turns, model: pair.model };
-    } catch (err) {
-        console.error('[dialogue] pre-generated consume failed, generating on demand:', err);
-        return null;
-    }
+    const store = await getPregenStore();
+    const pair = await store.take(matchupKey(input.chain, input.attacker.petId, input.defender.petId));
+    if (!pair) return null;
+    const turns = input.winner === 'attacker' ? pair.attackerWins : pair.defenderWins;
+    return { turns, model: pair.model };
 }
 
 /**
@@ -190,38 +179,104 @@ export async function generateTaunts(input: GenerateTauntsInput): Promise<Taunts
         throw new Error('HF inference is not configured (HF_API_TOKEN unset)');
     }
 
+    const ctx = await prepareTauntContext(input);
+    const turns = await requestTaunts(
+        ctx.attackerName,
+        ctx.defenderName,
+        ctx.attacker,
+        ctx.defender,
+        ctx.rivalry,
+        ctx.banter,
+    );
+
+    await persistTaunts(input, ctx, turns);
+    return { turns, model: env.hf.model };
+}
+
+/**
+ * Streaming variant of {@link generateTaunts}: yields the cumulative taunt list
+ * as each line finalizes (so the client can reveal them progressively), then runs
+ * the same side effects as the non-streaming path once the full set is in —
+ * persist the transcript and kick off result pregen.
+ */
+export async function* streamTauntsConversation(
+    input: GenerateTauntsInput,
+): AsyncGenerator<DialogueTurn[], void> {
+    if (!isHuggingFaceConfigured()) {
+        throw new Error('HF inference is not configured (HF_API_TOKEN unset)');
+    }
+
+    const ctx = await prepareTauntContext(input);
+    const stream = streamTaunts(
+        ctx.attackerName,
+        ctx.defenderName,
+        ctx.attacker,
+        ctx.defender,
+        ctx.rivalry,
+        ctx.banter,
+    );
+
+    let turns: DialogueTurn[] = [];
+    let step = await stream.next();
+    while (!step.done) {
+        turns = step.value;
+        yield turns;
+        step = await stream.next();
+    }
+    turns = step.value; // the complete, validated list
+    yield turns;
+
+    await persistTaunts(input, ctx, turns);
+}
+
+interface TauntContext {
+    attacker: Persona;
+    defender: Persona;
+    attackerName: string;
+    defenderName: string;
+    rivalry: string;
+    banter: string;
+}
+
+/** Shared pre-fight prep: personas plus rivalry/banter context for both fighters. */
+async function prepareTauntContext(input: GenerateTauntsInput): Promise<TauntContext> {
     const { chain } = input;
-    const { petId: attackerId, name: attackerName } = input.attacker;
-    const { petId: defenderId, name: defenderName } = input.defender;
-
-    const attacker = buildPersona(input.attacker);
-    const defender = buildPersona(input.defender);
-
+    const attackerId = input.attacker.petId;
+    const defenderId = input.defender.petId;
     const [rivalry, banter] = await Promise.all([
         buildRivalry(chain, attackerId, defenderId),
         buildBanter(chain, attackerId, defenderId, undefined, true),
     ]);
-
-    const turns = await generateTauntsViaHf(
-        attackerName,
-        defenderName,
-        attacker,
-        defender,
+    return {
+        attacker: buildPersona(input.attacker),
+        defender: buildPersona(input.defender),
+        attackerName: input.attacker.name,
+        defenderName: input.defender.name,
         rivalry,
         banter,
-    );
+    };
+}
 
-    await recordConversationSafe(
-        { chain, attacker: attackerId, defender: defenderId, battleId: null },
+/**
+ * Shared taunt side effects: append to the rolling transcript and kick off result
+ * pregen seeded with the taunts the player saw. Best-effort / fire-and-forget so
+ * they never block the response.
+ */
+async function persistTaunts(
+    input: GenerateTauntsInput,
+    ctx: TauntContext,
+    turns: DialogueTurn[],
+): Promise<void> {
+    await tryRecordConversation(
+        {
+            chain: input.chain,
+            attacker: input.attacker.petId,
+            defender: input.defender.petId,
+            battleId: null,
+        },
         turns,
     );
-
-    // Kick off result pregen now, seeded with these taunts, so the result read
-    // after the battle settles is served instantly and stays coherent with the
-    // banter the player saw. Fire-and-forget — failures fall back to on-demand.
-    startResultPregen(input, attacker, defender, turns);
-
-    return { turns, model: env.hf.model };
+    startResultPregen(input, ctx.attacker, ctx.defender, turns);
 }
 
 /**
@@ -250,7 +305,7 @@ async function generateTurns(
                     ? Promise.resolve(opts.banterOverride)
                     : buildBanter(input.chain, attackerId, defenderId, excludeBattleId),
             ]);
-            const turns = await generateDialogueViaHf(input, attacker, defender, rivalry, banter);
+            const turns = await requestDialogue(input, attacker, defender, rivalry, banter);
             return { turns, model: env.hf.model };
         } catch (err) {
             console.error('[dialogue] HF generation failed, using fallback:', err);
@@ -262,7 +317,7 @@ async function generateTurns(
 /** Append only the result-phase lines to the transcript (taunts came pre-fight). */
 async function recordResultLines(input: GenerateDialogueInput, turns: DialogueTurn[]): Promise<void> {
     const resultTurns = turns.filter((t) => t.phase === 'result');
-    await recordConversationSafe(
+    await tryRecordConversation(
         {
             chain: input.chain,
             attacker: input.attacker.petId,
@@ -274,7 +329,7 @@ async function recordResultLines(input: GenerateDialogueInput, turns: DialogueTu
 }
 
 /** Persist transcript lines, swallowing failures so generation is never blocked. */
-async function recordConversationSafe(
+async function tryRecordConversation(
     meta: { chain: Chain; attacker: string; defender: string; battleId?: string | null },
     turns: DialogueTurn[],
 ): Promise<void> {

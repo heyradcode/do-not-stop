@@ -59,6 +59,15 @@ export const env = {
         /** Base URL for the OpenAI-compatible inference endpoint (no /chat/completions suffix). */
         baseUrl: process.env.HF_API_URL?.trim().replace(/\/chat\/completions$/, '') || 'https://router.huggingface.co/v1',
     },
+
+    /**
+     * Optional Redis for the battle-dialogue pregen store. Unset = in-process Map
+     * (fine single-instance). Set it to survive restarts / scale to multiple
+     * instances — also run `pnpm add ioredis`, which is imported only when set.
+     */
+    redis: {
+        url: process.env.REDIS_URL?.trim() || undefined,
+    },
 } as const;
 
 // In production the webhook must not be left open: if Solana indexing is on, the

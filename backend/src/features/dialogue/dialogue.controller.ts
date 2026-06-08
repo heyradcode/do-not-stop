@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { getOrGenerateDialogue, generateTaunts } from './dialogue.service';
+import { getOrGenerateDialogue, generateTaunts, streamTauntsConversation } from './dialogue.service';
 import { ResultRequestSchema, TauntsRequestSchema } from './dialogue.schema';
 
 /**
@@ -21,6 +21,39 @@ export async function generateBattleTaunts(req: Request, res: Response): Promise
     } catch (err) {
         console.error('[dialogue] taunt generation failed:', err);
         res.status(502).json({ error: 'Failed to generate battle taunts' });
+    }
+}
+
+/**
+ * POST /api/battle-dialogue/taunts/stream — same as /taunts but streams the lines
+ * as they generate, one NDJSON object ({ turns }) per line, so the client can
+ * reveal them progressively. Clients that can't read a streamed body (e.g. React
+ * Native) get the same NDJSON in one shot and use the final line. Errors before
+ * the first chunk return 502; mid-stream failures end the (already-200) response.
+ */
+export async function streamBattleTaunts(req: Request, res: Response): Promise<void> {
+    const tauntsRequest = TauntsRequestSchema.safeParse(req.body);
+    if (!tauntsRequest.success) {
+        res.status(400).json({ error: 'Invalid battle taunts request' });
+        return;
+    }
+
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('X-Accel-Buffering', 'no'); // don't let a proxy buffer the stream
+
+    try {
+        for await (const turns of streamTauntsConversation(tauntsRequest.data)) {
+            res.write(`${JSON.stringify({ turns })}\n`);
+        }
+        res.end();
+    } catch (err) {
+        console.error('[dialogue] taunt streaming failed:', err);
+        if (res.headersSent) {
+            res.end();
+        } else {
+            res.status(502).json({ error: 'Failed to generate battle taunts' });
+        }
     }
 }
 

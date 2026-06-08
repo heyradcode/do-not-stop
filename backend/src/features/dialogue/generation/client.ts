@@ -1,4 +1,4 @@
-import { generateObject } from 'ai';
+import { generateObject, streamObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { env } from '@config/env';
 import type { Persona } from '../prompting/persona';
@@ -10,7 +10,7 @@ import {
     buildUserMessage,
     buildTauntUserMessage,
 } from '../prompting/prompt';
-import { ResponseSchema, MAX_TURNS, TAUNT_TURNS } from '../dialogue.schema';
+import { ResponseSchema, TurnSchema, MAX_TURNS, TAUNT_TURNS } from '../dialogue.schema';
 import type { DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
 /** True when an HF token is configured (generation can run). */
@@ -44,7 +44,7 @@ async function generate(system: string, user: string): Promise<DialogueTurn[]> {
     return result.turns.slice(0, MAX_TURNS) as DialogueTurn[];
 }
 
-export async function generateDialogueViaHf(
+export async function requestDialogue(
     input: GenerateDialogueInput,
     attacker: Persona,
     defender: Persona,
@@ -60,7 +60,7 @@ export async function generateDialogueViaHf(
     );
 }
 
-export async function generateTauntsViaHf(
+export async function requestTaunts(
     attackerName: string,
     defenderName: string,
     attacker: Persona,
@@ -68,15 +68,70 @@ export async function generateTauntsViaHf(
     rivalry?: string,
     banter?: string,
 ): Promise<DialogueTurn[]> {
-    if (!isHuggingFaceConfigured()) {
-        throw new Error('HF inference is not configured (HF_API_TOKEN unset)');
-    }
     const turns = await generate(
         `${TAUNT_SYSTEM_PROMPT}\n\n${TAUNT_JSON_FORMAT_INSTRUCTION}`,
         buildTauntUserMessage(attackerName, defenderName, attacker, defender, rivalry, banter),
     );
-    // Pre-fight: drop any result-phase line the model emitted anyway (never
-    // relabel result text as a taunt — that leaks the outcome), then cap to a
-    // tight 4-message back-and-forth even if the model over-produced.
-    return turns.filter((t) => t.phase !== 'result').slice(0, TAUNT_TURNS);
+    return finalizeTaunts(turns);
+}
+
+/** Pull the (possibly partial) turns array out of a streamed JSON object. */
+function readTurns(object: unknown): unknown[] {
+    const turns = (object as { turns?: unknown })?.turns;
+    return Array.isArray(turns) ? turns : [];
+}
+
+/**
+ * Normalize raw model turns into displayable taunts: validate each turn, drop
+ * any result-phase line (never leak the outcome into pre-fight banter), then cap
+ * to a tight back-and-forth. Skips turns that don't yet parse (still streaming).
+ */
+function finalizeTaunts(rawTurns: unknown[]): DialogueTurn[] {
+    const parsed: DialogueTurn[] = [];
+    for (const turn of rawTurns) {
+        const result = TurnSchema.safeParse(turn);
+        if (result.success) parsed.push(result.data as DialogueTurn);
+    }
+    return parsed.filter((t) => t.phase !== 'result').slice(0, TAUNT_TURNS);
+}
+
+/**
+ * Streaming variant of {@link requestTaunts}: yields the cumulative, normalized
+ * taunt list each time a new turn finalizes, so the client can reveal lines as
+ * they generate. Returns the complete list when the stream ends.
+ *
+ * A turn is "final" once a later one has started (the model is mid-text on the
+ * last array element), so during the loop we normalize everything but the tail;
+ * the closing validated object fills in that last turn.
+ */
+export async function* streamTaunts(
+    attackerName: string,
+    defenderName: string,
+    attacker: Persona,
+    defender: Persona,
+    rivalry?: string,
+    banter?: string,
+): AsyncGenerator<DialogueTurn[], DialogueTurn[]> {
+    const result = streamObject({
+        model: hfModel(),
+        output: 'no-schema',
+        maxOutputTokens: 1024,
+        temperature: 0.8,
+        maxRetries: 1,
+        system: `${TAUNT_SYSTEM_PROMPT}\n\n${TAUNT_JSON_FORMAT_INSTRUCTION}`,
+        prompt: buildTauntUserMessage(attackerName, defenderName, attacker, defender, rivalry, banter),
+    });
+
+    let emitted = 0;
+    for await (const partial of result.partialObjectStream) {
+        const raw = readTurns(partial);
+        // The last element may still be streaming its text — only settle the rest.
+        const settled = finalizeTaunts(raw.slice(0, Math.max(0, raw.length - 1)));
+        if (settled.length > emitted) {
+            emitted = settled.length;
+            yield settled;
+        }
+    }
+
+    return finalizeTaunts(ResponseSchema.parse(await result.object).turns);
 }
