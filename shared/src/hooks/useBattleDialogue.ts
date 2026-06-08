@@ -43,7 +43,7 @@ interface DialogueResponse {
 
 /**
  * Fetch (or lazily generate) the conversation for a settled battle via
- * `POST /api/battle-dialogue`. The endpoint is idempotent and keyed by
+ * `POST /api/battle-dialogue/result`. The endpoint is idempotent and keyed by
  * `battleId`, so re-mounts return the same stored conversation. Requires an
  * authenticated session (the route is JWT-gated).
  */
@@ -62,7 +62,7 @@ export function useBattleDialogue(options: UseBattleDialogueOptions) {
         gcTime: Infinity,
         retry: false,
         queryFn: async () => {
-            const { data } = await apiClient.post<DialogueResponse>('/api/battle-dialogue', {
+            const { data } = await apiClient.post<DialogueResponse>('/api/battle-dialogue/result', {
                 chain,
                 battleId,
                 attacker,

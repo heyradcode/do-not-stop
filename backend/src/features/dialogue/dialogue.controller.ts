@@ -73,10 +73,10 @@ function parseTauntInput(body: unknown): GenerateTauntsInput | null {
 }
 
 /**
- * POST /api/battle-dialogue — idempotent: first call generates and stores the
+ * POST /api/battle-dialogue/result — idempotent: first call generates and stores the
  * conversation, later calls for the same battleId return the cached one.
  */
-export async function generateBattleDialogue(req: Request, res: Response): Promise<void> {
+export async function resolveBattleDialogue(req: Request, res: Response): Promise<void> {
     const input = parseInput(req.body);
     if (!input) {
         res.status(400).json({ error: 'Invalid battle dialogue request' });

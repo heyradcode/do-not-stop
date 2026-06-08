@@ -14,4 +14,4 @@ export type {
     DialogueResult,
 } from './dialogue.types';
 
-export { generateBattleDialogue, generateBattleTaunts } from './dialogue.controller';
+export { resolveBattleDialogue, generateBattleTaunts } from './dialogue.controller';
