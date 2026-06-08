@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SUPPORTED_CHAINS } from '@typings/chain';
 
 export const MAX_TURNS = 8;
 export const MAX_TURN_CHARS = 140;
@@ -25,4 +26,36 @@ export const ResponseSchema = z.object({
     // whole (otherwise valid) reply — the taunt path has no fallback, so a hard
     // max would surface every over-production as a 502.
     turns: z.array(TurnSchema).min(1),
+});
+
+const ChainSchema = z.enum(SUPPORTED_CHAINS);
+const SpeakerSchema = z.enum(['attacker', 'defender']);
+
+/** Minimal pet attributes a request must carry to build a persona. */
+export const PetPersonaSchema = z.object({
+    petId: z.string(),
+    name: z.string(),
+    level: z.number(),
+    rarity: z.number(),
+    dna: z.string(),
+    winCount: z.number(),
+    lossCount: z.number(),
+});
+
+/** Body of POST /api/battle-dialogue/result (a settled battle). */
+export const DialogueRequestSchema = z.object({
+    chain: ChainSchema,
+    battleId: z.string().min(1),
+    attacker: PetPersonaSchema,
+    defender: PetPersonaSchema,
+    winner: SpeakerSchema,
+    // Lenient like the rest of the body: a non-boolean is dropped, not rejected.
+    leveledUp: z.boolean().optional().catch(undefined),
+});
+
+/** Body of POST /api/battle-dialogue/taunts (no winner — fight hasn't happened). */
+export const TauntsRequestSchema = z.object({
+    chain: ChainSchema,
+    attacker: PetPersonaSchema,
+    defender: PetPersonaSchema,
 });

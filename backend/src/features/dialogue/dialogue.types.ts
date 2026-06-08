@@ -1,6 +1,10 @@
 import type { z } from 'zod';
-import type { Chain } from '@typings/chain';
-import type { TurnSchema } from './dialogue.schema';
+import type {
+    DialogueRequestSchema,
+    PetPersonaSchema,
+    TauntsRequestSchema,
+    TurnSchema,
+} from './dialogue.schema';
 
 /** One line of the battle conversation. Shape is derived from TurnSchema. */
 export type DialogueTurn = z.infer<typeof TurnSchema>;
@@ -8,39 +12,21 @@ export type DialogueSpeaker = DialogueTurn['speaker'];
 export type DialoguePhase = DialogueTurn['phase'];
 
 /** Minimal pet attributes used to build a persona (subset of the roster row). */
-export interface PetPersonaInput {
-    petId: string;
-    name: string;
-    level: number;
-    rarity: number;
-    dna: string;
-    winCount: number;
-    lossCount: number;
-}
+export type PetPersonaInput = z.infer<typeof PetPersonaSchema>;
 
-/** Everything needed to generate (or look up) a battle's dialogue. */
-export interface GenerateDialogueInput {
-    chain: Chain;
-    /** Stable per-battle key — EVM: tx hash + log index; Solana: settle signature. */
-    battleId: string;
-    attacker: PetPersonaInput;
-    defender: PetPersonaInput;
-    /** Authoritative on-chain result; the narrative is written toward it. */
-    winner: DialogueSpeaker;
-    /** Whether the winner leveled up from this battle (flavor for the result line). */
-    leveledUp?: boolean;
-}
+/**
+ * Everything needed to generate (or look up) a battle's dialogue. `battleId` is
+ * the stable per-battle key (EVM: tx hash + log index; Solana: settle signature);
+ * `winner` is the authoritative on-chain result the narrative is written toward.
+ */
+export type GenerateDialogueInput = z.infer<typeof DialogueRequestSchema>;
 
 /**
  * Inputs to generate pre-fight taunts. No winner — the outcome is unknown yet.
  * Generating taunts also kicks off result pregen for both outcomes (keyed by
  * this matchup), so no separate prepare call is needed.
  */
-export interface GenerateTauntsInput {
-    chain: Chain;
-    attacker: PetPersonaInput;
-    defender: PetPersonaInput;
-}
+export type GenerateTauntsInput = z.infer<typeof TauntsRequestSchema>;
 
 /** Generated pre-fight taunts plus provenance. */
 export interface TauntsResult {
