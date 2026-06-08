@@ -76,7 +76,7 @@ function parseTauntInput(body: unknown): GenerateTauntsInput | null {
  * POST /api/battle-dialogue — idempotent: first call generates and stores the
  * conversation, later calls for the same battleId return the cached one.
  */
-export async function postBattleDialogue(req: Request, res: Response): Promise<void> {
+export async function generateBattleDialogue(req: Request, res: Response): Promise<void> {
     const input = parseInput(req.body);
     if (!input) {
         res.status(400).json({ error: 'Invalid battle dialogue request' });
@@ -98,7 +98,7 @@ export async function postBattleDialogue(req: Request, res: Response): Promise<v
  * the banter is unavailable. Side effect: kicks off result pregen for both
  * outcomes so the post-battle result read is served instantly.
  */
-export async function postBattleTaunts(req: Request, res: Response): Promise<void> {
+export async function generateBattleTaunts(req: Request, res: Response): Promise<void> {
     const input = parseTauntInput(req.body);
     if (!input) {
         res.status(400).json({ error: 'Invalid battle taunts request' });
