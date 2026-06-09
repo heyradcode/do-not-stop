@@ -13,7 +13,6 @@ export interface PetListResult {
     isLoading: boolean;
     error: Error | null;
     refetch: () => void;
-    isSupported: true;
 }
 
 export function usePetList(): PetListResult {
@@ -54,7 +53,6 @@ export function usePetList(): PetListResult {
                 evmResult.refetchPetIds();
                 void evmResult.refetchPetsData();
             },
-            isSupported: true,
         };
     }
 
@@ -66,7 +64,6 @@ export function usePetList(): PetListResult {
             refetch: () => {
                 void solanaQuery.refetch();
             },
-            isSupported: true,
         };
     }
 
@@ -75,6 +72,5 @@ export function usePetList(): PetListResult {
         isLoading: false,
         error: null,
         refetch: () => undefined,
-        isSupported: true,
     };
 }

@@ -6,7 +6,7 @@ import { useWatchPetsContract } from './chains/ethereum/useWatchPetsContract';
 import { usePetActions } from './chains/solana/usePetActions';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
-import { FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
+import { NoActiveChainError } from '../utils/pets';
 
 export interface BreedPetsArgs {
     parentId1: string;
@@ -117,7 +117,6 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
 
     const mutate = async (args: BreedPetsArgs) => {
         if (chain.kind === 'none') throw new NoActiveChainError('breed');
-        if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'breed');
 
         setLocalError(null);
         setReceiptError(null);
@@ -154,7 +153,6 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
     }, []);
 
     return {
-        isSupported,
         mutate,
         isPending,
         isAwaitingFulfillment,

@@ -55,18 +55,6 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
         );
     }
 
-    if (!featureSupported) {
-        return (
-            <StateCard
-                containerClassName="interaction-standalone"
-                title={<><Icon as={header.Icon} tone={Tones.Violet} />{header.label}</>}
-                sub={header.sub}
-                description={`This action is not yet supported on ${chain.kind === 'solana' ? 'Solana' : 'this chain'}.`}
-                helpText="Switch to a supported wallet/chain or check back later."
-            />
-        );
-    }
-
     if (minPets > 1 && pets.length < minPets) {
         return (
             <StateCard

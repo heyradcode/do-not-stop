@@ -110,7 +110,6 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
     }, [evmHook.resetWrite]);
 
     return {
-        isSupported,
         mutate,
         isPending,
         isEvmConfirming,

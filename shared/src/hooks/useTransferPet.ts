@@ -63,5 +63,5 @@ export function useTransferPet(): PetMutationResult<TransferPetArgs> {
             ? (evmHook.hash as string | undefined)
             : (solanaActions.transferPet.data as string | undefined);
 
-    return { isSupported, mutate, isPending, error, reset, hash };
+    return { mutate, isPending, error, reset, hash };
 }

@@ -106,7 +106,6 @@ const PetInteractions: React.FC = () => {
             )[0]
             : undefined;
     const availableBattles = Math.min(3, readyPets.length > 0 ? 3 : 0);
-    const breedDisabledHint = !breedSupported ? 'Breeding unavailable on this chain' : undefined;
     // Battle only needs one ready pet — the opponent comes from the on-chain roster.
     const battleDisabledHint = readyPets.length < 1 ? 'You need a ready pet to battle' : undefined;
 
@@ -136,10 +135,9 @@ const PetInteractions: React.FC = () => {
                             type="button"
                             onClick={() => navigate(BREED_PATH)}
                             className="lab-breed-button"
-                            disabled={!breedSupported || readyPets.length < 2}
-                            title={breedDisabledHint}
+                            disabled={readyPets.length < 2}
                         >
-                            {breedSupported ? 'Start breeding' : 'Breeding unavailable'}
+                            Start breeding
                         </button>
                     </div>
                     <div className="battle-arena-card">
@@ -170,7 +168,7 @@ const PetInteractions: React.FC = () => {
                             type="button"
                             onClick={() => navigate(BATTLE_PATH)}
                             className="lab-breed-button start-button"
-                            disabled={!battleSupported || readyPets.length < 1}
+                            disabled={readyPets.length < 1}
                             title={battleDisabledHint}
                         >
                             Start battle
@@ -190,7 +188,7 @@ const PetInteractions: React.FC = () => {
                             type="button"
                             onClick={() => navigate(LEVELUP_PATH)}
                             className="lab-breed-button levelup-button"
-                            disabled={!levelUpSupported || readyPets.length < 1}
+                            disabled={readyPets.length < 1}
                         >
                             Open level up
                         </button>
@@ -209,7 +207,7 @@ const PetInteractions: React.FC = () => {
                             type="button"
                             onClick={() => navigate(RENAME_PATH)}
                             className="lab-breed-button changename-button"
-                            disabled={!renameSupported || readyPets.length < 1}
+                            disabled={readyPets.length < 1}
                         >
                             Open rename
                         </button>
