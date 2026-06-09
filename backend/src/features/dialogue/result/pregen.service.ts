@@ -40,7 +40,7 @@ export function startResultPregen(
     // reactions are a coherent continuation of them.
     const banter = buildBanterContext(taunts);
 
-    const variant = async (winner: DialogueSpeaker): Promise<{ turns: DialogueTurn[]; model: string }> => {
+    const generateVariant = async (winner: DialogueSpeaker) => {
         const variantInput: GenerateDialogueInput = {
             chain: input.chain,
             // No tx hash at pregen time; battleId is only used to exclude the
@@ -51,16 +51,21 @@ export function startResultPregen(
             winner,
             leveledUp: false,
         };
-        const { turns, model } = await generateTurns(variantInput, attacker, defender, { banterOverride: banter });
+        const { turns, model } = await generateTurns(variantInput, attacker, defender, {
+            banterOverride: banter,
+        });
         return { turns: ensureResultCoverage(turns, variantInput, attacker, defender), model };
     };
 
-    // Fire-and-forget: claim the matchup slot, generate both outcomes, publish.
-    void (async () => {
+    // Claim the matchup slot, generate both outcomes, publish. Fire-and-forget.
+    const prepare = async (): Promise<void> => {
         const store = await getPregenStore();
         if (!(await store.reserve(key))) return; // a preparation is already in flight/done
         try {
-            const [attackerWins, defenderWins] = await Promise.all([variant('attacker'), variant('defender')]);
+            const [attackerWins, defenderWins] = await Promise.all([
+                generateVariant('attacker'),
+                generateVariant('defender'),
+            ]);
             await store.fulfill(key, {
                 attackerWins: attackerWins.turns,
                 defenderWins: defenderWins.turns,
@@ -70,5 +75,7 @@ export function startResultPregen(
             console.error('[dialogue] result pregen failed:', err);
             await store.release(key);
         }
-    })();
+    };
+
+    void prepare();
 }
