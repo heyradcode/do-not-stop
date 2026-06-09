@@ -1,6 +1,5 @@
 import type { Persona } from '../llm/persona';
 import { buildBanterContext } from '../llm/render';
-import { isHuggingFaceConfigured } from '../llm/client';
 import { generateTurns, ensureResultCoverage } from './turns';
 import { getPregenStore, matchupKey } from './pregen.store';
 import type {

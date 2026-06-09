@@ -26,7 +26,6 @@ export async function generateTaunts(input: GenerateTauntsInput): Promise<Taunts
         ctx.banter,
     );
 
-    startResultPregen(input, ctx.attacker, ctx.defender, turns);
     await persistTaunts(input, ctx, turns);
     return { turns, model: env.hf.model };
 }
@@ -114,4 +113,5 @@ async function persistTaunts(
         },
         turns,
     );
+    startResultPregen(input, ctx.attacker, ctx.defender, turns);
 }
