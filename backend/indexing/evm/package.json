@@ -6,7 +6,7 @@
     "configure": "node scripts/prepare-subgraph.mjs",
     "codegen": "graph codegen",
     "build": "pnpm configure && graph codegen && graph build",
-    "deploy:studio": "graph deploy cryptopets --node https://api.studio.thegraph.com/deploy/ --ipfs https://ipfs.thegraph.com/api/v0"
+    "deploy:studio": "graph deploy cryptopets"
   },
   "devDependencies": {
     "@graphprotocol/graph-cli": "0.98.1",

@@ -19,7 +19,7 @@ import { createPublicClient, http } from 'viem';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SUBGRAPH_DIR = path.join(__dirname, '..');
-const CONTRACTS_DIR = path.join(SUBGRAPH_DIR, '..', '..', '..', '..', 'contracts', 'ethereum');
+const CONTRACTS_DIR = path.join(SUBGRAPH_DIR, '..', '..', '..', 'contracts', 'ethereum');
 const ARTIFACTS = path.join(CONTRACTS_DIR, 'artifacts', 'src');
 
 loadEnvFile(path.join(CONTRACTS_DIR, '.env'));
