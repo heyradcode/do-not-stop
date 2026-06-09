@@ -63,10 +63,12 @@ async function prepareTauntContext(input: GenerateTauntsInput): Promise<TauntCon
     const { chain } = input;
     const attackerId = input.attacker.petId;
     const defenderId = input.defender.petId;
+
     const [rivalry, banter] = await Promise.all([
         buildRivalry(chain, attackerId, defenderId),
         buildBanter(chain, attackerId, defenderId, undefined, true),
     ]);
+
     return {
         attacker: buildPersona(input.attacker),
         defender: buildPersona(input.defender),

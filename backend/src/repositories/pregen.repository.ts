@@ -1,6 +1,9 @@
-import type { Chain } from '@typings/chain';
-import { env } from '@config/env';
-import type { DialogueTurn } from '../dialogue.types';
+import { getRedis } from '@config/redis';
+import {
+    PREGEN_TTL_MS,
+    PREGEN_TTL_SEC,
+    type PregenDialogue,
+} from '@features/dialogue/result/pregen.types';
 
 /**
  * Store for pre-generated battle dialogue.
@@ -20,17 +23,9 @@ import type { DialogueTurn } from '../dialogue.types';
  *    It can only hold resolved values, so a still-generating pregen reads as a
  *    miss (the caller then generates on demand) rather than awaiting it.
  *
- * `ioredis` is an OPTIONAL dependency, imported dynamically only when REDIS_URL is
- * configured — run `pnpm add ioredis` when you provision Redis. Without it (or on
- * import failure) we log and fall back to the in-memory store.
+ * The Redis connection is provided by `@config/redis` (optional `ioredis` dep);
+ * when it's unavailable we fall back to the in-memory store.
  */
-
-/** Both possible outcomes for one matchup, plus the model that produced them. */
-export interface PregenDialogue {
-    attackerWins: DialogueTurn[];
-    defenderWins: DialogueTurn[];
-    model: string;
-}
 
 /**
  * Reserve → fulfill → take lifecycle:
@@ -45,18 +40,6 @@ export interface PregenStore {
     fulfill(key: string, value: PregenDialogue): Promise<void>;
     take(key: string): Promise<PregenDialogue | null>;
     release(key: string): Promise<void>;
-}
-
-/**
- * How long a prepared pair lives before eviction. Generation starts at taunt time
- * (pre-wallet), so give it 5 minutes to cover slow VRF settles.
- */
-const TTL_MS = 300_000;
-const TTL_SEC = TTL_MS / 1000;
-
-/** Key a prepared pair by the matchup — the tx hash isn't known at pregen time. */
-export function matchupKey(chain: Chain, attacker: string, defender: string): string {
-    return `${chain}:${attacker}:${defender}`;
 }
 
 interface Deferred {
@@ -81,7 +64,7 @@ class InMemoryPregenStore implements PregenStore {
         });
         // Nothing may consume this (battle abandoned) — swallow to avoid a warning.
         promise.catch(() => undefined);
-        this.store.set(key, { promise, resolve, reject, expiresAt: Date.now() + TTL_MS });
+        this.store.set(key, { promise, resolve, reject, expiresAt: Date.now() + PREGEN_TTL_MS });
         return true;
     }
 
@@ -123,27 +106,20 @@ class InMemoryPregenStore implements PregenStore {
     }
 }
 
-/** Minimal slice of the ioredis client we use (typed locally so the dep is optional). */
-interface RedisLike {
-    get(key: string): Promise<string | null>;
-    set(key: string, value: string, ...args: unknown[]): Promise<unknown>;
-    del(key: string): Promise<unknown>;
-}
-
 const PENDING = '__pending__';
 
 /** Cross-instance store: resolved values only, with a NX lock for dedup. */
 class RedisPregenStore implements PregenStore {
-    constructor(private readonly client: RedisLike) {}
+    constructor(private readonly client: RedisClient) {}
 
     async reserve(key: string): Promise<boolean> {
         // SET key PENDING EX ttl NX → 'OK' only if we acquired the (absent) slot.
-        const res = await this.client.set(key, PENDING, 'EX', TTL_SEC, 'NX');
+        const res = await this.client.set(key, PENDING, 'EX', PREGEN_TTL_SEC, 'NX');
         return res === 'OK';
     }
 
     async fulfill(key: string, value: PregenDialogue): Promise<void> {
-        await this.client.set(key, JSON.stringify(value), 'EX', TTL_SEC);
+        await this.client.set(key, JSON.stringify(value), 'EX', PREGEN_TTL_SEC);
     }
 
     async take(key: string): Promise<PregenDialogue | null> {
@@ -162,24 +138,13 @@ class RedisPregenStore implements PregenStore {
     }
 }
 
+type RedisClient = NonNullable<Awaited<ReturnType<typeof getRedis>>>;
+
 let storePromise: Promise<PregenStore> | null = null;
 
 async function createStore(): Promise<PregenStore> {
-    if (!env.redis.url) return new InMemoryPregenStore();
-    try {
-        // Non-literal specifier so tsc doesn't require the optional module at build.
-        const pkg: string = 'ioredis';
-        const mod = (await import(pkg)) as { default: new (url: string) => RedisLike };
-        const Redis = mod.default;
-        return new RedisPregenStore(new Redis(env.redis.url));
-    } catch (err) {
-        console.error(
-            '[dialogue] REDIS_URL is set but ioredis is unavailable; using in-memory pregen. ' +
-                'Run `pnpm add ioredis` to enable the Redis-backed store.',
-            err,
-        );
-        return new InMemoryPregenStore();
-    }
+    const client = await getRedis();
+    return client ? new RedisPregenStore(client) : new InMemoryPregenStore();
 }
 
 /** Lazily-built singleton store, chosen by config (Redis when REDIS_URL is set). */

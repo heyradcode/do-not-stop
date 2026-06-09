@@ -41,11 +41,16 @@ dialogue/
     result.service.ts      # getOrGenerateDialogue (the settled-battle read)
     pregen.service.ts      # startResultPregen (warms both outcomes early)
     turns.ts               # generateTurns (AI-or-fallback) + ensureResultCoverage
-    pregen.store.ts        # the pregen store (in-memory Map, or Redis)
+    pregen.types.ts        # pregen shapes/policy: PregenDialogue, matchupKey, TTL
 ```
+
+The pregen store itself (in-memory Map, or Redis) lives in the repositories layer
+at `@repositories/pregen.repository`; its Redis connection comes from `@config/redis`.
 
 Dependency direction (acyclic): `controller → {taunt, result} → {llm, context, recording}`;
 `context → llm/render`. `llm/` depends on nothing internal — it's a swappable boundary.
+The result use-cases depend on `@repositories/pregen.repository` for the store, which
+in turn reads `pregen.types` (a leaf — types only, no back-edge to the feature).
 
 ## End‑to‑end flow
 
@@ -57,7 +62,7 @@ sequenceDiagram
     participant R as result.service
     participant LLM as llm/client
     participant DB as Postgres
-    participant S as pregen.store
+    participant S as pregen.repository
 
     Note over C: Player clicks "Start Battle"
     C->>T: POST /taunts/stream {chain, attacker, defender}
