@@ -34,8 +34,6 @@ export function startResultPregen(
     defender: Persona,
     taunts: DialogueTurn[],
 ): void {
-    if (!isHuggingFaceConfigured()) return;
-
     const key = matchupKey(input.chain, input.attacker.petId, input.defender.petId);
 
     // Seed the result generation with the taunts the player actually saw so the
