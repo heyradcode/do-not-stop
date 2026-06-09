@@ -29,14 +29,22 @@ export async function* streamTauntsConversation(
     );
 
     let turns: DialogueTurn[] = [];
+    let lastYieldedLen = 0;
     let step = await stream.next();
-    while (!step.done) {
+
+    for (; !step.done; step = await stream.next()) {
         turns = step.value;
+        lastYieldedLen = turns.length;
         yield turns;
-        step = await stream.next();
     }
-    turns = step.value; // the complete, validated list
-    yield turns;
+    // The return value is the complete, validated list. While streaming, the
+    // in-progress final turn is held back, so this is normally one turn longer
+    // than the last snapshot — emit it. But if the model over-produced turns the
+    // last snapshot can already be the full set; skip the redundant trailing line.
+    turns = step.value;
+    if (turns.length !== lastYieldedLen) {
+        yield turns;
+    }
 
     await persistTaunts(input, ctx, turns);
 }
