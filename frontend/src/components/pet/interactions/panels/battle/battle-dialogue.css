@@ -7,11 +7,11 @@
     max-height: 360px;
     overflow-y: auto;
     padding: 4px;
-}
 
-.battle-dialogue.is-loading {
-    align-items: center;
-    justify-content: center;
+    &.is-loading {
+        align-items: center;
+        justify-content: center;
+    }
 }
 
 .battle-dialogue-thinking {
@@ -19,6 +19,10 @@
     color: rgb(195 210 255 / 70%);
     font-style: italic;
     animation: battle-dialogue-pulse 1.4s ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
 }
 
 @keyframes battle-dialogue-pulse {
@@ -36,23 +40,35 @@
     border: 1px solid var(--neon-border-soft);
     background: rgb(5 13 30 / 78%);
     animation: battle-dialogue-in 0.25s ease;
-}
 
-/* Attacker (your pet) on the left, defender (opponent) on the right. */
-.battle-dialogue-line.is-attacker {
-    align-self: flex-start;
-    border-color: rgb(0 255 157 / 36%);
-    box-shadow: inset 0 0 12px rgb(0 255 157 / 8%);
-}
+    /* Attacker (your pet) on the left, defender (opponent) on the right. */
+    &.is-attacker {
+        align-self: flex-start;
+        border-color: rgb(0 255 157 / 36%);
+        box-shadow: inset 0 0 12px rgb(0 255 157 / 8%);
 
-.battle-dialogue-line.is-defender {
-    align-self: flex-end;
-    border-color: rgb(255 110 196 / 36%);
-    box-shadow: inset 0 0 12px rgb(255 110 196 / 8%);
-}
+        .battle-dialogue-speaker {
+            color: #9effd4;
+        }
+    }
 
-.battle-dialogue-line.is-result {
-    border-style: dashed;
+    &.is-defender {
+        align-self: flex-end;
+        border-color: rgb(255 110 196 / 36%);
+        box-shadow: inset 0 0 12px rgb(255 110 196 / 8%);
+
+        .battle-dialogue-speaker {
+            color: #ff9ad6;
+        }
+    }
+
+    &.is-result {
+        border-style: dashed;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
 }
 
 .battle-dialogue-speaker {
@@ -61,14 +77,6 @@
     text-transform: uppercase;
     letter-spacing: 0.4px;
     color: rgb(195 210 255 / 70%);
-}
-
-.battle-dialogue-line.is-attacker .battle-dialogue-speaker {
-    color: #9effd4;
-}
-
-.battle-dialogue-line.is-defender .battle-dialogue-speaker {
-    color: #ff9ad6;
 }
 
 .battle-dialogue-text {
@@ -80,13 +88,4 @@
 @keyframes battle-dialogue-in {
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .battle-dialogue-line {
-        animation: none;
-    }
-    .battle-dialogue-thinking {
-        animation: none;
-    }
 }
