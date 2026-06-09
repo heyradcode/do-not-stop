@@ -7,7 +7,7 @@ import type { DialogueTurn } from '../dialogue.types';
  *
  * Pregen starts when the pre-fight taunts are generated (on "Start Battle"), long
  * before the battle settles. The winner is unknown then, so we generate BOTH
- * outcomes up front (see dialogue.service `startResultPregen`). The tx hash
+ * outcomes up front (see pregen.service `startResultPregen`). The tx hash
  * doesn't exist yet either, so we key by the MATCHUP (chain + attacker + defender
  * pet ids) instead of battleId. When the result lands we take the variant
  * matching the real winner.

@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
-import { getOrGenerateDialogue, generateTaunts, streamTauntsConversation } from './dialogue.service';
+import { getOrGenerateDialogue } from './result.service';
+import { generateTaunts, streamTauntsConversation } from './taunts.service';
 import { ResultRequestSchema, TauntsRequestSchema } from './dialogue.schema';
 
 /**
