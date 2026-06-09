@@ -62,6 +62,7 @@ async function finalizeDialogue(
     model: string,
 ): Promise<DialogueResult> {
     await recordBattleHistory(input);
+
     await saveDialogue({
         chain: input.chain,
         battleId: input.battleId,
@@ -71,6 +72,8 @@ async function finalizeDialogue(
         turns,
         model,
     });
+
     await recordResultLines(input, turns);
+
     return { turns, model, cached: false };
 }
