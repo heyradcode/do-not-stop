@@ -20,24 +20,31 @@ export async function generateTurns(
     defender: Persona,
     opts?: { banterOverride?: string },
 ): Promise<{ turns: DialogueTurn[]; model: string }> {
-    if (isHuggingFaceConfigured()) {
-        try {
-            const attackerId = input.attacker.petId;
-            const defenderId = input.defender.petId;
-            const excludeBattleId = input.battleId || undefined;
-            const [rivalry, banter] = await Promise.all([
-                buildRivalry(input.chain, attackerId, defenderId, excludeBattleId),
-                opts?.banterOverride !== undefined
-                    ? Promise.resolve(opts.banterOverride)
-                    : buildBanter(input.chain, attackerId, defenderId, excludeBattleId),
-            ]);
-            const turns = await requestDialogue(input, attacker, defender, rivalry, banter);
-            return { turns, model: env.hf.model };
-        } catch (err) {
-            console.error('[dialogue] HF generation failed, using fallback:', err);
-        }
+    const fallback = () => ({
+        turns: fallbackDialogue(input, attacker, defender),
+        model: 'fallback',
+    });
+
+    if (!isHuggingFaceConfigured()) return fallback();
+
+    try {
+        const { chain } = input;
+        const attackerId = input.attacker.petId;
+        const defenderId = input.defender.petId;
+        const excludeBattleId = input.battleId || undefined;
+
+        const [rivalry, banter] = await Promise.all([
+            buildRivalry(chain, attackerId, defenderId, excludeBattleId),
+            opts?.banterOverride ?? buildBanter(chain, attackerId, defenderId, excludeBattleId),
+        ]);
+
+        const turns = await requestDialogue(input, attacker, defender, rivalry, banter);
+
+        return { turns, model: env.hf.model };
+    } catch (err) {
+        console.error('[dialogue] HF generation failed, using fallback:', err);
+        return fallback();
     }
-    return { turns: fallbackDialogue(input, attacker, defender), model: 'fallback' };
 }
 
 /**
@@ -52,13 +59,16 @@ export function ensureResultCoverage(
     attacker: Persona,
     defender: Persona,
 ): DialogueTurn[] {
-    const hasAttackerResult = turns.some((t) => t.phase === 'result' && t.speaker === 'attacker');
-    const hasDefenderResult = turns.some((t) => t.phase === 'result' && t.speaker === 'defender');
+    const resultSpeakers = new Set(
+        turns.filter((t) => t.phase === 'result').map((t) => t.speaker),
+    );
+    const hasAttackerResult = resultSpeakers.has('attacker');
+    const hasDefenderResult = resultSpeakers.has('defender');
     if (hasAttackerResult && hasDefenderResult) return turns;
 
-    const supplement = fallbackDialogue(input, attacker, defender)
-        .filter((t) => t.phase === 'result')
-        .filter((t) => (t.speaker === 'attacker' ? !hasAttackerResult : !hasDefenderResult));
+    const supplement = fallbackDialogue(input, attacker, defender).filter(
+        (t) => t.phase === 'result' && (t.speaker === 'attacker' ? !hasAttackerResult : !hasDefenderResult),
+    );
 
     return [...turns, ...supplement];
 }
