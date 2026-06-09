@@ -7,7 +7,7 @@ import { mapEvmPet, type EvmRawPet } from '../../utils/pets/mapEvmPet';
 import type { Pet } from '../../types/pet';
 import type { ChainAdapter, AdapterMutation, TxLifecycle, TxPhase, ChainCapabilities } from './types';
 
-const EVM_CAPABILITIES: ChainCapabilities = {
+export const EVM_CAPABILITIES: ChainCapabilities = {
     chainLabel: 'Ethereum',
     address: {
         label: 'Recipient Ethereum Address:',

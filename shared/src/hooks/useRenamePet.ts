@@ -14,5 +14,6 @@ export function useRenamePet(): PetMutationResult<RenamePetArgs> {
         error: renamePet.lifecycle.error,
         hash: renamePet.lifecycle.hash,
         reset: renamePet.lifecycle.reset,
+        lifecycle: renamePet.lifecycle,
     };
 }

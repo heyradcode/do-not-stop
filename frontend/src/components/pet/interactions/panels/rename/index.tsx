@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
     getReadyPetsUnified,
-    useActiveChain,
+    useChainCapabilities,
     usePetList,
     useRenamePet,
 } from '@shared/core';
@@ -19,9 +19,9 @@ export type RenamePanelProps = {
 
 const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const chain = useActiveChain();
+    const { renameMinLevel } = useChainCapabilities();
     const { pets, refetch } = usePetList();
-    const { mutate, isPending, error: hookError, hash, reset } = useRenamePet();
+    const { mutate, isPending, error: hookError, hash, reset, lifecycle } = useRenamePet();
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const notifyError = useNotifyError();
     const notifyReceiptError = useNotifyReceiptError();
@@ -33,8 +33,8 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
     const [success, setSuccess] = useState<string | null>(null);
 
     const selectablePets = useMemo(
-        () => (chain.kind === 'evm' ? readyPets.filter(({ pet }) => pet.level >= 2) : readyPets),
-        [readyPets, chain.kind]
+        () => (renameMinLevel > 1 ? readyPets.filter(({ pet }) => pet.level >= renameMinLevel) : readyPets),
+        [readyPets, renameMinLevel]
     );
 
     const handleChangeName = async () => {
@@ -48,7 +48,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
 
         try {
             await mutate({ petId: selectedPet, name: newName.trim() });
-            if (chain.kind === 'solana') {
+            if (lifecycle.phase === 'success') {
                 setSuccess(`Pet name changed to "${newName}"!`);
                 setSelectedPet('');
                 setNewName('');
@@ -80,8 +80,8 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                     <>
                         <h4><Icon as={QuillIcon} tone={Tones.Cyan} />Change Pet Name</h4>
                         <p>
-                            {chain.kind === 'evm'
-                                ? "Change your pet's name (requires level 2+)"
+                            {renameMinLevel > 1
+                                ? `Change your pet's name (requires level ${renameMinLevel}+)`
                                 : "Change your pet's name"}
                         </p>
                     </>
@@ -132,7 +132,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
             )}
 
-            {chain.kind === 'evm' && (
+            {lifecycle.phase === 'confirming' && (
                 <TransactionStatus hash={hash} onComplete={handleTransactionComplete} onError={notifyReceiptError} />
             )}
         </>

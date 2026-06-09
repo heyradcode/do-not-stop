@@ -1,6 +1,8 @@
 export * from './chains';
 
 export { useActiveChain, type ActiveChain } from './useActiveChain';
+export { useChainCapabilities, type ChainContext } from './useChainCapabilities';
+export type { TxLifecycle, TxPhase, ChainCapabilities } from './adapters/types';
 export { usePetList, type PetListResult } from './usePetList';
 export { useCreatePet, type CreatePetArgs, type PetMutationResult } from './useCreatePet';
 export { useLevelUpPet, type LevelUpPetArgs } from './useLevelUpPet';

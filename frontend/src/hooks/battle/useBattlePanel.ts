@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     getReadyPetsUnified,
-    useActiveChain,
+    useChainCapabilities,
     useBattlePets,
     useBattleTaunts,
     useOpponents,
@@ -56,7 +56,7 @@ export interface UseBattlePanel {
  */
 export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBattlePanel {
     const navigate = useNavigate();
-    const chain = useActiveChain();
+    const capabilities = useChainCapabilities();
     const { pets, refetch, isLoading: petsLoading } = usePetList();
     const [selectedPet1, setSelectedPet1] = useState('');
     const [selectedOpponent, setSelectedOpponent] = useState('');
@@ -81,7 +81,7 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // pre-fight taunts finish playing (so it doesn't pop while they're typing).
     const pendingBattleStartRef = useRef(false);
 
-    const activeChainKind = chain.kind === 'none' ? null : chain.kind;
+    const activeChainKind = capabilities.isConnected ? (capabilities.kind as 'evm' | 'solana') : null;
     const {
         opponents,
         isLoading: opponentsLoading,
@@ -135,13 +135,13 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
 
     usePetErrorToast(battle.error, battle.receiptError, validationError, BATTLE_FAIL_MESSAGE);
 
-    const usesSwitchboardVrf = chain.kind === 'solana';
+    const usesSwitchboardVrf = capabilities.randomness.provider === 'switchboard';
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
     const subtitle = usesSwitchboardVrf
         ? 'Pick your fighter and an opponent (Switchboard VRF)'
         : 'Pick your fighter and an opponent';
     const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Starting Battle...';
-    const hashHint = chain.kind === 'solana' ? formatTxHashHint(battle.hash) : null;
+    const hashHint = usesSwitchboardVrf ? formatTxHashHint(battle.hash) : null;
 
     const startBattle = useCallback(() => {
         if (!selectedPet1 || !opponent) {
@@ -456,7 +456,7 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
         setup,
         hashHint,
         receipt: {
-            show: Boolean(battle.tracksEvmReceipt && battle.hash),
+            show: battle.isEvmConfirming,
             hash: battle.hash,
             onComplete: battle.onEvmReceiptComplete,
             onError: battle.onEvmReceiptError,

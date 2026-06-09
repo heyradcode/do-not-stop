@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
 import {
-    useActiveChain,
+    useChainCapabilities,
     useCreatePet,
     usePetList,
 } from '@shared/core';
@@ -17,9 +17,8 @@ interface CreatePetModalProps {
 }
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
-    const chain = useActiveChain();
-    const isConnected = chain.kind !== 'none';
-    const { mutate, isPending, error: hookError, hash, reset } = useCreatePet();
+    const { isConnected } = useChainCapabilities();
+    const { mutate, isPending, error: hookError, hash, reset, lifecycle } = useCreatePet();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
     const notifyReceiptError = useNotifyReceiptError();
@@ -47,7 +46,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         try {
             await mutate({ name: trimmed });
 
-            if (chain.kind === 'solana') {
+            if (lifecycle.phase === 'success') {
                 setSuccess(`Pet "${trimmed}" created successfully!`);
                 setPetName('');
                 refetch();
@@ -79,10 +78,10 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     };
 
     useEffect(() => {
-        if (hash && chain.kind === 'evm') {
+        if (lifecycle.phase === 'confirming' && hash) {
             setTxHash(hash);
         }
-    }, [hash, chain.kind]);
+    }, [lifecycle.phase, hash]);
 
     if (!isOpen) return null;
 
@@ -129,7 +128,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                         </div>
                     )}
 
-                    {chain.kind === 'evm' && (
+                    {lifecycle.phase === 'confirming' && (
                         <TransactionStatus
                             hash={txHash}
                             onComplete={handleTransactionComplete}

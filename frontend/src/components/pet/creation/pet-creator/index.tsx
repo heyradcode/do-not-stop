@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
 import {
-    useActiveChain,
+    useChainCapabilities,
     useCreatePet,
     usePetList,
 } from '@shared/core';
@@ -12,9 +12,8 @@ import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
 
 const PetCreator: React.FC = () => {
-    const chain = useActiveChain();
-    const isConnected = chain.kind !== 'none';
-    const { mutate, isPending, error: hookError, hash } = useCreatePet();
+    const { isConnected } = useChainCapabilities();
+    const { mutate, isPending, error: hookError, hash, lifecycle } = useCreatePet();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
     const notifyReceiptError = useNotifyReceiptError();
@@ -40,7 +39,7 @@ const PetCreator: React.FC = () => {
 
         try {
             await mutate({ name: trimmed });
-            if (chain.kind === 'solana') {
+            if (lifecycle.phase === 'success') {
                 setSuccess(`Pet "${trimmed}" created successfully!`);
                 setPetName('');
                 refetch();
@@ -103,7 +102,7 @@ const PetCreator: React.FC = () => {
                     </div>
                 )}
 
-                {chain.kind === 'evm' && (
+                {lifecycle.phase === 'confirming' && (
                     <TransactionStatus
                         hash={hash}
                         onComplete={handleTransactionComplete}

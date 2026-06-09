@@ -1,7 +1,7 @@
 ﻿import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useActiveChain, useBreedPets, usePetList } from '@shared/core';
+import { getReadyPetsUnified, useChainCapabilities, useBreedPets, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
@@ -20,7 +20,7 @@ const AWAITING_HINT = 'Hang tight—your new pet will show up in a moment.';
 
 const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const chain = useActiveChain();
+    const { randomness } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const [selectedPet1, setSelectedPet1] = useState('');
     const [selectedPet2, setSelectedPet2] = useState('');
@@ -50,7 +50,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         BREED_FAIL_MESSAGE,
     );
 
-    const usesSwitchboardVrf = chain.kind === 'solana';
+    const usesSwitchboardVrf = randomness.provider === 'switchboard';
     const subtitle = usesSwitchboardVrf
         ? 'Select two pets to create a new one (Switchboard VRF)'
         : 'Select two pets to create a new one';
@@ -62,7 +62,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         : breed.isAwaitingFulfillment
           ? creatingLabel
           : submitLabel;
-    const hashHint = chain.kind === 'solana' ? formatTxHashHint(breed.hash) : null;
+    const hashHint = usesSwitchboardVrf ? formatTxHashHint(breed.hash) : null;
 
     const canSubmit = Boolean(selectedPet1 && selectedPet2 && newPetName.trim());
 
@@ -177,7 +177,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 </p>
             )}
 
-            {breed.tracksEvmReceipt && breed.hash && (
+            {breed.isEvmConfirming && (
                 <TransactionStatus
                     hash={breed.hash}
                     onComplete={breed.onEvmReceiptComplete}

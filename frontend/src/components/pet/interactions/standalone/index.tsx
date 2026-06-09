@@ -1,5 +1,5 @@
 import React from 'react';
-import { useActiveChain, usePetList } from '@shared/core';
+import { useChainCapabilities, usePetList } from '@shared/core';
 import type { InteractionAction } from '@constants/interactionRoutes';
 import { STANDALONE_INTERACTION_HEADERS } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
@@ -15,8 +15,7 @@ export type InteractionStandaloneProps = {
 };
 
 const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, minPets, children }) => {
-    const chain = useActiveChain();
-    const isConnected = chain.kind !== 'none';
+    const { isConnected } = useChainCapabilities();
     const { pets, isLoading } = usePetList();
     const header = STANDALONE_INTERACTION_HEADERS[action];
 

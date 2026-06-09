@@ -7,7 +7,7 @@ import { mapSolanaPet, type SolanaPetAccountRow } from '../../utils/pets/mapSola
 import type { Pet } from '../../types/pet';
 import type { ChainAdapter, AdapterMutation, TxLifecycle, TxPhase, ChainCapabilities } from './types';
 
-const SOLANA_CAPABILITIES: ChainCapabilities = {
+export const SOLANA_CAPABILITIES: ChainCapabilities = {
     chainLabel: 'Solana',
     address: {
         label: 'Recipient Solana Address:',

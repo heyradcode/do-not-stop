@@ -14,5 +14,6 @@ export function useTransferPet(): PetMutationResult<TransferPetArgs> {
         error: transferPet.lifecycle.error,
         hash: transferPet.lifecycle.hash,
         reset: transferPet.lifecycle.reset,
+        lifecycle: transferPet.lifecycle,
     };
 }

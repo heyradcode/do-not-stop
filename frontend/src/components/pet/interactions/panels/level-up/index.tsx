@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
     getReadyPetsUnified,
-    useActiveChain,
+    useChainCapabilities,
     useLevelUpPet,
     usePetList,
 } from '@shared/core';
@@ -19,9 +19,9 @@ export type LevelUpPanelProps = {
 
 const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const chain = useActiveChain();
+    const { levelUpFee } = useChainCapabilities();
     const { pets, refetch } = usePetList();
-    const { mutate, isPending, error: hookError, hash, reset } = useLevelUpPet();
+    const { mutate, isPending, error: hookError, hash, reset, lifecycle } = useLevelUpPet();
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const notifyError = useNotifyError();
     const notifyReceiptError = useNotifyReceiptError();
@@ -42,7 +42,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
         try {
             await mutate({ petId: selectedPet });
-            if (chain.kind === 'solana') {
+            if (lifecycle.phase === 'success') {
                 setSuccess('Pet leveled up successfully!');
                 setSelectedPet('');
                 refetch();
@@ -67,9 +67,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
     const buttonLabel = isPending
         ? 'Leveling Up...'
-        : chain.kind === 'solana'
-            ? 'Level Up'
-            : 'Level Up (0.001 ETH)';
+        : levelUpFee
+            ? `Level Up (${levelUpFee.amount} ${levelUpFee.symbol})`
+            : 'Level Up';
 
     return (
         <>
@@ -78,9 +78,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                     <>
                         <h4>â¬†ï¸ Level Up Pet</h4>
                         <p>
-                            {chain.kind === 'solana'
-                                ? 'Pay a small SOL fee to level up your pet'
-                                : 'Pay 0.001 ETH to level up your pet'}
+                            {levelUpFee
+                                ? `Pay ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet`
+                                : 'Pay a small SOL fee to level up your pet'}
                         </p>
                     </>
                 )}
@@ -119,7 +119,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 </div>
             )}
 
-            {chain.kind === 'evm' && (
+            {lifecycle.phase === 'confirming' && (
                 <TransactionStatus
                     hash={hash}
                     onComplete={handleTransactionComplete}

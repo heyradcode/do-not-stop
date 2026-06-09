@@ -72,7 +72,6 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
         hash: battlePets.lifecycle.hash,
         error: battlePets.lifecycle.error,
         receiptError,
-        tracksEvmReceipt: isEvm,
         onEvmReceiptComplete,
         onEvmReceiptError,
     };

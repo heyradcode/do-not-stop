@@ -112,12 +112,12 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
         mutate,
         isPending: breedPets.isPending,
         isAwaitingFulfillment: isEvm && pendingRequestId != null,
+        isEvmConfirming: breedPets.lifecycle.phase === 'confirming',
         reset,
         clearErrors,
         hash,
         error: breedPets.lifecycle.error,
         receiptError,
-        tracksEvmReceipt: isEvm,
         onEvmReceiptComplete,
         onEvmReceiptError,
     };

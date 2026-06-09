@@ -1,8 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
 import {
-    isValidEthAddress,
-    isValidSolanaAddress,
-    useActiveChain,
+    useChainCapabilities,
     usePetList,
     useTransferPet,
 } from '@shared/core';
@@ -29,9 +27,9 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
     pet,
     petId,
 }) => {
-    const chain = useActiveChain();
+    const { address: addrCaps, chainLabel, walletAddress } = useChainCapabilities();
     const { refetch } = usePetList();
-    const { mutate, isPending, error: hookError, hash, reset } = useTransferPet();
+    const { mutate, isPending, error: hookError, hash, reset, lifecycle } = useTransferPet();
     const notifyError = useNotifyError();
     const notifyReceiptError = useNotifyReceiptError();
 
@@ -42,37 +40,17 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
     const [inputInvalid, setInputInvalid] = useState(false);
     const [txHash, setTxHash] = useState<string | undefined>(undefined);
 
-    const addressPlaceholder = chain.kind === 'solana' ? 'Solana address (base58)' : '0x...';
-    const addressLabel =
-        chain.kind === 'solana' ? 'Recipient Solana Address:' : 'Recipient Ethereum Address:';
+    const addressPlaceholder = addrCaps.placeholder;
+    const addressLabel = addrCaps.label;
 
     const validateRecipient = (raw: string): string | null => {
         const trimmed = raw.trim();
-        if (!trimmed) {
-            return 'Please enter a recipient address';
+        if (!trimmed) return 'Please enter a recipient address';
+        if (!addrCaps.isValid(trimmed)) return `Please enter a valid ${chainLabel} address`;
+        if (trimmed.toLowerCase() === (walletAddress ?? '').toLowerCase()) {
+            return 'You cannot send a pet to yourself';
         }
-
-        if (chain.kind === 'solana') {
-            if (!isValidSolanaAddress(trimmed)) {
-                return 'Please enter a valid Solana address';
-            }
-            if (chain.address === trimmed) {
-                return 'You cannot send a pet to yourself';
-            }
-            return null;
-        }
-
-        if (chain.kind === 'evm') {
-            if (!isValidEthAddress(trimmed)) {
-                return 'Please enter a valid Ethereum address';
-            }
-            if (trimmed.toLowerCase() === chain.address.toLowerCase()) {
-                return 'You cannot send a pet to yourself';
-            }
-            return null;
-        }
-
-        return 'Please connect your wallet first';
+        return null;
     };
 
     const handleSend = async () => {
@@ -88,7 +66,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
         try {
             setIsConfirming(true);
             await mutate({ to: recipientAddress.trim(), petId: petId.toString() });
-            if (chain.kind === 'solana') {
+            if (lifecycle.phase === 'success') {
                 await handleTransactionComplete();
             }
         } catch (err) {
@@ -182,7 +160,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                     </div>
                 </div>
 
-                {chain.kind === 'evm' && (
+                {lifecycle.phase === 'confirming' && (
                     <TransactionStatus
                         hash={txHash}
                         onComplete={handleTransactionComplete}

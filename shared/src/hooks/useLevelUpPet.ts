@@ -13,5 +13,6 @@ export function useLevelUpPet(): PetMutationResult<LevelUpPetArgs> {
         error: levelUpPet.lifecycle.error,
         hash: levelUpPet.lifecycle.hash,
         reset: levelUpPet.lifecycle.reset,
+        lifecycle: levelUpPet.lifecycle,
     };
 }

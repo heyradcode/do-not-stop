@@ -1,4 +1,5 @@
 import { useChainAdapter } from './adapters/useChainAdapter';
+import type { TxLifecycle } from './adapters/types';
 
 export interface CreatePetArgs {
     name: string;
@@ -15,6 +16,7 @@ export interface PetMutationResult<TArgs> {
     reset: () => void;
     /** EVM tx hash (0x…) or Solana signature, once submitted. */
     hash?: string | undefined;
+    lifecycle: TxLifecycle;
 }
 
 export function useCreatePet(): PetMutationResult<CreatePetArgs> {
@@ -25,5 +27,6 @@ export function useCreatePet(): PetMutationResult<CreatePetArgs> {
         error: createPet.lifecycle.error,
         hash: createPet.lifecycle.hash,
         reset: createPet.lifecycle.reset,
+        lifecycle: createPet.lifecycle,
     };
 }

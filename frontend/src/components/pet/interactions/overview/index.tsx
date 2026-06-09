@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
     getLifePercent,
     getReadyPetsUnified,
-    useActiveChain,
+    useChainCapabilities,
     useOpponents,
     usePetList,
 } from '@shared/core';
@@ -40,14 +40,14 @@ function parseActionParam(raw: string | undefined): InteractionAction | null {
 const PetInteractions: React.FC = () => {
     const navigate = useNavigate();
     const { action: actionParam } = useParams<{ action?: string }>();
-    const chain = useActiveChain();
-    const isConnected = chain.kind !== 'none';
+    const capabilities = useChainCapabilities();
+    const { isConnected } = capabilities;
     const { pets, isLoading } = usePetList();
 
     const action = useMemo(() => parseActionParam(actionParam), [actionParam]);
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
-    const activeChainKind = chain.kind === 'none' ? null : chain.kind;
+    const activeChainKind = isConnected ? (capabilities.kind as 'evm' | 'solana') : null;
 
     // Preview an on-chain rival for the Battle Arena card (opponents come from
     // the roster, not a second owned pet).
@@ -180,9 +180,9 @@ const PetInteractions: React.FC = () => {
                         <div className="content">
                             Boost your pet stats by leveling up.
                             <br />
-                            {chain.kind === 'solana'
-                                ? 'Costs a small SOL fee per level.'
-                                : 'Cost: 0.001 ETH per level.'}
+                            {capabilities.levelUpFee
+                                ? `Cost: ${capabilities.levelUpFee.amount} ${capabilities.levelUpFee.symbol} per level.`
+                                : 'Costs a small SOL fee per level.'}
                         </div>
                         <button
                             type="button"
@@ -199,8 +199,8 @@ const PetInteractions: React.FC = () => {
                         <div className="content">
                             Rename your pet.
                             <br />
-                            {chain.kind === 'evm'
-                                ? 'Requires level 2 or higher.'
+                            {capabilities.renameMinLevel > 1
+                                ? `Requires level ${capabilities.renameMinLevel} or higher.`
                                 : 'Pick a new identity for your companion.'}
                         </div>
                         <button
