@@ -68,20 +68,21 @@ function startEvmIndexer(source: Extract<RosterSource, { kind: 'subgraph' }>, in
 
 // Solana: Helius webhooks handle real-time; this is a periodic backfill safety-net.
 function startSolanaIndexer(source: Extract<RosterSource, { kind: 'helius' }>, intervalMs: number): void {
-    const scan = () => scanSolanaRoster({ rpcUrl: source.rpcUrl, programId: source.programId });
+    const handleScan = async (isBackfill = false) => {
+        try {
+            const { scanned } = await scanSolanaRoster({ rpcUrl: source.rpcUrl, programId: source.programId });
+            await logScan(source.chain, scanned);
+        } catch (err) {
+            const stage = isBackfill ? 'backfill' : 'initial sync';
+            console.error(`[indexer] ${source.chain} ${stage} failed:`, (err as Error).message);
+        }
+    };
 
-    void scan()
-        .then(async ({ scanned }) => logScan(source.chain, scanned))
-        .catch((err: Error) => console.error(`[indexer] ${source.chain} initial sync failed:`, err.message));
+    void handleScan();
 
     console.log(`[indexer] ${source.chain} backfill every ${intervalMs}ms`);
 
-    const timer = setInterval(() => {
-        void scan()
-            .then(async ({ scanned }) => logScan(source.chain, scanned))
-            .catch((err: Error) => console.error(`[indexer] ${source.chain} backfill failed:`, err.message));
-    }, intervalMs);
-
+    const timer = setInterval(() => void handleScan(true), intervalMs);
     stopFns.push(() => clearInterval(timer));
 }
 
