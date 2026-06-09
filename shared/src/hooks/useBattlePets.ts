@@ -1,9 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { usePetsContract } from './chains/ethereum/usePetsContract';
-import { usePetActions } from './chains/solana/usePetActions';
-import { usePetsConfig } from '../contexts/PetsConfigContext';
-import { useActiveChain } from './useActiveChain';
-import { NoActiveChainError } from '../utils/pets';
+import { useChainAdapter } from './adapters/useChainAdapter';
 
 export interface BattlePetsArgs {
     /** Attacker — must be a pet the caller owns. */
@@ -22,83 +18,40 @@ export type UseBattlePetsOptions = {
 };
 
 export function useBattlePets(options?: UseBattlePetsOptions) {
-    const chain = useActiveChain();
-    const { evm } = usePetsConfig();
-    const isEvm = chain.kind === 'evm';
-
-    const evmHook = usePetsContract({
-        contractAddress: evm?.contractAddress,
-        abi: evm?.abi ?? [],
-        enabled: isEvm,
-    });
-    const solanaActions = usePetActions();
+    const adapter = useChainAdapter();
+    const { battlePets } = adapter;
+    const isEvm = adapter.kind === 'evm';
 
     const onSuccessRef = useRef(options?.onSuccess);
     onSuccessRef.current = options?.onSuccess;
 
-    const [localError, setLocalError] = useState<Error | null>(null);
     const [receiptError, setReceiptError] = useState<Error | null>(null);
 
-    const mutationError =
-        localError ??
-        (isEvm
-            ? (evmHook.writeError as Error | null) ?? null
-            : (solanaActions.battlePets.error as Error | null) ?? null);
-
-    const hash =
-        isEvm
-            ? (evmHook.hash as string | undefined)
-            : (solanaActions.battlePets.data as string | undefined);
-
-    const isPending =
-        isEvm ? evmHook.isPending : solanaActions.battlePets.isPending;
-
-    const tracksEvmReceipt = isEvm;
-
-    // True while an EVM tx is submitted and waiting for on-chain confirmation
-    // (wallet is approved but block not yet mined).
-    const isEvmConfirming = isEvm && !!evmHook.hash && !evmHook.isPending;
-
-    const reset = useCallback(() => {
-        setLocalError(null);
-        setReceiptError(null);
-        solanaActions.battlePets.reset();
-        evmHook.resetWrite();
-    }, [solanaActions.battlePets, evmHook.resetWrite]);
-
-    const clearErrors = useCallback(() => {
-        setLocalError(null);
-        setReceiptError(null);
-        solanaActions.battlePets.reset();
-        evmHook.resetWrite();
-    }, [solanaActions.battlePets, evmHook.resetWrite]);
-
-    const notifySuccess = useCallback(() => {
-        onSuccessRef.current?.();
-    }, []);
+    const notifySuccess = useCallback(() => { onSuccessRef.current?.(); }, []);
 
     const mutate = async (args: BattlePetsArgs) => {
-        if (chain.kind === 'none') throw new NoActiveChainError('battle');
-
-        setLocalError(null);
         setReceiptError(null);
-
         try {
-            if (isEvm) {
-                evmHook.battlePets(BigInt(args.petId1), BigInt(args.petId2));
-                return;
-            }
-            await solanaActions.battlePets.mutateAsync({
-                attackerPetId: Number(args.petId1),
-                defenderPetId: Number(args.petId2),
-                ...(args.defenderOwner ? { defenderOwner: args.defenderOwner } : {}),
+            await battlePets.mutateAsync({
+                petId1: args.petId1,
+                petId2: args.petId2,
+                defenderOwner: args.defenderOwner,
             });
-            notifySuccess();
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error(String(err));
-            setLocalError(error);
+            if (!isEvm) notifySuccess(); // Solana: confirmed when mutateAsync resolves
+        } catch {
+            // error tracked in battlePets.lifecycle.error
         }
     };
+
+    const reset = useCallback(() => {
+        setReceiptError(null);
+        battlePets.lifecycle.reset();
+    }, [battlePets.lifecycle]);
+
+    const clearErrors = useCallback(() => {
+        setReceiptError(null);
+        battlePets.lifecycle.reset();
+    }, [battlePets.lifecycle]);
 
     const onEvmReceiptComplete = useCallback(() => {
         notifySuccess();
@@ -107,19 +60,19 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
 
     const onEvmReceiptError = useCallback((error: Error) => {
         setReceiptError(error);
-        evmHook.resetWrite();
-    }, [evmHook.resetWrite]);
+        battlePets.lifecycle.reset();
+    }, [battlePets.lifecycle]);
 
     return {
         mutate,
-        isPending,
-        isEvmConfirming,
+        isPending: battlePets.isPending,
+        isEvmConfirming: battlePets.lifecycle.phase === 'confirming',
         reset,
         clearErrors,
-        hash,
-        error: mutationError,
+        hash: battlePets.lifecycle.hash,
+        error: battlePets.lifecycle.error,
         receiptError,
-        tracksEvmReceipt,
+        tracksEvmReceipt: isEvm,
         onEvmReceiptComplete,
         onEvmReceiptError,
     };

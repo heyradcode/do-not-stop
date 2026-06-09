@@ -54,9 +54,9 @@ export function useSolanaAdapter({ enabled }: { enabled: boolean }): ChainAdapte
         return ((petsQuery.data ?? []) as SolanaPetAccountRow[]).map(mapSolanaPet);
     }, [enabled, petsQuery.data]);
 
-    const createPet: AdapterMutation<{ name: string }> = {
-        async mutateAsync({ name }) {
-            await actions.createStarterPet.mutateAsync({ name, dna: 0n, rarity: 1 });
+    const createPet: AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }> = {
+        async mutateAsync({ name, dna, rarity }) {
+            await actions.createStarterPet.mutateAsync({ name, dna: dna ?? 0n, rarity: rarity ?? 1 });
         },
         lifecycle: toLc(actions.createStarterPet),
         isPending: actions.createStarterPet.isPending,

@@ -1,9 +1,4 @@
-import { useState } from 'react';
-import { usePetsContract } from './chains/ethereum/usePetsContract';
-import { usePetActions } from './chains/solana/usePetActions';
-import { usePetsConfig } from '../contexts/PetsConfigContext';
-import { useActiveChain } from './useActiveChain';
-import { NoActiveChainError } from '../utils/pets';
+import { useChainAdapter } from './adapters/useChainAdapter';
 
 export interface CreatePetArgs {
     name: string;
@@ -23,60 +18,12 @@ export interface PetMutationResult<TArgs> {
 }
 
 export function useCreatePet(): PetMutationResult<CreatePetArgs> {
-    const chain = useActiveChain();
-    const { evm } = usePetsConfig();
-    const isEvm = chain.kind === 'evm';
-
-    const evmHook = usePetsContract({
-        contractAddress: evm?.contractAddress,
-        abi: evm?.abi ?? [],
-        enabled: isEvm,
-    });
-    const solanaActions = usePetActions();
-
-    const [localError, setLocalError] = useState<Error | null>(null);
-
-    const mutate = async (args: CreatePetArgs) => {
-        if (chain.kind === 'none') throw new NoActiveChainError('create');
-
-        try {
-            setLocalError(null);
-            if (isEvm) {
-                evmHook.createRandomPet(args.name);
-                return;
-            }
-            await solanaActions.createStarterPet.mutateAsync({
-                name: args.name,
-                dna: args.dna ?? 0n,
-                rarity: args.rarity ?? 1,
-            });
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error(String(err));
-            setLocalError(error);
-            throw error;
-        }
+    const { createPet } = useChainAdapter();
+    return {
+        mutate: (args) => createPet.mutateAsync({ name: args.name, dna: args.dna, rarity: args.rarity }),
+        isPending: createPet.isPending,
+        error: createPet.lifecycle.error,
+        hash: createPet.lifecycle.hash,
+        reset: createPet.lifecycle.reset,
     };
-
-    const reset = () => {
-        setLocalError(null);
-        solanaActions.createStarterPet.reset();
-    };
-
-    const isPending =
-        isEvm
-            ? evmHook.isPending
-            : solanaActions.createStarterPet.isPending;
-
-    const error =
-        localError ??
-        (isEvm
-            ? (evmHook.writeError as Error | null) ?? null
-            : (solanaActions.createStarterPet.error as Error | null) ?? null);
-
-    const hash =
-        isEvm
-            ? (evmHook.hash as string | undefined)
-            : (solanaActions.createStarterPet.data as string | undefined);
-
-    return { mutate, isPending, error, reset, hash };
 }

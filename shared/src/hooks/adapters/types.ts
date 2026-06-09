@@ -53,7 +53,8 @@ export interface ChainAdapter {
     };
 
     // petId is always string; adapters convert to bigint/number internally.
-    createPet:   AdapterMutation<{ name: string }>;
+    // dna/rarity are Solana-only; EVM adapters ignore them.
+    createPet:   AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }>;
     levelUpPet:  AdapterMutation<{ petId: string }>;
     renamePet:   AdapterMutation<{ petId: string; name: string }>;
     transferPet: AdapterMutation<{ petId: string; to: string }>;

@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEventLogs } from 'viem';
-import { usePetsContract } from './chains/ethereum/usePetsContract';
 import { useWatchPetsContract } from './chains/ethereum/useWatchPetsContract';
-import { usePetActions } from './chains/solana/usePetActions';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
-import { useActiveChain } from './useActiveChain';
-import { NoActiveChainError } from '../utils/pets';
+import { useChainAdapter } from './adapters/useChainAdapter';
 
 export interface BreedPetsArgs {
     parentId1: string;
@@ -19,48 +16,25 @@ export type UseBreedPetsOptions = {
 };
 
 export function useBreedPets(options?: UseBreedPetsOptions) {
-    const chain = useActiveChain();
+    const adapter = useChainAdapter();
+    const { breedPets } = adapter;
+    const isEvm = adapter.kind === 'evm';
+
     const { address } = useAccount();
     const { evm } = usePetsConfig();
-    const isEvm = chain.kind === 'evm';
-
-    const evmHook = usePetsContract({
-        contractAddress: evm?.contractAddress,
-        abi: evm?.abi ?? [],
-        enabled: isEvm,
-    });
-    const solanaActions = usePetActions();
 
     const onSuccessRef = useRef(options?.onSuccess);
     onSuccessRef.current = options?.onSuccess;
     const offspringNameRef = useRef('');
 
-    const [localError, setLocalError] = useState<Error | null>(null);
     const [receiptError, setReceiptError] = useState<Error | null>(null);
     const [pendingRequestId, setPendingRequestId] = useState<bigint | null>(null);
 
-    const mutationError =
-        localError ??
-        (isEvm
-            ? (evmHook.writeError as Error | null) ?? null
-            : (solanaActions.breedPets.error as Error | null) ?? null);
+    const hash = breedPets.lifecycle.hash;
 
-    const hash =
-        isEvm
-            ? (evmHook.hash as string | undefined)
-            : (solanaActions.breedPets.data as string | undefined);
-
-    const isPending =
-        isEvm ? evmHook.isPending : solanaActions.breedPets.isPending;
-
-    const isAwaitingFulfillment = isEvm && pendingRequestId != null;
-    const tracksEvmReceipt = isEvm;
-
+    // Parse the VRF request id from the breed tx receipt (EVM only).
     const { data: requestReceipt } = useWaitForTransactionReceipt({
-        hash:
-            isEvm && hash
-                ? (hash as `0x${string}`)
-                : undefined,
+        hash: isEvm && hash ? (hash as `0x${string}`) : undefined,
     });
 
     useEffect(() => {
@@ -71,12 +45,8 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
                 logs: requestReceipt.logs,
                 eventName: 'BreedRandomnessRequested',
                 strict: false,
-            }) as unknown as {
-                args: { owner?: string; requestId?: bigint };
-            }[];
-            const mine = logs.find(
-                (log) => log.args.owner?.toLowerCase() === address.toLowerCase()
-            );
+            }) as unknown as { args: { owner?: string; requestId?: bigint } }[];
+            const mine = logs.find((log) => log.args.owner?.toLowerCase() === address.toLowerCase());
             const requestId = mine?.args.requestId;
             if (requestId != null) setPendingRequestId(requestId);
         } catch {
@@ -91,10 +61,10 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
     const handleBreedFulfilled = useCallback(() => {
         notifySuccess(offspringNameRef.current);
         setPendingRequestId(null);
-        setLocalError(null);
         setReceiptError(null);
     }, [notifySuccess]);
 
+    // Watch for BreedFulfilled event (EVM VRF fulfillment).
     useWatchPetsContract({
         contractAddress: evm?.contractAddress,
         abi: evm?.abi ?? [],
@@ -104,49 +74,34 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
     });
 
     const reset = useCallback(() => {
-        setLocalError(null);
         setReceiptError(null);
         setPendingRequestId(null);
-        solanaActions.breedPets.reset();
-    }, [solanaActions.breedPets]);
+        breedPets.lifecycle.reset();
+    }, [breedPets.lifecycle]);
 
     const clearErrors = useCallback(() => {
-        setLocalError(null);
         setReceiptError(null);
-        solanaActions.breedPets.reset();
-    }, [solanaActions.breedPets]);
+        breedPets.lifecycle.reset();
+    }, [breedPets.lifecycle]);
 
     const mutate = async (args: BreedPetsArgs) => {
-        if (chain.kind === 'none') throw new NoActiveChainError('breed');
-
-        setLocalError(null);
         setReceiptError(null);
         setPendingRequestId(null);
         offspringNameRef.current = args.name.trim();
-
         try {
-            if (isEvm) {
-                evmHook.requestBreedFromDNA(
-                    BigInt(args.parentId1),
-                    BigInt(args.parentId2),
-                    args.name.trim()
-                );
-                return;
-            }
-            await solanaActions.breedPets.mutateAsync({
-                parent1Id: Number(args.parentId1),
-                parent2Id: Number(args.parentId2),
+            await breedPets.mutateAsync({
+                parentId1: args.parentId1,
+                parentId2: args.parentId2,
                 name: args.name.trim(),
             });
-            notifySuccess(args.name.trim());
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error(String(err));
-            setLocalError(error);
+            if (!isEvm) notifySuccess(args.name.trim()); // Solana: confirmed on resolve
+        } catch {
+            // error tracked in breedPets.lifecycle.error
         }
     };
 
     const onEvmReceiptComplete = useCallback(() => {
-        /* VRF fulfillment is handled via `BreedFulfilled`, not request-tx confirm */
+        /* VRF fulfillment is handled via BreedFulfilled event, not request-tx confirm */
     }, []);
 
     const onEvmReceiptError = useCallback((error: Error) => {
@@ -155,14 +110,14 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
 
     return {
         mutate,
-        isPending,
-        isAwaitingFulfillment,
+        isPending: breedPets.isPending,
+        isAwaitingFulfillment: isEvm && pendingRequestId != null,
         reset,
         clearErrors,
         hash,
-        error: mutationError,
+        error: breedPets.lifecycle.error,
         receiptError,
-        tracksEvmReceipt,
+        tracksEvmReceipt: isEvm,
         onEvmReceiptComplete,
         onEvmReceiptError,
     };

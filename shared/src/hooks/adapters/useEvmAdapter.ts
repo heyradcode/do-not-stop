@@ -76,7 +76,7 @@ export function useEvmAdapter({ enabled }: { enabled: boolean }): ChainAdapter {
     const battleR = useWaitForTransactionReceipt({ hash: battleW.data, query: { enabled: !!battleW.data } });
     const breedR = useWaitForTransactionReceipt({ hash: breedW.data, query: { enabled: !!breedW.data } });
 
-    const createPet: AdapterMutation<{ name: string }> = {
+    const createPet: AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }> = {
         async mutateAsync({ name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             await createW.writeContractAsync({ address: safeAddress, abi, functionName: 'createRandom', args: [name], gas: 500000n });
