@@ -22,6 +22,7 @@
     "@ai-sdk/openai": "^3.0.68",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@solana/web3.js": "^1.98.4",
     "ai": "^6.0.197",
     "bs58": "^6.0.0",
     "cors": "^2.8.5",

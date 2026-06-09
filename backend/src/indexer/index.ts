@@ -1,5 +1,5 @@
 import { scanSubgraphRoster, syncSubgraphChanges } from './evm';
-import { scanSolanaRoster } from '@solana/scanner';
+import { scanSolanaRoster } from '@solana-indexer/scanner';
 import { env } from '@config/env';
 import { countByChain } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';

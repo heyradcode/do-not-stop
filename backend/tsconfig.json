@@ -35,7 +35,7 @@
             "@generated/*": [
                 "./src/generated/*"
             ],
-            "@solana/*": [
+            "@solana-indexer/*": [
                 "./indexing/solana/*"
             ],
             "@graphql": [

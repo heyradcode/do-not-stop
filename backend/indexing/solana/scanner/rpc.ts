@@ -8,7 +8,7 @@ import type { RosterPet } from '@repositories/roster.repository';
 
 /**
  * Solana RPC client for the Helius endpoint. Replaces the Substreams firehose:
- * we read `PetAccount` state directly via RPC, both for the periodic full
+ * we read `PetAccount` state directly via @solana/web3.js RPC, both for the periodic full
  * reconciliation scan (`getProgramPets`) and for the webhook's targeted
  * lookups (`getPetsByAddresses`).
  *
