@@ -1,9 +1,9 @@
 import { getDialogue, saveDialogue } from '@repositories/dialogue.repository';
-import { buildPersona } from './prompting/persona';
-import { generateTurns, ensureResultCoverage } from './generation/turns';
-import { getPregenStore, matchupKey } from './generation/pregen';
-import { recordBattleHistory, recordResultLines } from './recording';
-import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from './dialogue.types';
+import { buildPersona } from '../llm/persona';
+import { generateTurns, ensureResultCoverage } from './turns';
+import { getPregenStore, matchupKey } from './pregen.store';
+import { recordBattleHistory, recordResultLines } from '../shared/recording';
+import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
 /**
  * Return a battle's conversation: served from the generate-once store if present,

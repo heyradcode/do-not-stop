@@ -1,8 +1,8 @@
 import { env } from '@config/env';
-import type { Persona } from '../prompting/persona';
-import { buildBanter, buildRivalry } from '../context';
-import { fallbackDialogue } from './fallback';
-import { isHuggingFaceConfigured, requestDialogue } from './client';
+import type { Persona } from '../llm/persona';
+import { buildBanter, buildRivalry } from '../shared/context';
+import { fallbackDialogue } from '../llm/fallback';
+import { isHuggingFaceConfigured, requestDialogue } from '../llm/client';
 import type { DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
 /**

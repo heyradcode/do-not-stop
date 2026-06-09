@@ -1,5 +1,5 @@
 import type { GenerateDialogueInput, DialogueTurn } from '../dialogue.types';
-import type { Persona } from '../prompting/persona';
+import type { Persona } from './persona';
 import { MAX_TURNS, MAX_TURN_CHARS } from '../dialogue.schema';
 
 function clampTurns(turns: DialogueTurn[]): DialogueTurn[] {

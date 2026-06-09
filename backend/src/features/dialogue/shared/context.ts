@@ -1,7 +1,7 @@
 import { getHeadToHead, getRecentForm } from '@repositories/history.repository';
 import { getRecentBanter } from '@repositories/conversation.repository';
 import type { Chain } from '@typings/chain';
-import { buildBanterContext, buildRivalryContext } from './prompting/context';
+import { buildBanterContext, buildRivalryContext } from '../llm/render';
 import { bestEffort } from './best-effort';
 
 /**

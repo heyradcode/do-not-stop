@@ -1,14 +1,14 @@
-import type { Persona } from './prompting/persona';
-import { buildBanterContext } from './prompting/context';
-import { isHuggingFaceConfigured } from './generation/client';
-import { generateTurns, ensureResultCoverage } from './generation/turns';
-import { getPregenStore, matchupKey } from './generation/pregen';
+import type { Persona } from '../llm/persona';
+import { buildBanterContext } from '../llm/render';
+import { isHuggingFaceConfigured } from '../llm/client';
+import { generateTurns, ensureResultCoverage } from './turns';
+import { getPregenStore, matchupKey } from './pregen.store';
 import type {
     DialogueSpeaker,
     DialogueTurn,
     GenerateDialogueInput,
     GenerateTauntsInput,
-} from './dialogue.types';
+} from '../dialogue.types';
 
 /**
  * Pre-generate BOTH result outcomes the moment the pre-fight taunts exist —

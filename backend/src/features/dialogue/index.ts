@@ -1,7 +1,7 @@
 /**
  * Public surface of the dialogue feature. External code imports from
- * `@features/dialogue` so the internal layout (prompting/, generation/) can
- * change without touching call sites.
+ * `@features/dialogue` so the internal layout (llm/, taunt/, result/, shared/)
+ * can change without touching call sites.
  */
 export type {
     DialogueTurn,

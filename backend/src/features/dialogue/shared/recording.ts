@@ -2,7 +2,7 @@ import { recordBattle } from '@repositories/history.repository';
 import { recordConversation } from '@repositories/conversation.repository';
 import type { Chain } from '@typings/chain';
 import { bestEffort } from './best-effort';
-import type { DialogueTurn, GenerateDialogueInput } from './dialogue.types';
+import type { DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
 /**
  * Best-effort persistence side effects for the dialogue feature. Every write here

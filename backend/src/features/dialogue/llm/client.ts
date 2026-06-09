@@ -1,7 +1,7 @@
 import { generateObject, streamObject } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { env } from '@config/env';
-import type { Persona } from '../prompting/persona';
+import type { Persona } from './persona';
 import {
     SYSTEM_PROMPT,
     TAUNT_SYSTEM_PROMPT,
@@ -9,7 +9,7 @@ import {
     TAUNT_JSON_FORMAT_INSTRUCTION,
     buildUserMessage,
     buildTauntUserMessage,
-} from '../prompting/prompt';
+} from './prompt';
 import { ResponseSchema, TurnSchema, MAX_TURNS, TAUNT_TURNS } from '../dialogue.schema';
 import type { DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 

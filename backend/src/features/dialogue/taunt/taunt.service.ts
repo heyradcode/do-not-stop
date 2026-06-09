@@ -1,10 +1,10 @@
 import { env } from '@config/env';
-import { buildPersona, type Persona } from './prompting/persona';
-import { isHuggingFaceConfigured, requestTaunts, streamTaunts } from './generation/client';
-import { buildBanter, buildRivalry } from './context';
-import { recordConversationSafe } from './recording';
-import { startResultPregen } from './pregen.service';
-import type { DialogueTurn, GenerateTauntsInput, TauntsResult } from './dialogue.types';
+import { buildPersona, type Persona } from '../llm/persona';
+import { isHuggingFaceConfigured, requestTaunts, streamTaunts } from '../llm/client';
+import { buildBanter, buildRivalry } from '../shared/context';
+import { recordConversationSafe } from '../shared/recording';
+import { startResultPregen } from '../result/pregen.service';
+import type { DialogueTurn, GenerateTauntsInput, TauntsResult } from '../dialogue.types';
 
 /**
  * Generate pre-fight taunts (AI only — no templated fallback, by product choice).
