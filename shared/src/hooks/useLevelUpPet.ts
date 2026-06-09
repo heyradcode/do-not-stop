@@ -13,11 +13,12 @@ export interface LevelUpPetArgs {
 export function useLevelUpPet(): PetMutationResult<LevelUpPetArgs> {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
+    const isEvm = chain.kind === 'evm';
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
         abi: evm?.abi ?? [],
-        enabled: chain.kind === 'evm',
+        enabled: isEvm,
     });
     const solanaActions = usePetActions();
 
@@ -28,7 +29,7 @@ export function useLevelUpPet(): PetMutationResult<LevelUpPetArgs> {
 
         try {
             setLocalError(null);
-            if (chain.kind === 'evm') {
+            if (isEvm) {
                 evmHook.levelUp(BigInt(args.petId));
                 return;
             }
@@ -46,16 +47,16 @@ export function useLevelUpPet(): PetMutationResult<LevelUpPetArgs> {
     };
 
     const isPending =
-        chain.kind === 'evm' ? evmHook.isPending : solanaActions.levelUpPet.isPending;
+        isEvm ? evmHook.isPending : solanaActions.levelUpPet.isPending;
 
     const error =
         localError ??
-        (chain.kind === 'evm'
+        (isEvm
             ? (evmHook.writeError as Error | null) ?? null
             : (solanaActions.levelUpPet.error as Error | null) ?? null);
 
     const hash =
-        chain.kind === 'evm'
+        isEvm
             ? (evmHook.hash as string | undefined)
             : (solanaActions.levelUpPet.data as string | undefined);
 

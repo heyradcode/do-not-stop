@@ -24,11 +24,12 @@ export type UseBattlePetsOptions = {
 export function useBattlePets(options?: UseBattlePetsOptions) {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
+    const isEvm = chain.kind === 'evm';
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
         abi: evm?.abi ?? [],
-        enabled: chain.kind === 'evm',
+        enabled: isEvm,
     });
     const solanaActions = usePetActions();
 
@@ -40,23 +41,23 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
 
     const mutationError =
         localError ??
-        (chain.kind === 'evm'
+        (isEvm
             ? (evmHook.writeError as Error | null) ?? null
             : (solanaActions.battlePets.error as Error | null) ?? null);
 
     const hash =
-        chain.kind === 'evm'
+        isEvm
             ? (evmHook.hash as string | undefined)
             : (solanaActions.battlePets.data as string | undefined);
 
     const isPending =
-        chain.kind === 'evm' ? evmHook.isPending : solanaActions.battlePets.isPending;
+        isEvm ? evmHook.isPending : solanaActions.battlePets.isPending;
 
-    const tracksEvmReceipt = chain.kind === 'evm';
+    const tracksEvmReceipt = isEvm;
 
     // True while an EVM tx is submitted and waiting for on-chain confirmation
     // (wallet is approved but block not yet mined).
-    const isEvmConfirming = chain.kind === 'evm' && !!evmHook.hash && !evmHook.isPending;
+    const isEvmConfirming = isEvm && !!evmHook.hash && !evmHook.isPending;
 
     const reset = useCallback(() => {
         setLocalError(null);
@@ -83,7 +84,7 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
         setReceiptError(null);
 
         try {
-            if (chain.kind === 'evm') {
+            if (isEvm) {
                 evmHook.battlePets(BigInt(args.petId1), BigInt(args.petId2));
                 return;
             }

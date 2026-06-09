@@ -22,11 +22,12 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
     const chain = useActiveChain();
     const { address } = useAccount();
     const { evm } = usePetsConfig();
+    const isEvm = chain.kind === 'evm';
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
         abi: evm?.abi ?? [],
-        enabled: chain.kind === 'evm',
+        enabled: isEvm,
     });
     const solanaActions = usePetActions();
 
@@ -40,30 +41,30 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
 
     const mutationError =
         localError ??
-        (chain.kind === 'evm'
+        (isEvm
             ? (evmHook.writeError as Error | null) ?? null
             : (solanaActions.breedPets.error as Error | null) ?? null);
 
     const hash =
-        chain.kind === 'evm'
+        isEvm
             ? (evmHook.hash as string | undefined)
             : (solanaActions.breedPets.data as string | undefined);
 
     const isPending =
-        chain.kind === 'evm' ? evmHook.isPending : solanaActions.breedPets.isPending;
+        isEvm ? evmHook.isPending : solanaActions.breedPets.isPending;
 
-    const isAwaitingFulfillment = chain.kind === 'evm' && pendingRequestId != null;
-    const tracksEvmReceipt = chain.kind === 'evm';
+    const isAwaitingFulfillment = isEvm && pendingRequestId != null;
+    const tracksEvmReceipt = isEvm;
 
     const { data: requestReceipt } = useWaitForTransactionReceipt({
         hash:
-            chain.kind === 'evm' && hash
+            isEvm && hash
                 ? (hash as `0x${string}`)
                 : undefined,
     });
 
     useEffect(() => {
-        if (chain.kind !== 'evm' || !requestReceipt || !hash || !address || !evm?.abi) return;
+        if (!isEvm || !requestReceipt || !hash || !address || !evm?.abi) return;
         try {
             const logs = parseEventLogs({
                 abi: evm.abi,
@@ -81,7 +82,7 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
         } catch {
             /* not a breed tx or ABI mismatch */
         }
-    }, [requestReceipt, hash, address, chain.kind, evm?.abi]);
+    }, [requestReceipt, hash, address, isEvm, evm?.abi]);
 
     const notifySuccess = useCallback((name: string) => {
         onSuccessRef.current?.({ name });
@@ -98,8 +99,8 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
         contractAddress: evm?.contractAddress,
         abi: evm?.abi ?? [],
         address: address as `0x${string}` | undefined,
-        pendingRequestId: chain.kind === 'evm' ? pendingRequestId : null,
-        onBreedSuccess: chain.kind === 'evm' ? handleBreedFulfilled : undefined,
+        pendingRequestId: isEvm ? pendingRequestId : null,
+        onBreedSuccess: isEvm ? handleBreedFulfilled : undefined,
     });
 
     const reset = useCallback(() => {
@@ -124,7 +125,7 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
         offspringNameRef.current = args.name.trim();
 
         try {
-            if (chain.kind === 'evm') {
+            if (isEvm) {
                 evmHook.requestBreedFromDNA(
                     BigInt(args.parentId1),
                     BigInt(args.parentId2),

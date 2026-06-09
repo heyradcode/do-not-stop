@@ -25,11 +25,12 @@ export interface PetMutationResult<TArgs> {
 export function useCreatePet(): PetMutationResult<CreatePetArgs> {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
+    const isEvm = chain.kind === 'evm';
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
         abi: evm?.abi ?? [],
-        enabled: chain.kind === 'evm',
+        enabled: isEvm,
     });
     const solanaActions = usePetActions();
 
@@ -40,7 +41,7 @@ export function useCreatePet(): PetMutationResult<CreatePetArgs> {
 
         try {
             setLocalError(null);
-            if (chain.kind === 'evm') {
+            if (isEvm) {
                 evmHook.createRandomPet(args.name);
                 return;
             }
@@ -62,18 +63,18 @@ export function useCreatePet(): PetMutationResult<CreatePetArgs> {
     };
 
     const isPending =
-        chain.kind === 'evm'
+        isEvm
             ? evmHook.isPending
             : solanaActions.createStarterPet.isPending;
 
     const error =
         localError ??
-        (chain.kind === 'evm'
+        (isEvm
             ? (evmHook.writeError as Error | null) ?? null
             : (solanaActions.createStarterPet.error as Error | null) ?? null);
 
     const hash =
-        chain.kind === 'evm'
+        isEvm
             ? (evmHook.hash as string | undefined)
             : (solanaActions.createStarterPet.data as string | undefined);
 

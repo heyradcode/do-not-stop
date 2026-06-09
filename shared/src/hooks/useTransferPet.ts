@@ -14,11 +14,12 @@ export interface TransferPetArgs {
 export function useTransferPet(): PetMutationResult<TransferPetArgs> {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
+    const isEvm = chain.kind === 'evm';
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
         abi: evm?.abi ?? [],
-        enabled: chain.kind === 'evm',
+        enabled: isEvm,
     });
     const solanaActions = usePetActions();
 
@@ -29,7 +30,7 @@ export function useTransferPet(): PetMutationResult<TransferPetArgs> {
 
         try {
             setLocalError(null);
-            if (chain.kind === 'evm') {
+            if (isEvm) {
                 evmHook.transferPet(args.to, BigInt(args.petId));
                 return;
             }
@@ -50,16 +51,16 @@ export function useTransferPet(): PetMutationResult<TransferPetArgs> {
     };
 
     const isPending =
-        chain.kind === 'evm' ? evmHook.isPending : solanaActions.transferPet.isPending;
+        isEvm ? evmHook.isPending : solanaActions.transferPet.isPending;
 
     const error =
         localError ??
-        (chain.kind === 'evm'
+        (isEvm
             ? (evmHook.writeError as Error | null) ?? null
             : (solanaActions.transferPet.error as Error | null) ?? null);
 
     const hash =
-        chain.kind === 'evm'
+        isEvm
             ? (evmHook.hash as string | undefined)
             : (solanaActions.transferPet.data as string | undefined);
 

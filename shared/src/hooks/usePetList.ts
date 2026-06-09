@@ -19,9 +19,11 @@ export function usePetList(): PetListResult {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
     const { signingWallet } = useSolanaAnchor();
+    const isEvm = chain.kind === 'evm';
+    const isSolana = chain.kind === 'solana';
 
-    const evmEnabled = chain.kind === 'evm' && Boolean(evm?.contractAddress);
-    const solanaOwner = chain.kind === 'solana' ? signingWallet?.publicKey ?? null : null;
+    const evmEnabled = isEvm && Boolean(evm?.contractAddress);
+    const solanaOwner = isSolana ? signingWallet?.publicKey ?? null : null;
 
     const evmResult = usePetsContract({
         contractAddress: evm?.contractAddress,
@@ -32,19 +34,19 @@ export function usePetList(): PetListResult {
     const solanaQuery = useSolanaPets(solanaOwner);
 
     const evmPets = useMemo<Pet[]>(() => {
-        if (chain.kind !== 'evm') return [];
+        if (!isEvm) return [];
         const raws = evmResult.pets as unknown as EvmRawPet[];
         const ids = evmResult.petIds;
         return raws.map((raw, i) => mapEvmPet(raw, ids[i] ?? BigInt(i)));
-    }, [chain.kind, evmResult.pets, evmResult.petIds]);
+    }, [isEvm, evmResult.pets, evmResult.petIds]);
 
     const solanaPets = useMemo<Pet[]>(() => {
-        if (chain.kind !== 'solana') return [];
+        if (!isSolana) return [];
         const rows = (solanaQuery.data ?? []) as SolanaPetAccountRow[];
         return rows.map(mapSolanaPet);
-    }, [chain.kind, solanaQuery.data]);
+    }, [isSolana, solanaQuery.data]);
 
-    if (chain.kind === 'evm') {
+    if (isEvm) {
         return {
             pets: evmPets,
             isLoading: evmResult.isLoading,
@@ -56,7 +58,7 @@ export function usePetList(): PetListResult {
         };
     }
 
-    if (chain.kind === 'solana') {
+    if (isSolana) {
         return {
             pets: solanaPets,
             isLoading: solanaQuery.isLoading || solanaQuery.isFetching,

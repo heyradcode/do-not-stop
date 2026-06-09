@@ -14,11 +14,12 @@ export interface RenamePetArgs {
 export function useRenamePet(): PetMutationResult<RenamePetArgs> {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
+    const isEvm = chain.kind === 'evm';
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
         abi: evm?.abi ?? [],
-        enabled: chain.kind === 'evm',
+        enabled: isEvm,
     });
     const solanaActions = usePetActions();
 
@@ -29,7 +30,7 @@ export function useRenamePet(): PetMutationResult<RenamePetArgs> {
 
         try {
             setLocalError(null);
-            if (chain.kind === 'evm') {
+            if (isEvm) {
                 evmHook.changeName(BigInt(args.petId), args.name);
                 return;
             }
@@ -50,15 +51,15 @@ export function useRenamePet(): PetMutationResult<RenamePetArgs> {
     };
 
     const isPending =
-        chain.kind === 'evm' ? evmHook.isPending : solanaActions.renamePet.isPending;
+        isEvm ? evmHook.isPending : solanaActions.renamePet.isPending;
     const error =
         localError ??
-        (chain.kind === 'evm'
+        (isEvm
             ? (evmHook.writeError as Error | null) ?? null
             : (solanaActions.renamePet.error as Error | null) ?? null);
 
     const hash =
-        chain.kind === 'evm'
+        isEvm
             ? (evmHook.hash as string | undefined)
             : (solanaActions.renamePet.data as string | undefined);
 
