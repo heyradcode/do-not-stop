@@ -15,7 +15,6 @@ interface TauntsLine {
 }
 
 const STREAM_PATH = '/api/battle-dialogue/taunts/stream';
-const FALLBACK_PATH = '/api/battle-dialogue/taunts';
 
 /**
  * Generate the AI pre-fight taunts for a matchup, streamed from
@@ -26,8 +25,7 @@ const FALLBACK_PATH = '/api/battle-dialogue/taunts';
  *
  * Transport: the streamed body is read incrementally where supported (browsers).
  * Where it isn't (React Native has no readable `response.body`), the same NDJSON
- * arrives in one shot and we use its final line. A non-OK response or network
- * error falls back once to the non-streaming endpoint.
+ * arrives in one shot and we use its final line.
  */
 export function useBattleTaunts() {
     const apiClient = useApiClient();
@@ -64,15 +62,6 @@ export function useBattleTaunts() {
                 }
             };
 
-            const fallback = async () => {
-                const { data } = await apiClient.post<{ turns: DialogueTurn[] }>(
-                    FALLBACK_PATH,
-                    vars,
-                    { signal: controller.signal },
-                );
-                if (!controller.signal.aborted) setTurns(data.turns ?? []);
-            };
-
             try {
                 const adapter = getStorageAdapter();
                 const token = adapter ? await adapter.getToken() : null;
@@ -89,7 +78,8 @@ export function useBattleTaunts() {
                 });
 
                 if (!res.ok) {
-                    await fallback();
+                    // AI-only with no fallback: leave turns empty, battle proceeds.
+                    return;
                 } else if (!res.body || typeof res.body.getReader !== 'function') {
                     // No incremental reader (React Native): take the final snapshot.
                     const text = await res.text();
@@ -111,12 +101,8 @@ export function useBattleTaunts() {
                 }
             } catch (err) {
                 if ((err as Error)?.name === 'AbortError') return;
-                // Network/stream failure: try the non-streaming endpoint once.
-                try {
-                    await fallback();
-                } catch {
-                    // Leave turns empty — the battle proceeds without banter.
-                }
+                // Network/stream failure: leave turns empty, the battle proceeds
+                // without banter.
             } finally {
                 if (abortRef.current === controller) {
                     setIsLoading(false);

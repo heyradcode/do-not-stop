@@ -28,12 +28,6 @@ export type GenerateDialogueInput = z.infer<typeof ResultRequestSchema>;
  */
 export type GenerateTauntsInput = z.infer<typeof TauntsRequestSchema>;
 
-/** Generated pre-fight taunts plus provenance. */
-export interface TauntsResult {
-    turns: DialogueTurn[];
-    model: string;
-}
-
 /** Generated (or cached) conversation plus provenance. */
 export interface DialogueResult {
     turns: DialogueTurn[];

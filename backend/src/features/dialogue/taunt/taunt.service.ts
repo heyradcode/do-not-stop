@@ -1,39 +1,14 @@
-import { env } from '@config/env';
 import { buildPersona, type Persona } from '../llm/persona';
-import { isHuggingFaceConfigured, requestTaunts, streamTaunts } from '../llm/client';
+import { isHuggingFaceConfigured, streamTaunts } from '../llm/client';
 import { buildBanter, buildRivalry } from '../context';
 import { recordConversationSafe } from '../recording';
 import { startResultPregen } from '../result/pregen.service';
-import type { DialogueTurn, GenerateTauntsInput, TauntsResult } from '../dialogue.types';
+import type { DialogueTurn, GenerateTauntsInput } from '../dialogue.types';
 
 /**
  * Generate pre-fight taunts (AI only — no templated fallback, by product choice).
- * Throws on failure so the caller surfaces it; persists the taunts to the rolling
- * transcript so future bouts can call back to them.
- */
-export async function generateTaunts(input: GenerateTauntsInput): Promise<TauntsResult> {
-    if (!isHuggingFaceConfigured()) {
-        throw new Error('HF inference is not configured (HF_API_TOKEN unset)');
-    }
-
-    const ctx = await prepareTauntContext(input);
-    const turns = await requestTaunts(
-        ctx.attackerName,
-        ctx.defenderName,
-        ctx.attacker,
-        ctx.defender,
-        ctx.rivalry,
-        ctx.banter,
-    );
-
-    await persistTaunts(input, ctx, turns);
-    return { turns, model: env.hf.model };
-}
-
-/**
- * Streaming variant of {@link generateTaunts}: yields the cumulative taunt list
- * as each line finalizes (so the client can reveal them progressively), then runs
- * the same side effects as the non-streaming path once the full set is in —
+ * Yields the cumulative taunt list as each line finalizes (so the client can
+ * reveal them progressively), then runs the side effects once the full set is in —
  * persist the transcript and kick off result pregen.
  */
 export async function* streamTauntsConversation(

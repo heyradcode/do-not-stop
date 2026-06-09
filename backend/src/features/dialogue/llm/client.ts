@@ -60,21 +60,6 @@ export async function requestDialogue(
     );
 }
 
-export async function requestTaunts(
-    attackerName: string,
-    defenderName: string,
-    attacker: Persona,
-    defender: Persona,
-    rivalry?: string,
-    banter?: string,
-): Promise<DialogueTurn[]> {
-    const turns = await generate(
-        `${TAUNT_SYSTEM_PROMPT}\n\n${TAUNT_JSON_FORMAT_INSTRUCTION}`,
-        buildTauntUserMessage(attackerName, defenderName, attacker, defender, rivalry, banter),
-    );
-    return finalizeTaunts(turns);
-}
-
 /** Pull the (possibly partial) turns array out of a streamed JSON object. */
 function readTurns(object: unknown): unknown[] {
     const turns = (object as { turns?: unknown })?.turns;
@@ -96,9 +81,9 @@ function finalizeTaunts(rawTurns: unknown[]): DialogueTurn[] {
 }
 
 /**
- * Streaming variant of {@link requestTaunts}: yields the cumulative, normalized
- * taunt list each time a new turn finalizes, so the client can reveal lines as
- * they generate. Returns the complete list when the stream ends.
+ * Generate pre-fight taunts as a stream: yields the cumulative, normalized taunt
+ * list each time a new turn finalizes, so the client can reveal lines as they
+ * generate. Returns the complete list when the stream ends.
  *
  * A turn is "final" once a later one has started (the model is mid-text on the
  * last array element), so during the loop we normalize everything but the tail;

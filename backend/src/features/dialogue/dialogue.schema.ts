@@ -53,7 +53,7 @@ export const ResultRequestSchema = z.object({
     leveledUp: z.boolean().optional().catch(undefined),
 });
 
-/** Body of POST /api/battle-dialogue/taunts (no winner — fight hasn't happened). */
+/** Body of POST /api/battle-dialogue/taunts/stream (no winner — fight hasn't happened). */
 export const TauntsRequestSchema = z.object({
     chain: ChainSchema,
     attacker: PetPersonaSchema,

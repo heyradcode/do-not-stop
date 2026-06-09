@@ -1,36 +1,17 @@
 import type { Request, Response } from 'express';
 import { getOrGenerateDialogue } from './result/result.service';
-import { generateTaunts, streamTauntsConversation } from './taunt/taunt.service';
+import { streamTauntsConversation } from './taunt/taunt.service';
 import { ResultRequestSchema, TauntsRequestSchema } from './dialogue.schema';
 
 /**
- * POST /api/battle-dialogue/taunts — generate the pre-fight taunts for a matchup.
- * AI-only (no templated fallback): on failure it returns 502 so the client knows
- * the banter is unavailable. Side effect: kicks off result pregen for both
- * outcomes so the post-battle result read is served instantly.
- */
-export async function generateBattleTaunts(req: Request, res: Response): Promise<void> {
-    const tauntsRequest = TauntsRequestSchema.safeParse(req.body);
-    if (!tauntsRequest.success) {
-        res.status(400).json({ error: 'Invalid battle taunts request' });
-        return;
-    }
-
-    try {
-        const result = await generateTaunts(tauntsRequest.data);
-        res.json(result);
-    } catch (err) {
-        console.error('[dialogue] taunt generation failed:', err);
-        res.status(502).json({ error: 'Failed to generate battle taunts' });
-    }
-}
-
-/**
- * POST /api/battle-dialogue/taunts/stream — same as /taunts but streams the lines
- * as they generate, one NDJSON object ({ turns }) per line, so the client can
- * reveal them progressively. Clients that can't read a streamed body (e.g. React
- * Native) get the same NDJSON in one shot and use the final line. Errors before
- * the first chunk return 502; mid-stream failures end the (already-200) response.
+ * POST /api/battle-dialogue/taunts/stream — generate the pre-fight taunts for a
+ * matchup, streaming the lines as they generate: one NDJSON object ({ turns }) per
+ * line, so the client can reveal them progressively. Clients that can't read a
+ * streamed body (e.g. React Native) get the same NDJSON in one shot and use the
+ * final line. AI-only (no templated fallback). Errors before the first chunk
+ * return 502; mid-stream failures end the (already-200) response. Side effect:
+ * kicks off result pregen for both outcomes so the post-battle result read is
+ * served instantly.
  */
 export async function streamBattleTaunts(req: Request, res: Response): Promise<void> {
     const tauntsRequest = TauntsRequestSchema.safeParse(req.body);

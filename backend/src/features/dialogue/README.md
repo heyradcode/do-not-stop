@@ -10,7 +10,7 @@ Dialogue has exactly two phases, mirrored everywhere (`DialoguePhase = 'taunt' |
 
 | Phase | When | Endpoint | Keyed by |
 |-------|------|----------|----------|
-| **taunt** | "Start Battle" (before the wallet confirms) | `POST /api/battle-dialogue/taunts` (+ `/taunts/stream`) | matchup (no tx hash yet) |
+| **taunt** | "Start Battle" (before the wallet confirms) | `POST /api/battle-dialogue/taunts/stream` | matchup (no tx hash yet) |
 | **result** | After the battle settles on‑chain | `POST /api/battle-dialogue/result` | `battleId` (tx hash / settle sig) |
 
 They are two separate calls because they happen at fundamentally different times
@@ -35,7 +35,7 @@ dialogue/
     fallback.ts            #   deterministic templated lines (no AI)
 
   taunt/
-    taunt.service.ts       # generateTaunts, streamTauntsConversation
+    taunt.service.ts       # streamTauntsConversation
 
   result/
     result.service.ts      # getOrGenerateDialogue (the settled-battle read)
@@ -88,7 +88,7 @@ sequenceDiagram
 
 ### 1. Taunt phase (`taunt/taunt.service.ts`)
 
-`generateTaunts` / `streamTauntsConversation`:
+`streamTauntsConversation`:
 
 1. **Guard** — taunts are AI‑only (no templated fallback, by product choice). If
    `HF_API_TOKEN` is unset it throws → the route returns 502.
@@ -96,9 +96,9 @@ sequenceDiagram
    **rivalry** (head‑to‑head + recent form) and **banter** (recent lines between
    the pair) context blocks. `tauntsOnly: true` drops prior *result* lines so the
    model isn't primed to leak an outcome into pre‑fight trash talk.
-3. **Generate** — `requestTaunts` (one shot) or `streamTaunts` (NDJSON, one
-   `{turns}` snapshot per line, so the client reveals lines as they type).
-4. **`persistTaunts`** (shared by both the one‑shot and streaming paths) —
+3. **Generate** — `streamTaunts` (NDJSON, one `{turns}` snapshot per line, so the
+   client reveals lines as they type).
+4. **`persistTaunts`** — once the full set is in,
    append the taunts to the rolling transcript (`battle_conversation`,
    `battleId: null`) for future callback continuity, then fire‑and‑forget
    **`startResultPregen`** (below). Living here guarantees pregen fires on
