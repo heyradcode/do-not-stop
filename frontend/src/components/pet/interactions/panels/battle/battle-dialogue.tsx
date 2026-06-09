@@ -74,7 +74,7 @@ const BattleDialogue: React.FC<BattleDialogueProps> = ({
     if (isLoading && turns.length === 0) {
         return (
             <div className="battle-dialogue is-loading" aria-live="polite">
-                <span className="battle-dialogue-thinking">The fighters are talking…</span>
+                <span className="thinking">The fighters are talking…</span>
             </div>
         );
     }
@@ -85,9 +85,9 @@ const BattleDialogue: React.FC<BattleDialogueProps> = ({
         speaker === 'attacker' ? attackerName : defenderName;
 
     const renderLine = (turn: DialogueTurn, text: string, key: React.Key) => (
-        <div key={key} className={`battle-dialogue-line is-${turn.speaker} is-${turn.phase}`}>
-            <span className="battle-dialogue-speaker">{nameFor(turn.speaker)}</span>
-            <span className="battle-dialogue-text">{text}</span>
+        <div key={key} className={`line is-${turn.speaker} is-${turn.phase}`}>
+            <span className="speaker">{nameFor(turn.speaker)}</span>
+            <span className="text">{text}</span>
         </div>
     );
 
