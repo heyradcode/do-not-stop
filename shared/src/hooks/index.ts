@@ -1,4 +1,7 @@
-export * from './chains';
+// Auth callback — consumed by app bootstrap code (e.g. frontend/src/config.ts).
+export { setTokenSuccessCallback } from './chains/ethereum/useVerifySignature';
+// Low-level EVM read hook — consumed by mobile until it migrates to usePetList.
+export { usePetsContract } from './chains/ethereum/usePetsContract';
 
 export { useActiveChain, type ActiveChain } from './useActiveChain';
 export { useChainCapabilities, type ChainContext } from './useChainCapabilities';
