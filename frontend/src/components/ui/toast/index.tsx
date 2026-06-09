@@ -75,13 +75,13 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                             className={`toast toast-${toast.tone ?? 'error'}`}
                             role="status"
                         >
-                            <span className="toast-icon" aria-hidden>
+                            <span className="icon" aria-hidden>
                                 <Icon as={IconComponent} tone={toneColor(toast.tone ?? 'error')} />
                             </span>
-                            <p className="toast-message">{toast.message}</p>
+                            <p className="message">{toast.message}</p>
                             <button
                                 type="button"
-                                className="toast-dismiss"
+                                className="dismiss"
                                 aria-label="Dismiss notification"
                                 onClick={() => dismiss(toast.id)}
                             >

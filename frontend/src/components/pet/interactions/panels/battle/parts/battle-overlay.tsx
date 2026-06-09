@@ -72,13 +72,13 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
             <div className={resultCardClass}>
                 {showResult ? (
                     <>
-                        <div className="battle-result-art" aria-hidden>
+                        <div className="art" aria-hidden>
                             <BattleResultArt outcome={battleOutcome} />
                         </div>
-                        <p className="battle-result-title">
+                        <p className="title">
                             {battleOutcome === null ? 'Resolving…' : isVictory ? 'Victory!' : 'Defeated'}
                         </p>
-                        <p className="battle-result-message">
+                        <p className="message">
                             {battleOutcome === null
                                 ? 'Checking battle outcome…'
                                 : isVictory
@@ -88,7 +88,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                                     : 'Your pet was defeated. Train harder and try again!'}
                         </p>
                         {opponent && battleOutcome !== null ? (
-                            <p className="battle-result-opponent">
+                            <p className="opponent">
                                 {isVictory
                                     ? `vs ${opponent.name} (Lv.${opponent.level})`
                                     : `Lost to ${opponent.name} (Lv.${opponent.level})`}
@@ -104,7 +104,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                             />
                         ) : null}
                         {battleOutcome !== null && (
-                            <div className="battle-result-actions">
+                            <div className="actions">
                                 <button
                                     type="button"
                                     className={`battle-result-rematch${isDefeat ? ' is-defeat' : ''}`}
@@ -126,7 +126,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                     </>
                 ) : (
                     <>
-                        <p className="battle-result-title">{preResultTitle}</p>
+                        <p className="title">{preResultTitle}</p>
                         {tauntsLoading || tauntsTurns.length > 0 ? (
                             <BattleDialogue
                                 turns={tauntsTurns}
@@ -136,7 +136,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                                 onComplete={onTauntsComplete}
                             />
                         ) : null}
-                        {preResultStatus ? <p className="battle-result-message">{preResultStatus}</p> : null}
+                        {preResultStatus ? <p className="message">{preResultStatus}</p> : null}
                     </>
                 )}
             </div>
