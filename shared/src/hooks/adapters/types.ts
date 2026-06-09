@@ -37,6 +37,7 @@ export interface ChainCapabilities {
         appliesTo: ('battle' | 'breed')[];
     };
     explorerTxUrl(hash: string): string | null;
+    parseError(error: unknown, fallback: string): { message: string; isUserRejection: boolean; isContractError: boolean };
 }
 
 export interface ChainAdapter {

@@ -10,6 +10,7 @@ const NULL_CAPABILITIES: ChainCapabilities = {
     renameMinLevel: 1,
     randomness: { provider: 'chainlink', appliesTo: [] },
     explorerTxUrl: () => null,
+    parseError: (_err, fallback) => ({ message: fallback, isUserRejection: false, isContractError: false }),
 };
 
 /** Extends ChainCapabilities with connected-wallet context. */

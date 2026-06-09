@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
-import { useActiveChain } from './useActiveChain';
-import { parseContractError } from '../utils/ethereum';
-import { formatSolanaActionError } from '../utils/solana';
+import { useChainCapabilities } from './useChainCapabilities';
 
 export type TxError = {
     message: string;
@@ -12,23 +10,11 @@ export function useTxError(
     writeError: unknown,
     fallback = 'Transaction failed. Please try again.',
 ): TxError | null {
-    const chain = useActiveChain();
+    const { parseError } = useChainCapabilities();
 
     return useMemo(() => {
         if (!writeError) return null;
-
-        if (chain.kind === 'solana') {
-            const message = formatSolanaActionError(writeError, fallback);
-            return {
-                message,
-                isUserRejection: message.toLowerCase().includes('cancelled'),
-            };
-        }
-
-        const parsed = parseContractError(writeError);
-        return {
-            message: parsed.message,
-            isUserRejection: parsed.isUserRejection,
-        };
-    }, [writeError, chain.kind, fallback]);
+        const { message, isUserRejection } = parseError(writeError, fallback);
+        return { message, isUserRejection };
+    }, [writeError, parseError, fallback]);
 }

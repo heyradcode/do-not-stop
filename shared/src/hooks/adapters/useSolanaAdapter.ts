@@ -4,6 +4,7 @@ import { usePetActions } from '../chains/solana/usePetActions';
 import { usePets as useSolanaPets } from '../chains/solana/usePets';
 import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
 import { mapSolanaPet, type SolanaPetAccountRow } from '../../utils/pets/mapSolanaPet';
+import { formatSolanaActionError } from '../../utils/solana';
 import type { Pet } from '../../types/pet';
 import type { ChainAdapter, AdapterMutation, TxLifecycle, TxPhase, ChainCapabilities } from './types';
 
@@ -18,6 +19,10 @@ export const SOLANA_CAPABILITIES: ChainCapabilities = {
     renameMinLevel: 1,
     randomness: { provider: 'switchboard', appliesTo: ['battle', 'breed'] },
     explorerTxUrl: () => null,
+    parseError: (err, fallback) => {
+        const message = formatSolanaActionError(err, fallback);
+        return { message, isUserRejection: message.toLowerCase().includes('cancelled'), isContractError: true };
+    },
 };
 
 type SolanaMutation<TData = string> = {

@@ -4,6 +4,7 @@ import { isAddress } from 'viem';
 import { usePetsContract } from '../chains/ethereum/usePetsContract';
 import { usePetsConfig } from '../../contexts/PetsConfigContext';
 import { mapEvmPet, type EvmRawPet } from '../../utils/pets/mapEvmPet';
+import { parseContractError } from '../../utils/ethereum';
 import type { Pet } from '../../types/pet';
 import type { ChainAdapter, AdapterMutation, TxLifecycle, TxPhase, ChainCapabilities } from './types';
 
@@ -18,6 +19,7 @@ export const EVM_CAPABILITIES: ChainCapabilities = {
     renameMinLevel: 2,
     randomness: { provider: 'chainlink', appliesTo: ['breed'] },
     explorerTxUrl: () => null,
+    parseError: (err, _fallback) => parseContractError(err),
 };
 
 type WriteState = {

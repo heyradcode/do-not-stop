@@ -1,7 +1,5 @@
 import { useMemo } from 'react';
-import { useActiveChain } from './useActiveChain';
-import { parseContractError } from '../utils/ethereum';
-import { formatSolanaActionError } from '../utils/solana';
+import { useChainCapabilities } from './useChainCapabilities';
 
 export type PetError = {
     message: string | null;
@@ -15,7 +13,7 @@ export function usePetError(
     validationError: string | null,
     fallbackMessage: string,
 ): PetError {
-    const chain = useActiveChain();
+    const { parseError } = useChainCapabilities();
 
     return useMemo(() => {
         if (validationError) {
@@ -27,19 +25,6 @@ export function usePetError(
             return { message: null, isUserRejection: false, isContractError: false };
         }
 
-        if (chain.kind === 'solana') {
-            return {
-                message: formatSolanaActionError(err, fallbackMessage),
-                isUserRejection: false,
-                isContractError: true,
-            };
-        }
-
-        const parsed = parseContractError(err);
-        return {
-            message: parsed.message,
-            isUserRejection: parsed.isUserRejection,
-            isContractError: parsed.isContractError,
-        };
-    }, [validationError, mutationError, receiptError, chain.kind, fallbackMessage]);
+        return parseError(err, fallbackMessage);
+    }, [validationError, mutationError, receiptError, parseError, fallbackMessage]);
 }
