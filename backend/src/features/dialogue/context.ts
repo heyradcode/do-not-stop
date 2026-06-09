@@ -1,7 +1,7 @@
 import { getHeadToHead, getRecentForm } from '@repositories/history.repository';
 import { getRecentBanter } from '@repositories/conversation.repository';
 import type { Chain } from '@typings/chain';
-import { bestEffort } from '@utils';
+import { withFallback } from '@utils';
 import { buildBanterContext, buildRivalryContext } from './llm/render';
 
 /**
@@ -22,7 +22,7 @@ export function buildBanter(
     excludeBattleId?: string,
     tauntsOnly = false,
 ): Promise<string> {
-    return bestEffort(
+    return withFallback(
         '[dialogue] banter lookup failed, continuing without it:',
         async () => {
             const turns = await getRecentBanter(chain, attackerId, defenderId, 6, excludeBattleId);
@@ -43,7 +43,7 @@ export function buildRivalry(
     defenderId: string,
     excludeBattleId?: string,
 ): Promise<string> {
-    return bestEffort(
+    return withFallback(
         '[dialogue] rivalry lookup failed, continuing without it:',
         async () => {
             const [headToHead, attackerForm, defenderForm] = await Promise.all([

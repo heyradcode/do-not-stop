@@ -38,11 +38,11 @@ export function parseIntParam(
 }
 
 /**
- * Run a best-effort side effect: on failure, log under `label` and return
- * `fallback` instead of throwing. For non-critical paths that must never block or
- * fail the main response.
+ * Run `fn`; if it throws, log under `label` and return `fallback` instead of
+ * propagating. For non-critical paths that must never block or fail the main
+ * response.
  */
-export async function bestEffort<T>(
+export async function withFallback<T>(
     label: string,
     fn: () => Promise<T>,
     fallback: T
