@@ -16,6 +16,11 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
     const attacker = buildPersona(input.attacker);
     const defender = buildPersona(input.defender);
 
+    // Fast path: if this matchup was pre-generated at taunt time, pick the
+    // variant matching the real winner instead of generating now.
+    const prepared = await consumePregen(input);
+    if (prepared) return finalizeDialogue(input, prepared.turns, prepared.model);
+
     const cached = await getDialogue(input.chain, input.battleId);
     if (cached) {
         // Old cached dialogues may be missing the opponent's result line if the AI
@@ -23,11 +28,6 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
         const turns = ensureResultCoverage(cached.turns, input, attacker, defender);
         return { turns, model: cached.model, cached: true };
     }
-
-    // Fast path: if this matchup was pre-generated at taunt time, pick the
-    // variant matching the real winner instead of generating now.
-    const prepared = await consumePregen(input);
-    if (prepared) return finalizeDialogue(input, prepared.turns, prepared.model);
 
     const { turns: rawTurns, model } = await generateTurns(input, attacker, defender);
     const turns = ensureResultCoverage(rawTurns, input, attacker, defender);

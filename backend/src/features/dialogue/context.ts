@@ -4,6 +4,9 @@ import type { Chain } from '@typings/chain';
 import { withFallback } from '@utils';
 import { buildBanterContext, buildRivalryContext } from './llm/render';
 
+const BANTER_HISTORY_LIMIT = 6;
+const RECENT_FORM_LIMIT = 5;
+
 /**
  * Assembles the prompt context from prior battles: fetches from the repositories
  * and renders it with the prompting helpers. Every lookup is best-effort —
@@ -25,7 +28,7 @@ export function buildBanter(
     return withFallback(
         '[dialogue] banter lookup failed, continuing without it:',
         async () => {
-            const turns = await getRecentBanter(chain, attackerId, defenderId, 6, excludeBattleId);
+            const turns = await getRecentBanter(chain, attackerId, defenderId, BANTER_HISTORY_LIMIT, excludeBattleId);
             const relevant = tauntsOnly ? turns.filter((t) => t.phase !== 'result') : turns;
             return buildBanterContext(relevant);
         },
@@ -48,8 +51,8 @@ export function buildRivalry(
         async () => {
             const [headToHead, attackerForm, defenderForm] = await Promise.all([
                 getHeadToHead(chain, attackerId, defenderId, excludeBattleId),
-                getRecentForm(chain, attackerId, 5, excludeBattleId),
-                getRecentForm(chain, defenderId, 5, excludeBattleId),
+                getRecentForm(chain, attackerId, RECENT_FORM_LIMIT, excludeBattleId),
+                getRecentForm(chain, defenderId, RECENT_FORM_LIMIT, excludeBattleId),
             ]);
             return buildRivalryContext(headToHead, attackerForm, defenderForm, attackerId, defenderId);
         },
