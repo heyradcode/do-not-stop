@@ -36,3 +36,21 @@ export function parseIntParam(
     if (Number.isNaN(n)) return fallback;
     return Math.min(Math.max(n, min), max);
 }
+
+/**
+ * Run a best-effort side effect: on failure, log under `label` and return
+ * `fallback` instead of throwing. For non-critical paths that must never block or
+ * fail the main response.
+ */
+export async function bestEffort<T>(
+    label: string,
+    fn: () => Promise<T>,
+    fallback: T
+): Promise<T> {
+    try {
+        return await fn();
+    } catch (err) {
+        console.error(label, err);
+        return fallback;
+    }
+}

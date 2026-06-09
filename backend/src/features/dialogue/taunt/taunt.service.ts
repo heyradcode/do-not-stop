@@ -1,8 +1,8 @@
 import { env } from '@config/env';
 import { buildPersona, type Persona } from '../llm/persona';
 import { isHuggingFaceConfigured, requestTaunts, streamTaunts } from '../llm/client';
-import { buildBanter, buildRivalry } from '../shared/context';
-import { recordConversationSafe } from '../shared/recording';
+import { buildBanter, buildRivalry } from '../context';
+import { recordConversationSafe } from '../recording';
 import { startResultPregen } from '../result/pregen.service';
 import type { DialogueTurn, GenerateTauntsInput, TauntsResult } from '../dialogue.types';
 

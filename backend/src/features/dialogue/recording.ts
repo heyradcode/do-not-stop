@@ -1,8 +1,8 @@
 import { recordBattle } from '@repositories/history.repository';
 import { recordConversation } from '@repositories/conversation.repository';
 import type { Chain } from '@typings/chain';
-import { bestEffort } from './best-effort';
-import type { DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
+import { bestEffort } from '@utils';
+import type { DialogueTurn, GenerateDialogueInput } from './dialogue.types';
 
 /**
  * Best-effort persistence side effects for the dialogue feature. Every write here
@@ -15,7 +15,7 @@ export function recordConversationSafe(
     meta: { chain: Chain; attacker: string; defender: string; battleId?: string | null },
     turns: DialogueTurn[],
 ): Promise<void> {
-    return bestEffort('failed to record conversation', () => recordConversation(meta, turns), undefined);
+    return bestEffort('[dialogue] failed to record conversation:', () => recordConversation(meta, turns), undefined);
 }
 
 /** Append only the result-phase lines to the transcript (taunts came pre-fight). */
@@ -41,7 +41,7 @@ export function recordResultLines(input: GenerateDialogueInput, turns: DialogueT
 export function recordBattleHistory(input: GenerateDialogueInput): Promise<void> {
     const winnerPetId = input.winner === 'attacker' ? input.attacker.petId : input.defender.petId;
     return bestEffort(
-        'failed to record battle history',
+        '[dialogue] failed to record battle history:',
         () =>
             recordBattle({
                 chain: input.chain,

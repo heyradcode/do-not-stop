@@ -1,8 +1,8 @@
 import { getHeadToHead, getRecentForm } from '@repositories/history.repository';
 import { getRecentBanter } from '@repositories/conversation.repository';
 import type { Chain } from '@typings/chain';
-import { buildBanterContext, buildRivalryContext } from '../llm/render';
-import { bestEffort } from './best-effort';
+import { bestEffort } from '@utils';
+import { buildBanterContext, buildRivalryContext } from './llm/render';
 
 /**
  * Assembles the prompt context from prior battles: fetches from the repositories
@@ -23,7 +23,7 @@ export function buildBanter(
     tauntsOnly = false,
 ): Promise<string> {
     return bestEffort(
-        'banter lookup failed, continuing without it',
+        '[dialogue] banter lookup failed, continuing without it:',
         async () => {
             const turns = await getRecentBanter(chain, attackerId, defenderId, 6, excludeBattleId);
             const relevant = tauntsOnly ? turns.filter((t) => t.phase !== 'result') : turns;
@@ -44,7 +44,7 @@ export function buildRivalry(
     excludeBattleId?: string,
 ): Promise<string> {
     return bestEffort(
-        'rivalry lookup failed, continuing without it',
+        '[dialogue] rivalry lookup failed, continuing without it:',
         async () => {
             const [headToHead, attackerForm, defenderForm] = await Promise.all([
                 getHeadToHead(chain, attackerId, defenderId, excludeBattleId),
