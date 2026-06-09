@@ -6,7 +6,7 @@ import { useWatchPetsContract } from './chains/ethereum/useWatchPetsContract';
 import { usePetActions } from './chains/solana/usePetActions';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
-import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
+import { FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
 
 export interface BreedPetsArgs {
     parentId1: string;
@@ -22,7 +22,6 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
     const chain = useActiveChain();
     const { address } = useAccount();
     const { evm } = usePetsConfig();
-    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'breed');
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,

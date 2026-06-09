@@ -3,7 +3,7 @@ import { usePetsContract } from './chains/ethereum/usePetsContract';
 import { usePetActions } from './chains/solana/usePetActions';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
-import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
+import { FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
 import type { PetMutationResult } from './useCreatePet';
 
 export interface RenamePetArgs {
@@ -14,7 +14,6 @@ export interface RenamePetArgs {
 export function useRenamePet(): PetMutationResult<RenamePetArgs> {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
-    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'rename');
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,

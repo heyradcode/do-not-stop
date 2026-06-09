@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
     getLifePercent,
     getReadyPetsUnified,
-    isActionSupported,
     useActiveChain,
     useOpponents,
     usePetList,
@@ -49,10 +48,6 @@ const PetInteractions: React.FC = () => {
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
     const activeChainKind = chain.kind === 'none' ? null : chain.kind;
-    const breedSupported = isActionSupported(activeChainKind, 'breed');
-    const battleSupported = isActionSupported(activeChainKind, 'battle');
-    const levelUpSupported = isActionSupported(activeChainKind, 'levelUp');
-    const renameSupported = isActionSupported(activeChainKind, 'rename');
 
     // Preview an on-chain rival for the Battle Arena card (opponents come from
     // the roster, not a second owned pet).
@@ -105,10 +100,10 @@ const PetInteractions: React.FC = () => {
     const previewOpponent =
         opponents.length > 0
             ? [...opponents].sort(
-                  (a, b) =>
-                      Math.abs(a.level - (previewParentA?.level ?? a.level)) -
-                      Math.abs(b.level - (previewParentA?.level ?? b.level)),
-              )[0]
+                (a, b) =>
+                    Math.abs(a.level - (previewParentA?.level ?? a.level)) -
+                    Math.abs(b.level - (previewParentA?.level ?? b.level)),
+            )[0]
             : undefined;
     const availableBattles = Math.min(3, readyPets.length > 0 ? 3 : 0);
     const breedDisabledHint = !breedSupported ? 'Breeding unavailable on this chain' : undefined;

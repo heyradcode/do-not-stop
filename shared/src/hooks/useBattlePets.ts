@@ -3,7 +3,7 @@ import { usePetsContract } from './chains/ethereum/usePetsContract';
 import { usePetActions } from './chains/solana/usePetActions';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
-import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
+import { NoActiveChainError } from '../utils/pets';
 
 export interface BattlePetsArgs {
     /** Attacker — must be a pet the caller owns. */
@@ -24,7 +24,6 @@ export type UseBattlePetsOptions = {
 export function useBattlePets(options?: UseBattlePetsOptions) {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
-    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'battle');
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
@@ -79,7 +78,6 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
 
     const mutate = async (args: BattlePetsArgs) => {
         if (chain.kind === 'none') throw new NoActiveChainError('battle');
-        if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'battle');
 
         setLocalError(null);
         setReceiptError(null);

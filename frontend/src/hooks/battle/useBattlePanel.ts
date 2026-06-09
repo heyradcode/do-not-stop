@@ -308,7 +308,7 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
             pendingBattleStartRef.current = false;
             taunts.reset();
         }
-    }, [battle.error, battle.receiptError, showResult]);
+    }, [taunts, battle.error, battle.receiptError, showResult]);
 
     useEffect(() => {
         if (!rematchPending || petsLoading || opponentsLoading || opponentsFetching) return;

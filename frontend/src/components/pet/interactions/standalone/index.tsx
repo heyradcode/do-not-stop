@@ -1,5 +1,5 @@
 import React from 'react';
-import { isActionSupported, useActiveChain, usePetList } from '@shared/core';
+import { useActiveChain, usePetList } from '@shared/core';
 import type { InteractionAction } from '@constants/interactionRoutes';
 import { STANDALONE_INTERACTION_HEADERS } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
@@ -14,22 +14,11 @@ export type InteractionStandaloneProps = {
     children: React.ReactNode;
 };
 
-const ACTION_TO_FEATURE = {
-    breed: 'breed',
-    battle: 'battle',
-    levelup: 'levelUp',
-    changename: 'rename',
-} as const;
-
 const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, minPets, children }) => {
     const chain = useActiveChain();
     const isConnected = chain.kind !== 'none';
     const { pets, isLoading } = usePetList();
     const header = STANDALONE_INTERACTION_HEADERS[action];
-    const featureSupported = isActionSupported(
-        chain.kind === 'none' ? null : chain.kind,
-        ACTION_TO_FEATURE[action]
-    );
 
     if (!isConnected) {
         return (

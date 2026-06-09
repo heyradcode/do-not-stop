@@ -3,7 +3,7 @@ import { usePetsContract } from './chains/ethereum/usePetsContract';
 import { usePetActions } from './chains/solana/usePetActions';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useActiveChain } from './useActiveChain';
-import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
+import { NoActiveChainError } from '../utils/pets';
 
 export interface CreatePetArgs {
     name: string;
@@ -26,7 +26,6 @@ export interface PetMutationResult<TArgs> {
 export function useCreatePet(): PetMutationResult<CreatePetArgs> {
     const chain = useActiveChain();
     const { evm } = usePetsConfig();
-    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'create');
 
     const evmHook = usePetsContract({
         contractAddress: evm?.contractAddress,
@@ -39,7 +38,7 @@ export function useCreatePet(): PetMutationResult<CreatePetArgs> {
 
     const mutate = async (args: CreatePetArgs) => {
         if (chain.kind === 'none') throw new NoActiveChainError('create');
-        if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'create');
+
         try {
             setLocalError(null);
             if (chain.kind === 'evm') {

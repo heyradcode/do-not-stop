@@ -82,7 +82,7 @@ export function useOpponents({ chain, minLevel, page = 0, enabled = true }: UseO
 
     const opponents = useMemo<OpponentPet[]>(
         () =>
-            (query.data?.opponents ?? []).map((o) => ({
+            query.data?.opponents?.map((o) => ({
                 id: o.id,
                 chain: o.chain,
                 owner: o.owner,
@@ -93,7 +93,7 @@ export function useOpponents({ chain, minLevel, page = 0, enabled = true }: UseO
                 winCount: o.winCount,
                 lossCount: o.lossCount,
                 readyAt: o.readyAt,
-            })),
+            })) ?? [],
         [query.data],
     );
 
