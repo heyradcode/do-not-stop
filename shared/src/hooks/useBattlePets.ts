@@ -53,12 +53,12 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
         battlePets.lifecycle.reset();
     }, [battlePets.lifecycle]);
 
-    const onEvmReceiptComplete = useCallback(() => {
+    const onConfirmed = useCallback(() => {
         notifySuccess();
         reset();
     }, [notifySuccess, reset]);
 
-    const onEvmReceiptError = useCallback((error: Error) => {
+    const onConfirmError = useCallback((error: Error) => {
         setReceiptError(error);
         battlePets.lifecycle.reset();
     }, [battlePets.lifecycle]);
@@ -66,13 +66,13 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
     return {
         mutate,
         isPending: battlePets.isPending,
-        isEvmConfirming: battlePets.lifecycle.phase === 'confirming',
+        isConfirming: battlePets.lifecycle.phase === 'confirming',
         reset,
         clearErrors,
         hash: battlePets.lifecycle.hash,
         error: battlePets.lifecycle.error,
         receiptError,
-        onEvmReceiptComplete,
-        onEvmReceiptError,
+        onConfirmed,
+        onConfirmError,
     };
 }

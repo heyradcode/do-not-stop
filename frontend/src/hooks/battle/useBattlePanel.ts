@@ -81,7 +81,7 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // pre-fight taunts finish playing (so it doesn't pop while they're typing).
     const pendingBattleStartRef = useRef(false);
 
-    const activeChainKind = capabilities.isConnected ? (capabilities.kind as 'evm' | 'solana') : null;
+    const activeChainKind = capabilities.activeKind;
     const {
         opponents,
         isLoading: opponentsLoading,
@@ -377,11 +377,11 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
         .join(' ');
 
     // Pre-result phase (overlay stays open through taunts → battling).
-    const isBattling = battle.isPending || battle.isEvmConfirming || rematchPending;
+    const isBattling = battle.isPending || battle.isConfirming || rematchPending;
     const preResultTitle = isBattling ? 'The battle is underway…' : 'Face-off!';
     const preResultStatus = rematchPending
         ? 'Preparing rematch…'
-        : battle.isEvmConfirming
+        : battle.isConfirming
             ? 'Confirming on-chain…'
             : battle.isPending
                 ? 'Awaiting your wallet…'
@@ -391,11 +391,11 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
         ? 'Facing off…'
         : battle.isPending
             ? pendingLabel
-            : battle.isEvmConfirming
+            : battle.isConfirming
                 ? 'Confirming...'
                 : 'Start Battle';
     const battleDisabled =
-        battle.isPending || battle.isEvmConfirming || rematchPending || overlayOpen ||
+        battle.isPending || battle.isConfirming || rematchPending || overlayOpen ||
         !selectedPet1 || !selectedOpponent || showResult;
     const randomMatchDisabled = !canRandomMatch || battle.isPending || showResult;
 
@@ -456,10 +456,10 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
         setup,
         hashHint,
         receipt: {
-            show: battle.isEvmConfirming,
+            show: battle.isConfirming,
             hash: battle.hash,
-            onComplete: battle.onEvmReceiptComplete,
-            onError: battle.onEvmReceiptError,
+            onComplete: battle.onConfirmed,
+            onError: battle.onConfirmError,
         },
     };
 }

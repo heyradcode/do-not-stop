@@ -177,11 +177,11 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 </p>
             )}
 
-            {breed.isEvmConfirming && (
+            {breed.isConfirming && (
                 <TransactionStatus
                     hash={breed.hash}
-                    onComplete={breed.onEvmReceiptComplete}
-                    onError={breed.onEvmReceiptError}
+                    onComplete={breed.onConfirmed}
+                    onError={breed.onConfirmError}
                 />
             )}
         </>

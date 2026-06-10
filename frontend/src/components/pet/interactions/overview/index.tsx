@@ -47,7 +47,7 @@ const PetInteractions: React.FC = () => {
     const action = useMemo(() => parseActionParam(actionParam), [actionParam]);
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
-    const activeChainKind = isConnected ? (capabilities.kind as 'evm' | 'solana') : null;
+    const activeChainKind = capabilities.activeKind;
 
     // Preview an on-chain rival for the Battle Arena card (opponents come from
     // the roster, not a second owned pet).

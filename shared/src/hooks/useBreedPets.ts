@@ -100,11 +100,11 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
         }
     };
 
-    const onEvmReceiptComplete = useCallback(() => {
+    const onConfirmed = useCallback(() => {
         /* VRF fulfillment is handled via BreedFulfilled event, not request-tx confirm */
     }, []);
 
-    const onEvmReceiptError = useCallback((error: Error) => {
+    const onConfirmError = useCallback((error: Error) => {
         setReceiptError(error);
     }, []);
 
@@ -112,13 +112,13 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
         mutate,
         isPending: breedPets.isPending,
         isAwaitingFulfillment: isEvm && pendingRequestId != null,
-        isEvmConfirming: breedPets.lifecycle.phase === 'confirming',
+        isConfirming: breedPets.lifecycle.phase === 'confirming',
         reset,
         clearErrors,
         hash,
         error: breedPets.lifecycle.error,
         receiptError,
-        onEvmReceiptComplete,
-        onEvmReceiptError,
+        onConfirmed,
+        onConfirmError,
     };
 }
