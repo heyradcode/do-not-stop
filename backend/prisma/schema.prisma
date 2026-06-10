@@ -59,11 +59,15 @@ model BattleHistory {
   defender    String   @map("defender_pet_id")
   winnerPetId String   @map("winner_pet_id") // absolute id — head-to-head survives role swaps
   foughtAt    BigInt   @map("fought_at") // unix seconds (block/tx time)
+  /// Monotonic source version (Solana slot / EVM block timestamp). The
+  /// StreamLiveBattles gRPC replay resumes from `WHERE version > after_version`.
+  version     BigInt   @default(0)
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@id([chain, battleId])
   @@index([chain, attacker])
   @@index([chain, defender])
+  @@index([chain, version])
   @@map("battle_history")
 }
 

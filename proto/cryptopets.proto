@@ -1,0 +1,32 @@
+// Shared contract between indexer-go (server) and the Node backend (client).
+// Node loads this file at runtime via @grpc/proto-loader; Go stubs are
+// generated into indexer-go/pb with `buf generate` (see indexer-go/buf.gen.yaml).
+syntax = "proto3";
+
+package cryptopets;
+
+option go_package = "github.com/radcrew/do-not-stop/indexer-go/pb";
+
+service GameDataService {
+  // Server streaming: indexer-go pushes settled battles (both chains) the
+  // moment they index. Delivery is at-least-once — consumers must be
+  // idempotent by (chain, battle_id).
+  rpc StreamLiveBattles(StreamRequest) returns (stream BattleEvent);
+}
+
+message StreamRequest {
+  // Resume point per chain so a reconnecting client misses nothing:
+  // chain -> last seen version (Solana slot / EVM block timestamp).
+  // Missing chains replay nothing and stream live-only.
+  map<string, uint64> after_version = 1;
+}
+
+message BattleEvent {
+  string chain = 1; // "evm" | "solana"
+  string battle_id = 2; // settle sig (solana) / txHash-logIndex (evm)
+  string attacker_pet = 3;
+  string defender_pet = 4;
+  string winner_pet = 5; // absolute pet id — matches battle_history.winner_pet_id
+  uint64 version = 6; // feed back as after_version on reconnect
+  int64 fought_at = 7; // unix seconds
+}

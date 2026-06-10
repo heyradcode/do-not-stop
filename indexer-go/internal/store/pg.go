@@ -87,10 +87,10 @@ func (f *PgFlusher) InsertBattles(ctx context.Context, events []indexer.BattleEv
 		return nil
 	}
 
-	const cols = 6
+	const cols = 7
 	var sb strings.Builder
 	sb.WriteString(`INSERT INTO battle_history
-  (chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, fought_at)
+  (chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, fought_at, version)
 VALUES `)
 
 	args := make([]any, 0, len(events)*cols)
@@ -99,9 +99,9 @@ VALUES `)
 			sb.WriteString(", ")
 		}
 		base := i * cols
-		fmt.Fprintf(&sb, "($%d,$%d,$%d,$%d,$%d,$%d)",
-			base+1, base+2, base+3, base+4, base+5, base+6)
-		args = append(args, e.Chain, e.BattleID, e.Attacker, e.Defender, e.WinnerPetID, e.FoughtAt)
+		fmt.Fprintf(&sb, "($%d,$%d,$%d,$%d,$%d,$%d,$%d)",
+			base+1, base+2, base+3, base+4, base+5, base+6, base+7)
+		args = append(args, e.Chain, e.BattleID, e.Attacker, e.Defender, e.WinnerPetID, e.FoughtAt, e.Version)
 	}
 
 	sb.WriteString(" ON CONFLICT (chain, battle_id) DO NOTHING")
@@ -111,4 +111,34 @@ VALUES `)
 		return fmt.Errorf("store: battle insert (%d rows): %w", len(events), err)
 	}
 	return nil
+}
+
+// BattlesSince reads chain-indexed battles newer than `after` for the gRPC
+// replay path, oldest first. Rows with version 0 (client-reported via the
+// dialogue path, never chain-indexed) are excluded by the strict inequality
+// when after >= 0 — exactly the rows a resuming stream consumer already has
+// no cursor for.
+func (f *PgFlusher) BattlesSince(ctx context.Context, chain string, after uint64) ([]indexer.BattleEvent, error) {
+	rows, err := f.pool.Query(ctx, `
+SELECT chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, fought_at, version
+FROM battle_history
+WHERE chain = $1 AND version > $2
+ORDER BY version ASC`, chain, after)
+	if err != nil {
+		return nil, fmt.Errorf("store: battles since: %w", err)
+	}
+	defer rows.Close()
+
+	var events []indexer.BattleEvent
+	for rows.Next() {
+		var e indexer.BattleEvent
+		var foughtAt, version int64
+		if err := rows.Scan(&e.Chain, &e.BattleID, &e.Attacker, &e.Defender, &e.WinnerPetID, &foughtAt, &version); err != nil {
+			return nil, fmt.Errorf("store: battles since scan: %w", err)
+		}
+		e.FoughtAt = foughtAt
+		e.Version = uint64(version)
+		events = append(events, e)
+	}
+	return events, rows.Err()
 }

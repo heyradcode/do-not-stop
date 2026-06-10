@@ -12,8 +12,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/radcrew/do-not-stop/indexer-go/internal/battlebus"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/config"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/evm"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/grpcsrv"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/solana"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/store"
@@ -44,34 +46,64 @@ func run() error {
 	}
 
 	roster := make(chan indexer.RosterUpdate, 256)
-	battles := make(chan indexer.BattleEvent, 64)
+	adapterBattles := make(chan indexer.BattleEvent, 64) // adapters → tee
+	writerBattles := make(chan indexer.BattleEvent, 64)  // tee → storage
+
+	// Tee: every settled battle goes to storage AND to gRPC subscribers. The
+	// bus never blocks (slow consumers are dropped to reconnect+replay), so
+	// publish order ahead of the storage send is safe.
+	bus := battlebus.New()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case b := <-adapterBattles:
+				bus.Publish(b)
+				select {
+				case writerBattles <- b:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
 
 	var sinkDone <-chan struct{}
+	var replayer grpcsrv.Replayer
 	if cfg.DatabaseURL != "" {
 		pg, err := store.NewPgFlusher(ctx, cfg.DatabaseURL)
 		if err != nil {
 			return err
 		}
 		defer pg.Close()
+		replayer = pg
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			if err := store.NewWriter(pg).Run(ctx, roster, battles); err != nil {
+			if err := store.NewWriter(pg).Run(ctx, roster, writerBattles); err != nil {
 				slog.Error("writer exited", "err", err)
 			}
 		}()
 		sinkDone = done
 	} else {
-		slog.Warn("DATABASE_URL not set; draining pipeline to logs only")
-		go drainSink(ctx, roster, battles)
+		slog.Warn("DATABASE_URL not set; draining pipeline to logs only (stream replay disabled)")
+		go drainSink(ctx, roster, writerBattles)
 	}
+
+	grpcErr := make(chan error, 1)
+	go func() {
+		if err := grpcsrv.New(bus, replayer).Serve(ctx, cfg.GRPCAddr); err != nil {
+			grpcErr <- err
+		}
+	}()
 
 	var wg sync.WaitGroup
 	for _, adapter := range adapters {
 		wg.Add(1)
 		go func(a indexer.ChainIndexer) {
 			defer wg.Done()
-			if err := a.Run(ctx, roster, battles); err != nil {
+			if err := a.Run(ctx, roster, adapterBattles); err != nil {
 				slog.Error("adapter exited", "chain", a.Chain(), "err", err)
 			}
 		}(adapter)
@@ -101,6 +133,10 @@ func run() error {
 	case <-ctx.Done():
 		slog.Info("shutdown signal received")
 	case err := <-serveErr:
+		stop()
+		wg.Wait()
+		return err
+	case err := <-grpcErr:
 		stop()
 		wg.Wait()
 		return err

@@ -87,6 +87,17 @@ export const env = {
     redis: {
         url: process.env.REDIS_URL?.trim() || undefined,
     },
+
+    /**
+     * indexer-go gRPC link (StreamLiveBattles — chain-truth battle pushes).
+     * Optional: unset = feature off, the webhook/poll paths still work.
+     */
+    indexerGrpc: {
+        /** e.g. localhost:50051. */
+        addr: process.env.INDEXER_GRPC_ADDR?.trim() || undefined,
+        /** Path to the shared proto contract (defaults to ../proto from the backend dir). */
+        protoPath: process.env.INDEXER_PROTO_PATH?.trim() || undefined,
+    },
 } as const;
 
 // In production the webhook must not be left open: if Solana indexing is on, the

@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS battle_history (
     defender_pet_id TEXT NOT NULL,
     winner_pet_id TEXT NOT NULL,
     fought_at BIGINT NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT battle_history_pkey PRIMARY KEY (chain, battle_id)
 );
@@ -170,5 +171,37 @@ func TestBattleInsertIsIdempotent(t *testing.T) {
 
 	if n := f.countRows(t, "battle_history"); n != 3 {
 		t.Errorf("battle rows = %d, want 3 (replay deduped)", n)
+	}
+}
+
+func TestBattlesSinceReplaysFromCursor(t *testing.T) {
+	f := newTestFlusher(t)
+	ctx := context.Background()
+
+	if err := f.InsertBattles(ctx, []indexer.BattleEvent{
+		{Chain: "evm", BattleID: "0xa-1", Attacker: "1", Defender: "2", WinnerPetID: "1", Version: 100, FoughtAt: 100},
+		{Chain: "evm", BattleID: "0xb-2", Attacker: "2", Defender: "3", WinnerPetID: "3", Version: 200, FoughtAt: 200},
+		{Chain: "solana", BattleID: "sigX", Attacker: "5", Defender: "6", WinnerPetID: "5", Version: 9000, FoughtAt: 150},
+		// Client-reported row (dialogue path): version 0, never replayed.
+		{Chain: "evm", BattleID: "0xclient", Attacker: "7", Defender: "8", WinnerPetID: "7", Version: 0, FoughtAt: 50},
+	}); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	events, err := f.BattlesSince(ctx, "evm", 100)
+	if err != nil {
+		t.Fatalf("BattlesSince: %v", err)
+	}
+	if len(events) != 1 || events[0].BattleID != "0xb-2" || events[0].Version != 200 {
+		t.Errorf("replay = %+v, want only 0xb-2", events)
+	}
+
+	// Cursor 0 replays every chain-indexed row but not client-reported ones.
+	events, err = f.BattlesSince(ctx, "evm", 0)
+	if err != nil {
+		t.Fatalf("BattlesSince: %v", err)
+	}
+	if len(events) != 2 {
+		t.Errorf("replay from 0 = %d rows, want 2 (version-0 row excluded)", len(events))
 	}
 }
