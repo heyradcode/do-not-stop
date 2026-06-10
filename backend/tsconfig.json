@@ -35,8 +35,8 @@
             "@generated/*": [
                 "./src/generated/*"
             ],
-            "@solana-indexer/*": [
-                "./indexing/solana/*"
+            "@indexing/*": [
+                "./indexing/*"
             ],
             "@graphql": [
                 "./src/graphql/index.ts"
@@ -46,9 +46,9 @@
         "esModuleInterop": true,
         "allowJs": true,
         "outDir": "./dist",
-        // rootDir spans src/ (the app) and indexing/solana/ (the Solana indexer
-        // code), so the backend root is the common root → emits dist/src/... and
-        // dist/indexing/solana/... (entry: dist/src/server.js).
+        // rootDir spans src/ (the app) and indexing/ (the per-chain roster
+        // indexers), so the backend root is the common root → emits dist/src/...
+        // and dist/indexing/... (entry: dist/src/server.js).
         "rootDir": "./",
         "strict": true,
         "noImplicitAny": true,
@@ -69,10 +69,13 @@
     },
     "include": [
         "src/**/*",
-        "indexing/solana/**/*"
+        "indexing/**/*"
     ],
     "exclude": [
         "node_modules",
-        "dist"
+        "dist",
+        // The subgraph deploy project — AssemblyScript mappings built by
+        // graph-cli, not part of the backend's TypeScript program.
+        "indexing/evm"
     ]
 }

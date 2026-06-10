@@ -1,15 +1,16 @@
-import { createSubgraphIndexer } from './evm';
-import { createSolanaIndexer } from './solana';
+import { createSubgraphIndexer } from '@indexing/evm-client';
+import { createSolanaIndexer } from '@indexing/solana/indexer';
 import { env } from '@config/env';
 import { countByChain } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';
-import type { RosterIndexer } from './types';
+import type { RosterIndexer } from '@indexing/types';
 
 /**
  * Orchestrates every configured roster source through the {@link RosterIndexer}
  * interface: full `scan` on startup, then `sync` ticks on an interval. Chain
  * specifics (subgraph watermark, Helius re-scan) live in the per-chain
- * factories — adding a chain means adding a factory call to `buildIndexers`.
+ * factories under indexing/ — adding a chain means adding a factory call to
+ * `buildIndexers`.
  */
 
 const stopFns: (() => void)[] = [];

@@ -1,5 +1,5 @@
-import { scanSolanaRoster, type SolanaIndexerConfig } from '@solana-indexer/scanner';
-import type { RosterIndexer } from './types';
+import { scanSolanaRoster, type SolanaIndexerConfig } from './scanner';
+import type { RosterIndexer } from '../types';
 
 /**
  * Helius source as a {@link RosterIndexer}. The webhook keeps `pet_roster`

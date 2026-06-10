@@ -1,1 +1,1 @@
-export { default } from '@solana-indexer/webhooks/routes';
+export { default } from '@indexing/solana/webhooks/routes';

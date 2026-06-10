@@ -1,7 +1,7 @@
 import type { Chain } from '@typings/chain';
 
 /**
- * One roster source, any chain. The orchestrator (./index) only knows this
+ * One roster source, any chain. The orchestrator (src/indexer) only knows this
  * interface, so adding a chain means implementing it — no orchestrator changes.
  */
 export interface RosterIndexer {

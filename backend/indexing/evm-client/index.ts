@@ -1,7 +1,12 @@
 import { upsertManyPets } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';
 import type { RosterPet } from '@repositories/roster.repository';
-import type { RosterIndexer } from './types';
+import type { RosterIndexer } from '../types';
+
+/**
+ * EVM roster source: query client for the subgraph deployed from ../evm (The
+ * Graph indexes the chain; we page its GraphQL endpoint into `pet_roster`).
+ */
 
 export interface SubgraphIndexerConfig {
     chain: Chain;
