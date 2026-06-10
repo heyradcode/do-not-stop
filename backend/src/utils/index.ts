@@ -1,13 +1,12 @@
+import { randomBytes } from 'crypto';
+
 export function isEvmAddress(address: string): boolean {
     return /^0x[a-fA-F0-9]{40}$/i.test(address);
 }
 
-/** Generate a random URL-safe token (e.g. an auth nonce). */
+/** Generate a cryptographically secure, URL-safe token (e.g. an auth nonce). */
 export function createNonce(): string {
-    return (
-        Math.random().toString(36).substring(2, 15) +
-        Math.random().toString(36).substring(2, 15)
-    );
+    return randomBytes(16).toString('base64url');
 }
 
 /** Strip a user-supplied string to safe, bounded text; falls back when empty. */
