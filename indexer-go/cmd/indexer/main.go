@@ -15,6 +15,7 @@ import (
 	"github.com/radcrew/do-not-stop/indexer-go/internal/config"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/evm"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/solana"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/store"
 )
 
@@ -138,7 +139,20 @@ func buildAdapters(cfg *config.Config) ([]indexer.ChainIndexer, error) {
 		slog.Info("EVM_SUBGRAPH_URL not set; evm adapter disabled")
 	}
 
-	// Solana adapter lands in milestone 4.
+	if cfg.SolanaWSURL != "" && cfg.SolanaRPCURL != "" && cfg.SolanaProgramID != "" {
+		solIx, err := solana.New(solana.Config{
+			WSURL:             cfg.SolanaWSURL,
+			RPCURL:            cfg.SolanaRPCURL,
+			ProgramID:         cfg.SolanaProgramID,
+			ReconcileInterval: cfg.ReconcileInterval,
+		})
+		if err != nil {
+			return nil, err
+		}
+		adapters = append(adapters, solIx)
+	} else {
+		slog.Info("SOLANA_WS_URL/SOLANA_RPC_URL/SOLANA_PROGRAM_ID not all set; solana adapter disabled")
+	}
 
 	return adapters, nil
 }

@@ -2,7 +2,10 @@ module github.com/radcrew/do-not-stop/indexer-go
 
 go 1.26.4
 
-require github.com/jackc/pgx/v5 v5.10.0
+require (
+	github.com/gorilla/websocket v1.5.3
+	github.com/jackc/pgx/v5 v5.10.0
+)
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
