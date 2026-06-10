@@ -16,15 +16,19 @@ function requireEnv(name: string): string {
 }
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
+const isProduction = nodeEnv === 'production';
 const parsedPort = Number(process.env.PORT);
 
 export const env = {
     nodeEnv,
-    isProduction: nodeEnv === 'production',
+    isProduction,
     port: Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : 3001,
 
-    /** JWT signing secret. Falls back to a dev-only value when unset. */
-    jwtSecret: process.env.JWT_SECRET || 'fallback-secret-key',
+    /**
+     * JWT signing secret. Required in production (anyone knowing the secret can
+     * mint valid tokens); falls back to a dev-only value otherwise.
+     */
+    jwtSecret: isProduction ? requireEnv('JWT_SECRET') : process.env.JWT_SECRET || 'dev-only-secret',
 
     /** PostgreSQL connection string (required — Prisma cannot run without it). */
     databaseUrl: requireEnv('DATABASE_URL'),
