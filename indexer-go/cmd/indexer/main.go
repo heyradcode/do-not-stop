@@ -15,6 +15,7 @@ import (
 	"github.com/radcrew/do-not-stop/indexer-go/internal/config"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/evm"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/store"
 )
 
 const shutdownGrace = 5 * time.Second
@@ -44,9 +45,25 @@ func run() error {
 	roster := make(chan indexer.RosterUpdate, 256)
 	battles := make(chan indexer.BattleEvent, 64)
 
-	// Temporary sink until the store writer lands (milestone 3): drain the
-	// pipeline so adapters never block, log what would be written.
-	go drainSink(ctx, roster, battles)
+	var sinkDone <-chan struct{}
+	if cfg.DatabaseURL != "" {
+		pg, err := store.NewPgFlusher(ctx, cfg.DatabaseURL)
+		if err != nil {
+			return err
+		}
+		defer pg.Close()
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			if err := store.NewWriter(pg).Run(ctx, roster, battles); err != nil {
+				slog.Error("writer exited", "err", err)
+			}
+		}()
+		sinkDone = done
+	} else {
+		slog.Warn("DATABASE_URL not set; draining pipeline to logs only")
+		go drainSink(ctx, roster, battles)
+	}
 
 	var wg sync.WaitGroup
 	for _, adapter := range adapters {
@@ -89,6 +106,9 @@ func run() error {
 	}
 
 	wg.Wait()
+	if sinkDone != nil {
+		<-sinkDone // wait for the writer's final drain before the pool closes
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
 	defer cancel()

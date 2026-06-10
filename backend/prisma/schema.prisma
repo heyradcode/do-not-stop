@@ -38,7 +38,10 @@ model PetRoster {
   winCount  Int    @map("win_count")
   lossCount Int    @map("loss_count")
   readyAt   BigInt @map("ready_at") // unix seconds the pet is next battle-ready
-  updatedAt DateTime @updatedAt @map("updated_at")
+  /// Monotonic source version (Solana slot / subgraph updatedAt). indexer-go's
+  /// upsert guard discards stale writes: WHERE last_version <= EXCLUDED.last_version.
+  lastVersion BigInt   @default(0) @map("last_version")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@id([chain, petId])
   @@index([chain, owner])
