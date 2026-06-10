@@ -51,7 +51,7 @@ export interface UseBattlePanel {
  * detection and dialogue — live in their own hooks (`useBattleOutcome`,
  * `useResultDialogue`) and are composed below.
  */
-export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBattlePanel {
+export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBattlePanel  => {
     const navigate = useNavigate();
     const capabilities = useChainCapabilities();
     const { pets, refetch, isLoading: petsLoading } = usePetList();

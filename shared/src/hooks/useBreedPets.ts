@@ -21,7 +21,7 @@ export type UseBreedPetsOptions = {
  * once the BreedFulfilled event fires. So success here is event-driven on EVM
  * and resolve-driven on Solana (where VRF completes inside the mutation).
  */
-export function useBreedPets(options?: UseBreedPetsOptions) {
+export const useBreedPets = (options?: UseBreedPetsOptions) => {
     const adapter = useChainAdapter();
     const { breedPets } = adapter;
     const isEvm = adapter.kind === 'evm';

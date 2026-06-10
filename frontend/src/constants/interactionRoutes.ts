@@ -45,7 +45,7 @@ export const DASHBOARD_INTERACTIONS = '/dashboard/interactions';
 
 export type InteractionSlug = 'breed' | 'battle' | 'levelup' | 'rename';
 
-export function isInteractionRoute(pathname: string): boolean {
+export const isInteractionRoute = (pathname: string): boolean  => {
   const path = pathname.replace(/\/$/, '') || '/';
   if (INTERACTION_ROUTES.includes(path)) return true;
   // Also hide the gallery for legacy /dashboard/interactions/* pages
@@ -53,6 +53,6 @@ export function isInteractionRoute(pathname: string): boolean {
   return path === DASHBOARD_INTERACTIONS || path.startsWith(`${DASHBOARD_INTERACTIONS}/`);
 }
 
-export function interactionPath(slug: InteractionSlug): string {
+export const interactionPath = (slug: InteractionSlug): string  => {
   return `${DASHBOARD_INTERACTIONS}/${slug}`;
 }

@@ -14,7 +14,7 @@ export type ActiveChain =
  * Resolves which chain the user is currently connected to. EVM wins when both are
  * connected, matching {@link AuthContext} sign-in precedence.
  */
-export function useActiveChain(): ActiveChain {
+export const useActiveChain = (): ActiveChain  => {
     const { address, isConnected } = useAccount();
     const solanaAddress = useSyncExternalStore(
         subscribeSolanaAuth,

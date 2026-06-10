@@ -12,13 +12,13 @@ const NONE_CAPABILITIES: ChainCapabilities = {
     parseError: (_err, fallback) => ({ message: fallback, isUserRejection: false, isContractError: false }),
 };
 
-function disconnectedMutation<TArgs>(action: PetAction): AdapterMutation<TArgs> {
+const disconnectedMutation = <TArgs,>(action: PetAction): AdapterMutation<TArgs> => {
     return {
         mutateAsync: async () => { throw new NoActiveChainError(action); },
         lifecycle: { phase: 'idle', error: null, reset: () => undefined },
         isPending: false,
     };
-}
+};
 
 export const noneAdapter: ChainAdapter = {
     kind: 'none',

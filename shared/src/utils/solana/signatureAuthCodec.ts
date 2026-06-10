@@ -2,7 +2,7 @@ import bs58 from 'bs58';
 
 const ED25519_SIG_LEN = 64;
 
-function decodeHex128(s: string): Uint8Array | null {
+const decodeHex128 = (s: string): Uint8Array | null  => {
     const t = s.startsWith('0x') || s.startsWith('0X') ? s.slice(2) : s;
     if (!/^[0-9a-fA-F]{128}$/.test(t)) {
         return null;
@@ -15,7 +15,7 @@ function decodeHex128(s: string): Uint8Array | null {
 }
 
 /** Browser-safe base64 → bytes (standard or URL-safe, with padding fix). */
-function decodeBase64To64(s: string): Uint8Array | null {
+const decodeBase64To64 = (s: string): Uint8Array | null  => {
     try {
         const t = s.replace(/-/g, '+').replace(/_/g, '/');
         const padLen = (4 - (t.length % 4)) % 4;
@@ -34,7 +34,7 @@ function decodeBase64To64(s: string): Uint8Array | null {
     }
 }
 
-function decodeBase58To64(s: string): Uint8Array | null {
+const decodeBase58To64 = (s: string): Uint8Array | null  => {
     try {
         const decoded = bs58.decode(s);
         if (decoded.length !== ED25519_SIG_LEN) {
@@ -50,7 +50,7 @@ function decodeBase58To64(s: string): Uint8Array | null {
  * Coerce wallet/SDK signature output to exactly 64 Ed25519 signature bytes.
  * Dynamic and other SDKs often return base64 or hex strings, not base58.
  */
-export function coerceSolanaEd25519SignatureBytes(sig: unknown): Uint8Array {
+export const coerceSolanaEd25519SignatureBytes = (sig: unknown): Uint8Array  => {
     if (sig == null) {
         throw new TypeError('Missing Solana signature');
     }
@@ -95,6 +95,6 @@ export function coerceSolanaEd25519SignatureBytes(sig: unknown): Uint8Array {
 }
 
 /** Canonical wire format for `/api/auth/verify`: base58-encoded raw 64-byte signature. */
-export function normalizeSolanaSignatureToBase58(sig: unknown): string {
+export const normalizeSolanaSignatureToBase58 = (sig: unknown): string  => {
     return bs58.encode(coerceSolanaEd25519SignatureBytes(sig));
 }

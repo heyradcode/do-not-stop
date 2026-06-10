@@ -8,7 +8,7 @@ export interface PetListResult {
     refetch: () => void;
 }
 
-export function usePetList(): PetListResult {
+export const usePetList = (): PetListResult  => {
     const { pets } = useChainAdapter();
     return {
         pets: pets.data,

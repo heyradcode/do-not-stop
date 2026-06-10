@@ -30,7 +30,7 @@ type WriteState = {
 };
 type ReceiptState = { isSuccess: boolean; isError: boolean; error: unknown };
 
-function toLc(w: WriteState, r: ReceiptState): TxLifecycle {
+const toLc = (w: WriteState, r: ReceiptState): TxLifecycle  => {
     const writeError = w.error as Error | null;
     const receiptError = r.isError ? (r.error as Error | null) : null;
     const error = writeError ?? receiptError;
@@ -42,11 +42,11 @@ function toLc(w: WriteState, r: ReceiptState): TxLifecycle {
     return { phase, hash: w.data, error, reset: w.reset };
 }
 
-function isInFlight(w: WriteState, r: ReceiptState): boolean {
+const isInFlight = (w: WriteState, r: ReceiptState): boolean  => {
     return w.isPending || (!!w.data && !r.isSuccess && !r.isError);
 }
 
-export function useEvmAdapter({ enabled }: { enabled: boolean }): ChainAdapter {
+export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  => {
     const { evm } = usePetsConfig();
     const contractAddress = evm?.contractAddress;
     const abi = evm?.abi ?? [];

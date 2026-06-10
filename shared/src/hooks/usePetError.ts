@@ -7,12 +7,12 @@ export type PetError = {
     isContractError: boolean;
 };
 
-export function usePetError(
+export const usePetError = (
     mutationError: Error | null | undefined,
     receiptError: Error | null | undefined,
     validationError: string | null,
     fallbackMessage: string,
-): PetError {
+): PetError  => {
     const { parseError } = useChainCapabilities();
 
     return useMemo(() => {

@@ -4,7 +4,7 @@ import { playerProfilePda } from '../../../utils/solana/pdas';
 import { getAccountClient } from '../../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
-export function usePlayerProfile() {
+export const usePlayerProfile = () => {
     const { signingWallet } = useSolanaAnchor();
     const owner = signingWallet?.publicKey ?? null;
     const { program, programId, isReady } = useProgram();

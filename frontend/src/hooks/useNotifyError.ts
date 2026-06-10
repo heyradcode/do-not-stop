@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useToast } from '@components/ui/toast';
 
 /** Logs technical details to the console and shows a friendly toast to the user. */
-export function useNotifyError() {
+export const useNotifyError = () => {
     const toast = useToast();
 
     return useCallback(
@@ -19,7 +19,7 @@ export function useNotifyError() {
 }
 
 /** Logs a cancellation/info message without treating it as a hard failure. */
-export function useNotifyInfo() {
+export const useNotifyInfo = () => {
     const toast = useToast();
 
     return useCallback(

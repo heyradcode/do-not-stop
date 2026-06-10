@@ -8,7 +8,7 @@ import { breedWithSwitchboardVrf } from '../../../utils/solana/breedWithSwitchbo
 import { getAccountClient } from '../../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
-export function usePetActions() {
+export const usePetActions = () => {
     const queryClient = useQueryClient();
     const { signingWallet } = useSolanaAnchor();
     const { program, programId, provider, toU32 } = useProgram();

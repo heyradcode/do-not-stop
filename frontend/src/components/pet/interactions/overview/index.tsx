@@ -26,7 +26,7 @@ import StateCard from '@components/pet/interactions/state-card';
 import './index.css';
 
 /** Map `interactions/:action` segment (e.g. `rename`) to internal action id. */
-function parseActionParam(raw: string | undefined): InteractionAction | null {
+const parseActionParam = (raw: string | undefined): InteractionAction | null  => {
     if (!raw) return null;
     if (raw === 'rename') return 'changename';
     if (raw === 'breed' || raw === 'battle' || raw === 'levelup') return raw;

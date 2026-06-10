@@ -10,7 +10,7 @@ export interface EvmRawPet {
     rarity: number | bigint;
 }
 
-export function mapEvmPet(raw: EvmRawPet, tokenId: bigint): Pet {
+export const mapEvmPet = (raw: EvmRawPet, tokenId: bigint): Pet  => {
     return {
         id: tokenId.toString(),
         chain: 'evm',

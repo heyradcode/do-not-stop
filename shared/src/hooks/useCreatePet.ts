@@ -29,7 +29,7 @@ export interface PetMutationResult<TArgs> {
     lifecycle: TxLifecycle;
 }
 
-export function useCreatePet(options?: PetMutationOptions): PetMutationResult<CreatePetArgs> {
+export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<CreatePetArgs>  => {
     const { createPet } = useChainAdapter();
     useTxSuccess(createPet.lifecycle, options?.onSuccess);
     return {

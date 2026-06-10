@@ -24,7 +24,7 @@ export interface ChainContext extends ChainCapabilities {
     walletAddress: string | null;
 }
 
-export function useChainCapabilities(): ChainContext {
+export const useChainCapabilities = (): ChainContext  => {
     const chain = useActiveChain();
     const capabilities =
         chain.kind === 'evm' ? EVM_CAPABILITIES

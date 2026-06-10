@@ -6,12 +6,12 @@ import { usePetError } from '@shared/core';
  * Maps pet-action errors to friendly toast messages.
  * Raw transaction / contract errors are logged to the console only.
  */
-export function usePetErrorToast(
+export const usePetErrorToast = (
     mutationError: Error | null | undefined,
     receiptError: Error | null | undefined,
     validationError: string | null,
     fallbackMessage: string,
-): void {
+): void  => {
     const toast = useToast();
     const display = usePetError(
         mutationError,

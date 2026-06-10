@@ -42,7 +42,7 @@ export interface UseResultDialogue {
  * out of the ready list (→ null) once it goes on cooldown, which would otherwise
  * disable the query and the pre-generated result would never be fetched.
  */
-export function useResultDialogue({
+export const useResultDialogue = ({
     activeChainKind,
     settledBattleId,
     selectedFighter,
@@ -50,7 +50,7 @@ export function useResultDialogue({
     personasRef,
     battleOutcome,
     showResult,
-}: UseResultDialogueArgs): UseResultDialogue {
+}: UseResultDialogueArgs): UseResultDialogue  => {
     const [resultDialogueDone, setResultDialogueDone] = useState(false);
 
     const dialogueWinner =

@@ -16,7 +16,7 @@ export type SolanaAnchorContextValue = {
 
 const SolanaAnchorContext = createContext<SolanaAnchorContextValue | null>(null);
 
-export function useSolanaAnchor(): SolanaAnchorContextValue {
+export const useSolanaAnchor = (): SolanaAnchorContextValue  => {
     const ctx = useContext(SolanaAnchorContext);
     if (!ctx) {
         throw new Error('useSolanaAnchor must be used within SolanaAnchorProvider');
@@ -31,12 +31,12 @@ export type SolanaAnchorProviderProps = {
     signingWallet: SolanaSigningWallet | null;
 };
 
-export function SolanaAnchorProvider({
+export const SolanaAnchorProvider = ({
     children,
     connection,
     programId,
     signingWallet,
-}: SolanaAnchorProviderProps) {
+}: SolanaAnchorProviderProps) => {
     const value = useMemo(
         (): SolanaAnchorContextValue => ({
             connection,

@@ -7,7 +7,7 @@ export interface TransferPetArgs {
     petId: string;
 }
 
-export function useTransferPet(options?: PetMutationOptions): PetMutationResult<TransferPetArgs> {
+export const useTransferPet = (options?: PetMutationOptions): PetMutationResult<TransferPetArgs>  => {
     const { transferPet } = useChainAdapter();
     useTxSuccess(transferPet.lifecycle, options?.onSuccess);
     return {

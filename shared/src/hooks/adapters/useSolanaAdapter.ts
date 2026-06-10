@@ -34,7 +34,7 @@ type SolanaMutation<TData = string> = {
     reset: () => void;
 };
 
-function toLc<TData = string>(m: SolanaMutation<TData>): TxLifecycle {
+const toLc = <TData = string,>(m: SolanaMutation<TData>): TxLifecycle => {
     let phase: TxPhase = 'idle';
     if (m.isError) phase = 'error';
     else if (m.isSuccess) phase = 'success';
@@ -47,7 +47,7 @@ function toLc<TData = string>(m: SolanaMutation<TData>): TxLifecycle {
     };
 }
 
-export function useSolanaAdapter({ enabled }: { enabled: boolean }): ChainAdapter {
+export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  => {
     const { signingWallet } = useSolanaAnchor();
     const owner = enabled && signingWallet?.publicKey ? signingWallet.publicKey : null;
 

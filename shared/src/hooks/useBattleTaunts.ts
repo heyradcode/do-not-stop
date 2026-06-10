@@ -27,7 +27,7 @@ const STREAM_PATH = '/api/battle-dialogue/taunts/stream';
  * Where it isn't (React Native has no readable `response.body`), the same NDJSON
  * arrives in one shot and we use its final line.
  */
-export function useBattleTaunts() {
+export const useBattleTaunts = () => {
     const apiClient = useApiClient();
     const [turns, setTurns] = useState<DialogueTurn[]>([]);
     const [isLoading, setIsLoading] = useState(false);

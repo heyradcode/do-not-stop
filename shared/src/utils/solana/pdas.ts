@@ -7,27 +7,27 @@ const PET_SEED = Buffer.from('pet');
 const BREED_REQUEST_SEED = Buffer.from('breed-request');
 const BATTLE_REQUEST_SEED = Buffer.from('battle-request');
 
-export function globalStatePda(programId: PublicKey): [PublicKey, number] {
+export const globalStatePda = (programId: PublicKey): [PublicKey, number]  => {
     return PublicKey.findProgramAddressSync([GLOBAL_STATE_SEED], programId);
 }
 
-export function playerProfilePda(programId: PublicKey, owner: PublicKey): [PublicKey, number] {
+export const playerProfilePda = (programId: PublicKey, owner: PublicKey): [PublicKey, number]  => {
     return PublicKey.findProgramAddressSync([PLAYER_PROFILE_SEED, owner.toBuffer()], programId);
 }
 
 /** Pet PDA: seeds `["pet", owner, pet_id_le_u32]`. */
-export function petPda(programId: PublicKey, owner: PublicKey, petId: number): [PublicKey, number] {
+export const petPda = (programId: PublicKey, owner: PublicKey, petId: number): [PublicKey, number]  => {
     const idBuf = Buffer.alloc(4);
     idBuf.writeUInt32LE(petId >>> 0, 0);
     return PublicKey.findProgramAddressSync([PET_SEED, owner.toBuffer(), idBuf], programId);
 }
 
 /** Pending breed PDA while Switchboard randomness is in flight. */
-export function breedRequestPda(programId: PublicKey, owner: PublicKey): [PublicKey, number] {
+export const breedRequestPda = (programId: PublicKey, owner: PublicKey): [PublicKey, number]  => {
     return PublicKey.findProgramAddressSync([BREED_REQUEST_SEED, owner.toBuffer()], programId);
 }
 
 /** Pending battle PDA (one per attacker wallet). */
-export function battleRequestPda(programId: PublicKey, attacker: PublicKey): [PublicKey, number] {
+export const battleRequestPda = (programId: PublicKey, attacker: PublicKey): [PublicKey, number]  => {
     return PublicKey.findProgramAddressSync([BATTLE_REQUEST_SEED, attacker.toBuffer()], programId);
 }

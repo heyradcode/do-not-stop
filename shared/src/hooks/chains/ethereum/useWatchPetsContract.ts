@@ -21,13 +21,13 @@ type UseWatchPetsContractParams = {
  * Subscribes to `BreedFulfilled` on CryptoPets and invokes `onBreedSuccess` when the event
  * matches the current account and `pendingRequestId`.
  */
-export function useWatchPetsContract({
+export const useWatchPetsContract = ({
     contractAddress,
     abi,
     address,
     pendingRequestId,
     onBreedSuccess,
-}: UseWatchPetsContractParams): void {
+}: UseWatchPetsContractParams): void  => {
     const pendingRef = useRef(pendingRequestId);
     const handleSuccessRef = useRef(onBreedSuccess);
 

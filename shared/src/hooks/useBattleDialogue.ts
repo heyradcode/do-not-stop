@@ -47,7 +47,7 @@ interface DialogueResponse {
  * `battleId`, so re-mounts return the same stored conversation. Requires an
  * authenticated session (the route is JWT-gated).
  */
-export function useBattleDialogue(options: UseBattleDialogueOptions) {
+export const useBattleDialogue = (options: UseBattleDialogueOptions) => {
     const apiClient = useApiClient();
     const { isAuthenticated } = useAuth();
 

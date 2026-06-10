@@ -15,7 +15,7 @@ export const REVEAL_BACKOFF_MS = 2_000;
 
 /** Switchboard VRF needs commit → (wait) → reveal; two wallet signatures is the minimum. */
 
-function recentBlockhashFromTx(tx: Transaction | VersionedTransaction): string | undefined {
+const recentBlockhashFromTx = (tx: Transaction | VersionedTransaction): string | undefined  => {
     if ('version' in tx) {
         return tx.message.recentBlockhash;
     }
@@ -23,10 +23,10 @@ function recentBlockhashFromTx(tx: Transaction | VersionedTransaction): string |
 }
 
 /** Local keypairs sign before the wallet so PDAs / new accounts are valid at sign time. */
-function applyExtraSigners(
+const applyExtraSigners = (
     tx: Transaction | VersionedTransaction,
     extraSigners: Keypair[]
-): void {
+): void  => {
     if (extraSigners.length === 0) return;
     if ('version' in tx) {
         tx.sign(extraSigners);
@@ -37,11 +37,11 @@ function applyExtraSigners(
     }
 }
 
-export async function sendSignedTx(
+export const sendSignedTx = async (
     provider: AnchorProvider,
     tx: Transaction | VersionedTransaction,
     extraSigners: Keypair[] = []
-): Promise<string> {
+): Promise<string> => {
     const connection = provider.connection;
 
     applyExtraSigners(tx, extraSigners);
@@ -61,12 +61,12 @@ export async function sendSignedTx(
     return sig;
 }
 
-export async function waitForRevealIx(
+export const waitForRevealIx = async (
     randomness: Randomness,
     payer: PublicKey,
     maxRetries = REVEAL_RETRIES,
     backoffMs = REVEAL_BACKOFF_MS
-): Promise<TransactionInstruction> {
+): Promise<TransactionInstruction> => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             return await randomness.revealIx(payer);

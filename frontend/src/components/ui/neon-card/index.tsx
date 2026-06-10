@@ -7,12 +7,12 @@ type NeonCardProps = React.HTMLAttributes<HTMLElement> & {
   as?: 'article' | 'div' | 'section';
 };
 
-export default function NeonCard({
+const NeonCard = ({
   as = 'article',
   className,
   children,
   ...props
-}: NeonCardProps) {
+}: NeonCardProps) => {
   const Tag = as;
   const classes = clsx('neon-card', className);
 
@@ -21,4 +21,6 @@ export default function NeonCard({
       {children}
     </Tag>
   );
-}
+};
+
+export default NeonCard;

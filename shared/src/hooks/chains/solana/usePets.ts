@@ -9,7 +9,7 @@ export type PetRow = {
     account: Record<string, unknown>;
 };
 
-export function usePets(owner: PublicKey | null) {
+export const usePets = (owner: PublicKey | null) => {
     const { program, programId, isReady } = useProgram();
 
     return useQuery({

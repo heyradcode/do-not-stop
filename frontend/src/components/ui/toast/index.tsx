@@ -25,13 +25,13 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 
 const AUTO_DISMISS_MS = 5200;
 
-function toneIcon(tone: ToastTone) {
+const toneIcon = (tone: ToastTone) => {
     if (tone === 'success') return CheckIcon;
     if (tone === 'info') return PauseIcon;
     return tone === 'error' ? CloseIcon : WarningIcon;
 }
 
-function toneColor(tone: ToastTone): Exclude<Tone, 'azure'> {
+const toneColor = (tone: ToastTone): Exclude<Tone, 'azure'>  => {
     if (tone === 'success') return Tones.Emerald;
     if (tone === 'info') return Tones.Inherit;
     return Tones.Magenta;
@@ -95,7 +95,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     );
 };
 
-export function useToast(): ToastContextValue {
+export const useToast = (): ToastContextValue  => {
     const context = useContext(ToastContext);
     if (!context) {
         throw new Error('useToast must be used within ToastProvider');

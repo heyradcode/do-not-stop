@@ -58,7 +58,7 @@ export interface UseOpponentsOptions {
  * authenticated session (the JWT address is used server-side to exclude the
  * caller's own pets).
  */
-export function useOpponents({ chain, minLevel, page = 0, enabled = true }: UseOpponentsOptions) {
+export const useOpponents = ({ chain, minLevel, page = 0, enabled = true }: UseOpponentsOptions) => {
     const apiClient = useApiClient();
     const { isAuthenticated } = useAuth();
     const baseURL = apiClient.defaults.baseURL ?? '';

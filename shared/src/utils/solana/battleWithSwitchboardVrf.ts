@@ -13,7 +13,7 @@ import {
 } from './switchboardVrfTx';
 import { sleep } from '../common';
 
-function toPublicKey(value: unknown): PublicKey {
+const toPublicKey = (value: unknown): PublicKey  => {
     if (value instanceof PublicKey) return value;
     if (value && typeof value === 'object' && 'toBase58' in value) {
         return new PublicKey((value as { toBase58: () => string }).toBase58());
@@ -33,7 +33,7 @@ export type BattleWithVrfArgs = {
 };
 
 /** Completes a battle whose commit phase succeeded but settle was never submitted. */
-async function trySettlePendingBattle(args: BattleWithVrfArgs): Promise<string | null> {
+const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<string | null> => {
     const { program, provider, programId, owner } = args;
     const connection = provider.connection;
     const [battleRequestKey] = battleRequestPda(programId, owner);
@@ -84,7 +84,7 @@ async function trySettlePendingBattle(args: BattleWithVrfArgs): Promise<string |
  * Two-phase battle using Switchboard On-Demand VRF (commit → reveal).
  * Returns the settle transaction signature.
  */
-export async function battleWithSwitchboardVrf(args: BattleWithVrfArgs): Promise<string> {
+export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise<string> => {
     const resumed = await trySettlePendingBattle(args);
     if (resumed) return resumed;
 

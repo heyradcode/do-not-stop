@@ -3,12 +3,12 @@ import type { OpponentPet } from '@shared/core';
 export type MatchTier = 'even' | 'easy' | 'risky' | 'danger' | 'unknown';
 
 /** Opponent level minus fighter level; `null` when no fighter is selected. */
-export function getLevelDelta(fighterLevel: number | null, opponentLevel: number): number | null {
+export const getLevelDelta = (fighterLevel: number | null, opponentLevel: number): number | null  => {
     if (fighterLevel == null) return null;
     return opponentLevel - fighterLevel;
 }
 
-export function getMatchTier(delta: number | null): MatchTier {
+export const getMatchTier = (delta: number | null): MatchTier  => {
     if (delta == null) return 'unknown';
     if (delta <= -2) return 'easy';
     if (delta >= 4) return 'danger';
@@ -16,7 +16,7 @@ export function getMatchTier(delta: number | null): MatchTier {
     return 'even';
 }
 
-export function getMatchLabel(tier: MatchTier, delta: number | null): string | null {
+export const getMatchLabel = (tier: MatchTier, delta: number | null): string | null  => {
     if (delta == null || tier === 'unknown') return null;
     if (tier === 'even' && delta === 0) return 'Even match';
     if (delta > 0) return `+${delta} lv`;
@@ -24,7 +24,7 @@ export function getMatchLabel(tier: MatchTier, delta: number | null): string | n
 }
 
 /** Pick a random opponent whose level is closest to the fighter's. */
-export function pickRandomOpponent(opponents: OpponentPet[], fighterLevel: number): OpponentPet | null {
+export const pickRandomOpponent = (opponents: OpponentPet[], fighterLevel: number): OpponentPet | null  => {
     if (opponents.length === 0) return null;
 
     let minDistance = Number.POSITIVE_INFINITY;
@@ -37,10 +37,10 @@ export function pickRandomOpponent(opponents: OpponentPet[], fighterLevel: numbe
     return pool[Math.floor(Math.random() * pool.length)] ?? null;
 }
 
-export function sortOpponentsByMatch(
+export const sortOpponentsByMatch = (
     opponents: OpponentPet[],
     fighterLevel: number | null,
-): OpponentPet[] {
+): OpponentPet[]  => {
     if (fighterLevel == null) return opponents;
 
     return [...opponents].sort((a, b) => {

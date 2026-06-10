@@ -19,7 +19,7 @@ export type UseBattlePetsOptions = {
     onSuccess?: () => void;
 };
 
-export function useBattlePets(options?: UseBattlePetsOptions) {
+export const useBattlePets = (options?: UseBattlePetsOptions) => {
     const { battlePets } = useChainAdapter();
 
     const onSuccessRef = useRef(options?.onSuccess);

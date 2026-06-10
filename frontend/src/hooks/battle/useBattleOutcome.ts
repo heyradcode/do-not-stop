@@ -27,7 +27,7 @@ export interface UseBattleOutcome {
  * against a snapshot taken just before the settle tx. Owns the snapshot/pending
  * refs and the detection effect so the panel doesn't have to.
  */
-export function useBattleOutcome({ pets, selectedPet1, petsLoading }: UseBattleOutcomeArgs): UseBattleOutcome {
+export const useBattleOutcome = ({ pets, selectedPet1, petsLoading }: UseBattleOutcomeArgs): UseBattleOutcome  => {
     const [battleOutcome, setBattleOutcome] = useState<BattleOutcome>(null);
     // Snapshot taken before battle.mutate; cleared after the outcome resolves.
     const preBattleStatsRef = useRef<PreBattleStats | null>(null);
