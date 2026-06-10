@@ -28,7 +28,7 @@ export type BreedWithVrfArgs = {
     name: string;
 };
 
-function toPublicKey(value: unknown): PublicKey {
+const toPublicKey = (value: unknown): PublicKey  => {
     if (value instanceof PublicKey) return value;
     if (value && typeof value === 'object' && 'toBase58' in value) {
         return new PublicKey((value as { toBase58: () => string }).toBase58());
@@ -37,7 +37,7 @@ function toPublicKey(value: unknown): PublicKey {
 }
 
 /** Completes a breed whose commit phase succeeded but settle was never submitted. */
-async function trySettlePendingBreed(args: BreedWithVrfArgs): Promise<string | null> {
+const trySettlePendingBreed = async (args: BreedWithVrfArgs): Promise<string | null> => {
     const { program, provider, programId, owner } = args;
     const connection = provider.connection;
     const [breedRequestKey] = breedRequestPda(programId, owner);
@@ -92,7 +92,7 @@ async function trySettlePendingBreed(args: BreedWithVrfArgs): Promise<string | n
  * Two-phase breed using Switchboard On-Demand VRF (commit → reveal).
  * Returns the settle transaction signature (child minted).
  */
-export async function breedWithSwitchboardVrf(args: BreedWithVrfArgs): Promise<string> {
+export const breedWithSwitchboardVrf = async (args: BreedWithVrfArgs): Promise<string> => {
     const resumed = await trySettlePendingBreed(args);
     if (resumed) return resumed;
 

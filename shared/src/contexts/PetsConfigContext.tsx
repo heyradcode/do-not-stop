@@ -13,7 +13,7 @@ export interface PetsConfigContextValue {
 
 const PetsConfigContext = createContext<PetsConfigContextValue | null>(null);
 
-export function usePetsConfig(): PetsConfigContextValue {
+export const usePetsConfig = (): PetsConfigContextValue  => {
     const ctx = useContext(PetsConfigContext);
     if (!ctx) {
         throw new Error('usePetsConfig must be used within a PetsConfigProvider');
@@ -26,7 +26,7 @@ export interface PetsConfigProviderProps {
     evm?: PetsEvmConfig | null;
 }
 
-export function PetsConfigProvider({ children, evm = null }: PetsConfigProviderProps) {
+export const PetsConfigProvider = ({ children, evm = null }: PetsConfigProviderProps) => {
     const value = useMemo<PetsConfigContextValue>(() => ({ evm }), [evm]);
     return <PetsConfigContext.Provider value={value}>{children}</PetsConfigContext.Provider>;
 }

@@ -6,7 +6,7 @@ import { usePlayerProfile } from './usePlayerProfile';
 import { useProgram } from './useProgram';
 
 /** Composes Solana program hooks for screens that need the full surface area. */
-export function useSolana() {
+export const useSolana = () => {
     const { signingWallet } = useSolanaAnchor();
     const program = useProgram();
     const globalState = useGlobalState();

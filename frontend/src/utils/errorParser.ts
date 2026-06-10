@@ -8,7 +8,7 @@ export interface ParsedError {
   isContractError: boolean;
 }
 
-export function parseContractError(error: any): ParsedError {
+export const parseContractError = (error: any): ParsedError  => {
   const errorMessage = error?.message || error?.toString() || 'Unknown error';
 
   // User rejection errors
@@ -73,7 +73,7 @@ export function parseContractError(error: any): ParsedError {
   };
 }
 
-function extractRevertReason(errorMessage: string): string {
+const extractRevertReason = (errorMessage: string): string  => {
   // Try to extract revert reason from various error formats
 
   // Format: viem-style "reverted with the following reason: …"
@@ -103,7 +103,7 @@ function extractRevertReason(errorMessage: string): string {
   return errorMessage;
 }
 
-function mapRevertReasonToFriendlyMessage(revertReason: string): string {
+const mapRevertReasonToFriendlyMessage = (revertReason: string): string  => {
   const reason = revertReason.toLowerCase();
 
   // Handle gas errors first

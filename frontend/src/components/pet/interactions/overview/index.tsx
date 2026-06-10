@@ -3,8 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
     getLifePercent,
     getReadyPetsUnified,
-    isActionSupported,
-    useActiveChain,
+    useChainCapabilities,
     useOpponents,
     usePetList,
 } from '@shared/core';
@@ -27,7 +26,7 @@ import StateCard from '@components/pet/interactions/state-card';
 import './index.css';
 
 /** Map `interactions/:action` segment (e.g. `rename`) to internal action id. */
-function parseActionParam(raw: string | undefined): InteractionAction | null {
+const parseActionParam = (raw: string | undefined): InteractionAction | null  => {
     if (!raw) return null;
     if (raw === 'rename') return 'changename';
     if (raw === 'breed' || raw === 'battle' || raw === 'levelup') return raw;
@@ -41,18 +40,14 @@ function parseActionParam(raw: string | undefined): InteractionAction | null {
 const PetInteractions: React.FC = () => {
     const navigate = useNavigate();
     const { action: actionParam } = useParams<{ action?: string }>();
-    const chain = useActiveChain();
-    const isConnected = chain.kind !== 'none';
+    const capabilities = useChainCapabilities();
+    const { isConnected } = capabilities;
     const { pets, isLoading } = usePetList();
 
     const action = useMemo(() => parseActionParam(actionParam), [actionParam]);
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
-    const activeChainKind = chain.kind === 'none' ? null : chain.kind;
-    const breedSupported = isActionSupported(activeChainKind, 'breed');
-    const battleSupported = isActionSupported(activeChainKind, 'battle');
-    const levelUpSupported = isActionSupported(activeChainKind, 'levelUp');
-    const renameSupported = isActionSupported(activeChainKind, 'rename');
+    const activeChainKind = capabilities.activeKind;
 
     // Preview an on-chain rival for the Battle Arena card (opponents come from
     // the roster, not a second owned pet).
@@ -105,13 +100,12 @@ const PetInteractions: React.FC = () => {
     const previewOpponent =
         opponents.length > 0
             ? [...opponents].sort(
-                  (a, b) =>
-                      Math.abs(a.level - (previewParentA?.level ?? a.level)) -
-                      Math.abs(b.level - (previewParentA?.level ?? b.level)),
-              )[0]
+                (a, b) =>
+                    Math.abs(a.level - (previewParentA?.level ?? a.level)) -
+                    Math.abs(b.level - (previewParentA?.level ?? b.level)),
+            )[0]
             : undefined;
     const availableBattles = Math.min(3, readyPets.length > 0 ? 3 : 0);
-    const breedDisabledHint = !breedSupported ? 'Breeding unavailable on this chain' : undefined;
     // Battle only needs one ready pet — the opponent comes from the on-chain roster.
     const battleDisabledHint = readyPets.length < 1 ? 'You need a ready pet to battle' : undefined;
 
@@ -141,10 +135,9 @@ const PetInteractions: React.FC = () => {
                             type="button"
                             onClick={() => navigate(BREED_PATH)}
                             className="lab-breed-button"
-                            disabled={!breedSupported || readyPets.length < 2}
-                            title={breedDisabledHint}
+                            disabled={readyPets.length < 2}
                         >
-                            {breedSupported ? 'Start breeding' : 'Breeding unavailable'}
+                            Start breeding
                         </button>
                     </div>
                     <div className="battle-arena-card">
@@ -175,7 +168,7 @@ const PetInteractions: React.FC = () => {
                             type="button"
                             onClick={() => navigate(BATTLE_PATH)}
                             className="lab-breed-button start-button"
-                            disabled={!battleSupported || readyPets.length < 1}
+                            disabled={readyPets.length < 1}
                             title={battleDisabledHint}
                         >
                             Start battle
@@ -187,15 +180,15 @@ const PetInteractions: React.FC = () => {
                         <div className="content">
                             Boost your pet stats by leveling up.
                             <br />
-                            {chain.kind === 'solana'
-                                ? 'Costs a small SOL fee per level.'
-                                : 'Cost: 0.001 ETH per level.'}
+                            {capabilities.levelUpFee
+                                ? `Cost: ${capabilities.levelUpFee.amount} ${capabilities.levelUpFee.symbol} per level.`
+                                : 'Costs a small SOL fee per level.'}
                         </div>
                         <button
                             type="button"
                             onClick={() => navigate(LEVELUP_PATH)}
                             className="lab-breed-button levelup-button"
-                            disabled={!levelUpSupported || readyPets.length < 1}
+                            disabled={readyPets.length < 1}
                         >
                             Open level up
                         </button>
@@ -206,15 +199,15 @@ const PetInteractions: React.FC = () => {
                         <div className="content">
                             Rename your pet.
                             <br />
-                            {chain.kind === 'evm'
-                                ? 'Requires level 2 or higher.'
+                            {capabilities.renameMinLevel > 1
+                                ? `Requires level ${capabilities.renameMinLevel} or higher.`
                                 : 'Pick a new identity for your companion.'}
                         </div>
                         <button
                             type="button"
                             onClick={() => navigate(RENAME_PATH)}
                             className="lab-breed-button changename-button"
-                            disabled={!renameSupported || readyPets.length < 1}
+                            disabled={readyPets.length < 1}
                         >
                             Open rename
                         </button>

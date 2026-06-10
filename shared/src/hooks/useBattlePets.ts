@@ -1,9 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
-import { usePetsContract } from './chains/ethereum/usePetsContract';
-import { usePetActions } from './chains/solana/usePetActions';
-import { usePetsConfig } from '../contexts/PetsConfigContext';
-import { useActiveChain } from './useActiveChain';
-import { isActionSupported, FeatureNotSupportedError, NoActiveChainError } from '../utils/pets';
+import { useCallback, useRef } from 'react';
+import { useChainAdapter } from './adapters/useChainAdapter';
+import { useTxSuccess } from './useTxSuccess';
 
 export interface BattlePetsArgs {
     /** Attacker — must be a pet the caller owns. */
@@ -18,111 +15,46 @@ export interface BattlePetsArgs {
 }
 
 export type UseBattlePetsOptions = {
+    /** Fires once the battle is settled on-chain (EVM: receipt; Solana: confirm). */
     onSuccess?: () => void;
 };
 
-export function useBattlePets(options?: UseBattlePetsOptions) {
-    const chain = useActiveChain();
-    const { evm } = usePetsConfig();
-    const isSupported = isActionSupported(chain.kind === 'none' ? null : chain.kind, 'battle');
-
-    const evmHook = usePetsContract({
-        contractAddress: evm?.contractAddress,
-        abi: evm?.abi ?? [],
-        enabled: chain.kind === 'evm',
-    });
-    const solanaActions = usePetActions();
+export const useBattlePets = (options?: UseBattlePetsOptions) => {
+    const { battlePets } = useChainAdapter();
 
     const onSuccessRef = useRef(options?.onSuccess);
     onSuccessRef.current = options?.onSuccess;
 
-    const [localError, setLocalError] = useState<Error | null>(null);
-    const [receiptError, setReceiptError] = useState<Error | null>(null);
+    const notifySuccess = useCallback(() => { onSuccessRef.current?.(); }, []);
 
-    const mutationError =
-        localError ??
-        (chain.kind === 'evm'
-            ? (evmHook.writeError as Error | null) ?? null
-            : (solanaActions.battlePets.error as Error | null) ?? null);
-
-    const hash =
-        chain.kind === 'evm'
-            ? (evmHook.hash as string | undefined)
-            : (solanaActions.battlePets.data as string | undefined);
-
-    const isPending =
-        chain.kind === 'evm' ? evmHook.isPending : solanaActions.battlePets.isPending;
-
-    const tracksEvmReceipt = chain.kind === 'evm';
-
-    // True while an EVM tx is submitted and waiting for on-chain confirmation
-    // (wallet is approved but block not yet mined).
-    const isEvmConfirming = chain.kind === 'evm' && !!evmHook.hash && !evmHook.isPending;
-
-    const reset = useCallback(() => {
-        setLocalError(null);
-        setReceiptError(null);
-        solanaActions.battlePets.reset();
-        evmHook.resetWrite();
-    }, [solanaActions.battlePets, evmHook.resetWrite]);
-
-    const clearErrors = useCallback(() => {
-        setLocalError(null);
-        setReceiptError(null);
-        solanaActions.battlePets.reset();
-        evmHook.resetWrite();
-    }, [solanaActions.battlePets, evmHook.resetWrite]);
-
-    const notifySuccess = useCallback(() => {
-        onSuccessRef.current?.();
-    }, []);
+    // Settlement is lifecycle-driven on both chains: EVM reaches `success` when
+    // the receipt lands, Solana when the mutation resolves confirmed.
+    useTxSuccess(battlePets.lifecycle, notifySuccess);
 
     const mutate = async (args: BattlePetsArgs) => {
-        if (chain.kind === 'none') throw new NoActiveChainError('battle');
-        if (!isSupported) throw new FeatureNotSupportedError(chain.kind, 'battle');
-
-        setLocalError(null);
-        setReceiptError(null);
-
         try {
-            if (chain.kind === 'evm') {
-                evmHook.battlePets(BigInt(args.petId1), BigInt(args.petId2));
-                return;
-            }
-            await solanaActions.battlePets.mutateAsync({
-                attackerPetId: Number(args.petId1),
-                defenderPetId: Number(args.petId2),
-                ...(args.defenderOwner ? { defenderOwner: args.defenderOwner } : {}),
+            await battlePets.mutateAsync({
+                petId1: args.petId1,
+                petId2: args.petId2,
+                defenderOwner: args.defenderOwner,
             });
-            notifySuccess();
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error(String(err));
-            setLocalError(error);
+        } catch {
+            // error tracked in battlePets.lifecycle.error
         }
     };
 
-    const onEvmReceiptComplete = useCallback(() => {
-        notifySuccess();
-        reset();
-    }, [notifySuccess, reset]);
-
-    const onEvmReceiptError = useCallback((error: Error) => {
-        setReceiptError(error);
-        evmHook.resetWrite();
-    }, [evmHook.resetWrite]);
+    const reset = useCallback(() => {
+        battlePets.lifecycle.reset();
+    }, [battlePets.lifecycle]);
 
     return {
-        isSupported,
         mutate,
-        isPending,
-        isEvmConfirming,
+        isPending: battlePets.isPending,
+        isConfirming: battlePets.lifecycle.phase === 'confirming',
         reset,
-        clearErrors,
-        hash,
-        error: mutationError,
-        receiptError,
-        tracksEvmReceipt,
-        onEvmReceiptComplete,
-        onEvmReceiptError,
+        clearErrors: reset,
+        hash: battlePets.lifecycle.hash,
+        error: battlePets.lifecycle.error,
+        lifecycle: battlePets.lifecycle,
     };
 }

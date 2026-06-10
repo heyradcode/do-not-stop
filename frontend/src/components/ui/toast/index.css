@@ -24,52 +24,52 @@
         0 10px 28px rgb(0 0 0 / 42%),
         inset 0 0 16px rgb(125 214 255 / 6%);
     animation: toast-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1);
-}
 
-.toast-error {
-    border-color: rgb(255 110 196 / 42%);
-    box-shadow:
-        0 10px 28px rgb(0 0 0 / 42%),
-        inset 0 0 16px rgb(255 110 196 / 10%);
-}
+    &.toast-error {
+        border-color: rgb(255 110 196 / 42%);
+        box-shadow:
+            0 10px 28px rgb(0 0 0 / 42%),
+            inset 0 0 16px rgb(255 110 196 / 10%);
+    }
 
-.toast-info {
-    border-color: rgb(125 214 255 / 32%);
-}
+    &.toast-info {
+        border-color: rgb(125 214 255 / 32%);
+    }
 
-.toast-success {
-    border-color: rgb(0 255 157 / 42%);
-    box-shadow:
-        0 10px 28px rgb(0 0 0 / 42%),
-        inset 0 0 16px rgb(0 255 157 / 10%);
-}
+    &.toast-success {
+        border-color: rgb(0 255 157 / 42%);
+        box-shadow:
+            0 10px 28px rgb(0 0 0 / 42%),
+            inset 0 0 16px rgb(0 255 157 / 10%);
+    }
 
-.toast-icon {
-    display: inline-flex;
-    margin-top: 1px;
-}
+    .icon {
+        display: inline-flex;
+        margin-top: 1px;
+    }
 
-.toast-message {
-    margin: 0;
-    font-size: 13px;
-    line-height: 1.45;
-    font-weight: 600;
-    color: #f6f3ff;
-}
+    .message {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.45;
+        font-weight: 600;
+        color: #f6f3ff;
+    }
 
-.toast-dismiss {
-    appearance: none;
-    border: none;
-    background: transparent;
-    color: rgb(195 210 255 / 72%);
-    font-size: 18px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0 2px;
-}
+    .dismiss {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: rgb(195 210 255 / 72%);
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 2px;
 
-.toast-dismiss:hover {
-    color: #fff;
+        &:hover {
+            color: #fff;
+        }
+    }
 }
 
 @keyframes toast-enter {

@@ -42,6 +42,16 @@ export async function upsertPet(pet: RosterPet): Promise<void> {
     });
 }
 
+/** Bounds concurrent upserts so a large scan can't exhaust the connection pool. */
+const UPSERT_BATCH_SIZE = 25;
+
+/** Upsert a batch of pets, `UPSERT_BATCH_SIZE` at a time. */
+export async function upsertManyPets(pets: RosterPet[]): Promise<void> {
+    for (let i = 0; i < pets.length; i += UPSERT_BATCH_SIZE) {
+        await Promise.all(pets.slice(i, i + UPSERT_BATCH_SIZE).map(upsertPet));
+    }
+}
+
 export async function countByChain(chain: Chain): Promise<number> {
     return prisma.petRoster.count({ where: { chain } });
 }

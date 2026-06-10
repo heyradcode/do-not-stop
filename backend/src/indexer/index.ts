@@ -1,136 +1,91 @@
-import { scanSubgraphRoster, syncSubgraphChanges } from './subgraph';
-import { scanSolanaRoster } from '@solana/scanner';
+import { createSubgraphIndexer } from '@indexing/evm/indexer';
+import { createSolanaIndexer } from '@indexing/solana/indexer';
 import { env } from '@config/env';
 import { countByChain } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';
+import type { RosterIndexer } from '@indexing/types';
 
-type RosterSource =
-    | { chain: 'evm'; kind: 'subgraph'; url: string }
-    | { chain: 'solana'; kind: 'helius'; rpcUrl: string; programId: string };
+/**
+ * Orchestrates every configured roster source through the {@link RosterIndexer}
+ * interface: full `scan` on startup, then `sync` ticks on an interval. Chain
+ * specifics (subgraph watermark, Helius re-scan) live in the per-chain
+ * factories under indexing/ — adding a chain means adding a factory call to
+ * `buildIndexers`.
+ */
 
-interface IndexerConfig {
-    enabled: boolean;
-    /** Poll interval for EVM incremental sync and Solana backfill (ms). */
-    intervalMs: number;
-    sources: RosterSource[];
-}
+const stopFns: (() => void)[] = [];
 
-const DEFAULT_INTERVAL_MS = 60_000;
+function buildIndexers(): RosterIndexer[] {
+    const indexers: RosterIndexer[] = [];
 
-function readConfig(): IndexerConfig {
-    const enabled = (process.env.INDEXER_ENABLED ?? 'true').toLowerCase() !== 'false';
-    const parsed = Number(process.env.INDEXER_INTERVAL_MS);
-    const intervalMs = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_INTERVAL_MS;
-
-    const sources: RosterSource[] = [];
-
-    const evmUrl = process.env.SUBGRAPH_URL_EVM?.trim() ?? process.env.SUBGRAPH_URL?.trim();
-    if (evmUrl) sources.push({ chain: 'evm', kind: 'subgraph', url: evmUrl });
+    const evmUrl = env.indexer.evmSubgraphUrl;
+    if (evmUrl) indexers.push(createSubgraphIndexer({ chain: 'evm', url: evmUrl }));
 
     const { heliusRpcUrl, programId } = env.solana;
     if (heliusRpcUrl && programId) {
-        sources.push({ chain: 'solana', kind: 'helius', rpcUrl: heliusRpcUrl, programId });
+        indexers.push(createSolanaIndexer({ rpcUrl: heliusRpcUrl, programId }));
     }
 
-    return { enabled, intervalMs, sources };
+    return indexers;
+}
+
+async function logScan(chain: Chain, scanned: number): Promise<void> {
+    const inDb = await countByChain(chain);
+    console.log(`[indexer] ${chain}: scanned ${scanned} pets; roster now has ${inDb}`);
+}
+
+function startIndexer(indexer: RosterIndexer, intervalMs: number): void {
+    const { chain } = indexer;
+
+    void indexer
+        .scan()
+        .then(({ scanned }) => logScan(chain, scanned))
+        .catch((err: Error) => console.error(`[indexer] ${chain} initial sync failed:`, err.message));
+
+    console.log(`[indexer] ${chain} sync every ${intervalMs}ms`);
+
+    const timer = setInterval(() => {
+        void indexer
+            .sync()
+            .then(async ({ synced }) => {
+                if (synced > 0) await logScan(chain, synced);
+            })
+            .catch((err: Error) => console.error(`[indexer] ${chain} sync failed:`, err.message));
+    }, intervalMs);
+
+    stopFns.push(() => clearInterval(timer));
 }
 
 /** Run a one-off full scan of every source — used by the CLI script. */
 export async function runOnce(): Promise<void> {
-    const { sources } = readConfig();
     const failures: string[] = [];
 
-    for (const source of sources) {
+    for (const indexer of buildIndexers()) {
         try {
-            if (source.kind === 'subgraph') {
-                const { scanned } = await scanSubgraphRoster({ chain: source.chain, url: source.url });
-                const inDb = await countByChain(source.chain);
-                console.log(`[indexer] ${source.chain}: scanned ${scanned} pets; roster now has ${inDb}`);
-            } else {
-                const { scanned } = await scanSolanaRoster({ rpcUrl: source.rpcUrl, programId: source.programId });
-                const inDb = await countByChain(source.chain);
-                console.log(`[indexer] ${source.chain}: scanned ${scanned} pets; roster now has ${inDb}`);
-            }
+            const { scanned } = await indexer.scan();
+            await logScan(indexer.chain, scanned);
         } catch (err) {
-            failures.push(`${source.chain}: ${(err as Error).message}`);
+            failures.push(`${indexer.chain}: ${(err as Error).message}`);
         }
     }
 
     if (failures.length > 0) throw new Error(failures.join(' | '));
 }
 
-const stopFns: (() => void)[] = [];
-
 export function startIndexers(): void {
-    const config = readConfig();
-
-    if (!config.enabled) {
+    if (!env.indexer.enabled) {
         console.log('[indexer] disabled (INDEXER_ENABLED=false)');
         return;
     }
-    if (config.sources.length === 0) {
+
+    const indexers = buildIndexers();
+    if (indexers.length === 0) {
         console.log('[indexer] no sources configured; not starting');
         return;
     }
 
-    for (const source of config.sources) {
-        if (source.kind === 'subgraph') {
-            // EVM: full sync on startup, then incremental ticks (only changed pets).
-            let watermark = BigInt(0);
-
-            void scanSubgraphRoster({ chain: source.chain, url: source.url })
-                .then(async ({ scanned, maxUpdatedAt }) => {
-                    watermark = maxUpdatedAt;
-                    const inDb = await countByChain(source.chain);
-                    console.log(`[indexer] ${source.chain} initial sync: ${scanned} pets; roster now has ${inDb}`);
-                })
-                .catch((err: Error) =>
-                    console.error(`[indexer] ${source.chain} initial sync failed:`, err.message)
-                );
-
-            console.log(`[indexer] ${source.chain} incremental sync every ${config.intervalMs}ms`);
-
-            const timer = setInterval(() => {
-                void syncSubgraphChanges({ chain: source.chain, url: source.url }, watermark)
-                    .then(async ({ synced, maxUpdatedAt }) => {
-                        watermark = maxUpdatedAt;
-                        if (synced > 0) {
-                            const inDb = await countByChain(source.chain);
-                            console.log(`[indexer] ${source.chain} sync: ${synced} changed; roster now has ${inDb}`);
-                        }
-                    })
-                    .catch((err: Error) =>
-                        console.error(`[indexer] ${source.chain} sync failed:`, err.message)
-                    );
-            }, config.intervalMs);
-
-            stopFns.push(() => clearInterval(timer));
-        } else {
-            // Solana: Helius webhooks handle real-time; this is a periodic backfill safety-net.
-            void scanSolanaRoster({ rpcUrl: source.rpcUrl, programId: source.programId })
-                .then(async ({ scanned }) => {
-                    const inDb = await countByChain(source.chain);
-                    console.log(`[indexer] ${source.chain} initial sync: ${scanned} pets; roster now has ${inDb}`);
-                })
-                .catch((err: Error) =>
-                    console.error(`[indexer] ${source.chain} initial sync failed:`, err.message)
-                );
-
-            console.log(`[indexer] ${source.chain} backfill every ${config.intervalMs}ms`);
-
-            const timer = setInterval(() => {
-                void scanSolanaRoster({ rpcUrl: source.rpcUrl, programId: source.programId })
-                    .then(async ({ scanned }) => {
-                        const inDb = await countByChain(source.chain);
-                        console.log(`[indexer] ${source.chain} backfill: ${scanned} scanned; roster now has ${inDb}`);
-                    })
-                    .catch((err: Error) =>
-                        console.error(`[indexer] ${source.chain} backfill failed:`, err.message)
-                    );
-            }, config.intervalMs);
-
-            stopFns.push(() => clearInterval(timer));
-        }
+    for (const indexer of indexers) {
+        startIndexer(indexer, env.indexer.intervalMs);
     }
 }
 

@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
     getReadyPetsUnified,
-    useActiveChain,
+    useChainCapabilities,
     usePetList,
     useRenamePet,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
-import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon, QuillIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
@@ -19,22 +19,33 @@ export type RenamePanelProps = {
 
 const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const chain = useActiveChain();
+    const { renameMinLevel } = useChainCapabilities();
     const { pets, refetch } = usePetList();
-    const { mutate, isPending, error: hookError, hash, reset } = useRenamePet();
-    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const notifyError = useNotifyError();
-    const notifyReceiptError = useNotifyReceiptError();
-
-    useTxErrorToast(hookError);
 
     const [selectedPet, setSelectedPet] = useState<string>('');
     const [newName, setNewName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
 
+    // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
+    const handleRenameComplete = () => {
+        setSuccess(`Pet name changed to "${newName}"!`);
+        setSelectedPet('');
+        setNewName('');
+        refetch();
+        navigate(DASHBOARD_HOME);
+    };
+
+    const { mutate, isPending, error: hookError, reset, lifecycle } = useRenamePet({
+        onSuccess: handleRenameComplete,
+    });
+    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+
+    useTxErrorToast(hookError);
+
     const selectablePets = useMemo(
-        () => (chain.kind === 'evm' ? readyPets.filter(({ pet }) => pet.level >= 2) : readyPets),
-        [readyPets, chain.kind]
+        () => (renameMinLevel > 1 ? readyPets.filter(({ pet }) => pet.level >= renameMinLevel) : readyPets),
+        [readyPets, renameMinLevel]
     );
 
     const handleChangeName = async () => {
@@ -48,13 +59,6 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
 
         try {
             await mutate({ petId: selectedPet, name: newName.trim() });
-            if (chain.kind === 'solana') {
-                setSuccess(`Pet name changed to "${newName}"!`);
-                setSelectedPet('');
-                setNewName('');
-                refetch();
-                navigate(DASHBOARD_HOME);
-            }
         } catch (err) {
             console.error('[rename]', err);
         }
@@ -65,14 +69,6 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
         navigate(DASHBOARD_HOME);
     };
 
-    const handleTransactionComplete = () => {
-        setSuccess(`Pet name changed to "${newName}"!`);
-        setSelectedPet('');
-        setNewName('');
-        refetch();
-        navigate(DASHBOARD_HOME);
-    };
-
     return (
         <>
             <div className="interface">
@@ -80,8 +76,8 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                     <>
                         <h4><Icon as={QuillIcon} tone={Tones.Cyan} />Change Pet Name</h4>
                         <p>
-                            {chain.kind === 'evm'
-                                ? "Change your pet's name (requires level 2+)"
+                            {renameMinLevel > 1
+                                ? `Change your pet's name (requires level ${renameMinLevel}+)`
                                 : "Change your pet's name"}
                         </p>
                     </>
@@ -132,9 +128,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
             )}
 
-            {chain.kind === 'evm' && (
-                <TransactionStatus hash={hash} onComplete={handleTransactionComplete} onError={notifyReceiptError} />
-            )}
+            <TransactionStatus lifecycle={lifecycle} />
         </>
     );
 };

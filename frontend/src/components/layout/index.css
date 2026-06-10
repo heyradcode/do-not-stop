@@ -129,3 +129,139 @@
     background-color: #070a14;
   }
 }
+
+.main-content.authenticated {
+  /* Fill exactly the viewport below the fixed header; never scroll the page itself. */
+  height: calc(100vh - var(--main-header-offset));
+  padding: var(--spacing-md) var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  text-align: start;
+  background:
+    repeating-linear-gradient(0deg, var(--neon-grid-line) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(90deg, var(--neon-grid-line) 0 1px, transparent 1px 48px),
+    linear-gradient(180deg, var(--neon-base-bg) 0%, var(--neon-band-bg) 100%);
+  overflow: hidden;
+  min-height: 0;
+  box-sizing: border-box;
+
+  & > * {
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  & > .dashboard-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+  }
+}
+
+/* Dashboard view (interactions hub + pet gallery): split horizontally 50/50 so
+   both panels share equal width and the pet cards render in full. */
+.main-content.authenticated:has(.dashboard-panel.pet-collection) {
+  flex-direction: row;
+  align-items: stretch;
+
+  & > .dashboard-panel {
+    flex: 1 1 0;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  & > .dashboard-panel.pet-interactions {
+    & .surface {
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--neon-cyan) transparent;
+    }
+
+    & .surface::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    & .surface::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, var(--neon-cyan), var(--neon-violet));
+      border-radius: 3px;
+      box-shadow: 0 0 8px rgb(125 214 255 / 32%);
+    }
+
+    & .action-buttons {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-auto-rows: min-content;
+      align-items: start;
+      flex: 0 0 auto;
+    }
+
+    & .action-buttons > .breeding-lab-card,
+    & .action-buttons > .battle-arena-card,
+    & .action-buttons > .feature-action-card {
+      flex: 0 0 auto;
+      min-height: 0;
+      height: auto;
+    }
+  }
+
+  & > .dashboard-panel.pet-collection {
+    & .panel-body {
+      min-height: 0;
+    }
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-content.authenticated {
+    padding: var(--spacing-sm) var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+
+  /* Stack panels vertically on narrow screens; allow the page to scroll
+     so both interactions and gallery remain usable. */
+  .main-content.authenticated:has(.dashboard-panel.pet-collection) {
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    & > .dashboard-panel.pet-interactions {
+      flex: 0 0 auto;
+      width: 100%;
+      max-width: none;
+      height: auto;
+      overflow: visible;
+
+      & .surface {
+        overflow: visible;
+      }
+
+      & .action-buttons {
+        display: grid;
+        flex: 0 0 auto;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    & > .dashboard-panel.pet-collection {
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 480px;
+    }
+  }
+}
+
+@media (max-width: 640px) {
+  .main-content.authenticated:has(.dashboard-panel.pet-collection)
+    > .dashboard-panel.pet-interactions .action-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

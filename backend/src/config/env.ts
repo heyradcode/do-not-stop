@@ -16,21 +16,40 @@ function requireEnv(name: string): string {
 }
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
+const isProduction = nodeEnv === 'production';
 const parsedPort = Number(process.env.PORT);
+const parsedIndexerInterval = Number(process.env.INDEXER_INTERVAL_MS);
 
 export const env = {
     nodeEnv,
-    isProduction: nodeEnv === 'production',
+    isProduction,
     port: Number.isFinite(parsedPort) && parsedPort > 0 ? parsedPort : 3001,
 
-    /** JWT signing secret. Falls back to a dev-only value when unset. */
-    jwtSecret: process.env.JWT_SECRET || 'fallback-secret-key',
+    /**
+     * JWT signing secret. Required in production (anyone knowing the secret can
+     * mint valid tokens); falls back to a dev-only value otherwise.
+     */
+    jwtSecret: isProduction ? requireEnv('JWT_SECRET') : process.env.JWT_SECRET || 'dev-only-secret',
 
     /** PostgreSQL connection string (required — Prisma cannot run without it). */
     databaseUrl: requireEnv('DATABASE_URL'),
 
     /** Comma-separated allowed CORS origins; unset = allow all (local dev). */
     corsOrigin: process.env.CORS_ORIGIN,
+
+    /** Background roster indexer (PvP matchmaking) — see src/indexer. */
+    indexer: {
+        /** Set INDEXER_ENABLED=false to turn the background indexer off. */
+        enabled: (process.env.INDEXER_ENABLED ?? 'true').toLowerCase() !== 'false',
+        /** Poll interval for EVM incremental sync and Solana backfill (ms). */
+        intervalMs:
+            Number.isFinite(parsedIndexerInterval) && parsedIndexerInterval > 0
+                ? parsedIndexerInterval
+                : 60_000,
+        /** EVM subgraph query endpoint (`SUBGRAPH_URL` is a legacy alias). */
+        evmSubgraphUrl:
+            process.env.SUBGRAPH_URL_EVM?.trim() || process.env.SUBGRAPH_URL?.trim() || undefined,
+    },
 
     /**
      * Solana indexing via Helius (RPC reconciliation scan + push webhook). All
@@ -44,6 +63,29 @@ export const env = {
         programId: process.env.SOLANA_PROGRAM_ID?.trim() || undefined,
         /** Shared secret Helius sends in the webhook `Authorization` header. */
         webhookSecret: process.env.HELIUS_WEBHOOK_SECRET?.trim() || undefined,
+    },
+
+    /**
+     * AI battle dialogue (see AI_BATTLE_DIALOGUE.md), via the Hugging Face
+     * OpenAI-compatible chat router (Vercel AI SDK). Optional: when `apiToken`
+     * is unset the feature degrades to templated fallback lines, so the app runs
+     * fine without a token in local dev.
+     */
+    hf: {
+        apiToken: process.env.HF_API_TOKEN?.trim() || undefined,
+        /** Any chat-completion model on HF inference. Verify availability/tier. */
+        model: process.env.HF_MODEL?.trim() || 'meta-llama/Llama-3.1-8B-Instruct',
+        /** Base URL for the OpenAI-compatible inference endpoint (no /chat/completions suffix). */
+        baseUrl: process.env.HF_API_URL?.trim().replace(/\/chat\/completions$/, '') || 'https://router.huggingface.co/v1',
+    },
+
+    /**
+     * Optional Redis for the battle-dialogue pregen store. Unset = in-process Map
+     * (fine single-instance). Set it to survive restarts / scale to multiple
+     * instances — also run `pnpm add ioredis`, which is imported only when set.
+     */
+    redis: {
+        url: process.env.REDIS_URL?.trim() || undefined,
     },
 } as const;
 

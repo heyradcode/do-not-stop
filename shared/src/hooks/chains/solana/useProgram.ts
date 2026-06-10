@@ -16,7 +16,7 @@ const READ_ONLY_WALLET: SolanaSigningWallet = {
 
 export type SolanaProgram = Program<Idl>;
 
-export function useProgram() {
+export const useProgram = () => {
     const { connection, programId, signingWallet } = useSolanaAnchor();
 
     const providerWallet = signingWallet ?? READ_ONLY_WALLET;

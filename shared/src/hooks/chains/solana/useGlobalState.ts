@@ -3,7 +3,7 @@ import { globalStatePda } from '../../../utils/solana/pdas';
 import { getAccountClient } from '../../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
 
-export function useGlobalState() {
+export const useGlobalState = () => {
     const { program, programId, isReady } = useProgram();
 
     const globalPk = program && programId ? globalStatePda(programId)[0] : null;

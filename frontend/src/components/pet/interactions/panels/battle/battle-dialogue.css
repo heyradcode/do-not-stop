@@ -1,0 +1,105 @@
+.battle-dialogue {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin: 12px 0;
+    max-height: 360px;
+    overflow-y: auto;
+    padding: 4px;
+
+    &.is-loading {
+        align-items: center;
+        justify-content: center;
+    }
+
+    .thinking {
+        font-size: 0.85rem;
+        color: rgb(195 210 255 / 70%);
+        font-style: italic;
+        animation: battle-dialogue-pulse 1.4s ease-in-out infinite;
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+    }
+
+    .line {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        max-width: 85%;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--neon-border-soft);
+        background: rgb(5 13 30 / 78%);
+        animation: battle-dialogue-in 0.25s ease;
+
+        /* Attacker (your pet) on the left, defender (opponent) on the right. */
+        &.is-attacker {
+            align-self: flex-start;
+            border-color: rgb(0 255 157 / 36%);
+            box-shadow: inset 0 0 12px rgb(0 255 157 / 8%);
+
+            .speaker {
+                color: #9effd4;
+            }
+        }
+
+        &.is-defender {
+            align-self: flex-end;
+            border-color: rgb(255 110 196 / 36%);
+            box-shadow: inset 0 0 12px rgb(255 110 196 / 8%);
+
+            .speaker {
+                color: #ff9ad6;
+            }
+        }
+
+        &.is-result {
+            border-style: dashed;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            animation: none;
+        }
+
+        .speaker {
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: rgb(195 210 255 / 70%);
+        }
+
+        .text {
+            font-size: 0.9rem;
+            line-height: 1.35;
+            color: #f6f3ff;
+        }
+    }
+}
+
+@keyframes battle-dialogue-pulse {
+
+    0%,
+    100% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes battle-dialogue-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

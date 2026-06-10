@@ -8,7 +8,7 @@ import { useDynamicSolanaWallet } from '@chains/solana/useDynamicSolanaWallet';
  * Supplies `SolanaAnchorProvider` with a signing wallet from wallet-adapter when connected,
  * otherwise from Dynamic (Phantom etc. opened via Dynamic’s modal are not on wallet-adapter).
  */
-export function SolanaAnchorWallet({ children }: { children: ReactNode }) {
+export const SolanaAnchorWallet = ({ children }: { children: ReactNode }) => {
     const { connection } = useConnection();
     const adapterWallet = useAnchorWallet();
     const dynamicSolanaWallet = useDynamicSolanaWallet();

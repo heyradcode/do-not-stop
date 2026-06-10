@@ -15,7 +15,7 @@ export type DynamicSolanaWalletLike = {
 };
 
 /** Resolves the active Dynamic Solana wallet (user wallets list, then primary). */
-export function useDynamicSolanaWallet(): DynamicSolanaWalletLike | null {
+export const useDynamicSolanaWallet = (): DynamicSolanaWalletLike | null  => {
     const { primaryWallet } = useDynamicContext();
     const userWallets = useUserWallets();
 

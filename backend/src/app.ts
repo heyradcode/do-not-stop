@@ -7,8 +7,13 @@ import healthRoutes from '@routes/health';
 import protectedRoutes from '@routes/protected';
 import graphqlRoutes from '@routes/graphql';
 import webhookRoutes from '@routes/webhooks';
+import dialogueRoutes from '@routes/dialogue';
 
 const app = express();
+
+// One hop in front of us in production (Render's proxy) — makes req.ip the
+// real client address, which the per-IP rate limits key on.
+app.set('trust proxy', 1);
 
 app.use(
     cors(
@@ -26,6 +31,7 @@ app.use('/api/protected', protectedRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/graphql', graphqlRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/battle-dialogue', dialogueRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
     res.json({
@@ -37,6 +43,7 @@ app.get('/', (_req: Request, res: Response) => {
             health: '/api/health',
             graphql: '/graphql',
             webhooks: '/api/webhooks',
+            battleDialogue: '/api/battle-dialogue',
         },
     });
 });

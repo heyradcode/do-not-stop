@@ -1,10 +1,20 @@
-import { users } from '@features/auth/auth.service';
+import { getUser, listUsers as listUserRows, type UserRecord } from '@repositories/user.repository';
 import type { User } from '@features/auth/auth.types';
 
-export function getUserProfile(address: string): User | undefined {
-    return users.get(address);
+/** API shape: dates as ISO strings (see {@link User}). */
+function toUser(row: UserRecord): User {
+    return {
+        address: row.address,
+        createdAt: row.createdAt.toISOString(),
+        lastLogin: row.lastLogin.toISOString(),
+    };
 }
 
-export function listUsers(): User[] {
-    return Array.from(users.values());
+export async function getUserProfile(address: string): Promise<User | null> {
+    const row = await getUser(address);
+    return row ? toUser(row) : null;
+}
+
+export async function listUsers(): Promise<User[]> {
+    return (await listUserRows()).map(toUser);
 }

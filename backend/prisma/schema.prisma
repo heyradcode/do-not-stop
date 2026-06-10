@@ -13,6 +13,17 @@ datasource db {
   provider = "postgresql"
 }
 
+/// Wallet that has completed signature auth at least once. Keyed by the
+/// normalized address (EVM lowercased, Solana base58 as-is) — the same
+/// `storageKey` the JWT carries.
+model User {
+  address   String   @id // normalized wallet address / pubkey
+  createdAt DateTime @default(now()) @map("created_at")
+  lastLogin DateTime @default(now()) @map("last_login")
+
+  @@map("users")
+}
+
 /// One row per on-chain pet, across every owner and chain.
 /// Populated by the indexer (see PVP_BATTLE.md §2) so the frontend can
 /// discover opponents it does not own.
@@ -33,4 +44,60 @@ model PetRoster {
   @@index([chain, owner])
   @@index([chain, readyAt])
   @@map("pet_roster")
+}
+
+/// Authoritative record of settled battles, ingested from on-chain events
+/// (EVM: Battle.FightResult; Solana: settle_battle BattleResult). Powers
+/// rivalry / head-to-head context for AI dialogue. See AI_BATTLE_DIALOGUE.md.
+model BattleHistory {
+  chain       String // 'evm' | 'solana'
+  battleId    String   @map("battle_id") // tx hash+log (EVM) / settle sig (Solana)
+  attacker    String   @map("attacker_pet_id")
+  defender    String   @map("defender_pet_id")
+  winnerPetId String   @map("winner_pet_id") // absolute id — head-to-head survives role swaps
+  foughtAt    BigInt   @map("fought_at") // unix seconds (block/tx time)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@id([chain, battleId])
+  @@index([chain, attacker])
+  @@index([chain, defender])
+  @@map("battle_history")
+}
+
+/// One generated conversation per settled battle — a generate-once cache so the
+/// dialogue is billed at most once and replays are reproducible.
+/// See AI_BATTLE_DIALOGUE.md.
+model BattleDialogue {
+  chain     String // 'evm' | 'solana'
+  battleId  String   @map("battle_id") // tx hash+log (EVM) / settle sig (Solana)
+  attacker  String   @map("attacker_pet_id")
+  defender  String   @map("defender_pet_id")
+  winner    String // 'attacker' | 'defender'
+  turns     Json // DialogueTurn[]
+  model     String // Claude model id, or 'fallback'
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([chain, battleId])
+  @@map("battle_dialogue")
+}
+
+/// Append-only log of every generated dialogue line, so prior banter between two
+/// pets can be replayed into future prompts for continuity ("callbacks"). Unlike
+/// battle_dialogue (a generate-once cache keyed by battle), this is a growing
+/// transcript keyed by the fighter pair. Pre-fight taunts are recorded before the
+/// battle settles, so `battleId` is null until (and unless) one is known.
+/// See AI_BATTLE_DIALOGUE.md.
+model BattleConversation {
+  id        Int      @id @default(autoincrement())
+  chain     String // 'evm' | 'solana'
+  attacker  String   @map("attacker_pet_id")
+  defender  String   @map("defender_pet_id")
+  battleId  String?  @map("battle_id") // null for pre-fight taunts (not yet settled)
+  phase     String // 'taunt' | 'result'
+  speaker   String // 'attacker' | 'defender'
+  text      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([chain, attacker, defender])
+  @@map("battle_conversation")
 }

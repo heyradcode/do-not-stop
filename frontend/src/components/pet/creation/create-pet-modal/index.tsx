@@ -1,13 +1,13 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-    useActiveChain,
+    useChainCapabilities,
     useCreatePet,
     usePetList,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
 import TransactionStatus from '@components/common/transaction-status';
-import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
 
@@ -17,18 +17,26 @@ interface CreatePetModalProps {
 }
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
-    const chain = useActiveChain();
-    const isConnected = chain.kind !== 'none';
-    const { mutate, isPending, error: hookError, hash, reset } = useCreatePet();
+    const { isConnected } = useChainCapabilities();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
-    const notifyReceiptError = useNotifyReceiptError();
-
-    useTxErrorToast(hookError);
 
     const [petName, setPetName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
-    const [txHash, setTxHash] = useState<string | undefined>(undefined);
+
+    // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
+    const handleCreateComplete = () => {
+        setSuccess(`Pet "${petName.trim()}" created successfully!`);
+        setPetName('');
+        refetch();
+        onClose();
+    };
+
+    const { mutate, isPending, error: hookError, reset, lifecycle } = useCreatePet({
+        onSuccess: handleCreateComplete,
+    });
+
+    useTxErrorToast(hookError);
 
     const handleCreatePet = async () => {
         if (!isConnected) {
@@ -46,43 +54,17 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
 
         try {
             await mutate({ name: trimmed });
-
-            if (chain.kind === 'solana') {
-                setSuccess(`Pet "${trimmed}" created successfully!`);
-                setPetName('');
-                refetch();
-                onClose();
-            }
         } catch (err) {
             console.error('[create-pet]', err);
         }
     };
 
-    const handleSuccess = () => {
-        setSuccess(`Pet "${petName}" created successfully!`);
-        setPetName('');
-    };
-
-    const handleTransactionComplete = () => {
-        handleSuccess();
-        onClose();
-        setTxHash(undefined);
-        refetch();
-    };
-
     const handleClose = () => {
         setPetName('');
         setSuccess(null);
-        setTxHash(undefined);
         reset();
         onClose();
     };
-
-    useEffect(() => {
-        if (hash && chain.kind === 'evm') {
-            setTxHash(hash);
-        }
-    }, [hash, chain.kind]);
 
     if (!isOpen) return null;
 
@@ -92,12 +74,12 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                 <div className="header">
                     <h2><Icon as={PawIcon} tone={Tones.Cyan} />Create Your First Pet</h2>
                     <button className="close" onClick={handleClose}>
-                        Ã—
+                        ×
                     </button>
                 </div>
 
                 <div className="body">
-                    <p>Give your pet a unique name and bring it to life! You can only create one pet initially â€” breed to grow your collection!</p>
+                    <p>Give your pet a unique name and bring it to life! You can only create one pet initially — breed to grow your collection!</p>
 
                     <div className="form">
                         <div className="field">
@@ -129,16 +111,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                         </div>
                     )}
 
-                    {chain.kind === 'evm' && (
-                        <TransactionStatus
-                            hash={txHash}
-                            onComplete={handleTransactionComplete}
-                            onError={(error) => {
-                                notifyReceiptError(error);
-                                setTxHash(undefined);
-                            }}
-                        />
-                    )}
+                    <TransactionStatus lifecycle={lifecycle} />
                 </div>
             </div>
         </div>

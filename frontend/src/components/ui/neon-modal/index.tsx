@@ -16,7 +16,7 @@ type NeonModalProps = {
   contentClassName?: string;
 };
 
-export default function NeonModal({
+const NeonModal = ({
   isOpen,
   onRequestClose,
   title,
@@ -24,7 +24,7 @@ export default function NeonModal({
   headerActions,
   className,
   contentClassName,
-}: NeonModalProps) {
+}: NeonModalProps) => {
   useEffect(() => {
     Modal.setAppElement('#root');
   }, []);
@@ -59,4 +59,6 @@ export default function NeonModal({
       <div className={bodyClassName}>{children}</div>
     </Modal>
   );
-}
+};
+
+export default NeonModal;

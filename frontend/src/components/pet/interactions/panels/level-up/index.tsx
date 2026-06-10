@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
     getReadyPetsUnified,
-    useActiveChain,
+    useChainCapabilities,
     useLevelUpPet,
     usePetList,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
-import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
@@ -19,17 +19,27 @@ export type LevelUpPanelProps = {
 
 const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const chain = useActiveChain();
+    const { levelUpFee } = useChainCapabilities();
     const { pets, refetch } = usePetList();
-    const { mutate, isPending, error: hookError, hash, reset } = useLevelUpPet();
-    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const notifyError = useNotifyError();
-    const notifyReceiptError = useNotifyReceiptError();
-
-    useTxErrorToast(hookError);
 
     const [selectedPet, setSelectedPet] = useState<string>('');
     const [success, setSuccess] = useState<string | null>(null);
+
+    // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
+    const handleLevelUpComplete = () => {
+        setSuccess('Pet leveled up successfully!');
+        setSelectedPet('');
+        refetch();
+        navigate(DASHBOARD_HOME);
+    };
+
+    const { mutate, isPending, error: hookError, reset, lifecycle } = useLevelUpPet({
+        onSuccess: handleLevelUpComplete,
+    });
+    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+
+    useTxErrorToast(hookError);
 
     const handleLevelUp = async () => {
         if (!selectedPet) {
@@ -42,12 +52,6 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
         try {
             await mutate({ petId: selectedPet });
-            if (chain.kind === 'solana') {
-                setSuccess('Pet leveled up successfully!');
-                setSelectedPet('');
-                refetch();
-                navigate(DASHBOARD_HOME);
-            }
         } catch (err) {
             console.error('[level-up]', err);
         }
@@ -58,18 +62,11 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         navigate(DASHBOARD_HOME);
     };
 
-    const handleTransactionComplete = () => {
-        setSuccess('Pet leveled up successfully!');
-        setSelectedPet('');
-        refetch();
-        navigate(DASHBOARD_HOME);
-    };
-
     const buttonLabel = isPending
         ? 'Leveling Up...'
-        : chain.kind === 'solana'
-            ? 'Level Up'
-            : 'Level Up (0.001 ETH)';
+        : levelUpFee
+            ? `Level Up (${levelUpFee.amount} ${levelUpFee.symbol})`
+            : 'Level Up';
 
     return (
         <>
@@ -78,9 +75,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                     <>
                         <h4>â¬†ï¸ Level Up Pet</h4>
                         <p>
-                            {chain.kind === 'solana'
-                                ? 'Pay a small SOL fee to level up your pet'
-                                : 'Pay 0.001 ETH to level up your pet'}
+                            {levelUpFee
+                                ? `Pay ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet`
+                                : 'Pay a small SOL fee to level up your pet'}
                         </p>
                     </>
                 )}
@@ -119,13 +116,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 </div>
             )}
 
-            {chain.kind === 'evm' && (
-                <TransactionStatus
-                    hash={hash}
-                    onComplete={handleTransactionComplete}
-                    onError={notifyReceiptError}
-                />
-            )}
+            <TransactionStatus lifecycle={lifecycle} />
         </>
     );
 };

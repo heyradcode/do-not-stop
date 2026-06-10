@@ -13,7 +13,7 @@ export type NeonButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   fullWidth?: boolean;
 };
 
-export default function NeonButton({
+const NeonButton = ({
   tone = 'azure',
   size = 'md',
   fullWidth = false,
@@ -21,7 +21,7 @@ export default function NeonButton({
   type = 'button',
   children,
   ...rest
-}: NeonButtonProps) {
+}: NeonButtonProps) => {
   const classString = clsx(
     'neon-btn',
     `tone-${tone}`,
@@ -35,4 +35,6 @@ export default function NeonButton({
       <span className="label">{children}</span>
     </button>
   );
-}
+};
+
+export default NeonButton;

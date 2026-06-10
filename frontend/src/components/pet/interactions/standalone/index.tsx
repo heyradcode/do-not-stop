@@ -1,5 +1,5 @@
 import React from 'react';
-import { isActionSupported, useActiveChain, usePetList } from '@shared/core';
+import { useChainCapabilities, usePetList } from '@shared/core';
 import type { InteractionAction } from '@constants/interactionRoutes';
 import { STANDALONE_INTERACTION_HEADERS } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
@@ -14,22 +14,10 @@ export type InteractionStandaloneProps = {
     children: React.ReactNode;
 };
 
-const ACTION_TO_FEATURE = {
-    breed: 'breed',
-    battle: 'battle',
-    levelup: 'levelUp',
-    changename: 'rename',
-} as const;
-
 const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, minPets, children }) => {
-    const chain = useActiveChain();
-    const isConnected = chain.kind !== 'none';
+    const { isConnected } = useChainCapabilities();
     const { pets, isLoading } = usePetList();
     const header = STANDALONE_INTERACTION_HEADERS[action];
-    const featureSupported = isActionSupported(
-        chain.kind === 'none' ? null : chain.kind,
-        ACTION_TO_FEATURE[action]
-    );
 
     if (!isConnected) {
         return (
@@ -62,18 +50,6 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
                 title={<><Icon as={header.Icon} tone={Tones.Violet} />{header.label}</>}
                 description="You don't have any pets yet."
                 helpText="Go to the dashboard and create your first pet."
-            />
-        );
-    }
-
-    if (!featureSupported) {
-        return (
-            <StateCard
-                containerClassName="interaction-standalone"
-                title={<><Icon as={header.Icon} tone={Tones.Violet} />{header.label}</>}
-                sub={header.sub}
-                description={`This action is not yet supported on ${chain.kind === 'solana' ? 'Solana' : 'this chain'}.`}
-                helpText="Switch to a supported wallet/chain or check back later."
             />
         );
     }

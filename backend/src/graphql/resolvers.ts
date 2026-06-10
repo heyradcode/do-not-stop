@@ -35,17 +35,10 @@ export const rootValue = {
         });
 
         return {
-            opponents: rows.map((row) => ({
-                id: row.petId,
-                chain: row.chain,
-                owner: row.owner,
-                name: row.name,
-                dna: row.dna,
-                level: row.level,
-                rarity: row.rarity,
-                winCount: row.winCount,
-                lossCount: row.lossCount,
-                readyAt: Number(row.readyAt),
+            opponents: rows.map(({ petId: id, readyAt, ...rest }) => ({
+                id,
+                ...rest,
+                readyAt: Number(readyAt),
             })),
             total,
             page,

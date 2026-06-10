@@ -1,7 +1,7 @@
 ﻿import React, { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useActiveChain, useBreedPets, usePetList } from '@shared/core';
+import { getReadyPetsUnified, useChainCapabilities, useBreedPets, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
@@ -16,11 +16,11 @@ export type BreedPanelProps = {
 
 const VALIDATION_MESSAGE = 'Please select two pets and enter a name for the offspring';
 const BREED_FAIL_MESSAGE = 'Failed to breed pets. Please try again.';
-const AWAITING_HINT = 'Hang tightâ€”your new pet will show up in a moment.';
+const AWAITING_HINT = 'Hang tight—your new pet will show up in a moment.';
 
 const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const chain = useActiveChain();
+    const { randomness } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const [selectedPet1, setSelectedPet1] = useState('');
     const [selectedPet2, setSelectedPet2] = useState('');
@@ -43,26 +43,27 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const breed = useBreedPets({ onSuccess: handleSuccess });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
+    // Receipt errors are folded into `breed.error` by the chain adapter.
     usePetErrorToast(
         breed.error,
-        breed.receiptError,
+        null,
         validationError,
         BREED_FAIL_MESSAGE,
     );
 
-    const usesSwitchboardVrf = chain.kind === 'solana';
+    const usesSwitchboardVrf = randomness.provider === 'switchboard';
     const subtitle = usesSwitchboardVrf
         ? 'Select two pets to create a new one (Switchboard VRF)'
         : 'Select two pets to create a new one';
-    const pendingLabel = usesSwitchboardVrf ? 'Generating randomnessâ€¦' : 'Submittingâ€¦';
-    const creatingLabel = 'Creatingâ€¦';
+    const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Submitting…';
+    const creatingLabel = 'Creating…';
     const submitLabel = 'Breed Pets';
     const buttonLabel = breed.isPending
         ? pendingLabel
         : breed.isAwaitingFulfillment
           ? creatingLabel
           : submitLabel;
-    const hashHint = chain.kind === 'solana' ? formatTxHashHint(breed.hash) : null;
+    const hashHint = usesSwitchboardVrf ? formatTxHashHint(breed.hash) : null;
 
     const canSubmit = Boolean(selectedPet1 && selectedPet2 && newPetName.trim());
 
@@ -177,13 +178,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 </p>
             )}
 
-            {breed.tracksEvmReceipt && breed.hash && (
-                <TransactionStatus
-                    hash={breed.hash}
-                    onComplete={breed.onEvmReceiptComplete}
-                    onError={breed.onEvmReceiptError}
-                />
-            )}
+            <TransactionStatus lifecycle={breed.lifecycle} />
         </>
     );
 };

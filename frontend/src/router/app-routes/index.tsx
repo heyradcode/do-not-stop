@@ -1,31 +1,23 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import MainPage from '@pages/main';
-import PetInteractions from '@components/pet/interactions/overview';
-import BattleRoute from '@router/routes/battle-route';
-import BreedRoute from '@router/routes/breed-route';
-import LevelUpRoute from '@router/routes/level-up-route';
-import RenameRoute from '@router/routes/rename-route';
+import Layout from '@components/layout';
+import HomePage from '@pages/home';
+import BreedPage from '@pages/breed';
+import BattlePage from '@pages/battle';
+import LevelUpPage from '@pages/level-up';
+import RenamePage from '@pages/rename';
 
 /** App route tree — pages render regardless of wallet state; features gate themselves via `useIsLoggedIn`. */
 const AppRoutes: React.FC = () => {
     return (
         <Routes>
-            <Route path="/main" element={<MainPage />}>
-                <Route index element={<PetInteractions />} />
-            </Route>
-            <Route path="/breed" element={<MainPage />}>
-                <Route index element={<BreedRoute />} />
-            </Route>
-            <Route path="/battle" element={<MainPage />}>
-                <Route index element={<BattleRoute />} />
-            </Route>
-            <Route path="/levelup" element={<MainPage />}>
-                <Route index element={<LevelUpRoute />} />
-            </Route>
-            <Route path="/rename" element={<MainPage />}>
-                <Route index element={<RenameRoute />} />
+            <Route element={<Layout />}>
+                <Route path="/main" element={<HomePage />} />
+                <Route path="/breed" element={<BreedPage />} />
+                <Route path="/battle" element={<BattlePage />} />
+                <Route path="/levelup" element={<LevelUpPage />} />
+                <Route path="/rename" element={<RenamePage />} />
             </Route>
             <Route path="*" element={<Navigate to="/main" replace />} />
         </Routes>

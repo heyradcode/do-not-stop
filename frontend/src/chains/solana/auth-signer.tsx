@@ -9,7 +9,7 @@ import { useDynamicSolanaWallet, type DynamicSolanaWalletLike } from '@chains/so
  * `getSigner()` to reach the canonical `ISolana.signMessage(Uint8Array)` which returns
  * `{ signature: Uint8Array }`. Coercion to base58 is handled downstream by `signatureAuthCodec`.
  */
-async function signerFromDynamicWallet(wallet: DynamicSolanaWalletLike): Promise<SharedSolanaAuthSigner | null> {
+const signerFromDynamicWallet = async (wallet: DynamicSolanaWalletLike): Promise<SharedSolanaAuthSigner | null> => {
     if (typeof wallet.getSigner !== 'function') {
         return null;
     }
@@ -40,7 +40,7 @@ async function signerFromDynamicWallet(wallet: DynamicSolanaWalletLike): Promise
  * Registers Solana signing for {@link AuthProvider} / `signAndLogin`:
  * prefers `@solana/wallet-adapter-react` when connected; otherwise Dynamic Solana wallets.
  */
-export function SolanaAuthSigner() {
+export const SolanaAuthSigner = () => {
     const { publicKey, signMessage } = useWallet();
     const dynamicSolanaWallet = useDynamicSolanaWallet();
 

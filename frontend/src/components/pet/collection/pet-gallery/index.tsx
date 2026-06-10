@@ -12,7 +12,7 @@ import {
     getRarityName,
     getTimeUntilReady,
     isPetReady,
-    useActiveChain,
+    useChainCapabilities,
     usePetList,
     type Pet,
 } from '@shared/core';
@@ -34,8 +34,7 @@ import { useNotifyError } from '@hooks/useNotifyError';
 import './index.css';
 
 const PetGallery: React.FC = () => {
-    const chain = useActiveChain();
-    const isConnected = chain.kind !== 'none';
+    const { isConnected } = useChainCapabilities();
     const { pets, isLoading, error, refetch } = usePetList();
     const notifyError = useNotifyError();
     const [loading, setLoading] = useState(false);
