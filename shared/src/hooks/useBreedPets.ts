@@ -15,6 +15,12 @@ export type UseBreedPetsOptions = {
     onSuccess?: (payload: { name: string }) => void;
 };
 
+/**
+ * Breed is the one mutation whose settlement is NOT lifecycle-driven on EVM:
+ * the request tx receipt only confirms the VRF request — the offspring exists
+ * once the BreedFulfilled event fires. So success here is event-driven on EVM
+ * and resolve-driven on Solana (where VRF completes inside the mutation).
+ */
 export function useBreedPets(options?: UseBreedPetsOptions) {
     const adapter = useChainAdapter();
     const { breedPets } = adapter;
@@ -27,7 +33,6 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
     onSuccessRef.current = options?.onSuccess;
     const offspringNameRef = useRef('');
 
-    const [receiptError, setReceiptError] = useState<Error | null>(null);
     const [pendingRequestId, setPendingRequestId] = useState<bigint | null>(null);
 
     const hash = breedPets.lifecycle.hash;
@@ -61,7 +66,6 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
     const handleBreedFulfilled = useCallback(() => {
         notifySuccess(offspringNameRef.current);
         setPendingRequestId(null);
-        setReceiptError(null);
     }, [notifySuccess]);
 
     // Watch for BreedFulfilled event (EVM VRF fulfillment).
@@ -74,18 +78,15 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
     });
 
     const reset = useCallback(() => {
-        setReceiptError(null);
         setPendingRequestId(null);
         breedPets.lifecycle.reset();
     }, [breedPets.lifecycle]);
 
     const clearErrors = useCallback(() => {
-        setReceiptError(null);
         breedPets.lifecycle.reset();
     }, [breedPets.lifecycle]);
 
     const mutate = async (args: BreedPetsArgs) => {
-        setReceiptError(null);
         setPendingRequestId(null);
         offspringNameRef.current = args.name.trim();
         try {
@@ -100,14 +101,6 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
         }
     };
 
-    const onConfirmed = useCallback(() => {
-        /* VRF fulfillment is handled via BreedFulfilled event, not request-tx confirm */
-    }, []);
-
-    const onConfirmError = useCallback((error: Error) => {
-        setReceiptError(error);
-    }, []);
-
     return {
         mutate,
         isPending: breedPets.isPending,
@@ -117,8 +110,6 @@ export function useBreedPets(options?: UseBreedPetsOptions) {
         clearErrors,
         hash,
         error: breedPets.lifecycle.error,
-        receiptError,
-        onConfirmed,
-        onConfirmError,
+        lifecycle: breedPets.lifecycle,
     };
 }

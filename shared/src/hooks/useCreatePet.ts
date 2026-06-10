@@ -1,4 +1,5 @@
 import { useChainAdapter } from './adapters/useChainAdapter';
+import { useTxSuccess } from './useTxSuccess';
 import type { TxLifecycle } from './adapters/types';
 
 export interface CreatePetArgs {
@@ -7,6 +8,15 @@ export interface CreatePetArgs {
     dna?: bigint | number | string;
     /** Solana only — ignored on EVM. */
     rarity?: number;
+}
+
+export interface PetMutationOptions {
+    /**
+     * Fires once the transaction is fully settled (EVM: receipt confirmed;
+     * Solana: mutation resolved). Do NOT check `lifecycle.phase` after
+     * `await mutate(...)` instead — that closure reads a stale phase.
+     */
+    onSuccess?: () => void;
 }
 
 export interface PetMutationResult<TArgs> {
@@ -19,8 +29,9 @@ export interface PetMutationResult<TArgs> {
     lifecycle: TxLifecycle;
 }
 
-export function useCreatePet(): PetMutationResult<CreatePetArgs> {
+export function useCreatePet(options?: PetMutationOptions): PetMutationResult<CreatePetArgs> {
     const { createPet } = useChainAdapter();
+    useTxSuccess(createPet.lifecycle, options?.onSuccess);
     return {
         mutate: (args) => createPet.mutateAsync({ name: args.name, dna: args.dna, rarity: args.rarity }),
         isPending: createPet.isPending,

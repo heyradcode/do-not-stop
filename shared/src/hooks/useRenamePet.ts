@@ -1,13 +1,15 @@
 import { useChainAdapter } from './adapters/useChainAdapter';
-import type { PetMutationResult } from './useCreatePet';
+import { useTxSuccess } from './useTxSuccess';
+import type { PetMutationOptions, PetMutationResult } from './useCreatePet';
 
 export interface RenamePetArgs {
     petId: string;
     name: string;
 }
 
-export function useRenamePet(): PetMutationResult<RenamePetArgs> {
+export function useRenamePet(options?: PetMutationOptions): PetMutationResult<RenamePetArgs> {
     const { renamePet } = useChainAdapter();
+    useTxSuccess(renamePet.lifecycle, options?.onSuccess);
     return {
         mutate: (args) => renamePet.mutateAsync({ petId: args.petId, name: args.name }),
         isPending: renamePet.isPending,

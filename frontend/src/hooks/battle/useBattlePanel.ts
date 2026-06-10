@@ -7,6 +7,7 @@ import {
     useBattleTaunts,
     useOpponents,
     usePetList,
+    type TxLifecycle,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { formatTxHashHint } from '@hooks/usePetError';
@@ -34,12 +35,8 @@ export interface UseBattlePanel {
     overlay: BattleOverlayProps;
     setup: BattleSetupProps;
     hashHint: string | null;
-    receipt: {
-        show: boolean;
-        hash: string | undefined;
-        onComplete: () => void;
-        onError: (error: Error) => void;
-    };
+    /** Battle tx lifecycle, rendered by the phase-driven <TransactionStatus/>. */
+    receipt: TxLifecycle;
 }
 
 /**
@@ -133,7 +130,8 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
         showResult,
     });
 
-    usePetErrorToast(battle.error, battle.receiptError, validationError, BATTLE_FAIL_MESSAGE);
+    // Receipt errors are folded into `battle.error` by the chain adapter.
+    usePetErrorToast(battle.error, null, validationError, BATTLE_FAIL_MESSAGE);
 
     const usesSwitchboardVrf = capabilities.randomness.provider === 'switchboard';
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
@@ -141,7 +139,9 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
         ? 'Pick your fighter and an opponent (Switchboard VRF)'
         : 'Pick your fighter and an opponent';
     const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Starting Battle...';
-    const hashHint = usesSwitchboardVrf ? formatTxHashHint(battle.hash) : null;
+    // Fall back to the retained battle id: the lifecycle auto-resets (hash
+    // cleared) once the battle settles, but the hint should keep showing.
+    const hashHint = usesSwitchboardVrf ? formatTxHashHint(battle.hash ?? settledBattleId ?? undefined) : null;
 
     const startBattle = useCallback(() => {
         if (!selectedPet1 || !opponent) {
@@ -303,12 +303,12 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Close the overlay if the battle fails before a result (e.g. wallet rejected),
     // so the user isn't stranded on the taunt/underway screen. The error toast still shows.
     useEffect(() => {
-        if (!showResult && (battle.error || battle.receiptError)) {
+        if (!showResult && battle.error) {
             setOverlayOpen(false);
             pendingBattleStartRef.current = false;
             taunts.reset();
         }
-    }, [taunts, battle.error, battle.receiptError, showResult]);
+    }, [taunts, battle.error, showResult]);
 
     useEffect(() => {
         if (!rematchPending || petsLoading || opponentsLoading || opponentsFetching) return;
@@ -455,11 +455,6 @@ export function useBattlePanel({ isStandaloneView }: UseBattlePanelArgs): UseBat
         overlay,
         setup,
         hashHint,
-        receipt: {
-            show: battle.isConfirming,
-            hash: battle.hash,
-            onComplete: battle.onConfirmed,
-            onError: battle.onConfirmError,
-        },
+        receipt: battle.lifecycle,
     };
 }

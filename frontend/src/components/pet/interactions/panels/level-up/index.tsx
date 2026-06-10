@@ -8,7 +8,7 @@ import {
     usePetList,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
-import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
@@ -21,15 +21,25 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     const navigate = useNavigate();
     const { levelUpFee } = useChainCapabilities();
     const { pets, refetch } = usePetList();
-    const { mutate, isPending, error: hookError, hash, reset, lifecycle } = useLevelUpPet();
-    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const notifyError = useNotifyError();
-    const notifyReceiptError = useNotifyReceiptError();
-
-    useTxErrorToast(hookError);
 
     const [selectedPet, setSelectedPet] = useState<string>('');
     const [success, setSuccess] = useState<string | null>(null);
+
+    // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
+    const handleLevelUpComplete = () => {
+        setSuccess('Pet leveled up successfully!');
+        setSelectedPet('');
+        refetch();
+        navigate(DASHBOARD_HOME);
+    };
+
+    const { mutate, isPending, error: hookError, reset, lifecycle } = useLevelUpPet({
+        onSuccess: handleLevelUpComplete,
+    });
+    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+
+    useTxErrorToast(hookError);
 
     const handleLevelUp = async () => {
         if (!selectedPet) {
@@ -42,12 +52,6 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
         try {
             await mutate({ petId: selectedPet });
-            if (lifecycle.phase === 'success') {
-                setSuccess('Pet leveled up successfully!');
-                setSelectedPet('');
-                refetch();
-                navigate(DASHBOARD_HOME);
-            }
         } catch (err) {
             console.error('[level-up]', err);
         }
@@ -55,13 +59,6 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
     const handleCancel = () => {
         setSuccess(null);
-        navigate(DASHBOARD_HOME);
-    };
-
-    const handleTransactionComplete = () => {
-        setSuccess('Pet leveled up successfully!');
-        setSelectedPet('');
-        refetch();
         navigate(DASHBOARD_HOME);
     };
 
@@ -119,13 +116,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 </div>
             )}
 
-            {lifecycle.phase === 'confirming' && (
-                <TransactionStatus
-                    hash={hash}
-                    onComplete={handleTransactionComplete}
-                    onError={notifyReceiptError}
-                />
-            )}
+            <TransactionStatus lifecycle={lifecycle} />
         </>
     );
 };

@@ -24,13 +24,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
                 </p>
             )}
 
-            {receipt.show && receipt.hash && (
-                <TransactionStatus
-                    hash={receipt.hash}
-                    onComplete={receipt.onComplete}
-                    onError={receipt.onError}
-                />
-            )}
+            <TransactionStatus lifecycle={receipt} />
         </>
     );
 };

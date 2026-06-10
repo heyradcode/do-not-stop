@@ -1,11 +1,11 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     useChainCapabilities,
     usePetList,
     useTransferPet,
 } from '@shared/core';
 import TransactionStatus from '@components/common/transaction-status';
-import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
 
@@ -29,16 +29,24 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
 }) => {
     const { address: addrCaps, chainLabel, walletAddress } = useChainCapabilities();
     const { refetch } = usePetList();
-    const { mutate, isPending, error: hookError, hash, reset, lifecycle } = useTransferPet();
     const notifyError = useNotifyError();
-    const notifyReceiptError = useNotifyReceiptError();
-
-    useTxErrorToast(hookError);
 
     const [recipientAddress, setRecipientAddress] = useState('');
-    const [isConfirming, setIsConfirming] = useState(false);
     const [inputInvalid, setInputInvalid] = useState(false);
-    const [txHash, setTxHash] = useState<string | undefined>(undefined);
+
+    // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
+    const handleTransferComplete = () => {
+        refetch();
+        setRecipientAddress('');
+        setInputInvalid(false);
+        onClose();
+    };
+
+    const { mutate, isPending, error: hookError, reset, lifecycle } = useTransferPet({
+        onSuccess: handleTransferComplete,
+    });
+
+    useTxErrorToast(hookError);
 
     const addressPlaceholder = addrCaps.placeholder;
     const addressLabel = addrCaps.label;
@@ -64,40 +72,19 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
         setInputInvalid(false);
 
         try {
-            setIsConfirming(true);
             await mutate({ to: recipientAddress.trim(), petId: petId.toString() });
-            if (lifecycle.phase === 'success') {
-                await handleTransactionComplete();
-            }
         } catch (err) {
             console.error('[send-pet]', err);
-            setIsConfirming(false);
         }
     };
 
     const handleClose = () => {
-        if (!isConfirming && !isPending) {
+        if (!isPending) {
             setRecipientAddress('');
             setInputInvalid(false);
-            setTxHash(undefined);
             reset();
             onClose();
         }
-    };
-
-    useEffect(() => {
-        if (hash) {
-            setTxHash(hash);
-        }
-    }, [hash]);
-
-    const handleTransactionComplete = async () => {
-        await refetch();
-        setRecipientAddress('');
-        setIsConfirming(false);
-        setInputInvalid(false);
-        setTxHash(undefined);
-        onClose();
     };
 
     if (!isOpen) return null;
@@ -110,7 +97,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                     <button
                         className="close"
                         onClick={handleClose}
-                        disabled={isConfirming || isPending}
+                        disabled={isPending}
                     >
                         ×
                     </button>
@@ -137,7 +124,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                                 setInputInvalid(false);
                             }}
                             placeholder={addressPlaceholder}
-                            disabled={isConfirming || isPending}
+                            disabled={isPending}
                             className={inputInvalid ? 'invalid' : ''}
                         />
                     </div>
@@ -146,31 +133,21 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                         <button
                             className="cancel"
                             onClick={handleClose}
-                            disabled={isConfirming || isPending}
+                            disabled={isPending}
                         >
                             Cancel
                         </button>
                         <button
                             className="send"
                             onClick={handleSend}
-                            disabled={!recipientAddress || isConfirming || isPending}
+                            disabled={!recipientAddress || isPending}
                         >
-                            {isConfirming || isPending ? 'Sending...' : 'Send Pet'}
+                            {isPending ? 'Sending...' : 'Send Pet'}
                         </button>
                     </div>
                 </div>
 
-                {lifecycle.phase === 'confirming' && (
-                    <TransactionStatus
-                        hash={txHash}
-                        onComplete={handleTransactionComplete}
-                        onError={(err) => {
-                            notifyReceiptError(err);
-                            setIsConfirming(false);
-                            setTxHash(undefined);
-                        }}
-                    />
-                )}
+                <TransactionStatus lifecycle={lifecycle} />
             </div>
         </div>
     );

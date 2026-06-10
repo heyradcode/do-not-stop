@@ -1,12 +1,14 @@
 import { useChainAdapter } from './adapters/useChainAdapter';
-import type { PetMutationResult } from './useCreatePet';
+import { useTxSuccess } from './useTxSuccess';
+import type { PetMutationOptions, PetMutationResult } from './useCreatePet';
 
 export interface LevelUpPetArgs {
     petId: string;
 }
 
-export function useLevelUpPet(): PetMutationResult<LevelUpPetArgs> {
+export function useLevelUpPet(options?: PetMutationOptions): PetMutationResult<LevelUpPetArgs> {
     const { levelUpPet } = useChainAdapter();
+    useTxSuccess(levelUpPet.lifecycle, options?.onSuccess);
     return {
         mutate: (args) => levelUpPet.mutateAsync({ petId: args.petId }),
         isPending: levelUpPet.isPending,

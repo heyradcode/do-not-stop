@@ -1,122 +1,85 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useWaitForTransactionReceipt } from 'wagmi';
+import type { TxLifecycle } from '@shared/core';
 import { Tones } from '@constants/tones';
-import Icon, { CheckIcon, CloseIcon, HourglassIcon } from '@components/ui/icon';
+import Icon, { CheckIcon } from '@components/ui/icon';
 import './index.css';
 
 interface TransactionStatusProps {
-    hash: string | undefined;
-    onComplete?: () => void;
-    onError?: (error: Error) => void;
+    /** Mutation lifecycle from a `@shared/core` pet hook (e.g. `useTransferPet`). */
+    lifecycle: TxLifecycle;
 }
 
-const TransactionStatus: React.FC<TransactionStatusProps> = ({
-    hash,
-    onComplete,
-    onError
-}) => {
-    const [isVisible, setIsVisible] = useState(false);
-    const [status, setStatus] = useState<'pending' | 'confirming' | 'confirmed' | 'error'>('pending');
+const CONFIRMED_DISPLAY_MS = 2000;
 
-    const onCompleteRef = useRef(onComplete);
-    const onErrorRef = useRef(onError);
-    onCompleteRef.current = onComplete;
-    onErrorRef.current = onError;
-
-    // Prevents the effect from firing onComplete/onError more than once per tx.
-    const completedRef = useRef(false);
-
-    const { isLoading: isConfirming, isSuccess: isConfirmed, error } = useWaitForTransactionReceipt({
-        hash: hash as `0x${string}`,
-    });
+/**
+ * Phase-driven, chain-neutral transaction toast. Purely presentational:
+ * settlement callbacks live in the shared hooks (`onSuccess` options), not
+ * here. Visible while the lifecycle is `confirming` (EVM receipt wait) and
+ * briefly after the `confirming → success` transition; latches the confirmed
+ * display in local state so it survives the lifecycle being reset.
+ */
+const TransactionStatus: React.FC<TransactionStatusProps> = ({ lifecycle }) => {
+    const { phase, hash } = lifecycle;
+    const [confirmedHash, setConfirmedHash] = useState<string | null>(null);
+    const [dismissed, setDismissed] = useState(false);
+    // Hash of the tx currently being confirmed; lets the success latch show
+    // the right hash even after the lifecycle resets to idle.
+    const confirmingHashRef = useRef<string | null>(null);
 
     useEffect(() => {
-        if (hash) {
-            setIsVisible(true);
-            setStatus('pending');
-            completedRef.current = false;
-        }
-    }, [hash]);
-
-    useEffect(() => {
-        if (isConfirming) {
-            setStatus('confirming');
+        if (phase === 'confirming' && hash) {
+            confirmingHashRef.current = hash;
+            setDismissed(false);
             return;
         }
-        if (isConfirmed && !completedRef.current) {
-            completedRef.current = true;
-            setStatus('confirmed');
-            const t = setTimeout(() => {
-                setIsVisible(false);
-                onCompleteRef.current?.();
-            }, 2000);
-            return () => clearTimeout(t);
+        if (phase === 'success' && confirmingHashRef.current) {
+            setConfirmedHash(confirmingHashRef.current);
+            confirmingHashRef.current = null;
+            return;
         }
-        if (error && !completedRef.current) {
-            completedRef.current = true;
-            setStatus('error');
-            onErrorRef.current?.(error);
-            const t = setTimeout(() => setIsVisible(false), 3000);
-            return () => clearTimeout(t);
+        if (phase === 'idle' || phase === 'error') {
+            confirmingHashRef.current = null;
         }
-    }, [isConfirming, isConfirmed, error]);
+    }, [phase, hash]);
 
-    if (!isVisible || !hash) {
-        return null;
-    }
+    useEffect(() => {
+        if (!confirmedHash) return;
+        const t = setTimeout(() => setConfirmedHash(null), CONFIRMED_DISPLAY_MS);
+        return () => clearTimeout(t);
+    }, [confirmedHash]);
 
-    const StatusIcon = () => {
-        switch (status) {
-            case 'pending':
-                return <Icon as={HourglassIcon} tone={Tones.Amber} glow="soft" className="no-gap" />;
-            case 'confirmed':
-                return <Icon as={CheckIcon} tone={Tones.Emerald} glow="soft" className="no-gap" />;
-            case 'error':
-                return <Icon as={CloseIcon} tone={Tones.Magenta} glow="soft" className="no-gap" />;
-            default:
-                return <Icon as={HourglassIcon} tone={Tones.Amber} glow="soft" className="no-gap" />;
-        }
-    };
+    const isConfirming = phase === 'confirming' && !!hash && !dismissed;
+    const isConfirmed = confirmedHash !== null;
 
-    const getStatusText = (): string => {
-        switch (status) {
-            case 'pending':
-                return 'Transaction pending...';
-            case 'confirming':
-                return 'Confirming transaction...';
-            case 'confirmed':
-                return 'Transaction confirmed!';
-            case 'error':
-                return 'Transaction failed';
-            default:
-                return 'Processing...';
-        }
-    };
+    if (!isConfirming && !isConfirmed) return null;
 
-    const getStatusClass = () => {
-        return `transaction-status ${status}`;
-    };
+    const displayHash = isConfirming ? (hash as string) : (confirmedHash as string);
+    const status = isConfirming ? 'confirming' : 'confirmed';
 
     return (
-        <div className={getStatusClass()}>
+        <div className={`transaction-status ${status}`}>
             <div className="content">
                 <div className="icon">
-                    {status === 'confirming' ? (
+                    {isConfirming ? (
                         <div className="spinner"></div>
                     ) : (
-                        <StatusIcon />
+                        <Icon as={CheckIcon} tone={Tones.Emerald} glow="soft" className="no-gap" />
                     )}
                 </div>
                 <div className="text">
-                    <div className="title">{getStatusText()}</div>
+                    <div className="title">
+                        {isConfirming ? 'Confirming transaction...' : 'Transaction confirmed!'}
+                    </div>
                     <div className="hash">
-                        {hash.slice(0, 10)}...{hash.slice(-8)}
+                        {displayHash.slice(0, 10)}...{displayHash.slice(-8)}
                     </div>
                 </div>
                 <button
                     className="close"
-                    onClick={() => setIsVisible(false)}
-                    disabled={status === 'confirming'}
+                    onClick={() => {
+                        setDismissed(true);
+                        setConfirmedHash(null);
+                    }}
                 >
                     ×
                 </button>

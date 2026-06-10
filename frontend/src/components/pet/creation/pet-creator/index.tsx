@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
     useChainCapabilities,
     useCreatePet,
@@ -7,21 +7,30 @@ import {
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
 import TransactionStatus from '@components/common/transaction-status';
-import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
 
 const PetCreator: React.FC = () => {
     const { isConnected } = useChainCapabilities();
-    const { mutate, isPending, error: hookError, hash, lifecycle } = useCreatePet();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
-    const notifyReceiptError = useNotifyReceiptError();
-
-    useTxErrorToast(hookError);
 
     const [petName, setPetName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
+
+    // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
+    const handleCreateComplete = () => {
+        setSuccess(`Pet "${petName.trim()}" created successfully!`);
+        setPetName('');
+        refetch();
+    };
+
+    const { mutate, isPending, error: hookError, lifecycle } = useCreatePet({
+        onSuccess: handleCreateComplete,
+    });
+
+    useTxErrorToast(hookError);
 
     const handleCreatePet = async () => {
         if (!isConnected) {
@@ -39,20 +48,9 @@ const PetCreator: React.FC = () => {
 
         try {
             await mutate({ name: trimmed });
-            if (lifecycle.phase === 'success') {
-                setSuccess(`Pet "${trimmed}" created successfully!`);
-                setPetName('');
-                refetch();
-            }
         } catch (err) {
             console.error('[create-pet]', err);
         }
-    };
-
-    const handleTransactionComplete = () => {
-        setSuccess(`Pet "${petName}" created successfully!`);
-        setPetName('');
-        refetch();
     };
 
     if (!isConnected) {
@@ -102,13 +100,7 @@ const PetCreator: React.FC = () => {
                     </div>
                 )}
 
-                {lifecycle.phase === 'confirming' && (
-                    <TransactionStatus
-                        hash={hash}
-                        onComplete={handleTransactionComplete}
-                        onError={notifyReceiptError}
-                    />
-                )}
+                <TransactionStatus lifecycle={lifecycle} />
             </div>
         </div>
     );

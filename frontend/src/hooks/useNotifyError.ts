@@ -32,15 +32,3 @@ export function useNotifyInfo() {
         [toast],
     );
 }
-
-/** Logs receipt/confirmation failures with a generic user-facing message. */
-export function useNotifyReceiptError() {
-    const notifyError = useNotifyError();
-
-    return useCallback(
-        (rawError: unknown, fallback = 'Transaction failed. Please try again.') => {
-            notifyError(fallback, rawError, 'transaction-receipt');
-        },
-        [notifyError],
-    );
-}

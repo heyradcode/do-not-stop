@@ -1,5 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { useChainAdapter } from './adapters/useChainAdapter';
+import { useTxSuccess } from './useTxSuccess';
 
 export interface BattlePetsArgs {
     /** Attacker — must be a pet the caller owns. */
@@ -14,52 +15,35 @@ export interface BattlePetsArgs {
 }
 
 export type UseBattlePetsOptions = {
+    /** Fires once the battle is settled on-chain (EVM: receipt; Solana: confirm). */
     onSuccess?: () => void;
 };
 
 export function useBattlePets(options?: UseBattlePetsOptions) {
-    const adapter = useChainAdapter();
-    const { battlePets } = adapter;
-    const isEvm = adapter.kind === 'evm';
+    const { battlePets } = useChainAdapter();
 
     const onSuccessRef = useRef(options?.onSuccess);
     onSuccessRef.current = options?.onSuccess;
 
-    const [receiptError, setReceiptError] = useState<Error | null>(null);
-
     const notifySuccess = useCallback(() => { onSuccessRef.current?.(); }, []);
 
+    // Settlement is lifecycle-driven on both chains: EVM reaches `success` when
+    // the receipt lands, Solana when the mutation resolves confirmed.
+    useTxSuccess(battlePets.lifecycle, notifySuccess);
+
     const mutate = async (args: BattlePetsArgs) => {
-        setReceiptError(null);
         try {
             await battlePets.mutateAsync({
                 petId1: args.petId1,
                 petId2: args.petId2,
                 defenderOwner: args.defenderOwner,
             });
-            if (!isEvm) notifySuccess(); // Solana: confirmed when mutateAsync resolves
         } catch {
             // error tracked in battlePets.lifecycle.error
         }
     };
 
     const reset = useCallback(() => {
-        setReceiptError(null);
-        battlePets.lifecycle.reset();
-    }, [battlePets.lifecycle]);
-
-    const clearErrors = useCallback(() => {
-        setReceiptError(null);
-        battlePets.lifecycle.reset();
-    }, [battlePets.lifecycle]);
-
-    const onConfirmed = useCallback(() => {
-        notifySuccess();
-        reset();
-    }, [notifySuccess, reset]);
-
-    const onConfirmError = useCallback((error: Error) => {
-        setReceiptError(error);
         battlePets.lifecycle.reset();
     }, [battlePets.lifecycle]);
 
@@ -68,11 +52,9 @@ export function useBattlePets(options?: UseBattlePetsOptions) {
         isPending: battlePets.isPending,
         isConfirming: battlePets.lifecycle.phase === 'confirming',
         reset,
-        clearErrors,
+        clearErrors: reset,
         hash: battlePets.lifecycle.hash,
         error: battlePets.lifecycle.error,
-        receiptError,
-        onConfirmed,
-        onConfirmError,
+        lifecycle: battlePets.lifecycle,
     };
 }

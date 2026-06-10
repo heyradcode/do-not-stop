@@ -43,9 +43,10 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const breed = useBreedPets({ onSuccess: handleSuccess });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
+    // Receipt errors are folded into `breed.error` by the chain adapter.
     usePetErrorToast(
         breed.error,
-        breed.receiptError,
+        null,
         validationError,
         BREED_FAIL_MESSAGE,
     );
@@ -177,13 +178,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 </p>
             )}
 
-            {breed.isConfirming && (
-                <TransactionStatus
-                    hash={breed.hash}
-                    onComplete={breed.onConfirmed}
-                    onError={breed.onConfirmError}
-                />
-            )}
+            <TransactionStatus lifecycle={breed.lifecycle} />
         </>
     );
 };

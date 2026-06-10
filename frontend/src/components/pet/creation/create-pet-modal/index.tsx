@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     useChainCapabilities,
     useCreatePet,
@@ -7,7 +7,7 @@ import {
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
 import TransactionStatus from '@components/common/transaction-status';
-import { useNotifyError, useNotifyReceiptError } from '@hooks/useNotifyError';
+import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
 
@@ -18,16 +18,25 @@ interface CreatePetModalProps {
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const { isConnected } = useChainCapabilities();
-    const { mutate, isPending, error: hookError, hash, reset, lifecycle } = useCreatePet();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
-    const notifyReceiptError = useNotifyReceiptError();
-
-    useTxErrorToast(hookError);
 
     const [petName, setPetName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
-    const [txHash, setTxHash] = useState<string | undefined>(undefined);
+
+    // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
+    const handleCreateComplete = () => {
+        setSuccess(`Pet "${petName.trim()}" created successfully!`);
+        setPetName('');
+        refetch();
+        onClose();
+    };
+
+    const { mutate, isPending, error: hookError, reset, lifecycle } = useCreatePet({
+        onSuccess: handleCreateComplete,
+    });
+
+    useTxErrorToast(hookError);
 
     const handleCreatePet = async () => {
         if (!isConnected) {
@@ -45,43 +54,17 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
 
         try {
             await mutate({ name: trimmed });
-
-            if (lifecycle.phase === 'success') {
-                setSuccess(`Pet "${trimmed}" created successfully!`);
-                setPetName('');
-                refetch();
-                onClose();
-            }
         } catch (err) {
             console.error('[create-pet]', err);
         }
     };
 
-    const handleSuccess = () => {
-        setSuccess(`Pet "${petName}" created successfully!`);
-        setPetName('');
-    };
-
-    const handleTransactionComplete = () => {
-        handleSuccess();
-        onClose();
-        setTxHash(undefined);
-        refetch();
-    };
-
     const handleClose = () => {
         setPetName('');
         setSuccess(null);
-        setTxHash(undefined);
         reset();
         onClose();
     };
-
-    useEffect(() => {
-        if (lifecycle.phase === 'confirming' && hash) {
-            setTxHash(hash);
-        }
-    }, [lifecycle.phase, hash]);
 
     if (!isOpen) return null;
 
@@ -128,16 +111,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                         </div>
                     )}
 
-                    {lifecycle.phase === 'confirming' && (
-                        <TransactionStatus
-                            hash={txHash}
-                            onComplete={handleTransactionComplete}
-                            onError={(error) => {
-                                notifyReceiptError(error);
-                                setTxHash(undefined);
-                            }}
-                        />
-                    )}
+                    <TransactionStatus lifecycle={lifecycle} />
                 </div>
             </div>
         </div>
