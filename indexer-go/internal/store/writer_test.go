@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/testutil"
 )
 
 // fakeFlusher records flushes and can be told to fail.
@@ -92,18 +93,6 @@ func runWriter(t *testing.T, w *Writer) (chan indexer.RosterUpdate, chan indexer
 	}
 }
 
-func waitFor(t *testing.T, what string, cond func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	t.Fatalf("timed out waiting for %s", what)
-}
-
 func TestFlushesWhenBatchSizeReached(t *testing.T) {
 	f := &fakeFlusher{}
 	w := NewWriter(f)
@@ -117,7 +106,7 @@ func TestFlushesWhenBatchSizeReached(t *testing.T) {
 		roster <- update(string(rune('a'+i)), 1, 1)
 	}
 
-	waitFor(t, "size-triggered flush", func() bool { return len(f.allRosterRows()) == 3 })
+	testutil.WaitFor(t, "size-triggered flush", func() bool { return len(f.allRosterRows()) == 3 })
 }
 
 func TestFlushesOnTicker(t *testing.T) {
@@ -129,7 +118,7 @@ func TestFlushesOnTicker(t *testing.T) {
 	defer stop()
 
 	roster <- update("1", 1, 1)
-	waitFor(t, "ticker flush", func() bool { return len(f.allRosterRows()) == 1 })
+	testutil.WaitFor(t, "ticker flush", func() bool { return len(f.allRosterRows()) == 1 })
 }
 
 func TestCoalescingKeepsHighestVersion(t *testing.T) {
@@ -172,7 +161,7 @@ func TestFailedFlushRetainsAndRetries(t *testing.T) {
 	}
 
 	f.setFail(false)
-	waitFor(t, "retry after failure clears", func() bool { return len(f.allRosterRows()) == 1 })
+	testutil.WaitFor(t, "retry after failure clears", func() bool { return len(f.allRosterRows()) == 1 })
 }
 
 func TestBattlesInsertImmediately(t *testing.T) {
@@ -184,7 +173,7 @@ func TestBattlesInsertImmediately(t *testing.T) {
 	defer stop()
 
 	battles <- indexer.BattleEvent{Chain: "solana", BattleID: "sig1"}
-	waitFor(t, "immediate battle insert", func() bool { return len(f.allBattles()) == 1 })
+	testutil.WaitFor(t, "immediate battle insert", func() bool { return len(f.allBattles()) == 1 })
 }
 
 func TestFinalDrainOnShutdown(t *testing.T) {
@@ -197,7 +186,7 @@ func TestFinalDrainOnShutdown(t *testing.T) {
 	battles <- indexer.BattleEvent{Chain: "evm", BattleID: "0xdead-1"}
 
 	// Give the loop a moment to buffer both, then cancel before any flush.
-	waitFor(t, "events buffered", func() bool {
+	testutil.WaitFor(t, "events buffered", func() bool {
 		return len(f.allRosterRows()) == 0 // nothing flushed yet — buffered only
 	})
 	time.Sleep(20 * time.Millisecond)

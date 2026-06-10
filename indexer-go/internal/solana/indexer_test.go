@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/testutil"
 )
 
 // --- fake RPC (in-process RoundTripper, same pattern as the evm tests) ---
@@ -23,8 +24,8 @@ type fakeRPC struct {
 	mu           sync.Mutex
 	accounts     []programAccount // getProgramAccounts result
 	slot         uint64
-	signatures   []signatureInfo               // newest-first
-	transactions map[string]transactionResult  // by signature
+	signatures   []signatureInfo              // newest-first
+	transactions map[string]transactionResult // by signature
 }
 
 func (f *fakeRPC) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -289,12 +290,12 @@ func TestRunRedialsAfterConnectionLoss(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- ix.Run(ctx, roster, battles) }()
 
-	waitFor(t, "first dial", func() bool { return dials.Load() >= 1 })
+	testutil.WaitFor(t, "first dial", func() bool { return dials.Load() >= 1 })
 	conn1.Close() // simulate connection drop
 
 	// Backoff after one healthy session is attempt 1: ~1-1.5s.
-	waitFor(t, "redial after drop", func() bool { return dials.Load() >= 2 })
-	waitFor(t, "resubscribe on new conn", func() bool { return len(conn2.subscribeMethods()) == 2 })
+	testutil.WaitFor(t, "redial after drop", func() bool { return dials.Load() >= 2 })
+	testutil.WaitFor(t, "resubscribe on new conn", func() bool { return len(conn2.subscribeMethods()) == 2 })
 
 	cancel()
 	if err := <-done; err != nil {
@@ -371,16 +372,4 @@ func txWithLogs(slot uint64, blockTime int64, logs ...string) transactionResult 
 		LogMessages []string        `json:"logMessages"`
 	}{LogMessages: logs}
 	return tx
-}
-
-func waitFor(t *testing.T, what string, cond func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	t.Fatalf("timed out waiting for %s", what)
 }

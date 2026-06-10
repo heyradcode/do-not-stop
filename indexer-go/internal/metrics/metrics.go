@@ -13,15 +13,16 @@ import (
 	"sync/atomic"
 )
 
-// counter is a monotonically increasing value with an optional chain label.
-type counter struct {
+// series is a set of atomic values keyed by an optional chain label, used as
+// a counter (Add) or a gauge (Store) depending on the caller.
+type series struct {
 	mu     sync.Mutex
 	values map[string]*atomic.Int64 // label ("" = unlabelled) → value
 }
 
-func newCounter() *counter { return &counter{values: make(map[string]*atomic.Int64)} }
+func newSeries() *series { return &series{values: make(map[string]*atomic.Int64)} }
 
-func (c *counter) get(label string) *atomic.Int64 {
+func (c *series) get(label string) *atomic.Int64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	v, ok := c.values[label]
@@ -32,7 +33,7 @@ func (c *counter) get(label string) *atomic.Int64 {
 	return v
 }
 
-func (c *counter) snapshot() map[string]int64 {
+func (c *series) snapshot() map[string]int64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	out := make(map[string]int64, len(c.values))
@@ -43,28 +44,28 @@ func (c *counter) snapshot() map[string]int64 {
 }
 
 var (
-	rosterUpdates = newCounter() // by chain
-	battles       = newCounter() // by chain
-	flushes       = newCounter()
-	flushRows     = newCounter()
-	flushErrors   = newCounter()
-	wsReconnects  = newCounter()
-	lastVersion   = newCounter() // by chain; gauge semantics (set, not add)
+	rosterUpdates = newSeries() // by chain
+	battles       = newSeries() // by chain
+	flushes       = newSeries()
+	flushRows     = newSeries()
+	flushErrors   = newSeries()
+	wsReconnects  = newSeries()
+	lastVersion   = newSeries() // by chain; gauge semantics (set, not add)
 
 	cacheSize         atomic.Int64
 	cacheWarm         atomic.Int64
 	streamSubscribers atomic.Int64
 )
 
-func RosterUpdate(chain string)         { rosterUpdates.get(chain).Add(1) }
-func Battle(chain string)               { battles.get(chain).Add(1) }
-func Flush(rows int)                    { flushes.get("").Add(1); flushRows.get("").Add(int64(rows)) }
-func FlushError()                       { flushErrors.get("").Add(1) }
-func WSReconnect()                      { wsReconnects.get("").Add(1) }
+func RosterUpdate(chain string)             { rosterUpdates.get(chain).Add(1) }
+func Battle(chain string)                   { battles.get(chain).Add(1) }
+func Flush(rows int)                        { flushes.get("").Add(1); flushRows.get("").Add(int64(rows)) }
+func FlushError()                           { flushErrors.get("").Add(1) }
+func WSReconnect()                          { wsReconnects.get("").Add(1) }
 func SetLastVersion(chain string, v uint64) { lastVersion.get(chain).Store(int64(v)) }
-func SetCacheSize(n int)                { cacheSize.Store(int64(n)) }
-func SetCacheWarm(warm bool)            { cacheWarm.Store(b2i(warm)) }
-func SetStreamSubscribers(n int)        { streamSubscribers.Store(int64(n)) }
+func SetCacheSize(n int)                    { cacheSize.Store(int64(n)) }
+func SetCacheWarm(warm bool)                { cacheWarm.Store(b2i(warm)) }
+func SetStreamSubscribers(n int)            { streamSubscribers.Store(int64(n)) }
 
 func b2i(b bool) int64 {
 	if b {
@@ -99,7 +100,7 @@ func Handler() http.HandlerFunc {
 	}
 }
 
-func writeLabelled(w http.ResponseWriter, name, kind, help string, c *counter) {
+func writeLabelled(w http.ResponseWriter, name, kind, help string, c *series) {
 	fmt.Fprintf(w, "# HELP %s %s\n# TYPE %s %s\n", name, help, name, kind)
 	snap := c.snapshot()
 	labels := make([]string, 0, len(snap))

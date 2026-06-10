@@ -15,6 +15,7 @@ import (
 	"github.com/radcrew/do-not-stop/indexer-go/internal/battlebus"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/cache"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/testutil"
 	"github.com/radcrew/do-not-stop/indexer-go/pb"
 )
 
@@ -111,7 +112,7 @@ func TestStreamReplaysThenGoesLive(t *testing.T) {
 
 	// Wait for the live subscription to be registered, then publish: a stale
 	// event (must be deduped) and a fresh one.
-	waitFor(t, "subscriber registered", func() bool { return bus.Subscribers() == 1 })
+	testutil.WaitFor(t, "subscriber registered", func() bool { return bus.Subscribers() == 1 })
 	bus.Publish(battle("evm", "0xb-2", 200)) // overlap with replay
 	bus.Publish(battle("evm", "0xc-3", 300))
 
@@ -131,7 +132,7 @@ func TestStreamLiveOnlyWithoutCursor(t *testing.T) {
 		t.Fatalf("StreamLiveBattles: %v", err)
 	}
 
-	waitFor(t, "subscriber registered", func() bool { return bus.Subscribers() == 1 })
+	testutil.WaitFor(t, "subscriber registered", func() bool { return bus.Subscribers() == 1 })
 	bus.Publish(battle("solana", "sig1", 9000))
 
 	if e := recvOne(t, stream); e.GetBattleId() != "sig1" || e.GetChain() != "solana" {
@@ -149,14 +150,14 @@ func TestSlowConsumerEndsStreamCleanly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("StreamLiveBattles: %v", err)
 	}
-	waitFor(t, "subscriber registered", func() bool { return bus.Subscribers() == 1 })
+	testutil.WaitFor(t, "subscriber registered", func() bool { return bus.Subscribers() == 1 })
 
 	// Saturate the subscriber without the client reading fast enough; the bus
 	// drops it and the server ends the stream (client should reconnect).
 	for i := 0; i < 5000; i++ {
 		bus.Publish(battle("evm", fmt.Sprintf("0x%d", i), uint64(i+1)))
 	}
-	waitFor(t, "subscriber dropped", func() bool { return bus.Subscribers() == 0 })
+	testutil.WaitFor(t, "subscriber dropped", func() bool { return bus.Subscribers() == 0 })
 
 	// Drain until the clean end-of-stream.
 	deadline := time.After(5 * time.Second)
@@ -181,16 +182,4 @@ func TestSlowConsumerEndsStreamCleanly(t *testing.T) {
 			t.Fatal("stream never ended after subscriber drop")
 		}
 	}
-}
-
-func waitFor(t *testing.T, what string, cond func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	t.Fatalf("timed out waiting for %s", what)
 }

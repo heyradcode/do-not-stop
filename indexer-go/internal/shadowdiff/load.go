@@ -7,15 +7,25 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// LoadPets reads the comparable pet_roster subset from one database.
-func LoadPets(ctx context.Context, databaseURL string) ([]PetRow, error) {
+// DB is one side of the comparison (source or shadow). One pool per
+// database, shared by both table loads.
+type DB struct {
+	pool *pgxpool.Pool
+}
+
+func Open(ctx context.Context, databaseURL string) (*DB, error) {
 	pool, err := pgxpool.New(ctx, databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("shadowdiff: connect: %w", err)
 	}
-	defer pool.Close()
+	return &DB{pool: pool}, nil
+}
 
-	rows, err := pool.Query(ctx, `
+func (d *DB) Close() { d.pool.Close() }
+
+// Pets reads the comparable pet_roster subset.
+func (d *DB) Pets(ctx context.Context) ([]PetRow, error) {
+	rows, err := d.pool.Query(ctx, `
 SELECT chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at
 FROM pet_roster`)
 	if err != nil {
@@ -35,15 +45,9 @@ FROM pet_roster`)
 	return pets, rows.Err()
 }
 
-// LoadBattles reads the comparable battle_history subset from one database.
-func LoadBattles(ctx context.Context, databaseURL string) ([]BattleRow, error) {
-	pool, err := pgxpool.New(ctx, databaseURL)
-	if err != nil {
-		return nil, fmt.Errorf("shadowdiff: connect: %w", err)
-	}
-	defer pool.Close()
-
-	rows, err := pool.Query(ctx, `
+// Battles reads the comparable battle_history subset.
+func (d *DB) Battles(ctx context.Context) ([]BattleRow, error) {
+	rows, err := d.pool.Query(ctx, `
 SELECT chain, battle_id, winner_pet_id, version
 FROM battle_history`)
 	if err != nil {

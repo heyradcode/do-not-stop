@@ -22,7 +22,11 @@ import (
 var idlJSON []byte
 
 func resolvePetLayout() (*accountLayout, error) {
-	return resolveAccountLayout(idlJSON, "PetAccount")
+	layout, err := resolveAccountLayout(idlJSON, "PetAccount")
+	if err != nil {
+		return nil, fmt.Errorf("solana: embedded IDL invalid: %w", err)
+	}
+	return layout, nil
 }
 
 // decodePetAccount decodes raw account data (including the 8-byte
@@ -123,13 +127,4 @@ func (r battleResult) toBattleEvent(signature string, slot uint64, foughtAt int6
 		Version:     slot,
 		FoughtAt:    foughtAt,
 	}
-}
-
-// sanity check used by New: the embedded IDL must resolve.
-func mustResolvePetLayout() (*accountLayout, error) {
-	layout, err := resolvePetLayout()
-	if err != nil {
-		return nil, fmt.Errorf("solana: embedded IDL invalid: %w", err)
-	}
-	return layout, nil
 }

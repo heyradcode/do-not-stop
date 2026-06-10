@@ -60,72 +60,18 @@ func run() error {
 	adapterBattles := make(chan indexer.BattleEvent, 64) // adapters → tee
 	writerBattles := make(chan indexer.BattleEvent, 64)  // tee → storage
 
-	// Tee: every settled battle goes to storage AND to gRPC subscribers. The
-	// bus never blocks (slow consumers are dropped to reconnect+replay), so
-	// publish order ahead of the storage send is safe.
 	bus := battlebus.New()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case b := <-adapterBattles:
-				metrics.Battle(b.Chain)
-				bus.Publish(b)
-				select {
-				case writerBattles <- b:
-				case <-ctx.Done():
-					return
-				}
-			}
-		}
-	}()
+	go teeBattles(ctx, bus, adapterBattles, writerBattles)
 
-	var sinkDone <-chan struct{}
-	var replayer grpcsrv.Replayer
-	var rosterCache *cache.Roster
-	if cfg.DatabaseURL != "" {
-		pg, err := store.NewPgFlusher(ctx, cfg.DatabaseURL)
-		if err != nil {
-			return err
-		}
-		defer pg.Close()
-		replayer = pg
-
-		writer := store.NewWriter(pg)
-		if cfg.RosterCacheEnabled {
-			rosterCache = cache.NewRoster()
-			writer.OnRosterCommit = rosterCache.Apply // commit-then-cache
-			// Warm from the table itself (the persistent copy of the same
-			// sole-writer data). Reads return UNAVAILABLE until this lands;
-			// concurrent Apply races resolve by version, same as the SQL.
-			go func() {
-				rows, err := pg.LoadRoster(ctx)
-				if err != nil {
-					slog.Error("roster cache warm-up failed; reads stay unavailable", "err", err)
-					return
-				}
-				rosterCache.WarmUp(rows)
-				slog.Info("roster cache warm", "pets", len(rows))
-			}()
-		}
-
-		done := make(chan struct{})
-		go func() {
-			defer close(done)
-			if err := writer.Run(ctx, roster, writerBattles); err != nil {
-				slog.Error("writer exited", "err", err)
-			}
-		}()
-		sinkDone = done
-	} else {
-		slog.Warn("DATABASE_URL not set; draining pipeline to logs only (stream replay disabled)")
-		go drainSink(ctx, roster, writerBattles)
+	st, err := startStorage(ctx, cfg, roster, writerBattles)
+	if err != nil {
+		return err
 	}
+	defer st.close()
 
 	grpcErr := make(chan error, 1)
 	go func() {
-		if err := grpcsrv.New(bus, replayer, rosterCache).Serve(ctx, cfg.GRPCAddr); err != nil {
+		if err := grpcsrv.New(bus, st.replayer, st.rosterCache).Serve(ctx, cfg.GRPCAddr); err != nil {
 			grpcErr <- err
 		}
 	}()
@@ -175,8 +121,8 @@ func run() error {
 	}
 
 	wg.Wait()
-	if sinkDone != nil {
-		<-sinkDone // wait for the writer's final drain before the pool closes
+	if st.writerDone != nil {
+		<-st.writerDone // wait for the writer's final drain before the pool closes
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
@@ -186,6 +132,94 @@ func run() error {
 	}
 	slog.Info("indexer-go stopped")
 	return nil
+}
+
+// teeBattles forwards every settled battle to storage AND to gRPC
+// subscribers. The bus never blocks (slow consumers are dropped to
+// reconnect+replay), so publishing ahead of the storage send is safe.
+func teeBattles(
+	ctx context.Context,
+	bus *battlebus.Bus,
+	in <-chan indexer.BattleEvent,
+	out chan<- indexer.BattleEvent,
+) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case b := <-in:
+			metrics.Battle(b.Chain)
+			bus.Publish(b)
+			select {
+			case out <- b:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}
+}
+
+// storage is the persistence side of the pipeline, or its log-only stand-in
+// when DATABASE_URL is unset.
+type storage struct {
+	replayer    grpcsrv.Replayer // nil → stream replay disabled
+	rosterCache *cache.Roster    // nil → read RPCs disabled
+	writerDone  <-chan struct{}  // closed after the writer's final drain
+	close       func()
+}
+
+// startStorage launches the writer (plus the optional read cache) against
+// Postgres, or a log-only drain when no database is configured.
+func startStorage(
+	ctx context.Context,
+	cfg *config.Config,
+	roster chan indexer.RosterUpdate,
+	battles chan indexer.BattleEvent,
+) (*storage, error) {
+	if cfg.DatabaseURL == "" {
+		slog.Warn("DATABASE_URL not set; draining pipeline to logs only (stream replay disabled)")
+		go drainSink(ctx, roster, battles)
+		return &storage{close: func() {}}, nil
+	}
+
+	pg, err := store.NewPgFlusher(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	writer := store.NewWriter(pg)
+	var rosterCache *cache.Roster
+	if cfg.RosterCacheEnabled {
+		rosterCache = cache.NewRoster()
+		writer.OnRosterCommit = rosterCache.Apply // commit-then-cache
+		// Warm from the table itself (the persistent copy of the same
+		// sole-writer data). Reads return UNAVAILABLE until this lands;
+		// concurrent Apply races resolve by version, same as the SQL.
+		go func() {
+			rows, err := pg.LoadRoster(ctx)
+			if err != nil {
+				slog.Error("roster cache warm-up failed; reads stay unavailable", "err", err)
+				return
+			}
+			rosterCache.WarmUp(rows)
+			slog.Info("roster cache warm", "pets", len(rows))
+		}()
+	}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if err := writer.Run(ctx, roster, battles); err != nil {
+			slog.Error("writer exited", "err", err)
+		}
+	}()
+
+	return &storage{
+		replayer:    pg,
+		rosterCache: rosterCache,
+		writerDone:  done,
+		close:       pg.Close,
+	}, nil
 }
 
 // runScanOnce sweeps every configured chain into the database once and

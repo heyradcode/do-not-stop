@@ -47,7 +47,7 @@ func New(cfg Config) (*Indexer, error) {
 	if cfg.WSURL == "" || cfg.RPCURL == "" || cfg.ProgramID == "" {
 		return nil, fmt.Errorf("solana indexer: SOLANA_WS_URL, SOLANA_RPC_URL and SOLANA_PROGRAM_ID are required")
 	}
-	layout, err := mustResolvePetLayout()
+	layout, err := resolvePetLayout()
 	if err != nil {
 		return nil, err
 	}

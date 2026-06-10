@@ -43,19 +43,30 @@ func main() {
 }
 
 func run(ctx context.Context, sourceURL, shadowURL string) (*shadowdiff.Report, error) {
-	sourcePets, err := shadowdiff.LoadPets(ctx, sourceURL)
+	source, err := shadowdiff.Open(ctx, sourceURL)
+	if err != nil {
+		return nil, fmt.Errorf("source: %w", err)
+	}
+	defer source.Close()
+	shadow, err := shadowdiff.Open(ctx, shadowURL)
+	if err != nil {
+		return nil, fmt.Errorf("shadow: %w", err)
+	}
+	defer shadow.Close()
+
+	sourcePets, err := source.Pets(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("source pets: %w", err)
 	}
-	shadowPets, err := shadowdiff.LoadPets(ctx, shadowURL)
+	shadowPets, err := shadow.Pets(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("shadow pets: %w", err)
 	}
-	sourceBattles, err := shadowdiff.LoadBattles(ctx, sourceURL)
+	sourceBattles, err := source.Battles(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("source battles: %w", err)
 	}
-	shadowBattles, err := shadowdiff.LoadBattles(ctx, shadowURL)
+	shadowBattles, err := shadow.Battles(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("shadow battles: %w", err)
 	}

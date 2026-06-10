@@ -58,8 +58,8 @@ func TestExtraInShadowAloneIsStillClean(t *testing.T) {
 
 func TestCompareBattlesFlagsWinnerMismatch(t *testing.T) {
 	source := []BattleRow{
-		{Chain: "evm", BattleID: "0xa-1", WinnerPetID: "1", Version: 0},  // client-reported, agrees
-		{Chain: "evm", BattleID: "0xb-2", WinnerPetID: "7", Version: 0},  // client-reported, LIES
+		{Chain: "evm", BattleID: "0xa-1", WinnerPetID: "1", Version: 0}, // client-reported, agrees
+		{Chain: "evm", BattleID: "0xb-2", WinnerPetID: "7", Version: 0}, // client-reported, LIES
 	}
 	shadow := []BattleRow{
 		{Chain: "evm", BattleID: "0xa-1", WinnerPetID: "1", Version: 100},

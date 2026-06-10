@@ -62,13 +62,13 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
-		SolanaWSURL:       os.Getenv("SOLANA_WS_URL"),
-		SolanaRPCURL:      os.Getenv("SOLANA_RPC_URL"),
-		SolanaProgramID:   os.Getenv("SOLANA_PROGRAM_ID"),
-		EVMSubgraphURL:    os.Getenv("EVM_SUBGRAPH_URL"),
-		EVMPollInterval:   evmPoll,
-		DatabaseURL:       os.Getenv("DATABASE_URL"),
-		ReconcileInterval: reconcile,
+		SolanaWSURL:        os.Getenv("SOLANA_WS_URL"),
+		SolanaRPCURL:       os.Getenv("SOLANA_RPC_URL"),
+		SolanaProgramID:    os.Getenv("SOLANA_PROGRAM_ID"),
+		EVMSubgraphURL:     os.Getenv("EVM_SUBGRAPH_URL"),
+		EVMPollInterval:    evmPoll,
+		DatabaseURL:        os.Getenv("DATABASE_URL"),
+		ReconcileInterval:  reconcile,
 		GRPCAddr:           stringEnv("GRPC_ADDR", defaultGRPCAddr),
 		HealthAddr:         stringEnv("HEALTH_ADDR", defaultHealthAddrFromPort()),
 		RosterCacheEnabled: strings.EqualFold(os.Getenv("ROSTER_CACHE_ENABLED"), "true"),
