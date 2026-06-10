@@ -11,6 +11,10 @@ import dialogueRoutes from '@routes/dialogue';
 
 const app = express();
 
+// One hop in front of us in production (Render's proxy) — makes req.ip the
+// real client address, which the per-IP rate limits key on.
+app.set('trust proxy', 1);
+
 app.use(
     cors(
         env.corsOrigin
