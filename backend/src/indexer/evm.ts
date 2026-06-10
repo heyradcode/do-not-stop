@@ -1,6 +1,7 @@
 import { upsertManyPets } from '@repositories/roster.repository';
 import type { Chain } from '@typings/chain';
 import type { RosterPet } from '@repositories/roster.repository';
+import type { RosterIndexer } from './types';
 
 export interface SubgraphIndexerConfig {
     chain: Chain;
@@ -149,4 +150,28 @@ export async function syncSubgraphChanges(
     );
     const maxUpdatedAt = pets.length > 0 ? await upsertAll(config.chain, pets) : sinceUpdatedAt;
     return { synced: pets.length, maxUpdatedAt };
+}
+
+/**
+ * Subgraph source as a {@link RosterIndexer}: `scan` full-syncs and primes the
+ * `updatedAt` watermark; `sync` fetches only what changed since. If the initial
+ * scan failed the watermark stays 0, so the first successful sync recovers by
+ * sweeping everything.
+ */
+export function createSubgraphIndexer(config: SubgraphIndexerConfig): RosterIndexer {
+    let watermark = BigInt(0);
+
+    return {
+        chain: config.chain,
+        async scan() {
+            const { scanned, maxUpdatedAt } = await scanSubgraphRoster(config);
+            watermark = maxUpdatedAt;
+            return { scanned };
+        },
+        async sync() {
+            const { synced, maxUpdatedAt } = await syncSubgraphChanges(config, watermark);
+            watermark = maxUpdatedAt;
+            return { synced };
+        },
+    };
 }
