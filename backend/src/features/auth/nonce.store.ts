@@ -5,8 +5,8 @@
  * accepted once and only within its TTL, so a captured signature cannot be
  * replayed — the message it signs embeds a nonce that no longer exists.
  *
- * In-memory (same trade-off as the demo user store): correct for a single
- * process; move to Redis alongside the user table for multi-instance.
+ * In-memory: correct for a single process; nonces are short-lived (5 min) so
+ * losing them on restart is harmless. Move to Redis for multi-instance.
  */
 
 const NONCE_TTL_MS = 5 * 60 * 1000;

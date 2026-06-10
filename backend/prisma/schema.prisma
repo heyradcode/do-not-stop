@@ -13,6 +13,17 @@ datasource db {
   provider = "postgresql"
 }
 
+/// Wallet that has completed signature auth at least once. Keyed by the
+/// normalized address (EVM lowercased, Solana base58 as-is) — the same
+/// `storageKey` the JWT carries.
+model User {
+  address   String   @id // normalized wallet address / pubkey
+  createdAt DateTime @default(now()) @map("created_at")
+  lastLogin DateTime @default(now()) @map("last_login")
+
+  @@map("users")
+}
+
 /// One row per on-chain pet, across every owner and chain.
 /// Populated by the indexer (see PVP_BATTLE.md §2) so the frontend can
 /// discover opponents it does not own.

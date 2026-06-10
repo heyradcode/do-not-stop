@@ -2,11 +2,18 @@ import jwt from 'jsonwebtoken';
 import { ethers } from 'ethers';
 import { env } from '@config/env';
 import { isEvmAddress } from '@utils';
+import { upsertUser as upsertUserRow, type UserRecord } from '@repositories/user.repository';
 import { verifySolanaSignature } from './solana';
 import type { User } from './auth.types';
 
-/** In-memory storage for demo (use database in production). */
-export const users = new Map<string, User>();
+/** API shape: dates as ISO strings (see {@link User}). */
+function toUser(row: UserRecord): User {
+    return {
+        address: row.address,
+        createdAt: row.createdAt.toISOString(),
+        lastLogin: row.lastLogin.toISOString(),
+    };
+}
 
 export function verifyWalletSignature(
     address: string,
@@ -29,21 +36,9 @@ export function verifyWalletSignature(
     return { ok: true, storageKey: address };
 }
 
-export function upsertUser(storageKey: string): User {
-    let user = users.get(storageKey);
-    if (!user) {
-        user = {
-            address: storageKey,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-        };
-        users.set(storageKey, user);
-        return user;
-    }
-
-    user.lastLogin = new Date().toISOString();
-    users.set(storageKey, user);
-    return user;
+/** Create on first login, bump `lastLogin` after — persisted in Postgres. */
+export async function upsertUser(storageKey: string): Promise<User> {
+    return toUser(await upsertUserRow(storageKey));
 }
 
 export function issueToken(storageKey: string): string {
@@ -55,8 +50,4 @@ export function issueToken(storageKey: string): string {
         env.jwtSecret,
         { expiresIn: '24h' }
     );
-}
-
-export function getUserCount(): number {
-    return users.size;
 }

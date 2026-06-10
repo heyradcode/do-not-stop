@@ -39,7 +39,7 @@ export async function verify(
             return;
         }
 
-        const user = upsertUser(verified.storageKey);
+        const user = await upsertUser(verified.storageKey);
         const token = issueToken(verified.storageKey);
 
         res.json({

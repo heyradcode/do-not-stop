@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
-import { getUserCount } from '@features/auth/auth.service';
+import { countUsers } from '@repositories/user.repository';
+import { withFallback } from '@utils';
 
 interface HealthResponse {
     status: string;
@@ -8,11 +9,14 @@ interface HealthResponse {
     message: string;
 }
 
-export function getHealth(_req: Request, res: Response<HealthResponse>): void {
+export async function getHealth(_req: Request, res: Response<HealthResponse>): Promise<void> {
+    // Best-effort: a DB hiccup must not fail the liveness probe.
+    const users = await withFallback('[health] user count failed:', countUsers, -1);
+
     res.json({
         status: 'OK',
         timestamp: new Date().toISOString(),
-        users: getUserCount(),
+        users,
         message: 'Backend is running with TypeScript!',
     });
 }
