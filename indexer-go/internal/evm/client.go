@@ -9,8 +9,10 @@ import (
 	"strings"
 )
 
-// GraphQL queries — verbatim ports of backend/indexing/evm/indexer.ts so both
-// implementations stay diffable during shadow mode.
+// GraphQL queries. The pet queries are verbatim ports of
+// backend/indexing/evm/indexer.ts so both implementations stay diffable
+// during shadow mode; the battles query consumes the Battle entity added to
+// the subgraph for indexer-go.
 const (
 	fullSyncQuery = `
   query Pets($first: Int!, $lastId: ID!) {
@@ -23,6 +25,13 @@ const (
   query PetsSince($first: Int!, $lastId: ID!, $since: BigInt!) {
     pets(first: $first, orderBy: id, orderDirection: asc, where: { id_gt: $lastId, updatedAt_gt: $since }) {
       id owner name dna level rarity winCount lossCount readyAt updatedAt
+    }
+  }
+`
+	battlesQuery = `
+  query BattlesSince($first: Int!, $since: BigInt!) {
+    battles(first: $first, orderBy: foughtAt, orderDirection: asc, where: { foughtAt_gt: $since }) {
+      id attacker defender winnerPetId foughtAt
     }
   }
 `
@@ -43,13 +52,13 @@ type subgraphPet struct {
 	UpdatedAt string `json:"updatedAt"`
 }
 
-type graphqlResponse struct {
-	Data struct {
-		Pets []subgraphPet `json:"pets"`
-	} `json:"data"`
-	Errors []struct {
-		Message string `json:"message"`
-	} `json:"errors"`
+// subgraphBattle mirrors the subgraph's Battle entity.
+type subgraphBattle struct {
+	ID          string `json:"id"` // txHash-logIndex
+	Attacker    string `json:"attacker"`
+	Defender    string `json:"defender"`
+	WinnerPetID string `json:"winnerPetId"`
+	FoughtAt    string `json:"foughtAt"`
 }
 
 type client struct {
@@ -58,41 +67,71 @@ type client struct {
 	http     *http.Client
 }
 
-func (c *client) fetchPage(ctx context.Context, query string, variables map[string]any) ([]subgraphPet, error) {
+// query posts a GraphQL request and unmarshals the data payload into dataOut.
+func (c *client) query(ctx context.Context, query string, variables map[string]any, dataOut any) error {
 	body, err := json.Marshal(map[string]any{"query": query, "variables": variables})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(body))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	res, err := c.http.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("subgraph request failed: HTTP %d", res.StatusCode)
+		return fmt.Errorf("subgraph request failed: HTTP %d", res.StatusCode)
 	}
 
-	var decoded graphqlResponse
-	if err := json.NewDecoder(res.Body).Decode(&decoded); err != nil {
-		return nil, fmt.Errorf("subgraph response decode: %w", err)
+	var envelope struct {
+		Data   json.RawMessage `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
 	}
-	if len(decoded.Errors) > 0 {
-		msgs := make([]string, len(decoded.Errors))
-		for i, e := range decoded.Errors {
+	if err := json.NewDecoder(res.Body).Decode(&envelope); err != nil {
+		return fmt.Errorf("subgraph response decode: %w", err)
+	}
+	if len(envelope.Errors) > 0 {
+		msgs := make([]string, len(envelope.Errors))
+		for i, e := range envelope.Errors {
 			msgs[i] = e.Message
 		}
-		return nil, fmt.Errorf("subgraph errors: %s", strings.Join(msgs, "; "))
+		return fmt.Errorf("subgraph errors: %s", strings.Join(msgs, "; "))
 	}
 
-	return decoded.Data.Pets, nil
+	if err := json.Unmarshal(envelope.Data, dataOut); err != nil {
+		return fmt.Errorf("subgraph data decode: %w", err)
+	}
+	return nil
+}
+
+func (c *client) fetchPetsPage(ctx context.Context, query string, variables map[string]any) ([]subgraphPet, error) {
+	var data struct {
+		Pets []subgraphPet `json:"pets"`
+	}
+	if err := c.query(ctx, query, variables, &data); err != nil {
+		return nil, err
+	}
+	return data.Pets, nil
+}
+
+func (c *client) fetchBattlesPage(ctx context.Context, since string) ([]subgraphBattle, error) {
+	var data struct {
+		Battles []subgraphBattle `json:"battles"`
+	}
+	vars := map[string]any{"first": c.pageSize, "since": since}
+	if err := c.query(ctx, battlesQuery, vars, &data); err != nil {
+		return nil, err
+	}
+	return data.Battles, nil
 }
 
 // paginate cursor-pages through all matching pets using the given query and
@@ -106,7 +145,7 @@ func (c *client) paginate(
 	var all []subgraphPet
 
 	for {
-		page, err := c.fetchPage(ctx, query, buildVars(lastID))
+		page, err := c.fetchPetsPage(ctx, query, buildVars(lastID))
 		if err != nil {
 			return nil, err
 		}

@@ -26,10 +26,11 @@ func (t handlerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // fakeSubgraph implements enough of The Graph's query semantics (id_gt cursor,
-// updatedAt_gt filter, first cap, id ordering) to exercise the client the way
-// the real endpoint would.
+// updatedAt_gt/foughtAt_gt filters, first cap, ordering) to exercise the
+// client the way the real endpoint would.
 type fakeSubgraph struct {
 	pets     []subgraphPet
+	battles  []subgraphBattle
 	requests atomic.Int32
 }
 
@@ -47,6 +48,11 @@ func (f *fakeSubgraph) handler(t *testing.T) http.HandlerFunc {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			t.Errorf("fake subgraph: bad request body: %v", err)
+		}
+
+		if strings.Contains(req.Query, "battles(") {
+			f.serveBattles(w, req.Variables.Since, req.Variables.First)
+			return
 		}
 
 		incremental := strings.Contains(req.Query, "updatedAt_gt")
@@ -73,6 +79,27 @@ func (f *fakeSubgraph) handler(t *testing.T) http.HandlerFunc {
 
 		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"pets": matched}})
 	}
+}
+
+func (f *fakeSubgraph) serveBattles(w http.ResponseWriter, sinceStr string, first int) {
+	since, _ := strconv.ParseUint(sinceStr, 10, 64)
+	var matched []subgraphBattle
+	for _, b := range f.battles {
+		foughtAt, _ := strconv.ParseUint(b.FoughtAt, 10, 64)
+		if foughtAt <= since {
+			continue
+		}
+		matched = append(matched, b)
+	}
+	sort.Slice(matched, func(i, j int) bool {
+		fi, _ := strconv.ParseUint(matched[i].FoughtAt, 10, 64)
+		fj, _ := strconv.ParseUint(matched[j].FoughtAt, 10, 64)
+		return fi < fj
+	})
+	if len(matched) > first {
+		matched = matched[:first]
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"battles": matched}})
 }
 
 func pet(id, owner string, level uint32, updatedAt string) subgraphPet {
@@ -255,5 +282,105 @@ func TestEmitRejectsMalformedBigInts(t *testing.T) {
 func TestNewRequiresURL(t *testing.T) {
 	if _, err := New(Config{}); err == nil {
 		t.Error("New accepted empty URL")
+	}
+}
+
+func battle(id, attacker, defender, winner, foughtAt string) subgraphBattle {
+	return subgraphBattle{ID: id, Attacker: attacker, Defender: defender, WinnerPetID: winner, FoughtAt: foughtAt}
+}
+
+func TestSyncBattlesSweepsHistoryThenOnlyNew(t *testing.T) {
+	fake := &fakeSubgraph{battles: []subgraphBattle{
+		battle("0xaaa-1", "1", "2", "1", "100"),
+		battle("0xbbb-3", "2", "3", "3", "200"),
+	}}
+
+	ix := newTestIndexer(t, fake.handler(t), 100)
+	ch := make(chan indexer.BattleEvent, 10)
+
+	// First sync from watermark 0: full history backfill.
+	emitted, err := ix.syncBattles(context.Background(), ch)
+	if err != nil {
+		t.Fatalf("syncBattles: %v", err)
+	}
+	if emitted != 2 {
+		t.Fatalf("emitted = %d, want 2", emitted)
+	}
+	if ix.battleWatermark != 200 {
+		t.Errorf("battleWatermark = %d, want 200", ix.battleWatermark)
+	}
+
+	first := <-ch
+	if first.BattleID != "0xaaa-1" || first.Chain != "evm" || first.WinnerPetID != "1" ||
+		first.Version != 100 || first.FoughtAt != 100 {
+		t.Errorf("first event = %+v", first)
+	}
+
+	// Quiet tick: nothing new.
+	emitted, err = ix.syncBattles(context.Background(), ch)
+	if err != nil || emitted != 0 {
+		t.Fatalf("quiet sync: emitted=%d err=%v, want 0/nil", emitted, err)
+	}
+
+	// One new settle arrives.
+	fake.battles = append(fake.battles, battle("0xccc-0", "1", "3", "3", "300"))
+	emitted, err = ix.syncBattles(context.Background(), ch)
+	if err != nil || emitted != 1 {
+		t.Fatalf("incremental sync: emitted=%d err=%v, want 1/nil", emitted, err)
+	}
+	<-ch // drain b2
+	if got := <-ch; got.BattleID != "0xccc-0" || got.Version != 300 {
+		t.Errorf("incremental event = %+v", got)
+	}
+}
+
+func TestSyncBattlesPaginatesFullPages(t *testing.T) {
+	fake := &fakeSubgraph{battles: []subgraphBattle{
+		battle("b1", "1", "2", "1", "100"),
+		battle("b2", "1", "2", "2", "200"),
+		battle("b3", "1", "2", "1", "300"),
+	}}
+
+	ix := newTestIndexer(t, fake.handler(t), 2) // page size 2 forces a second page
+	ch := make(chan indexer.BattleEvent, 10)
+
+	emitted, err := ix.syncBattles(context.Background(), ch)
+	if err != nil {
+		t.Fatalf("syncBattles: %v", err)
+	}
+	if emitted != 3 {
+		t.Errorf("emitted = %d, want 3 across two pages", emitted)
+	}
+	if ix.battleWatermark != 300 {
+		t.Errorf("battleWatermark = %d, want 300", ix.battleWatermark)
+	}
+}
+
+func TestRunPollsBattlesAlongsideRoster(t *testing.T) {
+	fake := &fakeSubgraph{
+		pets:    []subgraphPet{pet("1", "0xA", 5, "100")},
+		battles: []subgraphBattle{battle("0xdd-2", "1", "2", "2", "150")},
+	}
+
+	ix := newTestIndexer(t, fake.handler(t), 100)
+	roster := make(chan indexer.RosterUpdate, 10)
+	battles := make(chan indexer.BattleEvent, 10)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	done := make(chan error, 1)
+	go func() { done <- ix.Run(ctx, roster, battles) }()
+
+	select {
+	case b := <-battles:
+		if b.BattleID != "0xdd-2" || b.WinnerPetID != "2" {
+			t.Errorf("battle = %+v", b)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Run never emitted the battle")
+	}
+
+	cancel()
+	if err := <-done; err != nil {
+		t.Errorf("Run = %v on clean shutdown, want nil", err)
 	}
 }

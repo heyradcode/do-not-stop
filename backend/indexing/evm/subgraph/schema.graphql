@@ -25,6 +25,25 @@ type Pet @entity(immutable: false) {
   updatedAt: BigInt!
 }
 
+# One row per settled battle (Battle.FightResult). Consumed by indexer-go's
+# battle polling into battle_history and the StreamLiveBattles gRPC feed.
+type Battle @entity(immutable: true) {
+  "txHash-logIndex — matches battle_history.battle_id."
+  id: ID!
+
+  "Attacker pet id (FightResult.petId1) as a string, matching Pet.id."
+  attacker: String!
+
+  "Defender pet id (FightResult.petId2) as a string, matching Pet.id."
+  defender: String!
+
+  "Absolute winner pet id — head-to-head stays correct across role swaps."
+  winnerPetId: String!
+
+  "Block timestamp of the settle (unix seconds)."
+  foughtAt: BigInt!
+}
+
 # Mapping plan (handlers in subgraph.yaml → src/mapping.ts):
 #   Transfer(from, to, tokenId)            mint → create Pet; transfer → owner = to
 #   FightResult(petId1, petId2, firstWins) update win/loss + level for both pets

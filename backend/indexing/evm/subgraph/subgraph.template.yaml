@@ -44,6 +44,7 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - Pet
+        - Battle
       abis:
         - name: CryptoPets
           file: ./abis/CryptoPets.json
