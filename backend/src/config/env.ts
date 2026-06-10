@@ -98,6 +98,15 @@ export const env = {
         /** Path to the shared proto contract (defaults to ../proto from the backend dir). */
         protoPath: process.env.INDEXER_PROTO_PATH?.trim() || undefined,
     },
+
+    /**
+     * Where roster reads (matchmaking) are answered: 'grpc' = indexer-go's
+     * RAM cache with automatic Prisma fallback; 'postgres' (default) = Prisma
+     * only. The instant kill switch for the milestone 8 read path — flip back
+     * without redeploying indexer-go.
+     */
+    rosterReadSource:
+        process.env.ROSTER_READ_SOURCE?.trim().toLowerCase() === 'grpc' ? 'grpc' : 'postgres',
 } as const;
 
 // In production the webhook must not be left open: if Solana indexing is on, the

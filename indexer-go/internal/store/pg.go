@@ -113,6 +113,34 @@ VALUES `)
 	return nil
 }
 
+// LoadRoster reads the whole pet_roster table — the cache warm-up source
+// (the table is the persistent copy of the exact data the cache mirrors).
+func (f *PgFlusher) LoadRoster(ctx context.Context) ([]indexer.RosterUpdate, error) {
+	rows, err := f.pool.Query(ctx, `
+SELECT chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at, last_version
+FROM pet_roster`)
+	if err != nil {
+		return nil, fmt.Errorf("store: load roster: %w", err)
+	}
+	defer rows.Close()
+
+	var pets []indexer.RosterUpdate
+	for rows.Next() {
+		var u indexer.RosterUpdate
+		var level, rarity, winCount, lossCount int32
+		var version int64
+		if err := rows.Scan(&u.Chain, &u.PetID, &u.Owner, &u.Name, &level, &rarity,
+			&u.DNA, &winCount, &lossCount, &u.ReadyAt, &version); err != nil {
+			return nil, fmt.Errorf("store: load roster scan: %w", err)
+		}
+		u.Level, u.Rarity = uint32(level), uint32(rarity)
+		u.WinCount, u.LossCount = uint32(winCount), uint32(lossCount)
+		u.Version = uint64(version)
+		pets = append(pets, u)
+	}
+	return pets, rows.Err()
+}
+
 // BattlesSince reads chain-indexed battles newer than `after` for the gRPC
 // replay path, oldest first. Rows with version 0 (client-reported via the
 // dialogue path, never chain-indexed) are excluded by the strict inequality

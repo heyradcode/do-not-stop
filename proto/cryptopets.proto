@@ -12,6 +12,48 @@ service GameDataService {
   // moment they index. Delivery is at-least-once — consumers must be
   // idempotent by (chain, battle_id).
   rpc StreamLiveBattles(StreamRequest) returns (stream BattleEvent);
+
+  // RAM reads from the write-through roster cache (coherent because
+  // indexer-go is the sole writer of pet_roster after promotion). Both
+  // return UNAVAILABLE until warm-up completes — callers fall back to
+  // their own database read.
+  rpc GetPetState(PetRequest) returns (PetResponse);
+  // Mirrors the backend's findReadyOpponents matchmaking query:
+  // battle-ready (ready_at <= now), not owned by the caller, optional
+  // minimum level, ordered by (level, pet_id), paged.
+  rpc ListReadyOpponents(OpponentsRequest) returns (OpponentsResponse);
+}
+
+message PetRequest {
+  string chain = 1;
+  string pet_id = 2;
+}
+
+message PetResponse {
+  string chain = 1;
+  string pet_id = 2;
+  string owner = 3;
+  string name = 4;
+  uint32 level = 5;
+  uint32 rarity = 6;
+  string dna = 7; // bigint as string, matching pet_roster.dna
+  uint32 win_count = 8;
+  uint32 loss_count = 9;
+  int64 ready_at = 10; // unix seconds
+  uint64 version = 11;
+}
+
+message OpponentsRequest {
+  string chain = 1;
+  string exclude_owner = 2; // normalized address / pubkey
+  uint32 min_level = 3;
+  uint32 page = 4;
+  uint32 page_size = 5;
+}
+
+message OpponentsResponse {
+  repeated PetResponse pets = 1;
+  uint32 total = 2; // total matches before paging (pagination parity)
 }
 
 message StreamRequest {

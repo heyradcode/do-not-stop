@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/metrics"
 )
 
 const (
@@ -127,6 +128,7 @@ func (ix *Indexer) Run(
 			attempt = 0 // healthy session: next failure backs off from scratch
 		}
 		attempt++
+		metrics.WSReconnect()
 		slog.Error("solana ws session ended; reconnecting", "attempt", attempt, "err", err)
 		if !sleepBackoff(ctx, attempt) {
 			return nil

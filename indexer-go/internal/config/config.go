@@ -5,6 +5,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -31,6 +32,10 @@ type Config struct {
 	// Serving.
 	GRPCAddr   string
 	HealthAddr string
+	// Read cache (milestone 8). Off by default: the write-through cache is
+	// only coherent once indexer-go is the sole writer of pet_roster, so
+	// this flips on at promotion.
+	RosterCacheEnabled bool
 
 	// "text" (default) or "json".
 	LogFormat string
@@ -64,10 +69,21 @@ func Load() (*Config, error) {
 		EVMPollInterval:   evmPoll,
 		DatabaseURL:       os.Getenv("DATABASE_URL"),
 		ReconcileInterval: reconcile,
-		GRPCAddr:          stringEnv("GRPC_ADDR", defaultGRPCAddr),
-		HealthAddr:        stringEnv("HEALTH_ADDR", defaultHealthAddr),
-		LogFormat:         stringEnv("LOG_FORMAT", "text"),
+		GRPCAddr:           stringEnv("GRPC_ADDR", defaultGRPCAddr),
+		HealthAddr:         stringEnv("HEALTH_ADDR", defaultHealthAddrFromPort()),
+		RosterCacheEnabled: strings.EqualFold(os.Getenv("ROSTER_CACHE_ENABLED"), "true"),
+		LogFormat:          stringEnv("LOG_FORMAT", "text"),
 	}, nil
+}
+
+// defaultHealthAddrFromPort honors PaaS conventions (Render injects PORT and
+// health-checks it): when PORT is set and HEALTH_ADDR isn't, bind the health
+// server publicly on that port so the platform's check passes.
+func defaultHealthAddrFromPort() string {
+	if port := os.Getenv("PORT"); port != "" {
+		return "0.0.0.0:" + port
+	}
+	return defaultHealthAddr
 }
 
 func stringEnv(key, fallback string) string {

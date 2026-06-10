@@ -4,6 +4,7 @@ import { generateTurns, ensureResultCoverage } from './turns';
 import { getPregenStore } from '@repositories/pregen.repository';
 import { matchupKey } from './pregen.types';
 import { recordBattleHistory, recordResultLines } from '../recording';
+import { getChainSettledWinner } from '../../../grpc/battleStream';
 import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
 /**
@@ -12,6 +13,8 @@ import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from '../dia
  * The chain decides the winner; we only narrate toward it (see AI_BATTLE_DIALOGUE.md).
  */
 export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promise<DialogueResult> {
+    verifyAgainstChainTruth(input);
+
     // Build personas before the cache check so we can supplement cached turns too.
     const attacker = buildPersona(input.attacker);
     const defender = buildPersona(input.defender);
@@ -32,6 +35,27 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
     const { turns: rawTurns, model } = await generateTurns(input, attacker, defender);
     const turns = ensureResultCoverage(rawTurns, input, attacker, defender);
     return finalizeDialogue(input, turns, model);
+}
+
+/**
+ * Shadow check (indexer-go milestone 7): when the battle stream has seen this
+ * battle settle on-chain, compare the client-reported winner against chain
+ * truth. Log-only for now — promotion to a hard reject happens once shadow
+ * mode proves the stream reliable. No-op when the stream is off or the battle
+ * hasn't been seen.
+ */
+function verifyAgainstChainTruth(input: GenerateDialogueInput): void {
+    if (!input.battleId) return;
+    const chainWinner = getChainSettledWinner(input.chain, input.battleId);
+    if (!chainWinner) return;
+
+    const claimed = input.winner === 'attacker' ? input.attacker.petId : input.defender.petId;
+    if (claimed !== chainWinner) {
+        console.warn(
+            `[dialogue] client-reported winner ${claimed} contradicts chain truth ${chainWinner} ` +
+                `for ${input.chain}:${input.battleId}`,
+        );
+    }
 }
 
 /**

@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"log/slog"
 	"net/http"
 	"os"
@@ -13,17 +14,23 @@ import (
 	"time"
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/battlebus"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/cache"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/config"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/evm"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/grpcsrv"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/metrics"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/solana"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/store"
 )
 
 const shutdownGrace = 5 * time.Second
 
+var scanOnce = flag.Bool("scan-once", false,
+	"run one full roster scan per configured chain, write it, and exit (ops/backfill — the Go `index:once`)")
+
 func main() {
+	flag.Parse()
 	if err := run(); err != nil {
 		slog.Error("fatal", "err", err)
 		os.Exit(1)
@@ -36,6 +43,10 @@ func run() error {
 		return err
 	}
 	slog.SetDefault(newLogger(cfg.LogFormat))
+
+	if *scanOnce {
+		return runScanOnce(cfg)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -59,6 +70,7 @@ func run() error {
 			case <-ctx.Done():
 				return
 			case b := <-adapterBattles:
+				metrics.Battle(b.Chain)
 				bus.Publish(b)
 				select {
 				case writerBattles <- b:
@@ -71,6 +83,7 @@ func run() error {
 
 	var sinkDone <-chan struct{}
 	var replayer grpcsrv.Replayer
+	var rosterCache *cache.Roster
 	if cfg.DatabaseURL != "" {
 		pg, err := store.NewPgFlusher(ctx, cfg.DatabaseURL)
 		if err != nil {
@@ -78,10 +91,29 @@ func run() error {
 		}
 		defer pg.Close()
 		replayer = pg
+
+		writer := store.NewWriter(pg)
+		if cfg.RosterCacheEnabled {
+			rosterCache = cache.NewRoster()
+			writer.OnRosterCommit = rosterCache.Apply // commit-then-cache
+			// Warm from the table itself (the persistent copy of the same
+			// sole-writer data). Reads return UNAVAILABLE until this lands;
+			// concurrent Apply races resolve by version, same as the SQL.
+			go func() {
+				rows, err := pg.LoadRoster(ctx)
+				if err != nil {
+					slog.Error("roster cache warm-up failed; reads stay unavailable", "err", err)
+					return
+				}
+				rosterCache.WarmUp(rows)
+				slog.Info("roster cache warm", "pets", len(rows))
+			}()
+		}
+
 		done := make(chan struct{})
 		go func() {
 			defer close(done)
-			if err := store.NewWriter(pg).Run(ctx, roster, writerBattles); err != nil {
+			if err := writer.Run(ctx, roster, writerBattles); err != nil {
 				slog.Error("writer exited", "err", err)
 			}
 		}()
@@ -93,7 +125,7 @@ func run() error {
 
 	grpcErr := make(chan error, 1)
 	go func() {
-		if err := grpcsrv.New(bus, replayer).Serve(ctx, cfg.GRPCAddr); err != nil {
+		if err := grpcsrv.New(bus, replayer, rosterCache).Serve(ctx, cfg.GRPCAddr); err != nil {
 			grpcErr <- err
 		}
 	}()
@@ -154,6 +186,60 @@ func run() error {
 	}
 	slog.Info("indexer-go stopped")
 	return nil
+}
+
+// runScanOnce sweeps every configured chain into the database once and
+// exits — the Go counterpart of the backend's `index:once` script. Used for
+// manual backfills and to seed the shadow database before a diff run.
+func runScanOnce(cfg *config.Config) error {
+	if cfg.DatabaseURL == "" {
+		return errors.New("-scan-once requires DATABASE_URL")
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	adapters, err := buildAdapters(cfg)
+	if err != nil {
+		return err
+	}
+	if len(adapters) == 0 {
+		return errors.New("-scan-once: no chain is configured")
+	}
+
+	pg, err := store.NewPgFlusher(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer pg.Close()
+
+	roster := make(chan indexer.RosterUpdate, 256)
+	battles := make(chan indexer.BattleEvent, 64)
+	writerCtx, stopWriter := context.WithCancel(ctx)
+	writerDone := make(chan struct{})
+	go func() {
+		defer close(writerDone)
+		if err := store.NewWriter(pg).Run(writerCtx, roster, battles); err != nil {
+			slog.Error("writer exited", "err", err)
+		}
+	}()
+
+	var firstErr error
+	for _, a := range adapters {
+		scanned, err := a.Scan(ctx, roster)
+		if err != nil {
+			slog.Error("scan failed", "chain", a.Chain(), "err", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		slog.Info("scan complete", "chain", a.Chain(), "scanned", scanned)
+	}
+
+	stopWriter() // triggers the writer's final drain
+	<-writerDone
+	return firstErr
 }
 
 // buildAdapters constructs one ChainIndexer per configured source. A chain
@@ -219,5 +305,6 @@ func healthMux() *http.ServeMux {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
+	mux.HandleFunc("GET /metrics", metrics.Handler())
 	return mux
 }

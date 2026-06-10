@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/battlebus"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/cache"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
 	"github.com/radcrew/do-not-stop/indexer-go/pb"
 )
@@ -34,12 +35,12 @@ func (f *fakeReplayer) BattlesSince(_ context.Context, chain string, after uint6
 // startServer runs the service on an in-memory bufconn listener (no real
 // sockets — see the windows/386 note in the evm tests) and returns a
 // connected client.
-func startServer(t *testing.T, bus *battlebus.Bus, replay Replayer) pb.GameDataServiceClient {
+func startServer(t *testing.T, bus *battlebus.Bus, replay Replayer, roster *cache.Roster) pb.GameDataServiceClient {
 	t.Helper()
 
 	lis := bufconn.Listen(1 << 20)
 	srv := grpc.NewServer()
-	pb.RegisterGameDataServiceServer(srv, New(bus, replay))
+	pb.RegisterGameDataServiceServer(srv, New(bus, replay, roster))
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
 
@@ -92,7 +93,7 @@ func TestStreamReplaysThenGoesLive(t *testing.T) {
 	replay := &fakeReplayer{byChain: map[string][]indexer.BattleEvent{
 		"evm": {battle("evm", "0xa-1", 100), battle("evm", "0xb-2", 200)},
 	}}
-	client := startServer(t, bus, replay)
+	client := startServer(t, bus, replay, nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -121,7 +122,7 @@ func TestStreamReplaysThenGoesLive(t *testing.T) {
 
 func TestStreamLiveOnlyWithoutCursor(t *testing.T) {
 	bus := battlebus.New()
-	client := startServer(t, bus, nil) // no replayer at all
+	client := startServer(t, bus, nil, nil) // no replayer at all
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -140,7 +141,7 @@ func TestStreamLiveOnlyWithoutCursor(t *testing.T) {
 
 func TestSlowConsumerEndsStreamCleanly(t *testing.T) {
 	bus := battlebus.New()
-	client := startServer(t, bus, nil)
+	client := startServer(t, bus, nil, nil)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

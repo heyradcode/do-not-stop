@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/metrics"
 )
 
 const subscriberBuffer = 256
@@ -34,6 +35,7 @@ func (b *Bus) Subscribe() (<-chan indexer.BattleEvent, func()) {
 	b.nextID++
 	ch := make(chan indexer.BattleEvent, subscriberBuffer)
 	b.subs[id] = ch
+	metrics.SetStreamSubscribers(len(b.subs))
 
 	cancel := func() {
 		b.mu.Lock()
@@ -41,6 +43,7 @@ func (b *Bus) Subscribe() (<-chan indexer.BattleEvent, func()) {
 		if sub, ok := b.subs[id]; ok {
 			delete(b.subs, id)
 			close(sub)
+			metrics.SetStreamSubscribers(len(b.subs))
 		}
 	}
 	return ch, cancel
@@ -58,6 +61,7 @@ func (b *Bus) Publish(event indexer.BattleEvent) {
 		default:
 			delete(b.subs, id)
 			close(ch)
+			metrics.SetStreamSubscribers(len(b.subs))
 		}
 	}
 }

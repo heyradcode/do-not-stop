@@ -8,10 +8,14 @@ import (
 	"context"
 	"log/slog"
 	"net"
+	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/battlebus"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/cache"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
 	"github.com/radcrew/do-not-stop/indexer-go/pb"
 )
@@ -26,10 +30,11 @@ type Server struct {
 	pb.UnimplementedGameDataServiceServer
 	bus    *battlebus.Bus
 	replay Replayer
+	roster *cache.Roster // nil = read RPCs disabled (pre-promotion)
 }
 
-func New(bus *battlebus.Bus, replay Replayer) *Server {
-	return &Server{bus: bus, replay: replay}
+func New(bus *battlebus.Bus, replay Replayer, roster *cache.Roster) *Server {
+	return &Server{bus: bus, replay: replay, roster: roster}
 }
 
 // Serve blocks until ctx ends, then stops gracefully.
@@ -98,6 +103,63 @@ func (s *Server) StreamLiveBattles(req *pb.StreamRequest, stream grpc.ServerStre
 				return err
 			}
 		}
+	}
+}
+
+// readable gates the read RPCs: the cache must exist (promotion) and be warm.
+func (s *Server) readable() error {
+	if s.roster == nil {
+		return status.Error(codes.Unavailable, "roster cache disabled (pre-promotion)")
+	}
+	if !s.roster.Warm() {
+		return status.Error(codes.Unavailable, "roster cache warming up")
+	}
+	return nil
+}
+
+func (s *Server) GetPetState(_ context.Context, req *pb.PetRequest) (*pb.PetResponse, error) {
+	if err := s.readable(); err != nil {
+		return nil, err
+	}
+	pet, ok := s.roster.Get(req.GetChain(), req.GetPetId())
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "pet %s/%s", req.GetChain(), req.GetPetId())
+	}
+	return petToProto(pet), nil
+}
+
+func (s *Server) ListReadyOpponents(_ context.Context, req *pb.OpponentsRequest) (*pb.OpponentsResponse, error) {
+	if err := s.readable(); err != nil {
+		return nil, err
+	}
+	pets, total := s.roster.ListReadyOpponents(cache.OpponentsQuery{
+		Chain:        req.GetChain(),
+		ExcludeOwner: req.GetExcludeOwner(),
+		MinLevel:     req.GetMinLevel(),
+		NowUnix:      time.Now().Unix(),
+		Page:         int(req.GetPage()),
+		PageSize:     int(req.GetPageSize()),
+	})
+	out := &pb.OpponentsResponse{Total: uint32(total)}
+	for _, p := range pets {
+		out.Pets = append(out.Pets, petToProto(p))
+	}
+	return out, nil
+}
+
+func petToProto(u indexer.RosterUpdate) *pb.PetResponse {
+	return &pb.PetResponse{
+		Chain:     u.Chain,
+		PetId:     u.PetID,
+		Owner:     u.Owner,
+		Name:      u.Name,
+		Level:     u.Level,
+		Rarity:    u.Rarity,
+		Dna:       u.DNA,
+		WinCount:  u.WinCount,
+		LossCount: u.LossCount,
+		ReadyAt:   u.ReadyAt,
+		Version:   u.Version,
 	}
 }
 

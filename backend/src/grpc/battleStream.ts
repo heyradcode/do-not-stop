@@ -1,7 +1,6 @@
-import path from 'node:path';
 import * as grpc from '@grpc/grpc-js';
-import * as protoLoader from '@grpc/proto-loader';
 import { env } from '@config/env';
+import { loadGameDataService } from './gameData';
 
 /**
  * StreamLiveBattles client: subscribes to indexer-go's chain-truth battle
@@ -68,8 +67,8 @@ export function startBattleStream(): void {
     }
 
     stopped = false;
-    const service = loadService();
-    client = new service(addr, grpc.credentials.createInsecure());
+    const Service = loadGameDataService();
+    client = new Service(addr, grpc.credentials.createInsecure());
     connect();
     console.log(`[battle-stream] subscribing to ${addr}`);
 }
@@ -88,21 +87,6 @@ type StreamingClient = grpc.Client & {
         afterVersion: Record<string, string>;
     }): grpc.ClientReadableStream<BattleEventWire>;
 };
-
-function loadService(): new (addr: string, creds: grpc.ChannelCredentials) => StreamingClient {
-    const protoPath =
-        env.indexerGrpc.protoPath ?? path.resolve(process.cwd(), '..', 'proto', 'cryptopets.proto');
-    const definition = protoLoader.loadSync(protoPath, {
-        keepCase: false,
-        longs: String,
-        defaults: true,
-        oneofs: true,
-    });
-    const loaded = grpc.loadPackageDefinition(definition) as unknown as {
-        cryptopets: { GameDataService: new (a: string, c: grpc.ChannelCredentials) => StreamingClient };
-    };
-    return loaded.cryptopets.GameDataService;
-}
 
 function connect(): void {
     if (stopped || !client) return;
