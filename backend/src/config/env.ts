@@ -18,6 +18,7 @@ function requireEnv(name: string): string {
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const isProduction = nodeEnv === 'production';
 const parsedPort = Number(process.env.PORT);
+const parsedIndexerInterval = Number(process.env.INDEXER_INTERVAL_MS);
 
 export const env = {
     nodeEnv,
@@ -35,6 +36,20 @@ export const env = {
 
     /** Comma-separated allowed CORS origins; unset = allow all (local dev). */
     corsOrigin: process.env.CORS_ORIGIN,
+
+    /** Background roster indexer (PvP matchmaking) — see src/indexer. */
+    indexer: {
+        /** Set INDEXER_ENABLED=false to turn the background indexer off. */
+        enabled: (process.env.INDEXER_ENABLED ?? 'true').toLowerCase() !== 'false',
+        /** Poll interval for EVM incremental sync and Solana backfill (ms). */
+        intervalMs:
+            Number.isFinite(parsedIndexerInterval) && parsedIndexerInterval > 0
+                ? parsedIndexerInterval
+                : 60_000,
+        /** EVM subgraph query endpoint (`SUBGRAPH_URL` is a legacy alias). */
+        evmSubgraphUrl:
+            process.env.SUBGRAPH_URL_EVM?.trim() || process.env.SUBGRAPH_URL?.trim() || undefined,
+    },
 
     /**
      * Solana indexing via Helius (RPC reconciliation scan + push webhook). All

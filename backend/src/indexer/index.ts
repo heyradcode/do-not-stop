@@ -15,17 +15,12 @@ interface IndexerConfig {
     sources: RosterSource[];
 }
 
-const DEFAULT_INTERVAL_MS = 60_000;
 const stopFns: (() => void)[] = [];
 
 function readConfig(): IndexerConfig {
-    const enabled = (process.env.INDEXER_ENABLED ?? 'true').toLowerCase() !== 'false';
-    const parsed = Number(process.env.INDEXER_INTERVAL_MS);
-    const intervalMs = Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_INTERVAL_MS;
-
     const sources: RosterSource[] = [];
 
-    const evmUrl = process.env.SUBGRAPH_URL_EVM?.trim() ?? process.env.SUBGRAPH_URL?.trim();
+    const evmUrl = env.indexer.evmSubgraphUrl;
     if (evmUrl) sources.push({ chain: 'evm', kind: 'subgraph', url: evmUrl });
 
     const { heliusRpcUrl, programId } = env.solana;
@@ -33,7 +28,7 @@ function readConfig(): IndexerConfig {
         sources.push({ chain: 'solana', kind: 'helius', rpcUrl: heliusRpcUrl, programId });
     }
 
-    return { enabled, intervalMs, sources };
+    return { enabled: env.indexer.enabled, intervalMs: env.indexer.intervalMs, sources };
 }
 
 async function logScan(chain: Chain, scanned: number): Promise<void> {
