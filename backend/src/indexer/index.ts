@@ -1,4 +1,4 @@
-import { createSubgraphIndexer } from '@indexing/evm-client';
+import { createSubgraphIndexer } from '@indexing/evm/indexer';
 import { createSolanaIndexer } from '@indexing/solana/indexer';
 import { env } from '@config/env';
 import { countByChain } from '@repositories/roster.repository';

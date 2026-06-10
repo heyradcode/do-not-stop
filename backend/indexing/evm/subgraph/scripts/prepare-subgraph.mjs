@@ -2,7 +2,7 @@
 /**
  * Prepare subgraph.yaml + src/addresses.ts + abis/ from Hardhat artifacts.
  *
- * Usage (from backend/indexing/evm):
+ * Usage (from backend/indexing/evm/subgraph):
  *   pnpm configure
  *
  * Env (optional — auto-read from ignition/deployments when present):
@@ -19,7 +19,8 @@ import { createPublicClient, http } from 'viem';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SUBGRAPH_DIR = path.join(__dirname, '..');
-const CONTRACTS_DIR = path.join(SUBGRAPH_DIR, '..', '..', '..', 'contracts', 'ethereum');
+// subgraph/ → evm/ → indexing/ → backend/ → repo root
+const CONTRACTS_DIR = path.join(SUBGRAPH_DIR, '..', '..', '..', '..', 'contracts', 'ethereum');
 const ARTIFACTS = path.join(CONTRACTS_DIR, 'artifacts', 'src');
 
 loadEnvFile(path.join(CONTRACTS_DIR, '.env'));

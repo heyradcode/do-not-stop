@@ -76,6 +76,6 @@
         "dist",
         // The subgraph deploy project — AssemblyScript mappings built by
         // graph-cli, not part of the backend's TypeScript program.
-        "indexing/evm"
+        "indexing/evm/subgraph"
     ]
 }
