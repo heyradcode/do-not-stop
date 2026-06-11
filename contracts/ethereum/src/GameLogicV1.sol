@@ -151,7 +151,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         (uint32 lvl1, , , ) = petCore.getPetStats(petId1);
         (uint32 lvl2, , , ) = petCore.getPetStats(petId2);
         uint32 gap = lvl1 > lvl2 ? lvl1 - lvl2 : lvl2 - lvl1;
-        require(gap <= 10, "Level gap too large");
+        require(gap <= gameConfig.levelBandWidth(), "Level gap too large");
         require(
             petBattleRequestId[petId1] == 0 && petBattleRequestId[petId2] == 0,
             "Battle pending for pet"
@@ -244,6 +244,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         require(nameLen > 0 && nameLen <= gameConfig.maxNameLength(), "Invalid name length");
         require(msg.value >= gameConfig.breedFee(), "Insufficient breed fee");
         require(petCore.ownerOf(petId1) == msg.sender, "Not owner of first pet");
+        require(petCore.ownerOf(petId2) == msg.sender, "Not owner of second pet");
         _validateBreedPair(petId1, petId2);
         require(
             petBreedRequestId[petId1] == 0 && petBreedRequestId[petId2] == 0,
@@ -388,6 +389,15 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         require(petId1 != petId2, "Can't breed with self");
         require(petCore.isBreedReady(petId1), "First parent not breed-ready");
         require(petCore.isBreedReady(petId2), "Second parent not breed-ready");
+
+        // One-level incest guard (plan §4.1): neither pet may be a parent of the other.
+        (, , uint256 p1Parent1, uint256 p1Parent2) = petCore.getBreedInfo(petId1);
+        (, , uint256 p2Parent1, uint256 p2Parent2) = petCore.getBreedInfo(petId2);
+        require(
+            p1Parent1 != petId2 && p1Parent2 != petId2 &&
+            p2Parent1 != petId1 && p2Parent2 != petId1,
+            "Incest: parent-child breeding rejected"
+        );
     }
 
     // Per-pair DNA mixing (plan §4.2): 45% parent-1, 45% parent-2, 10% mutation.

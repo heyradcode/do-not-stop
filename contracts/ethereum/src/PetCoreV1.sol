@@ -146,11 +146,14 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
 
     function addXp(uint256 petId, uint32 amount) external onlyAuthorized entryExists(petId) {
         Pet storage p = _pets[petId];
+        uint32 cap = gameConfig.maxLevel();
+        if (p.level >= cap) return; // already at cap — no XP accrual
         p.xp += amount;
         uint32 threshold = 100 * p.level;
         if (p.xp >= threshold) {
             p.xp -= threshold;
             p.level++;
+            if (p.level > cap) p.level = cap; // clamp (defensive)
             emit PetLevelUp(petId, p.level);
         }
     }

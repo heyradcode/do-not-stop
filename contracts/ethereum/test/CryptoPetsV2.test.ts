@@ -284,10 +284,11 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const { petCore, gameLogic, vrf, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
-        const [, addr1, addr2] = await viem.getWalletClients();
+        const [, addr1] = await viem.getWalletClients();
 
+        // Both parents must be owned by the same caller (plan §4.1)
         await mintStarter(petCore, config, addr1, "ParentA");
-        await mintStarter(petCore, config, addr2, "ParentB");
+        await mintStarter(petCore, config, addr1, "ParentB");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -319,7 +320,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await gameLogic.write.settleBreed([requestId], { account: addr1.account });
 
         assert.equal(await petCore.read.totalPets(), 3n);
-        assert.equal(await petCore.read.balanceOf([addr1.account.address]), 2n);
+        assert.equal(await petCore.read.balanceOf([addr1.account.address]), 3n); // 2 parents + offspring
 
         // Offspring has generation 1 and correct parent IDs
         const [generation, breedCount, parent1Id, parent2Id] = await petCore.read.getBreedInfo([3n]);
@@ -345,10 +346,10 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     it("Should reject breeding with insufficient fee", async function () {
         const { petCore, gameLogic, config } = await deployV2();
         const testClient = await viem.getTestClient();
-        const [, addr1, addr2] = await viem.getWalletClients();
+        const [, addr1] = await viem.getWalletClients();
 
         await mintStarter(petCore, config, addr1, "ParentA");
-        await mintStarter(petCore, config, addr2, "ParentB");
+        await mintStarter(petCore, config, addr1, "ParentB");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -370,10 +371,10 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const { petCore, gameLogic, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
-        const [, addr1, addr2] = await viem.getWalletClients();
+        const [, addr1] = await viem.getWalletClients();
 
         await mintStarter(petCore, config, addr1, "ParentA");
-        await mintStarter(petCore, config, addr2, "ParentB");
+        await mintStarter(petCore, config, addr1, "ParentB");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -513,10 +514,10 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const { petCore, gameLogic, vrf, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
-        const [, addr1, addr2] = await viem.getWalletClients();
+        const [, addr1] = await viem.getWalletClients();
 
         await mintStarter(petCore, config, addr1, "ParentA");
-        await mintStarter(petCore, config, addr2, "ParentB");
+        await mintStarter(petCore, config, addr1, "ParentB");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -624,5 +625,94 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         } catch (error: unknown) {
             assert((error as Error).message.includes("Generation cap reached"));
         }
+    });
+
+    it("Should reject breeding when caller does not own the second parent", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const testClient = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Mine");
+        await mintStarter(petCore, config, addr2, "Theirs"); // addr2 owns pet 2
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const breedFee = await config.read.breedFee();
+        try {
+            await gameLogic.write.requestCreateFromDNA(
+                [1n, 2n, "Offspring"],
+                { account: addr1.account, value: breedFee }
+            );
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Not owner of second pet"));
+        }
+    });
+
+    it("Should reject breeding a pet with its own offspring (incest guard)", async function () {
+        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const publicClient = await viem.getPublicClient();
+        const testClient   = await viem.getTestClient();
+        const [, addr1] = await viem.getWalletClients();
+
+        // Breed pet 1 + pet 2 → pet 3 (gen-1)
+        await mintStarter(petCore, config, addr1, "Parent1");
+        await mintStarter(petCore, config, addr1, "Parent2");
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const breedFee = await config.read.breedFee();
+        const reqHash = await gameLogic.write.requestCreateFromDNA(
+            [1n, 2n, "Child"],
+            { account: addr1.account, value: breedFee }
+        );
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const reqLogs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: reqReceipt.logs,
+            eventName: "BreedRandomnessRequested",
+            strict: false
+        });
+        const requestId = reqLogs[0].args.requestId;
+        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], { account: addr1.account });
+        await gameLogic.write.settleBreed([requestId], { account: addr1.account });
+        // Pet 3 is child of pet 1
+
+        // Wait for parent breed cooldowns
+        await testClient.increaseTime({ seconds: 100 });
+        await testClient.mine({ blocks: 1 });
+
+        // Attempt to breed parent (pet 1) with its offspring (pet 3) — should be rejected
+        try {
+            await gameLogic.write.requestCreateFromDNA(
+                [1n, 3n, "Incest"],
+                { account: addr1.account, value: breedFee }
+            );
+            assert.fail("Expected incest guard revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Incest"));
+        }
+    });
+
+    it("Should stop granting XP once pet reaches maxLevel", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const [deployer, addr1] = await viem.getWalletClients();
+
+        // Set maxLevel = 2 so a level-1 pet is one level-up away from cap
+        await config.write.setMaxLevel([2], { account: deployer.account });
+
+        await mintStarter(petCore, config, addr1, "Capped");
+        // Pet starts at level 1 — grant enough XP to hit maxLevel
+        await petCore.write.addXp([1n, 100n], { account: deployer.account }); // level-up threshold = 100*1
+        const atCap = await petCore.read.getPet([1n]);
+        assert.equal(atCap.level, 2, "Should have levelled to cap");
+
+        // Additional XP when already at cap should be silently dropped
+        await petCore.write.addXp([1n, 200n], { account: deployer.account });
+        const still = await petCore.read.getPet([1n]);
+        assert.equal(still.level, 2, "Level must not exceed maxLevel");
+        assert.equal(still.xp, 0, "XP should not accumulate past cap");
     });
 });

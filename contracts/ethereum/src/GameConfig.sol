@@ -23,6 +23,9 @@ contract GameConfig is Ownable {
     uint256 public trainCooldown       = 60 seconds;  // per-pet train lockout (§5 dev: 60s, prod: 24h)
     uint32  public trainXp             = 100;         // flat XP per train (§3.4)
 
+    uint32  public maxLevel            = 100;         // hard cap; no XP/level-up beyond this (§3.4)
+    uint32  public levelBandWidth      = 100;         // ±N level gap allowed for battle (§3.4 dev: 100=off, prod: 10)
+
     address public combatSim;
 
     event LevelUpFeeUpdated(uint256 fee);
@@ -34,6 +37,8 @@ contract GameConfig is Ownable {
     event TrainFeeUpdated(uint256 fee);
     event TrainCooldownUpdated(uint256 cooldown);
     event TrainXpUpdated(uint32 xp);
+    event MaxLevelUpdated(uint32 level);
+    event LevelBandWidthUpdated(uint32 width);
     event CombatSimUpdated(address sim);
 
     constructor(address initialOwner) Ownable(initialOwner) {}
@@ -82,6 +87,17 @@ contract GameConfig is Ownable {
     function setTrainXp(uint32 xp) external onlyOwner {
         trainXp = xp;
         emit TrainXpUpdated(xp);
+    }
+
+    function setMaxLevel(uint32 level) external onlyOwner {
+        require(level > 0, "Max level must be > 0");
+        maxLevel = level;
+        emit MaxLevelUpdated(level);
+    }
+
+    function setLevelBandWidth(uint32 width) external onlyOwner {
+        levelBandWidth = width;
+        emit LevelBandWidthUpdated(width);
     }
 
     function setCombatSim(address sim) external onlyOwner {
