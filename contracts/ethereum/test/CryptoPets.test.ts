@@ -50,6 +50,32 @@ describe("CryptoPets", async function () {
         }
     });
 
+    it("Should reject pet names that are too long", async function () {
+        const { cryptoPets } = await deployCryptoPets();
+        const [, addr1] = await viem.getWalletClients();
+
+        const tooLong = "a".repeat(33);
+
+        try {
+            await cryptoPets.write.createRandom([tooLong], { account: addr1.account });
+            assert.fail("Expected transaction to revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Invalid name length"));
+        }
+    });
+
+    it("Should reject empty pet names", async function () {
+        const { cryptoPets } = await deployCryptoPets();
+        const [, addr1] = await viem.getWalletClients();
+
+        try {
+            await cryptoPets.write.createRandom([""], { account: addr1.account });
+            assert.fail("Expected transaction to revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Invalid name length"));
+        }
+    });
+
     it("Should return correct pet data", async function () {
         const { cryptoPets } = await deployCryptoPets();
         const [, addr1] = await viem.getWalletClients();
@@ -62,6 +88,8 @@ describe("CryptoPets", async function () {
         assert.equal(pet.level, 1);
         assert.equal(pet.winCount, 0);
         assert.equal(pet.lossCount, 0);
+        // Interim Phase-0 clamp: starter rarity is forced to 1.
+        assert.equal(pet.rarity, 1);
     });
 
     it("Should level up pet with correct fee", async function () {

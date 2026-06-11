@@ -56,6 +56,7 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
     uint256 public constant LEVEL_UP_FEE = 0.001 ether;
     uint256 public constant NAME_CHANGE_LEVEL = 2;
     uint256 public constant DNA_CHANGE_LEVEL = 20;
+    uint256 public constant MAX_NAME_LENGTH = 32;
 
     constructor(
         uint256 vrfSubscriptionId,
@@ -98,6 +99,12 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
         _;
     }
 
+    modifier validName(string memory _name) {
+        uint256 len = bytes(_name).length;
+        require(len > 0 && len <= MAX_NAME_LENGTH, "Invalid name length");
+        _;
+    }
+
     function _update(
         address to,
         uint256 tokenId,
@@ -131,11 +138,14 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
             );
     }
 
-    function createRandom(string memory _name) public {
+    function createRandom(string memory _name) public validName(_name) {
         require(ownerPetCount[msg.sender] == 0, "You already have a pet!");
 
         uint256 randDna = utils.generateRandomDna(_name);
-        uint8 rarity = utils.calculateRarity(randDna);
+        // Interim Phase-0 clamp (plan §6 EVM #9): force starter rarity to 1
+        // regardless of rolled DNA. Full removal of createRandom lands with
+        // the gacha mint in Phase 3.
+        uint8 rarity = 1;
 
         uint256 newId = inventory.createPet(_name, randDna, rarity);
         _safeMint(msg.sender, newId);
@@ -150,8 +160,7 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
         uint256 _petId1,
         uint256 _petId2,
         string calldata _name
-    ) external returns (uint256 requestId) {
-        require(bytes(_name).length > 0, "Empty name");
+    ) external validName(_name) returns (uint256 requestId) {
         breeding.assertCanBreed(_petId1, _petId2);
         require(
             petBreedRequestId[_petId1] == 0 && petBreedRequestId[_petId2] == 0,
@@ -204,7 +213,9 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
         );
 
         uint256 childId = inventory.totalPets();
-        _safeMint(pending.owner, childId);
+        // Use _mint, not _safeMint: a malicious/buggy ERC721Receiver could
+        // otherwise revert this VRF callback and permanently burn the request.
+        _mint(pending.owner, childId);
         ownerPetCount[pending.owner]++;
 
         petBreedRequestId[pending.petId1] = 0;
@@ -237,6 +248,7 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
         public
         onlyPetOwner(_tokenId)
         aboveLevel(NAME_CHANGE_LEVEL, _tokenId)
+        validName(_newName)
     {
         inventory.changeName(_tokenId, _newName);
     }
@@ -299,7 +311,8 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
     }
 
     function withdraw() public onlyOwner {
-        payable(owner()).transfer(address(this).balance);
+        (bool success, ) = payable(owner()).call{value: address(this).balance}("");
+        require(success, "Withdraw failed");
     }
 
     function _toString(uint256 value) private pure returns (string memory) {
