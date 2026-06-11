@@ -27,6 +27,7 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         uint16 winCount;
         uint16 lossCount;
         uint8 rarity;
+        uint32 xp;    // accumulated XP; auto-levels when >= 100 * level
     }
 
     uint256 public constant DNA_DIGITS  = 16;
@@ -112,6 +113,18 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     function levelUpInternal(uint256 petId) external onlyAuthorized entryExists(petId) {
         _pets[petId].level++;
         emit PetLevelUp(petId, _pets[petId].level);
+    }
+
+    // Award XP from battle wins and auto-level when threshold (100 * level) is met.
+    function addXp(uint256 petId, uint32 amount) external onlyAuthorized entryExists(petId) {
+        Pet storage p = _pets[petId];
+        p.xp += amount;
+        uint32 threshold = 100 * p.level;
+        if (p.xp >= threshold) {
+            p.xp -= threshold;
+            p.level++;
+            emit PetLevelUp(petId, p.level);
+        }
     }
 
     // ─── user-facing functions ────────────────────────────────────────────────
@@ -220,7 +233,8 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
             readyTime: uint32(block.timestamp + gameConfig.battleCooldown()),
             winCount:  0,
             lossCount: 0,
-            rarity:    rarity
+            rarity:    rarity,
+            xp:        0
         });
         emit NewPet(newId, name_, dna, rarity);
         return newId;

@@ -11,9 +11,9 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const deployer = await viem.deployContract("LocalCryptoPetsDeployerV2", [], {
             value: 100_000_000_000_000_000_000n
         });
-        const petCoreAddr  = await deployer.read.petCore();
+        const petCoreAddr   = await deployer.read.petCore();
         const gameLogicAddr = await deployer.read.gameLogic();
-        const vrfAddr      = await deployer.read.vrfCoordinator();
+        const vrfAddr       = await deployer.read.vrfCoordinator();
 
         const petCore   = await viem.getContractAt("PetCoreV1",   petCoreAddr);
         const gameLogic = await viem.getContractAt("GameLogicV1", gameLogicAddr);
@@ -41,6 +41,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(pet.name, "TestPet");
         assert.equal(pet.level, 1);
         assert.equal(pet.rarity, 1); // Phase-0 clamp
+        assert.equal(pet.xp, 0);
     });
 
     it("Should reject a second pet for the same address", async function () {
@@ -77,9 +78,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
 
         await petCore.write.createRandom(["TestPet"], { account: addr1.account });
 
-        const fee = await petCore.read.gameConfig();
-        // Read levelUpFee directly from the config contract
-        const configAddr = fee;
+        const configAddr = await petCore.read.gameConfig();
         const config = await viem.getContractAt("GameConfig", configAddr);
         const levelUpFee = await config.read.levelUpFee();
 
@@ -103,25 +102,83 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         }
     });
 
-    it("Should allow the owner to attack with their pet", async function () {
-        const { petCore, gameLogic } = await deployV2();
+    it("Should battle via VRF request→store→settle", async function () {
+        const { petCore, gameLogic, vrf } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
 
+        // Two different owners create pets
         await petCore.write.createRandom(["Mine"],   { account: addr1.account });
         await petCore.write.createRandom(["Theirs"], { account: addr2.account });
+
+        // Fast-forward past battle cooldown
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        // Step 1: request battle (owner of pet 1 initiates)
+        const reqHash = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const reqLogs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: reqReceipt.logs,
+            eventName: "BattleRandomnessRequested",
+            strict: false
+        });
+        const requestId = reqLogs[0].args.requestId;
+        assert(requestId != null, "No BattleRandomnessRequested event emitted");
+
+        // Step 2: VRF mock fulfills (stores seed in contract)
+        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], {
+            account: addr1.account
+        });
+
+        // Step 3: anyone settles
+        const settleHash = await gameLogic.write.settleBattle([requestId], {
+            account: addr1.account
+        });
+        const settleReceipt = await publicClient.waitForTransactionReceipt({ hash: settleHash });
+        const settleLogs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: settleReceipt.logs,
+            eventName: "BattleResolved",
+            strict: false
+        });
+        assert.equal(settleLogs.length, 1, "Expected BattleResolved event");
+
+        // One pet won, one lost → total win+loss across both = 2
+        const [, win1, loss1] = await petCore.read.getPetStats([1n]);
+        const [, win2, loss2] = await petCore.read.getPetStats([2n]);
+        assert.equal(win1 + loss1 + win2 + loss2, 2);
+
+        // Winner received XP
+        const pet1 = await petCore.read.getPet([1n]);
+        const pet2 = await petCore.read.getPet([2n]);
+        const winnerXp = win1 > 0 ? pet1.xp : pet2.xp;
+        assert(winnerXp > 0 || (win1 > 0 ? pet1.level : pet2.level) > 1,
+               "Winner should have XP or levelled up");
+    });
+
+    it("Should reject battle between pets owned by the same address", async function () {
+        const { petCore, gameLogic } = await deployV2();
+        const testClient = await viem.getTestClient();
+        const [deployer] = await viem.getWalletClients();
+
+        // deployer (owner) creates and mints two pets to themselves
+        await petCore.write.createPet(["PetA", 1234567890123456n, 1], { account: deployer.account });
+        await petCore.write.mintTo([deployer.account.address, 1n], { account: deployer.account });
+        await petCore.write.createPet(["PetB", 9876543210987654n, 1], { account: deployer.account });
+        await petCore.write.mintTo([deployer.account.address, 2n], { account: deployer.account });
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
 
-        const hash = await gameLogic.write.attack([1n, 2n], { account: addr1.account });
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
-        assert.equal(receipt.status, "success");
-
-        const [, win1, loss1] = await petCore.read.getPetStats([1n]);
-        const [, win2, loss2] = await petCore.read.getPetStats([2n]);
-        assert.equal(win1 + loss1 + win2 + loss2, 2);
+        try {
+            await gameLogic.write.requestBattle([1n, 2n], { account: deployer.account });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Can't fight own pet"));
+        }
     });
 
     it("Should reject attack with a pet the caller doesn't own", async function () {
@@ -136,7 +193,8 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await testClient.mine({ blocks: 1 });
 
         try {
-            await gameLogic.write.attack([1n, 2n], { account: addr2.account });
+            // addr2 tries to requestBattle using pet 1 (owned by addr1)
+            await gameLogic.write.requestBattle([1n, 2n], { account: addr2.account });
             assert.fail("Expected revert");
         } catch (error: unknown) {
             assert((error as Error).message.includes("Not the owner of this pet"));
@@ -167,7 +225,6 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const { petCore } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
 
-        // addr1 is not an authorized caller or owner
         try {
             await petCore.write.createPet(["Hacked", 12345n, 5], { account: addr1.account });
             assert.fail("Expected revert");
@@ -208,5 +265,40 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
 
         assert.equal(await petCore.read.totalPets(), 3n);
         assert.equal(await petCore.read.balanceOf([addr1.account.address]), 2n);
+    });
+
+    it("Should cancel a pending battle request before fulfillment", async function () {
+        const { petCore, gameLogic } = await deployV2();
+        const publicClient = await viem.getPublicClient();
+        const testClient   = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await petCore.write.createRandom(["Mine"],   { account: addr1.account });
+        await petCore.write.createRandom(["Theirs"], { account: addr2.account });
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const reqHash = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const reqLogs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: reqReceipt.logs,
+            eventName: "BattleRandomnessRequested",
+            strict: false
+        });
+        const requestId = reqLogs[0].args.requestId;
+
+        // Pets are locked
+        assert.equal(await gameLogic.read.petBattleRequestId([1n]), requestId);
+
+        // Cancel frees the lock
+        await gameLogic.write.cancelBattle([requestId], { account: addr1.account });
+        assert.equal(await gameLogic.read.petBattleRequestId([1n]), 0n);
+
+        // Pets can now be re-requested
+        const reqHash2 = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
+        const rec2 = await publicClient.waitForTransactionReceipt({ hash: reqHash2 });
+        assert.equal(rec2.status, "success");
     });
 });
