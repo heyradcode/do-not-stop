@@ -32,7 +32,12 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         uint256 petId1,
         uint256 petId2
     );
-    event BreedSettled(address indexed owner, uint256 indexed childId, uint256 indexed requestId);
+    event BreedSettled(
+        address indexed owner,
+        uint256 indexed childId,
+        uint256 indexed requestId,
+        address studFeePaidTo // zero for same-owner breeds (plan §4.4)
+    );
 
     event BattleRandomnessRequested(
         address indexed requester,
@@ -63,6 +68,8 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         string  name;
         uint256 vrfSeed;
         bool    fulfilled;
+        uint256 studFee;    // escrowed at request time; 0 for same-owner breeds (plan §4.4)
+        address otherOwner; // recipient of studFee at settle; address(0) for same-owner breeds
     }
 
     struct PendingBattle {
@@ -100,8 +107,12 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     mapping(uint256 => PendingBattle)  private s_battleRequests;
     mapping(uint256 => uint256)        public  petBattleRequestId;
 
-    // Reserve 37 slots: 11 declared above + 37 gap = 48 total.
-    uint256[37] private __gap;
+    // Stud fees owed to the non-initiating owner of a cross-owner breed (plan §4.4),
+    // released as a pull payment via withdrawStudFees().
+    mapping(address => uint256)        public  pendingStudFees;
+
+    // Reserve 36 slots: 12 declared above (through pendingStudFees) + 36 gap = 48 total.
+    uint256[36] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
 
@@ -246,9 +257,25 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     ) external payable whenNotPaused returns (uint256 requestId) {
         uint256 nameLen = bytes(name_).length;
         require(nameLen > 0 && nameLen <= gameConfig.maxNameLength(), "Invalid name length");
-        require(msg.value >= gameConfig.breedFee(), "Insufficient breed fee");
-        require(petCore.ownerOf(petId1) == msg.sender, "Not owner of first pet");
-        require(petCore.ownerOf(petId2) == msg.sender, "Not owner of second pet");
+
+        address owner1 = petCore.ownerOf(petId1);
+        address owner2 = petCore.ownerOf(petId2);
+
+        uint256 studFeeAmount;
+        address otherOwner;
+
+        if (owner1 == owner2) {
+            require(owner1 == msg.sender, "Not owner of both pets");
+            require(msg.value >= gameConfig.breedFee(), "Insufficient breed fee");
+        } else {
+            // Cross-owner breeding requires an active marriage (plan §4.4).
+            require(owner1 == msg.sender || owner2 == msg.sender, "Caller must own one of the pets");
+            require(petCore.isMarriageValid(petId1, petId2), "Pets are not married");
+            studFeeAmount = gameConfig.studFee();
+            otherOwner    = (owner1 == msg.sender) ? owner2 : owner1;
+            require(msg.value >= gameConfig.breedFee() + studFeeAmount, "Insufficient breed/stud fee");
+        }
+
         _validateBreedPair(petId1, petId2);
         require(
             petBreedRequestId[petId1] == 0 && petBreedRequestId[petId2] == 0,
@@ -261,12 +288,14 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         petBreedRequestId[petId1]  = requestId;
         petBreedRequestId[petId2]  = requestId;
         s_breedRequests[requestId] = BreedRequest({
-            owner:     msg.sender,
-            petId1:    petId1,
-            petId2:    petId2,
-            name:      name_,
-            vrfSeed:   0,
-            fulfilled: false
+            owner:      msg.sender,
+            petId1:     petId1,
+            petId2:     petId2,
+            name:       name_,
+            vrfSeed:    0,
+            fulfilled:  false,
+            studFee:    studFeeAmount,
+            otherOwner: otherOwner
         });
 
         emit BreedRandomnessRequested(msg.sender, requestId, petId1, petId2);
@@ -299,11 +328,16 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         petCore.incrementBreedCount(p.petId1);
         petCore.incrementBreedCount(p.petId2);
 
+        // Stud fee was escrowed at request time; release it as a pull payment now (plan §4.4).
+        if (p.studFee > 0) {
+            pendingStudFees[p.otherOwner] += p.studFee;
+        }
+
         petBreedRequestId[p.petId1] = 0;
         petBreedRequestId[p.petId2] = 0;
         delete s_breedRequests[requestId];
 
-        emit BreedSettled(p.owner, childId, requestId);
+        emit BreedSettled(p.owner, childId, requestId, p.otherOwner);
     }
 
     function cancelBreed(uint256 requestId) external {
@@ -319,6 +353,21 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         petBreedRequestId[p.petId2] = 0;
         delete s_requestTypes[requestId];
         delete s_breedRequests[requestId];
+
+        // No breed, no stud fee — refund the escrowed amount (plan §4.4).
+        if (p.studFee > 0) {
+            (bool ok, ) = payable(p.owner).call{value: p.studFee}("");
+            require(ok, "Stud fee refund failed");
+        }
+    }
+
+    // Pull payment for stud fees credited by cross-owner breed settlements (plan §4.4).
+    function withdrawStudFees() external {
+        uint256 amount = pendingStudFees[msg.sender];
+        require(amount > 0, "No stud fees to withdraw");
+        pendingStudFees[msg.sender] = 0;
+        (bool ok, ) = payable(msg.sender).call{value: amount}("");
+        require(ok, "Withdraw failed");
     }
 
     // ─── VRF callback ─────────────────────────────────────────────────────────

@@ -18,8 +18,13 @@ import "./GameLogicV1.sol";
  *
  *      Usage (TypeScript tests):
  *        1. Deploy VRFCoordinatorV2_5Mock, createSubscription, fundSubscription.
- *        2. Deploy this contract, passing (coordinator, subscriptionId).
- *        3. Call coordinator.addConsumer(subId, deployer.gameLogic).
+ *        2. Deploy a standalone GameLogicV1 (the proxy implementation).
+ *        3. Deploy this contract, passing (coordinator, subscriptionId, gameLogicImpl).
+ *        4. Call coordinator.addConsumer(subId, deployer.gameLogic).
+ *
+ *      GameLogicV1's implementation is deployed separately and passed in (rather than
+ *      `new GameLogicV1()` here) to keep this contract's own initcode under the
+ *      EIP-3860 limit — same reasoning as the pre-deployed VRF coordinator above.
  *
  *      Not for production — testnets use the Hardhat Ignition module with real coordinators.
  */
@@ -32,7 +37,7 @@ contract LocalCryptoPetsDeployerV2 {
     PetCoreV1    public immutable petCore;    // proxy, typed as impl for convenience
     GameLogicV1  public immutable gameLogic;  // proxy, typed as impl for convenience
 
-    constructor(address vrfCoordinator_, uint256 subscriptionId_) payable {
+    constructor(address vrfCoordinator_, uint256 subscriptionId_, address gameLogicImpl_) payable {
         address finalOwner = msg.sender;
         vrfCoordinator = vrfCoordinator_;
         subscriptionId = subscriptionId_;
@@ -54,7 +59,6 @@ contract LocalCryptoPetsDeployerV2 {
         petCore = PetCoreV1(address(petCoreProxy));
 
         // ── GameLogicV1 proxy — owner starts as address(this) for wiring ──────
-        GameLogicV1 gameLogicImpl = new GameLogicV1();
         bytes memory gameLogicInit = abi.encodeCall(
             GameLogicV1.initialize,
             (
@@ -67,7 +71,7 @@ contract LocalCryptoPetsDeployerV2 {
                 address(this)
             )
         );
-        ERC1967Proxy gameLogicProxy = new ERC1967Proxy(address(gameLogicImpl), gameLogicInit);
+        ERC1967Proxy gameLogicProxy = new ERC1967Proxy(gameLogicImpl_, gameLogicInit);
         gameLogic = GameLogicV1(address(gameLogicProxy));
 
         // ── wire up (deployer is still owner of both proxies here) ────────────

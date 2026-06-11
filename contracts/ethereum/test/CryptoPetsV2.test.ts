@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { network } from "hardhat";
-import { parseEventLogs } from "viem";
+import { decodeAbiParameters, parseEventLogs } from "viem";
 
 describe("CryptoPetsV2 (UUPS proxies)", async function () {
     const { viem } = await network.connect();
@@ -32,10 +32,15 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             value: 100_000_000_000_000_000_000n
         });
 
-        // Step 2: deploy the UUPS proxy stack
+        // Step 2: deploy GameLogicV1's implementation separately (keeps the
+        // deployer's own initcode under the EIP-3860 limit)
+        const gameLogicImpl = await viem.deployContract("GameLogicV1");
+
+        // Step 3: deploy the UUPS proxy stack
         const deployer = await viem.deployContract("LocalCryptoPetsDeployerV2", [
             vrf.address,
             subscriptionId,
+            gameLogicImpl.address,
         ]);
         const petCoreAddr   = await deployer.read.petCore();
         const gameLogicAddr = await deployer.read.gameLogic();
@@ -56,6 +61,19 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const baseMintFee = await config.read.baseMintFee();
         const fee         = baseMintFee * (1n + mintCount);
         await petCore.write.mintStarter([name], { account: wallet.account, value: fee });
+    }
+
+    // Hardhat sometimes can't infer a revert reason for early-require reverts (the
+    // `Error(string)` selector is buried in a nested `cause.data` instead of `message`).
+    // Walk the cause chain to find and decode it.
+    function decodeRevertReason(error: unknown): string {
+        let e: any = error;
+        while (e && !(typeof e.data === "string" && e.data.startsWith("0x08c379a0"))) {
+            e = e.cause;
+        }
+        assert(e, "Expected a revert with an Error(string) reason");
+        const [reason] = decodeAbiParameters([{ type: "string" }], `0x${e.data.slice(10)}`);
+        return reason as string;
     }
 
     it("Should set the correct name and symbol", async function () {
@@ -627,7 +645,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         }
     });
 
-    it("Should reject breeding when caller does not own the second parent", async function () {
+    it("Should reject breeding when caller does not own the second parent and pets are not married", async function () {
         const { petCore, gameLogic, config } = await deployV2();
         const testClient = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
@@ -646,7 +664,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             );
             assert.fail("Expected revert");
         } catch (error: unknown) {
-            assert((error as Error).message.includes("Not owner of second pet"));
+            assert((error as Error).message.includes("Pets are not married"));
         }
     });
 
@@ -994,5 +1012,192 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             0n,
             "stale dissolution should not apply marriageCooldown"
         );
+    });
+
+    it("Should breed cross-owner via an accepted marriage, paying breedFee + studFee", async function () {
+        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const publicClient = await viem.getPublicClient();
+        const testClient   = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Alice"); // pet 1
+        await mintStarter(petCore, config, addr2, "Bob");   // pet 2
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const breedFee = await config.read.breedFee();
+        const studFee  = await config.read.studFee();
+
+        const reqHash = await gameLogic.write.requestCreateFromDNA(
+            [1n, 2n, "Offspring"],
+            { account: addr1.account, value: breedFee + studFee }
+        );
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const reqLogs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: reqReceipt.logs,
+            eventName: "BreedRandomnessRequested",
+            strict: false
+        });
+        const requestId = reqLogs[0].args.requestId;
+
+        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], { account: addr1.account });
+
+        const settleHash = await gameLogic.write.settleBreed([requestId], { account: addr1.account });
+        const settleReceipt = await publicClient.waitForTransactionReceipt({ hash: settleHash });
+        const settleLogs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: settleReceipt.logs,
+            eventName: "BreedSettled",
+            strict: false
+        });
+        assert.equal(settleLogs[0].args.childId, 3n);
+        assert.equal(
+            (settleLogs[0].args.studFeePaidTo as string).toLowerCase(),
+            addr2.account.address.toLowerCase()
+        );
+
+        // Child mints to the caller (addr1), regardless of which parent it came from
+        assert.equal(
+            (await petCore.read.ownerOf([3n])).toLowerCase(),
+            addr1.account.address.toLowerCase()
+        );
+
+        // Stud fee is credited to the other parent's owner as a pull payment
+        assert.equal(await gameLogic.read.pendingStudFees([addr2.account.address]), studFee);
+    });
+
+    it("Should reject a cross-owner breed when msg.value does not cover breedFee + studFee", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const testClient = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Alice");
+        await mintStarter(petCore, config, addr2, "Bob");
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const breedFee = await config.read.breedFee();
+
+        try {
+            await gameLogic.write.requestCreateFromDNA(
+                [1n, 2n, "Offspring"],
+                { account: addr1.account, value: breedFee } // missing studFee
+            );
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Insufficient breed/stud fee"));
+        }
+    });
+
+    it("Should refund the escrowed stud fee when a cross-owner breed request is cancelled", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const publicClient = await viem.getPublicClient();
+        const testClient   = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Alice");
+        await mintStarter(petCore, config, addr2, "Bob");
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const breedFee = await config.read.breedFee();
+        const studFee  = await config.read.studFee();
+
+        const reqHash = await gameLogic.write.requestCreateFromDNA(
+            [1n, 2n, "Offspring"],
+            { account: addr1.account, value: breedFee + studFee }
+        );
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const reqLogs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: reqReceipt.logs,
+            eventName: "BreedRandomnessRequested",
+            strict: false
+        });
+        const requestId = reqLogs[0].args.requestId;
+
+        const contractBalanceBefore = await publicClient.getBalance({ address: gameLogic.address });
+
+        await gameLogic.write.cancelBreed([requestId], { account: addr1.account });
+
+        const contractBalanceAfter = await publicClient.getBalance({ address: gameLogic.address });
+        assert.equal(contractBalanceBefore - contractBalanceAfter, studFee);
+
+        // No breed, no stud fee — nothing credited to the other owner
+        assert.equal(await gameLogic.read.pendingStudFees([addr2.account.address]), 0n);
+
+        // Parents are freed and can be re-requested
+        assert.equal(await gameLogic.read.petBreedRequestId([1n]), 0n);
+        assert.equal(await gameLogic.read.petBreedRequestId([2n]), 0n);
+    });
+
+    it("Should let an owner withdraw credited stud fees via withdrawStudFees", async function () {
+        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const publicClient = await viem.getPublicClient();
+        const testClient   = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Alice");
+        await mintStarter(petCore, config, addr2, "Bob");
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const breedFee = await config.read.breedFee();
+        const studFee  = await config.read.studFee();
+
+        const reqHash = await gameLogic.write.requestCreateFromDNA(
+            [1n, 2n, "Offspring"],
+            { account: addr1.account, value: breedFee + studFee }
+        );
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const reqLogs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: reqReceipt.logs,
+            eventName: "BreedRandomnessRequested",
+            strict: false
+        });
+        const requestId = reqLogs[0].args.requestId;
+
+        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], { account: addr1.account });
+        await gameLogic.write.settleBreed([requestId], { account: addr1.account });
+
+        assert.equal(await gameLogic.read.pendingStudFees([addr2.account.address]), studFee);
+
+        const contractBalanceBefore = await publicClient.getBalance({ address: gameLogic.address });
+
+        await gameLogic.write.withdrawStudFees({ account: addr2.account });
+
+        const contractBalanceAfter = await publicClient.getBalance({ address: gameLogic.address });
+        assert.equal(contractBalanceBefore - contractBalanceAfter, studFee);
+        assert.equal(await gameLogic.read.pendingStudFees([addr2.account.address]), 0n);
+    });
+
+    it("Should reject withdrawStudFees when nothing is owed", async function () {
+        const { gameLogic } = await deployV2();
+        const [, addr1] = await viem.getWalletClients();
+
+        try {
+            await gameLogic.write.withdrawStudFees({ account: addr1.account });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert.equal(decodeRevertReason(error), "No stud fees to withdraw");
+        }
     });
 });
