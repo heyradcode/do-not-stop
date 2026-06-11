@@ -59,6 +59,13 @@ func (s *Server) Serve(ctx context.Context, addr string) error {
 func (s *Server) StreamLiveBattles(req *pb.StreamRequest, stream grpc.ServerStreamingServer[pb.BattleEvent]) error {
 	ctx := stream.Context()
 
+	// grpc-go defers response headers until the first Send, so an idle stream
+	// (no replay cursor, no battles yet) would leave the subscriber without a
+	// connection ack. Flush headers now so clients can log "connected".
+	if err := stream.SendHeader(nil); err != nil {
+		return err
+	}
+
 	// Subscribe before replaying so nothing settles in the gap between the
 	// two; the version dedupe below absorbs the overlap instead.
 	live, cancel := s.bus.Subscribe()

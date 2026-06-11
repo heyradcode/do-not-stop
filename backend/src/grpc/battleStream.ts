@@ -106,8 +106,11 @@ function connect(): void {
         scheduleReconnect(reason);
     };
 
+    stream.on('metadata', () => {
+        attempt = 0;
+        console.log(`[battle-stream] connected to ${env.indexerGrpc.addr}`);
+    });
     stream.on('data', (wire: BattleEventWire) => {
-        attempt = 0; // a delivered event proves the link is healthy
         record(wire);
     });
     stream.on('error', (err: Error) => onDone(err.message));
