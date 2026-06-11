@@ -233,7 +233,15 @@ type wsNotification struct {
 	Params struct {
 		Result json.RawMessage `json:"result"`
 	} `json:"params"`
+	// Subscription request/response frames (no method): id matches the
+	// subscribe call, result is the subscription id, error a rejection.
+	ID     int             `json:"id"`
+	Result json.RawMessage `json:"result"`
+	Error  *rpcError       `json:"error"`
 }
+
+// subNames maps subscribe request ids to what was requested (see subscribe).
+var subNames = map[int]string{1: "programSubscribe", 2: "logsSubscribe"}
 
 func (ix *Indexer) handleMessage(
 	ctx context.Context,
@@ -242,8 +250,21 @@ func (ix *Indexer) handleMessage(
 	battles chan<- indexer.BattleEvent,
 ) {
 	var note wsNotification
-	if err := json.Unmarshal(msg, &note); err != nil || note.Method == "" {
-		return // subscription confirmation or unknown frame
+	if err := json.Unmarshal(msg, &note); err != nil {
+		return // unknown frame
+	}
+	if note.Method == "" {
+		name := subNames[note.ID]
+		switch {
+		case name == "":
+			// unrelated frame
+		case note.Error != nil:
+			slog.Error("solana subscription rejected — no live feed, reconcile scan only",
+				"sub", name, "code", note.Error.Code, "err", note.Error.Message)
+		default:
+			slog.Info("solana subscription confirmed", "sub", name, "subscription_id", string(note.Result))
+		}
+		return
 	}
 
 	switch note.Method {
@@ -279,6 +300,8 @@ func (ix *Indexer) handleProgramNotification(
 		return
 	}
 	update.Version = payload.Context.Slot
+	slog.Info("solana live update",
+		"pet", update.PetID, "owner", update.Owner, "level", update.Level, "slot", update.Version)
 	select {
 	case <-ctx.Done():
 	case roster <- update:
@@ -313,6 +336,8 @@ func (ix *Indexer) handleLogsNotification(
 	now := time.Now().Unix()
 	for _, r := range parseBattleResults(payload.Value.Logs) {
 		event := r.toBattleEvent(payload.Value.Signature, payload.Context.Slot, now)
+		slog.Info("solana live battle",
+			"battle", event.BattleID, "winner", event.WinnerPetID, "slot", event.Version)
 		select {
 		case <-ctx.Done():
 			return
