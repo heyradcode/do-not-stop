@@ -52,6 +52,8 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         uint32  xpLoss
     );
 
+    event Trained(uint256 indexed petId, uint32 xpGained, uint32 newXp, uint32 newLevel);
+
     // ─── structs ──────────────────────────────────────────────────────────────
 
     struct BreedRequest {
@@ -273,12 +275,16 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         PetCoreV1.Pet memory p1 = petCore.getPet(p.petId1);
         PetCoreV1.Pet memory p2 = petCore.getPet(p.petId2);
 
+        uint8 gen = (p1.generation > p2.generation ? p1.generation : p2.generation) + 1;
+        require(gen <= gameConfig.generationCap(), "Generation cap reached");
+
         uint256 childDna = _mixDna(p1.dna, p2.dna, p.vrfSeed);
         uint8   rarity   = _inheritRarity(p1.rarity, p2.rarity, childDna, p.vrfSeed);
-        uint8   gen      = (p1.generation > p2.generation ? p1.generation : p2.generation) + 1;
 
         uint256 childId = petCore.createPet(p.name, childDna, rarity, gen, p.petId1, p.petId2);
         petCore.mintTo(p.owner, childId);
+        // Override the default battle cooldown with the newborn lockout (plan §4.2).
+        petCore.setCooldown(childId, gameConfig.newbornCooldown());
 
         uint256 cd1 = _breedCooldownFor(p1.breedCount);
         uint256 cd2 = _breedCooldownFor(p2.breedCount);
@@ -330,6 +336,25 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
             s_breedRequests[requestId].fulfilled   = true;
         }
         // Unknown requestId → ignore (coordinator may retry; no revert to avoid blocking)
+    }
+
+    // ─── training ─────────────────────────────────────────────────────────────
+
+    // Pay a level-scaled fee for a flat XP grant; once per trainCooldown (plan §3.4).
+    // trainFee(L) = baseFee × (100 + 2·L) / 100  → 1× at L1, ~3× at L100.
+    function train(uint256 petId) external payable whenNotPaused onlyPetOwner(petId) {
+        require(petCore.isTrainReady(petId), "Train cooldown active");
+
+        PetCoreV1.Pet memory p = petCore.getPet(petId);
+        uint256 scaledFee = gameConfig.trainFee() * (100 + 2 * uint256(p.level)) / 100;
+        require(msg.value >= scaledFee, "Insufficient train fee");
+
+        petCore.triggerTrainCooldown(petId);
+        petCore.addXp(petId, gameConfig.trainXp());
+
+        // Re-read to get updated xp and level after addXp auto-levels.
+        PetCoreV1.Pet memory after_ = petCore.getPet(petId);
+        emit Trained(petId, gameConfig.trainXp(), after_.xp, after_.level);
     }
 
     // ─── admin ────────────────────────────────────────────────────────────────

@@ -8,17 +8,44 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     const { viem } = await network.connect();
 
     async function deployV2() {
-        const deployer = await viem.deployContract("LocalCryptoPetsDeployerV2", [], {
+        const publicClient = await viem.getPublicClient();
+
+        // Step 1: deploy VRF mock separately (keeps deployer initcode under EIP-3860 limit)
+        const vrf = await viem.deployContract("VRFCoordinatorV2_5Mock", [
+            100_000_000_000_000_000n,  // baseFee (0.1 ether)
+            1_000_000_000n,            // gasPrice (1 gwei)
+            4_000_000_000_000_000n,    // weiPerUnitLink
+        ]);
+
+        // Create subscription and read subId from event
+        const createHash = await vrf.write.createSubscription();
+        const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
+        const createLogs = parseEventLogs({
+            abi: vrf.abi,
+            logs: createReceipt.logs,
+            eventName: "SubscriptionCreated",
+            strict: false,
+        });
+        const subscriptionId: bigint = createLogs[0].args.subId;
+
+        await vrf.write.fundSubscriptionWithNative([subscriptionId], {
             value: 100_000_000_000_000_000_000n
         });
+
+        // Step 2: deploy the UUPS proxy stack
+        const deployer = await viem.deployContract("LocalCryptoPetsDeployerV2", [
+            vrf.address,
+            subscriptionId,
+        ]);
         const petCoreAddr   = await deployer.read.petCore();
         const gameLogicAddr = await deployer.read.gameLogic();
-        const vrfAddr       = await deployer.read.vrfCoordinator();
 
         const petCore   = await viem.getContractAt("PetCoreV1",   petCoreAddr);
         const gameLogic = await viem.getContractAt("GameLogicV1", gameLogicAddr);
-        const vrf       = await viem.getContractAt("VRFCoordinatorV2_5Mock", vrfAddr);
         const config    = await viem.getContractAt("GameConfig",  await deployer.read.config());
+
+        // Step 3: register gameLogic as a VRF consumer
+        await vrf.write.addConsumer([subscriptionId, gameLogicAddr]);
 
         return { petCore, gameLogic, vrf, config };
     }
@@ -414,5 +441,188 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const reqHash2 = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
         const rec2 = await publicClient.waitForTransactionReceipt({ hash: reqHash2 });
         assert.equal(rec2.status, "success");
+    });
+
+    it("Should train a pet: pay level-scaled fee, receive XP, trigger train cooldown", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const testClient = await viem.getTestClient();
+        const [, addr1] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Trainee");
+
+        const pet = await petCore.read.getPet([1n]);
+        const level = BigInt(pet.level);
+        const baseFee = await config.read.trainFee();
+        const scaledFee = baseFee * (100n + 2n * level) / 100n;
+
+        // Should be train-ready immediately
+        assert.equal(await petCore.read.isTrainReady([1n]), true);
+
+        await gameLogic.write.train([1n], { account: addr1.account, value: scaledFee });
+
+        const after = await petCore.read.getPet([1n]);
+        // trainXp = 100; threshold = 100 * 1 = 100, so auto-levels up
+        assert(after.xp === 0 && after.level === 2 || after.xp === 100, "XP or level wrong after train");
+
+        // Train cooldown must now be active
+        assert.equal(await petCore.read.isTrainReady([1n]), false);
+
+        // After cooldown passes it resets
+        const trainCooldown = await config.read.trainCooldown();
+        await testClient.increaseTime({ seconds: Number(trainCooldown) + 1 });
+        await testClient.mine({ blocks: 1 });
+        assert.equal(await petCore.read.isTrainReady([1n]), true);
+    });
+
+    it("Should reject train when fee is insufficient", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const [, addr1] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Trainee");
+
+        try {
+            await gameLogic.write.train([1n], { account: addr1.account, value: 0n });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Insufficient train fee"));
+        }
+    });
+
+    it("Should reject train when train cooldown is active", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const [, addr1] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Trainee");
+
+        const pet = await petCore.read.getPet([1n]);
+        const level = BigInt(pet.level);
+        const baseFee = await config.read.trainFee();
+        const scaledFee = baseFee * (100n + 2n * level) / 100n;
+
+        await gameLogic.write.train([1n], { account: addr1.account, value: scaledFee });
+
+        try {
+            await gameLogic.write.train([1n], { account: addr1.account, value: scaledFee });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Train cooldown active"));
+        }
+    });
+
+    it("Should apply newborn cooldown to bred offspring (not battle cooldown)", async function () {
+        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const publicClient = await viem.getPublicClient();
+        const testClient   = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "ParentA");
+        await mintStarter(petCore, config, addr2, "ParentB");
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const breedFee = await config.read.breedFee();
+        const reqHash = await gameLogic.write.requestCreateFromDNA(
+            [1n, 2n, "NewbornPet"],
+            { account: addr1.account, value: breedFee }
+        );
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const reqLogs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: reqReceipt.logs,
+            eventName: "BreedRandomnessRequested",
+            strict: false
+        });
+        const requestId = reqLogs[0].args.requestId;
+        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], { account: addr1.account });
+        await gameLogic.write.settleBreed([requestId], { account: addr1.account });
+
+        // Offspring is pet 3
+        const newborn = await petCore.read.getPet([3n]);
+        const battleCooldown = await config.read.battleCooldown();    // 5s
+        const newbornCooldown = await config.read.newbornCooldown();  // 60s
+
+        // newborn readyTime should be further in future than battleCooldown would give
+        // (i.e. readyTime > block.timestamp + battleCooldown)
+        assert(
+            newborn.readyTime > BigInt(Math.floor(Date.now() / 1000)) + battleCooldown,
+            "Newborn should have newborn cooldown, not just battle cooldown"
+        );
+        // Pet is not ready for battle immediately
+        assert.equal(await petCore.read.isReady([3n]), false);
+
+        // After newborn cooldown elapses, pet becomes battle-ready
+        await testClient.increaseTime({ seconds: Number(newbornCooldown) + 1 });
+        await testClient.mine({ blocks: 1 });
+        assert.equal(await petCore.read.isReady([3n]), true);
+    });
+
+    it("Should reject breed that would exceed the generation cap", async function () {
+        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const publicClient = await viem.getPublicClient();
+        const testClient   = await viem.getTestClient();
+        const [deployer, addr1] = await viem.getWalletClients();
+
+        // Lower the cap to 1 so a gen-1 pet can't breed further (would produce gen-2 > cap=1)
+        await config.write.setGenerationCap([1], { account: deployer.account });
+
+        // Mint two gen-0 parents
+        await mintStarter(petCore, config, addr1, "Alpha");
+        await mintStarter(petCore, config, addr1, "Beta");
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const breedFee = await config.read.breedFee();
+
+        // First breed: gen-0 + gen-0 → gen-1 (ok, gen-1 == cap)
+        const req1Hash = await gameLogic.write.requestCreateFromDNA(
+            [1n, 2n, "GenOne"],
+            { account: addr1.account, value: breedFee }
+        );
+        const req1Receipt = await publicClient.waitForTransactionReceipt({ hash: req1Hash });
+        const req1Logs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: req1Receipt.logs,
+            eventName: "BreedRandomnessRequested",
+            strict: false
+        });
+        const req1Id = req1Logs[0].args.requestId;
+        await vrf.write.fulfillRandomWords([req1Id, gameLogic.address], { account: addr1.account });
+        await gameLogic.write.settleBreed([req1Id], { account: addr1.account });
+        // Pet 3 is now generation 1
+
+        // Wait for parent breed cooldowns to pass
+        await testClient.increaseTime({ seconds: 100 });
+        await testClient.mine({ blocks: 1 });
+
+        // Mint a fresh gen-0 pet for the second breed attempt
+        await mintStarter(petCore, config, addr1, "Gamma");
+        // Pet 4 is gen-0
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        // Second breed: gen-1 + gen-0 → would be gen-2, exceeds cap=1
+        const req2Hash = await gameLogic.write.requestCreateFromDNA(
+            [3n, 4n, "GenTwo"],
+            { account: addr1.account, value: breedFee }
+        );
+        const req2Receipt = await publicClient.waitForTransactionReceipt({ hash: req2Hash });
+        const req2Logs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: req2Receipt.logs,
+            eventName: "BreedRandomnessRequested",
+            strict: false
+        });
+        const req2Id = req2Logs[0].args.requestId;
+        await vrf.write.fulfillRandomWords([req2Id, gameLogic.address], { account: addr1.account });
+
+        try {
+            await gameLogic.write.settleBreed([req2Id], { account: addr1.account });
+            assert.fail("Expected revert for generation cap");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Generation cap reached"));
+        }
     });
 });

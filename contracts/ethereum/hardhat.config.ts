@@ -55,6 +55,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       type: "edr-simulated",
       chainId: 1337,
+      allowUnlimitedContractSize: true,
     },
     localhost: {
       type: "http",

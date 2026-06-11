@@ -12,29 +12,30 @@ import "./GameLogicV1.sol";
 /**
  * @title LocalCryptoPetsDeployerV2
  * @dev Single-transaction local deployer for the v2 UUPS proxy stack.
- *      Deploys VRF mock → GameConfig → CombatSimV1 → PetCoreV1 proxy → GameLogicV1 proxy.
- *      Ownership starts with address(this) so wiring calls succeed, then transfers to msg.sender.
+ *      Accepts a pre-deployed VRF coordinator and subscription so the heavy
+ *      VRFCoordinatorV2_5Mock bytecode does not inflate this contract's initcode
+ *      past the EIP-3860 limit.
+ *
+ *      Usage (TypeScript tests):
+ *        1. Deploy VRFCoordinatorV2_5Mock, createSubscription, fundSubscription.
+ *        2. Deploy this contract, passing (coordinator, subscriptionId).
+ *        3. Call coordinator.addConsumer(subId, deployer.gameLogic).
+ *
  *      Not for production — testnets use the Hardhat Ignition module with real coordinators.
  */
 contract LocalCryptoPetsDeployerV2 {
-    VRFCoordinatorV2_5Mock public immutable vrfCoordinator;
-    uint256                public immutable subscriptionId;
+    address    public immutable vrfCoordinator;
+    uint256    public immutable subscriptionId;
 
     GameConfig   public immutable config;
     CombatSimV1  public immutable combatSim;
     PetCoreV1    public immutable petCore;    // proxy, typed as impl for convenience
     GameLogicV1  public immutable gameLogic;  // proxy, typed as impl for convenience
 
-    constructor() payable {
+    constructor(address vrfCoordinator_, uint256 subscriptionId_) payable {
         address finalOwner = msg.sender;
-
-        // ── VRF mock ──────────────────────────────────────────────────────────
-        vrfCoordinator = new VRFCoordinatorV2_5Mock(
-            uint96(0.1 ether),
-            uint96(1 gwei),
-            int256(4e15)
-        );
-        subscriptionId = vrfCoordinator.createSubscription();
+        vrfCoordinator = vrfCoordinator_;
+        subscriptionId = subscriptionId_;
 
         // ── config & sim ──────────────────────────────────────────────────────
         config    = new GameConfig(address(this));
@@ -57,12 +58,12 @@ contract LocalCryptoPetsDeployerV2 {
         bytes memory gameLogicInit = abi.encodeCall(
             GameLogicV1.initialize,
             (
-                address(vrfCoordinator),
+                vrfCoordinator_,
                 address(petCore),
                 address(config),
-                subscriptionId,
+                subscriptionId_,
                 keyHash,
-                true,       // nativePayment
+                true,        // nativePayment
                 address(this)
             )
         );
@@ -71,10 +72,8 @@ contract LocalCryptoPetsDeployerV2 {
 
         // ── wire up (deployer is still owner of both proxies here) ────────────
         petCore.authorizeCaller(address(gameLogic));
-        vrfCoordinator.addConsumer(subscriptionId, address(gameLogic));
-        if (msg.value > 0) {
-            vrfCoordinator.fundSubscriptionWithNative{value: msg.value}(subscriptionId);
-        }
+        // addConsumer is called by the test after deployment so the coordinator
+        // reference is not needed here (avoids importing the mock interface).
 
         // ── hand off ownership to the EOA that deployed this contract ─────────
         petCore.transferOwnership(finalOwner);

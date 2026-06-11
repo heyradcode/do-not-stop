@@ -32,6 +32,7 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         uint8  generation;   // 0 = starter; N = N breeding events from starters
         uint8  breedCount;   // how many times this pet has been used for breeding
         uint32 breedReadyAt; // breed-specific cooldown (separate from battle, plan §4.1)
+        uint32 trainReadyAt; // train-specific cooldown (plan §3.4)
         uint256 parent1Id;   // 0 for gen-0 pets
         uint256 parent2Id;   // 0 for gen-0 pets
     }
@@ -124,6 +125,16 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         _pets[petId].breedReadyAt = uint32(block.timestamp + cooldownSeconds);
     }
 
+    // Override battle readyTime directly (used for newborn cooldown on bred pets).
+    function setCooldown(uint256 petId, uint256 cooldownSeconds) external onlyAuthorized entryExists(petId) {
+        _pets[petId].readyTime = uint32(block.timestamp + cooldownSeconds);
+    }
+
+    // Set the train-specific cooldown.
+    function triggerTrainCooldown(uint256 petId) external onlyAuthorized entryExists(petId) {
+        _pets[petId].trainReadyAt = uint32(block.timestamp + gameConfig.trainCooldown());
+    }
+
     function updateBattleStats(uint256 petId, bool won) external onlyAuthorized entryExists(petId) {
         if (won) { _pets[petId].winCount++; } else { _pets[petId].lossCount++; }
     }
@@ -213,6 +224,10 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         return block.timestamp >= _pets[petId].breedReadyAt;
     }
 
+    function isTrainReady(uint256 petId) external view entryExists(petId) returns (bool) {
+        return block.timestamp >= _pets[petId].trainReadyAt;
+    }
+
     function getPetStats(
         uint256 petId
     ) external view entryExists(petId) returns (uint32, uint16, uint16, uint8) {
@@ -269,17 +284,18 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         _petCount++;
         uint256 newId = _petCount;
         _pets[newId] = Pet({
-            name:       name_,
-            dna:        dna,
-            level:      1,
-            readyTime:  uint32(block.timestamp + gameConfig.battleCooldown()),
-            winCount:   0,
-            lossCount:  0,
+            name:         name_,
+            dna:          dna,
+            level:        1,
+            readyTime:    uint32(block.timestamp + gameConfig.battleCooldown()),
+            winCount:     0,
+            lossCount:    0,
             rarity:       rarity,
             xp:           0,
             generation:   generation,
             breedCount:   0,
-            breedReadyAt: 0,   // breed-ready immediately; updated by triggerBreedCooldown
+            breedReadyAt: 0,  // breed-ready immediately; updated by triggerBreedCooldown
+            trainReadyAt: 0,  // train-ready immediately
             parent1Id:    parent1Id,
             parent2Id:    parent2Id
         });
