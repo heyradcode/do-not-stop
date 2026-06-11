@@ -33,6 +33,7 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         uint8  breedCount;   // how many times this pet has been used for breeding
         uint32 breedReadyAt; // breed-specific cooldown (separate from battle, plan §4.1)
         uint32 trainReadyAt; // train-specific cooldown (plan §3.4)
+        uint16 speciesId;    // resolved at mint from DNA + rarity tier (plan §3.7)
         uint256 parent1Id;   // 0 for gen-0 pets
         uint256 parent2Id;   // 0 for gen-0 pets
     }
@@ -299,11 +300,20 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
             breedCount:   0,
             breedReadyAt: 0,  // breed-ready immediately; updated by triggerBreedCooldown
             trainReadyAt: 0,  // train-ready immediately
+            speciesId:    _resolveSpecies(dna, rarity),
             parent1Id:    parent1Id,
             parent2Id:    parent2Id
         });
         emit NewPet(newId, name_, dna, rarity);
         return newId;
+    }
+
+    // Resolves a pet's species from its DNA digit pair 6 and rarity-tier pool size (plan §3.7).
+    // Stored once at mint so later pool growth doesn't re-species existing pets.
+    function _resolveSpecies(uint256 dna, uint8 rarity) private view returns (uint16) {
+        uint8 poolSize = gameConfig.poolSizes(rarity);
+        if (poolSize == 0) return 0;
+        return uint16(DnaLib.digitPair(dna, 6) % poolSize);
     }
 
     function _requireValidName(string memory name_) private view {

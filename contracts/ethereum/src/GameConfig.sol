@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "./CombatSimV1.sol";
+
 /**
  * @title GameConfig
  * @dev Single source of truth for all tunables. Not behind a proxy — upgrading the
@@ -28,6 +30,19 @@ contract GameConfig is Ownable {
 
     address public combatSim;
 
+    // Species pool sizes per rarity tier (1-5); speciesId = digitPair % poolSizes[rarity] (§3.7).
+    mapping(uint8 => uint8) public poolSizes;
+
+    // Skill archetype balance values, passed to CombatSimV1.simulate() (§3.7).
+    uint16 public tankHpMult       = 120;  // Tank: ×/100 HP
+    uint16 public shellDefMult     = 125;  // Shell: ×/100 DEF
+    uint16 public swiftCritBonus   = 50;   // Swift: + bps to crit base
+    uint16 public cunningCritCap   = 4000; // Cunning: crit cap bps
+    uint16 public furyDmgMult      = 130;  // Fury: ×/100 dmg when triggered
+    uint16 public furyHpThreshold  = 3000; // Fury: trigger threshold, bps of startHP
+    uint16 public sageMdefMult     = 125;  // Sage: ×/100 MDEF
+    uint16 public bloodlustBps     = 150;  // Bloodlust: bps of physical dmg healed
+
     event LevelUpFeeUpdated(uint256 fee);
     event BreedFeeUpdated(uint256 fee);
     event BaseMintFeeUpdated(uint256 fee);
@@ -40,8 +55,21 @@ contract GameConfig is Ownable {
     event MaxLevelUpdated(uint32 level);
     event LevelBandWidthUpdated(uint32 width);
     event CombatSimUpdated(address sim);
+    event PoolSizeUpdated(uint8 tier, uint8 size);
+    event TankHpMultUpdated(uint16 value);
+    event ShellDefMultUpdated(uint16 value);
+    event SwiftCritBonusUpdated(uint16 value);
+    event CunningCritCapUpdated(uint16 value);
+    event FuryDmgMultUpdated(uint16 value);
+    event FuryHpThresholdUpdated(uint16 value);
+    event SageMdefMultUpdated(uint16 value);
+    event BloodlustBpsUpdated(uint16 value);
 
-    constructor(address initialOwner) Ownable(initialOwner) {}
+    constructor(address initialOwner) Ownable(initialOwner) {
+        for (uint8 t = 1; t <= 5; t++) {
+            poolSizes[t] = 8;
+        }
+    }
 
     function setLevelUpFee(uint256 fee) external onlyOwner {
         levelUpFee = fee;
@@ -104,5 +132,66 @@ contract GameConfig is Ownable {
         require(sim != address(0), "Zero address");
         combatSim = sim;
         emit CombatSimUpdated(sim);
+    }
+
+    function setPoolSize(uint8 tier, uint8 size) external onlyOwner {
+        require(tier >= 1 && tier <= 5, "Invalid tier");
+        poolSizes[tier] = size;
+        emit PoolSizeUpdated(tier, size);
+    }
+
+    function setTankHpMult(uint16 value) external onlyOwner {
+        tankHpMult = value;
+        emit TankHpMultUpdated(value);
+    }
+
+    function setShellDefMult(uint16 value) external onlyOwner {
+        shellDefMult = value;
+        emit ShellDefMultUpdated(value);
+    }
+
+    function setSwiftCritBonus(uint16 value) external onlyOwner {
+        swiftCritBonus = value;
+        emit SwiftCritBonusUpdated(value);
+    }
+
+    function setCunningCritCap(uint16 value) external onlyOwner {
+        cunningCritCap = value;
+        emit CunningCritCapUpdated(value);
+    }
+
+    function setFuryDmgMult(uint16 value) external onlyOwner {
+        furyDmgMult = value;
+        emit FuryDmgMultUpdated(value);
+    }
+
+    function setFuryHpThreshold(uint16 value) external onlyOwner {
+        furyHpThreshold = value;
+        emit FuryHpThresholdUpdated(value);
+    }
+
+    function setSageMdefMult(uint16 value) external onlyOwner {
+        sageMdefMult = value;
+        emit SageMdefMultUpdated(value);
+    }
+
+    function setBloodlustBps(uint16 value) external onlyOwner {
+        bloodlustBps = value;
+        emit BloodlustBpsUpdated(value);
+    }
+
+    // ─── views ────────────────────────────────────────────────────────────────
+
+    function getSkillConfig() external view returns (CombatSimV1.SkillConfig memory) {
+        return CombatSimV1.SkillConfig({
+            tankHpMult:      tankHpMult,
+            shellDefMult:    shellDefMult,
+            swiftCritBonus:  swiftCritBonus,
+            cunningCritCap:  cunningCritCap,
+            furyDmgMult:     furyDmgMult,
+            furyHpThreshold: furyHpThreshold,
+            sageMdefMult:    sageMdefMult,
+            bloodlustBps:    bloodlustBps
+        });
     }
 }

@@ -181,10 +181,14 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         PetCoreV1.Pet memory p1 = petCore.getPet(pending.petId1);
         PetCoreV1.Pet memory p2 = petCore.getPet(pending.petId2);
 
+        uint8 skill1 = uint8(p1.speciesId % 8);
+        uint8 skill2 = uint8(p2.speciesId % 8);
+
         CombatSimV1.BattleResult memory sim = CombatSimV1(gameConfig.combatSim()).simulate(
-            p1.dna, p1.rarity, p1.level,
-            p2.dna, p2.rarity, p2.level,
-            pending.vrfSeed
+            p1.dna, p1.rarity, p1.level, skill1,
+            p2.dna, p2.rarity, p2.level, skill2,
+            pending.vrfSeed,
+            gameConfig.getSkillConfig()
         );
 
         uint256 winnerId    = sim.firstWins ? pending.petId1 : pending.petId2;

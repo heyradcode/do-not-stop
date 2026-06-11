@@ -715,4 +715,93 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(still.level, 2, "Level must not exceed maxLevel");
         assert.equal(still.xp, 0, "XP should not accumulate past cap");
     });
+
+    it("Should resolve and store speciesId at mint from DNA digit-pair 6 and the rarity pool size", async function () {
+        const { petCore, config } = await deployV2();
+        const [, addr1] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Speciesy");
+        const pet = await petCore.read.getPet([1n]);
+
+        const poolSize = await config.read.poolSizes([pet.rarity]);
+        const expected = ((pet.dna / (10n ** 12n)) % 100n) % BigInt(poolSize);
+        assert.equal(pet.speciesId, Number(expected));
+    });
+
+    it("Should default poolSizes to 8 for tiers 1-5 and store speciesId as 0 when a pool size is 0", async function () {
+        const { petCore, config } = await deployV2();
+        const [deployer, addr1] = await viem.getWalletClients();
+
+        for (let tier = 1; tier <= 5; tier++) {
+            assert.equal(await config.read.poolSizes([tier]), 8, `tier ${tier} should default to 8`);
+            await config.write.setPoolSize([tier, 0], { account: deployer.account });
+        }
+
+        await mintStarter(petCore, config, addr1, "NoSpecies");
+        const pet = await petCore.read.getPet([1n]);
+        assert.equal(pet.speciesId, 0, "speciesId should be 0 when the rarity tier's pool size is 0");
+    });
+
+    it("Should expose default skill config values via getSkillConfig()", async function () {
+        const { config } = await deployV2();
+        const sc = await config.read.getSkillConfig();
+
+        assert.equal(sc.tankHpMult, 120);
+        assert.equal(sc.shellDefMult, 125);
+        assert.equal(sc.swiftCritBonus, 50);
+        assert.equal(sc.cunningCritCap, 4000);
+        assert.equal(sc.furyDmgMult, 130);
+        assert.equal(sc.furyHpThreshold, 3000);
+        assert.equal(sc.sageMdefMult, 125);
+        assert.equal(sc.bloodlustBps, 150);
+    });
+
+    it("Should apply the Tank skill's pre-battle HP bonus in CombatSimV1.simulate", async function () {
+        const { config } = await deployV2();
+        const combatSim = await viem.getContractAt("CombatSimV1", await config.read.combatSim());
+        const sc = await config.read.getSkillConfig();
+
+        const dna1 = 1234567890123456n; // level-50 attacker, far stronger than dna2
+        const dna2 = 9876543210987654n; // level-1 defender
+        const seed = 42n;
+        const NO_SKILL = 99; // sentinel: matches none of the 0-7 archetype branches
+
+        const withTank = await combatSim.read.simulate([
+            dna1, 1, 50, 0,        // pet1: rarity 1, level 50, Tank
+            dna2, 1, 1, NO_SKILL,  // pet2: rarity 1, level 1, no skill
+            seed, sc,
+        ]);
+        const withoutTank = await combatSim.read.simulate([
+            dna1, 1, 50, NO_SKILL,
+            dna2, 1, 1, NO_SKILL,
+            seed, sc,
+        ]);
+
+        assert.equal(withTank.firstWins, true, "pet1 should win regardless of Tank");
+        assert.equal(withoutTank.firstWins, true, "pet1 should win regardless of Tank");
+        assert(
+            withTank.winnerHpRemaining > withoutTank.winnerHpRemaining,
+            "Tank's +20% starting HP should leave more HP remaining after an identical fight"
+        );
+    });
+
+    it("Should run CombatSimV1.simulate without reverting for every skill archetype (0-7)", async function () {
+        const { config } = await deployV2();
+        const combatSim = await viem.getContractAt("CombatSimV1", await config.read.combatSim());
+        const sc = await config.read.getSkillConfig();
+
+        const dna1 = 1234567890123456n;
+        const dna2 = 9876543210987654n;
+
+        for (let skill = 0; skill < 8; skill++) {
+            const result = await combatSim.read.simulate([
+                dna1, 3, 20, skill,
+                dna2, 3, 20, skill,
+                BigInt(skill) + 1n,
+                sc,
+            ]);
+            assert(result.rounds >= 1 && result.rounds <= 30, `skill ${skill}: rounds in range`);
+            assert(result.winnerHpRemaining <= 65535, `skill ${skill}: winnerHpRemaining within uint16`);
+        }
+    });
 });
