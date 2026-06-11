@@ -52,11 +52,19 @@ This starts:
 do-not-stop/
 ├── frontend/           # React + Vite frontend
 ├── backend/            # Node.js + Express + TypeScript
+├── indexer-go/         # Go cross-chain indexer (see indexer-go/README.md)
+├── proto/              # gRPC contract shared by indexer-go and backend
 ├── contracts/
 │   ├── ethereum/       # Hardhat + Solidity contracts
 │   └── solana/         # Anchor + Rust + Docker
 └── scripts/            # Deployment automation
 ```
+
+The Go indexer mirrors the backend's `RosterIndexer` (EVM subgraph polling +
+Solana WebSocket push) into `pet_roster`/`battle_history`, and streams settled
+battles to the backend over gRPC (`StreamLiveBattles`). Build/test/runbook:
+`indexer-go/README.md`. It is optional in local dev — the Node indexers cover
+everything until promotion.
 
 ## Development Workflow
 

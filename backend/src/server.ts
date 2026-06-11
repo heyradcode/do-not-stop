@@ -2,7 +2,7 @@ import './register-path-aliases';
 import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import app from './app';
-import { startIndexers, stopIndexers } from '@indexer';
+import { startBattleStream, stopBattleStream } from './grpc/battleStream';
 
 const server = app.listen(env.port, () => {
     const { port } = env;
@@ -12,8 +12,8 @@ const server = app.listen(env.port, () => {
     console.log(`🛡️  Protected endpoints: http://localhost:${port}/api/protected`);
     console.log(`⚔️  GraphQL endpoint: http://localhost:${port}/graphql`);
 
-    // Background roster indexer (PvP matchmaking). No-op unless a chain is configured.
-    startIndexers();
+    // indexer-go battle push (chain-truth settles). No-op unless INDEXER_GRPC_ADDR is set.
+    startBattleStream();
 });
 
 /** Force-exit deadline: don't let a stuck connection block the orchestrator forever. */
@@ -37,7 +37,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     }, SHUTDOWN_TIMEOUT_MS);
     forceExit.unref(); // don't let the failsafe itself keep the process alive
 
-    stopIndexers();
+    stopBattleStream();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
 

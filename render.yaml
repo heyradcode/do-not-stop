@@ -29,3 +29,28 @@ services:
         value: "0"
       - key: JWT_SECRET
         generateValue: true
+
+  # indexer-go: unified cross-chain indexer (see indexer-go/README.md).
+  # Deployed as a web service (not a worker) so it stays on the free plan —
+  # /healthz answers Render's checks and /metrics rides the same port via the
+  # PORT env convention. Trade-off: free web services sleep when idle; the
+  # reconnect/backfill machinery is designed to recover the gap on wake, and
+  # the Node indexers remain the source of truth until promotion anyway.
+  #
+  # gRPC (StreamLiveBattles / roster reads) between the two services needs
+  # private networking; if unavailable on this plan, leave INDEXER_GRPC_ADDR
+  # unset on the API service — indexing still works, the database is the
+  # contract. Set the connection env vars in the dashboard:
+  #   DATABASE_URL, EVM_SUBGRAPH_URL, SOLANA_WS_URL, SOLANA_RPC_URL,
+  #   SOLANA_PROGRAM_ID — and at promotion: ROSTER_CACHE_ENABLED=true.
+  - type: web
+    name: do-not-stop-indexer
+    runtime: go
+    plan: free
+    rootDir: indexer-go
+    buildCommand: go build -o bin/indexer ./cmd/indexer
+    startCommand: ./bin/indexer
+    healthCheckPath: /healthz
+    envVars:
+      - key: LOG_FORMAT
+        value: json

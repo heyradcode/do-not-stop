@@ -1,4 +1,5 @@
 import { prisma } from '@config/prisma';
+import { tryGrpcFindReadyOpponents } from '../grpc/rosterReads';
 import type { Chain } from '@typings/chain';
 
 /**
@@ -59,10 +60,17 @@ export async function countByChain(chain: Chain): Promise<number> {
 /**
  * Battle-ready opponents the caller does not own: off cooldown
  * (`readyAt <= now`), excluding `excludeOwner`, optionally above a level, paged.
+ *
+ * With ROSTER_READ_SOURCE=grpc this is answered from indexer-go's RAM cache
+ * first (taking the hottest read off the connection-limited Postgres); any
+ * gRPC failure silently falls back to the Prisma query below — fail-open.
  */
 export async function findReadyOpponents(
     params: FindOpponentsParams
 ): Promise<{ rows: RosterPet[]; total: number }> {
+    const viaGrpc = await tryGrpcFindReadyOpponents(params);
+    if (viaGrpc) return viaGrpc;
+
     const nowSeconds = Math.floor(Date.now() / 1000);
     const where = {
         chain: params.chain,

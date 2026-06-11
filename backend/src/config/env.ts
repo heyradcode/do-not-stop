@@ -18,8 +18,6 @@ function requireEnv(name: string): string {
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const isProduction = nodeEnv === 'production';
 const parsedPort = Number(process.env.PORT);
-const parsedIndexerInterval = Number(process.env.INDEXER_INTERVAL_MS);
-
 export const env = {
     nodeEnv,
     isProduction,
@@ -36,34 +34,6 @@ export const env = {
 
     /** Comma-separated allowed CORS origins; unset = allow all (local dev). */
     corsOrigin: process.env.CORS_ORIGIN,
-
-    /** Background roster indexer (PvP matchmaking) — see src/indexer. */
-    indexer: {
-        /** Set INDEXER_ENABLED=false to turn the background indexer off. */
-        enabled: (process.env.INDEXER_ENABLED ?? 'true').toLowerCase() !== 'false',
-        /** Poll interval for EVM incremental sync and Solana backfill (ms). */
-        intervalMs:
-            Number.isFinite(parsedIndexerInterval) && parsedIndexerInterval > 0
-                ? parsedIndexerInterval
-                : 60_000,
-        /** EVM subgraph query endpoint (`SUBGRAPH_URL` is a legacy alias). */
-        evmSubgraphUrl:
-            process.env.SUBGRAPH_URL_EVM?.trim() || process.env.SUBGRAPH_URL?.trim() || undefined,
-    },
-
-    /**
-     * Solana indexing via Helius (RPC reconciliation scan + push webhook). All
-     * optional — Solana indexing is a no-op unless `heliusRpcUrl` and
-     * `programId` are both set.
-     */
-    solana: {
-        /** Full Helius RPC URL incl. `?api-key=`, e.g. https://devnet.helius-rpc.com/?api-key=<key>. */
-        heliusRpcUrl: process.env.HELIUS_RPC_URL?.trim() || undefined,
-        /** CryptoPets program id (base58). */
-        programId: process.env.SOLANA_PROGRAM_ID?.trim() || undefined,
-        /** Shared secret Helius sends in the webhook `Authorization` header. */
-        webhookSecret: process.env.HELIUS_WEBHOOK_SECRET?.trim() || undefined,
-    },
 
     /**
      * AI battle dialogue (see AI_BATTLE_DIALOGUE.md), via the Hugging Face
@@ -87,13 +57,24 @@ export const env = {
     redis: {
         url: process.env.REDIS_URL?.trim() || undefined,
     },
-} as const;
 
-// In production the webhook must not be left open: if Solana indexing is on, the
-// shared secret is mandatory so POST /api/webhooks/helius can reject forged calls.
-if (env.isProduction && env.solana.heliusRpcUrl && !env.solana.webhookSecret) {
-    throw new Error(
-        'HELIUS_WEBHOOK_SECRET is required in production when HELIUS_RPC_URL is set ' +
-            '(secures POST /api/webhooks/helius).'
-    );
-}
+    /**
+     * indexer-go gRPC link (StreamLiveBattles — chain-truth battle pushes).
+     * Optional: unset = feature off, the webhook/poll paths still work.
+     */
+    indexerGrpc: {
+        /** e.g. localhost:50051. */
+        addr: process.env.INDEXER_GRPC_ADDR?.trim() || undefined,
+        /** Path to the shared proto contract (defaults to ../proto from the backend dir). */
+        protoPath: process.env.INDEXER_PROTO_PATH?.trim() || undefined,
+    },
+
+    /**
+     * Where roster reads (matchmaking) are answered: 'grpc' = indexer-go's
+     * RAM cache with automatic Prisma fallback; 'postgres' (default) = Prisma
+     * only. The instant kill switch for the milestone 8 read path — flip back
+     * without redeploying indexer-go.
+     */
+    rosterReadSource:
+        process.env.ROSTER_READ_SOURCE?.trim().toLowerCase() === 'grpc' ? 'grpc' : 'postgres',
+} as const;
