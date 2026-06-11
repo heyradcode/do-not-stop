@@ -10,7 +10,7 @@ dataSources:
     source:
       address: "0xd68c951132fda610062a03252d303f80cdb2379f"
       abi: CryptoPets
-      startBlock: 0
+      startBlock: 10913782
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -37,7 +37,7 @@ dataSources:
     source:
       address: "0x80285786f8850aa3e57b07d037c741635eb84f9f"
       abi: Battle
-      startBlock: 0
+      startBlock: 10913782
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -61,7 +61,7 @@ dataSources:
     source:
       address: "0xa0855fa0c495f2991af824c80f499e2c1ce0a5de"
       abi: Inventory
-      startBlock: 0
+      startBlock: 10913782
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
