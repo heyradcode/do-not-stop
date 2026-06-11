@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/joho/godotenv"
+
 	"github.com/radcrew/do-not-stop/indexer-go/internal/battlebus"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/cache"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/config"
@@ -30,6 +32,7 @@ var scanOnce = flag.Bool("scan-once", false,
 	"run one full roster scan per configured chain, write it, and exit (ops/backfill — the Go `index:once`)")
 
 func main() {
+	_ = godotenv.Load() // no-op if .env is absent
 	flag.Parse()
 	if err := run(); err != nil {
 		slog.Error("fatal", "err", err)
