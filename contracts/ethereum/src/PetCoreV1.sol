@@ -19,6 +19,9 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     event PetLevelUp(uint256 indexed petId, uint32 newLevel);
     event PetNameChanged(uint256 indexed petId, string newName);
     event PetTransferred(uint256 indexed tokenId, address from, address to);
+    event MarriageProposed(uint256 indexed petIdA, uint256 indexed petIdB);
+    event MarriageAccepted(uint256 indexed petIdA, uint256 indexed petIdB);
+    event MarriageDissolved(uint256 indexed petIdA, uint256 indexed petIdB, string reason);
 
     struct Pet {
         string name;
@@ -38,6 +41,21 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         uint256 parent2Id;   // 0 for gen-0 pets
     }
 
+    // Marriage record (plan §4.4): written for both pets at accept time (mutual).
+    // ownerSnapshot is that pet's owner when consent was given; a transfer makes
+    // the marriage lazily stale (checked at breed time / clearStaleMarriage).
+    struct MarriageRecord {
+        uint256 spouseId;
+        address ownerSnapshot;
+    }
+
+    // Pending proposal from petIdA → petIdB, stored keyed by petIdA.
+    struct MarriageProposalData {
+        uint256 petIdB;
+        address proposer;
+        uint256 expiry;
+    }
+
     uint256 public constant DNA_DIGITS  = 16;
     uint256 public constant DNA_MODULUS = 10 ** DNA_DIGITS;
     uint256 public constant NAME_CHANGE_LEVEL = 2;
@@ -48,8 +66,12 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     GameConfig                public  gameConfig;
     mapping(address => uint256) public walletMintCount; // total lifetime mints per wallet
 
-    // Reserve 44 slots: 5 declared above (through walletMintCount) + 44 gap = 49 for PetCoreV1's scope.
-    uint256[44] private __gap;
+    mapping(uint256 => MarriageRecord)        public marriageOf;
+    mapping(uint256 => MarriageProposalData)  public marriageProposal;     // keyed by petIdA
+    mapping(uint256 => uint256)               public marriageCooldownUntil; // petId => timestamp
+
+    // Reserve 41 slots: 8 declared above (through marriageCooldownUntil) + 41 gap = 49 for PetCoreV1's scope.
+    uint256[41] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
 
@@ -202,6 +224,117 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         _requireValidName(newName_);
         _pets[tokenId].name = newName_;
         emit PetNameChanged(tokenId, newName_);
+    }
+
+    // ─── marriage system (plan §4.4) ─────────────────────────────────────────
+
+    // Caller owns petIdA and proposes a mutual marriage with petIdB (different owner).
+    // Overwrites any expired proposal from petIdA; a live (unexpired) proposal blocks a new one.
+    function proposeMarriage(
+        uint256 petIdA,
+        uint256 petIdB
+    ) external whenNotPaused onlyPetOwner(petIdA) entryExists(petIdB) {
+        require(petIdA != petIdB, "Cannot marry self");
+        require(ownerOf(petIdA) != ownerOf(petIdB), "Same owner doesn't need marriage");
+        require(marriageOf[petIdA].spouseId == 0, "petIdA already married");
+        require(marriageOf[petIdB].spouseId == 0, "petIdB already married");
+        require(block.timestamp >= marriageCooldownUntil[petIdA], "petIdA marriage cooldown active");
+        require(block.timestamp >= marriageCooldownUntil[petIdB], "petIdB marriage cooldown active");
+
+        Pet storage a = _pets[petIdA];
+        Pet storage b = _pets[petIdB];
+        require(
+            a.parent1Id != petIdB && a.parent2Id != petIdB &&
+            b.parent1Id != petIdA && b.parent2Id != petIdA,
+            "Incest: cannot marry parent/child"
+        );
+
+        MarriageProposalData storage existing = marriageProposal[petIdA];
+        require(
+            existing.proposer == address(0) || block.timestamp > existing.expiry,
+            "Pending proposal exists"
+        );
+
+        marriageProposal[petIdA] = MarriageProposalData({
+            petIdB:   petIdB,
+            proposer: msg.sender,
+            expiry:   block.timestamp + gameConfig.proposalTTL()
+        });
+        emit MarriageProposed(petIdA, petIdB);
+    }
+
+    // Caller owns petIdB and accepts a matching, unexpired proposal from petIdA.
+    // Re-checks that the stored proposer still owns petIdA (propose-then-sell guard).
+    function acceptMarriage(
+        uint256 petIdA,
+        uint256 petIdB
+    ) external whenNotPaused onlyPetOwner(petIdB) entryExists(petIdA) {
+        MarriageProposalData memory prop = marriageProposal[petIdA];
+        require(prop.petIdB == petIdB, "No matching proposal");
+        require(block.timestamp <= prop.expiry, "Proposal expired");
+        require(ownerOf(petIdA) == prop.proposer, "Proposer no longer owns petIdA");
+        require(marriageOf[petIdA].spouseId == 0, "petIdA already married");
+        require(marriageOf[petIdB].spouseId == 0, "petIdB already married");
+
+        marriageOf[petIdA] = MarriageRecord({ spouseId: petIdB, ownerSnapshot: ownerOf(petIdA) });
+        marriageOf[petIdB] = MarriageRecord({ spouseId: petIdA, ownerSnapshot: ownerOf(petIdB) });
+        delete marriageProposal[petIdA];
+
+        emit MarriageAccepted(petIdA, petIdB);
+    }
+
+    // Proposer withdraws a pending proposal at any time (live or expired).
+    function cancelProposal(uint256 petIdA) external whenNotPaused {
+        require(marriageProposal[petIdA].proposer == msg.sender, "Not the proposer");
+        delete marriageProposal[petIdA];
+    }
+
+    // Either spouse's owner dissolves the marriage immediately. Both pets enter
+    // marriageCooldown before either can marry again (prevents propose/divorce spam).
+    function divorce(uint256 petId) external whenNotPaused entryExists(petId) {
+        require(ownerOf(petId) == msg.sender, "Not the owner of this pet");
+        uint256 spouseId = marriageOf[petId].spouseId;
+        require(spouseId != 0, "Not married");
+
+        uint256 cooldownUntil = block.timestamp + gameConfig.marriageCooldown();
+        marriageCooldownUntil[petId]    = cooldownUntil;
+        marriageCooldownUntil[spouseId] = cooldownUntil;
+
+        delete marriageOf[petId];
+        delete marriageOf[spouseId];
+
+        emit MarriageDissolved(petId, spouseId, "divorce");
+    }
+
+    // Permissionless cleanup: either pet's owner has changed since the marriage was
+    // accepted, invalidating consent. No marriageCooldown penalty for stale dissolution.
+    function clearStaleMarriage(
+        uint256 petIdA,
+        uint256 petIdB
+    ) external entryExists(petIdA) entryExists(petIdB) {
+        MarriageRecord memory recA = marriageOf[petIdA];
+        require(recA.spouseId == petIdB, "Not married to each other");
+        MarriageRecord memory recB = marriageOf[petIdB];
+
+        require(
+            recA.ownerSnapshot != ownerOf(petIdA) || recB.ownerSnapshot != ownerOf(petIdB),
+            "Marriage is not stale"
+        );
+
+        delete marriageOf[petIdA];
+        delete marriageOf[petIdB];
+
+        emit MarriageDissolved(petIdA, petIdB, "stale");
+    }
+
+    // True if petIdA and petIdB hold mutual, still-valid marriage records
+    // (owner snapshots still match current owners).
+    function isMarriageValid(uint256 petIdA, uint256 petIdB) external view returns (bool) {
+        MarriageRecord memory recA = marriageOf[petIdA];
+        if (recA.spouseId != petIdB) return false;
+        MarriageRecord memory recB = marriageOf[petIdB];
+        if (recB.spouseId != petIdA) return false;
+        return recA.ownerSnapshot == ownerOf(petIdA) && recB.ownerSnapshot == ownerOf(petIdB);
     }
 
     function withdraw() external onlyOwner {

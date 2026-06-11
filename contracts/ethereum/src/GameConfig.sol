@@ -28,6 +28,10 @@ contract GameConfig is Ownable {
     uint32  public maxLevel            = 100;         // hard cap; no XP/level-up beyond this (§3.4)
     uint32  public levelBandWidth      = 100;         // ±N level gap allowed for battle (§3.4 dev: 100=off, prod: 10)
 
+    uint256 public studFee             = 0.001 ether; // cross-owner breed: payer → other parent's owner (§4.4)
+    uint256 public marriageCooldown    = 60 seconds;  // lockout after divorce/stale (§5 dev: 60s, prod: 24h)
+    uint256 public proposalTTL         = 60 seconds;  // marriage proposal expiry (§5 dev: 60s, prod: 7 days)
+
     address public combatSim;
 
     // Species pool sizes per rarity tier (1-5); speciesId = digitPair % poolSizes[rarity] (§3.7).
@@ -54,6 +58,9 @@ contract GameConfig is Ownable {
     event TrainXpUpdated(uint32 xp);
     event MaxLevelUpdated(uint32 level);
     event LevelBandWidthUpdated(uint32 width);
+    event StudFeeUpdated(uint256 fee);
+    event MarriageCooldownUpdated(uint256 cooldown);
+    event ProposalTTLUpdated(uint256 ttl);
     event CombatSimUpdated(address sim);
     event PoolSizeUpdated(uint8 tier, uint8 size);
     event TankHpMultUpdated(uint16 value);
@@ -126,6 +133,21 @@ contract GameConfig is Ownable {
     function setLevelBandWidth(uint32 width) external onlyOwner {
         levelBandWidth = width;
         emit LevelBandWidthUpdated(width);
+    }
+
+    function setStudFee(uint256 fee) external onlyOwner {
+        studFee = fee;
+        emit StudFeeUpdated(fee);
+    }
+
+    function setMarriageCooldown(uint256 cooldown) external onlyOwner {
+        marriageCooldown = cooldown;
+        emit MarriageCooldownUpdated(cooldown);
+    }
+
+    function setProposalTTL(uint256 ttl) external onlyOwner {
+        proposalTTL = ttl;
+        emit ProposalTTLUpdated(ttl);
     }
 
     function setCombatSim(address sim) external onlyOwner {

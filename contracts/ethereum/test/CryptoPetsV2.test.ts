@@ -804,4 +804,195 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             assert(result.winnerHpRemaining <= 65535, `skill ${skill}: winnerHpRemaining within uint16`);
         }
     });
+
+    const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+    it("Should propose and accept a marriage between cross-owner pets", async function () {
+        const { petCore, config } = await deployV2();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Alice"); // pet 1
+        await mintStarter(petCore, config, addr2, "Bob");   // pet 2
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        const [propPetIdB, propProposer] = await petCore.read.marriageProposal([1n]);
+        assert.equal(propPetIdB, 2n);
+        assert.equal(propProposer.toLowerCase(), addr1.account.address.toLowerCase());
+
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        const [spouseA, ownerSnapshotA] = await petCore.read.marriageOf([1n]);
+        const [spouseB, ownerSnapshotB] = await petCore.read.marriageOf([2n]);
+        assert.equal(spouseA, 2n);
+        assert.equal(spouseB, 1n);
+        assert.equal(ownerSnapshotA.toLowerCase(), addr1.account.address.toLowerCase());
+        assert.equal(ownerSnapshotB.toLowerCase(), addr2.account.address.toLowerCase());
+        assert.equal(await petCore.read.isMarriageValid([1n, 2n]), true);
+
+        const [, propAfterProposer] = await petCore.read.marriageProposal([1n]);
+        assert.equal(propAfterProposer, ZERO_ADDRESS, "proposal should be cleared after acceptance");
+    });
+
+    it("Should reject proposeMarriage when both pets share the same owner", async function () {
+        const { petCore, config } = await deployV2();
+        const [, addr1] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "A");
+        await mintStarter(petCore, config, addr1, "B");
+
+        try {
+            await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Same owner doesn't need marriage"));
+        }
+    });
+
+    it("Should allow the proposer to cancel a pending marriage proposal", async function () {
+        const { petCore, config } = await deployV2();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "A");
+        await mintStarter(petCore, config, addr2, "B");
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.cancelProposal([1n], { account: addr1.account });
+
+        const [, propProposer] = await petCore.read.marriageProposal([1n]);
+        assert.equal(propProposer, ZERO_ADDRESS);
+
+        try {
+            await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("No matching proposal"));
+        }
+    });
+
+    it("Should reject acceptMarriage if the proposer transferred away petIdA (propose-then-sell guard)", async function () {
+        const { petCore, config } = await deployV2();
+        const [, addr1, addr2, addr3] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "A");
+        await mintStarter(petCore, config, addr2, "B");
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+
+        await petCore.write.transferFrom(
+            [addr1.account.address, addr3.account.address, 1n],
+            { account: addr1.account }
+        );
+
+        try {
+            await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Proposer no longer owns petIdA"));
+        }
+    });
+
+    it("Should reject proposeMarriage between a pet and its own parent/child (incest guard)", async function () {
+        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const publicClient = await viem.getPublicClient();
+        const testClient   = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        // Breed pet 1 + pet 2 (both owned by addr1) -> pet 3 (child)
+        await mintStarter(petCore, config, addr1, "Parent1");
+        await mintStarter(petCore, config, addr1, "Parent2");
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const breedFee = await config.read.breedFee();
+        const reqHash = await gameLogic.write.requestCreateFromDNA(
+            [1n, 2n, "Child"],
+            { account: addr1.account, value: breedFee }
+        );
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const reqLogs = parseEventLogs({
+            abi: gameLogic.abi,
+            logs: reqReceipt.logs,
+            eventName: "BreedRandomnessRequested",
+            strict: false
+        });
+        const requestId = reqLogs[0].args.requestId;
+        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], { account: addr1.account });
+        await gameLogic.write.settleBreed([requestId], { account: addr1.account });
+        // Pet 3 is child of pet 1
+
+        // Transfer the child to addr2 so parent (pet 1) and child (pet 3) have different owners
+        await petCore.write.transferFrom(
+            [addr1.account.address, addr2.account.address, 3n],
+            { account: addr1.account }
+        );
+
+        try {
+            await petCore.write.proposeMarriage([1n, 3n], { account: addr1.account });
+            assert.fail("Expected incest guard revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Incest"));
+        }
+    });
+
+    it("Should divorce a marriage and apply marriageCooldown to both pets", async function () {
+        const { petCore, config } = await deployV2();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "A");
+        await mintStarter(petCore, config, addr2, "B");
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        await petCore.write.divorce([1n], { account: addr1.account });
+
+        const [spouseAAfter] = await petCore.read.marriageOf([1n]);
+        const [spouseBAfter] = await petCore.read.marriageOf([2n]);
+        assert.equal(spouseAAfter, 0n);
+        assert.equal(spouseBAfter, 0n);
+
+        const until1 = await petCore.read.marriageCooldownUntil([1n]);
+        const until2 = await petCore.read.marriageCooldownUntil([2n]);
+        assert(until1 > 0n && until2 > 0n, "marriageCooldownUntil should be set for both pets");
+
+        // Re-proposing immediately should fail due to the active cooldown
+        try {
+            await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("marriage cooldown active"));
+        }
+    });
+
+    it("Should clear a stale marriage after a transfer without applying marriageCooldown", async function () {
+        const { petCore, config } = await deployV2();
+        const [, addr1, addr2, addr3] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "A");
+        await mintStarter(petCore, config, addr2, "B");
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        // addr1 transfers pet 1 away, invalidating consent for the marriage
+        await petCore.write.transferFrom(
+            [addr1.account.address, addr3.account.address, 1n],
+            { account: addr1.account }
+        );
+
+        assert.equal(await petCore.read.isMarriageValid([1n, 2n]), false);
+
+        await petCore.write.clearStaleMarriage([1n, 2n], { account: addr3.account }); // permissionless
+
+        const [spouseAAfter] = await petCore.read.marriageOf([1n]);
+        const [spouseBAfter] = await petCore.read.marriageOf([2n]);
+        assert.equal(spouseAAfter, 0n);
+        assert.equal(spouseBAfter, 0n);
+        assert.equal(
+            await petCore.read.marriageCooldownUntil([1n]),
+            0n,
+            "stale dissolution should not apply marriageCooldown"
+        );
+    });
 });
