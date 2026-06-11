@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "./GameConfig.sol";
+import "./DnaLib.sol";
 
 /**
  * @title PetCoreV1
@@ -26,8 +27,13 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         uint32 readyTime;
         uint16 winCount;
         uint16 lossCount;
-        uint8 rarity;
-        uint32 xp;    // accumulated XP; auto-levels when >= 100 * level
+        uint8  rarity;
+        uint32 xp;           // XP toward next level; auto-levels at 100 * currentLevel
+        uint8  generation;   // 0 = starter; N = N breeding events from starters
+        uint8  breedCount;   // how many times this pet has been used for breeding
+        uint32 breedReadyAt; // breed-specific cooldown (separate from battle, plan §4.1)
+        uint256 parent1Id;   // 0 for gen-0 pets
+        uint256 parent2Id;   // 0 for gen-0 pets
     }
 
     uint256 public constant DNA_DIGITS  = 16;
@@ -35,12 +41,13 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     uint256 public constant NAME_CHANGE_LEVEL = 2;
 
     uint256 private _petCount;
-    mapping(uint256 => Pet) private _pets;
-    mapping(address => bool) public authorizedCallers;
-    GameConfig public gameConfig;
+    mapping(uint256 => Pet)   private _pets;
+    mapping(address => bool)  public  authorizedCallers;
+    GameConfig                public  gameConfig;
+    mapping(address => uint256) public walletMintCount; // total lifetime mints per wallet
 
-    // Reserve 45 slots: 5 declared above + 45 gap = 50 total for PetCoreV1's own scope.
-    uint256[45] private __gap;
+    // Reserve 44 slots: 5 declared above (through walletMintCount) + 44 gap = 49 for PetCoreV1's scope.
+    uint256[44] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
 
@@ -93,9 +100,12 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     function createPet(
         string memory name_,
         uint256 dna,
-        uint8 rarity
+        uint8 rarity,
+        uint8 generation,
+        uint256 parent1Id,
+        uint256 parent2Id
     ) external onlyAuthorized returns (uint256) {
-        return _createPet(name_, dna, rarity);
+        return _createPet(name_, dna, rarity, generation, parent1Id, parent2Id);
     }
 
     function mintTo(address to, uint256 tokenId) external onlyAuthorized {
@@ -104,6 +114,14 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
 
     function triggerCooldown(uint256 petId) external onlyAuthorized entryExists(petId) {
         _pets[petId].readyTime = uint32(block.timestamp + gameConfig.battleCooldown());
+    }
+
+    // Set the breed-specific cooldown (does NOT touch the battle readyTime).
+    function triggerBreedCooldown(
+        uint256 petId,
+        uint256 cooldownSeconds
+    ) external onlyAuthorized entryExists(petId) {
+        _pets[petId].breedReadyAt = uint32(block.timestamp + cooldownSeconds);
     }
 
     function updateBattleStats(uint256 petId, bool won) external onlyAuthorized entryExists(petId) {
@@ -115,7 +133,6 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         emit PetLevelUp(petId, _pets[petId].level);
     }
 
-    // Award XP from battle wins and auto-level when threshold (100 * level) is met.
     function addXp(uint256 petId, uint32 amount) external onlyAuthorized entryExists(petId) {
         Pet storage p = _pets[petId];
         p.xp += amount;
@@ -127,17 +144,28 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         }
     }
 
+    function incrementBreedCount(uint256 petId) external onlyAuthorized entryExists(petId) {
+        _pets[petId].breedCount++;
+    }
+
     // ─── user-facing functions ────────────────────────────────────────────────
 
-    function createRandom(string memory name_) external whenNotPaused {
+    // Gacha starter mint (Phase 3): replaces the one-per-wallet createRandom.
+    // Fee escalates with each mint from this wallet: baseMintFee * (1 + mintCount).
+    // Rarity is determined from DNA pair 7 (digits 14-15).
+    function mintStarter(string memory name_) external payable whenNotPaused {
         _requireValidName(name_);
-        require(balanceOf(msg.sender) == 0, "You already have a pet!");
+        uint256 mintCount = walletMintCount[msg.sender];
+        uint256 fee = gameConfig.baseMintFee() * (1 + mintCount);
+        require(msg.value >= fee, "Insufficient mint fee");
+        walletMintCount[msg.sender] = mintCount + 1;
 
         uint256 randDna = uint256(
-            keccak256(abi.encodePacked(name_, block.timestamp, block.prevrandao))
+            keccak256(abi.encodePacked(name_, block.timestamp, block.prevrandao, mintCount))
         ) % DNA_MODULUS;
-        // Phase-0 clamp: starter rarity forced to 1 until gacha mint (Phase 3).
-        uint256 newId = _createPet(name_, randDna, 1);
+        uint8 rarity = DnaLib.rarityFromDna(randDna);
+
+        uint256 newId = _createPet(name_, randDna, rarity, 0, 0, 0);
         _mint(msg.sender, newId);
     }
 
@@ -181,11 +209,22 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         return block.timestamp >= _pets[petId].readyTime;
     }
 
+    function isBreedReady(uint256 petId) external view entryExists(petId) returns (bool) {
+        return block.timestamp >= _pets[petId].breedReadyAt;
+    }
+
     function getPetStats(
         uint256 petId
     ) external view entryExists(petId) returns (uint32, uint16, uint16, uint8) {
         Pet memory p = _pets[petId];
         return (p.level, p.winCount, p.lossCount, p.rarity);
+    }
+
+    function getBreedInfo(
+        uint256 petId
+    ) external view entryExists(petId) returns (uint8 generation, uint8 breedCount, uint256 parent1Id, uint256 parent2Id) {
+        Pet memory p = _pets[petId];
+        return (p.generation, p.breedCount, p.parent1Id, p.parent2Id);
     }
 
     function getByOwner(address owner_) external view returns (uint256[] memory) {
@@ -211,7 +250,7 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         address to,
         uint256 tokenId
     ) internal override {
-        super._beforeTokenTransfer(from, to, tokenId); // pause check via ERC721PausableUpgradeable
+        super._beforeTokenTransfer(from, to, tokenId);
         if (from != address(0) && to != address(0)) {
             emit PetTransferred(tokenId, from, to);
         }
@@ -222,19 +261,27 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     function _createPet(
         string memory name_,
         uint256 dna,
-        uint8 rarity
+        uint8 rarity,
+        uint8 generation,
+        uint256 parent1Id,
+        uint256 parent2Id
     ) private returns (uint256) {
         _petCount++;
         uint256 newId = _petCount;
         _pets[newId] = Pet({
-            name:      name_,
-            dna:       dna,
-            level:     1,
-            readyTime: uint32(block.timestamp + gameConfig.battleCooldown()),
-            winCount:  0,
-            lossCount: 0,
-            rarity:    rarity,
-            xp:        0
+            name:       name_,
+            dna:        dna,
+            level:      1,
+            readyTime:  uint32(block.timestamp + gameConfig.battleCooldown()),
+            winCount:   0,
+            lossCount:  0,
+            rarity:       rarity,
+            xp:           0,
+            generation:   generation,
+            breedCount:   0,
+            breedReadyAt: 0,   // breed-ready immediately; updated by triggerBreedCooldown
+            parent1Id:    parent1Id,
+            parent2Id:    parent2Id
         });
         emit NewPet(newId, name_, dna, rarity);
         return newId;

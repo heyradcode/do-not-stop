@@ -10,17 +10,19 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  *      on the proxy. Owned by the same Safe/timelock that owns the proxies.
  */
 contract GameConfig is Ownable {
-    uint256 public levelUpFee      = 0.001 ether;
-    uint256 public breedFee        = 0.0005 ether;
-    uint256 public baseMintFee     = 0.001 ether;
-    uint256 public battleCooldown  = 5 seconds;
-    uint256 public maxNameLength   = 32;
+    uint256 public levelUpFee          = 0.001 ether;
+    uint256 public breedFee            = 0.0005 ether;
+    uint256 public baseMintFee         = 0.001 ether;
+    uint256 public battleCooldown      = 5 seconds;
+    uint256 public breedCooldownBase   = 5 seconds;   // doubles per breedCount (§3.3)
+    uint256 public maxNameLength       = 32;
 
     address public combatSim;
 
     event LevelUpFeeUpdated(uint256 fee);
     event BreedFeeUpdated(uint256 fee);
     event BaseMintFeeUpdated(uint256 fee);
+    event BreedCooldownBaseUpdated(uint256 cooldown);
     event CombatSimUpdated(address sim);
 
     constructor(address initialOwner) Ownable(initialOwner) {}
@@ -38,6 +40,11 @@ contract GameConfig is Ownable {
     function setBaseMintFee(uint256 fee) external onlyOwner {
         baseMintFee = fee;
         emit BaseMintFeeUpdated(fee);
+    }
+
+    function setBreedCooldownBase(uint256 cooldown) external onlyOwner {
+        breedCooldownBase = cooldown;
+        emit BreedCooldownBaseUpdated(cooldown);
     }
 
     function setCombatSim(address sim) external onlyOwner {
