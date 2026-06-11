@@ -94,10 +94,15 @@ func Handler() http.HandlerFunc {
 		writeLabelled(w, "indexer_last_version", "gauge",
 			"Last indexed source version per chain (slot / updatedAt)", lastVersion)
 
-		fmt.Fprintf(w, "# HELP indexer_cache_pets Pets held in the roster read cache\n# TYPE indexer_cache_pets gauge\nindexer_cache_pets %d\n", cacheSize.Load())
-		fmt.Fprintf(w, "# HELP indexer_cache_warm 1 when the read cache serves traffic\n# TYPE indexer_cache_warm gauge\nindexer_cache_warm %d\n", cacheWarm.Load())
-		fmt.Fprintf(w, "# HELP indexer_stream_subscribers Live StreamLiveBattles consumers\n# TYPE indexer_stream_subscribers gauge\nindexer_stream_subscribers %d\n", streamSubscribers.Load())
+		writeGauge(w, "indexer_cache_pets", "Pets held in the roster read cache", cacheSize.Load())
+		writeGauge(w, "indexer_cache_warm", "1 when the read cache serves traffic", cacheWarm.Load())
+		writeGauge(w, "indexer_stream_subscribers", "Live StreamLiveBattles consumers", streamSubscribers.Load())
 	}
+}
+
+// writeGauge writes a single unlabelled gauge value.
+func writeGauge(w http.ResponseWriter, name, help string, v int64) {
+	fmt.Fprintf(w, "# HELP %s %s\n# TYPE %s gauge\n%s %d\n", name, help, name, name, v)
 }
 
 func writeLabelled(w http.ResponseWriter, name, kind, help string, c *series) {

@@ -82,7 +82,7 @@ func (s *Server) StreamLiveBattles(req *pb.StreamRequest, stream grpc.ServerStre
 			return err
 		}
 		for _, e := range events {
-			if err := stream.Send(toProto(e)); err != nil {
+			if err := stream.Send(battleToProto(e)); err != nil {
 				return err
 			}
 			lastSent[e.Chain] = e.Version
@@ -106,7 +106,7 @@ func (s *Server) StreamLiveBattles(req *pb.StreamRequest, stream grpc.ServerStre
 			if seen, ok := lastSent[e.Chain]; ok && e.Version <= seen {
 				continue // already covered by replay
 			}
-			if err := stream.Send(toProto(e)); err != nil {
+			if err := stream.Send(battleToProto(e)); err != nil {
 				return err
 			}
 		}
@@ -170,7 +170,7 @@ func petToProto(u indexer.RosterUpdate) *pb.PetResponse {
 	}
 }
 
-func toProto(e indexer.BattleEvent) *pb.BattleEvent {
+func battleToProto(e indexer.BattleEvent) *pb.BattleEvent {
 	return &pb.BattleEvent{
 		Chain:       e.Chain,
 		BattleId:    e.BattleID,
