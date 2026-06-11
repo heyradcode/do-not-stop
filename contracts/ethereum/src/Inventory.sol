@@ -11,7 +11,6 @@ contract Inventory is Ownable {
     event NewPet(uint256 petId, string name, uint256 dna, uint8 rarity);
     event PetLevelUp(uint256 petId, uint32 newLevel);
     event PetNameChanged(uint256 petId, string newName);
-    event PetDnaChanged(uint256 petId, uint256 newDna);
 
     struct Pet {
         string name;
@@ -115,14 +114,6 @@ contract Inventory is Ownable {
     ) external onlyOwner entryExists(_petId) {
         _pets[_petId].name = _newName;
         emit PetNameChanged(_petId, _newName);
-    }
-
-    function changeDna(
-        uint256 _petId,
-        uint256 _newDna
-    ) external onlyOwner entryExists(_petId) {
-        _pets[_petId].dna = _newDna;
-        emit PetDnaChanged(_petId, _newDna);
     }
 
     function triggerCooldown(

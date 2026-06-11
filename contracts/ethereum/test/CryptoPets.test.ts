@@ -33,7 +33,6 @@ describe("CryptoPets", async function () {
 
         assert.equal(await cryptoPets.read.getTotalCount(), 1n);
         assert.equal(await cryptoPets.read.balanceOf([addr1.account.address]), 1n);
-        assert.equal(await cryptoPets.read.ownerPetCount([addr1.account.address]), 1n);
     });
 
     it("Should not allow creating multiple pets for same address", async function () {

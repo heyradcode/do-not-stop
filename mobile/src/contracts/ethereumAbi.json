@@ -380,7 +380,7 @@
     },
     {
       "inputs": [],
-      "name": "DNA_CHANGE_LEVEL",
+      "name": "LEVEL_UP_FEE",
       "outputs": [
         {
           "internalType": "uint256",
@@ -393,7 +393,7 @@
     },
     {
       "inputs": [],
-      "name": "LEVEL_UP_FEE",
+      "name": "MAX_NAME_LENGTH",
       "outputs": [
         {
           "internalType": "uint256",
@@ -521,24 +521,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "_tokenId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_newDna",
-          "type": "uint256"
-        }
-      ],
-      "name": "changeDna",
-      "outputs": [],
-      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -832,25 +814,6 @@
           "internalType": "address",
           "name": "",
           "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "ownerPetCount",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
         }
       ],
       "stateMutability": "view",

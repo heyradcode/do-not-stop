@@ -40,7 +40,6 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
     Breeding public breeding;
     Utils public utils;
 
-    mapping(address => uint256) public ownerPetCount;
     mapping(uint256 => PendingBreed) private s_breedRequests;
     /// @dev Non-zero while a VRF request including this pet is pending
     mapping(uint256 => uint256) public petBreedRequestId;
@@ -55,7 +54,6 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
 
     uint256 public constant LEVEL_UP_FEE = 0.001 ether;
     uint256 public constant NAME_CHANGE_LEVEL = 2;
-    uint256 public constant DNA_CHANGE_LEVEL = 20;
     uint256 public constant MAX_NAME_LENGTH = 32;
 
     constructor(
@@ -117,8 +115,6 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
         }
 
         if (to != address(0)) {
-            ownerPetCount[from]--;
-            ownerPetCount[to]++;
             emit PetTransferred(tokenId, from, to);
         }
 
@@ -139,7 +135,7 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
     }
 
     function createRandom(string memory _name) public validName(_name) {
-        require(ownerPetCount[msg.sender] == 0, "You already have a pet!");
+        require(balanceOf(msg.sender) == 0, "You already have a pet!");
 
         uint256 randDna = utils.generateRandomDna(_name);
         // Interim Phase-0 clamp (plan §6 EVM #9): force starter rarity to 1
@@ -149,7 +145,6 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
 
         uint256 newId = inventory.createPet(_name, randDna, rarity);
         _safeMint(msg.sender, newId);
-        ownerPetCount[msg.sender]++;
     }
 
     /**
@@ -216,7 +211,6 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
         // Use _mint, not _safeMint: a malicious/buggy ERC721Receiver could
         // otherwise revert this VRF callback and permanently burn the request.
         _mint(pending.owner, childId);
-        ownerPetCount[pending.owner]++;
 
         petBreedRequestId[pending.petId1] = 0;
         petBreedRequestId[pending.petId2] = 0;
@@ -251,17 +245,6 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
         validName(_newName)
     {
         inventory.changeName(_tokenId, _newName);
-    }
-
-    function changeDna(
-        uint256 _tokenId,
-        uint256 _newDna
-    )
-        public
-        onlyPetOwner(_tokenId)
-        aboveLevel(DNA_CHANGE_LEVEL, _tokenId)
-    {
-        inventory.changeDna(_tokenId, _newDna);
     }
 
     function getById(uint256 _tokenId)

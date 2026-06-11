@@ -80,6 +80,4 @@ dataSources:
           handler: handlePetLevelUp
         - event: PetNameChanged(uint256,string)
           handler: handlePetNameChanged
-        - event: PetDnaChanged(uint256,uint256)
-          handler: handlePetDnaChanged
       file: ./src/inventory.ts
