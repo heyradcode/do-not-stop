@@ -69,7 +69,11 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
 
         inventory = new Inventory();
         utils = new Utils();
-        battleLogic = new Battle(address(inventory), address(utils));
+        battleLogic = new Battle(
+            address(inventory),
+            address(utils),
+            address(this)
+        );
         breeding = new Breeding(
             address(inventory),
             address(utils),
@@ -210,7 +214,10 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
         emit BreedFulfilled(pending.owner, childId, requestId);
     }
 
-    function attack(uint256 _petId, uint256 _targetId) public {
+    function attack(uint256 _petId, uint256 _targetId)
+        public
+        onlyPetOwner(_petId)
+    {
         battleLogic.attack(_petId, _targetId);
     }
 
@@ -287,7 +294,7 @@ contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
         return result;
     }
 
-    function battle(uint256 _id1, uint256 _id2) public {
+    function battle(uint256 _id1, uint256 _id2) public onlyPetOwner(_id1) {
         battleLogic.fight(_id1, _id2);
     }
 

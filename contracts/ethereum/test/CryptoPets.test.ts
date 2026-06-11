@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 
 import { network } from "hardhat";
 import { parseEventLogs } from "viem";
-import { getTestClient } from "viem/actions";
 
 describe("CryptoPets", async function () {
     const { viem } = await network.connect();
@@ -99,10 +98,82 @@ describe("CryptoPets", async function () {
         }
     });
 
+    it("Should allow the owner to attack with their pet", async function () {
+        const { cryptoPets } = await deployCryptoPets();
+        const publicClient = await viem.getPublicClient();
+        const testClient = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await cryptoPets.write.createRandom(["Mine"], { account: addr1.account });
+        await cryptoPets.write.createRandom(["Theirs"], { account: addr2.account });
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const hash = await cryptoPets.write.attack([1n, 2n], {
+            account: addr1.account
+        });
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        assert.equal(receipt.status, "success");
+
+        const [, win1, loss1] = await cryptoPets.read.getStats([1n]);
+        const [, win2, loss2] = await cryptoPets.read.getStats([2n]);
+        assert.equal(win1 + loss1 + win2 + loss2, 2); // one result recorded on each side
+    });
+
+    it("Should reject attack with a pet the caller doesn't own", async function () {
+        const { cryptoPets } = await deployCryptoPets();
+        const testClient = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await cryptoPets.write.createRandom(["Mine"], { account: addr1.account });
+        await cryptoPets.write.createRandom(["Theirs"], { account: addr2.account });
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        try {
+            // addr2 tries to attack using addr1's pet
+            await cryptoPets.write.attack([1n, 2n], { account: addr2.account });
+            assert.fail("Expected transaction to revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Not the owner of this pet"));
+        }
+
+        try {
+            await cryptoPets.write.battle([1n, 2n], { account: addr2.account });
+            assert.fail("Expected transaction to revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Not the owner of this pet"));
+        }
+    });
+
+    it("Should reject direct calls to the Battle contract", async function () {
+        const { cryptoPets } = await deployCryptoPets();
+        const testClient = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await cryptoPets.write.createRandom(["Mine"], { account: addr1.account });
+        await cryptoPets.write.createRandom(["Theirs"], { account: addr2.account });
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        const battleAddr = await cryptoPets.read.battleLogic();
+        const battle = await viem.getContractAt("Battle", battleAddr);
+
+        try {
+            await battle.write.attack([2n, 1n], { account: addr2.account });
+            assert.fail("Expected transaction to revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Only gateway"));
+        }
+    });
+
     it("Should breed using Chainlink VRF mock", async function () {
         const { cryptoPets, vrf } = await deployCryptoPets();
         const publicClient = await viem.getPublicClient();
-        const testClient = getTestClient(publicClient);
+        const testClient = await viem.getTestClient();
 
         const [, addr1, addr2] = await viem.getWalletClients();
 

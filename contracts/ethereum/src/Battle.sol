@@ -6,7 +6,10 @@ import "./Utils.sol";
 
 /**
  * @title Battle
- * @dev PvP resolution; mutates Inventory via authorized calls
+ * @dev PvP resolution; mutates Inventory via authorized calls.
+ *      Callable only through the gateway (CryptoPets), which enforces pet
+ *      ownership — Inventory trusts this contract, so direct calls must not
+ *      bypass that check.
  */
 contract Battle {
     event FightResult(uint256 petId1, uint256 petId2, bool firstWins);
@@ -15,13 +18,20 @@ contract Battle {
 
     Inventory public inventory;
     Utils public utils;
+    address public immutable gateway;
 
-    constructor(address _inventory, address _utils) {
+    constructor(address _inventory, address _utils, address _gateway) {
         inventory = Inventory(_inventory);
         utils = Utils(_utils);
+        gateway = _gateway;
     }
 
-    function fight(uint256 _petId1, uint256 _petId2) external {
+    modifier onlyGateway() {
+        require(msg.sender == gateway, "Only gateway");
+        _;
+    }
+
+    function fight(uint256 _petId1, uint256 _petId2) external onlyGateway {
         require(
             _petId1 > 0 && _petId1 <= inventory.totalPets(),
             "First pet doesn't exist"
@@ -54,7 +64,7 @@ contract Battle {
         emit FightResult(_petId1, _petId2, firstWins);
     }
 
-    function attack(uint256 _petId, uint256 _targetId) external {
+    function attack(uint256 _petId, uint256 _targetId) external onlyGateway {
         require(
             _petId > 0 && _petId <= inventory.totalPets(),
             "Attacker doesn't exist"
