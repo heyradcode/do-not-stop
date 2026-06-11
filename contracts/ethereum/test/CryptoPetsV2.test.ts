@@ -286,6 +286,106 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(await petCore.read.totalPets(), 1n);
     });
 
+    it("Pause drill (GameLogicV1): blocks battle/breed/train but leaves withdrawals callable", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const [deployer, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "A"); // pet 1
+        await mintStarter(petCore, config, addr2, "B"); // pet 2
+
+        await gameLogic.write.pause({ account: deployer.account });
+
+        // Gameplay entry points are gated by whenNotPaused as the first modifier,
+        // so they revert with "Pausable: paused" regardless of cooldowns/fees.
+        try {
+            await gameLogic.write.train([1n], { account: addr1.account });
+            assert.fail("Expected revert while paused");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Pausable: paused"));
+        }
+
+        try {
+            await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
+            assert.fail("Expected revert while paused");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Pausable: paused"));
+        }
+
+        try {
+            await gameLogic.write.requestCreateFromDNA([1n, 2n, "X"], { account: addr1.account });
+            assert.fail("Expected revert while paused");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Pausable: paused"));
+        }
+
+        // Fee-exit paths must remain callable while paused (plan §4.3): neither
+        // withdraw() nor withdrawStudFees() carries whenNotPaused.
+        await gameLogic.write.withdraw({ account: deployer.account }); // does not revert
+
+        try {
+            await gameLogic.write.withdrawStudFees({ account: addr1.account });
+            assert.fail("Expected revert (nothing owed)");
+        } catch (error: unknown) {
+            // Reverts for its own reason ("nothing owed"), not because of the pause.
+            assert.equal(decodeRevertReason(error), "No stud fees to withdraw");
+        }
+
+        await gameLogic.write.unpause({ account: deployer.account });
+    });
+
+    it("Pause drill (PetCoreV1): blocks mint/levelUp/marriage/transfers but leaves withdraw callable", async function () {
+        const { petCore, config } = await deployV2();
+        const [deployer, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "A"); // pet 1
+        await mintStarter(petCore, config, addr2, "B"); // pet 2
+
+        await petCore.write.pause({ account: deployer.account });
+
+        const baseMintFee = await config.read.baseMintFee();
+        try {
+            await petCore.write.mintStarter(["C"], { account: addr1.account, value: baseMintFee });
+            assert.fail("Expected revert while paused");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Pausable: paused"));
+        }
+
+        const levelUpFee = await config.read.levelUpFee();
+        try {
+            await petCore.write.levelUp([1n], { account: addr1.account, value: levelUpFee });
+            assert.fail("Expected revert while paused");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Pausable: paused"));
+        }
+
+        try {
+            await petCore.write.transferFrom(
+                [addr1.account.address, addr2.account.address, 1n],
+                { account: addr1.account }
+            );
+            assert.fail("Expected revert while paused");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("ERC721Pausable: token transfer while paused"));
+        }
+
+        try {
+            await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+            assert.fail("Expected revert while paused");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Pausable: paused"));
+        }
+
+        // Fee-exit path must remain callable while paused (plan §4.3): withdraw()
+        // carries no whenNotPaused.
+        await petCore.write.withdraw({ account: deployer.account }); // does not revert
+
+        await petCore.write.unpause({ account: deployer.account });
+
+        // Normal operation resumes
+        await mintStarter(petCore, config, addr1, "C");
+        assert.equal(await petCore.read.totalPets(), 3n);
+    });
+
     it("Should reject unauthorized direct calls to petCore mutators", async function () {
         const { petCore } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
