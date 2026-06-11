@@ -15,8 +15,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "db:push": "prisma db push",
-    "index:once": "tsx src/scripts/indexOnce.ts"
+    "db:push": "prisma db push"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.68",
