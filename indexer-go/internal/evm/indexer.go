@@ -138,6 +138,8 @@ func (ix *Indexer) tickBattles(ctx context.Context, battles chan<- indexer.Battl
 	synced, err := ix.syncBattles(ctx, battles)
 	switch {
 	case err != nil && ctx.Err() != nil:
+	case err != nil && strings.Contains(err.Error(), "has no field `battles`"):
+		slog.Warn("evm battle sync skipped: Battle entity not deployed on subgraph yet")
 	case err != nil:
 		slog.Error("evm battle sync failed", "err", err)
 	case synced > 0:
