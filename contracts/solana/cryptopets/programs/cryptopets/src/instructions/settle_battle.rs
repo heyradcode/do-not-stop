@@ -58,13 +58,30 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
 
     // XP formula (plan §3.4): xpMult = clamp(100 + 10*(oppLevel - myLevel), 0, 200).
     // Winner +100 XP x mult / 100. Loser +25 XP x mult / 100.
-    let (winner_level, loser_level) = if sim.first_wins {
-        (attacker_pet.level, defender_pet.level)
+    // Same-opponent decay: consecutive battles vs the same foe halve XP each time.
+    let attacker_decay = attacker_pet.record_battle_opponent(defender_pet_id);
+    let defender_decay = defender_pet.record_battle_opponent(attacker_pet_id);
+
+    let (winner_level, loser_level, winner_decay, loser_decay) = if sim.first_wins {
+        (
+            attacker_pet.level,
+            defender_pet.level,
+            attacker_decay,
+            defender_decay,
+        )
     } else {
-        (defender_pet.level, attacker_pet.level)
+        (
+            defender_pet.level,
+            attacker_pet.level,
+            defender_decay,
+            attacker_decay,
+        )
     };
-    let xp_win = calc_xp(100, winner_level, loser_level);
-    let xp_loss = calc_xp(25, loser_level, winner_level);
+    // Clamp the shift to u32's bit width: `same_opponent_streak` (u8) can reach 255, and a
+    // shift >= 32 panics with `overflow-checks = true`. Values this large already yield 0
+    // (base XP <= 200 < 2^8), matching Solidity's "shift >= width => 0" semantics.
+    let xp_win = calc_xp(100, winner_level, loser_level) >> winner_decay.min(31);
+    let xp_loss = calc_xp(25, loser_level, winner_level) >> loser_decay.min(31);
 
     let (winner_pet_id, loser_pet_id) = if sim.first_wins {
         (attacker_pet_id, defender_pet_id)

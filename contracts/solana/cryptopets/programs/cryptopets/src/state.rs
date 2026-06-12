@@ -100,7 +100,13 @@ pub struct PetAccount {
     pub open_to_challenges: bool,
     /// XP toward the next level (§3.4); auto-levels via [`PetAccount::add_xp`] at `100 * level`.
     pub xp: u32,
-    pub _reserved: [u8; 27],
+    /// Most recent opponent's pet id (§3.4 same-opponent decay); `0` = no battles yet, since
+    /// `next_pet_id` starts at 1.
+    pub last_opponent_id: u32,
+    /// Consecutive battles against `last_opponent_id`; halves XP each time via
+    /// [`PetAccount::record_battle_opponent`].
+    pub same_opponent_streak: u8,
+    pub _reserved: [u8; 22],
 }
 
 impl PetAccount {
@@ -121,7 +127,9 @@ impl PetAccount {
         + 1 /* name_len */
         + 1 /* open_to_challenges */
         + 4 /* xp */
-        + 27; /* reserved */
+        + 4 /* last_opponent_id */
+        + 1 /* same_opponent_streak */
+        + 22; /* reserved */
 
     pub fn set_name(&mut self, name: &str) -> Result<()> {
         let bytes = name.as_bytes();
@@ -170,6 +178,22 @@ impl PetAccount {
             }
         }
         Ok(())
+    }
+
+    /// Mirrors EVM `PetCoreV1.recordBattleOpponent` (§3.4 same-opponent decay): tracks
+    /// consecutive battles against `opponent_id` and returns the XP-halving shift to apply
+    /// (0 = full XP, 1 = half, 2 = quarter, ...). Facing a different opponent resets the
+    /// streak to 0.
+    pub fn record_battle_opponent(&mut self, opponent_id: u32) -> u8 {
+        if self.last_opponent_id == opponent_id {
+            if self.same_opponent_streak < u8::MAX {
+                self.same_opponent_streak += 1;
+            }
+        } else {
+            self.last_opponent_id = opponent_id;
+            self.same_opponent_streak = 0;
+        }
+        self.same_opponent_streak
     }
 }
 
