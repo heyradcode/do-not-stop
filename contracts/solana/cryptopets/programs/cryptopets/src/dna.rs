@@ -75,6 +75,20 @@ pub fn element_mod(attacker: u8, defender: u8) -> u64 {
     100 // non-adjacent in the 6-cycle -> neutral
 }
 
+/// Resolves a pet's species id from its DNA cosmetic digit-pair and its rarity tier's pool
+/// size (plan §3.7, mirrors `PetCoreV1._resolveSpecies`). `pool_sizes` is indexed by
+/// `rarity - 1` for rarity tiers 1..=5 (clamped defensively for out-of-range input); a pool
+/// size of `0` means "no species" (id `0`). Resolved once at mint/breed time so later pool
+/// growth doesn't re-species existing pets.
+pub fn resolve_species(dna: u64, rarity: u8, pool_sizes: &[u8; 5]) -> u16 {
+    let idx = rarity.saturating_sub(1).min(4) as usize;
+    let pool_size = pool_sizes[idx];
+    if pool_size == 0 {
+        return 0;
+    }
+    (digit_pair(dna, 6) % pool_size as u64) as u16
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,5 +148,17 @@ mod tests {
         assert_eq!(element_mod(0, 2), 100); // non-adjacent -> neutral
         assert_eq!(element_mod(5, 0), 115); // wheel wraps 5 -> 0
         assert_eq!(element_mod(0, 5), 85); // wheel wraps 0 -> 5
+    }
+
+    #[test]
+    fn resolve_species_is_digit_pair_six_mod_pool_size() {
+        let dna = 807_060_504_030_201u64; // digit_pair(dna, 6) == 7
+        assert_eq!(resolve_species(dna, 1, &[8, 8, 8, 8, 8]), 7);
+        // Smaller pool wraps the same digit pair.
+        assert_eq!(resolve_species(dna, 1, &[5, 8, 8, 8, 8]), 2);
+        // Pool size 0 for the pet's tier means "no species".
+        assert_eq!(resolve_species(dna, 1, &[0, 8, 8, 8, 8]), 0);
+        // rarity - 1 indexes into pool_sizes.
+        assert_eq!(resolve_species(dna, 5, &[8, 8, 8, 8, 3]), 1);
     }
 }

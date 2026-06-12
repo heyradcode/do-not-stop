@@ -39,6 +39,10 @@ pub const BREED_COOLDOWN_CAP_SECONDS: i64 = 30 * 24 * 60 * 60;
 /// `GameConfig.newbornCooldown`).
 pub const DEFAULT_NEWBORN_COOLDOWN_SECONDS: i64 = 60;
 
+/// Default species pool size per rarity tier (plan §3.7, mirrors EVM
+/// `GameConfig`'s constructor, which sets `poolSizes[1..=5] = 8`).
+pub const DEFAULT_POOL_SIZE: u8 = 8;
+
 /// Bounds enforced by the `set_*` config setters (§5 setter hygiene).
 pub const MAX_BATTLE_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_LEVEL_UP_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
@@ -71,7 +75,11 @@ pub struct GlobalState {
     /// Newborn battle-cooldown lockout applied to a bred pet's `ready_time` (plan §4.2,
     /// mirrors EVM `newbornCooldown`).
     pub newborn_cooldown_seconds: i64,
-    pub _reserved: [u8; 36],
+    /// Species pool sizes per rarity tier, indexed by `rarity - 1` for tiers 1..=5 (plan
+    /// §3.7, mirrors EVM `GameConfig.poolSizes`). `speciesId = digitPair(dna, 6) %
+    /// pool_sizes[rarity - 1]`, or `0` if the tier's pool size is `0`.
+    pub pool_sizes: [u8; 5],
+    pub _reserved: [u8; 31],
 }
 
 impl GlobalState {
@@ -90,7 +98,8 @@ impl GlobalState {
         + 1 /* generation_cap */
         + 8 /* breed_cooldown_base_seconds */
         + 8 /* newborn_cooldown_seconds */
-        + 36; /* reserved */
+        + 5 /* pool_sizes */
+        + 31; /* reserved */
 }
 
 #[account]

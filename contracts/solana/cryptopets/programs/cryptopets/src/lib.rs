@@ -110,6 +110,10 @@ pub mod cryptopets {
         config::set_newborn_cooldown_seconds(ctx, value)
     }
 
+    pub fn set_pool_size(ctx: Context<SetConfig>, tier: u8, size: u8) -> Result<()> {
+        config::set_pool_size(ctx, tier, size)
+    }
+
     pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
         withdraw_fees::handler(ctx, amount)
     }

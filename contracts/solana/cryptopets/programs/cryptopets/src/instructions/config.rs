@@ -79,6 +79,15 @@ pub fn set_newborn_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Resu
     Ok(())
 }
 
+/// Mirrors EVM `GameConfig.setPoolSize` (plan §3.7): `tier` is the rarity tier (1..=5),
+/// `size` is the species pool size for that tier (`0` = "no species" for that tier).
+pub fn set_pool_size(ctx: Context<SetConfig>, tier: u8, size: u8) -> Result<()> {
+    require!((1..=5).contains(&tier), ErrorCode::InvalidRarity);
+    ctx.accounts.global_state.pool_sizes[(tier - 1) as usize] = size;
+    emit!(PoolSizeUpdated { tier, size });
+    Ok(())
+}
+
 #[event]
 pub struct BattleCooldownUpdated {
     pub value: i64,
@@ -117,6 +126,12 @@ pub struct BreedCooldownBaseUpdated {
 #[event]
 pub struct NewbornCooldownUpdated {
     pub value: i64,
+}
+
+#[event]
+pub struct PoolSizeUpdated {
+    pub tier: u8,
+    pub size: u8,
 }
 
 #[derive(Accounts)]

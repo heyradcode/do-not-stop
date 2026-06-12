@@ -4,6 +4,7 @@ use anchor_lang::{
 };
 
 use crate::{
+    dna::resolve_species,
     errors::ErrorCode,
     rarity::Rarity,
     state::{GlobalState, PetAccount, PlayerProfile, CURRENT_ACCOUNT_VERSION},
@@ -55,15 +56,14 @@ pub fn handler(ctx: Context<CreateStarterPet>, name: String) -> Result<()> {
     pet.set_name(&name)?;
 
     // Phase 3 lineage (plan §4): starters are gen-0 with no parents and start with
-    // both non-battle cooldowns ready immediately. `species_id` resolves once species
-    // pools land on Solana.
+    // both non-battle cooldowns ready immediately.
     pet.generation = 0;
     pet.parent1_id = 0;
     pet.parent2_id = 0;
     pet.breed_count = 0;
     pet.breed_ready_time = 0;
     pet.train_ready_time = 0;
-    pet.species_id = 0;
+    pet.species_id = resolve_species(pet.dna, pet.rarity, &global_state.pool_sizes);
 
     Ok(())
 }

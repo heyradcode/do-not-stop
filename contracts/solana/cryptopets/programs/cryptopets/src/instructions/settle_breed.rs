@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 use crate::{
+    dna::resolve_species,
     errors::ErrorCode,
     rarity::Rarity,
     state::{
@@ -64,6 +65,7 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
         .ok_or(ErrorCode::ArithmeticOverflow)?;
     let breed_cooldown_base = global_state.breed_cooldown_base_seconds;
     let newborn_cooldown = global_state.newborn_cooldown_seconds;
+    let pool_sizes = global_state.pool_sizes;
 
     let player_profile = &mut ctx.accounts.player_profile;
     player_profile.pet_count = player_profile
@@ -100,14 +102,14 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     child.set_name(&breed_request.name())?;
 
     // Phase 3 lineage (plan §4.2): record parentage and generation. The child starts
-    // breed/train-ready immediately; species resolution is wired in a later step.
+    // breed/train-ready immediately.
     child.generation = child_generation;
     child.parent1_id = breed_request.parent1_id;
     child.parent2_id = breed_request.parent2_id;
     child.breed_count = 0;
     child.breed_ready_time = 0;
     child.train_ready_time = 0;
-    child.species_id = 0;
+    child.species_id = resolve_species(new_dna, rarity, &pool_sizes);
 
     emit!(BredEvent {
         parent1_id: breed_request.parent1_id,
