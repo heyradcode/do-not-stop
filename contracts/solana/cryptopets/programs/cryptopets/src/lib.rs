@@ -172,4 +172,8 @@ pub mod cryptopets {
     pub fn divorce(ctx: Context<Divorce>) -> Result<()> {
         divorce::handler(ctx)
     }
+
+    pub fn clear_stale_marriage(ctx: Context<ClearStaleMarriage>) -> Result<()> {
+        clear_stale_marriage::handler(ctx)
+    }
 }

@@ -423,14 +423,21 @@ impl PetAccount {
         self.marriage_owner_snapshot = owner_snapshot;
     }
 
-    /// Dissolves this pet's marriage (plan §4.4, mirrors EVM `divorce`/
-    /// `clearStaleMarriage`'s deletion of `marriageOf[petId]`). `divorce` additionally
-    /// applies a marriage cooldown; `clearStaleMarriage` does not, so the cooldown is
-    /// passed in by the caller (`0` for no cooldown).
+    /// Dissolves this pet's marriage and applies a marriage cooldown (plan §4.4, mirrors
+    /// EVM `divorce`'s deletion of `marriageOf[petId]` plus its
+    /// `marriageCooldownUntil[petId]` write).
     pub fn clear_marriage(&mut self, cooldown_until: i64) {
         self.spouse_id = 0;
         self.marriage_owner_snapshot = Pubkey::default();
         self.marriage_cooldown_until = cooldown_until;
+    }
+
+    /// Dissolves this pet's marriage without applying a marriage cooldown (plan §4.4,
+    /// mirrors EVM `clearStaleMarriage`'s deletion of `marriageOf[petId]`, which leaves
+    /// `marriageCooldownUntil[petId]` untouched).
+    pub fn clear_stale_marriage(&mut self) {
+        self.spouse_id = 0;
+        self.marriage_owner_snapshot = Pubkey::default();
     }
 
     /// `true` if this pet and `spouse` hold mutual, still-valid marriage records whose
@@ -676,6 +683,22 @@ mod tests {
         assert_eq!(pet.spouse_id, 0);
         assert_eq!(pet.marriage_owner_snapshot, Pubkey::default());
         assert_eq!(pet.marriage_cooldown_until, 500);
+    }
+
+    /// Mirrors EVM `clearStaleMarriage`'s deletion of `marriageOf[petId]`, which leaves
+    /// `marriageCooldownUntil[petId]` untouched (plan §4.4).
+    #[test]
+    fn clear_stale_marriage_resets_spouse_without_cooldown() {
+        let mut pet = fresh_pet();
+        pet.marriage_cooldown_until = 42;
+        pet.set_marriage(7, Pubkey::new_unique());
+        assert!(pet.is_married());
+
+        pet.clear_stale_marriage();
+        assert!(!pet.is_married());
+        assert_eq!(pet.spouse_id, 0);
+        assert_eq!(pet.marriage_owner_snapshot, Pubkey::default());
+        assert_eq!(pet.marriage_cooldown_until, 42);
     }
 
     /// Mirrors EVM `acceptMarriage`'s `block.timestamp <= prop.expiry` check (plan §4.4).
