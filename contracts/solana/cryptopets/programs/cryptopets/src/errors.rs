@@ -118,5 +118,7 @@ pub enum ErrorCode {
     MarriageNotStale,
     #[msg("Pets are not married")]
     PetsNotMarried,
+    #[msg("Stud-fee account does not match the expected PDA for the breed request's other owner")]
+    InvalidStudFeeAccount,
 }
 
