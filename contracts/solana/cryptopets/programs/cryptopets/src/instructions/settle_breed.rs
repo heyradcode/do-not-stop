@@ -8,10 +8,7 @@ use crate::{
     dna::resolve_species,
     errors::ErrorCode,
     metadata::pet_attributes,
-    state::{
-        BreedRequest, GlobalState, PetAccount, PlayerProfile, BREED_COOLDOWN_CAP_SECONDS,
-        CURRENT_ACCOUNT_VERSION,
-    },
+    state::{BreedRequest, GlobalState, PetAccount, BREED_COOLDOWN_CAP_SECONDS, CURRENT_ACCOUNT_VERSION},
     util::{core_asset_owner, inherit_rarity, mix_dna_with_vrf, read_revealed_randomness},
 };
 
@@ -75,12 +72,6 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     let breed_cooldown_base = global_state.breed_cooldown_base_seconds;
     let newborn_cooldown = global_state.newborn_cooldown_seconds;
     let pool_sizes = global_state.pool_sizes;
-
-    let player_profile = &mut ctx.accounts.player_profile;
-    player_profile.pet_count = player_profile
-        .pet_count
-        .checked_add(1)
-        .ok_or(ErrorCode::PetCountOverflow)?;
 
     let now = Clock::get()?.unix_timestamp;
 
@@ -190,13 +181,6 @@ pub struct SettleBreed<'info> {
 
     #[account(mut)]
     pub owner: Signer<'info>,
-
-    #[account(
-        mut,
-        seeds = [PlayerProfile::SEED, owner.key().as_ref()],
-        bump = player_profile.bump,
-    )]
-    pub player_profile: Account<'info, PlayerProfile>,
 
     /// CHECK: address-constrained to the Metaplex Core program; invoked via CPI to mint
     /// the child's asset.

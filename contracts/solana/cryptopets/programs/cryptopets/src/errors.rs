@@ -8,8 +8,6 @@ pub enum ErrorCode {
     Unauthorized,
     #[msg("Program is paused")]
     Paused,
-    #[msg("Recipient pet count overflow")]
-    PetCountOverflow,
     #[msg("Pet is on cooldown")]
     PetNotReady,
     #[msg("Cannot battle the same pet")]

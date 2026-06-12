@@ -206,6 +206,12 @@ impl GlobalState {
 #[account]
 pub struct PlayerProfile {
     pub owner: Pubkey,
+    /// Dead field (plan §2.3/v2.1 Phase A, mirrors EVM `ownerPetCount`): counted mints
+    /// and breeds, but never decremented on transfer-out, so once pets become standard
+    /// Core asset transfers it no longer reflects pets currently owned. [`mint_count`]
+    /// is the field that matters for fee escalation. Kept in place, no longer
+    /// incremented, to preserve the existing account layout (no `CURRENT_ACCOUNT_VERSION`
+    /// bump needed).
     pub pet_count: u16,
     /// Dead field (plan §4.3): the free starter mint is removed entirely in favor of
     /// the paid gacha mint (`commit_mint`/`settle_mint`). Kept in place, always
@@ -224,8 +230,8 @@ impl PlayerProfile {
     pub const SEED: &'static [u8] = b"player-profile";
     pub const SPACE: usize = 8 /* discriminator */
         + 32 /* owner */
-        + 2 /* pet_count */
-        + 1 /* starter_created */
+        + 2 /* pet_count (dead) */
+        + 1 /* starter_created (dead) */
         + 1 /* version */
         + 1 /* bump */
         + 4 /* mint_count */

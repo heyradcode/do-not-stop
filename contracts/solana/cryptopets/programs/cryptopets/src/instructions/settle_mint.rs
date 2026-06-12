@@ -9,7 +9,7 @@ use crate::{
     errors::ErrorCode,
     metadata::pet_attributes,
     rarity::Rarity,
-    state::{GlobalState, MintRequest, PetAccount, PlayerProfile, CURRENT_ACCOUNT_VERSION},
+    state::{GlobalState, MintRequest, PetAccount, CURRENT_ACCOUNT_VERSION},
     util::{mint_dna_from_vrf, read_revealed_randomness},
 };
 
@@ -45,12 +45,6 @@ pub fn handler(ctx: Context<SettleMint>) -> Result<()> {
         .checked_add(1)
         .ok_or(ErrorCode::ArithmeticOverflow)?;
     let pool_sizes = global_state.pool_sizes;
-
-    let player_profile = &mut ctx.accounts.player_profile;
-    player_profile.pet_count = player_profile
-        .pet_count
-        .checked_add(1)
-        .ok_or(ErrorCode::PetCountOverflow)?;
 
     let now = Clock::get()?.unix_timestamp;
 
@@ -136,13 +130,6 @@ pub struct SettleMint<'info> {
 
     #[account(mut)]
     pub owner: Signer<'info>,
-
-    #[account(
-        mut,
-        seeds = [PlayerProfile::SEED, owner.key().as_ref()],
-        bump = player_profile.bump,
-    )]
-    pub player_profile: Account<'info, PlayerProfile>,
 
     /// CHECK: address-constrained to the Metaplex Core program; invoked via CPI to mint
     /// the pet asset.
