@@ -13,7 +13,12 @@ use crate::errors::ErrorCode;
 /// (3 -> 32 bytes) to cover upcoming marriage-system fields (plan §4.4) without another
 /// breaking change. Bumps `GlobalState::SPACE`. Breaking; requires redeploy + reinit of
 /// `GlobalState` (`PetAccount`/`PlayerProfile` layouts unchanged).
-pub const CURRENT_ACCOUNT_VERSION: u8 = 3;
+///
+/// v4: adds `spouse_id`, `marriage_owner_snapshot`, and `marriage_cooldown_until` to
+/// `PetAccount` (plan §4.4, mirrors EVM `marriageOf`/`marriageCooldownUntil`) and shrinks
+/// its `_reserved` buffer (22 -> 8 bytes). Bumps `PetAccount::SPACE`. Breaking; requires
+/// redeploy + reinit of pet accounts (`GlobalState`/`PlayerProfile` layouts unchanged).
+pub const CURRENT_ACCOUNT_VERSION: u8 = 4;
 
 pub const DEFAULT_BATTLE_COOLDOWN_SECONDS: i64 = 5;
 
@@ -265,7 +270,17 @@ pub struct PetAccount {
     /// Resolved at mint from DNA + rarity tier (plan §3.7); `0` until species pools
     /// land on Solana.
     pub species_id: u16,
-    pub _reserved: [u8; 22],
+    /// Pet id of this pet's spouse (plan §4.4, mirrors EVM `marriageOf[petId].spouseId`);
+    /// `0` = not married, since `next_pet_id` starts at 1.
+    pub spouse_id: u32,
+    /// Owner of this pet at the time mutual marriage consent was given (plan §4.4,
+    /// mirrors EVM `marriageOf[petId].ownerSnapshot`). A transfer afterwards makes the
+    /// marriage lazily stale, checked via `is_marriage_valid` / `clear_stale_marriage`.
+    pub marriage_owner_snapshot: Pubkey,
+    /// Earliest time this pet may marry again after a divorce or stale-marriage cleanup
+    /// (plan §4.4, mirrors EVM `marriageCooldownUntil[petId]`).
+    pub marriage_cooldown_until: i64,
+    pub _reserved: [u8; 8],
 }
 
 impl PetAccount {
@@ -295,7 +310,10 @@ impl PetAccount {
         + 8 /* breed_ready_time */
         + 8 /* train_ready_time */
         + 2 /* species_id */
-        + 22; /* reserved */
+        + 4 /* spouse_id */
+        + 32 /* marriage_owner_snapshot */
+        + 8 /* marriage_cooldown_until */
+        + 8; /* reserved */
 
     pub fn set_name(&mut self, name: &str) -> Result<()> {
         let bytes = name.as_bytes();
@@ -384,6 +402,46 @@ impl PetAccount {
         }
         self.same_opponent_streak
     }
+
+    /// `true` if this pet currently holds a marriage record (plan §4.4, mirrors EVM
+    /// `marriageOf[petId].spouseId != 0`).
+    pub fn is_married(&self) -> bool {
+        self.spouse_id != 0
+    }
+
+    /// `true` if this pet may enter a new marriage: not already married and past its
+    /// marriage cooldown (plan §4.4, mirrors EVM `proposeMarriage`'s
+    /// `marriageOf[petId].spouseId == 0` and `marriageCooldownUntil[petId]` checks).
+    pub fn can_marry(&self, now: i64) -> bool {
+        !self.is_married() && now >= self.marriage_cooldown_until
+    }
+
+    /// Records mutual marriage consent (plan §4.4, mirrors EVM `acceptMarriage`'s write
+    /// to `marriageOf[petId]`).
+    pub fn set_marriage(&mut self, spouse_id: u32, owner_snapshot: Pubkey) {
+        self.spouse_id = spouse_id;
+        self.marriage_owner_snapshot = owner_snapshot;
+    }
+
+    /// Dissolves this pet's marriage (plan §4.4, mirrors EVM `divorce`/
+    /// `clearStaleMarriage`'s deletion of `marriageOf[petId]`). `divorce` additionally
+    /// applies a marriage cooldown; `clearStaleMarriage` does not, so the cooldown is
+    /// passed in by the caller (`0` for no cooldown).
+    pub fn clear_marriage(&mut self, cooldown_until: i64) {
+        self.spouse_id = 0;
+        self.marriage_owner_snapshot = Pubkey::default();
+        self.marriage_cooldown_until = cooldown_until;
+    }
+
+    /// `true` if this pet and `spouse` hold mutual, still-valid marriage records whose
+    /// owner snapshots match their current owners (plan §4.4, mirrors EVM
+    /// `isMarriageValid`).
+    pub fn is_marriage_valid_with(&self, spouse: &PetAccount) -> bool {
+        self.spouse_id == spouse.id
+            && spouse.spouse_id == self.id
+            && self.marriage_owner_snapshot == self.owner
+            && spouse.marriage_owner_snapshot == spouse.owner
+    }
 }
 
 /// Pending breed after [`commit_breed`]; closed on [`settle_breed`].
@@ -452,6 +510,35 @@ impl BattleRequest {
         + 1; /* bump */
 }
 
+/// Pending marriage proposal from `pet_a_id`'s owner to `pet_b_id` (plan §4.4, mirrors
+/// EVM `marriageProposal[petIdA]`). Created by `propose_marriage`, closed by
+/// `accept_marriage` or `cancel_marriage_proposal`. Keyed by `pet_a_id`, so at most one
+/// outgoing proposal may be pending per pet.
+#[account]
+pub struct MarriageProposal {
+    pub pet_a_id: u32,
+    pub pet_b_id: u32,
+    pub proposer: Pubkey,
+    pub expiry: i64,
+    pub bump: u8,
+}
+
+impl MarriageProposal {
+    pub const SEED: &'static [u8] = b"marriage-proposal";
+    pub const SPACE: usize = 8 /* discriminator */
+        + 4 /* pet_a_id */
+        + 4 /* pet_b_id */
+        + 32 /* proposer */
+        + 8 /* expiry */
+        + 1; /* bump */
+
+    /// `true` if this proposal is still within its TTL (plan §4.4, mirrors EVM
+    /// `acceptMarriage`'s `block.timestamp <= prop.expiry` check).
+    pub fn is_live(&self, now: i64) -> bool {
+        now <= self.expiry
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -481,7 +568,10 @@ mod tests {
             breed_ready_time: 0,
             train_ready_time: 0,
             species_id: 0,
-            _reserved: [0u8; 22],
+            spouse_id: 0,
+            marriage_owner_snapshot: Pubkey::default(),
+            marriage_cooldown_until: 0,
+            _reserved: [0u8; 8],
         }
     }
 
@@ -534,6 +624,72 @@ mod tests {
         assert_eq!(train_fee_for(1, base).unwrap(), base * 102 / 100);
         assert_eq!(train_fee_for(100, base).unwrap(), base * 300 / 100);
         assert_eq!(train_fee_for(0, base).unwrap(), base); // 100/100 = 1x
+    }
+
+    /// Mirrors EVM `marriageOf[petId].spouseId == 0` / `marriageCooldownUntil` checks in
+    /// `proposeMarriage` (plan §4.4).
+    #[test]
+    fn can_marry_requires_unmarried_and_past_cooldown() {
+        let mut pet = fresh_pet();
+        assert!(pet.can_marry(100));
+
+        pet.marriage_cooldown_until = 200;
+        assert!(!pet.can_marry(100));
+        assert!(pet.can_marry(200));
+
+        pet.marriage_cooldown_until = 0;
+        pet.set_marriage(7, Pubkey::new_unique());
+        assert!(!pet.can_marry(100));
+    }
+
+    /// Mirrors EVM `acceptMarriage`'s mutual `marriageOf` writes and `isMarriageValid`'s
+    /// spouse-id + owner-snapshot checks (plan §4.4).
+    #[test]
+    fn is_marriage_valid_with_requires_mutual_record_and_matching_owners() {
+        let mut a = fresh_pet();
+        a.id = 1;
+        a.owner = Pubkey::new_unique();
+        let mut b = fresh_pet();
+        b.id = 2;
+        b.owner = Pubkey::new_unique();
+
+        a.set_marriage(b.id, a.owner);
+        b.set_marriage(a.id, b.owner);
+        assert!(a.is_marriage_valid_with(&b));
+        assert!(b.is_marriage_valid_with(&a));
+
+        // Transferring `a` to a new owner invalidates the marriage (stale).
+        a.owner = Pubkey::new_unique();
+        assert!(!a.is_marriage_valid_with(&b));
+    }
+
+    /// Mirrors EVM `divorce`'s `marriageCooldownUntil` writes and deletion of
+    /// `marriageOf[petId]` (plan §4.4).
+    #[test]
+    fn clear_marriage_resets_spouse_and_applies_cooldown() {
+        let mut pet = fresh_pet();
+        pet.set_marriage(7, Pubkey::new_unique());
+        assert!(pet.is_married());
+
+        pet.clear_marriage(500);
+        assert!(!pet.is_married());
+        assert_eq!(pet.spouse_id, 0);
+        assert_eq!(pet.marriage_owner_snapshot, Pubkey::default());
+        assert_eq!(pet.marriage_cooldown_until, 500);
+    }
+
+    /// Mirrors EVM `acceptMarriage`'s `block.timestamp <= prop.expiry` check (plan §4.4).
+    #[test]
+    fn marriage_proposal_is_live_until_expiry() {
+        let proposal = MarriageProposal {
+            pet_a_id: 1,
+            pet_b_id: 2,
+            proposer: Pubkey::new_unique(),
+            expiry: 1_000,
+            bump: 0,
+        };
+        assert!(proposal.is_live(1_000));
+        assert!(!proposal.is_live(1_001));
     }
 }
 
