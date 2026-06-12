@@ -108,5 +108,7 @@ pub enum ErrorCode {
     MarriageProposalExpired,
     #[msg("Proposer no longer owns this pet")]
     MarriageProposerNoLongerOwnsPet,
+    #[msg("Not the proposer of this marriage proposal")]
+    NotMarriageProposer,
 }
 

@@ -161,4 +161,11 @@ pub mod cryptopets {
     pub fn accept_marriage(ctx: Context<AcceptMarriage>) -> Result<()> {
         accept_marriage::handler(ctx)
     }
+
+    pub fn cancel_marriage_proposal(
+        ctx: Context<CancelMarriageProposal>,
+        pet_a_id: u32,
+    ) -> Result<()> {
+        cancel_marriage_proposal::handler(ctx, pet_a_id)
+    }
 }
