@@ -29,6 +29,14 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
 
     let parent1_dna = ctx.accounts.parent1.dna;
     let parent2_dna = ctx.accounts.parent2.dna;
+    // Lineage (plan §4.2): child generation is one past the older parent's generation.
+    let child_generation = ctx
+        .accounts
+        .parent1
+        .generation
+        .max(ctx.accounts.parent2.generation)
+        .checked_add(1)
+        .ok_or(ErrorCode::ArithmeticOverflow)?;
 
     let vrf = read_revealed_randomness(
         &ctx.accounts.randomness_account_data.to_account_info(),
@@ -68,6 +76,16 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     child.bump = ctx.bumps.child;
     child.open_to_challenges = true;
     child.set_name(&breed_request.name())?;
+
+    // Phase 3 lineage (plan §4.2): record parentage and generation. breed_count/cooldowns
+    // and species resolution are wired in a later step.
+    child.generation = child_generation;
+    child.parent1_id = breed_request.parent1_id;
+    child.parent2_id = breed_request.parent2_id;
+    child.breed_count = 0;
+    child.breed_ready_time = 0;
+    child.train_ready_time = 0;
+    child.species_id = 0;
 
     emit!(BredEvent {
         parent1_id: breed_request.parent1_id,

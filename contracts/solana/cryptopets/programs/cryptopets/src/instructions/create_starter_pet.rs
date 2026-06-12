@@ -54,6 +54,17 @@ pub fn handler(ctx: Context<CreateStarterPet>, name: String) -> Result<()> {
     pet.open_to_challenges = true;
     pet.set_name(&name)?;
 
+    // Phase 3 lineage (plan §4): starters are gen-0 with no parents and start with
+    // both non-battle cooldowns ready immediately. `species_id` resolves once species
+    // pools land on Solana.
+    pet.generation = 0;
+    pet.parent1_id = 0;
+    pet.parent2_id = 0;
+    pet.breed_count = 0;
+    pet.breed_ready_time = 0;
+    pet.train_ready_time = 0;
+    pet.species_id = 0;
+
     Ok(())
 }
 

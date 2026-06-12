@@ -4,7 +4,11 @@ use crate::errors::ErrorCode;
 
 /// Account layout version for newly written accounts. Bump when adding fields that
 /// consume `_reserved` space, so off-chain readers can detect the layout in use.
-pub const CURRENT_ACCOUNT_VERSION: u8 = 1;
+///
+/// v2: Phase 3 data model (plan §4/§9.1) — adds `generation`, `parent1_id`,
+/// `parent2_id`, `breed_count`, `breed_ready_time`, `train_ready_time`, `species_id`
+/// to `PetAccount` and bumps `PetAccount::SPACE`. Breaking; requires redeploy + reindex.
+pub const CURRENT_ACCOUNT_VERSION: u8 = 2;
 
 pub const DEFAULT_BATTLE_COOLDOWN_SECONDS: i64 = 5;
 
@@ -106,6 +110,25 @@ pub struct PetAccount {
     /// Consecutive battles against `last_opponent_id`; halves XP each time via
     /// [`PetAccount::record_battle_opponent`].
     pub same_opponent_streak: u8,
+    /// Breeding lineage (plan §4.1/§4.2): `0` = gen-0 (starter mint); otherwise
+    /// `max(parent1.generation, parent2.generation) + 1`.
+    pub generation: u8,
+    /// `0` for gen-0 pets (no parents). `u32` since Solana pet ids are `u32`, unlike
+    /// EVM's `uint256`.
+    pub parent1_id: u32,
+    pub parent2_id: u32,
+    /// Times this pet has been used as a breeding parent; will drive the breed
+    /// cooldown curve (plan §4.1, not yet wired on Solana).
+    pub breed_count: u8,
+    /// Breed-specific cooldown, separate from `ready_time`'s battle cooldown (plan
+    /// §4.1). `0` = breed-ready immediately.
+    pub breed_ready_time: i64,
+    /// Train-specific cooldown (plan §3.4). `0` = train-ready immediately; Solana has
+    /// no `train` instruction yet.
+    pub train_ready_time: i64,
+    /// Resolved at mint from DNA + rarity tier (plan §3.7); `0` until species pools
+    /// land on Solana.
+    pub species_id: u16,
     pub _reserved: [u8; 22],
 }
 
@@ -129,6 +152,13 @@ impl PetAccount {
         + 4 /* xp */
         + 4 /* last_opponent_id */
         + 1 /* same_opponent_streak */
+        + 1 /* generation */
+        + 4 /* parent1_id */
+        + 4 /* parent2_id */
+        + 1 /* breed_count */
+        + 8 /* breed_ready_time */
+        + 8 /* train_ready_time */
+        + 2 /* species_id */
         + 22; /* reserved */
 
     pub fn set_name(&mut self, name: &str) -> Result<()> {
@@ -285,6 +315,13 @@ mod tests {
             xp: 0,
             last_opponent_id: 0,
             same_opponent_streak: 0,
+            generation: 0,
+            parent1_id: 0,
+            parent2_id: 0,
+            breed_count: 0,
+            breed_ready_time: 0,
+            train_ready_time: 0,
+            species_id: 0,
             _reserved: [0u8; 22],
         }
     }
