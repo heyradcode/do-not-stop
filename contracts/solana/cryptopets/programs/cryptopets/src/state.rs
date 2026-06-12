@@ -184,6 +184,10 @@ impl GlobalState {
 pub struct PlayerProfile {
     pub owner: Pubkey,
     pub pet_count: u16,
+    /// Dead field (plan §4.3): the free starter mint is removed entirely in favor of
+    /// the paid gacha mint (`commit_mint`/`settle_mint`). Kept in place, always
+    /// `false`, to preserve the existing account layout (no `CURRENT_ACCOUNT_VERSION`
+    /// bump needed).
     pub starter_created: bool,
     pub version: u8,
     pub bump: u8,
@@ -524,6 +528,47 @@ impl BattleRequest {
         + 32 /* randomness_account */
         + 8 /* commit_slot */
         + 1; /* bump */
+}
+
+/// Pending gacha mint after [`commit_mint`]; closed on [`settle_mint`] or
+/// [`cancel_mint`] (plan §4.3). Mirrors [`BreedRequest`]'s commit/settle/cancel shape,
+/// but with no parent pets — the minted pet's DNA is derived purely from the revealed
+/// VRF value.
+#[account]
+pub struct MintRequest {
+    pub owner: Pubkey,
+    pub pet_id: u32,
+    pub randomness_account: Pubkey,
+    pub commit_slot: u64,
+    pub name: [u8; PetAccount::MAX_NAME_LEN],
+    pub name_len: u8,
+    pub bump: u8,
+}
+
+impl MintRequest {
+    pub const SEED: &'static [u8] = b"mint-request";
+    pub const SPACE: usize = 8 /* discriminator */
+        + 32 /* owner */
+        + 4 /* pet_id */
+        + 32 /* randomness_account */
+        + 8 /* commit_slot */
+        + PetAccount::MAX_NAME_LEN
+        + 1 /* name_len */
+        + 1; /* bump */
+
+    pub fn set_name(&mut self, name: &str) -> Result<()> {
+        let bytes = name.as_bytes();
+        require!(bytes.len() <= PetAccount::MAX_NAME_LEN, ErrorCode::NameTooLong);
+        self.name.fill(0);
+        self.name[..bytes.len()].copy_from_slice(bytes);
+        self.name_len = bytes.len() as u8;
+        Ok(())
+    }
+
+    pub fn name(&self) -> String {
+        let len = self.name_len as usize;
+        String::from_utf8_lossy(&self.name[..len]).to_string()
+    }
 }
 
 /// Pending marriage proposal from `pet_a_id`'s owner to `pet_b_id` (plan §4.4, mirrors
