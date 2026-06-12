@@ -39,6 +39,8 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         uint16 speciesId;    // resolved at mint from DNA + rarity tier (plan §3.7)
         uint256 parent1Id;   // 0 for gen-0 pets
         uint256 parent2Id;   // 0 for gen-0 pets
+        uint256 lastOpponentId;    // 0 = no battles yet (plan §3.4 same-opponent decay)
+        uint8   sameOpponentStreak; // consecutive battles vs lastOpponentId; halves XP each time
     }
 
     // Marriage record (plan §4.4): written for both pets at accept time (mutual).
@@ -187,6 +189,25 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
 
     function incrementBreedCount(uint256 petId) external onlyAuthorized entryExists(petId) {
         _pets[petId].breedCount++;
+    }
+
+    // Same-opponent decay (plan §3.4): tracks consecutive battles against `opponentId` and
+    // returns the XP-halving shift to apply (0 = full XP, 1 = half, 2 = quarter, ...).
+    // Facing a different opponent resets the streak to 0.
+    function recordBattleOpponent(
+        uint256 petId,
+        uint256 opponentId
+    ) external onlyAuthorized entryExists(petId) returns (uint8 decayShift) {
+        Pet storage p = _pets[petId];
+        if (p.lastOpponentId == opponentId) {
+            if (p.sameOpponentStreak < type(uint8).max) {
+                p.sameOpponentStreak++;
+            }
+        } else {
+            p.lastOpponentId = opponentId;
+            p.sameOpponentStreak = 0;
+        }
+        decayShift = p.sameOpponentStreak;
     }
 
     // ─── user-facing functions ────────────────────────────────────────────────
@@ -441,7 +462,9 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
             trainReadyAt: 0,  // train-ready immediately
             speciesId:    _resolveSpecies(dna, rarity),
             parent1Id:    parent1Id,
-            parent2Id:    parent2Id
+            parent2Id:    parent2Id,
+            lastOpponentId:     0,
+            sameOpponentStreak: 0
         });
         emit NewPet(newId, name_, dna, rarity);
         return newId;

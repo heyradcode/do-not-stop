@@ -217,8 +217,11 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
         // XP formula (plan §3.4): xpMult = clamp(100 + 10*(oppLevel - myLevel), 0, 200)
         // Winner +100 XP × mult / 100.  Loser +25 XP × mult / 100.
-        uint32 xpWin  = _calcXp(100, winnerLevel, loserLevel);
-        uint32 xpLoss = _calcXp(25,  loserLevel,  winnerLevel);
+        // Same-opponent decay: consecutive battles vs the same foe halve XP each time.
+        uint8 winnerDecay = petCore.recordBattleOpponent(winnerId, loserId);
+        uint8 loserDecay  = petCore.recordBattleOpponent(loserId, winnerId);
+        uint32 xpWin  = _calcXp(100, winnerLevel, loserLevel) >> winnerDecay;
+        uint32 xpLoss = _calcXp(25,  loserLevel,  winnerLevel) >> loserDecay;
         if (xpWin  > 0) petCore.addXp(winnerId, xpWin);
         if (xpLoss > 0) petCore.addXp(loserId,  xpLoss);
 
