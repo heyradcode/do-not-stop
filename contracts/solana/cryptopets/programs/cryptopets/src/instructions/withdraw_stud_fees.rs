@@ -3,10 +3,11 @@ use anchor_lang::prelude::*;
 use crate::{errors::ErrorCode, state::StudFeeAccount};
 
 /// Pull payment for stud fees credited by cross-owner breed settlements (plan §4.4,
-/// mirrors EVM `withdrawStudFees`). `StudFeeAccount.amount` lamports were credited
-/// immediately at `commit_breed` time, so this simply zeroes the tracked amount and
-/// moves the matching lamports out via direct lamport manipulation (CPI transfers
-/// cannot move lamports out of a program-owned account).
+/// mirrors EVM `withdrawStudFees`). The escrow lamports were parked here at
+/// `commit_breed` and the withdrawable `amount` credited at `settle_breed`, so this
+/// simply zeroes the tracked amount and moves the matching lamports out via direct
+/// lamport manipulation (CPI transfers cannot move lamports out of a program-owned
+/// account). Lamports backing still-pending escrows are not in `amount` and stay put.
 pub fn handler(ctx: Context<WithdrawStudFees>) -> Result<()> {
     let amount = ctx.accounts.stud_fee_account.amount;
     require!(amount > 0, ErrorCode::NoStudFeesToWithdraw);

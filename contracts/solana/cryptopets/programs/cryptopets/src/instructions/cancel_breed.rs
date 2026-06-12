@@ -10,9 +10,12 @@ use crate::{
 /// `BreedRequest` and refund its rent to the owner who paid for it. `next_pet_id` was not
 /// consumed at commit time, so no rollback is needed.
 ///
-/// If a stud fee was escrowed for a cross-owner breed (plan §4.4), it is refunded from
-/// `other_owner`'s `StudFeeAccount` back to `owner`, mirroring EVM `cancelBreed`'s
-/// `payable(p.owner).call{value: p.studFee}` refund.
+/// If a stud fee was escrowed for a cross-owner breed (plan §4.4), its lamports are
+/// refunded from `other_owner`'s `StudFeeAccount` back to `owner`, mirroring EVM
+/// `cancelBreed`'s `payable(p.owner).call{value: p.studFee}` refund. The escrow's
+/// withdrawable `amount` is untouched: it is only credited at `settle_breed`, so a
+/// pending escrow's lamports sit in the account uncounted (`withdraw_stud_fees` moves
+/// only `amount` lamports and can never take them).
 pub fn handler(ctx: Context<CancelBreed>) -> Result<()> {
     let clock = Clock::get()?;
     let expiry_slot = ctx
@@ -36,15 +39,11 @@ pub fn handler(ctx: Context<CancelBreed>) -> Result<()> {
             ErrorCode::InvalidStudFeeAccount
         );
 
+        // Lamport-only refund: this request's escrow was never credited to the
+        // withdrawable `amount` (that happens at `settle_breed`), so the account
+        // balance is rent + `amount` + pending escrows, and subtracting `stud_fee`
+        // can only consume this request's own pending portion.
         let stud_fee_account_info = ctx.accounts.stud_fee_account.to_account_info();
-        let mut stud_fee_data: Account<StudFeeAccount> =
-            Account::try_from(&stud_fee_account_info)?;
-        stud_fee_data.amount = stud_fee_data
-            .amount
-            .checked_sub(stud_fee)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
-        stud_fee_data.exit(ctx.program_id)?;
-
         let new_stud_fee_balance = stud_fee_account_info
             .lamports()
             .checked_sub(stud_fee)

@@ -8,7 +8,10 @@ use crate::{
     dna::resolve_species,
     errors::ErrorCode,
     metadata::pet_attributes,
-    state::{BreedRequest, GlobalState, PetAccount, BREED_COOLDOWN_CAP_SECONDS, CURRENT_ACCOUNT_VERSION},
+    state::{
+        BreedRequest, GlobalState, PetAccount, StudFeeAccount, BREED_COOLDOWN_CAP_SECONDS,
+        CURRENT_ACCOUNT_VERSION,
+    },
     util::{core_asset_owner, inherit_rarity, mix_dna_with_vrf, read_revealed_randomness},
 };
 
@@ -29,8 +32,8 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
         ctx.accounts.parent2.id == breed_request.parent2_id,
         ErrorCode::Unauthorized
     );
-    // Child is `init` here — id is assigned below. PDA seeds already bind the account
-    // to `breed_request.child_id`.
+    // Child is `init` here, with its PDA seeded by the fresh `asset` keypair (plan
+    // §2.3/v2.1 Phase A re-seed); its id is assigned below at settle time.
 
     let parent1_dna = ctx.accounts.parent1.dna;
     let parent2_dna = ctx.accounts.parent2.dna;
@@ -61,10 +64,12 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
         child_generation <= global_state.generation_cap,
         ErrorCode::GenerationCapReached
     );
-    require!(
-        global_state.next_pet_id == breed_request.child_id,
-        ErrorCode::BreedRequestNotFound
-    );
+    // The child id is assigned now, not at commit (mirrors EVM `settleBreed`'s
+    // `createPet`): concurrent commits all record the same provisional `next_pet_id`
+    // as `child_id`, so requiring it to still match here would permanently brick
+    // every settle but the first. Settle-time assignment is safe because the id is
+    // no longer a PDA seed (plan §2.3/v2.1 Phase A re-seed).
+    let child_id = global_state.next_pet_id;
     global_state.next_pet_id = global_state
         .next_pet_id
         .checked_add(1)
@@ -86,7 +91,7 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     ctx.accounts.parent2.breed_count = ctx.accounts.parent2.breed_count.saturating_add(1);
 
     let child = &mut ctx.accounts.child;
-    child.id = breed_request.child_id;
+    child.id = child_id;
     child.owner = ctx.accounts.owner.key();
     child.dna = new_dna;
     child.rarity = rarity;
@@ -145,10 +150,38 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
 
     child.asset = ctx.accounts.asset.key();
 
+    // The stud fee becomes withdrawable only now (plan §4.4, mirrors EVM
+    // `settleBreed`'s `pendingStudFees[p.otherOwner] += p.studFee`). The lamports were
+    // parked in `other_owner`'s `StudFeeAccount` PDA at `commit_breed`; crediting the
+    // withdrawable `amount` before settlement would let `other_owner` drain the escrow
+    // while the breed was still pending, leaving an expired request's `cancel_breed`
+    // refund permanently underfunded.
+    let stud_fee = breed_request.stud_fee;
+    if stud_fee > 0 {
+        let (expected_stud_fee_account, _bump) = Pubkey::find_program_address(
+            &[StudFeeAccount::SEED, breed_request.other_owner.as_ref()],
+            ctx.program_id,
+        );
+        require_keys_eq!(
+            ctx.accounts.stud_fee_account.key(),
+            expected_stud_fee_account,
+            ErrorCode::InvalidStudFeeAccount
+        );
+
+        let stud_fee_account_info = ctx.accounts.stud_fee_account.to_account_info();
+        let mut stud_fee_data: Account<StudFeeAccount> =
+            Account::try_from(&stud_fee_account_info)?;
+        stud_fee_data.amount = stud_fee_data
+            .amount
+            .checked_add(stud_fee)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+        stud_fee_data.exit(ctx.program_id)?;
+    }
+
     emit!(BredEvent {
         parent1_id: breed_request.parent1_id,
         parent2_id: breed_request.parent2_id,
-        child_id: breed_request.child_id,
+        child_id,
         other_owner: breed_request.other_owner,
     });
 
@@ -252,6 +285,12 @@ pub struct SettleBreed<'info> {
         constraint = breed_request.owner == owner.key() @ ErrorCode::Unauthorized,
     )]
     pub breed_request: Account<'info, BreedRequest>,
+
+    /// CHECK: stud-fee escrow PDA for `breed_request.other_owner` (plan §4.4); validated
+    /// against the expected PDA address in the handler when `breed_request.stud_fee > 0`.
+    /// Unused (any writable account may be passed) for same-owner breeds.
+    #[account(mut)]
+    pub stud_fee_account: UncheckedAccount<'info>,
 
     /// CHECK: parsed as Switchboard `RandomnessAccountData` in the handler.
     pub randomness_account_data: UncheckedAccount<'info>,

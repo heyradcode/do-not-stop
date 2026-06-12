@@ -83,11 +83,12 @@ pub fn handler(
     anchor_lang::system_program::transfer(cpi_ctx, breed_fee)?;
 
     // Stud fee escrow for cross-owner breeding (plan §4.4, mirrors EVM
-    // `requestCreateFromDNA`'s `studFeeAmount`/`otherOwner` branch). Unlike EVM, where
-    // `msg.value` sits in contract balance until `settleBreed` credits
-    // `pendingStudFees`, the recipient's `StudFeeAccount` PDA is credited immediately
-    // here; `cancel_breed`/`withdraw_stud_fees` debit it via direct lamport
-    // manipulation.
+    // `requestCreateFromDNA`'s `studFeeAmount`/`otherOwner` branch). The lamports are
+    // parked in the recipient's `StudFeeAccount` PDA now, but the withdrawable
+    // `amount` is only credited at `settle_breed` (mirrors EVM holding `msg.value`
+    // until `settleBreed` credits `pendingStudFees`) — crediting it here would let
+    // the recipient withdraw the fee while the breed is still pending, leaving an
+    // expired request's `cancel_breed` refund permanently underfunded.
     let (stud_fee, other_owner) = if cross_owner {
         (
             ctx.accounts.global_state.stud_fee_lamports,
@@ -109,13 +110,6 @@ pub fn handler(
             },
         );
         anchor_lang::system_program::transfer(cpi_ctx, stud_fee)?;
-
-        ctx.accounts.stud_fee_account.amount = ctx
-            .accounts
-            .stud_fee_account
-            .amount
-            .checked_add(stud_fee)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
     }
 
     let child_id = ctx.accounts.global_state.next_pet_id;

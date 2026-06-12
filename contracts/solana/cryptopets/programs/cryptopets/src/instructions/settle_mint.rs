@@ -36,10 +36,12 @@ pub fn handler(ctx: Context<SettleMint>) -> Result<()> {
     let rarity: u8 = Rarity::from_dna(dna).into();
 
     let global_state = &mut ctx.accounts.global_state;
-    require!(
-        global_state.next_pet_id == mint_request.pet_id,
-        ErrorCode::MintRequestNotFound
-    );
+    // The pet id is assigned now, not at commit (mirrors EVM `settleBreed`'s
+    // `createPet` doing the same for breeding): concurrent commits all record the
+    // same provisional `next_pet_id`, so requiring it to still match here would
+    // permanently brick every settle but the first. Settle-time assignment is safe
+    // because the id is no longer a PDA seed (plan §2.3/v2.1 Phase A re-seed).
+    let pet_id = global_state.next_pet_id;
     global_state.next_pet_id = global_state
         .next_pet_id
         .checked_add(1)
@@ -49,7 +51,7 @@ pub fn handler(ctx: Context<SettleMint>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
     let pet = &mut ctx.accounts.pet;
-    pet.id = mint_request.pet_id;
+    pet.id = pet_id;
     pet.owner = ctx.accounts.owner.key();
     pet.dna = dna;
     pet.rarity = rarity;

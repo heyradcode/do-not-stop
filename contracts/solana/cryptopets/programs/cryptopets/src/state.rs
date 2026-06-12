@@ -492,6 +492,10 @@ pub struct BreedRequest {
     pub owner: Pubkey,
     pub parent1_id: u32,
     pub parent2_id: u32,
+    /// Provisional child id (`next_pet_id` at commit time), recorded for the commit
+    /// event. The final id is assigned at `settle_breed` from the then-current
+    /// `next_pet_id` (mirrors EVM `settleBreed`'s `createPet`), so it may differ if
+    /// other mints/breeds settle in between; `BredEvent.child_id` is authoritative.
     pub child_id: u32,
     pub randomness_account: Pubkey,
     pub commit_slot: u64,
@@ -568,6 +572,10 @@ impl BattleRequest {
 #[account]
 pub struct MintRequest {
     pub owner: Pubkey,
+    /// Provisional pet id (`next_pet_id` at commit time), recorded for the commit
+    /// event. The final id is assigned at `settle_mint` from the then-current
+    /// `next_pet_id`, so it may differ if other mints/breeds settle in between;
+    /// `MintedEvent.pet_id` is authoritative.
     pub pet_id: u32,
     pub randomness_account: Pubkey,
     pub commit_slot: u64,
@@ -633,9 +641,10 @@ impl MarriageProposal {
 
 /// Pending stud fees owed to `owner` from cross-owner breed settlements (plan §4.4,
 /// mirrors EVM `pendingStudFees[address]`), released as a pull payment via
-/// `withdraw_stud_fees`. The account's lamport balance holds `amount` plus its
-/// rent-exempt minimum; `commit_breed`/`cancel_breed` adjust `amount` and the matching
-/// lamport balance together.
+/// `withdraw_stud_fees`. Lamport invariant: balance = rent-exempt minimum + `amount`
+/// (withdrawable, credited at `settle_breed` like EVM's `pendingStudFees`) + the
+/// pending escrows of any un-settled cross-owner breeds (parked by `commit_breed`,
+/// uncounted in `amount` until settle, refunded by `cancel_breed`).
 #[account]
 pub struct StudFeeAccount {
     pub owner: Pubkey,
