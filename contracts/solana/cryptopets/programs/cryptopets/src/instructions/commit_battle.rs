@@ -46,8 +46,9 @@ pub fn handler(ctx: Context<CommitBattle>, randomness_account: Pubkey) -> Result
     battle_request.commit_slot = commit_slot;
     battle_request.bump = ctx.bumps.battle_request;
 
-    ctx.accounts.attacker_pet.trigger_cooldown(now);
-    ctx.accounts.defender_pet.trigger_cooldown(now);
+    let cooldown_seconds = ctx.accounts.global_state.battle_cooldown_seconds;
+    ctx.accounts.attacker_pet.trigger_cooldown(now, cooldown_seconds);
+    ctx.accounts.defender_pet.trigger_cooldown(now, cooldown_seconds);
 
     emit!(BattleCommittedEvent {
         attacker_owner: battle_request.attacker_owner,

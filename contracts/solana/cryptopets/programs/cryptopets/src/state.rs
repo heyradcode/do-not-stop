@@ -2,28 +2,46 @@ use anchor_lang::prelude::*;
 
 use crate::errors::ErrorCode;
 
-pub const BATTLE_COOLDOWN_SECONDS: i64 = 5;
-pub const ATTACK_VICTORY_PROBABILITY: u8 = 70;
+/// Account layout version for newly written accounts. Bump when adding fields that
+/// consume `_reserved` space, so off-chain readers can detect the layout in use.
+pub const CURRENT_ACCOUNT_VERSION: u8 = 1;
+
+pub const DEFAULT_BATTLE_COOLDOWN_SECONDS: i64 = 5;
+pub const DEFAULT_ATTACK_VICTORY_PROBABILITY: u8 = 70;
+
+/// Bounds enforced by the `set_*` config setters (§5 setter hygiene).
+pub const MAX_BATTLE_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
+pub const MAX_LEVEL_UP_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
+
+/// PDA seed for the lamport-only fee vault (§6 Solana #5). Holds `level_up_fee_lamports`
+/// and future protocol fees; swept via `withdraw_fees`.
+pub const FEE_VAULT_SEED: &[u8] = b"fee-vault";
 
 #[account]
 pub struct GlobalState {
     pub admin: Pubkey,
     pub level_up_fee_lamports: u64,
+    pub battle_cooldown_seconds: i64,
+    pub attack_victory_probability: u8,
     pub next_pet_id: u32,
     pub paused: bool,
+    pub version: u8,
     pub bump: u8,
-    pub _reserved: [u8; 2],
+    pub _reserved: [u8; 64],
 }
 
 impl GlobalState {
     pub const SEED: &'static [u8] = b"global-state";
     pub const SPACE: usize = 8 /* discriminator */
         + 32 /* admin */
-        + 8 /* level_up_fee */
+        + 8 /* level_up_fee_lamports */
+        + 8 /* battle_cooldown_seconds */
+        + 1 /* attack_victory_probability */
         + 4 /* next_pet_id */
         + 1 /* paused */
+        + 1 /* version */
         + 1 /* bump */
-        + 2; /* reserved */
+        + 64; /* reserved */
 }
 
 #[account]
@@ -31,8 +49,9 @@ pub struct PlayerProfile {
     pub owner: Pubkey,
     pub pet_count: u16,
     pub starter_created: bool,
+    pub version: u8,
     pub bump: u8,
-    pub _reserved: [u8; 4],
+    pub _reserved: [u8; 64],
 }
 
 impl PlayerProfile {
@@ -41,8 +60,9 @@ impl PlayerProfile {
         + 32 /* owner */
         + 2 /* pet_count */
         + 1 /* starter_created */
+        + 1 /* version */
         + 1 /* bump */
-        + 4; /* reserved */
+        + 64; /* reserved */
 }
 
 #[account]
@@ -55,9 +75,11 @@ pub struct PetAccount {
     pub ready_time: i64,
     pub win_count: u16,
     pub loss_count: u16,
+    pub version: u8,
     pub bump: u8,
     pub name: [u8; PetAccount::MAX_NAME_LEN],
     pub name_len: u8,
+    pub _reserved: [u8; 32],
 }
 
 impl PetAccount {
@@ -72,9 +94,11 @@ impl PetAccount {
         + 8 /* ready_time */
         + 2 /* win */
         + 2 /* loss */
+        + 1 /* version */
         + 1 /* bump */
         + Self::MAX_NAME_LEN /* name */
-        + 1; /* name_len */
+        + 1 /* name_len */
+        + 32; /* reserved */
 
     pub fn set_name(&mut self, name: &str) -> Result<()> {
         let bytes = name.as_bytes();
@@ -94,8 +118,8 @@ impl PetAccount {
         now >= self.ready_time
     }
 
-    pub fn trigger_cooldown(&mut self, now: i64) {
-        self.ready_time = now.saturating_add(BATTLE_COOLDOWN_SECONDS);
+    pub fn trigger_cooldown(&mut self, now: i64, cooldown_seconds: i64) {
+        self.ready_time = now.saturating_add(cooldown_seconds);
     }
 }
 

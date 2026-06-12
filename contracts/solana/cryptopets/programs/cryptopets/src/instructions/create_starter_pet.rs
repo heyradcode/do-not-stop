@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     rarity::Rarity,
-    state::{GlobalState, PetAccount, PlayerProfile},
+    state::{GlobalState, PetAccount, PlayerProfile, CURRENT_ACCOUNT_VERSION},
 };
 
 pub fn handler(ctx: Context<CreateStarterPet>, name: String, dna: u64, rarity: u8) -> Result<()> {
@@ -29,6 +29,7 @@ pub fn handler(ctx: Context<CreateStarterPet>, name: String, dna: u64, rarity: u
     player_profile.owner = ctx.accounts.owner.key();
     player_profile.starter_created = true;
     player_profile.pet_count = player_profile.pet_count.checked_add(1).unwrap();
+    player_profile.version = CURRENT_ACCOUNT_VERSION;
     player_profile.bump = ctx.bumps.player_profile;
 
     let pet_id = global_state.next_pet_id;
@@ -42,6 +43,7 @@ pub fn handler(ctx: Context<CreateStarterPet>, name: String, dna: u64, rarity: u
     pet.ready_time = Clock::get()?.unix_timestamp;
     pet.win_count = 0;
     pet.loss_count = 0;
+    pet.version = CURRENT_ACCOUNT_VERSION;
     pet.bump = ctx.bumps.pet;
     pet.set_name(&name)?;
 

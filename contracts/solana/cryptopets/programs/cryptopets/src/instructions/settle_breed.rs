@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     rarity::Rarity,
-    state::{BreedRequest, GlobalState, PetAccount, PlayerProfile},
+    state::{BreedRequest, GlobalState, PetAccount, PlayerProfile, CURRENT_ACCOUNT_VERSION},
     util::{mix_dna_with_vrf, read_revealed_randomness},
 };
 
@@ -64,6 +64,7 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     child.ready_time = now;
     child.win_count = 0;
     child.loss_count = 0;
+    child.version = CURRENT_ACCOUNT_VERSION;
     child.bump = ctx.bumps.child;
     child.set_name(&breed_request.name())?;
 

@@ -68,4 +68,20 @@ pub mod cryptopets {
     pub fn settle_breed(ctx: Context<SettleBreed>) -> Result<()> {
         settle_breed::handler(ctx)
     }
+
+    pub fn set_battle_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_battle_cooldown_seconds(ctx, value)
+    }
+
+    pub fn set_attack_victory_probability(ctx: Context<SetConfig>, value: u8) -> Result<()> {
+        config::set_attack_victory_probability(ctx, value)
+    }
+
+    pub fn set_level_up_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_level_up_fee_lamports(ctx, value)
+    }
+
+    pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
+        withdraw_fees::handler(ctx, amount)
+    }
 }

@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
-    state::{BattleRequest, GlobalState, PetAccount, ATTACK_VICTORY_PROBABILITY},
+    state::{BattleRequest, GlobalState, PetAccount},
     util::{battle_roll_from_vrf, read_revealed_randomness},
 };
 
@@ -35,7 +35,7 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
         battle_request.commit_slot,
     )?;
     let rand = battle_roll_from_vrf(&vrf);
-    let attacker_wins = (rand % 100) < ATTACK_VICTORY_PROBABILITY as u64;
+    let attacker_wins = (rand % 100) < ctx.accounts.global_state.attack_victory_probability as u64;
 
     let attacker_pet = &mut ctx.accounts.attacker_pet;
     let defender_pet = &mut ctx.accounts.defender_pet;

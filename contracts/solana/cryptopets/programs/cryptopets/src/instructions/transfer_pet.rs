@@ -1,6 +1,9 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::ErrorCode, state::GlobalState, state::PetAccount, state::PlayerProfile};
+use crate::{
+    errors::ErrorCode,
+    state::{GlobalState, PetAccount, PlayerProfile, CURRENT_ACCOUNT_VERSION},
+};
 
 pub fn handler(ctx: Context<TransferPet>) -> Result<()> {
     require!(!ctx.accounts.global_state.paused, ErrorCode::Paused);
@@ -13,6 +16,7 @@ pub fn handler(ctx: Context<TransferPet>) -> Result<()> {
     let ready_time = from_pet.ready_time;
     let win_count = from_pet.win_count;
     let loss_count = from_pet.loss_count;
+    let version = from_pet.version;
     let name_len = from_pet.name_len;
     let name = from_pet.name;
 
@@ -25,6 +29,7 @@ pub fn handler(ctx: Context<TransferPet>) -> Result<()> {
     let to_profile = &mut ctx.accounts.to_player_profile;
     if to_profile.owner == Pubkey::default() {
         to_profile.owner = ctx.accounts.to_owner.key();
+        to_profile.version = CURRENT_ACCOUNT_VERSION;
         to_profile.bump = ctx.bumps.to_player_profile;
         to_profile.starter_created = false;
         to_profile.pet_count = 0;
@@ -43,6 +48,7 @@ pub fn handler(ctx: Context<TransferPet>) -> Result<()> {
     to_pet.ready_time = ready_time;
     to_pet.win_count = win_count;
     to_pet.loss_count = loss_count;
+    to_pet.version = version;
     to_pet.bump = ctx.bumps.to_pet;
     to_pet.name_len = name_len;
     to_pet.name = name;

@@ -1,6 +1,7 @@
 pub mod create_starter_pet;
 pub mod commit_battle;
 pub mod commit_breed;
+pub mod config;
 pub mod settle_battle;
 pub mod settle_breed;
 pub mod initialize;
@@ -9,10 +10,12 @@ pub mod pause;
 pub mod rename_pet;
 pub mod transfer_pet;
 pub mod unpause;
+pub mod withdraw_fees;
 
 pub use create_starter_pet::*;
 pub use commit_battle::*;
 pub use commit_breed::*;
+pub use config::*;
 pub use settle_battle::*;
 pub use settle_breed::*;
 pub use initialize::*;
@@ -21,3 +24,4 @@ pub use pause::*;
 pub use rename_pet::*;
 pub use transfer_pet::*;
 pub use unpause::*;
+pub use withdraw_fees::*;

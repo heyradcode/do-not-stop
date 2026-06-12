@@ -53,8 +53,9 @@ pub fn handler(
     breed_request.bump = ctx.bumps.breed_request;
     breed_request.set_name(&name)?;
 
-    ctx.accounts.parent1.trigger_cooldown(now);
-    ctx.accounts.parent2.trigger_cooldown(now);
+    let cooldown_seconds = ctx.accounts.global_state.battle_cooldown_seconds;
+    ctx.accounts.parent1.trigger_cooldown(now, cooldown_seconds);
+    ctx.accounts.parent2.trigger_cooldown(now, cooldown_seconds);
 
     emit!(BreedCommittedEvent {
         owner: ctx.accounts.owner.key(),

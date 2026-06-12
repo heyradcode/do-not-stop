@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::ErrorCode, state::GlobalState, state::PetAccount};
+use crate::{errors::ErrorCode, state::GlobalState, state::PetAccount, state::FEE_VAULT_SEED};
 
 pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
     let global_state = &mut ctx.accounts.global_state;
@@ -15,7 +15,7 @@ pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
         LevelUpError::Unauthorized
     );
 
-    // transfer lamports to global state (program-owned)
+    // transfer lamports to the fee vault
     let fee = global_state.level_up_fee_lamports;
     require!(fee > 0, LevelUpError::InvalidFee);
 
@@ -23,7 +23,7 @@ pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
         ctx.accounts.system_program.to_account_info(),
         anchor_lang::system_program::Transfer {
             from: ctx.accounts.owner.to_account_info(),
-            to: ctx.accounts.global_state.to_account_info(),
+            to: ctx.accounts.fee_vault.to_account_info(),
         },
     );
     anchor_lang::system_program::transfer(cpi_ctx, fee)?;
@@ -56,6 +56,8 @@ pub struct LevelUp<'info> {
         bump = pet.bump,
     )]
     pub pet: Account<'info, PetAccount>,
+    #[account(mut, seeds = [FEE_VAULT_SEED], bump)]
+    pub fee_vault: SystemAccount<'info>,
     #[account(mut)]
     pub owner: Signer<'info>,
     #[account(address = system_program::ID)]
