@@ -263,3 +263,60 @@ impl BattleRequest {
         + 1; /* bump */
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fresh_pet() -> PetAccount {
+        PetAccount {
+            id: 0,
+            owner: Pubkey::default(),
+            dna: 0,
+            rarity: 0,
+            level: 0,
+            ready_time: 0,
+            win_count: 0,
+            loss_count: 0,
+            version: CURRENT_ACCOUNT_VERSION,
+            bump: 0,
+            name: [0u8; PetAccount::MAX_NAME_LEN],
+            name_len: 0,
+            open_to_challenges: true,
+            xp: 0,
+            last_opponent_id: 0,
+            same_opponent_streak: 0,
+            _reserved: [0u8; 22],
+        }
+    }
+
+    /// Cross-chain golden vectors (plan §3.4, §7), transcribed from
+    /// `contracts/test-vectors/xp.json`'s `decaySequences` (kept in sync manually with
+    /// `PetCoreV1.recordBattleOpponent` / `XpFormula.test.ts`).
+    #[test]
+    fn record_battle_opponent_matches_evm_golden_vectors() {
+        // (name, opponent_ids, expected_decay_shifts)
+        let sequences: &[(&str, &[u32], &[u8])] = &[
+            (
+                "repeat-then-switch-then-repeat",
+                &[5, 5, 5, 7, 5],
+                &[0, 1, 2, 0, 0],
+            ),
+            (
+                "switch-twice-then-repeat",
+                &[3, 4, 3, 3],
+                &[0, 0, 0, 1],
+            ),
+        ];
+
+        for (name, opponent_ids, expected_shifts) in sequences {
+            let mut pet = fresh_pet();
+            for (i, (&opponent_id, &expected_shift)) in
+                opponent_ids.iter().zip(expected_shifts.iter()).enumerate()
+            {
+                let shift = pet.record_battle_opponent(opponent_id);
+                assert_eq!(shift, expected_shift, "sequence \"{}\" step {}", name, i);
+            }
+        }
+    }
+}
+
