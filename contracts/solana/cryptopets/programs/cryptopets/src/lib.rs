@@ -134,6 +134,10 @@ pub mod cryptopets {
         config::set_train_xp(ctx, value)
     }
 
+    pub fn set_breed_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_breed_fee_lamports(ctx, value)
+    }
+
     pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
         withdraw_fees::handler(ctx, amount)
     }

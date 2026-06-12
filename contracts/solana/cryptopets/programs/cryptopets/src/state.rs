@@ -8,7 +8,12 @@ use crate::errors::ErrorCode;
 /// v2: Phase 3 data model (plan §4/§9.1) — adds `generation`, `parent1_id`,
 /// `parent2_id`, `breed_count`, `breed_ready_time`, `train_ready_time`, `species_id`
 /// to `PetAccount` and bumps `PetAccount::SPACE`. Breaking; requires redeploy + reindex.
-pub const CURRENT_ACCOUNT_VERSION: u8 = 2;
+///
+/// v3: adds `breed_fee_lamports` to `GlobalState` and widens its `_reserved` buffer
+/// (3 -> 32 bytes) to cover upcoming marriage-system fields (plan §4.4) without another
+/// breaking change. Bumps `GlobalState::SPACE`. Breaking; requires redeploy + reinit of
+/// `GlobalState` (`PetAccount`/`PlayerProfile` layouts unchanged).
+pub const CURRENT_ACCOUNT_VERSION: u8 = 3;
 
 pub const DEFAULT_BATTLE_COOLDOWN_SECONDS: i64 = 5;
 
@@ -43,6 +48,10 @@ pub const DEFAULT_NEWBORN_COOLDOWN_SECONDS: i64 = 60;
 /// `GameConfig`'s constructor, which sets `poolSizes[1..=5] = 8`).
 pub const DEFAULT_POOL_SIZE: u8 = 8;
 
+/// Fee charged by `commit_breed`, transferred to the fee vault (plan §4.3, mirrors EVM
+/// `GameConfig.breedFee`).
+pub const DEFAULT_BREED_FEE_LAMPORTS: u64 = 10_000_000; // 0.01 SOL
+
 /// Base fee for the gacha mint (plan §4.3, mirrors EVM `GameConfig.baseMintFee`).
 /// Escalates per wallet as `baseMintFee << min(mint_count, 7)` (up to 128x).
 pub const DEFAULT_BASE_MINT_FEE_LAMPORTS: u64 = 20_000_000; // 0.02 SOL
@@ -65,6 +74,7 @@ pub const MAX_GENERATION_CAP: u8 = 100;
 pub const MAX_BREED_COOLDOWN_BASE_SECONDS: i64 = BREED_COOLDOWN_CAP_SECONDS;
 pub const MAX_NEWBORN_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_BASE_MINT_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
+pub const MAX_BREED_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
 pub const MAX_TRAIN_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
 pub const MAX_TRAIN_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_TRAIN_XP: u32 = 10_000;
@@ -107,7 +117,10 @@ pub struct GlobalState {
     pub train_cooldown_seconds: i64,
     /// Flat XP granted per train (plan §3.4, mirrors EVM `GameConfig.trainXp`).
     pub train_xp: u32,
-    pub _reserved: [u8; 3],
+    /// Fee charged by `commit_breed`, transferred to the fee vault (plan §4.3, mirrors
+    /// EVM `GameConfig.breedFee`).
+    pub breed_fee_lamports: u64,
+    pub _reserved: [u8; 32],
 }
 
 impl GlobalState {
@@ -131,7 +144,8 @@ impl GlobalState {
         + 8 /* train_fee_lamports */
         + 8 /* train_cooldown_seconds */
         + 4 /* train_xp */
-        + 3; /* reserved */
+        + 8 /* breed_fee_lamports */
+        + 32; /* reserved */
 }
 
 #[account]

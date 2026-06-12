@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
-    state::{BreedRequest, GlobalState, PetAccount, PlayerProfile},
+    state::{BreedRequest, GlobalState, PetAccount, PlayerProfile, FEE_VAULT_SEED},
     util::assert_randomness_committed,
 };
 
@@ -51,6 +51,17 @@ pub fn handler(
         &ctx.accounts.randomness_account_data.to_account_info(),
         randomness_account,
     )?;
+
+    // Breed fee (plan §4.3, mirrors EVM `GameConfig.breedFee` / `requestCreateFromDNA`).
+    let breed_fee = ctx.accounts.global_state.breed_fee_lamports;
+    let cpi_ctx = CpiContext::new(
+        ctx.accounts.system_program.to_account_info(),
+        anchor_lang::system_program::Transfer {
+            from: ctx.accounts.owner.to_account_info(),
+            to: ctx.accounts.fee_vault.to_account_info(),
+        },
+    );
+    anchor_lang::system_program::transfer(cpi_ctx, breed_fee)?;
 
     let child_id = ctx.accounts.global_state.next_pet_id;
 
@@ -130,6 +141,9 @@ pub struct CommitBreed<'info> {
         space = BreedRequest::SPACE,
     )]
     pub breed_request: Account<'info, BreedRequest>,
+
+    #[account(mut, seeds = [FEE_VAULT_SEED], bump)]
+    pub fee_vault: SystemAccount<'info>,
 
     /// CHECK: parsed as Switchboard `RandomnessAccountData` in the handler.
     pub randomness_account_data: UncheckedAccount<'info>,

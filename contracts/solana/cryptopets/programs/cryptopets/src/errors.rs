@@ -84,5 +84,7 @@ pub enum ErrorCode {
     InvalidTrainXp,
     #[msg("Pet is on train cooldown")]
     PetNotTrainReady,
+    #[msg("Breed fee exceeds the maximum allowed")]
+    InvalidBreedFee,
 }
 

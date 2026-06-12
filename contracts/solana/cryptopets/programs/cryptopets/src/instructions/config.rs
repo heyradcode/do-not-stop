@@ -4,9 +4,9 @@ use crate::{
     errors::ErrorCode,
     state::{
         GlobalState, MAX_BASE_MINT_FEE_LAMPORTS, MAX_BATTLE_COOLDOWN_SECONDS,
-        MAX_BREED_COOLDOWN_BASE_SECONDS, MAX_GENERATION_CAP, MAX_LEVEL_UP_FEE_LAMPORTS,
-        MAX_NEWBORN_COOLDOWN_SECONDS, MAX_RANDOMNESS_EXPIRY_SLOTS, MAX_TRAIN_COOLDOWN_SECONDS,
-        MAX_TRAIN_FEE_LAMPORTS, MAX_TRAIN_XP,
+        MAX_BREED_COOLDOWN_BASE_SECONDS, MAX_BREED_FEE_LAMPORTS, MAX_GENERATION_CAP,
+        MAX_LEVEL_UP_FEE_LAMPORTS, MAX_NEWBORN_COOLDOWN_SECONDS, MAX_RANDOMNESS_EXPIRY_SLOTS,
+        MAX_TRAIN_COOLDOWN_SECONDS, MAX_TRAIN_FEE_LAMPORTS, MAX_TRAIN_XP,
     },
 };
 
@@ -126,6 +126,14 @@ pub fn set_train_xp(ctx: Context<SetConfig>, value: u32) -> Result<()> {
     Ok(())
 }
 
+/// Mirrors EVM `GameConfig.setBreedFee` (plan §4.3): fee charged by `commit_breed`.
+pub fn set_breed_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+    require!(value <= MAX_BREED_FEE_LAMPORTS, ErrorCode::InvalidBreedFee);
+    ctx.accounts.global_state.breed_fee_lamports = value;
+    emit!(BreedFeeUpdated { value });
+    Ok(())
+}
+
 #[event]
 pub struct BattleCooldownUpdated {
     pub value: i64,
@@ -190,6 +198,11 @@ pub struct TrainCooldownUpdated {
 #[event]
 pub struct TrainXpUpdated {
     pub value: u32,
+}
+
+#[event]
+pub struct BreedFeeUpdated {
+    pub value: u64,
 }
 
 #[derive(Accounts)]
