@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 /**
  * @title Inventory
  * @dev On-chain stats and records for pets (token ids align with ERC-721)
+ * @custom:deprecated LEGACY v1 stack. Pet storage now lives in PetCoreV1 behind a
+ *      UUPS proxy per plan §2.1. Do not extend.
  */
 contract Inventory is Ownable {
     event NewPet(uint256 petId, string name, uint256 dna, uint8 rarity);

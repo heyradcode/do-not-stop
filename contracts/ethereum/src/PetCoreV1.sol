@@ -70,8 +70,8 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     mapping(uint256 => MarriageProposalData)  public marriageProposal;     // keyed by petIdA
     mapping(uint256 => uint256)               public marriageCooldownUntil; // petId => timestamp
 
-    // Reserve 41 slots: 8 declared above (through marriageCooldownUntil) + 41 gap = 49 for PetCoreV1's scope.
-    uint256[41] private __gap;
+    // Reserve 42 slots: 8 declared above (through marriageCooldownUntil) + 42 gap = 50 for PetCoreV1's scope.
+    uint256[42] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
 
@@ -95,14 +95,18 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         _;
     }
 
-    // ─── initializer ──────────────────────────────────────────────────────────
+    // ─── constructor / initializer ────────────────────────────────────────────
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers(); // implementation must never be initialized directly
+    }
 
     function initialize(address gameConfig_, address initialOwner) public initializer {
         __ERC721_init("CryptoPets", "PETS");
-        __ERC721Pausable_init();
+        __ERC721Pausable_init(); // also runs __Pausable_init_unchained
         __UUPSUpgradeable_init();
         __Ownable_init();
-        __Pausable_init();
         _transferOwnership(initialOwner);
         gameConfig = GameConfig(gameConfig_);
     }
@@ -189,7 +193,9 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
 
     // Gacha starter mint (Phase 3): replaces the one-per-wallet createRandom.
     // Fee escalates with each mint from this wallet: baseMintFee * (1 + mintCount).
-    // Rarity is determined from DNA pair 7 (digits 14-15).
+    // Rarity is derived from DNA digit pair 0 (DnaLib.rarityFromDna, 50/25/15/8/2 split).
+    // WARNING: DNA entropy is block-derived (grindable, plan §4.3) — see security notes;
+    // the plan's final form requests DNA from VRF like breeding does.
     function mintStarter(string memory name_) external payable whenNotPaused {
         _requireValidName(name_);
         uint256 mintCount = walletMintCount[msg.sender];

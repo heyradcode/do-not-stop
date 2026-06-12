@@ -23,10 +23,12 @@ function syncABI() {
         console.log('🔄 Syncing ABI from contracts to frontend and mobile...');
 
         // Path to the compiled contract JSON
+        // Legacy v1 stack now lives in src/legacy/ (see src/README.md).
         const contractJsonPath = path.join(
             CONTRACTS_DIR,
             'artifacts',
             'src',
+            'legacy',
             `${CONTRACT_NAME}.sol`,
             `${CONTRACT_NAME}.json`
         );

@@ -100,19 +100,19 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     uint16  private constant VRF_REQUEST_CONFIRMATIONS = 3;
     uint32  private constant VRF_NUM_WORDS             = 1;
 
-    mapping(uint256 => BreedRequest)   private s_breedRequests;
+    mapping(uint256 => BreedRequest)   private _breedRequests;
     mapping(uint256 => uint256)        public  petBreedRequestId;
 
-    mapping(uint256 => RequestType)    private s_requestTypes;
-    mapping(uint256 => PendingBattle)  private s_battleRequests;
+    mapping(uint256 => RequestType)    private _requestTypes;
+    mapping(uint256 => PendingBattle)  private _battleRequests;
     mapping(uint256 => uint256)        public  petBattleRequestId;
 
     // Stud fees owed to the non-initiating owner of a cross-owner breed (plan §4.4),
     // released as a pull payment via withdrawStudFees().
     mapping(address => uint256)        public  pendingStudFees;
 
-    // Reserve 36 slots: 12 declared above (through pendingStudFees) + 36 gap = 48 total.
-    uint256[36] private __gap;
+    // Reserve 37 slots: 13 declared above (through pendingStudFees) + 37 gap = 50 total.
+    uint256[37] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
 
@@ -121,7 +121,12 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         _;
     }
 
-    // ─── initializer ──────────────────────────────────────────────────────────
+    // ─── constructor / initializer ────────────────────────────────────────────
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers(); // implementation must never be initialized directly
+    }
 
     function initialize(
         address vrfCoordinator_,
@@ -170,10 +175,10 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
         requestId = _requestVrf();
 
-        s_requestTypes[requestId]    = RequestType.Battle;
+        _requestTypes[requestId]    = RequestType.Battle;
         petBattleRequestId[petId1]   = requestId;
         petBattleRequestId[petId2]   = requestId;
-        s_battleRequests[requestId]  = PendingBattle({
+        _battleRequests[requestId]  = PendingBattle({
             requester: msg.sender,
             petId1:    petId1,
             petId2:    petId2,
@@ -185,7 +190,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     }
 
     function settleBattle(uint256 requestId) external whenNotPaused {
-        PendingBattle memory pending = s_battleRequests[requestId];
+        PendingBattle memory pending = _battleRequests[requestId];
         require(pending.requester != address(0), "No pending battle");
         require(pending.fulfilled, "VRF not yet fulfilled");
 
@@ -222,7 +227,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
         petBattleRequestId[pending.petId1] = 0;
         petBattleRequestId[pending.petId2] = 0;
-        delete s_battleRequests[requestId];
+        delete _battleRequests[requestId];
 
         emit BattleResolved(
             requestId,
@@ -234,7 +239,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     }
 
     function cancelBattle(uint256 requestId) external {
-        PendingBattle memory pending = s_battleRequests[requestId];
+        PendingBattle memory pending = _battleRequests[requestId];
         require(pending.requester != address(0), "No pending battle");
         require(
             msg.sender == pending.requester || msg.sender == owner(),
@@ -244,8 +249,8 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
         petBattleRequestId[pending.petId1] = 0;
         petBattleRequestId[pending.petId2] = 0;
-        delete s_requestTypes[requestId];
-        delete s_battleRequests[requestId];
+        delete _requestTypes[requestId];
+        delete _battleRequests[requestId];
     }
 
     // ─── breeding ─────────────────────────────────────────────────────────────
@@ -284,10 +289,10 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
         requestId = _requestVrf();
 
-        s_requestTypes[requestId]  = RequestType.Breed;
+        _requestTypes[requestId]  = RequestType.Breed;
         petBreedRequestId[petId1]  = requestId;
         petBreedRequestId[petId2]  = requestId;
-        s_breedRequests[requestId] = BreedRequest({
+        _breedRequests[requestId] = BreedRequest({
             owner:      msg.sender,
             petId1:     petId1,
             petId2:     petId2,
@@ -302,7 +307,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     }
 
     function settleBreed(uint256 requestId) external whenNotPaused {
-        BreedRequest memory p = s_breedRequests[requestId];
+        BreedRequest memory p = _breedRequests[requestId];
         require(p.owner != address(0), "No pending breed");
         require(p.fulfilled, "VRF not yet fulfilled");
 
@@ -335,13 +340,13 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
         petBreedRequestId[p.petId1] = 0;
         petBreedRequestId[p.petId2] = 0;
-        delete s_breedRequests[requestId];
+        delete _breedRequests[requestId];
 
         emit BreedSettled(p.owner, childId, requestId, p.otherOwner);
     }
 
     function cancelBreed(uint256 requestId) external {
-        BreedRequest memory p = s_breedRequests[requestId];
+        BreedRequest memory p = _breedRequests[requestId];
         require(p.owner != address(0), "No pending breed");
         require(
             msg.sender == p.owner || msg.sender == owner(),
@@ -351,8 +356,8 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
         petBreedRequestId[p.petId1] = 0;
         petBreedRequestId[p.petId2] = 0;
-        delete s_requestTypes[requestId];
-        delete s_breedRequests[requestId];
+        delete _requestTypes[requestId];
+        delete _breedRequests[requestId];
 
         // No breed, no stud fee — refund the escrowed amount (plan §4.4).
         if (p.studFee > 0) {
@@ -380,14 +385,14 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     }
 
     function _fulfill(uint256 requestId, uint256 word) internal {
-        RequestType type_ = s_requestTypes[requestId];
-        delete s_requestTypes[requestId];
+        RequestType type_ = _requestTypes[requestId];
+        delete _requestTypes[requestId];
         if (type_ == RequestType.Battle) {
-            s_battleRequests[requestId].vrfSeed   = word;
-            s_battleRequests[requestId].fulfilled  = true;
+            _battleRequests[requestId].vrfSeed   = word;
+            _battleRequests[requestId].fulfilled  = true;
         } else if (type_ == RequestType.Breed) {
-            s_breedRequests[requestId].vrfSeed    = word;
-            s_breedRequests[requestId].fulfilled   = true;
+            _breedRequests[requestId].vrfSeed    = word;
+            _breedRequests[requestId].fulfilled   = true;
         }
         // Unknown requestId → ignore (coordinator may retry; no revert to avoid blocking)
     }

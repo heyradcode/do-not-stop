@@ -9,6 +9,8 @@ import "./CryptoPets.sol";
  * @title LocalCryptoPetsDeployer
  * @dev Single tx for local Hardhat: VRF v2.5 mock, subscription, funded native balance, CryptoPets as consumer.
  *      Send `msg.value` to seed the subscription (e.g. 100 ether). For testnets, deploy `CryptoPets` with real coordinator args.
+ * @custom:deprecated LEGACY v1 stack deployer. The v2 UUPS proxy stack deploys via
+ *      LocalCryptoPetsDeployerV2 (local) / ignition/modules/CryptoPetsV2Live.ts (live).
  */
 contract LocalCryptoPetsDeployer {
     VRFCoordinatorV2_5Mock public immutable vrfCoordinator;

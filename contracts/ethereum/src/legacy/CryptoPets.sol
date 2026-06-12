@@ -13,6 +13,10 @@ import "./Utils.sol";
 /**
  * @title CryptoPets
  * @dev ERC-721 facade over Inventory, Battle, Breeding, Utils. Breeding DNA uses Chainlink VRF.
+ * @custom:deprecated LEGACY v1 stack (immutable monolith). Superseded by the UUPS v2
+ *      architecture in src/ (PetCoreV1 + GameLogicV1 + GameConfig + CombatSimV1) per
+ *      contracts/plan-contract-upgrade.md §2.1. Kept only while the frontend/subgraph
+ *      still target the old deployment — do not extend.
  */
 contract CryptoPets is ERC721, VRFConsumerBaseV2Plus {
     event BreedRandomnessRequested(

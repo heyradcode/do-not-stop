@@ -7,6 +7,8 @@ import "./Utils.sol";
 /**
  * @title Breeding
  * @dev Parents must be ready; DNA randomness comes from Chainlink VRF via vrfFulfillGateway
+ * @custom:deprecated LEGACY v1 stack. Replaced by GameLogicV1 breeding (generations,
+ *      lineage, mutation mixing, store-then-settle) per plan §4. Do not extend.
  */
 contract Breeding {
     event Bred(uint256 parentId1, uint256 parentId2, uint256 childId);

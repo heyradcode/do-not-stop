@@ -10,6 +10,8 @@ import "./Utils.sol";
  *      Callable only through the gateway (CryptoPets), which enforces pet
  *      ownership — Inventory trusts this contract, so direct calls must not
  *      bypass that check.
+ * @custom:deprecated LEGACY v1 stack. Replaced by GameLogicV1 + CombatSimV1
+ *      (stat-based sim, VRF store-then-settle) per plan §3. Do not extend.
  */
 contract Battle {
     event FightResult(uint256 petId1, uint256 petId2, bool firstWins);

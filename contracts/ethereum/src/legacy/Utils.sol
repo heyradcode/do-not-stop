@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 /**
  * @title Utils
  * @dev Randomness, DNA, and rarity helpers
+ * @custom:deprecated LEGACY v1 stack. randMod is predictable (plan §1) — v2 uses VRF
+ *      store-then-settle; DNA/rarity helpers moved to the internal DnaLib. Do not extend.
  */
 contract Utils {
     uint256 public constant DNA_DIGITS = 16;
