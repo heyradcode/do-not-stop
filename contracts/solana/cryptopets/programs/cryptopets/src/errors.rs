@@ -92,5 +92,15 @@ pub enum ErrorCode {
     InvalidMarriageCooldown,
     #[msg("Proposal TTL exceeds the maximum allowed")]
     InvalidProposalTtl,
+    #[msg("Cannot marry a pet to itself")]
+    CannotMarrySelf,
+    #[msg("Pets with the same owner do not need to marry")]
+    CannotMarrySameOwner,
+    #[msg("Pet is already married or on marriage cooldown")]
+    PetNotEligibleForMarriage,
+    #[msg("Incest: cannot marry a parent or child")]
+    IncestMarriageRejected,
+    #[msg("A pending marriage proposal already exists for this pet")]
+    MarriageProposalAlreadyPending,
 }
 

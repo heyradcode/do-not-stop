@@ -153,4 +153,8 @@ pub mod cryptopets {
     pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
         withdraw_fees::handler(ctx, amount)
     }
+
+    pub fn propose_marriage(ctx: Context<ProposeMarriage>) -> Result<()> {
+        propose_marriage::handler(ctx)
+    }
 }
