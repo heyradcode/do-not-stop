@@ -8,10 +8,6 @@ pub enum ErrorCode {
     Unauthorized,
     #[msg("Program is paused")]
     Paused,
-    #[msg("Cannot transfer a pet to yourself")]
-    CannotTransferToSelf,
-    #[msg("Sender has no pets to transfer")]
-    PetCountUnderflow,
     #[msg("Recipient pet count overflow")]
     PetCountOverflow,
     #[msg("Pet is on cooldown")]
@@ -122,5 +118,7 @@ pub enum ErrorCode {
     NoStudFeesToWithdraw,
     #[msg("No pending mint request for this wallet")]
     MintRequestNotFound,
+    #[msg("Asset account does not match this pet's Metaplex Core asset")]
+    InvalidPetAsset,
 }
 

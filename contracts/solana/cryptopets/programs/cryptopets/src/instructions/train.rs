@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{train_fee_for, GlobalState, PetAccount, FEE_VAULT_SEED},
+    util::core_asset_owner,
 };
 
 /// Pay a level-scaled fee for a flat XP grant, once per train cooldown (plan §3.4,
@@ -11,8 +12,13 @@ pub fn handler(ctx: Context<Train>) -> Result<()> {
     let global_state = &ctx.accounts.global_state;
     require!(!global_state.paused, ErrorCode::Paused);
 
+    require_keys_eq!(
+        core_asset_owner(&ctx.accounts.pet_asset.to_account_info())?,
+        ctx.accounts.owner.key(),
+        ErrorCode::Unauthorized
+    );
+
     let pet = &ctx.accounts.pet;
-    require_keys_eq!(pet.owner, ctx.accounts.owner.key(), ErrorCode::Unauthorized);
 
     let now = Clock::get()?.unix_timestamp;
     require!(pet.is_train_ready(now), ErrorCode::PetNotTrainReady);
@@ -58,9 +64,14 @@ pub struct Train<'info> {
     #[account(seeds = [GlobalState::SEED], bump = global_state.bump)]
     pub global_state: Account<'info, GlobalState>,
 
+    /// CHECK: this pet's Metaplex Core asset account; PDA seed for `pet` and source of
+    /// truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub pet_asset: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [PetAccount::SEED, owner.key().as_ref(), &pet.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, pet_asset.key().as_ref()],
         bump = pet.bump,
     )]
     pub pet: Account<'info, PetAccount>,

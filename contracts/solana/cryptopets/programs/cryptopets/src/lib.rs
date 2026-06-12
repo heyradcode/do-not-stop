@@ -36,10 +36,6 @@ pub mod cryptopets {
         set_open_to_challenges::handler(ctx, value)
     }
 
-    pub fn transfer_pet(ctx: Context<TransferPet>) -> Result<()> {
-        transfer_pet::handler(ctx)
-    }
-
     pub fn pause(ctx: Context<Pause>) -> Result<()> {
         pause::handler(ctx)
     }
@@ -85,6 +81,10 @@ pub mod cryptopets {
 
     pub fn cancel_mint(ctx: Context<CancelMint>) -> Result<()> {
         cancel_mint::handler(ctx)
+    }
+
+    pub fn sync_metadata(ctx: Context<SyncMetadata>) -> Result<()> {
+        sync_metadata::handler(ctx)
     }
 
     pub fn cancel_battle(ctx: Context<CancelBattle>) -> Result<()> {

@@ -12,7 +12,7 @@ use crate::{
         BreedRequest, GlobalState, PetAccount, PlayerProfile, BREED_COOLDOWN_CAP_SECONDS,
         CURRENT_ACCOUNT_VERSION,
     },
-    util::{inherit_rarity, mix_dna_with_vrf, read_revealed_randomness},
+    util::{core_asset_owner, inherit_rarity, mix_dna_with_vrf, read_revealed_randomness},
 };
 
 pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
@@ -198,21 +198,37 @@ pub struct SettleBreed<'info> {
     )]
     pub player_profile: Account<'info, PlayerProfile>,
 
+    /// CHECK: address-constrained to the Metaplex Core program; invoked via CPI to mint
+    /// the child's asset.
+    #[account(address = mpl_core::ID)]
+    pub mpl_core_program: UncheckedAccount<'info>,
+
+    /// Fresh keypair for the child's Metaplex Core asset account (plan §2.3/v2.1 Phase A),
+    /// created via the CPI below. Its pubkey is recorded in `child.asset` and is `child`'s
+    /// PDA seed.
+    #[account(mut)]
+    pub asset: Signer<'info>,
+
+    /// CHECK: the "CryptoPets" collection account (`global_state.collection`); updated by
+    /// the CPI below to register the new asset.
+    #[account(mut, address = global_state.collection)]
+    pub collection: UncheckedAccount<'info>,
+
+    /// CHECK: parent1's Metaplex Core asset account; PDA seed for `parent1` and source of
+    /// truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub parent1_asset: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [
-            PetAccount::SEED,
-            owner.key().as_ref(),
-            &breed_request.parent1_id.to_le_bytes(),
-        ],
+        seeds = [PetAccount::SEED, parent1_asset.key().as_ref()],
         bump = parent1.bump,
-        constraint = parent1.owner == owner.key() @ ErrorCode::Unauthorized,
+        constraint = core_asset_owner(&parent1_asset.to_account_info())? == owner.key() @ ErrorCode::Unauthorized,
     )]
     pub parent1: Account<'info, PetAccount>,
 
-    /// CHECK: parent2's owner pubkey, used as a PDA seed for `parent2` (plan §4.4). Equal
-    /// to `owner` for same-owner breeds, or `breed_request.other_owner` for cross-owner
-    /// breeds.
+    /// CHECK: parent2's owner pubkey (plan §4.4). Equal to `owner` for same-owner breeds,
+    /// or `breed_request.other_owner` for cross-owner breeds.
     #[account(
         constraint = (breed_request.other_owner == Pubkey::default()
             && parent2_owner.key() == owner.key())
@@ -222,26 +238,23 @@ pub struct SettleBreed<'info> {
     )]
     pub parent2_owner: UncheckedAccount<'info>,
 
+    /// CHECK: parent2's Metaplex Core asset account; PDA seed for `parent2` and source of
+    /// truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub parent2_asset: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [
-            PetAccount::SEED,
-            parent2_owner.key().as_ref(),
-            &breed_request.parent2_id.to_le_bytes(),
-        ],
+        seeds = [PetAccount::SEED, parent2_asset.key().as_ref()],
         bump = parent2.bump,
-        constraint = parent2.owner == parent2_owner.key() @ ErrorCode::Unauthorized,
+        constraint = core_asset_owner(&parent2_asset.to_account_info())? == parent2_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub parent2: Account<'info, PetAccount>,
 
     #[account(
         init,
         payer = owner,
-        seeds = [
-            PetAccount::SEED,
-            owner.key().as_ref(),
-            &breed_request.child_id.to_le_bytes(),
-        ],
+        seeds = [PetAccount::SEED, asset.key().as_ref()],
         bump,
         space = PetAccount::SPACE,
     )]
@@ -258,21 +271,6 @@ pub struct SettleBreed<'info> {
 
     /// CHECK: parsed as Switchboard `RandomnessAccountData` in the handler.
     pub randomness_account_data: UncheckedAccount<'info>,
-
-    /// CHECK: address-constrained to the Metaplex Core program; invoked via CPI to mint
-    /// the child's asset.
-    #[account(address = mpl_core::ID)]
-    pub mpl_core_program: UncheckedAccount<'info>,
-
-    /// Fresh keypair for the child's Metaplex Core asset account (plan §2.3/v2.1 Phase A),
-    /// created via the CPI below. Its pubkey is recorded in `child.asset`.
-    #[account(mut)]
-    pub asset: Signer<'info>,
-
-    /// CHECK: the "CryptoPets" collection account (`global_state.collection`); updated by
-    /// the CPI below to register the new asset.
-    #[account(mut, address = global_state.collection)]
-    pub collection: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }

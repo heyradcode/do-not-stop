@@ -112,6 +112,22 @@ pub fn read_revealed_randomness(
         .map_err(|_| error!(ErrorCode::RandomnessNotResolved))
 }
 
+/// Reads the current owner of a pet's Metaplex Core asset directly from its account data
+/// (plan §2.3/v2.1 Phase A re-seed). This is the source of truth for pet ownership,
+/// replacing `PetAccount.owner` (informational-only post-mint, see its doc comment).
+///
+/// UNVERIFIED: `mpl_core::accounts::BaseAssetV1::from_bytes` and its `owner: Pubkey`
+/// field follow the documented mpl-core ~0.10 `BaseAssetV1` account layout (`key`,
+/// `owner`, `update_authority`, `name`, `uri`, followed by plugin data) but have not been
+/// checked against the real crate (no cargo registry cache or Rust toolchain in this
+/// environment). Fix up against `mpl_core::accounts::BaseAssetV1` when building.
+pub fn core_asset_owner(asset_account: &AccountInfo) -> Result<Pubkey> {
+    let data = asset_account.try_borrow_data()?;
+    let asset = mpl_core::accounts::BaseAssetV1::from_bytes(&data)
+        .map_err(|_| error!(ErrorCode::InvalidPetAsset))?;
+    Ok(asset.owner)
+}
+
 // NOTE: not run — no Rust toolchain (cargo/anchor) available in this environment.
 #[cfg(test)]
 mod tests {

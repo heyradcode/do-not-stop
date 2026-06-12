@@ -4,7 +4,7 @@ use crate::{
     combat::{self, SkillConfig},
     errors::ErrorCode,
     state::{BattleRequest, GlobalState, PetAccount},
-    util::read_revealed_randomness,
+    util::{core_asset_owner, read_revealed_randomness},
 };
 
 pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
@@ -18,6 +18,16 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
     );
     require_keys_eq!(
         battle_request.defender_owner,
+        ctx.accounts.defender_owner.key(),
+        ErrorCode::Unauthorized
+    );
+    require_keys_eq!(
+        core_asset_owner(&ctx.accounts.attacker_asset.to_account_info())?,
+        ctx.accounts.attacker_owner.key(),
+        ErrorCode::Unauthorized
+    );
+    require_keys_eq!(
+        core_asset_owner(&ctx.accounts.defender_asset.to_account_info())?,
         ctx.accounts.defender_owner.key(),
         ErrorCode::Unauthorized
     );
@@ -176,30 +186,30 @@ pub struct SettleBattle<'info> {
     #[account(mut)]
     pub attacker_owner: Signer<'info>,
 
+    /// CHECK: attacker pet's Metaplex Core asset account; PDA seed for `attacker_pet`
+    /// and source of truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub attacker_asset: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [
-            PetAccount::SEED,
-            attacker_owner.key().as_ref(),
-            &battle_request.attacker_pet_id.to_le_bytes(),
-        ],
+        seeds = [PetAccount::SEED, attacker_asset.key().as_ref()],
         bump = attacker_pet.bump,
-        constraint = attacker_pet.owner == attacker_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub attacker_pet: Account<'info, PetAccount>,
 
     /// CHECK: must match `battle_request.defender_owner`.
     pub defender_owner: UncheckedAccount<'info>,
 
+    /// CHECK: defender pet's Metaplex Core asset account; PDA seed for `defender_pet`
+    /// and source of truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub defender_asset: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [
-            PetAccount::SEED,
-            defender_owner.key().as_ref(),
-            &battle_request.defender_pet_id.to_le_bytes(),
-        ],
+        seeds = [PetAccount::SEED, defender_asset.key().as_ref()],
         bump = defender_pet.bump,
-        constraint = defender_pet.owner == defender_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub defender_pet: Account<'info, PetAccount>,
 

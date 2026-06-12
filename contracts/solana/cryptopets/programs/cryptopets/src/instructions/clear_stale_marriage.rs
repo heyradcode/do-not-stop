@@ -1,6 +1,10 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::ErrorCode, state::PetAccount};
+use crate::{
+    errors::ErrorCode,
+    state::PetAccount,
+    util::core_asset_owner,
+};
 
 /// Permissionless cleanup, mirrors EVM `PetCoreV1.clearStaleMarriage` (plan §4.4): either
 /// pet's owner has changed since the marriage was accepted, invalidating consent. No
@@ -11,8 +15,10 @@ pub fn handler(ctx: Context<ClearStaleMarriage>) -> Result<()> {
 
     require!(pet_a.spouse_id == pet_b.id, ErrorCode::NotMarriedToEachOther);
 
-    let stale = pet_a.marriage_owner_snapshot != pet_a.owner
-        || pet_b.marriage_owner_snapshot != pet_b.owner;
+    // Live Core-asset owners (plan §2.3/v2.1 Phase A) are the source of truth for
+    // staleness, compared against the snapshot taken at `accept_marriage` time.
+    let stale = pet_a.marriage_owner_snapshot != core_asset_owner(&ctx.accounts.pet_a_asset.to_account_info())?
+        || pet_b.marriage_owner_snapshot != core_asset_owner(&ctx.accounts.pet_b_asset.to_account_info())?;
     require!(stale, ErrorCode::MarriageNotStale);
 
     let pet_a_id = pet_a.id;
@@ -34,25 +40,27 @@ pub struct MarriageStaleClearedEvent {
 
 #[derive(Accounts)]
 pub struct ClearStaleMarriage<'info> {
-    /// CHECK: pet_a's owner pubkey, used as a PDA seed for `pet_a`.
-    pub pet_a_owner: UncheckedAccount<'info>,
+    /// CHECK: pet_a's Metaplex Core asset account; PDA seed for `pet_a` and source of
+    /// truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub pet_a_asset: UncheckedAccount<'info>,
 
     #[account(
         mut,
-        seeds = [PetAccount::SEED, pet_a_owner.key().as_ref(), &pet_a.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, pet_a_asset.key().as_ref()],
         bump = pet_a.bump,
-        constraint = pet_a.owner == pet_a_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub pet_a: Account<'info, PetAccount>,
 
-    /// CHECK: pet_b's owner pubkey, used as a PDA seed for `pet_b`.
-    pub pet_b_owner: UncheckedAccount<'info>,
+    /// CHECK: pet_b's Metaplex Core asset account; PDA seed for `pet_b` and source of
+    /// truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub pet_b_asset: UncheckedAccount<'info>,
 
     #[account(
         mut,
-        seeds = [PetAccount::SEED, pet_b_owner.key().as_ref(), &pet_b.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, pet_b_asset.key().as_ref()],
         bump = pet_b.bump,
-        constraint = pet_b.owner == pet_b_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub pet_b: Account<'info, PetAccount>,
 }

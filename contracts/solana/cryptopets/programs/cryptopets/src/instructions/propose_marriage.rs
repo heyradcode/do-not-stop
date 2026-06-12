@@ -3,10 +3,11 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{GlobalState, MarriageProposal, PetAccount},
+    util::core_asset_owner,
 };
 
 /// Mirrors EVM `PetCoreV1.proposeMarriage` (plan §4.4): `owner` proposes a mutual
-/// marriage between `pet_a` (which they own) and `pet_b` (owned by `pet_b_owner`).
+/// marriage between `pet_a` (which they own) and `pet_b` (owned by someone else).
 /// Overwrites any expired proposal from `pet_a`; a live (unexpired) proposal blocks a
 /// new one.
 pub fn handler(ctx: Context<ProposeMarriage>) -> Result<()> {
@@ -16,7 +17,14 @@ pub fn handler(ctx: Context<ProposeMarriage>) -> Result<()> {
     let pet_b = &ctx.accounts.pet_b;
 
     require!(pet_a.id != pet_b.id, ErrorCode::CannotMarrySelf);
-    require!(pet_a.owner != pet_b.owner, ErrorCode::CannotMarrySameOwner);
+    // Current ownership comes from the Core asset, not the informational `pet.owner`
+    // field (plan §2.3/v2.1 Phase A). `pet_a`'s ownership by `owner` is enforced by its
+    // account constraint below.
+    let pet_b_current_owner = core_asset_owner(&ctx.accounts.pet_b_asset.to_account_info())?;
+    require!(
+        ctx.accounts.owner.key() != pet_b_current_owner,
+        ErrorCode::CannotMarrySameOwner
+    );
 
     let now = Clock::get()?.unix_timestamp;
     require!(pet_a.can_marry(now), ErrorCode::PetNotEligibleForMarriage);
@@ -76,20 +84,26 @@ pub struct ProposeMarriage<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
+    /// CHECK: `pet_a`'s Metaplex Core asset account; PDA seed for `pet_a` and source of
+    /// truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub pet_a_asset: UncheckedAccount<'info>,
+
     #[account(
-        seeds = [PetAccount::SEED, owner.key().as_ref(), &pet_a.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, pet_a_asset.key().as_ref()],
         bump = pet_a.bump,
-        constraint = pet_a.owner == owner.key() @ ErrorCode::Unauthorized,
+        constraint = core_asset_owner(&pet_a_asset.to_account_info())? == owner.key() @ ErrorCode::Unauthorized,
     )]
     pub pet_a: Account<'info, PetAccount>,
 
-    /// CHECK: `pet_b`'s owner pubkey, used as a PDA seed for `pet_b`.
-    pub pet_b_owner: UncheckedAccount<'info>,
+    /// CHECK: `pet_b`'s Metaplex Core asset account; PDA seed for `pet_b` (plan §2.3/v2.1
+    /// Phase A re-seed).
+    #[account(owner = mpl_core::ID)]
+    pub pet_b_asset: UncheckedAccount<'info>,
 
     #[account(
-        seeds = [PetAccount::SEED, pet_b_owner.key().as_ref(), &pet_b.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, pet_b_asset.key().as_ref()],
         bump = pet_b.bump,
-        constraint = pet_b.owner == pet_b_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub pet_b: Account<'info, PetAccount>,
 

@@ -29,9 +29,11 @@ use crate::errors::ErrorCode;
 ///
 /// v6: adds `asset: Pubkey` to `PetAccount` (plan §2.3/v2.1 Phase A) — the Metaplex Core
 /// asset pubkey minted into the "CryptoPets" collection by `settle_mint`/`settle_breed`'s
-/// CPI in a follow-up step. Will become the new PDA seed (`[b"pet", asset_pubkey]`,
-/// replacing `[PetAccount::SEED, owner, pet_id]`) and the source of truth for pet
-/// ownership (replacing `pet.owner`) once the re-seed step lands. Bumps
+/// CPI. `PetAccount`'s PDA seeds are now `[PetAccount::SEED, asset_pubkey]` (replacing
+/// `[PetAccount::SEED, owner, pet_id]`), and the Core asset's `owner` field (read via
+/// `util::core_asset_owner`) is the source of truth for pet ownership, replacing
+/// `pet.owner` (now informational-only, see its doc comment). `transfer_pet` is removed —
+/// ownership transfers happen as standard Core asset transfers through any wallet. Bumps
 /// `PetAccount::SPACE` (+32 bytes). Breaking; requires redeploy + reinit of pet accounts
 /// (`GlobalState`/`PlayerProfile` layouts unchanged).
 pub const CURRENT_ACCOUNT_VERSION: u8 = 6;
@@ -254,6 +256,10 @@ pub fn train_fee_for(level: u16, base_fee_lamports: u64) -> Result<u64> {
 #[account]
 pub struct PetAccount {
     pub id: u32,
+    /// Owner at the time this pet was minted or bred (plan §2.3/v2.1 Phase A).
+    /// Informational only — post-mint Core-wallet transfers do not update this field
+    /// (there is no `transfer_pet` instruction). Current ownership is the Metaplex Core
+    /// asset's `owner` field, read via `util::core_asset_owner(&asset_account)`.
     pub owner: Pubkey,
     pub dna: u64,
     pub rarity: u8,
@@ -298,9 +304,11 @@ pub struct PetAccount {
     /// Pet id of this pet's spouse (plan §4.4, mirrors EVM `marriageOf[petId].spouseId`);
     /// `0` = not married, since `next_pet_id` starts at 1.
     pub spouse_id: u32,
-    /// Owner of this pet at the time mutual marriage consent was given (plan §4.4,
-    /// mirrors EVM `marriageOf[petId].ownerSnapshot`). A transfer afterwards makes the
-    /// marriage lazily stale, checked via `is_marriage_valid` / `clear_stale_marriage`.
+    /// Owner of this pet's Metaplex Core asset at the time mutual marriage consent was
+    /// given (plan §4.4, mirrors EVM `marriageOf[petId].ownerSnapshot`), captured via
+    /// `util::core_asset_owner` in `accept_marriage`. A later Core-asset transfer makes
+    /// the marriage lazily stale, detected by `clear_stale_marriage` comparing this
+    /// snapshot against the asset's current `core_asset_owner`.
     pub marriage_owner_snapshot: Pubkey,
     /// Earliest time this pet may marry again after a divorce or stale-marriage cleanup
     /// (plan §4.4, mirrors EVM `marriageCooldownUntil[petId]`).
@@ -469,16 +477,6 @@ impl PetAccount {
     pub fn clear_stale_marriage(&mut self) {
         self.spouse_id = 0;
         self.marriage_owner_snapshot = Pubkey::default();
-    }
-
-    /// `true` if this pet and `spouse` hold mutual, still-valid marriage records whose
-    /// owner snapshots match their current owners (plan §4.4, mirrors EVM
-    /// `isMarriageValid`).
-    pub fn is_marriage_valid_with(&self, spouse: &PetAccount) -> bool {
-        self.spouse_id == spouse.id
-            && spouse.spouse_id == self.id
-            && self.marriage_owner_snapshot == self.owner
-            && spouse.marriage_owner_snapshot == spouse.owner
     }
 }
 
@@ -749,27 +747,6 @@ mod tests {
         pet.marriage_cooldown_until = 0;
         pet.set_marriage(7, Pubkey::new_unique());
         assert!(!pet.can_marry(100));
-    }
-
-    /// Mirrors EVM `acceptMarriage`'s mutual `marriageOf` writes and `isMarriageValid`'s
-    /// spouse-id + owner-snapshot checks (plan §4.4).
-    #[test]
-    fn is_marriage_valid_with_requires_mutual_record_and_matching_owners() {
-        let mut a = fresh_pet();
-        a.id = 1;
-        a.owner = Pubkey::new_unique();
-        let mut b = fresh_pet();
-        b.id = 2;
-        b.owner = Pubkey::new_unique();
-
-        a.set_marriage(b.id, a.owner);
-        b.set_marriage(a.id, b.owner);
-        assert!(a.is_marriage_valid_with(&b));
-        assert!(b.is_marriage_valid_with(&a));
-
-        // Transferring `a` to a new owner invalidates the marriage (stale).
-        a.owner = Pubkey::new_unique();
-        assert!(!a.is_marriage_valid_with(&b));
     }
 
     /// Mirrors EVM `divorce`'s `marriageCooldownUntil` writes and deletion of

@@ -1,19 +1,26 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::ErrorCode, state::GlobalState, state::PetAccount, state::FEE_VAULT_SEED};
+use crate::{
+    errors::ErrorCode,
+    state::GlobalState,
+    state::PetAccount,
+    state::FEE_VAULT_SEED,
+    util::core_asset_owner,
+};
 
 pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
     let global_state = &mut ctx.accounts.global_state;
-    let pet = &mut ctx.accounts.pet;
 
     // enforce pause
     require!(!global_state.paused, ErrorCode::Paused);
 
     require_keys_eq!(
-        pet.owner,
+        core_asset_owner(&ctx.accounts.pet_asset.to_account_info())?,
         ctx.accounts.owner.key(),
         LevelUpError::Unauthorized
     );
+
+    let pet = &mut ctx.accounts.pet;
 
     require!(
         pet.level < global_state.max_level,
@@ -54,10 +61,15 @@ pub struct LevelUp<'info> {
         bump = global_state.bump,
     )]
     pub global_state: Account<'info, GlobalState>,
+
+    /// CHECK: this pet's Metaplex Core asset account; PDA seed for `pet` and source of
+    /// truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub pet_asset: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [
-            PetAccount::SEED, owner.key().as_ref(), &pet.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, pet_asset.key().as_ref()],
         bump = pet.bump,
     )]
     pub pet: Account<'info, PetAccount>,

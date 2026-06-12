@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{BattleRequest, GlobalState, PetAccount},
-    util::assert_randomness_committed,
+    util::{assert_randomness_committed, core_asset_owner},
 };
 
 pub fn handler(ctx: Context<CommitBattle>, randomness_account: Pubkey) -> Result<()> {
@@ -20,18 +20,19 @@ pub fn handler(ctx: Context<CommitBattle>, randomness_account: Pubkey) -> Result
     let now = Clock::get()?.unix_timestamp;
 
     {
-        let attacker_pet = &ctx.accounts.attacker_pet;
-        let defender_pet = &ctx.accounts.defender_pet;
         require_keys_eq!(
-            attacker_pet.owner,
+            core_asset_owner(&ctx.accounts.attacker_asset.to_account_info())?,
             ctx.accounts.attacker_owner.key(),
             ErrorCode::Unauthorized
         );
         require_keys_eq!(
-            defender_pet.owner,
+            core_asset_owner(&ctx.accounts.defender_asset.to_account_info())?,
             ctx.accounts.defender_owner.key(),
             ErrorCode::Unauthorized
         );
+
+        let attacker_pet = &ctx.accounts.attacker_pet;
+        let defender_pet = &ctx.accounts.defender_pet;
         require!(attacker_pet.is_ready(now), ErrorCode::PetNotReady);
         require!(defender_pet.is_ready(now), ErrorCode::PetNotReady);
         require!(
@@ -92,30 +93,30 @@ pub struct CommitBattle<'info> {
     #[account(mut)]
     pub attacker_owner: Signer<'info>,
 
+    /// CHECK: attacker pet's Metaplex Core asset account; PDA seed for `attacker_pet`
+    /// and source of truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub attacker_asset: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [
-            PetAccount::SEED,
-            attacker_owner.key().as_ref(),
-            &attacker_pet.id.to_le_bytes(),
-        ],
+        seeds = [PetAccount::SEED, attacker_asset.key().as_ref()],
         bump = attacker_pet.bump,
-        constraint = attacker_pet.owner == attacker_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub attacker_pet: Account<'info, PetAccount>,
 
-    /// CHECK: defender wallet pubkey is used as a PDA seed for `defender_pet`.
+    /// CHECK: defender wallet pubkey, asserted against `defender_asset`'s current owner.
     pub defender_owner: UncheckedAccount<'info>,
+
+    /// CHECK: defender pet's Metaplex Core asset account; PDA seed for `defender_pet`
+    /// and source of truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub defender_asset: UncheckedAccount<'info>,
 
     #[account(
         mut,
-        seeds = [
-            PetAccount::SEED,
-            defender_owner.key().as_ref(),
-            &defender_pet.id.to_le_bytes(),
-        ],
+        seeds = [PetAccount::SEED, defender_asset.key().as_ref()],
         bump = defender_pet.bump,
-        constraint = defender_pet.owner == defender_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub defender_pet: Account<'info, PetAccount>,
 

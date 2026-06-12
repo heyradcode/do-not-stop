@@ -144,14 +144,26 @@ pub struct SettleMint<'info> {
     )]
     pub player_profile: Account<'info, PlayerProfile>,
 
+    /// CHECK: address-constrained to the Metaplex Core program; invoked via CPI to mint
+    /// the pet asset.
+    #[account(address = mpl_core::ID)]
+    pub mpl_core_program: UncheckedAccount<'info>,
+
+    /// Fresh keypair for this pet's Metaplex Core asset account (plan §2.3/v2.1 Phase A),
+    /// created via the CPI below. Its pubkey is recorded in `pet.asset` and is `pet`'s PDA
+    /// seed.
+    #[account(mut)]
+    pub asset: Signer<'info>,
+
+    /// CHECK: the "CryptoPets" collection account (`global_state.collection`); updated by
+    /// the CPI below to register the new asset.
+    #[account(mut, address = global_state.collection)]
+    pub collection: UncheckedAccount<'info>,
+
     #[account(
         init,
         payer = owner,
-        seeds = [
-            PetAccount::SEED,
-            owner.key().as_ref(),
-            &mint_request.pet_id.to_le_bytes(),
-        ],
+        seeds = [PetAccount::SEED, asset.key().as_ref()],
         bump,
         space = PetAccount::SPACE,
     )]
@@ -168,21 +180,6 @@ pub struct SettleMint<'info> {
 
     /// CHECK: parsed as Switchboard `RandomnessAccountData` in the handler.
     pub randomness_account_data: UncheckedAccount<'info>,
-
-    /// CHECK: address-constrained to the Metaplex Core program; invoked via CPI to mint
-    /// the pet asset.
-    #[account(address = mpl_core::ID)]
-    pub mpl_core_program: UncheckedAccount<'info>,
-
-    /// Fresh keypair for this pet's Metaplex Core asset account (plan §2.3/v2.1 Phase A),
-    /// created via the CPI below. Its pubkey is recorded in `pet.asset`.
-    #[account(mut)]
-    pub asset: Signer<'info>,
-
-    /// CHECK: the "CryptoPets" collection account (`global_state.collection`); updated by
-    /// the CPI below to register the new asset.
-    #[account(mut, address = global_state.collection)]
-    pub collection: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }

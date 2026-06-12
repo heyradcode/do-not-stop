@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{BreedRequest, GlobalState, PetAccount, PlayerProfile, StudFeeAccount, FEE_VAULT_SEED},
-    util::assert_randomness_committed,
+    util::{assert_randomness_committed, core_asset_owner},
 };
 
 pub fn handler(
@@ -24,10 +24,11 @@ pub fn handler(
     let now = Clock::get()?.unix_timestamp;
 
     // Same-owner vs cross-owner breeding (plan §4.4, mirrors EVM `requestCreateFromDNA`).
-    // `parent1`'s ownership by `owner` is enforced by the account constraint below, so
-    // the EVM `owner1 == msg.sender || owner2 == msg.sender` check is automatically
-    // satisfied here.
-    let cross_owner = ctx.accounts.parent1.owner != ctx.accounts.parent2.owner;
+    // `parent1`'s ownership by `owner` and `parent2`'s ownership by `parent2_owner` are
+    // each enforced by the account constraints below (via `core_asset_owner`), so the EVM
+    // `owner1 == msg.sender || owner2 == msg.sender` check is automatically satisfied
+    // here.
+    let cross_owner = ctx.accounts.owner.key() != ctx.accounts.parent2_owner.key();
 
     let parent1_dna;
     let parent2_dna;
@@ -49,8 +50,17 @@ pub fn handler(
         );
         if cross_owner {
             // Cross-owner breeding requires an active marriage (plan §4.4, mirrors EVM
-            // `petCore.isMarriageValid`).
-            require!(p1.is_marriage_valid_with(p2), ErrorCode::PetsNotMarried);
+            // `petCore.isMarriageValid`). Owner snapshots are compared against the live
+            // Core-asset owners (already validated equal to `owner`/`parent2_owner` by
+            // the account constraints below), since `pet.owner` is now informational-only
+            // and no longer tracks post-mint transfers.
+            require!(
+                p1.spouse_id == p2.id
+                    && p2.spouse_id == p1.id
+                    && p1.marriage_owner_snapshot == ctx.accounts.owner.key()
+                    && p2.marriage_owner_snapshot == ctx.accounts.parent2_owner.key(),
+                ErrorCode::PetsNotMarried
+            );
         }
         parent1_dna = p1.dna;
         parent2_dna = p2.dna;
@@ -164,23 +174,33 @@ pub struct CommitBreed<'info> {
     )]
     pub player_profile: Account<'info, PlayerProfile>,
 
+    /// CHECK: parent1's Metaplex Core asset account; PDA seed for `parent1` and source of
+    /// truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub parent1_asset: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [PetAccount::SEED, owner.key().as_ref(), &parent1.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, parent1_asset.key().as_ref()],
         bump = parent1.bump,
-        constraint = parent1.owner == owner.key() @ ErrorCode::Unauthorized,
+        constraint = core_asset_owner(&parent1_asset.to_account_info())? == owner.key() @ ErrorCode::Unauthorized,
     )]
     pub parent1: Account<'info, PetAccount>,
 
-    /// CHECK: parent2's owner pubkey, used as a PDA seed for `parent2` and
-    /// `stud_fee_account`. Equal to `owner` for same-owner breeding (plan §4.4).
+    /// CHECK: parent2's owner pubkey, used as a PDA seed for `stud_fee_account`. Equal to
+    /// `owner` for same-owner breeding (plan §4.4).
     pub parent2_owner: UncheckedAccount<'info>,
+
+    /// CHECK: parent2's Metaplex Core asset account; PDA seed for `parent2` and source of
+    /// truth for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub parent2_asset: UncheckedAccount<'info>,
 
     #[account(
         mut,
-        seeds = [PetAccount::SEED, parent2_owner.key().as_ref(), &parent2.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, parent2_asset.key().as_ref()],
         bump = parent2.bump,
-        constraint = parent2.owner == parent2_owner.key() @ ErrorCode::Unauthorized,
+        constraint = core_asset_owner(&parent2_asset.to_account_info())? == parent2_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub parent2: Account<'info, PetAccount>,
 

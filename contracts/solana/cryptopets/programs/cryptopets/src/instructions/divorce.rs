@@ -3,6 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{GlobalState, PetAccount},
+    util::core_asset_owner,
 };
 
 /// Mirrors EVM `PetCoreV1.divorce` (plan §4.4): `owner` (pet's owner) dissolves the
@@ -50,22 +51,28 @@ pub struct Divorce<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
+    /// CHECK: `pet`'s Metaplex Core asset account; PDA seed for `pet` and source of truth
+    /// for ownership (plan §2.3/v2.1 Phase A).
+    #[account(owner = mpl_core::ID)]
+    pub pet_asset: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [PetAccount::SEED, owner.key().as_ref(), &pet.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, pet_asset.key().as_ref()],
         bump = pet.bump,
-        constraint = pet.owner == owner.key() @ ErrorCode::Unauthorized,
+        constraint = core_asset_owner(&pet_asset.to_account_info())? == owner.key() @ ErrorCode::Unauthorized,
     )]
     pub pet: Account<'info, PetAccount>,
 
-    /// CHECK: spouse pet's owner pubkey, used as a PDA seed for `spouse`.
-    pub spouse_owner: UncheckedAccount<'info>,
+    /// CHECK: spouse pet's Metaplex Core asset account; PDA seed for `spouse` (plan
+    /// §2.3/v2.1 Phase A re-seed).
+    #[account(owner = mpl_core::ID)]
+    pub spouse_asset: UncheckedAccount<'info>,
 
     #[account(
         mut,
-        seeds = [PetAccount::SEED, spouse_owner.key().as_ref(), &pet.spouse_id.to_le_bytes()],
+        seeds = [PetAccount::SEED, spouse_asset.key().as_ref()],
         bump = spouse.bump,
-        constraint = spouse.owner == spouse_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub spouse: Account<'info, PetAccount>,
 }
