@@ -1,51 +1,18 @@
-pub mod accept_marriage;
-pub mod cancel_battle;
-pub mod cancel_breed;
-pub mod cancel_marriage_proposal;
-pub mod cancel_mint;
-pub mod clear_stale_marriage;
-pub mod commit_battle;
-pub mod commit_breed;
-pub mod commit_mint;
-pub mod config;
-pub mod divorce;
-pub mod settle_battle;
-pub mod settle_breed;
-pub mod settle_mint;
-pub mod initialize;
-pub mod level_up;
-pub mod pause;
-pub mod propose_marriage;
-pub mod rename_pet;
-pub mod set_open_to_challenges;
-pub mod sync_metadata;
-pub mod train;
-pub mod unpause;
-pub mod withdraw_fees;
-pub mod withdraw_stud_fees;
+//! Instruction handlers, grouped by gameplay domain. Each group re-exports its leaf
+//! modules and their items, so `use instructions::*;` (see `lib.rs`) exposes every
+//! handler module (`initialize::`, `commit_breed::`, ...) and every `Accounts` struct
+//! exactly as it did when this directory was flat — no IDL or call-site impact.
 
-pub use accept_marriage::*;
-pub use cancel_battle::*;
-pub use cancel_breed::*;
-pub use cancel_marriage_proposal::*;
-pub use cancel_mint::*;
-pub use clear_stale_marriage::*;
-pub use commit_battle::*;
-pub use commit_breed::*;
-pub use commit_mint::*;
-pub use config::*;
-pub use divorce::*;
-pub use settle_battle::*;
-pub use settle_breed::*;
-pub use settle_mint::*;
-pub use initialize::*;
-pub use level_up::*;
-pub use pause::*;
-pub use propose_marriage::*;
-pub use rename_pet::*;
-pub use set_open_to_challenges::*;
-pub use sync_metadata::*;
-pub use train::*;
-pub use unpause::*;
-pub use withdraw_fees::*;
-pub use withdraw_stud_fees::*;
+pub mod admin;
+pub mod battle;
+pub mod breeding;
+pub mod marriage;
+pub mod mint;
+pub mod pet;
+
+pub use admin::*;
+pub use battle::*;
+pub use breeding::*;
+pub use marriage::*;
+pub use mint::*;
+pub use pet::*;
