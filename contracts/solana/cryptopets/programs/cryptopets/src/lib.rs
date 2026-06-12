@@ -176,4 +176,8 @@ pub mod cryptopets {
     pub fn clear_stale_marriage(ctx: Context<ClearStaleMarriage>) -> Result<()> {
         clear_stale_marriage::handler(ctx)
     }
+
+    pub fn withdraw_stud_fees(ctx: Context<WithdrawStudFees>) -> Result<()> {
+        withdraw_stud_fees::handler(ctx)
+    }
 }

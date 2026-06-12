@@ -120,5 +120,7 @@ pub enum ErrorCode {
     PetsNotMarried,
     #[msg("Stud-fee account does not match the expected PDA for the breed request's other owner")]
     InvalidStudFeeAccount,
+    #[msg("No stud fees to withdraw")]
+    NoStudFeesToWithdraw,
 }
 

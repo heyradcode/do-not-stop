@@ -20,6 +20,7 @@ pub mod train;
 pub mod transfer_pet;
 pub mod unpause;
 pub mod withdraw_fees;
+pub mod withdraw_stud_fees;
 
 pub use create_starter_pet::*;
 pub use accept_marriage::*;
@@ -43,3 +44,4 @@ pub use train::*;
 pub use transfer_pet::*;
 pub use unpause::*;
 pub use withdraw_fees::*;
+pub use withdraw_stud_fees::*;
