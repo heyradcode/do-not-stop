@@ -1,3 +1,4 @@
+pub mod combat;
 pub mod dna;
 pub mod errors;
 pub mod instructions;
