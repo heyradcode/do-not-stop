@@ -47,6 +47,16 @@ pub const DEFAULT_POOL_SIZE: u8 = 8;
 /// Escalates per wallet as `baseMintFee << min(mint_count, 7)` (up to 128x).
 pub const DEFAULT_BASE_MINT_FEE_LAMPORTS: u64 = 20_000_000; // 0.02 SOL
 
+/// Base train fee in lamports, scaled per pet level by [`train_fee_for`] (plan §3.4/§5,
+/// mirrors EVM `GameConfig.trainFee`).
+pub const DEFAULT_TRAIN_FEE_LAMPORTS: u64 = 10_000_000; // 0.01 SOL
+
+/// Per-pet train cooldown in seconds (plan §3.4/§5, mirrors EVM `GameConfig.trainCooldown`).
+pub const DEFAULT_TRAIN_COOLDOWN_SECONDS: i64 = 60;
+
+/// Flat XP granted per train (plan §3.4/§5, mirrors EVM `GameConfig.trainXp`).
+pub const DEFAULT_TRAIN_XP: u32 = 100;
+
 /// Bounds enforced by the `set_*` config setters (§5 setter hygiene).
 pub const MAX_BATTLE_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_LEVEL_UP_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
@@ -55,6 +65,9 @@ pub const MAX_GENERATION_CAP: u8 = 100;
 pub const MAX_BREED_COOLDOWN_BASE_SECONDS: i64 = BREED_COOLDOWN_CAP_SECONDS;
 pub const MAX_NEWBORN_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_BASE_MINT_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
+pub const MAX_TRAIN_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
+pub const MAX_TRAIN_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
+pub const MAX_TRAIN_XP: u32 = 10_000;
 
 /// PDA seed for the lamport-only fee vault (§6 Solana #5). Holds `level_up_fee_lamports`
 /// and future protocol fees; swept via `withdraw_fees`.
@@ -87,7 +100,14 @@ pub struct GlobalState {
     /// Base fee for the gacha mint, escalated per wallet by `commit_mint` (plan §4.3,
     /// mirrors EVM `GameConfig.baseMintFee`).
     pub base_mint_fee_lamports: u64,
-    pub _reserved: [u8; 23],
+    /// Base train fee in lamports, scaled per pet level by [`train_fee_for`] (plan §3.4,
+    /// mirrors EVM `GameConfig.trainFee`).
+    pub train_fee_lamports: u64,
+    /// Per-pet train cooldown in seconds (plan §3.4, mirrors EVM `GameConfig.trainCooldown`).
+    pub train_cooldown_seconds: i64,
+    /// Flat XP granted per train (plan §3.4, mirrors EVM `GameConfig.trainXp`).
+    pub train_xp: u32,
+    pub _reserved: [u8; 3],
 }
 
 impl GlobalState {
@@ -108,7 +128,10 @@ impl GlobalState {
         + 8 /* newborn_cooldown_seconds */
         + 5 /* pool_sizes */
         + 8 /* base_mint_fee_lamports */
-        + 23; /* reserved */
+        + 8 /* train_fee_lamports */
+        + 8 /* train_cooldown_seconds */
+        + 4 /* train_xp */
+        + 3; /* reserved */
 }
 
 #[account]
@@ -142,6 +165,19 @@ impl PlayerProfile {
 /// checked/saturating arithmetic is needed.
 pub fn mint_fee_for(mint_count: u32, base_fee_lamports: u64) -> u64 {
     base_fee_lamports << mint_count.min(7)
+}
+
+/// Level-scaled train fee (plan §3.4, mirrors EVM `GameLogicV1.train`):
+/// `trainFee(L) = base_fee * (100 + 2*L) / 100` — 1x at level 1, ~3x at level 100.
+/// `100 + 2 * level` is at most ~131_170 (`level: u16`), so only the multiplication by
+/// `base_fee_lamports` can overflow `u64`; the division by the constant `100` cannot.
+pub fn train_fee_for(level: u16, base_fee_lamports: u64) -> Result<u64> {
+    let multiplier = 100u64 + 2 * level as u64;
+    let fee = base_fee_lamports
+        .checked_mul(multiplier)
+        .ok_or(ErrorCode::ArithmeticOverflow)?
+        / 100;
+    Ok(fee)
 }
 
 #[account]
@@ -251,6 +287,18 @@ impl PetAccount {
     /// Mirrors EVM `PetCoreV1.triggerBreedCooldown` (plan §4.1).
     pub fn trigger_breed_cooldown(&mut self, now: i64, cooldown_seconds: i64) {
         self.breed_ready_time = now.saturating_add(cooldown_seconds);
+    }
+
+    /// Train-specific cooldown check, separate from [`PetAccount::is_ready`]'s battle
+    /// cooldown and [`PetAccount::is_breed_ready`]'s breed cooldown (plan §3.4, mirrors
+    /// EVM `PetCoreV1.isTrainReady`).
+    pub fn is_train_ready(&self, now: i64) -> bool {
+        now >= self.train_ready_time
+    }
+
+    /// Mirrors EVM `PetCoreV1.triggerTrainCooldown` (plan §3.4).
+    pub fn trigger_train_cooldown(&mut self, now: i64, cooldown_seconds: i64) {
+        self.train_ready_time = now.saturating_add(cooldown_seconds);
     }
 
     /// Mirrors EVM `PetCoreV1.addXp` (§3.4): a no-op once `level >= max_level`, otherwise
@@ -436,6 +484,15 @@ mod tests {
         // Counts beyond 7 stay capped at 128x, never shift further.
         assert_eq!(mint_fee_for(8, base), base * 128);
         assert_eq!(mint_fee_for(u32::MAX, base), base * 128);
+    }
+
+    /// Mirrors EVM `trainFee(L) = baseFee * (100 + 2*L) / 100` (plan §3.4).
+    #[test]
+    fn train_fee_for_scales_with_level() {
+        let base = 10_000_000u64;
+        assert_eq!(train_fee_for(1, base).unwrap(), base * 102 / 100);
+        assert_eq!(train_fee_for(100, base).unwrap(), base * 300 / 100);
+        assert_eq!(train_fee_for(0, base).unwrap(), base); // 100/100 = 1x
     }
 }
 

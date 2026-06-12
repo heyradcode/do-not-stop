@@ -118,6 +118,18 @@ pub mod cryptopets {
         config::set_base_mint_fee_lamports(ctx, value)
     }
 
+    pub fn set_train_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_train_fee_lamports(ctx, value)
+    }
+
+    pub fn set_train_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_train_cooldown_seconds(ctx, value)
+    }
+
+    pub fn set_train_xp(ctx: Context<SetConfig>, value: u32) -> Result<()> {
+        config::set_train_xp(ctx, value)
+    }
+
     pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
         withdraw_fees::handler(ctx, amount)
     }

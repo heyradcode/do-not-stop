@@ -76,5 +76,13 @@ pub enum ErrorCode {
     GenerationCapReached,
     #[msg("Base mint fee exceeds the maximum allowed")]
     InvalidBaseMintFee,
+    #[msg("Train fee exceeds the maximum allowed")]
+    InvalidTrainFee,
+    #[msg("Train cooldown exceeds the maximum allowed")]
+    InvalidTrainCooldown,
+    #[msg("Train XP exceeds the maximum allowed")]
+    InvalidTrainXp,
+    #[msg("Pet is on train cooldown")]
+    PetNotTrainReady,
 }
 

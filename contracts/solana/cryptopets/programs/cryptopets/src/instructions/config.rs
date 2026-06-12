@@ -5,7 +5,8 @@ use crate::{
     state::{
         GlobalState, MAX_BASE_MINT_FEE_LAMPORTS, MAX_BATTLE_COOLDOWN_SECONDS,
         MAX_BREED_COOLDOWN_BASE_SECONDS, MAX_GENERATION_CAP, MAX_LEVEL_UP_FEE_LAMPORTS,
-        MAX_NEWBORN_COOLDOWN_SECONDS, MAX_RANDOMNESS_EXPIRY_SLOTS,
+        MAX_NEWBORN_COOLDOWN_SECONDS, MAX_RANDOMNESS_EXPIRY_SLOTS, MAX_TRAIN_COOLDOWN_SECONDS,
+        MAX_TRAIN_FEE_LAMPORTS, MAX_TRAIN_XP,
     },
 };
 
@@ -97,6 +98,34 @@ pub fn set_base_mint_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result
     Ok(())
 }
 
+/// Mirrors EVM `GameConfig.setTrainFee` (plan §3.4): base fee for `train`, scaled per
+/// pet level by `train_fee_for`.
+pub fn set_train_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+    require!(value <= MAX_TRAIN_FEE_LAMPORTS, ErrorCode::InvalidTrainFee);
+    ctx.accounts.global_state.train_fee_lamports = value;
+    emit!(TrainFeeUpdated { value });
+    Ok(())
+}
+
+/// Mirrors EVM `GameConfig.setTrainCooldown` (plan §3.4).
+pub fn set_train_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+    require!(
+        (0..=MAX_TRAIN_COOLDOWN_SECONDS).contains(&value),
+        ErrorCode::InvalidTrainCooldown
+    );
+    ctx.accounts.global_state.train_cooldown_seconds = value;
+    emit!(TrainCooldownUpdated { value });
+    Ok(())
+}
+
+/// Mirrors EVM `GameConfig.setTrainXp` (plan §3.4): flat XP granted per `train`.
+pub fn set_train_xp(ctx: Context<SetConfig>, value: u32) -> Result<()> {
+    require!(value <= MAX_TRAIN_XP, ErrorCode::InvalidTrainXp);
+    ctx.accounts.global_state.train_xp = value;
+    emit!(TrainXpUpdated { value });
+    Ok(())
+}
+
 #[event]
 pub struct BattleCooldownUpdated {
     pub value: i64,
@@ -146,6 +175,21 @@ pub struct PoolSizeUpdated {
 #[event]
 pub struct BaseMintFeeUpdated {
     pub value: u64,
+}
+
+#[event]
+pub struct TrainFeeUpdated {
+    pub value: u64,
+}
+
+#[event]
+pub struct TrainCooldownUpdated {
+    pub value: i64,
+}
+
+#[event]
+pub struct TrainXpUpdated {
+    pub value: u32,
 }
 
 #[derive(Accounts)]

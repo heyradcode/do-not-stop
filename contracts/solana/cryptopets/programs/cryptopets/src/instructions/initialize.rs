@@ -5,6 +5,7 @@ use crate::{
         DEFAULT_BATTLE_COOLDOWN_SECONDS, DEFAULT_BREED_COOLDOWN_BASE_SECONDS,
         DEFAULT_GENERATION_CAP, DEFAULT_LEVEL_BAND_WIDTH, DEFAULT_MAX_LEVEL,
         DEFAULT_NEWBORN_COOLDOWN_SECONDS, DEFAULT_POOL_SIZE, DEFAULT_RANDOMNESS_EXPIRY_SLOTS,
+        DEFAULT_TRAIN_COOLDOWN_SECONDS, DEFAULT_TRAIN_FEE_LAMPORTS, DEFAULT_TRAIN_XP,
     },
 };
 use anchor_lang::prelude::*;
@@ -23,6 +24,9 @@ pub fn handler(ctx: Context<Initialize>, level_up_fee_lamports: u64) -> Result<(
     global_state.newborn_cooldown_seconds = DEFAULT_NEWBORN_COOLDOWN_SECONDS;
     global_state.pool_sizes = [DEFAULT_POOL_SIZE; 5];
     global_state.base_mint_fee_lamports = DEFAULT_BASE_MINT_FEE_LAMPORTS;
+    global_state.train_fee_lamports = DEFAULT_TRAIN_FEE_LAMPORTS;
+    global_state.train_cooldown_seconds = DEFAULT_TRAIN_COOLDOWN_SECONDS;
+    global_state.train_xp = DEFAULT_TRAIN_XP;
     global_state.next_pet_id = 1;
     global_state.paused = false;
     global_state.version = CURRENT_ACCOUNT_VERSION;
