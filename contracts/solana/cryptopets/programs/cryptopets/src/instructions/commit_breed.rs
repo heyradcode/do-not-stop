@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
-    state::{BreedRequest, GlobalState, PetAccount, PlayerProfile, StudFeeAccount, FEE_VAULT_SEED},
+    state::{BreedRequest, GlobalState, PetAccount, StudFeeAccount, FEE_VAULT_SEED},
     util::{assert_randomness_committed, core_asset_owner},
 };
 
@@ -167,12 +167,6 @@ pub struct CommitBreed<'info> {
 
     #[account(mut)]
     pub owner: Signer<'info>,
-
-    #[account(
-        seeds = [PlayerProfile::SEED, owner.key().as_ref()],
-        bump = player_profile.bump,
-    )]
-    pub player_profile: Account<'info, PlayerProfile>,
 
     /// CHECK: parent1's Metaplex Core asset account; PDA seed for `parent1` and source of
     /// truth for ownership (plan §2.3/v2.1 Phase A).
