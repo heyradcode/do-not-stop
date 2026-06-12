@@ -22,3 +22,9 @@ anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
 switchboard-on-demand = { version = "=0.10.0", features = ["anchor"] }
 # Pinned for Switchboard SDK compatibility on Solana 3.x toolchains.
 solana-zero-copy = "=1.0.1"
+# Metaplex Core NFTs (plan §2.3/v2.1 Phase A): pets become Core assets in a
+# program-owned "CryptoPets" collection. Version unverified against this
+# workspace's Solana toolchain (no cargo available in this environment) --
+# pin to the latest mpl-core release compatible with anchor-lang 0.32.1 when
+# building.
+mpl-core = { version = "0.10", features = ["anchor"] }

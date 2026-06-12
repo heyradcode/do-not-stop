@@ -18,7 +18,15 @@ use crate::errors::ErrorCode;
 /// `PetAccount` (plan §4.4, mirrors EVM `marriageOf`/`marriageCooldownUntil`) and shrinks
 /// its `_reserved` buffer (22 -> 8 bytes). Bumps `PetAccount::SPACE`. Breaking; requires
 /// redeploy + reinit of pet accounts (`GlobalState`/`PlayerProfile` layouts unchanged).
-pub const CURRENT_ACCOUNT_VERSION: u8 = 4;
+///
+/// v5: Phase A groundwork (plan §2.3/§9.2) — adds `collection: Pubkey` to `GlobalState`,
+/// the Metaplex Core "CryptoPets" collection created in `initialize` (collection/plugin
+/// authority is the `GlobalState` PDA), and widens its `_reserved` buffer (8 -> 24 bytes)
+/// for the rest of Phase A. Bumps `GlobalState::SPACE`. Breaking; requires redeploy +
+/// reinit of `GlobalState` (`PetAccount`/`PlayerProfile` layouts unchanged by this entry —
+/// `PetAccount`'s re-seed to `[b"pet", asset_pubkey]` and the CPI mint paths land in
+/// subsequent steps and will bump the version again).
+pub const CURRENT_ACCOUNT_VERSION: u8 = 5;
 
 pub const DEFAULT_BATTLE_COOLDOWN_SECONDS: i64 = 5;
 
@@ -149,7 +157,11 @@ pub struct GlobalState {
     /// Expiry window for a pending marriage proposal (plan §4.4, mirrors EVM
     /// `GameConfig.proposalTTL`).
     pub proposal_ttl_seconds: i64,
-    pub _reserved: [u8; 8],
+    /// Metaplex Core "CryptoPets" collection (plan §2.3/v2.1 Phase A), created in
+    /// `initialize`. Collection/plugin authority is the `GlobalState` PDA; `settle_mint`
+    /// and `settle_breed` CPI into `mpl-core` to mint pet assets into it.
+    pub collection: Pubkey,
+    pub _reserved: [u8; 24],
 }
 
 impl GlobalState {
@@ -177,7 +189,8 @@ impl GlobalState {
         + 8 /* stud_fee_lamports */
         + 8 /* marriage_cooldown_seconds */
         + 8 /* proposal_ttl_seconds */
-        + 8; /* reserved */
+        + 32 /* collection */
+        + 24; /* reserved */
 }
 
 #[account]
