@@ -118,7 +118,10 @@ pub struct PlayerProfile {
     pub starter_created: bool,
     pub version: u8,
     pub bump: u8,
-    pub _reserved: [u8; 64],
+    /// Lifetime gacha mints from this wallet (plan §4.3, mirrors EVM
+    /// `PetCoreV1.walletMintCount`); drives [`mint_fee_for`]'s fee escalation.
+    pub mint_count: u32,
+    pub _reserved: [u8; 60],
 }
 
 impl PlayerProfile {
@@ -129,7 +132,16 @@ impl PlayerProfile {
         + 1 /* starter_created */
         + 1 /* version */
         + 1 /* bump */
-        + 64; /* reserved */
+        + 4 /* mint_count */
+        + 60; /* reserved */
+}
+
+/// Gacha mint fee escalation curve (plan §4.3, mirrors EVM `mintFee(n) = baseMintFee *
+/// 2^min(n, 7)`): doubles per prior mint from this wallet, capped at 128x base after the
+/// 7th mint. `base_fee_lamports << 7` cannot overflow `u64` for any sane fee, so no
+/// checked/saturating arithmetic is needed.
+pub fn mint_fee_for(mint_count: u32, base_fee_lamports: u64) -> u64 {
+    base_fee_lamports << mint_count.min(7)
 }
 
 #[account]
@@ -412,6 +424,18 @@ mod tests {
                 assert_eq!(shift, expected_shift, "sequence \"{}\" step {}", name, i);
             }
         }
+    }
+
+    /// Mirrors EVM `mintFee(n) = baseMintFee * 2^min(n, 7)` (plan §4.3).
+    #[test]
+    fn mint_fee_for_doubles_per_mint_and_caps_at_128x() {
+        let base = 20_000_000u64;
+        assert_eq!(mint_fee_for(0, base), base);
+        assert_eq!(mint_fee_for(1, base), base * 2);
+        assert_eq!(mint_fee_for(7, base), base * 128);
+        // Counts beyond 7 stay capped at 128x, never shift further.
+        assert_eq!(mint_fee_for(8, base), base * 128);
+        assert_eq!(mint_fee_for(u32::MAX, base), base * 128);
     }
 }
 
