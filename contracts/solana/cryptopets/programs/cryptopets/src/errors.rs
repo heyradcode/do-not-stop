@@ -60,5 +60,9 @@ pub enum ErrorCode {
     InvalidMaxLevel,
     #[msg("Pet has already reached the max level")]
     MaxLevelReached,
+    #[msg("Battle participants must have different owners")]
+    CannotBattleSameOwner,
+    #[msg("Level gap between pets exceeds the allowed band")]
+    LevelGapTooLarge,
 }
 

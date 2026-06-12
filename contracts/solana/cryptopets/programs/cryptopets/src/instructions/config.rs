@@ -49,6 +49,12 @@ pub fn set_max_level(ctx: Context<SetConfig>, value: u16) -> Result<()> {
     Ok(())
 }
 
+pub fn set_level_band_width(ctx: Context<SetConfig>, value: u16) -> Result<()> {
+    ctx.accounts.global_state.level_band_width = value;
+    emit!(LevelBandWidthUpdated { value });
+    Ok(())
+}
+
 #[event]
 pub struct BattleCooldownUpdated {
     pub value: i64,
@@ -71,6 +77,11 @@ pub struct RandomnessExpirySlotsUpdated {
 
 #[event]
 pub struct MaxLevelUpdated {
+    pub value: u16,
+}
+
+#[event]
+pub struct LevelBandWidthUpdated {
     pub value: u16,
 }
 

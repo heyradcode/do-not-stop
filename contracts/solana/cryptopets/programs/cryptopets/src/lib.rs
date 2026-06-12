@@ -98,6 +98,10 @@ pub mod cryptopets {
         config::set_max_level(ctx, value)
     }
 
+    pub fn set_level_band_width(ctx: Context<SetConfig>, value: u16) -> Result<()> {
+        config::set_level_band_width(ctx, value)
+    }
+
     pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
         withdraw_fees::handler(ctx, amount)
     }

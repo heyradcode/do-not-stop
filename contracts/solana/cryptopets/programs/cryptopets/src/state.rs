@@ -17,6 +17,10 @@ pub const DEFAULT_RANDOMNESS_EXPIRY_SLOTS: u64 = 150;
 /// granting levels once a pet reaches this; `level_up` rejects further fee-paid levels too.
 pub const DEFAULT_MAX_LEVEL: u16 = 100;
 
+/// Max allowed level gap between battle participants (§3.4, mirrors EVM
+/// `GameConfig.levelBandWidth`). 100 effectively disables the check during dev/testing.
+pub const DEFAULT_LEVEL_BAND_WIDTH: u16 = 100;
+
 /// Bounds enforced by the `set_*` config setters (§5 setter hygiene).
 pub const MAX_BATTLE_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_LEVEL_UP_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
@@ -38,7 +42,8 @@ pub struct GlobalState {
     pub bump: u8,
     pub randomness_expiry_slots: u64,
     pub max_level: u16,
-    pub _reserved: [u8; 54],
+    pub level_band_width: u16,
+    pub _reserved: [u8; 52],
 }
 
 impl GlobalState {
@@ -54,7 +59,8 @@ impl GlobalState {
         + 1 /* bump */
         + 8 /* randomness_expiry_slots */
         + 2 /* max_level */
-        + 54; /* reserved */
+        + 2 /* level_band_width */
+        + 52; /* reserved */
 }
 
 #[account]

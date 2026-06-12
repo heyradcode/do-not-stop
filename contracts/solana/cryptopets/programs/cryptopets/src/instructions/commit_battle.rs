@@ -12,6 +12,10 @@ pub fn handler(ctx: Context<CommitBattle>, randomness_account: Pubkey) -> Result
         ctx.accounts.attacker_pet.key() != ctx.accounts.defender_pet.key(),
         ErrorCode::CannotBattleSelf
     );
+    require!(
+        ctx.accounts.attacker_owner.key() != ctx.accounts.defender_owner.key(),
+        ErrorCode::CannotBattleSameOwner
+    );
 
     let now = Clock::get()?.unix_timestamp;
 
@@ -33,6 +37,12 @@ pub fn handler(ctx: Context<CommitBattle>, randomness_account: Pubkey) -> Result
         require!(
             defender_pet.open_to_challenges,
             ErrorCode::DefenderNotOpenToChallenges
+        );
+
+        let gap = attacker_pet.level.abs_diff(defender_pet.level);
+        require!(
+            gap <= ctx.accounts.global_state.level_band_width,
+            ErrorCode::LevelGapTooLarge
         );
     }
 
