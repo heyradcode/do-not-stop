@@ -17,3 +17,21 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+# Cloned from devnet so `anchor test`'s local validator has the Metaplex Core
+# program available for the CPIs in `initialize`/`settle_mint`/`settle_breed`/
+# `sync_metadata` (plan §2.3/v2.1 Phase A). The Switchboard On-Demand program is
+# also cloned for the commit/reveal randomness flow (`commit_mint`/`settle_mint`,
+# `commit_breed`/`settle_breed`, `commit_battle`/`settle_battle`).
+#
+# UNVERIFIED: both program addresses follow the documented mpl-core / Switchboard
+# On-Demand deployments but have not been checked against devnet (no network
+# access in this environment). Confirm before running `anchor test`.
+[test.validator]
+url = "https://api.devnet.solana.com"
+
+[[test.validator.clone]]
+address = "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d" # mpl-core program
+
+[[test.validator.clone]]
+address = "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUu" # Switchboard On-Demand program

@@ -1,354 +1,181 @@
 // @ts-nocheck
+//
+// NOT RUN: requires `anchor build` (Rust/Anchor toolchain unavailable in this
+// environment) to generate `../target/types/cryptopets`, plus a local
+// validator with the Metaplex Core and Switchboard On-Demand programs cloned
+// (see Anchor.toml's `[test.validator]` -- those program addresses are
+// UNVERIFIED, confirm before running `anchor test`).
+//
+// Covers the v2 instruction set (plan-contract-upgrade.md) that doesn't
+// depend on a Switchboard On-Demand randomness commit/reveal cycle:
+// initialize, pause/unpause, and the SetConfig setters. The gacha mint, breed,
+// and battle commit/settle flows -- and anything downstream of them (pets,
+// marriage, fee withdrawals) -- require minting a randomness account and
+// driving it through Switchboard's on-chain commit/reveal, which needs the
+// `@switchboard-xyz/on-demand` JS SDK wired into the local validator; that
+// infrastructure doesn't exist yet, so those flows aren't covered here.
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Cryptopets } from "../target/types/cryptopets";
 import { expect } from "chai";
+import { globalStatePda, feeVaultPda, fundAccount } from "./utils";
+
+// mpl-core program (plan §2.3/v2.1 Phase A); cloned onto the local validator
+// via Anchor.toml's [test.validator]. UNVERIFIED address, see note above.
+const MPL_CORE_PROGRAM_ID = new anchor.web3.PublicKey(
+  "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d",
+);
 
 describe("cryptopets", () => {
-  // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
   const program = anchor.workspace.cryptopets as Program<Cryptopets>;
+  const provider = anchor.getProvider();
+  const wallet = provider.wallet as anchor.Wallet;
 
-  it("initializes global state", async () => {
-    const [globalState] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("global-state")],
-      program.programId,
-    );
+  const [globalState] = globalStatePda(program.programId);
+  const [feeVault] = feeVaultPda(program.programId);
 
-    const tx = await program.methods
-      .initialize(new anchor.BN(1_000_000))
-      .accounts({
-        globalState,
-      })
-      .rpc();
+  describe("initialize", () => {
+    it("creates global state with default config and the CryptoPets collection", async () => {
+      const collection = anchor.web3.Keypair.generate();
+      const levelUpFeeLamports = new anchor.BN(1_000_000);
 
-    console.log("initialized tx", tx);
-
-    // fetch and assert global state fields
-    const gs = await (program as any).account.globalState.fetch(globalState);
-    // basic existence checks
-    expect(gs).to.not.be.null;
-    expect(gs.admin).to.exist;
-  });
-
-  it("creates starter zombie", async () => {
-    const provider = anchor.getProvider();
-    const wallet = provider.wallet as anchor.Wallet;
-
-    const [globalState] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("global-state")],
-      program.programId,
-    );
-
-    const [playerProfile] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("player-profile"), wallet.publicKey.toBuffer()],
-      program.programId,
-    );
-
-    const [zombie] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("zombie"),
-        wallet.publicKey.toBuffer(),
-        new anchor.BN(1).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId,
-    );
-
-    const tx = await program.methods
-      .createStarterZombie("Starter", new anchor.BN(12345), 1)
-      .accounts({
-        globalState,
-        playerProfile,
-        zombie,
-        owner: wallet.publicKey,
-      })
-      .rpc();
-
-    console.log("starter zombie tx", tx);
-
-    // verify player profile and zombie accounts
-    const pp = await (program as any).account.playerProfile.fetch(playerProfile);
-    expect(pp).to.not.be.null;
-    // owner stored as Pubkey
-    expect(pp.owner?.toBase58 ? pp.owner.toBase58() : pp.owner).to.equal(wallet.publicKey.toBase58());
-    expect(pp.starter_created ?? pp.starterCreated).to.be.ok;
-
-    const z = await (program as any).account.zombieAccount.fetch(zombie);
-    expect(z).to.not.be.null;
-    expect(z.owner?.toBase58 ? z.owner.toBase58() : z.owner).to.equal(wallet.publicKey.toBase58());
-    expect(Number(z.level)).to.be.gte(1);
-  });
-
-  it("levels up a zombie", async () => {
-    const provider = anchor.getProvider();
-    const wallet = provider.wallet as anchor.Wallet;
-
-    const [globalState] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("global-state")],
-      program.programId,
-    );
-
-    const [zombie] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("zombie"),
-        wallet.publicKey.toBuffer(),
-        new anchor.BN(1).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId,
-    );
-
-    const before = await (program as any).account.zombieAccount.fetch(zombie);
-
-    const tx = await (program as any).methods
-      .levelUp()
-      .accounts({
-        globalState,
-        zombie,
-        owner: wallet.publicKey,
-      })
-      .rpc();
-
-    console.log("level up tx", tx);
-
-    const after = await (program as any).account.zombieAccount.fetch(zombie);
-    expect(Number(after.level)).to.equal(Number(before.level) + 1);
-  });
-
-  it("fails to create a second starter (StarterAlreadyCreated)", async () => {
-    const provider = anchor.getProvider();
-    const wallet = provider.wallet as anchor.Wallet;
-
-    const [globalState] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("global-state")],
-      program.programId,
-    );
-
-    const [playerProfile] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("player-profile"), wallet.publicKey.toBuffer()],
-      program.programId,
-    );
-
-    const [zombie2] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("zombie"),
-        wallet.publicKey.toBuffer(),
-        new anchor.BN(2).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId,
-    );
-
-    // should throw
-    let threw = false;
-    try {
-      await (program as any).methods
-        .createStarterZombie("Starter2", new anchor.BN(99999), 1)
+      await program.methods
+        .initialize(levelUpFeeLamports)
         .accounts({
           globalState,
-          playerProfile,
-          zombie: zombie2,
-          owner: wallet.publicKey,
+          collection: collection.publicKey,
+          admin: wallet.publicKey,
+          mplCoreProgram: MPL_CORE_PROGRAM_ID,
         })
+        .signers([collection])
         .rpc();
-    } catch (e) {
-      threw = true;
-    }
-    expect(threw).to.be.true;
+
+      const gs = await program.account.globalState.fetch(globalState);
+      expect(gs.admin.toBase58()).to.equal(wallet.publicKey.toBase58());
+      expect(gs.collection.toBase58()).to.equal(collection.publicKey.toBase58());
+      expect(gs.paused).to.be.false;
+      expect(gs.nextPetId.toNumber()).to.equal(1);
+      expect(gs.levelUpFeeLamports.toString()).to.equal(levelUpFeeLamports.toString());
+    });
   });
 
-  it("fails when name is too long (NameTooLong)", async () => {
-    const provider = anchor.getProvider();
-    const wallet = provider.wallet as anchor.Wallet;
+  describe("pause / unpause", () => {
+    it("rejects pause/unpause from a non-admin signer", async () => {
+      const attacker = anchor.web3.Keypair.generate();
+      await fundAccount(provider, attacker.publicKey);
 
-    const [globalState] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("global-state")],
-      program.programId,
-    );
+      let threw = false;
+      try {
+        await program.methods
+          .pause()
+          .accounts({ globalState, admin: attacker.publicKey })
+          .signers([attacker])
+          .rpc();
+      } catch {
+        threw = true;
+      }
+      expect(threw).to.be.true;
+    });
 
-    // reuse playerProfile from earlier
-    const [playerProfile] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("player-profile"), wallet.publicKey.toBuffer()],
-      program.programId,
-    );
+    it("admin can pause and unpause", async () => {
+      await program.methods.pause().accounts({ globalState, admin: wallet.publicKey }).rpc();
 
-    const longName = "X".repeat(100);
-    const [zombie3] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("zombie"),
-        wallet.publicKey.toBuffer(),
-        new anchor.BN(3).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId,
-    );
+      let gs = await program.account.globalState.fetch(globalState);
+      expect(gs.paused).to.be.true;
 
-    let threw2 = false;
-    try {
-      await (program as any).methods
-        .createStarterZombie(longName, new anchor.BN(1), 1)
-        .accounts({
-          globalState,
-          playerProfile,
-          zombie: zombie3,
-          owner: wallet.publicKey,
-        })
+      await program.methods.unpause().accounts({ globalState, admin: wallet.publicKey }).rpc();
+
+      gs = await program.account.globalState.fetch(globalState);
+      expect(gs.paused).to.be.false;
+    });
+  });
+
+  describe("config setters", () => {
+    it("set_battle_cooldown_seconds applies a value within range", async () => {
+      const value = new anchor.BN(3600);
+
+      await program.methods
+        .setBattleCooldownSeconds(value)
+        .accounts({ globalState, admin: wallet.publicKey })
         .rpc();
-    } catch (e) {
-      threw2 = true;
-    }
-    expect(threw2).to.be.true;
-  });
 
-  it("fails to level up when not owner (Unauthorized)", async () => {
-    // create a different keypair to act as attacker
-    const attacker = anchor.web3.Keypair.generate();
-    const provider = anchor.getProvider();
-    // fund attacker
-    const airdropSig = await provider.connection.requestAirdrop(attacker.publicKey, 1_000_000_000);
-    await provider.connection.confirmTransaction(airdropSig);
+      const gs = await program.account.globalState.fetch(globalState);
+      expect(gs.battleCooldownSeconds.toString()).to.equal(value.toString());
+    });
 
-    const [globalState] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("global-state")],
-      program.programId,
-    );
+    it("set_battle_cooldown_seconds rejects values above MAX_BATTLE_COOLDOWN_SECONDS (InvalidBattleCooldown)", async () => {
+      // MAX_BATTLE_COOLDOWN_SECONDS = 7 * 24 * 60 * 60 (state.rs)
+      const tooLarge = new anchor.BN(7 * 24 * 60 * 60 + 1);
 
-    const [zombie] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("zombie"),
-        provider.wallet.publicKey.toBuffer(),
-        new anchor.BN(1).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId,
-    );
+      let threw = false;
+      try {
+        await program.methods
+          .setBattleCooldownSeconds(tooLarge)
+          .accounts({ globalState, admin: wallet.publicKey })
+          .rpc();
+      } catch {
+        threw = true;
+      }
+      expect(threw).to.be.true;
+    });
 
-    let threw3 = false;
-    try {
-      await (program as any).methods
-        .levelUp()
-        .accounts({
-          globalState,
-          zombie,
-          owner: attacker.publicKey,
-        })
-        .signers([attacker])
+    it("set_max_level rejects zero (InvalidMaxLevel)", async () => {
+      let threw = false;
+      try {
+        await program.methods
+          .setMaxLevel(0)
+          .accounts({ globalState, admin: wallet.publicKey })
+          .rpc();
+      } catch {
+        threw = true;
+      }
+      expect(threw).to.be.true;
+    });
+
+    // Audit finding: unlike every other SetConfig setter, set_level_band_width
+    // has no MAX_* bounds check (config.rs), so any u16 is accepted. Low
+    // priority -- an oversized band width just disables level-gating in
+    // commit_battle, it doesn't brick anything -- but documented here so a
+    // future bounds check (and this test) can be added together.
+    it("set_level_band_width accepts any u16 (no bounds check)", async () => {
+      const value = 65535;
+
+      await program.methods
+        .setLevelBandWidth(value)
+        .accounts({ globalState, admin: wallet.publicKey })
         .rpc();
-    } catch (e) {
-      threw3 = true;
-    }
-    expect(threw3).to.be.true;
+
+      const gs = await program.account.globalState.fetch(globalState);
+      expect(gs.levelBandWidth).to.equal(value);
+    });
   });
 
-  it("renames a zombie (success)", async () => {
-    const provider = anchor.getProvider();
-    const wallet = provider.wallet as anchor.Wallet;
+  describe("withdraw_fees", () => {
+    it("rejects withdrawing more than the fee vault balance (InsufficientFeeVaultBalance)", async () => {
+      const vaultBalance = await provider.connection.getBalance(feeVault);
 
-    const [globalState] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("global-state")],
-      program.programId,
-    );
-
-    const [zombie] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("zombie"),
-        wallet.publicKey.toBuffer(),
-        new anchor.BN(1).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId,
-    );
-
-    const newName = "Renamed";
-    await (program as any).methods
-      .renameZombie(newName)
-      .accounts({
-        globalState,
-        zombie,
-        owner: wallet.publicKey,
-      })
-      .rpc();
-
-    const z = await (program as any).account.zombieAccount.fetch(zombie);
-    expect(z.name_len).to.be.gt(0);
-    // name() helper isn't available in TS fetch; check stored bytes
-    const stored = Buffer.from(z.name as any).slice(0, z.name_len);
-    expect(stored.toString()).to.equal(newName);
+      let threw = false;
+      try {
+        await program.methods
+          .withdrawFees(new anchor.BN(vaultBalance + 1))
+          .accounts({ globalState, feeVault, admin: wallet.publicKey })
+          .rpc();
+      } catch {
+        threw = true;
+      }
+      expect(threw).to.be.true;
+    });
   });
 
-  it("fails to rename when not owner (Unauthorized)", async () => {
-    const attacker = anchor.web3.Keypair.generate();
-    const provider = anchor.getProvider();
-    await provider.connection.requestAirdrop(attacker.publicKey, 1_000_000_000).then(sig => provider.connection.confirmTransaction(sig));
-
-    const [globalState] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("global-state")],
-      program.programId,
-    );
-
-    const [zombie] = anchor.web3.PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("zombie"),
-        provider.wallet.publicKey.toBuffer(),
-        new anchor.BN(1).toArrayLike(Buffer, "le", 4),
-      ],
-      program.programId,
-    );
-
-    let threw = false;
-    try {
-      await (program as any).methods
-        .renameZombie("x")
-        .accounts({
-          globalState,
-          zombie,
-          owner: attacker.publicKey,
-        })
-        .signers([attacker])
-        .rpc();
-    } catch (e) {
-      threw = true;
-    }
-    expect(threw).to.be.true;
-  });
-
-  it("pauses and unpauses program (admin only)", async () => {
-    const provider = anchor.getProvider();
-    const wallet = provider.wallet as anchor.Wallet;
-
-    const [globalState] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("global-state")],
-      program.programId,
-    );
-
-    // pause as admin
-    await (program as any).methods.pause().accounts({ globalState }).rpc();
-
-    // attempt to create a new starter should fail while paused
-    const [playerProfile2] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("player-profile"), wallet.publicKey.toBuffer()],
-      program.programId,
-    );
-    const [z2] = anchor.web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("zombie"), wallet.publicKey.toBuffer(), new anchor.BN(10).toArrayLike(Buffer, "le", 4)],
-      program.programId,
-    );
-
-    let threw = false;
-    try {
-      await (program as any).methods
-        .createStarterZombie("AfterPause", new anchor.BN(5), 1)
-        .accounts({ globalState, playerProfile: playerProfile2, zombie: z2, owner: wallet.publicKey })
-        .rpc();
-    } catch (e) {
-      threw = true;
-    }
-    expect(threw).to.be.true;
-
-    // unpause
-    await (program as any).methods.unpause().accounts({ globalState }).rpc();
-
-    // now create should succeed
-    const tx = await (program as any).methods
-      .createStarterZombie("AfterUnpause", new anchor.BN(6), 1)
-      .accounts({ globalState, playerProfile: playerProfile2, zombie: z2, owner: wallet.publicKey })
-      .rpc();
-    expect(tx).to.exist;
-  });
+  // TODO (plan §4.3/§4.4): gacha mint (commit_mint/settle_mint), breeding
+  // (commit_breed/settle_breed), battling (commit_battle/settle_battle), and
+  // everything that depends on an existing pet (level_up, train, rename_pet,
+  // set_open_to_challenges, marriage, cancel_mint/cancel_breed/cancel_battle,
+  // clear_stale_marriage, withdraw_stud_fees, sync_metadata). All of these
+  // need a pet, which only comes from settle_mint/settle_breed minting a
+  // Metaplex Core asset after a Switchboard On-Demand randomness reveal --
+  // build that test harness (Randomness.create/commitIx/revealIx from
+  // @switchboard-xyz/on-demand) before adding coverage here.
 });
