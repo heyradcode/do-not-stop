@@ -33,6 +33,10 @@ pub fn handler(ctx: Context<Initialize>, level_up_fee_lamports: u64) -> Result<(
     global_state.stud_fee_lamports = DEFAULT_STUD_FEE_LAMPORTS;
     global_state.marriage_cooldown_seconds = DEFAULT_MARRIAGE_COOLDOWN_SECONDS;
     global_state.proposal_ttl_seconds = DEFAULT_PROPOSAL_TTL_SECONDS;
+    // Metaplex Core "CryptoPets" collection (plan §2.3/v2.1 Phase A): records the address
+    // of the fresh keypair that will back the collection account. The `CreateCollectionV1`
+    // CPI into `mpl-core` that actually creates this account lands in a follow-up step.
+    global_state.collection = ctx.accounts.collection.key();
     global_state.next_pet_id = 1;
     global_state.paused = false;
     global_state.version = CURRENT_ACCOUNT_VERSION;
@@ -51,6 +55,12 @@ pub struct Initialize<'info> {
         space = GlobalState::SPACE,
     )]
     pub global_state: Account<'info, GlobalState>,
+
+    /// Fresh keypair for the new Metaplex Core "CryptoPets" collection account (plan
+    /// §2.3/v2.1 Phase A). Its pubkey is recorded in `global_state.collection`; the
+    /// account itself is created via CPI into `mpl-core` in a follow-up step.
+    pub collection: Signer<'info>,
+
     #[account(mut)]
     pub admin: Signer<'info>,
     pub system_program: Program<'info, System>,
