@@ -7,7 +7,6 @@ use crate::errors::ErrorCode;
 pub const CURRENT_ACCOUNT_VERSION: u8 = 1;
 
 pub const DEFAULT_BATTLE_COOLDOWN_SECONDS: i64 = 5;
-pub const DEFAULT_ATTACK_VICTORY_PROBABILITY: u8 = 70;
 
 /// Slots a committed Switchboard randomness has to be revealed before `cancel_battle` /
 /// `cancel_breed` may close the stuck request (§5: ~150 slots, ~1 minute).
@@ -35,7 +34,6 @@ pub struct GlobalState {
     pub admin: Pubkey,
     pub level_up_fee_lamports: u64,
     pub battle_cooldown_seconds: i64,
-    pub attack_victory_probability: u8,
     pub next_pet_id: u32,
     pub paused: bool,
     pub version: u8,
@@ -43,7 +41,7 @@ pub struct GlobalState {
     pub randomness_expiry_slots: u64,
     pub max_level: u16,
     pub level_band_width: u16,
-    pub _reserved: [u8; 52],
+    pub _reserved: [u8; 53],
 }
 
 impl GlobalState {
@@ -52,7 +50,6 @@ impl GlobalState {
         + 32 /* admin */
         + 8 /* level_up_fee_lamports */
         + 8 /* battle_cooldown_seconds */
-        + 1 /* attack_victory_probability */
         + 4 /* next_pet_id */
         + 1 /* paused */
         + 1 /* version */
@@ -60,7 +57,7 @@ impl GlobalState {
         + 8 /* randomness_expiry_slots */
         + 2 /* max_level */
         + 2 /* level_band_width */
-        + 52; /* reserved */
+        + 53; /* reserved */
 }
 
 #[account]
@@ -101,7 +98,9 @@ pub struct PetAccount {
     /// Interim defender-consent fix (§3.5/§6 Solana #3): when false, this pet cannot be
     /// targeted as a defender in `commit_battle`. Owner-toggleable, defaults to true.
     pub open_to_challenges: bool,
-    pub _reserved: [u8; 31],
+    /// XP toward the next level (§3.4); auto-levels via [`PetAccount::add_xp`] at `100 * level`.
+    pub xp: u32,
+    pub _reserved: [u8; 27],
 }
 
 impl PetAccount {
@@ -121,7 +120,8 @@ impl PetAccount {
         + Self::MAX_NAME_LEN /* name */
         + 1 /* name_len */
         + 1 /* open_to_challenges */
-        + 31; /* reserved */
+        + 4 /* xp */
+        + 27; /* reserved */
 
     pub fn set_name(&mut self, name: &str) -> Result<()> {
         let bytes = name.as_bytes();
@@ -143,6 +143,33 @@ impl PetAccount {
 
     pub fn trigger_cooldown(&mut self, now: i64, cooldown_seconds: i64) {
         self.ready_time = now.saturating_add(cooldown_seconds);
+    }
+
+    /// Mirrors EVM `PetCoreV1.addXp` (§3.4): a no-op once `level >= max_level`, otherwise
+    /// accrues `amount` XP and applies at most one level-up if the `100 * level` threshold
+    /// is crossed (leftover XP carries over toward the next level).
+    pub fn add_xp(&mut self, amount: u32, max_level: u16) -> Result<()> {
+        if self.level >= max_level {
+            return Ok(());
+        }
+        self.xp = self
+            .xp
+            .checked_add(amount)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+        let threshold = 100u32
+            .checked_mul(self.level as u32)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+        if self.xp >= threshold {
+            self.xp -= threshold;
+            self.level = self
+                .level
+                .checked_add(1)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+            if self.level > max_level {
+                self.level = max_level;
+            }
+        }
+        Ok(())
     }
 }
 

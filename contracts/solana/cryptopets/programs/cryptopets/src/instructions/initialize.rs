@@ -1,9 +1,8 @@
 use crate::{
     errors::ErrorCode,
     state::{
-        GlobalState, PetAccount, CURRENT_ACCOUNT_VERSION, DEFAULT_ATTACK_VICTORY_PROBABILITY,
-        DEFAULT_BATTLE_COOLDOWN_SECONDS, DEFAULT_LEVEL_BAND_WIDTH, DEFAULT_MAX_LEVEL,
-        DEFAULT_RANDOMNESS_EXPIRY_SLOTS,
+        GlobalState, PetAccount, CURRENT_ACCOUNT_VERSION, DEFAULT_BATTLE_COOLDOWN_SECONDS,
+        DEFAULT_LEVEL_BAND_WIDTH, DEFAULT_MAX_LEVEL, DEFAULT_RANDOMNESS_EXPIRY_SLOTS,
     },
 };
 use anchor_lang::prelude::*;
@@ -14,7 +13,6 @@ pub fn handler(ctx: Context<Initialize>, level_up_fee_lamports: u64) -> Result<(
     global_state.admin = ctx.accounts.admin.key();
     global_state.level_up_fee_lamports = level_up_fee_lamports;
     global_state.battle_cooldown_seconds = DEFAULT_BATTLE_COOLDOWN_SECONDS;
-    global_state.attack_victory_probability = DEFAULT_ATTACK_VICTORY_PROBABILITY;
     global_state.randomness_expiry_slots = DEFAULT_RANDOMNESS_EXPIRY_SLOTS;
     global_state.max_level = DEFAULT_MAX_LEVEL;
     global_state.level_band_width = DEFAULT_LEVEL_BAND_WIDTH;

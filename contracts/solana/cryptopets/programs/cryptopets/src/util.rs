@@ -3,11 +3,6 @@ use switchboard_on_demand::RandomnessAccountData;
 
 use crate::errors::ErrorCode;
 
-/// Maps Switchboard's 32-byte reveal to a roll in `0..=u64::MAX` for battle odds.
-pub fn battle_roll_from_vrf(vrf: &[u8; 32]) -> u64 {
-    u64::from_le_bytes(vrf[0..8].try_into().unwrap())
-}
-
 /// Mirrors Ethereum `Utils.mixDnaWithVrfWord`: derive child DNA from VRF bytes + parents.
 /// Randomness comes entirely from Switchboard; parents only bias the mix.
 pub fn mix_dna_with_vrf(vrf: &[u8; 32], parent1_dna: u64, parent2_dna: u64) -> u64 {

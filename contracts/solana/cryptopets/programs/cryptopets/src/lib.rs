@@ -82,10 +82,6 @@ pub mod cryptopets {
         config::set_battle_cooldown_seconds(ctx, value)
     }
 
-    pub fn set_attack_victory_probability(ctx: Context<SetConfig>, value: u8) -> Result<()> {
-        config::set_attack_victory_probability(ctx, value)
-    }
-
     pub fn set_level_up_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
         config::set_level_up_fee_lamports(ctx, value)
     }

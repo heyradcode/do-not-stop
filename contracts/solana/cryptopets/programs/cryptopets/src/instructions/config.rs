@@ -18,13 +18,6 @@ pub fn set_battle_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Resul
     Ok(())
 }
 
-pub fn set_attack_victory_probability(ctx: Context<SetConfig>, value: u8) -> Result<()> {
-    require!(value <= 100, ErrorCode::InvalidAttackVictoryProbability);
-    ctx.accounts.global_state.attack_victory_probability = value;
-    emit!(AttackVictoryProbabilityUpdated { value });
-    Ok(())
-}
-
 pub fn set_level_up_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
     require!(value <= MAX_LEVEL_UP_FEE_LAMPORTS, ErrorCode::InvalidLevelUpFee);
     ctx.accounts.global_state.level_up_fee_lamports = value;
@@ -58,11 +51,6 @@ pub fn set_level_band_width(ctx: Context<SetConfig>, value: u16) -> Result<()> {
 #[event]
 pub struct BattleCooldownUpdated {
     pub value: i64,
-}
-
-#[event]
-pub struct AttackVictoryProbabilityUpdated {
-    pub value: u8,
 }
 
 #[event]
