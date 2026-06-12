@@ -86,5 +86,11 @@ pub enum ErrorCode {
     PetNotTrainReady,
     #[msg("Breed fee exceeds the maximum allowed")]
     InvalidBreedFee,
+    #[msg("Stud fee exceeds the maximum allowed")]
+    InvalidStudFee,
+    #[msg("Marriage cooldown exceeds the maximum allowed")]
+    InvalidMarriageCooldown,
+    #[msg("Proposal TTL exceeds the maximum allowed")]
+    InvalidProposalTtl,
 }
 

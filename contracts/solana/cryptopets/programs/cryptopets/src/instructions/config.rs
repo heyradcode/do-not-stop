@@ -5,7 +5,8 @@ use crate::{
     state::{
         GlobalState, MAX_BASE_MINT_FEE_LAMPORTS, MAX_BATTLE_COOLDOWN_SECONDS,
         MAX_BREED_COOLDOWN_BASE_SECONDS, MAX_BREED_FEE_LAMPORTS, MAX_GENERATION_CAP,
-        MAX_LEVEL_UP_FEE_LAMPORTS, MAX_NEWBORN_COOLDOWN_SECONDS, MAX_RANDOMNESS_EXPIRY_SLOTS,
+        MAX_LEVEL_UP_FEE_LAMPORTS, MAX_MARRIAGE_COOLDOWN_SECONDS, MAX_NEWBORN_COOLDOWN_SECONDS,
+        MAX_PROPOSAL_TTL_SECONDS, MAX_RANDOMNESS_EXPIRY_SLOTS, MAX_STUD_FEE_LAMPORTS,
         MAX_TRAIN_COOLDOWN_SECONDS, MAX_TRAIN_FEE_LAMPORTS, MAX_TRAIN_XP,
     },
 };
@@ -134,6 +135,39 @@ pub fn set_breed_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()>
     Ok(())
 }
 
+/// Mirrors EVM `GameConfig.setStudFee` (plan §4.4): fee paid by the proposer's spouse's
+/// owner to the proposer when breeding across a marriage.
+pub fn set_stud_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+    require!(value <= MAX_STUD_FEE_LAMPORTS, ErrorCode::InvalidStudFee);
+    ctx.accounts.global_state.stud_fee_lamports = value;
+    emit!(StudFeeUpdated { value });
+    Ok(())
+}
+
+/// Mirrors EVM `GameConfig.setMarriageCooldown` (plan §4.4): minimum time before a wallet
+/// may propose another marriage after a divorce.
+pub fn set_marriage_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+    require!(
+        (0..=MAX_MARRIAGE_COOLDOWN_SECONDS).contains(&value),
+        ErrorCode::InvalidMarriageCooldown
+    );
+    ctx.accounts.global_state.marriage_cooldown_seconds = value;
+    emit!(MarriageCooldownUpdated { value });
+    Ok(())
+}
+
+/// Mirrors EVM `GameConfig.setProposalTTL` (plan §4.4): how long a marriage proposal
+/// remains acceptable before it can be cleared as stale.
+pub fn set_proposal_ttl_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+    require!(
+        (0..=MAX_PROPOSAL_TTL_SECONDS).contains(&value),
+        ErrorCode::InvalidProposalTtl
+    );
+    ctx.accounts.global_state.proposal_ttl_seconds = value;
+    emit!(ProposalTtlUpdated { value });
+    Ok(())
+}
+
 #[event]
 pub struct BattleCooldownUpdated {
     pub value: i64,
@@ -203,6 +237,21 @@ pub struct TrainXpUpdated {
 #[event]
 pub struct BreedFeeUpdated {
     pub value: u64,
+}
+
+#[event]
+pub struct StudFeeUpdated {
+    pub value: u64,
+}
+
+#[event]
+pub struct MarriageCooldownUpdated {
+    pub value: i64,
+}
+
+#[event]
+pub struct ProposalTtlUpdated {
+    pub value: i64,
 }
 
 #[derive(Accounts)]

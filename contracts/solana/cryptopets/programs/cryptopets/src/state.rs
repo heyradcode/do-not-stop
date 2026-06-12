@@ -66,6 +66,18 @@ pub const DEFAULT_TRAIN_COOLDOWN_SECONDS: i64 = 60;
 /// Flat XP granted per train (plan §3.4/§5, mirrors EVM `GameConfig.trainXp`).
 pub const DEFAULT_TRAIN_XP: u32 = 100;
 
+/// Stud fee for cross-owner breeding, paid to the non-initiating spouse's owner (plan
+/// §4.4, mirrors EVM `GameConfig.studFee`).
+pub const DEFAULT_STUD_FEE_LAMPORTS: u64 = 20_000_000; // 0.02 SOL
+
+/// Cooldown applied to both pets after a divorce or stale-marriage cleanup before either
+/// may marry again (plan §4.4, mirrors EVM `GameConfig.marriageCooldown`).
+pub const DEFAULT_MARRIAGE_COOLDOWN_SECONDS: i64 = 60;
+
+/// Expiry window for a pending marriage proposal (plan §4.4, mirrors EVM
+/// `GameConfig.proposalTTL`).
+pub const DEFAULT_PROPOSAL_TTL_SECONDS: i64 = 60;
+
 /// Bounds enforced by the `set_*` config setters (§5 setter hygiene).
 pub const MAX_BATTLE_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_LEVEL_UP_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
@@ -78,6 +90,9 @@ pub const MAX_BREED_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
 pub const MAX_TRAIN_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
 pub const MAX_TRAIN_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_TRAIN_XP: u32 = 10_000;
+pub const MAX_STUD_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
+pub const MAX_MARRIAGE_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
+pub const MAX_PROPOSAL_TTL_SECONDS: i64 = 7 * 24 * 60 * 60;
 
 /// PDA seed for the lamport-only fee vault (§6 Solana #5). Holds `level_up_fee_lamports`
 /// and future protocol fees; swept via `withdraw_fees`.
@@ -120,7 +135,16 @@ pub struct GlobalState {
     /// Fee charged by `commit_breed`, transferred to the fee vault (plan §4.3, mirrors
     /// EVM `GameConfig.breedFee`).
     pub breed_fee_lamports: u64,
-    pub _reserved: [u8; 32],
+    /// Stud fee for cross-owner breeding, paid to the non-initiating spouse's owner
+    /// (plan §4.4, mirrors EVM `GameConfig.studFee`).
+    pub stud_fee_lamports: u64,
+    /// Cooldown applied to both pets after a divorce or stale-marriage cleanup before
+    /// either may marry again (plan §4.4, mirrors EVM `GameConfig.marriageCooldown`).
+    pub marriage_cooldown_seconds: i64,
+    /// Expiry window for a pending marriage proposal (plan §4.4, mirrors EVM
+    /// `GameConfig.proposalTTL`).
+    pub proposal_ttl_seconds: i64,
+    pub _reserved: [u8; 8],
 }
 
 impl GlobalState {
@@ -145,7 +169,10 @@ impl GlobalState {
         + 8 /* train_cooldown_seconds */
         + 4 /* train_xp */
         + 8 /* breed_fee_lamports */
-        + 32; /* reserved */
+        + 8 /* stud_fee_lamports */
+        + 8 /* marriage_cooldown_seconds */
+        + 8 /* proposal_ttl_seconds */
+        + 8; /* reserved */
 }
 
 #[account]

@@ -138,6 +138,18 @@ pub mod cryptopets {
         config::set_breed_fee_lamports(ctx, value)
     }
 
+    pub fn set_stud_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_stud_fee_lamports(ctx, value)
+    }
+
+    pub fn set_marriage_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_marriage_cooldown_seconds(ctx, value)
+    }
+
+    pub fn set_proposal_ttl_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_proposal_ttl_seconds(ctx, value)
+    }
+
     pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
         withdraw_fees::handler(ctx, amount)
     }
