@@ -56,5 +56,9 @@ pub enum ErrorCode {
     RandomnessNotExpired,
     #[msg("Defender pet is not open to challenges")]
     DefenderNotOpenToChallenges,
+    #[msg("Max level must be greater than zero")]
+    InvalidMaxLevel,
+    #[msg("Pet has already reached the max level")]
+    MaxLevelReached,
 }
 

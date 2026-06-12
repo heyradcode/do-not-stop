@@ -15,6 +15,11 @@ pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
         LevelUpError::Unauthorized
     );
 
+    require!(
+        pet.level < global_state.max_level,
+        ErrorCode::MaxLevelReached
+    );
+
     // transfer lamports to the fee vault
     let fee = global_state.level_up_fee_lamports;
     require!(fee > 0, LevelUpError::InvalidFee);

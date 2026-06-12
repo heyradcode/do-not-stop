@@ -42,6 +42,13 @@ pub fn set_randomness_expiry_slots(ctx: Context<SetConfig>, value: u64) -> Resul
     Ok(())
 }
 
+pub fn set_max_level(ctx: Context<SetConfig>, value: u16) -> Result<()> {
+    require!(value > 0, ErrorCode::InvalidMaxLevel);
+    ctx.accounts.global_state.max_level = value;
+    emit!(MaxLevelUpdated { value });
+    Ok(())
+}
+
 #[event]
 pub struct BattleCooldownUpdated {
     pub value: i64,
@@ -60,6 +67,11 @@ pub struct LevelUpFeeUpdated {
 #[event]
 pub struct RandomnessExpirySlotsUpdated {
     pub value: u64,
+}
+
+#[event]
+pub struct MaxLevelUpdated {
+    pub value: u16,
 }
 
 #[derive(Accounts)]

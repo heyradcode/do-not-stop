@@ -13,6 +13,10 @@ pub const DEFAULT_ATTACK_VICTORY_PROBABILITY: u8 = 70;
 /// `cancel_breed` may close the stuck request (§5: ~150 slots, ~1 minute).
 pub const DEFAULT_RANDOMNESS_EXPIRY_SLOTS: u64 = 150;
 
+/// Hard level cap (§6 Solana #4 / mirrors EVM `GameConfig.maxLevel`). Battle wins stop
+/// granting levels once a pet reaches this; `level_up` rejects further fee-paid levels too.
+pub const DEFAULT_MAX_LEVEL: u16 = 100;
+
 /// Bounds enforced by the `set_*` config setters (§5 setter hygiene).
 pub const MAX_BATTLE_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_LEVEL_UP_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
@@ -33,7 +37,8 @@ pub struct GlobalState {
     pub version: u8,
     pub bump: u8,
     pub randomness_expiry_slots: u64,
-    pub _reserved: [u8; 56],
+    pub max_level: u16,
+    pub _reserved: [u8; 54],
 }
 
 impl GlobalState {
@@ -48,7 +53,8 @@ impl GlobalState {
         + 1 /* version */
         + 1 /* bump */
         + 8 /* randomness_expiry_slots */
-        + 56; /* reserved */
+        + 2 /* max_level */
+        + 54; /* reserved */
 }
 
 #[account]

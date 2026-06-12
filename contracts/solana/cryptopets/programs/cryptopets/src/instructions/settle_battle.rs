@@ -36,6 +36,7 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
     )?;
     let rand = battle_roll_from_vrf(&vrf);
     let attacker_wins = (rand % 100) < ctx.accounts.global_state.attack_victory_probability as u64;
+    let max_level = ctx.accounts.global_state.max_level;
 
     let attacker_pet = &mut ctx.accounts.attacker_pet;
     let defender_pet = &mut ctx.accounts.defender_pet;
@@ -49,10 +50,12 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
             .loss_count
             .checked_add(1)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
-        attacker_pet.level = attacker_pet
-            .level
-            .checked_add(1)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
+        if attacker_pet.level < max_level {
+            attacker_pet.level = attacker_pet
+                .level
+                .checked_add(1)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+        }
     } else {
         defender_pet.win_count = defender_pet
             .win_count
@@ -62,10 +65,12 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
             .loss_count
             .checked_add(1)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
-        defender_pet.level = defender_pet
-            .level
-            .checked_add(1)
-            .ok_or(ErrorCode::ArithmeticOverflow)?;
+        if defender_pet.level < max_level {
+            defender_pet.level = defender_pet
+                .level
+                .checked_add(1)
+                .ok_or(ErrorCode::ArithmeticOverflow)?;
+        }
     }
 
     emit!(BattleResult {
