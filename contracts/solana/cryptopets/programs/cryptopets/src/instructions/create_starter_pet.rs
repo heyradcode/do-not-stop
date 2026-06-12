@@ -1,4 +1,7 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{
+    prelude::*,
+    solana_program::{keccak, sysvar::slot_hashes},
+};
 
 use crate::{
     errors::ErrorCode,
@@ -6,13 +9,11 @@ use crate::{
     state::{GlobalState, PetAccount, PlayerProfile, CURRENT_ACCOUNT_VERSION},
 };
 
-pub fn handler(ctx: Context<CreateStarterPet>, name: String, dna: u64, rarity: u8) -> Result<()> {
+pub fn handler(ctx: Context<CreateStarterPet>, name: String) -> Result<()> {
     require!(
         name.len() <= PetAccount::MAX_NAME_LEN,
         ErrorCode::NameTooLong
     );
-
-    let rarity: Rarity = rarity.try_into()?;
 
     let global_state = &mut ctx.accounts.global_state;
     let player_profile = &mut ctx.accounts.player_profile;
@@ -35,10 +36,15 @@ pub fn handler(ctx: Context<CreateStarterPet>, name: String, dna: u64, rarity: u
     let pet_id = global_state.next_pet_id;
     global_state.next_pet_id = global_state.next_pet_id.checked_add(1).unwrap();
 
+    // Interim Phase-0 clamp (§6 Solana #1): DNA is derived on-chain from the
+    // SlotHashes sysvar + payer + pet id, never client-supplied, and rarity is
+    // forced to Common. The Phase 3 VRF gacha mint replaces this entirely.
+    let dna = starter_dna(&ctx.accounts.recent_slothashes, ctx.accounts.owner.key(), pet_id)?;
+
     pet.id = pet_id;
     pet.owner = ctx.accounts.owner.key();
     pet.dna = dna;
-    pet.rarity = rarity.into();
+    pet.rarity = Rarity::Common.into();
     pet.level = 1;
     pet.ready_time = Clock::get()?.unix_timestamp;
     pet.win_count = 0;
@@ -48,6 +54,21 @@ pub fn handler(ctx: Context<CreateStarterPet>, name: String, dna: u64, rarity: u
     pet.set_name(&name)?;
 
     Ok(())
+}
+
+/// Mixes the most recent `SlotHashes` entry with the payer and pet id into a u64.
+/// Grindable by validators (no VRF), but no longer chosen by the caller.
+fn starter_dna(recent_slothashes: &AccountInfo, owner: Pubkey, pet_id: u32) -> Result<u64> {
+    let data = recent_slothashes.try_borrow_data()?;
+    // SlotHashes layout: 8-byte little-endian vec length, then (slot: u64, hash: [u8; 32])
+    // entries, most recent first.
+    let mut preimage = [0u8; 32 + 32 + 4];
+    preimage[0..32].copy_from_slice(&data[16..48]);
+    preimage[32..64].copy_from_slice(owner.as_ref());
+    preimage[64..68].copy_from_slice(&pet_id.to_le_bytes());
+
+    let digest = keccak::hash(&preimage).to_bytes();
+    Ok(u64::from_le_bytes(digest[0..8].try_into().unwrap()))
 }
 
 #[derive(Accounts)]
@@ -76,5 +97,8 @@ pub struct CreateStarterPet<'info> {
     pub pet: Account<'info, PetAccount>,
     #[account(mut)]
     pub owner: Signer<'info>,
+    /// CHECK: validated by `address` constraint; parsed manually for the most recent slot hash.
+    #[account(address = slot_hashes::ID)]
+    pub recent_slothashes: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
 }
