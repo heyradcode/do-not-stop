@@ -74,5 +74,7 @@ pub enum ErrorCode {
     IncestBreedingRejected,
     #[msg("Generation cap reached")]
     GenerationCapReached,
+    #[msg("Base mint fee exceeds the maximum allowed")]
+    InvalidBaseMintFee,
 }
 

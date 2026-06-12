@@ -43,6 +43,10 @@ pub const DEFAULT_NEWBORN_COOLDOWN_SECONDS: i64 = 60;
 /// `GameConfig`'s constructor, which sets `poolSizes[1..=5] = 8`).
 pub const DEFAULT_POOL_SIZE: u8 = 8;
 
+/// Base fee for the gacha mint (plan §4.3, mirrors EVM `GameConfig.baseMintFee`).
+/// Escalates per wallet as `baseMintFee << min(mint_count, 7)` (up to 128x).
+pub const DEFAULT_BASE_MINT_FEE_LAMPORTS: u64 = 20_000_000; // 0.02 SOL
+
 /// Bounds enforced by the `set_*` config setters (§5 setter hygiene).
 pub const MAX_BATTLE_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_LEVEL_UP_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
@@ -50,6 +54,7 @@ pub const MAX_RANDOMNESS_EXPIRY_SLOTS: u64 = 1_512_000; // ~7 days at 400ms/slot
 pub const MAX_GENERATION_CAP: u8 = 100;
 pub const MAX_BREED_COOLDOWN_BASE_SECONDS: i64 = BREED_COOLDOWN_CAP_SECONDS;
 pub const MAX_NEWBORN_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
+pub const MAX_BASE_MINT_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
 
 /// PDA seed for the lamport-only fee vault (§6 Solana #5). Holds `level_up_fee_lamports`
 /// and future protocol fees; swept via `withdraw_fees`.
@@ -79,7 +84,10 @@ pub struct GlobalState {
     /// §3.7, mirrors EVM `GameConfig.poolSizes`). `speciesId = digitPair(dna, 6) %
     /// pool_sizes[rarity - 1]`, or `0` if the tier's pool size is `0`.
     pub pool_sizes: [u8; 5],
-    pub _reserved: [u8; 31],
+    /// Base fee for the gacha mint, escalated per wallet by `commit_mint` (plan §4.3,
+    /// mirrors EVM `GameConfig.baseMintFee`).
+    pub base_mint_fee_lamports: u64,
+    pub _reserved: [u8; 23],
 }
 
 impl GlobalState {
@@ -99,7 +107,8 @@ impl GlobalState {
         + 8 /* breed_cooldown_base_seconds */
         + 8 /* newborn_cooldown_seconds */
         + 5 /* pool_sizes */
-        + 31; /* reserved */
+        + 8 /* base_mint_fee_lamports */
+        + 23; /* reserved */
 }
 
 #[account]

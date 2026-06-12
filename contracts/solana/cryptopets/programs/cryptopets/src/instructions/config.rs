@@ -3,9 +3,9 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{
-        GlobalState, MAX_BATTLE_COOLDOWN_SECONDS, MAX_BREED_COOLDOWN_BASE_SECONDS,
-        MAX_GENERATION_CAP, MAX_LEVEL_UP_FEE_LAMPORTS, MAX_NEWBORN_COOLDOWN_SECONDS,
-        MAX_RANDOMNESS_EXPIRY_SLOTS,
+        GlobalState, MAX_BASE_MINT_FEE_LAMPORTS, MAX_BATTLE_COOLDOWN_SECONDS,
+        MAX_BREED_COOLDOWN_BASE_SECONDS, MAX_GENERATION_CAP, MAX_LEVEL_UP_FEE_LAMPORTS,
+        MAX_NEWBORN_COOLDOWN_SECONDS, MAX_RANDOMNESS_EXPIRY_SLOTS,
     },
 };
 
@@ -88,6 +88,15 @@ pub fn set_pool_size(ctx: Context<SetConfig>, tier: u8, size: u8) -> Result<()> 
     Ok(())
 }
 
+/// Mirrors EVM `GameConfig.setBaseMintFee` (plan §4.3): base fee for the gacha mint,
+/// escalated per wallet by `commit_mint`.
+pub fn set_base_mint_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+    require!(value <= MAX_BASE_MINT_FEE_LAMPORTS, ErrorCode::InvalidBaseMintFee);
+    ctx.accounts.global_state.base_mint_fee_lamports = value;
+    emit!(BaseMintFeeUpdated { value });
+    Ok(())
+}
+
 #[event]
 pub struct BattleCooldownUpdated {
     pub value: i64,
@@ -132,6 +141,11 @@ pub struct NewbornCooldownUpdated {
 pub struct PoolSizeUpdated {
     pub tier: u8,
     pub size: u8,
+}
+
+#[event]
+pub struct BaseMintFeeUpdated {
+    pub value: u64,
 }
 
 #[derive(Accounts)]

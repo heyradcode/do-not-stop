@@ -1,10 +1,10 @@
 use crate::{
     errors::ErrorCode,
     state::{
-        GlobalState, PetAccount, CURRENT_ACCOUNT_VERSION, DEFAULT_BATTLE_COOLDOWN_SECONDS,
-        DEFAULT_BREED_COOLDOWN_BASE_SECONDS, DEFAULT_GENERATION_CAP, DEFAULT_LEVEL_BAND_WIDTH,
-        DEFAULT_MAX_LEVEL, DEFAULT_NEWBORN_COOLDOWN_SECONDS, DEFAULT_POOL_SIZE,
-        DEFAULT_RANDOMNESS_EXPIRY_SLOTS,
+        GlobalState, PetAccount, CURRENT_ACCOUNT_VERSION, DEFAULT_BASE_MINT_FEE_LAMPORTS,
+        DEFAULT_BATTLE_COOLDOWN_SECONDS, DEFAULT_BREED_COOLDOWN_BASE_SECONDS,
+        DEFAULT_GENERATION_CAP, DEFAULT_LEVEL_BAND_WIDTH, DEFAULT_MAX_LEVEL,
+        DEFAULT_NEWBORN_COOLDOWN_SECONDS, DEFAULT_POOL_SIZE, DEFAULT_RANDOMNESS_EXPIRY_SLOTS,
     },
 };
 use anchor_lang::prelude::*;
@@ -22,6 +22,7 @@ pub fn handler(ctx: Context<Initialize>, level_up_fee_lamports: u64) -> Result<(
     global_state.breed_cooldown_base_seconds = DEFAULT_BREED_COOLDOWN_BASE_SECONDS;
     global_state.newborn_cooldown_seconds = DEFAULT_NEWBORN_COOLDOWN_SECONDS;
     global_state.pool_sizes = [DEFAULT_POOL_SIZE; 5];
+    global_state.base_mint_fee_lamports = DEFAULT_BASE_MINT_FEE_LAMPORTS;
     global_state.next_pet_id = 1;
     global_state.paused = false;
     global_state.version = CURRENT_ACCOUNT_VERSION;
