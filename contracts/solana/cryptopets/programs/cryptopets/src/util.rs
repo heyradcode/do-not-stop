@@ -31,6 +31,14 @@ pub fn mix_dna_with_vrf(vrf: &[u8; 32], parent1_dna: u64, parent2_dna: u64) -> u
     child
 }
 
+/// Gacha mint DNA (plan §4.3): derived purely from the revealed VRF value, with no parent
+/// influence (unlike [`mix_dna_with_vrf`]). Domain-separated from other VRF derivations
+/// (e.g. [`inherit_rarity`]'s `b"rarity"` roll) via the `b"mint"` tag.
+pub fn mint_dna_from_vrf(vrf: &[u8; 32]) -> u64 {
+    let digest = keccak::hashv(&[vrf, b"mint"]).to_bytes();
+    u64::from_le_bytes(digest[0..8].try_into().unwrap())
+}
+
 /// Rarity inheritance (plan §4.2, mirrors EVM `GameLogicV1._inheritRarity`): recompute the
 /// base rarity from the child's DNA, then — if both parents are Epic+ (rarity >= 4) and the
 /// base rarity isn't already Legendary — roll a 5% chance, derived from the VRF seed, to
@@ -152,6 +160,18 @@ mod tests {
                 assert!(pair < 10, "pair {i} = {pair} should be < 10 for zero parents");
             }
         }
+    }
+
+    #[test]
+    fn mint_dna_from_vrf_is_deterministic_and_domain_separated() {
+        let vrf = [0x42u8; 32];
+        assert_eq!(mint_dna_from_vrf(&vrf), mint_dna_from_vrf(&vrf));
+        // Domain separation: the `b"mint"` tag must actually change the digest, not just
+        // pass the raw VRF bytes through.
+        assert_ne!(
+            mint_dna_from_vrf(&vrf),
+            u64::from_le_bytes(vrf[0..8].try_into().unwrap())
+        );
     }
 
     #[test]

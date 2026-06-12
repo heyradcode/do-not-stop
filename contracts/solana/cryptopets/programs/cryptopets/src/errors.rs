@@ -122,5 +122,7 @@ pub enum ErrorCode {
     InvalidStudFeeAccount,
     #[msg("No stud fees to withdraw")]
     NoStudFeesToWithdraw,
+    #[msg("No pending mint request for this wallet")]
+    MintRequestNotFound,
 }
 

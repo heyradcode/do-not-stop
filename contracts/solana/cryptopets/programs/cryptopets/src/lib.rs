@@ -74,6 +74,22 @@ pub mod cryptopets {
         settle_breed::handler(ctx)
     }
 
+    pub fn commit_mint(
+        ctx: Context<CommitMint>,
+        randomness_account: Pubkey,
+        name: String,
+    ) -> Result<()> {
+        commit_mint::handler(ctx, randomness_account, name)
+    }
+
+    pub fn settle_mint(ctx: Context<SettleMint>) -> Result<()> {
+        settle_mint::handler(ctx)
+    }
+
+    pub fn cancel_mint(ctx: Context<CancelMint>) -> Result<()> {
+        cancel_mint::handler(ctx)
+    }
+
     pub fn cancel_battle(ctx: Context<CancelBattle>) -> Result<()> {
         cancel_battle::handler(ctx)
     }
