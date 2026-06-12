@@ -1,3 +1,4 @@
+pub mod dna;
 pub mod errors;
 pub mod instructions;
 pub mod rarity;
