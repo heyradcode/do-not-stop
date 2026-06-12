@@ -1,8 +1,13 @@
 use anchor_lang::prelude::*;
+use mpl_core::{
+    instructions::CreateV1CpiBuilder,
+    types::{Attributes, Plugin, PluginAuthorityPair},
+};
 
 use crate::{
     dna::resolve_species,
     errors::ErrorCode,
+    metadata::pet_attributes,
     state::{
         BreedRequest, GlobalState, PetAccount, PlayerProfile, BREED_COOLDOWN_CAP_SECONDS,
         CURRENT_ACCOUNT_VERSION,
@@ -115,6 +120,40 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     child.train_ready_time = 0;
     child.species_id = resolve_species(new_dna, rarity, &pool_sizes);
 
+    // mpl-core CPI: mint the child as a Core asset into the "CryptoPets" collection (plan
+    // §2.3/v2.1 Phase A), attaching the Attributes plugin with its display traits. The
+    // GlobalState PDA is the collection's update authority and signs this CPI via
+    // `invoke_signed` (it does not sign the outer transaction). See `settle_mint`'s CPI
+    // for the same pattern.
+    //
+    // UNVERIFIED: `CreateV1CpiBuilder`'s method names/shapes (`asset`/`collection`/
+    // `authority`/`payer`/`owner`/`update_authority`/`system_program`/`name`/`uri`/
+    // `plugins`/`invoke_signed`), plus `PluginAuthorityPair`/`Plugin::Attributes`/
+    // `Attributes`'s field shapes, follow the usual mpl-core ~0.10 CPI convention but have
+    // not been checked against the real crate (no cargo registry cache or Rust toolchain
+    // in this environment). Fix up against `mpl_core::instructions::CreateV1CpiBuilder`
+    // and `mpl_core::types` when building.
+    let global_state_seeds: &[&[u8]] = &[GlobalState::SEED, &[global_state.bump]];
+    CreateV1CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
+        .asset(&ctx.accounts.asset.to_account_info())
+        .collection(Some(&ctx.accounts.collection.to_account_info()))
+        .authority(Some(&global_state.to_account_info()))
+        .payer(&ctx.accounts.owner.to_account_info())
+        .owner(Some(&ctx.accounts.owner.to_account_info()))
+        .update_authority(Some(&global_state.to_account_info()))
+        .system_program(&ctx.accounts.system_program.to_account_info())
+        .name(child.name())
+        .uri(String::new())
+        .plugins(vec![PluginAuthorityPair {
+            plugin: Plugin::Attributes(Attributes {
+                attribute_list: pet_attributes(new_dna, child.species_id, rarity, child.level, child.generation),
+            }),
+            authority: None,
+        }])
+        .invoke_signed(&[global_state_seeds])?;
+
+    child.asset = ctx.accounts.asset.key();
+
     emit!(BredEvent {
         parent1_id: breed_request.parent1_id,
         parent2_id: breed_request.parent2_id,
@@ -219,6 +258,21 @@ pub struct SettleBreed<'info> {
 
     /// CHECK: parsed as Switchboard `RandomnessAccountData` in the handler.
     pub randomness_account_data: UncheckedAccount<'info>,
+
+    /// CHECK: address-constrained to the Metaplex Core program; invoked via CPI to mint
+    /// the child's asset.
+    #[account(address = mpl_core::ID)]
+    pub mpl_core_program: UncheckedAccount<'info>,
+
+    /// Fresh keypair for the child's Metaplex Core asset account (plan §2.3/v2.1 Phase A),
+    /// created via the CPI below. Its pubkey is recorded in `child.asset`.
+    #[account(mut)]
+    pub asset: Signer<'info>,
+
+    /// CHECK: the "CryptoPets" collection account (`global_state.collection`); updated by
+    /// the CPI below to register the new asset.
+    #[account(mut, address = global_state.collection)]
+    pub collection: UncheckedAccount<'info>,
 
     pub system_program: Program<'info, System>,
 }
