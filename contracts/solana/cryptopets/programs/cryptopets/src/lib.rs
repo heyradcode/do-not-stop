@@ -168,4 +168,8 @@ pub mod cryptopets {
     ) -> Result<()> {
         cancel_marriage_proposal::handler(ctx, pet_a_id)
     }
+
+    pub fn divorce(ctx: Context<Divorce>) -> Result<()> {
+        divorce::handler(ctx)
+    }
 }

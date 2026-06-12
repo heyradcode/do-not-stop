@@ -110,5 +110,9 @@ pub enum ErrorCode {
     MarriageProposerNoLongerOwnsPet,
     #[msg("Not the proposer of this marriage proposal")]
     NotMarriageProposer,
+    #[msg("Pet is not married")]
+    NotMarried,
+    #[msg("Pets are not married to each other")]
+    NotMarriedToEachOther,
 }
 
