@@ -19,6 +19,7 @@ pub fn handler(ctx: Context<TransferPet>) -> Result<()> {
     let version = from_pet.version;
     let name_len = from_pet.name_len;
     let name = from_pet.name;
+    let open_to_challenges = from_pet.open_to_challenges;
 
     let from_profile = &mut ctx.accounts.from_player_profile;
     from_profile.pet_count = from_profile
@@ -52,6 +53,7 @@ pub fn handler(ctx: Context<TransferPet>) -> Result<()> {
     to_pet.bump = ctx.bumps.to_pet;
     to_pet.name_len = name_len;
     to_pet.name = name;
+    to_pet.open_to_challenges = open_to_challenges;
 
     Ok(())
 }

@@ -30,6 +30,10 @@ pub fn handler(ctx: Context<CommitBattle>, randomness_account: Pubkey) -> Result
         );
         require!(attacker_pet.is_ready(now), ErrorCode::PetNotReady);
         require!(defender_pet.is_ready(now), ErrorCode::PetNotReady);
+        require!(
+            defender_pet.open_to_challenges,
+            ErrorCode::DefenderNotOpenToChallenges
+        );
     }
 
     let commit_slot = assert_randomness_committed(

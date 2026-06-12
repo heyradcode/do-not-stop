@@ -54,5 +54,7 @@ pub enum ErrorCode {
     InvalidRandomnessExpirySlots,
     #[msg("Switchboard randomness has not yet expired")]
     RandomnessNotExpired,
+    #[msg("Defender pet is not open to challenges")]
+    DefenderNotOpenToChallenges,
 }
 

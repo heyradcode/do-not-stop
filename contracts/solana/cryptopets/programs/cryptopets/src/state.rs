@@ -86,7 +86,10 @@ pub struct PetAccount {
     pub bump: u8,
     pub name: [u8; PetAccount::MAX_NAME_LEN],
     pub name_len: u8,
-    pub _reserved: [u8; 32],
+    /// Interim defender-consent fix (§3.5/§6 Solana #3): when false, this pet cannot be
+    /// targeted as a defender in `commit_battle`. Owner-toggleable, defaults to true.
+    pub open_to_challenges: bool,
+    pub _reserved: [u8; 31],
 }
 
 impl PetAccount {
@@ -105,7 +108,8 @@ impl PetAccount {
         + 1 /* bump */
         + Self::MAX_NAME_LEN /* name */
         + 1 /* name_len */
-        + 32; /* reserved */
+        + 1 /* open_to_challenges */
+        + 31; /* reserved */
 
     pub fn set_name(&mut self, name: &str) -> Result<()> {
         let bytes = name.as_bytes();
