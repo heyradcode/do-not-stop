@@ -68,5 +68,11 @@ pub enum ErrorCode {
     InvalidBreedCooldownBase,
     #[msg("Newborn cooldown exceeds the maximum allowed")]
     InvalidNewbornCooldown,
+    #[msg("Pet is on breed cooldown")]
+    PetNotBreedReady,
+    #[msg("Incest: parent-child breeding rejected")]
+    IncestBreedingRejected,
+    #[msg("Generation cap reached")]
+    GenerationCapReached,
 }
 

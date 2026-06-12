@@ -212,6 +212,17 @@ impl PetAccount {
         self.ready_time = now.saturating_add(cooldown_seconds);
     }
 
+    /// Breed-specific cooldown check, separate from [`PetAccount::is_ready`]'s battle
+    /// cooldown (plan §4.1, mirrors EVM `PetCoreV1.isBreedReady`).
+    pub fn is_breed_ready(&self, now: i64) -> bool {
+        now >= self.breed_ready_time
+    }
+
+    /// Mirrors EVM `PetCoreV1.triggerBreedCooldown` (plan §4.1).
+    pub fn trigger_breed_cooldown(&mut self, now: i64, cooldown_seconds: i64) {
+        self.breed_ready_time = now.saturating_add(cooldown_seconds);
+    }
+
     /// Mirrors EVM `PetCoreV1.addXp` (§3.4): a no-op once `level >= max_level`, otherwise
     /// accrues `amount` XP and applies at most one level-up if the `100 * level` threshold
     /// is crossed (leftover XP carries over toward the next level).

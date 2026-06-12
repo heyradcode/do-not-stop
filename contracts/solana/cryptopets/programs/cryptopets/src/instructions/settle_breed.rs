@@ -3,7 +3,10 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     rarity::Rarity,
-    state::{BreedRequest, GlobalState, PetAccount, PlayerProfile, CURRENT_ACCOUNT_VERSION},
+    state::{
+        BreedRequest, GlobalState, PetAccount, PlayerProfile, BREED_COOLDOWN_CAP_SECONDS,
+        CURRENT_ACCOUNT_VERSION,
+    },
     util::{mix_dna_with_vrf, read_revealed_randomness},
 };
 
@@ -48,6 +51,10 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
 
     let global_state = &mut ctx.accounts.global_state;
     require!(
+        child_generation <= global_state.generation_cap,
+        ErrorCode::GenerationCapReached
+    );
+    require!(
         global_state.next_pet_id == breed_request.child_id,
         ErrorCode::BreedRequestNotFound
     );
@@ -55,6 +62,8 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
         .next_pet_id
         .checked_add(1)
         .ok_or(ErrorCode::ArithmeticOverflow)?;
+    let breed_cooldown_base = global_state.breed_cooldown_base_seconds;
+    let newborn_cooldown = global_state.newborn_cooldown_seconds;
 
     let player_profile = &mut ctx.accounts.player_profile;
     player_profile.pet_count = player_profile
@@ -63,13 +72,26 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
         .ok_or(ErrorCode::PetCountOverflow)?;
 
     let now = Clock::get()?.unix_timestamp;
+
+    // Breed cooldown curve (plan §4.1, mirrors EVM `_breedCooldownFor` +
+    // `triggerBreedCooldown` + `incrementBreedCount`): cooldown is computed from each
+    // parent's *current* breed_count, then both counts are incremented.
+    let cd1 = breed_cooldown_for(ctx.accounts.parent1.breed_count, breed_cooldown_base);
+    let cd2 = breed_cooldown_for(ctx.accounts.parent2.breed_count, breed_cooldown_base);
+    ctx.accounts.parent1.trigger_breed_cooldown(now, cd1);
+    ctx.accounts.parent2.trigger_breed_cooldown(now, cd2);
+    ctx.accounts.parent1.breed_count = ctx.accounts.parent1.breed_count.saturating_add(1);
+    ctx.accounts.parent2.breed_count = ctx.accounts.parent2.breed_count.saturating_add(1);
+
     let child = &mut ctx.accounts.child;
     child.id = breed_request.child_id;
     child.owner = ctx.accounts.owner.key();
     child.dna = new_dna;
     child.rarity = rarity;
     child.level = 1;
-    child.ready_time = now;
+    // Newborn cooldown (plan §4.2, mirrors EVM `setCooldown(childId, newbornCooldown())`):
+    // bred pets start with a battle lockout instead of being immediately battle-ready.
+    child.ready_time = now.saturating_add(newborn_cooldown);
     child.win_count = 0;
     child.loss_count = 0;
     child.version = CURRENT_ACCOUNT_VERSION;
@@ -77,8 +99,8 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     child.open_to_challenges = true;
     child.set_name(&breed_request.name())?;
 
-    // Phase 3 lineage (plan §4.2): record parentage and generation. breed_count/cooldowns
-    // and species resolution are wired in a later step.
+    // Phase 3 lineage (plan §4.2): record parentage and generation. The child starts
+    // breed/train-ready immediately; species resolution is wired in a later step.
     child.generation = child_generation;
     child.parent1_id = breed_request.parent1_id;
     child.parent2_id = breed_request.parent2_id;
@@ -94,6 +116,15 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     });
 
     Ok(())
+}
+
+/// Breed cooldown curve (plan §4.1, mirrors EVM `GameLogicV1._breedCooldownFor`):
+/// `base_seconds << breed_count`, capped at [`BREED_COOLDOWN_CAP_SECONDS`].
+/// Clamp the shift to 31: `breed_count` (u8) can reach 255, and `i64 << 64` panics with
+/// `overflow-checks = true`; shifts beyond ~20 already exceed the cap regardless of base.
+fn breed_cooldown_for(breed_count: u8, base_seconds: i64) -> i64 {
+    let cd = base_seconds << (breed_count as u32).min(31);
+    cd.min(BREED_COOLDOWN_CAP_SECONDS)
 }
 
 #[event]

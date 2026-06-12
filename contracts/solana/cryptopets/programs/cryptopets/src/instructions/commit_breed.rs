@@ -32,6 +32,17 @@ pub fn handler(
         require_keys_eq!(p2.owner, ctx.accounts.owner.key(), ErrorCode::Unauthorized);
         require!(p1.is_ready(now), ErrorCode::PetNotReady);
         require!(p2.is_ready(now), ErrorCode::PetNotReady);
+        require!(p1.is_breed_ready(now), ErrorCode::PetNotBreedReady);
+        require!(p2.is_breed_ready(now), ErrorCode::PetNotBreedReady);
+        // One-level incest guard (plan §4.1, mirrors EVM `_validateBreedPair`): neither
+        // pet may be a parent of the other.
+        require!(
+            p1.parent1_id != p2.id
+                && p1.parent2_id != p2.id
+                && p2.parent1_id != p1.id
+                && p2.parent2_id != p1.id,
+            ErrorCode::IncestBreedingRejected
+        );
         parent1_dna = p1.dna;
         parent2_dna = p2.dna;
     }
