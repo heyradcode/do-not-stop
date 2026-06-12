@@ -1,18 +1,34 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 use switchboard_on_demand::RandomnessAccountData;
 
-use crate::{errors::ErrorCode, rarity::Rarity};
+use crate::{dna::digit_pair, errors::ErrorCode, rarity::Rarity};
 
-/// Mirrors Ethereum `Utils.mixDnaWithVrfWord`: derive child DNA from VRF bytes + parents.
-/// Randomness comes entirely from Switchboard; parents only bias the mix.
+/// Gene mixing with mutation (plan §4.2, mirrors EVM `GameLogicV1._mixDna`'s per-digit-pair
+/// 45%/45%/10% inheritance). For each of the 8 two-digit pairs (LSB-first, see `dna::digit_pair`):
+/// - 10%: mutation — a fresh value derived from the VRF bytes, always in `0..=9` (mirrors
+///   EVM reusing `pairRand % 100` for both the pick roll and the mutated pair, which is
+///   only ever `< 10` in that branch)
+/// - 45%: inherit parent 1's pair at this index
+/// - 45%: inherit parent 2's pair at this index
+///
+/// Bit-identical cross-chain parity isn't possible (Switchboard vs. Chainlink VRF produce
+/// different byte streams), but the mixing algorithm itself mirrors EVM's `_mixDna`.
 pub fn mix_dna_with_vrf(vrf: &[u8; 32], parent1_dna: u64, parent2_dna: u64) -> u64 {
-    let mut x = u64::from_le_bytes(vrf[0..8].try_into().unwrap());
-    x ^= u64::from_le_bytes(vrf[8..16].try_into().unwrap());
-    x ^= u64::from_le_bytes(vrf[16..24].try_into().unwrap());
-    x ^= u64::from_le_bytes(vrf[24..32].try_into().unwrap());
-    x ^= parent1_dna.wrapping_mul(0x9E37_79B9_7F4A_7C15);
-    x ^= parent2_dna.wrapping_mul(0xC2B2_AE3D_27D4_EB4F);
-    x
+    let mut child: u64 = 0;
+    for i in 0..8u32 {
+        let digest = keccak::hashv(&[vrf, &i.to_le_bytes()]).to_bytes();
+        let pair_rand = u64::from_le_bytes(digest[0..8].try_into().unwrap());
+        let pick = pair_rand % 100;
+        let pair = if pick < 10 {
+            pair_rand % 100 // 10% mutation, always < 10 (== pick)
+        } else if pick < 55 {
+            digit_pair(parent1_dna, i) // 45% parent 1
+        } else {
+            digit_pair(parent2_dna, i) // 45% parent 2
+        };
+        child += pair * 100u64.pow(i);
+    }
+    child
 }
 
 /// Rarity inheritance (plan §4.2, mirrors EVM `GameLogicV1._inheritRarity`): recompute the
@@ -92,6 +108,51 @@ pub fn read_revealed_randomness(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mix_dna_with_vrf_is_deterministic() {
+        let vrf = [0x42u8; 32];
+        assert_eq!(
+            mix_dna_with_vrf(&vrf, 12_34_56_78_90_12_34, 98_76_54_32_10_98_76),
+            mix_dna_with_vrf(&vrf, 12_34_56_78_90_12_34, 98_76_54_32_10_98_76)
+        );
+    }
+
+    #[test]
+    fn mix_dna_with_vrf_each_pair_is_inherited_or_mutated() {
+        // Every pair of the child DNA is either parent 1's pair, parent 2's pair, or a
+        // mutation in 0..=9 (plan §4.2, mirrors EVM `_mixDna`'s reuse of `pairRand % 100`
+        // for the mutation branch, which is only ever < 10).
+        let parent1 = 11_22_33_44_55_66_77_88u64;
+        let parent2 = 99_88_77_66_55_44_33_22u64;
+        for seed_byte in 0u8..=255 {
+            let vrf = [seed_byte; 32];
+            let child = mix_dna_with_vrf(&vrf, parent1, parent2);
+            for i in 0..8u32 {
+                let pair = digit_pair(child, i);
+                let p1 = digit_pair(parent1, i);
+                let p2 = digit_pair(parent2, i);
+                assert!(
+                    pair == p1 || pair == p2 || pair < 10,
+                    "pair {i} = {pair} is neither parent's pair nor a mutation (<10)"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn mix_dna_with_vrf_zero_parents_yields_only_mutation_or_zero_pairs() {
+        // With both parents' DNA all-zero, every inherited pair is 0, so every pair of the
+        // child must be 0 (inherited) or in 0..=9 (mutation) — never >= 10.
+        for seed_byte in 0u8..=255 {
+            let vrf = [seed_byte; 32];
+            let child = mix_dna_with_vrf(&vrf, 0, 0);
+            for i in 0..8u32 {
+                let pair = digit_pair(child, i);
+                assert!(pair < 10, "pair {i} = {pair} should be < 10 for zero parents");
+            }
+        }
+    }
 
     #[test]
     fn inherit_rarity_ignores_vrf_when_a_parent_is_below_epic() {
