@@ -27,6 +27,10 @@ pub mod cryptopets {
         level_up::handler(ctx)
     }
 
+    pub fn train(ctx: Context<Train>) -> Result<()> {
+        train::handler(ctx)
+    }
+
     pub fn rename_pet(ctx: Context<RenamePet>, name: String) -> Result<()> {
         rename_pet::handler(ctx, name)
     }
