@@ -119,6 +119,7 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
         parent1_id: breed_request.parent1_id,
         parent2_id: breed_request.parent2_id,
         child_id: breed_request.child_id,
+        other_owner: breed_request.other_owner,
     });
 
     Ok(())
@@ -138,6 +139,9 @@ pub struct BredEvent {
     pub parent1_id: u32,
     pub parent2_id: u32,
     pub child_id: u32,
+    /// Recipient of the escrowed stud fee (plan §4.4, mirrors EVM `BreedSettled`'s
+    /// `studFeePaidTo`); `Pubkey::default()` for same-owner breeds.
+    pub other_owner: Pubkey,
 }
 
 #[derive(Accounts)]
@@ -167,15 +171,27 @@ pub struct SettleBreed<'info> {
     )]
     pub parent1: Account<'info, PetAccount>,
 
+    /// CHECK: parent2's owner pubkey, used as a PDA seed for `parent2` (plan §4.4). Equal
+    /// to `owner` for same-owner breeds, or `breed_request.other_owner` for cross-owner
+    /// breeds.
+    #[account(
+        constraint = (breed_request.other_owner == Pubkey::default()
+            && parent2_owner.key() == owner.key())
+            || (breed_request.other_owner != Pubkey::default()
+                && parent2_owner.key() == breed_request.other_owner)
+            @ ErrorCode::Unauthorized,
+    )]
+    pub parent2_owner: UncheckedAccount<'info>,
+
     #[account(
         mut,
         seeds = [
             PetAccount::SEED,
-            owner.key().as_ref(),
+            parent2_owner.key().as_ref(),
             &breed_request.parent2_id.to_le_bytes(),
         ],
         bump = parent2.bump,
-        constraint = parent2.owner == owner.key() @ ErrorCode::Unauthorized,
+        constraint = parent2.owner == parent2_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub parent2: Account<'info, PetAccount>,
 
