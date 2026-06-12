@@ -390,4 +390,148 @@ mod tests {
 
         assert_eq!(r1, r2);
     }
+
+    /// Returns a 32-byte big-endian `uint256` seed with `last_byte` in the least-significant
+    /// position, matching how `battle.json`'s small decimal seeds (1, 2, ...) encode.
+    fn seed_from_u8(last_byte: u8) -> [u8; 32] {
+        let mut seed = [0u8; 32];
+        seed[31] = last_byte;
+        seed
+    }
+
+    struct GoldenCase {
+        name: &'static str,
+        dna1: u64,
+        rarity1: u8,
+        level1: u16,
+        skill1: u8,
+        dna2: u64,
+        rarity2: u8,
+        level2: u16,
+        skill2: u8,
+        seed: [u8; 32],
+        expected: BattleResult,
+    }
+
+    /// Cross-chain golden vectors (plan §7), transcribed from
+    /// `contracts/test-vectors/battle.json` (generated against `CombatSimV1.simulate` via
+    /// `contracts/ethereum/scripts/gen-battle-vectors.ts`). Keep in sync manually: this crate
+    /// has no JSON dependency, so the file isn't read directly. NO_SKILL is encoded as `99`
+    /// here (any value outside `0..=7`), matching the EVM fixture.
+    fn golden_vectors() -> Vec<GoldenCase> {
+        const NS: u8 = 99; // NO_SKILL sentinel used in battle.json
+        vec![
+            GoldenCase {
+                name: "baseline-no-skill",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: NS,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(1),
+                expected: BattleResult { first_wins: false, rounds: 6, winner_hp_remaining: 174 },
+            },
+            GoldenCase {
+                name: "seed-zero",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: NS,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: [0u8; 32],
+                expected: BattleResult { first_wins: false, rounds: 7, winner_hp_remaining: 93 },
+            },
+            GoldenCase {
+                name: "seed-max",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: NS,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: [0xffu8; 32],
+                expected: BattleResult { first_wins: false, rounds: 6, winner_hp_remaining: 224 },
+            },
+            GoldenCase {
+                name: "tank-skill",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: SKILL_TANK,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(2),
+                expected: BattleResult { first_wins: false, rounds: 8, winner_hp_remaining: 74 },
+            },
+            GoldenCase {
+                name: "shell-skill",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: SKILL_SHELL,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(3),
+                expected: BattleResult { first_wins: false, rounds: 7, winner_hp_remaining: 59 },
+            },
+            GoldenCase {
+                name: "swift-skill",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: SKILL_SWIFT,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(4),
+                expected: BattleResult { first_wins: false, rounds: 7, winner_hp_remaining: 28 },
+            },
+            GoldenCase {
+                name: "cunning-skill",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: SKILL_CUNNING,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(5),
+                expected: BattleResult { first_wins: false, rounds: 6, winner_hp_remaining: 150 },
+            },
+            GoldenCase {
+                name: "fury-skill",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: SKILL_FURY,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(6),
+                expected: BattleResult { first_wins: false, rounds: 6, winner_hp_remaining: 121 },
+            },
+            GoldenCase {
+                name: "sage-skill",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: SKILL_SAGE,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(7),
+                expected: BattleResult { first_wins: false, rounds: 5, winner_hp_remaining: 243 },
+            },
+            GoldenCase {
+                name: "rebirth-skill",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: SKILL_REBIRTH,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(8),
+                expected: BattleResult { first_wins: false, rounds: 8, winner_hp_remaining: 74 },
+            },
+            GoldenCase {
+                name: "bloodlust-skill",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: SKILL_BLOODLUST,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(9),
+                expected: BattleResult { first_wins: false, rounds: 7, winner_hp_remaining: 131 },
+            },
+            GoldenCase {
+                name: "level-gap-max",
+                dna1: 1_234_567_890_123_456, rarity1: 5, level1: 100, skill1: NS,
+                dna2: 9_876_543_210_987_654, rarity2: 1, level2: 1, skill2: NS,
+                seed: seed_from_u8(10),
+                expected: BattleResult { first_wins: true, rounds: 2, winner_hp_remaining: 980 },
+            },
+            GoldenCase {
+                name: "element-wheel-next",
+                dna1: 1_111_111_111_111_111, rarity1: 1, level1: 20, skill1: NS,
+                dna2: 1_234_567_890_123_412, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(11),
+                expected: BattleResult { first_wins: false, rounds: 4, winner_hp_remaining: 248 },
+            },
+            GoldenCase {
+                name: "mirror-tie",
+                dna1: 1_234_567_890_123_456, rarity1: 1, level1: 20, skill1: NS,
+                dna2: 1_234_567_890_123_456, rarity2: 1, level2: 20, skill2: NS,
+                seed: seed_from_u8(12),
+                expected: BattleResult { first_wins: true, rounds: 6, winner_hp_remaining: 52 },
+            },
+        ]
+    }
+
+    #[test]
+    fn simulate_matches_evm_golden_vectors() {
+        let sc = SkillConfig::default();
+        for c in golden_vectors() {
+            let result = simulate(
+                c.dna1, c.rarity1, c.level1, c.skill1,
+                c.dna2, c.rarity2, c.level2, c.skill2,
+                c.seed, &sc,
+            );
+            assert_eq!(result, c.expected, "vector \"{}\" mismatch", c.name);
+        }
+    }
 }
