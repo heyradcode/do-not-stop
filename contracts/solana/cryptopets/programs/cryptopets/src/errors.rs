@@ -102,5 +102,11 @@ pub enum ErrorCode {
     IncestMarriageRejected,
     #[msg("A pending marriage proposal already exists for this pet")]
     MarriageProposalAlreadyPending,
+    #[msg("No matching marriage proposal found")]
+    MarriageProposalNotFound,
+    #[msg("Marriage proposal has expired")]
+    MarriageProposalExpired,
+    #[msg("Proposer no longer owns this pet")]
+    MarriageProposerNoLongerOwnsPet,
 }
 
