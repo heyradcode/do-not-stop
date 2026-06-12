@@ -266,6 +266,36 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         }
     });
 
+    it("Should reject requestBattle when the level gap exceeds levelBandWidth", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const testClient = await viem.getTestClient();
+        const [deployer, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Strong");
+        await mintStarter(petCore, config, addr2, "Weak");
+
+        // Level pet 1 up to level 12 (11 level-ups from level 1), one addXp call per level
+        // since add_xp/addXp applies at most one level-up per call (plan §3.4).
+        for (let level = 1; level < 12; level++) {
+            await petCore.write.addXp([1n, BigInt(100 * level)], { account: deployer.account });
+        }
+        const pet1 = await petCore.read.getPet([1n]);
+        assert.equal(pet1.level, 12);
+
+        await testClient.increaseTime({ seconds: 30 });
+        await testClient.mine({ blocks: 1 });
+
+        // Default levelBandWidth (100) tolerates an 11-level gap; tighten it to 10.
+        await config.write.setLevelBandWidth([10], { account: deployer.account });
+
+        try {
+            await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Level gap too large"));
+        }
+    });
+
     it("Should pause and block actions", async function () {
         const { petCore, config } = await deployV2();
         const [deployer, addr1] = await viem.getWalletClients();
