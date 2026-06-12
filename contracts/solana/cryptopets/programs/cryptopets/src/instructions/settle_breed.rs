@@ -3,12 +3,11 @@ use anchor_lang::prelude::*;
 use crate::{
     dna::resolve_species,
     errors::ErrorCode,
-    rarity::Rarity,
     state::{
         BreedRequest, GlobalState, PetAccount, PlayerProfile, BREED_COOLDOWN_CAP_SECONDS,
         CURRENT_ACCOUNT_VERSION,
     },
-    util::{mix_dna_with_vrf, read_revealed_randomness},
+    util::{inherit_rarity, mix_dna_with_vrf, read_revealed_randomness},
 };
 
 pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
@@ -48,7 +47,12 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
         breed_request.commit_slot,
     )?;
     let new_dna = mix_dna_with_vrf(&vrf, parent1_dna, parent2_dna);
-    let rarity = Rarity::from_dna(new_dna).into();
+    let rarity = inherit_rarity(
+        ctx.accounts.parent1.rarity,
+        ctx.accounts.parent2.rarity,
+        new_dna,
+        &vrf,
+    );
 
     let global_state = &mut ctx.accounts.global_state;
     require!(
