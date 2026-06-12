@@ -463,6 +463,13 @@ pub struct BreedRequest {
     pub name: [u8; PetAccount::MAX_NAME_LEN],
     pub name_len: u8,
     pub bump: u8,
+    /// Stud fee escrowed for a cross-owner breed (plan §4.4, mirrors EVM
+    /// `BreedRequest.studFee`); `0` for same-owner breeds.
+    pub stud_fee: u64,
+    /// Recipient of `stud_fee` if the breed settles, or refund destination if it's
+    /// cancelled (plan §4.4, mirrors EVM `BreedRequest.otherOwner`);
+    /// `Pubkey::default()` for same-owner breeds.
+    pub other_owner: Pubkey,
 }
 
 impl BreedRequest {
@@ -476,7 +483,9 @@ impl BreedRequest {
         + 8 /* commit_slot */
         + PetAccount::MAX_NAME_LEN
         + 1 /* name_len */
-        + 1; /* bump */
+        + 1 /* bump */
+        + 8 /* stud_fee */
+        + 32; /* other_owner */
 
     pub fn set_name(&mut self, name: &str) -> Result<()> {
         let bytes = name.as_bytes();
@@ -544,6 +553,26 @@ impl MarriageProposal {
     pub fn is_live(&self, now: i64) -> bool {
         now <= self.expiry
     }
+}
+
+/// Pending stud fees owed to `owner` from cross-owner breed settlements (plan §4.4,
+/// mirrors EVM `pendingStudFees[address]`), released as a pull payment via
+/// `withdraw_stud_fees`. The account's lamport balance holds `amount` plus its
+/// rent-exempt minimum; `commit_breed`/`cancel_breed` adjust `amount` and the matching
+/// lamport balance together.
+#[account]
+pub struct StudFeeAccount {
+    pub owner: Pubkey,
+    pub amount: u64,
+    pub bump: u8,
+}
+
+impl StudFeeAccount {
+    pub const SEED: &'static [u8] = b"stud-fee";
+    pub const SPACE: usize = 8 /* discriminator */
+        + 32 /* owner */
+        + 8 /* amount */
+        + 1; /* bump */
 }
 
 #[cfg(test)]
