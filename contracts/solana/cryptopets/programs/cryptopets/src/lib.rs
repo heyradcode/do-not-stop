@@ -64,6 +64,14 @@ pub mod cryptopets {
         settle_breed::handler(ctx)
     }
 
+    pub fn cancel_battle(ctx: Context<CancelBattle>) -> Result<()> {
+        cancel_battle::handler(ctx)
+    }
+
+    pub fn cancel_breed(ctx: Context<CancelBreed>) -> Result<()> {
+        cancel_breed::handler(ctx)
+    }
+
     pub fn set_battle_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
         config::set_battle_cooldown_seconds(ctx, value)
     }
@@ -74,6 +82,10 @@ pub mod cryptopets {
 
     pub fn set_level_up_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
         config::set_level_up_fee_lamports(ctx, value)
+    }
+
+    pub fn set_randomness_expiry_slots(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_randomness_expiry_slots(ctx, value)
     }
 
     pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {

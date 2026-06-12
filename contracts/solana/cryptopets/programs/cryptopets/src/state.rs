@@ -9,9 +9,14 @@ pub const CURRENT_ACCOUNT_VERSION: u8 = 1;
 pub const DEFAULT_BATTLE_COOLDOWN_SECONDS: i64 = 5;
 pub const DEFAULT_ATTACK_VICTORY_PROBABILITY: u8 = 70;
 
+/// Slots a committed Switchboard randomness has to be revealed before `cancel_battle` /
+/// `cancel_breed` may close the stuck request (§5: ~150 slots, ~1 minute).
+pub const DEFAULT_RANDOMNESS_EXPIRY_SLOTS: u64 = 150;
+
 /// Bounds enforced by the `set_*` config setters (§5 setter hygiene).
 pub const MAX_BATTLE_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_LEVEL_UP_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
+pub const MAX_RANDOMNESS_EXPIRY_SLOTS: u64 = 1_512_000; // ~7 days at 400ms/slot
 
 /// PDA seed for the lamport-only fee vault (§6 Solana #5). Holds `level_up_fee_lamports`
 /// and future protocol fees; swept via `withdraw_fees`.
@@ -27,7 +32,8 @@ pub struct GlobalState {
     pub paused: bool,
     pub version: u8,
     pub bump: u8,
-    pub _reserved: [u8; 64],
+    pub randomness_expiry_slots: u64,
+    pub _reserved: [u8; 56],
 }
 
 impl GlobalState {
@@ -41,7 +47,8 @@ impl GlobalState {
         + 1 /* paused */
         + 1 /* version */
         + 1 /* bump */
-        + 64; /* reserved */
+        + 8 /* randomness_expiry_slots */
+        + 56; /* reserved */
 }
 
 #[account]

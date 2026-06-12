@@ -2,7 +2,10 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
-    state::{GlobalState, MAX_BATTLE_COOLDOWN_SECONDS, MAX_LEVEL_UP_FEE_LAMPORTS},
+    state::{
+        GlobalState, MAX_BATTLE_COOLDOWN_SECONDS, MAX_LEVEL_UP_FEE_LAMPORTS,
+        MAX_RANDOMNESS_EXPIRY_SLOTS,
+    },
 };
 
 pub fn set_battle_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
@@ -29,6 +32,16 @@ pub fn set_level_up_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<
     Ok(())
 }
 
+pub fn set_randomness_expiry_slots(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+    require!(
+        (1..=MAX_RANDOMNESS_EXPIRY_SLOTS).contains(&value),
+        ErrorCode::InvalidRandomnessExpirySlots
+    );
+    ctx.accounts.global_state.randomness_expiry_slots = value;
+    emit!(RandomnessExpirySlotsUpdated { value });
+    Ok(())
+}
+
 #[event]
 pub struct BattleCooldownUpdated {
     pub value: i64,
@@ -41,6 +54,11 @@ pub struct AttackVictoryProbabilityUpdated {
 
 #[event]
 pub struct LevelUpFeeUpdated {
+    pub value: u64,
+}
+
+#[event]
+pub struct RandomnessExpirySlotsUpdated {
     pub value: u64,
 }
 

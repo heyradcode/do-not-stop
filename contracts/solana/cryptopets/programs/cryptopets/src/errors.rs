@@ -50,5 +50,9 @@ pub enum ErrorCode {
     InvalidLevelUpFee,
     #[msg("Fee vault balance is insufficient for this withdrawal")]
     InsufficientFeeVaultBalance,
+    #[msg("Randomness expiry slots exceeds the maximum allowed")]
+    InvalidRandomnessExpirySlots,
+    #[msg("Switchboard randomness has not yet expired")]
+    RandomnessNotExpired,
 }
 

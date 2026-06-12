@@ -1,4 +1,6 @@
 pub mod create_starter_pet;
+pub mod cancel_battle;
+pub mod cancel_breed;
 pub mod commit_battle;
 pub mod commit_breed;
 pub mod config;
@@ -13,6 +15,8 @@ pub mod unpause;
 pub mod withdraw_fees;
 
 pub use create_starter_pet::*;
+pub use cancel_battle::*;
+pub use cancel_breed::*;
 pub use commit_battle::*;
 pub use commit_breed::*;
 pub use config::*;
