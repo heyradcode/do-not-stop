@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
-    state::{BreedRequest, GlobalState, PetAccount, PlayerProfile, FEE_VAULT_SEED},
+    state::{BreedRequest, GlobalState, PetAccount, PlayerProfile, StudFeeAccount, FEE_VAULT_SEED},
     util::assert_randomness_committed,
 };
 
@@ -23,13 +23,17 @@ pub fn handler(
 
     let now = Clock::get()?.unix_timestamp;
 
+    // Same-owner vs cross-owner breeding (plan §4.4, mirrors EVM `requestCreateFromDNA`).
+    // `parent1`'s ownership by `owner` is enforced by the account constraint below, so
+    // the EVM `owner1 == msg.sender || owner2 == msg.sender` check is automatically
+    // satisfied here.
+    let cross_owner = ctx.accounts.parent1.owner != ctx.accounts.parent2.owner;
+
     let parent1_dna;
     let parent2_dna;
     {
         let p1 = &ctx.accounts.parent1;
         let p2 = &ctx.accounts.parent2;
-        require_keys_eq!(p1.owner, ctx.accounts.owner.key(), ErrorCode::Unauthorized);
-        require_keys_eq!(p2.owner, ctx.accounts.owner.key(), ErrorCode::Unauthorized);
         require!(p1.is_ready(now), ErrorCode::PetNotReady);
         require!(p2.is_ready(now), ErrorCode::PetNotReady);
         require!(p1.is_breed_ready(now), ErrorCode::PetNotBreedReady);
@@ -43,6 +47,11 @@ pub fn handler(
                 && p2.parent2_id != p1.id,
             ErrorCode::IncestBreedingRejected
         );
+        if cross_owner {
+            // Cross-owner breeding requires an active marriage (plan §4.4, mirrors EVM
+            // `petCore.isMarriageValid`).
+            require!(p1.is_marriage_valid_with(p2), ErrorCode::PetsNotMarried);
+        }
         parent1_dna = p1.dna;
         parent2_dna = p2.dna;
     }
@@ -63,6 +72,42 @@ pub fn handler(
     );
     anchor_lang::system_program::transfer(cpi_ctx, breed_fee)?;
 
+    // Stud fee escrow for cross-owner breeding (plan §4.4, mirrors EVM
+    // `requestCreateFromDNA`'s `studFeeAmount`/`otherOwner` branch). Unlike EVM, where
+    // `msg.value` sits in contract balance until `settleBreed` credits
+    // `pendingStudFees`, the recipient's `StudFeeAccount` PDA is credited immediately
+    // here; `cancel_breed`/`withdraw_stud_fees` debit it via direct lamport
+    // manipulation.
+    let (stud_fee, other_owner) = if cross_owner {
+        (
+            ctx.accounts.global_state.stud_fee_lamports,
+            ctx.accounts.parent2_owner.key(),
+        )
+    } else {
+        (0, Pubkey::default())
+    };
+
+    ctx.accounts.stud_fee_account.owner = ctx.accounts.parent2_owner.key();
+    ctx.accounts.stud_fee_account.bump = ctx.bumps.stud_fee_account;
+
+    if stud_fee > 0 {
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            anchor_lang::system_program::Transfer {
+                from: ctx.accounts.owner.to_account_info(),
+                to: ctx.accounts.stud_fee_account.to_account_info(),
+            },
+        );
+        anchor_lang::system_program::transfer(cpi_ctx, stud_fee)?;
+
+        ctx.accounts.stud_fee_account.amount = ctx
+            .accounts
+            .stud_fee_account
+            .amount
+            .checked_add(stud_fee)
+            .ok_or(ErrorCode::ArithmeticOverflow)?;
+    }
+
     let child_id = ctx.accounts.global_state.next_pet_id;
 
     let breed_request = &mut ctx.accounts.breed_request;
@@ -73,6 +118,8 @@ pub fn handler(
     breed_request.randomness_account = randomness_account;
     breed_request.commit_slot = commit_slot;
     breed_request.bump = ctx.bumps.breed_request;
+    breed_request.stud_fee = stud_fee;
+    breed_request.other_owner = other_owner;
     breed_request.set_name(&name)?;
 
     let cooldown_seconds = ctx.accounts.global_state.battle_cooldown_seconds;
@@ -125,11 +172,15 @@ pub struct CommitBreed<'info> {
     )]
     pub parent1: Account<'info, PetAccount>,
 
+    /// CHECK: parent2's owner pubkey, used as a PDA seed for `parent2` and
+    /// `stud_fee_account`. Equal to `owner` for same-owner breeding (plan §4.4).
+    pub parent2_owner: UncheckedAccount<'info>,
+
     #[account(
         mut,
-        seeds = [PetAccount::SEED, owner.key().as_ref(), &parent2.id.to_le_bytes()],
+        seeds = [PetAccount::SEED, parent2_owner.key().as_ref(), &parent2.id.to_le_bytes()],
         bump = parent2.bump,
-        constraint = parent2.owner == owner.key() @ ErrorCode::Unauthorized,
+        constraint = parent2.owner == parent2_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub parent2: Account<'info, PetAccount>,
 
@@ -144,6 +195,18 @@ pub struct CommitBreed<'info> {
 
     #[account(mut, seeds = [FEE_VAULT_SEED], bump)]
     pub fee_vault: SystemAccount<'info>,
+
+    /// Stud-fee escrow PDA for `parent2_owner` (plan §4.4, mirrors EVM
+    /// `pendingStudFees[otherOwner]`). Initialized lazily on first use; for same-owner
+    /// breeds this is the caller's own (zero-balance) escrow account.
+    #[account(
+        init_if_needed,
+        payer = owner,
+        seeds = [StudFeeAccount::SEED, parent2_owner.key().as_ref()],
+        bump,
+        space = StudFeeAccount::SPACE,
+    )]
+    pub stud_fee_account: Account<'info, StudFeeAccount>,
 
     /// CHECK: parsed as Switchboard `RandomnessAccountData` in the handler.
     pub randomness_account_data: UncheckedAccount<'info>,

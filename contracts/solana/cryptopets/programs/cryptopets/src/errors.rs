@@ -116,5 +116,7 @@ pub enum ErrorCode {
     NotMarriedToEachOther,
     #[msg("Marriage is not stale")]
     MarriageNotStale,
+    #[msg("Pets are not married")]
+    PetsNotMarried,
 }
 
