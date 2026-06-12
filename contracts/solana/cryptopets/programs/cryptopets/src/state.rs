@@ -26,7 +26,15 @@ use crate::errors::ErrorCode;
 /// reinit of `GlobalState` (`PetAccount`/`PlayerProfile` layouts unchanged by this entry —
 /// `PetAccount`'s re-seed to `[b"pet", asset_pubkey]` and the CPI mint paths land in
 /// subsequent steps and will bump the version again).
-pub const CURRENT_ACCOUNT_VERSION: u8 = 5;
+///
+/// v6: adds `asset: Pubkey` to `PetAccount` (plan §2.3/v2.1 Phase A) — the Metaplex Core
+/// asset pubkey minted into the "CryptoPets" collection by `settle_mint`/`settle_breed`'s
+/// CPI in a follow-up step. Will become the new PDA seed (`[b"pet", asset_pubkey]`,
+/// replacing `[PetAccount::SEED, owner, pet_id]`) and the source of truth for pet
+/// ownership (replacing `pet.owner`) once the re-seed step lands. Bumps
+/// `PetAccount::SPACE` (+32 bytes). Breaking; requires redeploy + reinit of pet accounts
+/// (`GlobalState`/`PlayerProfile` layouts unchanged).
+pub const CURRENT_ACCOUNT_VERSION: u8 = 6;
 
 pub const DEFAULT_BATTLE_COOLDOWN_SECONDS: i64 = 5;
 
@@ -297,6 +305,11 @@ pub struct PetAccount {
     /// Earliest time this pet may marry again after a divorce or stale-marriage cleanup
     /// (plan §4.4, mirrors EVM `marriageCooldownUntil[petId]`).
     pub marriage_cooldown_until: i64,
+    /// Metaplex Core asset pubkey for this pet (plan §2.3/v2.1 Phase A), minted into the
+    /// "CryptoPets" collection by `settle_mint`/`settle_breed`. `Pubkey::default()` until
+    /// the CPI mint paths land. Will become this account's PDA seed and the source of
+    /// truth for ownership in a follow-up step.
+    pub asset: Pubkey,
     pub _reserved: [u8; 8],
 }
 
@@ -330,6 +343,7 @@ impl PetAccount {
         + 4 /* spouse_id */
         + 32 /* marriage_owner_snapshot */
         + 8 /* marriage_cooldown_until */
+        + 32 /* asset */
         + 8; /* reserved */
 
     pub fn set_name(&mut self, name: &str) -> Result<()> {
@@ -665,6 +679,7 @@ mod tests {
             spouse_id: 0,
             marriage_owner_snapshot: Pubkey::default(),
             marriage_cooldown_until: 0,
+            asset: Pubkey::default(),
             _reserved: [0u8; 8],
         }
     }
