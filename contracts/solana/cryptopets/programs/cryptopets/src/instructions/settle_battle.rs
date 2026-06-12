@@ -40,15 +40,21 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
     let attacker_pet_id = ctx.accounts.attacker_pet.id;
     let defender_pet_id = ctx.accounts.defender_pet.id;
 
+    // Skill archetype (plan §3.7/v2.1 Phase B, mirrors EVM `GameLogicV1.fight`'s
+    // `uint8(p.speciesId % 8)`): each pet's passive skill is derived from its species id,
+    // resolved once at mint/breed time.
+    let attacker_skill = (ctx.accounts.attacker_pet.species_id % 8) as u8;
+    let defender_skill = (ctx.accounts.defender_pet.species_id % 8) as u8;
+
     let sim = combat::simulate(
         ctx.accounts.attacker_pet.dna,
         ctx.accounts.attacker_pet.rarity,
         ctx.accounts.attacker_pet.level,
-        combat::NO_SKILL,
+        attacker_skill,
         ctx.accounts.defender_pet.dna,
         ctx.accounts.defender_pet.rarity,
         ctx.accounts.defender_pet.level,
-        combat::NO_SKILL,
+        defender_skill,
         seed,
         &SkillConfig::default(),
     );

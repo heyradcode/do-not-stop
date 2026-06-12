@@ -1,4 +1,3 @@
-pub mod create_starter_pet;
 pub mod accept_marriage;
 pub mod cancel_battle;
 pub mod cancel_breed;
@@ -25,7 +24,6 @@ pub mod unpause;
 pub mod withdraw_fees;
 pub mod withdraw_stud_fees;
 
-pub use create_starter_pet::*;
 pub use accept_marriage::*;
 pub use cancel_battle::*;
 pub use cancel_breed::*;

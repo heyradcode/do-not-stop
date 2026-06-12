@@ -19,10 +19,6 @@ pub mod cryptopets {
         initialize::handler(ctx, level_up_fee_lamports)
     }
 
-    pub fn create_starter_pet(ctx: Context<CreateStarterPet>, name: String) -> Result<()> {
-        create_starter_pet::handler(ctx, name)
-    }
-
     pub fn level_up(ctx: Context<LevelUp>) -> Result<()> {
         level_up::handler(ctx)
     }

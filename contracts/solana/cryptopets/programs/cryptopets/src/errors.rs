@@ -4,8 +4,6 @@ use anchor_lang::prelude::*;
 pub enum ErrorCode {
     #[msg("Pet name exceeds max length")]
     NameTooLong,
-    #[msg("Starter pet already created")]
-    StarterAlreadyCreated,
     #[msg("Not authorized to perform this action")]
     Unauthorized,
     #[msg("Program is paused")]
