@@ -98,6 +98,18 @@ pub mod cryptopets {
         config::set_level_band_width(ctx, value)
     }
 
+    pub fn set_generation_cap(ctx: Context<SetConfig>, value: u8) -> Result<()> {
+        config::set_generation_cap(ctx, value)
+    }
+
+    pub fn set_breed_cooldown_base_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_breed_cooldown_base_seconds(ctx, value)
+    }
+
+    pub fn set_newborn_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_newborn_cooldown_seconds(ctx, value)
+    }
+
     pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
         withdraw_fees::handler(ctx, amount)
     }

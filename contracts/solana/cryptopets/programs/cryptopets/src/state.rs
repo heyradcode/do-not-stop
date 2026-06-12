@@ -24,10 +24,28 @@ pub const DEFAULT_MAX_LEVEL: u16 = 100;
 /// `GameConfig.levelBandWidth`). 100 effectively disables the check during dev/testing.
 pub const DEFAULT_LEVEL_BAND_WIDTH: u16 = 100;
 
+/// Max child generation for breeding (plan §4.1, mirrors EVM `GameConfig.generationCap`).
+pub const DEFAULT_GENERATION_CAP: u8 = 20;
+
+/// Breed cooldown base in seconds; doubles per `breed_count` up to
+/// [`BREED_COOLDOWN_CAP_SECONDS`] (plan §4.1, mirrors EVM `GameConfig.breedCooldownBase`).
+pub const DEFAULT_BREED_COOLDOWN_BASE_SECONDS: i64 = 5;
+
+/// Hard cap on the breed cooldown curve (plan §4.1, mirrors EVM's `30 days` cap in
+/// `GameLogicV1._breedCooldownFor`).
+pub const BREED_COOLDOWN_CAP_SECONDS: i64 = 30 * 24 * 60 * 60;
+
+/// Default newborn battle-cooldown lockout applied to bred pets (plan §4.2, mirrors EVM
+/// `GameConfig.newbornCooldown`).
+pub const DEFAULT_NEWBORN_COOLDOWN_SECONDS: i64 = 60;
+
 /// Bounds enforced by the `set_*` config setters (§5 setter hygiene).
 pub const MAX_BATTLE_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_LEVEL_UP_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
 pub const MAX_RANDOMNESS_EXPIRY_SLOTS: u64 = 1_512_000; // ~7 days at 400ms/slot
+pub const MAX_GENERATION_CAP: u8 = 100;
+pub const MAX_BREED_COOLDOWN_BASE_SECONDS: i64 = BREED_COOLDOWN_CAP_SECONDS;
+pub const MAX_NEWBORN_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 
 /// PDA seed for the lamport-only fee vault (§6 Solana #5). Holds `level_up_fee_lamports`
 /// and future protocol fees; swept via `withdraw_fees`.
@@ -45,7 +63,15 @@ pub struct GlobalState {
     pub randomness_expiry_slots: u64,
     pub max_level: u16,
     pub level_band_width: u16,
-    pub _reserved: [u8; 53],
+    /// Max child generation for breeding (plan §4.1, mirrors EVM `generationCap`).
+    pub generation_cap: u8,
+    /// Breed cooldown base in seconds; doubles per `breed_count`, capped at
+    /// [`BREED_COOLDOWN_CAP_SECONDS`] (plan §4.1, mirrors EVM `breedCooldownBase`).
+    pub breed_cooldown_base_seconds: i64,
+    /// Newborn battle-cooldown lockout applied to a bred pet's `ready_time` (plan §4.2,
+    /// mirrors EVM `newbornCooldown`).
+    pub newborn_cooldown_seconds: i64,
+    pub _reserved: [u8; 36],
 }
 
 impl GlobalState {
@@ -61,7 +87,10 @@ impl GlobalState {
         + 8 /* randomness_expiry_slots */
         + 2 /* max_level */
         + 2 /* level_band_width */
-        + 53; /* reserved */
+        + 1 /* generation_cap */
+        + 8 /* breed_cooldown_base_seconds */
+        + 8 /* newborn_cooldown_seconds */
+        + 36; /* reserved */
 }
 
 #[account]

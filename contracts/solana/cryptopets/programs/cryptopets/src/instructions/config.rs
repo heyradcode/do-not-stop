@@ -3,7 +3,8 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{
-        GlobalState, MAX_BATTLE_COOLDOWN_SECONDS, MAX_LEVEL_UP_FEE_LAMPORTS,
+        GlobalState, MAX_BATTLE_COOLDOWN_SECONDS, MAX_BREED_COOLDOWN_BASE_SECONDS,
+        MAX_GENERATION_CAP, MAX_LEVEL_UP_FEE_LAMPORTS, MAX_NEWBORN_COOLDOWN_SECONDS,
         MAX_RANDOMNESS_EXPIRY_SLOTS,
     },
 };
@@ -48,6 +49,36 @@ pub fn set_level_band_width(ctx: Context<SetConfig>, value: u16) -> Result<()> {
     Ok(())
 }
 
+pub fn set_generation_cap(ctx: Context<SetConfig>, value: u8) -> Result<()> {
+    require!(
+        (1..=MAX_GENERATION_CAP).contains(&value),
+        ErrorCode::InvalidGenerationCap
+    );
+    ctx.accounts.global_state.generation_cap = value;
+    emit!(GenerationCapUpdated { value });
+    Ok(())
+}
+
+pub fn set_breed_cooldown_base_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+    require!(
+        (0..=MAX_BREED_COOLDOWN_BASE_SECONDS).contains(&value),
+        ErrorCode::InvalidBreedCooldownBase
+    );
+    ctx.accounts.global_state.breed_cooldown_base_seconds = value;
+    emit!(BreedCooldownBaseUpdated { value });
+    Ok(())
+}
+
+pub fn set_newborn_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+    require!(
+        (0..=MAX_NEWBORN_COOLDOWN_SECONDS).contains(&value),
+        ErrorCode::InvalidNewbornCooldown
+    );
+    ctx.accounts.global_state.newborn_cooldown_seconds = value;
+    emit!(NewbornCooldownUpdated { value });
+    Ok(())
+}
+
 #[event]
 pub struct BattleCooldownUpdated {
     pub value: i64,
@@ -71,6 +102,21 @@ pub struct MaxLevelUpdated {
 #[event]
 pub struct LevelBandWidthUpdated {
     pub value: u16,
+}
+
+#[event]
+pub struct GenerationCapUpdated {
+    pub value: u8,
+}
+
+#[event]
+pub struct BreedCooldownBaseUpdated {
+    pub value: i64,
+}
+
+#[event]
+pub struct NewbornCooldownUpdated {
+    pub value: i64,
 }
 
 #[derive(Accounts)]

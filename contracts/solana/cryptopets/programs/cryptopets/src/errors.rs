@@ -62,5 +62,11 @@ pub enum ErrorCode {
     CannotBattleSameOwner,
     #[msg("Level gap between pets exceeds the allowed band")]
     LevelGapTooLarge,
+    #[msg("Generation cap must be greater than zero")]
+    InvalidGenerationCap,
+    #[msg("Breed cooldown base exceeds the maximum allowed")]
+    InvalidBreedCooldownBase,
+    #[msg("Newborn cooldown exceeds the maximum allowed")]
+    InvalidNewbornCooldown,
 }
 
