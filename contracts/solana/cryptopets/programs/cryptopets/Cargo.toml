@@ -19,6 +19,17 @@ idl-build = ["anchor-lang/idl-build", "switchboard-on-demand/idl-build"]
 
 [dependencies]
 anchor-lang = { version = "0.32.1", features = ["init-if-needed"] }
+# keccak hashing: anchor-lang 0.32.1 no longer re-exports `solana_program::keccak`
+# (it moved to this dedicated crate in solana-program 2.x). Used in combat.rs/util.rs.
+solana-keccak-hasher = "2.2.1"
 switchboard-on-demand = { version = "=0.10.0", features = ["anchor"] }
 # Pinned for Switchboard SDK compatibility on Solana 3.x toolchains.
 solana-zero-copy = "=1.0.1"
+# Metaplex Core NFTs (plan §2.3/v2.1 Phase A): pets become Core assets in a
+# program-owned "CryptoPets" collection. The `anchor` feature is intentionally
+# NOT enabled: it pulls mpl-core's own anchor-lang 0.30 dep and its `Owner`
+# trait impl, which fails to compile against anchor-lang 0.32.1 / solana-program
+# 2.x (solana_pubkey::Pubkey vs solana_program::Pubkey mismatch). We only use
+# mpl-core for `ID`, CPI builders, `BaseAssetV1::from_bytes`, and `types`, none
+# of which need that feature.
+mpl-core = { version = "0.10" }

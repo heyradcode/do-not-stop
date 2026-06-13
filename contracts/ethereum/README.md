@@ -85,7 +85,7 @@ The main contract implements pet collection and gameplay with the following feat
 - `attack(uint256 _petId, uint256 _targetId)` - Attack another pet
 - `requestCreateFromDNA(...)` - Request breeding (Chainlink VRF fulfills asynchronously on testnet/mainnet; locally run `pnpm vrf:watch` or use `fe:eth:local`, which runs `scripts/vrf-fulfill-watcher.ts` to call the VRF mock)
 - `levelUp(uint256 _tokenId)` - Level up (fee)
-- `changeName` / `changeDna` - Cosmetic upgrades above level thresholds
+- `changeName` - Cosmetic upgrade above level threshold
 - `getById` - Full on-chain struct
 - `getTotalCount` - Total pets in data layer
 - `getStats` / `getBattleStats` - Views
