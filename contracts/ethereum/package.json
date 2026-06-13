@@ -6,17 +6,15 @@
     "scripts": {
         "hh": "node scripts/hardhat.js",
         "compile:only": "pnpm hh compile --force",
-        "compile": "pnpm compile:only && node scripts/sync-abi.js",
+        "compile": "pnpm compile:only",
         "test": "pnpm hh test",
         "node": "pnpm hh node --hostname 0.0.0.0",
-        "deploy:local": "pnpm hh ignition deploy ignition/modules/CryptoPets.ts --network localhost",
         "deploy:inject": "tsx scripts/deploy.ts",
         "deploy:sepolia:inject": "tsx scripts/deploy.ts --network=sepolia",
         "verify": "tsx scripts/verify.ts",
         "verify:sepolia": "tsx scripts/verify.ts --network=sepolia",
         "deploy:status": "pnpm hh ignition status",
-        "deploy:visualize": "pnpm hh ignition visualize ignition/modules/CryptoPets.ts",
-        "vrf:watch": "tsx scripts/vrf-fulfill-watcher.ts"
+        "deploy:visualize": "pnpm hh ignition visualize ignition/modules/CryptoPetsV2Live.ts"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-ignition": "^3.0.3",
