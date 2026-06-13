@@ -24,9 +24,11 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 # also cloned for the commit/reveal randomness flow (`commit_mint`/`settle_mint`,
 # `commit_breed`/`settle_breed`, `commit_battle`/`settle_battle`).
 #
-# UNVERIFIED: both program addresses follow the documented mpl-core / Switchboard
-# On-Demand deployments but have not been checked against devnet (no network
-# access in this environment). Confirm before running `anchor test`.
+# Verified against devnet (2026-06-12): both programs exist and are executable
+# under the BPF upgradeable loader. The Switchboard address was corrected from a
+# one-char typo (...Ze1oMUu -> ...Ze1oMUv); ...oMUv is the ON_DEMAND_MAINNET_PID
+# declared by the switchboard-on-demand crate, which is what the program expects
+# when built without the `devnet` feature.
 [test.validator]
 url = "https://api.devnet.solana.com"
 
@@ -34,4 +36,4 @@ url = "https://api.devnet.solana.com"
 address = "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d" # mpl-core program
 
 [[test.validator.clone]]
-address = "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUu" # Switchboard On-Demand program
+address = "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv" # Switchboard On-Demand program
