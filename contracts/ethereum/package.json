@@ -19,6 +19,7 @@
     "devDependencies": {
         "@nomicfoundation/hardhat-ignition": "^3.0.3",
         "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
+        "@nomicfoundation/hardhat-verify": "3.0.13",
         "@openzeppelin/contracts": "^5.4.0",
         "@openzeppelin/contracts-upgradeable": "4.7.3",
         "@types/node": "^22.18.6",
