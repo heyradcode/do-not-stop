@@ -1,4 +1,5 @@
-use anchor_lang::{prelude::*, solana_program::keccak};
+use anchor_lang::prelude::*;
+use solana_keccak_hasher as keccak;
 use switchboard_on_demand::RandomnessAccountData;
 
 use crate::{dna::digit_pair, errors::ErrorCode, rarity::Rarity};

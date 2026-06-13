@@ -29,7 +29,7 @@
 //! A `skill` value outside `0..=7` (e.g. `NO_SKILL`) opts a pet out of every archetype
 //! branch below, for use until species tiers (plan §3.7, v2.1 Phase B) land on Solana.
 
-use anchor_lang::solana_program::keccak;
+use solana_keccak_hasher as keccak;
 
 use crate::dna::{self, Attrs};
 
@@ -250,7 +250,7 @@ fn strike(
 
     // Fury: +furyDmgMult% while own HP < furyHpThreshold bps of start
     if atk_skill == SKILL_FURY && start_hp_atk > 0 {
-        if hp_atk as u64 * 10000 / start_hp_atk as u64 < sc.fury_hp_threshold as u64 {
+        if (hp_atk as u64 * 10000 / start_hp_atk as u64) < sc.fury_hp_threshold as u64 {
             dmg = dmg * sc.fury_dmg_mult as u64 / 100;
         }
     }

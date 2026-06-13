@@ -16,24 +16,28 @@ cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+# This is a pnpm workspace (root package.json pins packageManager = pnpm), so run
+# the suite via pnpm; `yarn run` is refused by Yarn 1.x against a pnpm-managed repo.
+test = "pnpm exec ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
-# Cloned from devnet so `anchor test`'s local validator has the Metaplex Core
-# program available for the CPIs in `initialize`/`settle_mint`/`settle_breed`/
-# `sync_metadata` (plan §2.3/v2.1 Phase A). The Switchboard On-Demand program is
-# also cloned for the commit/reveal randomness flow (`commit_mint`/`settle_mint`,
-# `commit_breed`/`settle_breed`, `commit_battle`/`settle_battle`).
+# Programs the local validator needs for the v2 CPIs, loaded at genesis from
+# local fixtures (tests/fixtures/*.so) rather than cloned live from devnet: the
+# public devnet RPC times out cloning these on every test run (Switchboard's
+# program is ~10 MB). Re-dump if the on-chain programs change:
+#   solana program dump CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d tests/fixtures/mpl_core.so --url devnet
+#   solana program dump SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv tests/fixtures/switchboard_on_demand.so --url devnet
 #
-# Verified against devnet (2026-06-12): both programs exist and are executable
-# under the BPF upgradeable loader. The Switchboard address was corrected from a
-# one-char typo (...Ze1oMUu -> ...Ze1oMUv); ...oMUv is the ON_DEMAND_MAINNET_PID
-# declared by the switchboard-on-demand crate, which is what the program expects
-# when built without the `devnet` feature.
-[test.validator]
-url = "https://api.devnet.solana.com"
+# mpl-core (plan §2.3/v2.1 Phase A) is required by the `initialize`/`settle_mint`/
+# `settle_breed`/`sync_metadata` CPIs. Switchboard On-Demand backs the commit/
+# reveal randomness flow (`commit_*`/`settle_*`); not yet exercised by tests but
+# loaded so that coverage can be added without re-wiring this. The Switchboard
+# address is ON_DEMAND_MAINNET_PID (...Ze1oMUv) -- what the program expects when
+# built without the crate's `devnet` feature; an earlier one-char typo
+# (...Ze1oMUu) is corrected here.
+[[test.genesis]]
+address = "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
+program = "tests/fixtures/mpl_core.so"
 
-[[test.validator.clone]]
-address = "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d" # mpl-core program
-
-[[test.validator.clone]]
-address = "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv" # Switchboard On-Demand program
+[[test.genesis]]
+address = "SBondMDrcV3K4kxZR1HNVT7osZxAHVHgYXL5Ze1oMUv"
+program = "tests/fixtures/switchboard_on_demand.so"

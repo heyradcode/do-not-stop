@@ -168,14 +168,24 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
             ErrorCode::InvalidStudFeeAccount
         );
 
+        // `Account::try_from` would borrow a local `AccountInfo` clone for `'info`,
+        // which doesn't compile. Load/mutate/store StudFeeAccount manually instead;
+        // `try_deserialize` enforces the discriminator and we check program ownership
+        // to preserve the checks `Account::try_from` would have done.
         let stud_fee_account_info = ctx.accounts.stud_fee_account.to_account_info();
-        let mut stud_fee_data: Account<StudFeeAccount> =
-            Account::try_from(&stud_fee_account_info)?;
+        require_keys_eq!(
+            *stud_fee_account_info.owner,
+            *ctx.program_id,
+            ErrorCode::InvalidStudFeeAccount
+        );
+        let mut data = stud_fee_account_info.try_borrow_mut_data()?;
+        let mut stud_fee_data = StudFeeAccount::try_deserialize(&mut &data[..])?;
         stud_fee_data.amount = stud_fee_data
             .amount
             .checked_add(stud_fee)
             .ok_or(ErrorCode::ArithmeticOverflow)?;
-        stud_fee_data.exit(ctx.program_id)?;
+        let mut dst: &mut [u8] = &mut data;
+        stud_fee_data.try_serialize(&mut dst)?;
     }
 
     emit!(BredEvent {
@@ -209,8 +219,11 @@ pub struct BredEvent {
 
 #[derive(Accounts)]
 pub struct SettleBreed<'info> {
+    // Boxed (here and the PetAccount/BreedRequest accounts below) to keep
+    // `try_accounts`'s stack frame under the 4 KB BPF limit: deserialized account
+    // data lives on the heap instead of the stack.
     #[account(mut, seeds = [GlobalState::SEED], bump = global_state.bump)]
-    pub global_state: Account<'info, GlobalState>,
+    pub global_state: Box<Account<'info, GlobalState>>,
 
     #[account(mut)]
     pub owner: Signer<'info>,
@@ -242,7 +255,7 @@ pub struct SettleBreed<'info> {
         bump = parent1.bump,
         constraint = core_asset_owner(&parent1_asset.to_account_info())? == owner.key() @ ErrorCode::Unauthorized,
     )]
-    pub parent1: Account<'info, PetAccount>,
+    pub parent1: Box<Account<'info, PetAccount>>,
 
     /// CHECK: parent2's owner pubkey (plan §4.4). Equal to `owner` for same-owner breeds,
     /// or `breed_request.other_owner` for cross-owner breeds.
@@ -266,7 +279,7 @@ pub struct SettleBreed<'info> {
         bump = parent2.bump,
         constraint = core_asset_owner(&parent2_asset.to_account_info())? == parent2_owner.key() @ ErrorCode::Unauthorized,
     )]
-    pub parent2: Account<'info, PetAccount>,
+    pub parent2: Box<Account<'info, PetAccount>>,
 
     #[account(
         init,
@@ -275,7 +288,7 @@ pub struct SettleBreed<'info> {
         bump,
         space = PetAccount::SPACE,
     )]
-    pub child: Account<'info, PetAccount>,
+    pub child: Box<Account<'info, PetAccount>>,
 
     #[account(
         mut,
@@ -284,7 +297,7 @@ pub struct SettleBreed<'info> {
         bump = breed_request.bump,
         constraint = breed_request.owner == owner.key() @ ErrorCode::Unauthorized,
     )]
-    pub breed_request: Account<'info, BreedRequest>,
+    pub breed_request: Box<Account<'info, BreedRequest>>,
 
     /// CHECK: stud-fee escrow PDA for `breed_request.other_owner` (plan §4.4); validated
     /// against the expected PDA address in the handler when `breed_request.stud_fee > 0`.

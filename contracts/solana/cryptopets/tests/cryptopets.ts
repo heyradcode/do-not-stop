@@ -56,7 +56,9 @@ describe("cryptopets", () => {
       expect(gs.admin.toBase58()).to.equal(wallet.publicKey.toBase58());
       expect(gs.collection.toBase58()).to.equal(collection.publicKey.toBase58());
       expect(gs.paused).to.be.false;
-      expect(gs.nextPetId.toNumber()).to.equal(1);
+      // next_pet_id is a u32, which the Anchor client returns as a plain JS number
+      // (not a BN), so compare directly rather than calling .toNumber().
+      expect(gs.nextPetId).to.equal(1);
       expect(gs.levelUpFeeLamports.toString()).to.equal(levelUpFeeLamports.toString());
     });
   });
