@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAccount, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import { useWatchPetsContract } from './chains/ethereum/useWatchPetsContract';
+import { useWatchVrfFulfillment } from './chains/ethereum/useWatchVrfFulfillment';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useChainAdapter } from './adapters/useChainAdapter';
 
@@ -16,10 +17,11 @@ export type UseBreedPetsOptions = {
 };
 
 /**
- * Breed is the one mutation whose settlement is NOT lifecycle-driven on EVM:
- * the request tx receipt only confirms the VRF request — the offspring exists
- * once the BreedFulfilled event fires. So success here is event-driven on EVM
- * and resolve-driven on Solana (where VRF completes inside the mutation).
+ * Breed settlement is NOT lifecycle-driven on EVM. The request tx only fires a
+ * VRF request; the offspring is minted by a separate, frontend-driven
+ * settleBreed tx after the coordinator fulfills randomness (mirrors the Solana
+ * reveal+settle flow). Success is then event-driven on `BreedSettled`. On
+ * Solana, VRF completes inside the mutation, so success is resolve-driven.
  */
 export const useBreedPets = (options?: UseBreedPetsOptions) => {
     const adapter = useChainAdapter();
@@ -68,7 +70,37 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         setPendingRequestId(null);
     }, [notifySuccess]);
 
-    // Watch for BreedSettled event on GameLogic (EVM VRF fulfillment).
+    // VRF coordinator address — read once GameLogic is configured (EVM).
+    const { data: coordinator } = useReadContract({
+        address: evm?.gameLogic.address,
+        abi: evm?.gameLogic.abi ?? [],
+        functionName: 's_vrfCoordinator',
+        query: { enabled: isEvm && Boolean(evm?.gameLogic.address) },
+    });
+
+    // settleBreed tx: sent once the coordinator fulfills our request. The mint
+    // (and BreedSettled event) happen inside this tx.
+    const settle = useWriteContract();
+    const settleSentRef = useRef(false);
+    const handleVrfFulfilled = useCallback((id: bigint) => {
+        if (settleSentRef.current || !evm?.gameLogic.address) return;
+        settleSentRef.current = true;
+        settle.writeContract({
+            address: evm.gameLogic.address,
+            abi: evm.gameLogic.abi,
+            functionName: 'settleBreed',
+            args: [id],
+            gas: 800000n,
+        });
+    }, [evm?.gameLogic.address, evm?.gameLogic.abi, settle]);
+
+    useWatchVrfFulfillment({
+        coordinator: isEvm ? (coordinator as `0x${string}` | undefined) : undefined,
+        requestId: isEvm ? pendingRequestId : null,
+        onFulfilled: handleVrfFulfilled,
+    });
+
+    // Watch for BreedSettled event on GameLogic (emitted by settleBreed).
     useWatchPetsContract({
         contractAddress: evm?.gameLogic.address,
         abi: evm?.gameLogic.abi ?? [],
@@ -79,15 +111,20 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
 
     const reset = useCallback(() => {
         setPendingRequestId(null);
+        settleSentRef.current = false;
+        settle.reset();
         breedPets.lifecycle.reset();
-    }, [breedPets.lifecycle]);
+    }, [settle, breedPets.lifecycle]);
 
     const clearErrors = useCallback(() => {
+        settle.reset();
         breedPets.lifecycle.reset();
-    }, [breedPets.lifecycle]);
+    }, [settle, breedPets.lifecycle]);
 
     const mutate = async (args: BreedPetsArgs) => {
         setPendingRequestId(null);
+        settleSentRef.current = false;
+        settle.reset();
         offspringNameRef.current = args.name.trim();
         try {
             await breedPets.mutateAsync({
@@ -104,12 +141,15 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
     return {
         mutate,
         isPending: breedPets.isPending,
+        // True for the whole post-request wait: VRF fulfillment + settleBreed,
+        // cleared when BreedSettled lands.
         isAwaitingFulfillment: isEvm && pendingRequestId != null,
+        isSettling: isEvm && settle.isPending,
         isConfirming: breedPets.lifecycle.phase === 'confirming',
         reset,
         clearErrors,
         hash,
-        error: breedPets.lifecycle.error,
+        error: breedPets.lifecycle.error ?? (settle.error as Error | null),
         lifecycle: breedPets.lifecycle,
     };
 }
