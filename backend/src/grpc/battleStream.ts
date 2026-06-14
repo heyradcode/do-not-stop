@@ -22,6 +22,14 @@ export interface SettledBattle {
     winnerPet: string;
     version: bigint;
     foughtAt: number;
+    // v2 round-based combat sim outputs (plan §3.3). The seed re-runs the sim
+    // client-side for blow-by-blow replay; rounds / hp / xp flavor the result.
+    loserPet: string;
+    seed: string; // 0x-hex 32-byte combat seed
+    rounds: number;
+    winnerHpRemaining: number;
+    xpWin: number;
+    xpLoss: number;
 }
 
 /** Wire shape with proto-loader { longs: String } — uint64/int64 arrive as strings. */
@@ -33,6 +41,13 @@ interface BattleEventWire {
     winnerPet: string;
     version: string;
     foughtAt: string;
+    // v2 sim outputs. loserPet/seed are strings; the uint32 counters are numbers.
+    loserPet: string;
+    seed: string;
+    rounds: number;
+    winnerHpRemaining: number;
+    xpWin: number;
+    xpLoss: number;
 }
 
 const RECONNECT_BASE_MS = 1_000;
@@ -40,8 +55,8 @@ const RECONNECT_CAP_MS = 30_000;
 /** Bounded memory: roughly a day of battles at game scale. */
 const CHAIN_TRUTH_MAX = 2_000;
 
-/** chain:battleId → winner pet id, insertion-ordered for cheap eviction. */
-const chainTruth = new Map<string, string>();
+/** chain:battleId → settled battle (incl. sim outputs), insertion-ordered for cheap eviction. */
+const chainTruth = new Map<string, SettledBattle>();
 /** chain → last seen version, the per-chain resume cursor. */
 const lastVersion = new Map<string, bigint>();
 
@@ -56,6 +71,15 @@ let stopped = false;
  * verify client-reported results (shadow check — see milestone 7).
  */
 export function getChainSettledWinner(chain: string, battleId: string): string | undefined {
+    return chainTruth.get(`${chain}:${battleId}`)?.winnerPet;
+}
+
+/**
+ * The full chain-settled battle for a battle id, if the stream has seen it.
+ * Carries the v2 sim outputs (`seed`, `rounds`, `winnerHpRemaining`, xp) so a
+ * live battle UI can replay the fight client-side from the seed.
+ */
+export function getChainSettledBattle(chain: string, battleId: string): SettledBattle | undefined {
     return chainTruth.get(`${chain}:${battleId}`);
 }
 
@@ -124,7 +148,21 @@ function record(wire: BattleEventWire): void {
         lastVersion.set(wire.chain, version);
     }
 
-    chainTruth.set(`${wire.chain}:${wire.battleId}`, wire.winnerPet);
+    chainTruth.set(`${wire.chain}:${wire.battleId}`, {
+        chain: wire.chain,
+        battleId: wire.battleId,
+        attackerPet: wire.attackerPet,
+        defenderPet: wire.defenderPet,
+        winnerPet: wire.winnerPet,
+        version,
+        foughtAt: Number(wire.foughtAt),
+        loserPet: wire.loserPet,
+        seed: wire.seed,
+        rounds: wire.rounds,
+        winnerHpRemaining: wire.winnerHpRemaining,
+        xpWin: wire.xpWin,
+        xpLoss: wire.xpLoss,
+    });
     while (chainTruth.size > CHAIN_TRUTH_MAX) {
         const oldest = chainTruth.keys().next().value;
         if (oldest === undefined) break;
