@@ -161,13 +161,13 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     };
 
     // GameLogic: v2 battle is async (request → VRF → settle). requestBattle makes
-    // a VRF request (like breed), so it needs far more than v1's synchronous-
-    // battle gas. Omit the manual gas limit: wagmi estimates it AND surfaces any
-    // revert (own-pet, not-ready, VRF unfunded) before the wallet confirms.
+    // a VRF request, which the RPC can't gas-estimate (estimateGas returns the
+    // block limit → "gas limit too high"), so a manual limit is REQUIRED — sized
+    // like breed's working VRF path, not v1's synchronous-battle 300k.
     const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }> = {
         async mutateAsync({ petId1, petId2 }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)] });
+            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], gas: 800000n });
         },
         lifecycle: toLc(battleW, battleR),
         isPending: isInFlight(battleW, battleR),
