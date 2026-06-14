@@ -2,3 +2,7 @@ generated/
 build/
 node_modules/
 abis/
+# Rendered by `pnpm configure` from subgraph.template.yaml + the deployment;
+# the template and prepare-subgraph.mjs are the source of truth.
+subgraph.yaml
+src/addresses.ts
