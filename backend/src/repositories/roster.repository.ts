@@ -4,12 +4,12 @@ import { mapRosterRowToRosterPet } from './roster.mapping';
 import type { Chain } from '@typings/chain';
 
 /**
- * Single data-access layer for the `pet_roster` table. Both the indexer (writes)
- * and the battle feature (reads) go through here, so all roster queries live in
- * one place.
+ * Read access layer for the `pet_roster` table. indexer-go is the sole writer
+ * now (it owns event decoding + the write-through cache), so the backend only
+ * reads here — the matchmaking query, with a gRPC-cache fast path.
  */
 
-/** A roster row (also the shape the indexer upserts). */
+/** A roster row (the shape indexer-go writes; the read paths project to it). */
 export interface RosterPet {
     chain: Chain;
     petId: string;
@@ -42,32 +42,6 @@ export interface FindOpponentsParams {
     minLevel: number;
     page: number;
     pageSize: number;
-}
-
-/**
- * Upsert one pet keyed by (chain, petId). On transfer the owner changes but the
- * id is stable, so an upsert keeps the row correct without orphaning.
- */
-export async function upsertPet(pet: RosterPet): Promise<void> {
-    await prisma.petRoster.upsert({
-        where: { chain_petId: { chain: pet.chain, petId: pet.petId } },
-        create: pet,
-        update: pet,
-    });
-}
-
-/** Bounds concurrent upserts so a large scan can't exhaust the connection pool. */
-const UPSERT_BATCH_SIZE = 25;
-
-/** Upsert a batch of pets, `UPSERT_BATCH_SIZE` at a time. */
-export async function upsertManyPets(pets: RosterPet[]): Promise<void> {
-    for (let i = 0; i < pets.length; i += UPSERT_BATCH_SIZE) {
-        await Promise.all(pets.slice(i, i + UPSERT_BATCH_SIZE).map(upsertPet));
-    }
-}
-
-export async function countByChain(chain: Chain): Promise<number> {
-    return prisma.petRoster.count({ where: { chain } });
 }
 
 /**

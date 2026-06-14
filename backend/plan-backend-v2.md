@@ -159,9 +159,12 @@ form already go. Purely additive; skip if not prioritized.
 2. **EstimateWin surface** — GraphQL field vs REST, and whether it runs on the
    opponents list (N estimates) or only on a confirmed matchup (1 estimate).
    Per-row estimates multiply gRPC calls; prefer on-demand for a single matchup.
-3. **`upsertPet` / `upsertManyPets`** in `roster.repository.ts` look vestigial
+3. ~~**`upsertPet` / `upsertManyPets`** in `roster.repository.ts` look vestigial
    now that indexer-go is the sole writer — confirm no live caller and remove,
-   or leave for the `-scan-once`/dialogue path. (Verify before deleting.)
+   or leave for the `-scan-once`/dialogue path. (Verify before deleting.)~~
+   **Resolved:** verified no caller anywhere in the repo (no `-scan-once` path
+   exists) and removed `upsertPet`, `upsertManyPets`, and the also-unused
+   `countByChain`. `roster.repository.ts` is now read-only.
 4. **Seed wire type** — indexer-go sends the battle `seed` as a `0x`-hex string;
    confirm the client wants hex (it does, for keccak replay) and pass it through
    unchanged.
