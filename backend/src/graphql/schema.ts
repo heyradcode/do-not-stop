@@ -43,6 +43,14 @@ export const schema = buildSchema(`
         pageSize: Int!
     }
 
+    "Pre-fight win odds from indexer-go's combat sim over the warm roster cache."
+    type WinEstimate {
+        "pet1's win probability in [0,1]."
+        winProbability: Float!
+        "Seeds actually sampled by the sim (higher = tighter estimate)."
+        samples: Int!
+    }
+
     type Query {
         opponents(
             chain: String!
@@ -50,5 +58,19 @@ export const schema = buildSchema(`
             page: Int
             pageSize: Int
         ): OpponentsPage!
+
+        """
+        Pre-fight win probability for pet1 vs pet2. Returns null when the
+        estimate is unavailable (indexer link off or roster cache still cold) so
+        the matchup UI degrades to "odds unavailable" rather than erroring.
+        On-demand for a single confirmed matchup — not run per opponents row.
+        """
+        winEstimate(
+            chain: String!
+            petId1: String!
+            petId2: String!
+            "Seeds to sample; omit to let the server choose."
+            samples: Int
+        ): WinEstimate
     }
 `);
