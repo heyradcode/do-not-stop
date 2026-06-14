@@ -8,6 +8,7 @@ import {
     getPetClass,
     getPetElement,
     getPetProperties,
+    getPetSkill,
     getRarityColor,
     getRarityName,
     getTimeUntilReady,
@@ -141,6 +142,11 @@ const PetGallery: React.FC = () => {
                                         {getRarityName(pet.rarity)}
                                     </div>
                                     <div className="element-tag">{getPetElement(pet.dna)}</div>
+                                    {getPetSkill(pet.speciesId) ? (
+                                        <div className="skill-badge" title={getPetSkill(pet.speciesId)?.description}>
+                                            {getPetSkill(pet.speciesId)?.name}
+                                        </div>
+                                    ) : null}
                                     <div className="pet-avatar">{getPetAvatar(pet.dna)}</div>
                                     <div className="level-badge">Lv. {pet.level}</div>
                                 </div>
