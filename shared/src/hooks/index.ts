@@ -4,6 +4,9 @@ export { setTokenSuccessCallback } from './chains/ethereum/useVerifySignature';
 export { usePetsContract } from './chains/ethereum/usePetsContract';
 // v2 fee schedule reader (GameConfig + per-wallet mint count).
 export { useEvmFees, type EvmFees } from './chains/ethereum/useEvmFees';
+// v2.1 marriage (EVM-only): write actions + per-pet marriage state.
+export { useMarriage, type MarriageAction } from './chains/ethereum/useMarriage';
+export { useMarriageInfo, type MarriageInfo } from './chains/ethereum/useMarriageInfo';
 
 export { useActiveChain, type ActiveChain } from './useActiveChain';
 export { useChainCapabilities, type ChainContext } from './useChainCapabilities';
