@@ -72,7 +72,9 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         settleSentRef.current = true;
         setPhase('settling');
         settle.writeContract(
-            { address: gameLogic, abi: gameLogicAbi, functionName: 'settleBattle', args: [id], gas: 500000n },
+            // No manual gas: settle runs the full combat sim + auto-leveling, so
+            // let wagmi estimate (and surface reverts) rather than risk a cap.
+            { address: gameLogic, abi: gameLogicAbi, functionName: 'settleBattle', args: [id] },
             {
                 onSuccess: () => setPhase('resolving'),
                 onError: (e) => { setError(e as Error); setPhase('error'); },
