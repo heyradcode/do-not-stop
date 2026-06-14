@@ -8,7 +8,10 @@
     "scripts": {
         "build": "echo 'Build scripts can be added here'",
         "lint": "pnpm exec eslint .",
-        "lint:fix": "pnpm exec eslint . --fix"
+        "lint:fix": "pnpm exec eslint . --fix",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage"
     },
     "peerDependencies": {
         "@coral-xyz/anchor": "^0.32.0",
@@ -21,12 +24,14 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.36.0",
+        "@vitest/coverage-v8": "^3.0.0",
         "eslint": "^9.36.0",
         "eslint-plugin-import": "^2.31.0",
         "eslint-plugin-react": "^7.37.2",
         "eslint-plugin-react-hooks": "^5.2.0",
         "globals": "^16.4.0",
-        "typescript-eslint": "^8.44.0"
+        "typescript-eslint": "^8.44.0",
+        "vitest": "^3.0.0"
     },
     "dependencies": {
         "@switchboard-xyz/on-demand": "^3.10.2",
