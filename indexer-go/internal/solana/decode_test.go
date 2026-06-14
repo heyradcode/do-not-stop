@@ -25,8 +25,29 @@ func TestBase58Encode(t *testing.T) {
 	}
 }
 
+// Fixed v2 field values the builder writes and TestDecodePetAccount asserts.
+// They exercise every new field added in the v2 PetAccount layout.
+const (
+	fxVersion          = 2
+	fxBump             = 7
+	fxOpenToChallenges = true
+	fxXP               = 250
+	fxLastOpponentID   = 17
+	fxSameOpponentStrk = 1
+	fxGeneration       = 4
+	fxParent1ID        = 40
+	fxParent2ID        = 41
+	fxBreedCount       = 2
+	fxBreedReadyTime   = 1770000111
+	fxTrainReadyTime   = 1770000222
+	fxSpeciesID        = 33
+	fxSpouseID         = 99
+	fxMarriageCooldown = 0
+)
+
 // buildPetAccount serializes a PetAccount exactly as the on-chain program
-// does: 8-byte discriminator + Borsh body in IDL field order.
+// does: 8-byte discriminator + Borsh body in IDL field order. v1 fields are
+// parameters; the v2 fields use the fixed fx* values above.
 func buildPetAccount(t *testing.T, id uint32, owner [32]byte, dna uint64, rarity uint8,
 	level uint16, readyTime int64, win, loss uint16, name string) []byte {
 	t.Helper()
@@ -45,17 +66,43 @@ func buildPetAccount(t *testing.T, id uint32, owner [32]byte, dna uint64, rarity
 	_ = binary.Write(&buf, binary.LittleEndian, readyTime)
 	_ = binary.Write(&buf, binary.LittleEndian, win)
 	_ = binary.Write(&buf, binary.LittleEndian, loss)
-	buf.WriteByte(7) // bump
+	buf.WriteByte(fxVersion)
+	buf.WriteByte(fxBump)
 	var nameBuf [32]byte
 	copy(nameBuf[:], name)
 	buf.Write(nameBuf[:])
 	buf.WriteByte(uint8(len(name)))
+	// v2 fields, in struct order.
+	writeBool(&buf, fxOpenToChallenges)
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(fxXP))
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(fxLastOpponentID))
+	buf.WriteByte(fxSameOpponentStrk)
+	buf.WriteByte(fxGeneration)
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(fxParent1ID))
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(fxParent2ID))
+	buf.WriteByte(fxBreedCount)
+	_ = binary.Write(&buf, binary.LittleEndian, int64(fxBreedReadyTime))
+	_ = binary.Write(&buf, binary.LittleEndian, int64(fxTrainReadyTime))
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(fxSpeciesID))
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(fxSpouseID))
+	buf.Write(owner[:]) // marriageOwnerSnapshot
+	_ = binary.Write(&buf, binary.LittleEndian, int64(fxMarriageCooldown))
+	buf.Write(owner[:])        // asset
+	buf.Write(make([]byte, 8)) // _reserved
 
 	data := buf.Bytes()
 	if len(data) != layout.totalLen() {
 		t.Fatalf("fixture is %d bytes, layout says %d", len(data), layout.totalLen())
 	}
 	return data
+}
+
+func writeBool(buf *bytes.Buffer, v bool) {
+	if v {
+		buf.WriteByte(1)
+		return
+	}
+	buf.WriteByte(0)
 }
 
 func TestDecodePetAccount(t *testing.T) {
@@ -87,6 +134,22 @@ func TestDecodePetAccount(t *testing.T) {
 	if update.Version != 0 {
 		t.Errorf("version should be unset by decode, got %d", update.Version)
 	}
+
+	// v2 fields decode in their Borsh order off the new layout.
+	if update.XP != fxXP || update.Generation != fxGeneration || update.BreedCount != fxBreedCount ||
+		update.SpeciesID != fxSpeciesID {
+		t.Errorf("v2 scalar mapping: %+v", update)
+	}
+	if update.Parent1ID != "40" || update.Parent2ID != "41" || update.SpouseID != "99" {
+		t.Errorf("v2 lineage/marriage ids: p1=%s p2=%s spouse=%s", update.Parent1ID, update.Parent2ID, update.SpouseID)
+	}
+	if update.BreedReadyAt != fxBreedReadyTime || update.TrainReadyAt != fxTrainReadyTime {
+		t.Errorf("v2 cooldowns: breed=%d train=%d", update.BreedReadyAt, update.TrainReadyAt)
+	}
+	// owner is all-zero in this fixture, so the Core asset pubkey base58 matches.
+	if update.Asset != "11111111111111111111111111111111" {
+		t.Errorf("asset = %q, want system-program base58 (all-zero fixture)", update.Asset)
+	}
 }
 
 func TestDecodePetAccountRejectsBadInput(t *testing.T) {
@@ -107,22 +170,64 @@ func TestDecodePetAccountRejectsBadInput(t *testing.T) {
 	if _, ok := decodePetAccount(layout, tampered); ok {
 		t.Error("accepted wrong discriminator")
 	}
-	// nameLen past the fixed buffer.
+	// nameLen past the fixed buffer. nameLen is no longer the last byte in the
+	// v2 layout, so locate it from the field offsets.
 	overflow := bytes.Clone(valid)
-	overflow[len(overflow)-1] = 33
+	overflow[fieldDataOffset(t, "nameLen")] = 33
 	if _, ok := decodePetAccount(layout, overflow); ok {
 		t.Error("accepted nameLen > buffer")
 	}
 }
 
-func buildBattleLog(attacker, defender uint32, attackerWon bool) string {
-	raw := make([]byte, 17)
-	copy(raw, battleResultDiscriminator)
-	binary.LittleEndian.PutUint32(raw[8:], attacker)
-	binary.LittleEndian.PutUint32(raw[12:], defender)
-	if attackerWon {
-		raw[16] = 1
+// fieldDataOffset returns the byte offset of a field within the full account
+// data (including the 8-byte discriminator), summing the sizes of all
+// preceding fields in the resolved layout.
+func fieldDataOffset(t *testing.T, name string) int {
+	t.Helper()
+	layout, err := resolvePetLayout()
+	if err != nil {
+		t.Fatalf("resolve layout: %v", err)
 	}
+	offset := 8
+	for _, f := range layout.fields {
+		if f.Name == name {
+			return offset
+		}
+		size, err := sizeOf(f.Type)
+		if err != nil {
+			t.Fatalf("sizeOf %s: %v", f.Name, err)
+		}
+		offset += size
+	}
+	t.Fatalf("field %q not found in layout", name)
+	return 0
+}
+
+// buildBattleLog serializes a BattleResolved event as the on-chain program
+// emits it: 8-byte discriminator + Borsh body. attackerWon picks which pet id
+// fills the winner/loser slots (the chain resolves these absolutely).
+func buildBattleLog(attacker, defender uint32, attackerWon bool) string {
+	winner, loser := defender, attacker
+	if attackerWon {
+		winner, loser = attacker, defender
+	}
+	raw := make([]byte, 8+battleResolvedBodyLen)
+	copy(raw, battleResolvedDiscriminator)
+	b := raw[8:]
+	binary.LittleEndian.PutUint32(b[0:4], attacker)
+	binary.LittleEndian.PutUint32(b[4:8], defender)
+	binary.LittleEndian.PutUint32(b[8:12], winner)
+	binary.LittleEndian.PutUint32(b[12:16], loser)
+	for i := range 32 { // distinctive seed: 0x00010203...
+		b[16+i] = byte(i)
+	}
+	if attackerWon {
+		b[48] = 1 // firstWins
+	}
+	b[49] = 6                                    // rounds
+	binary.LittleEndian.PutUint16(b[50:52], 174) // winnerHpRemaining
+	binary.LittleEndian.PutUint32(b[52:56], 100) // xpWin
+	binary.LittleEndian.PutUint32(b[56:60], 25)  // xpLoss
 	return programDataPrefix + base64.StdEncoding.EncodeToString(raw)
 }
 
@@ -140,13 +245,21 @@ func TestParseBattleResults(t *testing.T) {
 	if len(results) != 2 {
 		t.Fatalf("parsed %d results, want 2", len(results))
 	}
-	if results[0].AttackerPetID != 7 || results[0].DefenderPetID != 9 || !results[0].AttackerWon {
+	if results[0].AttackerPetID != 7 || results[0].DefenderPetID != 9 ||
+		results[0].WinnerPetID != 7 || results[0].LoserPetID != 9 || !results[0].FirstWins {
 		t.Errorf("first result: %+v", results[0])
+	}
+	if results[0].Rounds != 6 || results[0].WinnerHpRemaining != 174 ||
+		results[0].XPWin != 100 || results[0].XPLoss != 25 {
+		t.Errorf("first result sim fields: %+v", results[0])
 	}
 
 	event := results[1].toBattleEvent("sig123", 555, 1770000300)
-	if event.WinnerPetID != "5" {
-		t.Errorf("defender won: winner = %s, want 5", event.WinnerPetID)
+	if event.WinnerPetID != "5" || event.LoserPetID != "3" {
+		t.Errorf("defender won: winner=%s loser=%s, want 5/3", event.WinnerPetID, event.LoserPetID)
+	}
+	if event.Seed != "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" {
+		t.Errorf("seed = %q", event.Seed)
 	}
 	if event.Chain != "solana" || event.BattleID != "sig123" || event.Attacker != "3" ||
 		event.Defender != "5" || event.Version != 555 || event.FoughtAt != 1770000300 {
