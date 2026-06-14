@@ -66,6 +66,19 @@ func decodePetAccount(layout *accountLayout, data []byte) (indexer.RosterUpdate,
 		WinCount:  uint32(fields["winCount"].(uint64)),
 		LossCount: uint32(fields["lossCount"].(uint64)),
 		ReadyAt:   fields["readyTime"].(int64),
+
+		// v2 fields (state.rs PetAccount). Decoded by IDL name; "0"/0 zero
+		// values mean none, matching the on-chain semantics.
+		XP:           uint32(fields["xp"].(uint64)),
+		Generation:   uint32(fields["generation"].(uint64)),
+		Parent1ID:    strconv.FormatUint(fields["parent1Id"].(uint64), 10),
+		Parent2ID:    strconv.FormatUint(fields["parent2Id"].(uint64), 10),
+		BreedCount:   uint32(fields["breedCount"].(uint64)),
+		SpeciesID:    uint32(fields["speciesId"].(uint64)),
+		SpouseID:     strconv.FormatUint(fields["spouseId"].(uint64), 10),
+		BreedReadyAt: fields["breedReadyTime"].(int64),
+		TrainReadyAt: fields["trainReadyTime"].(int64),
+		Asset:        fields["asset"].(string), // base58 Core asset pubkey
 	}, true
 }
 

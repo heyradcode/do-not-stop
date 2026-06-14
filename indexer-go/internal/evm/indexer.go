@@ -242,6 +242,14 @@ func (ix *Indexer) toUpdate(pet subgraphPet) (indexer.RosterUpdate, error) {
 	if err != nil {
 		return indexer.RosterUpdate{}, fmt.Errorf("pet %s: invalid updatedAt %q: %w", pet.ID, pet.UpdatedAt, err)
 	}
+	breedReadyAt, err := parseTimeField(pet.BreedReadyAt)
+	if err != nil {
+		return indexer.RosterUpdate{}, fmt.Errorf("pet %s: invalid breedReadyAt %q: %w", pet.ID, pet.BreedReadyAt, err)
+	}
+	trainReadyAt, err := parseTimeField(pet.TrainReadyAt)
+	if err != nil {
+		return indexer.RosterUpdate{}, fmt.Errorf("pet %s: invalid trainReadyAt %q: %w", pet.ID, pet.TrainReadyAt, err)
+	}
 
 	return indexer.RosterUpdate{
 		Chain:     ix.chain,
@@ -255,5 +263,35 @@ func (ix *Indexer) toUpdate(pet subgraphPet) (indexer.RosterUpdate, error) {
 		LossCount: pet.LossCount,
 		ReadyAt:   readyAt,
 		Version:   updatedAt,
+
+		// v2 fields. EVM has no Metaplex Core asset (ERC-721 token id IS the
+		// pet id), so Asset stays empty.
+		XP:           pet.XP,
+		Generation:   pet.Generation,
+		Parent1ID:    idOrZero(pet.Parent1ID),
+		Parent2ID:    idOrZero(pet.Parent2ID),
+		BreedCount:   pet.BreedCount,
+		SpeciesID:    pet.SpeciesID,
+		SpouseID:     idOrZero(pet.SpouseID),
+		BreedReadyAt: breedReadyAt,
+		TrainReadyAt: trainReadyAt,
 	}, nil
+}
+
+// parseTimeField parses a BigInt cooldown string, treating "" (field absent on
+// a pre-v2 subgraph) as 0.
+func parseTimeField(s string) (int64, error) {
+	if s == "" {
+		return 0, nil
+	}
+	return strconv.ParseInt(s, 10, 64)
+}
+
+// idOrZero normalizes an optional pet-id string to "0" when the subgraph
+// omitted it, matching the on-chain "0 = none" convention.
+func idOrZero(s string) string {
+	if s == "" {
+		return "0"
+	}
+	return s
 }

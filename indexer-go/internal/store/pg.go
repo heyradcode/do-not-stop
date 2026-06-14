@@ -40,10 +40,12 @@ func (f *PgFlusher) FlushRoster(ctx context.Context, batch []indexer.RosterUpdat
 		return nil
 	}
 
-	const cols = 11
+	const cols = 21
 	var sb strings.Builder
 	sb.WriteString(`INSERT INTO pet_roster
-  (chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at, last_version, updated_at)
+  (chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at,
+   xp, generation, parent1_id, parent2_id, breed_count, species_id, spouse_id, breed_ready_at, train_ready_at, asset,
+   last_version, updated_at)
 VALUES `)
 
 	args := make([]any, 0, len(batch)*cols)
@@ -52,11 +54,20 @@ VALUES `)
 			sb.WriteString(", ")
 		}
 		base := i * cols
-		fmt.Fprintf(&sb, "($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d, now())",
-			base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9, base+10, base+11)
+		sb.WriteByte('(')
+		for j := range cols {
+			if j > 0 {
+				sb.WriteByte(',')
+			}
+			fmt.Fprintf(&sb, "$%d", base+j+1)
+		}
+		sb.WriteString(", now())")
 		args = append(args,
 			u.Chain, u.PetID, u.Owner, u.Name, int32(u.Level), int32(u.Rarity),
-			u.DNA, int32(u.WinCount), int32(u.LossCount), u.ReadyAt, u.Version)
+			u.DNA, int32(u.WinCount), int32(u.LossCount), u.ReadyAt,
+			int32(u.XP), int32(u.Generation), u.Parent1ID, u.Parent2ID, int32(u.BreedCount),
+			int32(u.SpeciesID), u.SpouseID, u.BreedReadyAt, u.TrainReadyAt, u.Asset,
+			u.Version)
 	}
 
 	sb.WriteString(`
@@ -69,6 +80,16 @@ ON CONFLICT (chain, pet_id) DO UPDATE SET
   win_count = EXCLUDED.win_count,
   loss_count = EXCLUDED.loss_count,
   ready_at = EXCLUDED.ready_at,
+  xp = EXCLUDED.xp,
+  generation = EXCLUDED.generation,
+  parent1_id = EXCLUDED.parent1_id,
+  parent2_id = EXCLUDED.parent2_id,
+  breed_count = EXCLUDED.breed_count,
+  species_id = EXCLUDED.species_id,
+  spouse_id = EXCLUDED.spouse_id,
+  breed_ready_at = EXCLUDED.breed_ready_at,
+  train_ready_at = EXCLUDED.train_ready_at,
+  asset = EXCLUDED.asset,
   last_version = EXCLUDED.last_version,
   updated_at = now()
 WHERE pet_roster.last_version <= EXCLUDED.last_version`)
@@ -117,7 +138,9 @@ VALUES `)
 // (the table is the persistent copy of the exact data the cache mirrors).
 func (f *PgFlusher) LoadRoster(ctx context.Context) ([]indexer.RosterUpdate, error) {
 	rows, err := f.pool.Query(ctx, `
-SELECT chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at, last_version
+SELECT chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at,
+       xp, generation, parent1_id, parent2_id, breed_count, species_id, spouse_id, breed_ready_at, train_ready_at, asset,
+       last_version
 FROM pet_roster`)
 	if err != nil {
 		return nil, fmt.Errorf("store: load roster: %w", err)
@@ -128,13 +151,19 @@ FROM pet_roster`)
 	for rows.Next() {
 		var u indexer.RosterUpdate
 		var level, rarity, winCount, lossCount int32
+		var xp, generation, breedCount, speciesID int32
 		var version int64
 		if err := rows.Scan(&u.Chain, &u.PetID, &u.Owner, &u.Name, &level, &rarity,
-			&u.DNA, &winCount, &lossCount, &u.ReadyAt, &version); err != nil {
+			&u.DNA, &winCount, &lossCount, &u.ReadyAt,
+			&xp, &generation, &u.Parent1ID, &u.Parent2ID, &breedCount, &speciesID, &u.SpouseID,
+			&u.BreedReadyAt, &u.TrainReadyAt, &u.Asset,
+			&version); err != nil {
 			return nil, fmt.Errorf("store: load roster scan: %w", err)
 		}
 		u.Level, u.Rarity = uint32(level), uint32(rarity)
 		u.WinCount, u.LossCount = uint32(winCount), uint32(lossCount)
+		u.XP, u.Generation = uint32(xp), uint32(generation)
+		u.BreedCount, u.SpeciesID = uint32(breedCount), uint32(speciesID)
 		u.Version = uint64(version)
 		pets = append(pets, u)
 	}

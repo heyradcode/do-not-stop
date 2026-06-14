@@ -9,22 +9,26 @@ import (
 	"strings"
 )
 
-// GraphQL queries. The pet queries are verbatim ports of
-// backend/indexing/evm/indexer.ts so both implementations stay diffable
-// during shadow mode; the battles query consumes the Battle entity added to
-// the subgraph for indexer-go.
+// GraphQL queries. The pet selection set adds the v2 lineage / marriage /
+// cooldown fields (plan §3.4, §4.1, §4.4); they require the subgraph schema
+// bump (plan §6 open decision), and the adapter declares them here so it is
+// ready the moment they deploy. petFields is shared so the full and
+// incremental queries can never drift.
 const (
+	petFields = `id owner name dna level rarity winCount lossCount readyAt updatedAt
+      xp generation parent1Id parent2Id breedCount speciesId spouseId breedReadyAt trainReadyAt`
+
 	fullSyncQuery = `
   query Pets($first: Int!, $lastId: ID!) {
     pets(first: $first, orderBy: id, orderDirection: asc, where: { id_gt: $lastId }) {
-      id owner name dna level rarity winCount lossCount readyAt updatedAt
+      ` + petFields + `
     }
   }
 `
 	incrementalQuery = `
   query PetsSince($first: Int!, $lastId: ID!, $since: BigInt!) {
     pets(first: $first, orderBy: id, orderDirection: asc, where: { id_gt: $lastId, updatedAt_gt: $since }) {
-      id owner name dna level rarity winCount lossCount readyAt updatedAt
+      ` + petFields + `
     }
   }
 `
@@ -50,6 +54,18 @@ type subgraphPet struct {
 	LossCount uint32 `json:"lossCount"`
 	ReadyAt   string `json:"readyAt"`
 	UpdatedAt string `json:"updatedAt"`
+
+	// v2 fields. Int → JSON number; BigInt (ids, cooldowns) → string. Absent
+	// on a pre-v2 subgraph, in which case they decode to their zero values.
+	XP           uint32 `json:"xp"`
+	Generation   uint32 `json:"generation"`
+	Parent1ID    string `json:"parent1Id"`
+	Parent2ID    string `json:"parent2Id"`
+	BreedCount   uint32 `json:"breedCount"`
+	SpeciesID    uint32 `json:"speciesId"`
+	SpouseID     string `json:"spouseId"`
+	BreedReadyAt string `json:"breedReadyAt"`
+	TrainReadyAt string `json:"trainReadyAt"`
 }
 
 // subgraphBattle mirrors the subgraph's Battle entity.
