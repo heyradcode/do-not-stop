@@ -67,6 +67,36 @@ func TestGetPetStateServesFromCache(t *testing.T) {
 	}
 }
 
+func TestEstimateWinFromCache(t *testing.T) {
+	roster := cache.NewRoster()
+	roster.WarmUp([]indexer.RosterUpdate{
+		// A maxed pet vs a fresh one: pet 1 should win nearly always.
+		{Chain: "evm", PetID: "1", Owner: "0xa", Name: "strong", Level: 100, Rarity: 5, DNA: "1234567890123456", ReadyAt: 0, Version: 1},
+		{Chain: "evm", PetID: "2", Owner: "0xb", Name: "weak", Level: 1, Rarity: 1, DNA: "9876543210987654", ReadyAt: 0, Version: 1},
+	})
+	client := startServer(t, battlebus.New(), nil, roster)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	res, err := client.EstimateWin(ctx, &pb.WinRequest{Chain: "evm", PetId1: "1", PetId2: "2", Samples: 128})
+	if err != nil {
+		t.Fatalf("EstimateWin: %v", err)
+	}
+	if res.GetSamples() != 128 {
+		t.Errorf("samples = %d, want 128", res.GetSamples())
+	}
+	if p := res.GetWinProbability(); p < 0.9 || p > 1.0 {
+		t.Errorf("win probability = %v, want ~1.0 for a dominant pet", p)
+	}
+
+	// A missing pet is NotFound.
+	_, err = client.EstimateWin(ctx, &pb.WinRequest{Chain: "evm", PetId1: "1", PetId2: "404"})
+	if status.Code(err) != codes.NotFound {
+		t.Errorf("missing opponent code = %v, want NotFound", status.Code(err))
+	}
+}
+
 func TestListReadyOpponentsServesFromCache(t *testing.T) {
 	roster := cache.NewRoster()
 	roster.WarmUp([]indexer.RosterUpdate{
