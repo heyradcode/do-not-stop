@@ -383,13 +383,21 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Pre-result phase (overlay stays open through taunts → battling).
     const isBattling = battle.isPending || battle.isConfirming || rematchPending;
     const preResultTitle = isBattling ? 'The battle is underway…' : 'Face-off!';
+    // EVM v2 battle is async: request → VRF → settle. Label each phase so the
+    // long VRF wait doesn't keep showing "Awaiting your wallet".
     const preResultStatus = rematchPending
         ? 'Preparing rematch…'
-        : battle.isConfirming
-            ? 'Confirming on-chain…'
-            : battle.isPending
-                ? 'Awaiting your wallet…'
-                : null;
+        : battle.phase === 'awaiting-vrf'
+            ? 'Awaiting randomness…'
+            : battle.phase === 'settling'
+                ? 'Settling the battle…'
+                : battle.phase === 'resolving'
+                    ? 'Resolving the outcome…'
+                    : battle.isConfirming
+                        ? 'Confirming on-chain…'
+                        : battle.isPending
+                            ? 'Awaiting your wallet…'
+                            : null;
 
     const battleButtonLabel = taunts.isLoading
         ? 'Facing off…'
