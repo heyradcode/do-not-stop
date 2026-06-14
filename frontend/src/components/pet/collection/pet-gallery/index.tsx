@@ -149,7 +149,7 @@ const PetGallery: React.FC = () => {
                                     <div className="pet-header">
                                         <h3>{pet.name}</h3>
                                         <span className="pet-dna">
-                                            {getPetClass(pet.dna)} · Gen {getGeneration(pet.dna)}
+                                            {getPetClass(pet.dna)} · Gen {pet.generation ?? getGeneration(pet.dna)}
                                         </span>
                                     </div>
                                     <div className="xp-row">

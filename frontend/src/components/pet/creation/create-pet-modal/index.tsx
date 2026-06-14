@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { formatEther } from 'viem';
 import {
     useChainCapabilities,
     useCreatePet,
+    useEvmFees,
     usePetList,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
@@ -17,9 +19,15 @@ interface CreatePetModalProps {
 }
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
-    const { isConnected } = useChainCapabilities();
+    const { isConnected, kind } = useChainCapabilities();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
+
+    // Live gacha mint cost (EVM): baseMintFee × (1 + walletMintCount).
+    const fees = useEvmFees(kind === 'evm');
+    const mintCost = kind === 'evm' && fees.nextMintFee != null
+        ? `${formatEther(fees.nextMintFee)} ETH`
+        : null;
 
     const [petName, setPetName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
@@ -95,12 +103,18 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                             />
                         </div>
 
+                        {mintCost && (
+                            <p className="mint-cost">Mint cost: {mintCost}</p>
+                        )}
+
                         <button
                             onClick={handleCreatePet}
                             disabled={isPending || !petName.trim() || !isConnected}
                             className="submit"
                         >
-                            {isPending ? 'Creating...' : 'Create Pet'}
+                            {isPending
+                                ? 'Creating...'
+                                : mintCost ? `Create Pet (${mintCost})` : 'Create Pet'}
                         </button>
                     </div>
 
