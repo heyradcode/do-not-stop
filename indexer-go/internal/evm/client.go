@@ -32,10 +32,14 @@ const (
     }
   }
 `
+	// The Battle entity joins BattleRandomnessRequested (attacker/defender) with
+	// BattleResolved (winner/loser + sim outputs) by requestId — the subgraph is
+	// the EVM join layer (plan §3.5). The v2 sim fields require the subgraph
+	// schema bump (plan §6 open decision).
 	battlesQuery = `
   query BattlesSince($first: Int!, $since: BigInt!) {
     battles(first: $first, orderBy: foughtAt, orderDirection: asc, where: { foughtAt_gt: $since }) {
-      id attacker defender winnerPetId foughtAt
+      id attacker defender winnerPetId loserPetId seed rounds winnerHpRemaining xpWin xpLoss foughtAt
     }
   }
 `
@@ -75,6 +79,16 @@ type subgraphBattle struct {
 	Defender    string `json:"defender"`
 	WinnerPetID string `json:"winnerPetId"`
 	FoughtAt    string `json:"foughtAt"`
+
+	// v2 sim outputs. seed is the uint256 vrf seed (decimal or 0x-hex from the
+	// subgraph); the adapter normalizes it to 0x-hex. Absent on a pre-v2
+	// subgraph, in which case they decode to their zero values.
+	LoserPetID        string `json:"loserPetId"`
+	Seed              string `json:"seed"`
+	Rounds            uint32 `json:"rounds"`
+	WinnerHpRemaining uint32 `json:"winnerHpRemaining"`
+	XPWin             uint32 `json:"xpWin"`
+	XPLoss            uint32 `json:"xpLoss"`
 }
 
 type client struct {

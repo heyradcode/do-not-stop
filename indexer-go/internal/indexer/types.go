@@ -46,6 +46,15 @@ type BattleEvent struct {
 	WinnerPetID string // absolute pet id — head-to-head survives role swaps
 	Version     uint64
 	FoughtAt    int64 // unix seconds
+
+	// v2 fields from the round-based combat sim (plan §3.3). The seed makes a
+	// battle replayable: the frontend re-runs the sim locally to animate it.
+	LoserPetID        string // absolute pet id of the loser
+	Seed              string // 0x-prefixed 32-byte combat seed (hex), chain-agnostic
+	Rounds            uint32 // rounds the sim ran
+	WinnerHpRemaining uint32 // winner's HP at the final round
+	XPWin             uint32 // XP credited to the winner (level-diff scaled, §3.4)
+	XPLoss            uint32 // XP credited to the loser
 }
 
 // ChainIndexer is one roster source, any chain.

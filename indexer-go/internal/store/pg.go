@@ -108,10 +108,11 @@ func (f *PgFlusher) InsertBattles(ctx context.Context, events []indexer.BattleEv
 		return nil
 	}
 
-	const cols = 7
+	const cols = 13
 	var sb strings.Builder
 	sb.WriteString(`INSERT INTO battle_history
-  (chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, fought_at, version)
+  (chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, loser_pet_id,
+   seed, rounds, winner_hp_remaining, xp_win, xp_loss, fought_at, version)
 VALUES `)
 
 	args := make([]any, 0, len(events)*cols)
@@ -120,9 +121,17 @@ VALUES `)
 			sb.WriteString(", ")
 		}
 		base := i * cols
-		fmt.Fprintf(&sb, "($%d,$%d,$%d,$%d,$%d,$%d,$%d)",
-			base+1, base+2, base+3, base+4, base+5, base+6, base+7)
-		args = append(args, e.Chain, e.BattleID, e.Attacker, e.Defender, e.WinnerPetID, e.FoughtAt, e.Version)
+		sb.WriteByte('(')
+		for j := range cols {
+			if j > 0 {
+				sb.WriteByte(',')
+			}
+			fmt.Fprintf(&sb, "$%d", base+j+1)
+		}
+		sb.WriteByte(')')
+		args = append(args, e.Chain, e.BattleID, e.Attacker, e.Defender, e.WinnerPetID, e.LoserPetID,
+			e.Seed, int32(e.Rounds), int32(e.WinnerHpRemaining), int32(e.XPWin), int32(e.XPLoss),
+			e.FoughtAt, e.Version)
 	}
 
 	sb.WriteString(" ON CONFLICT (chain, battle_id) DO NOTHING")
@@ -177,7 +186,8 @@ FROM pet_roster`)
 // no cursor for.
 func (f *PgFlusher) BattlesSince(ctx context.Context, chain string, after uint64) ([]indexer.BattleEvent, error) {
 	rows, err := f.pool.Query(ctx, `
-SELECT chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, fought_at, version
+SELECT chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, loser_pet_id,
+       seed, rounds, winner_hp_remaining, xp_win, xp_loss, fought_at, version
 FROM battle_history
 WHERE chain = $1 AND version > $2
 ORDER BY version ASC`, chain, after)
@@ -189,10 +199,14 @@ ORDER BY version ASC`, chain, after)
 	var events []indexer.BattleEvent
 	for rows.Next() {
 		var e indexer.BattleEvent
+		var rounds, winnerHp, xpWin, xpLoss int32
 		var foughtAt, version int64
-		if err := rows.Scan(&e.Chain, &e.BattleID, &e.Attacker, &e.Defender, &e.WinnerPetID, &foughtAt, &version); err != nil {
+		if err := rows.Scan(&e.Chain, &e.BattleID, &e.Attacker, &e.Defender, &e.WinnerPetID, &e.LoserPetID,
+			&e.Seed, &rounds, &winnerHp, &xpWin, &xpLoss, &foughtAt, &version); err != nil {
 			return nil, fmt.Errorf("store: battles since scan: %w", err)
 		}
+		e.Rounds, e.WinnerHpRemaining = uint32(rounds), uint32(winnerHp)
+		e.XPWin, e.XPLoss = uint32(xpWin), uint32(xpLoss)
 		e.FoughtAt = foughtAt
 		e.Version = uint64(version)
 		events = append(events, e)
