@@ -2,7 +2,7 @@ import * as grpc from '@grpc/grpc-js';
 import { env } from '@config/env';
 import { loadGameDataService } from './gameData';
 import type { FindOpponentsParams, RosterPet } from '@repositories/roster.repository';
-import type { Chain } from '@typings/chain';
+import { mapPetWireToRosterPet, type PetWire } from '@repositories/roster.mapping';
 
 /**
  * gRPC-backed roster reads from indexer-go's write-through cache. Fail-open by
@@ -18,30 +18,6 @@ const DEADLINE_MS = 50;
 const BREAKER_THRESHOLD = 3;
 /** How long an open breaker skips gRPC before probing again. */
 const BREAKER_COOLDOWN_MS = 30_000;
-
-interface PetWire {
-    chain: string;
-    petId: string;
-    owner: string;
-    name: string;
-    level: number;
-    rarity: number;
-    dna: string;
-    winCount: number;
-    lossCount: number;
-    readyAt: string; // int64 as string ({ longs: String })
-    // v2 fields. uint32 arrive as numbers; int64 cooldowns arrive as strings.
-    xp: number;
-    generation: number;
-    parent1Id: string;
-    parent2Id: string;
-    breedCount: number;
-    speciesId: number;
-    spouseId: string;
-    breedReadyAt: string;
-    trainReadyAt: string;
-    asset: string;
-}
 
 interface OpponentsWire {
     pets: PetWire[];
@@ -113,28 +89,7 @@ export function tryGrpcFindReadyOpponents(
                 }
                 consecutiveFailures = 0;
                 resolve({
-                    rows: res.pets.map((p) => ({
-                        chain: p.chain as Chain,
-                        petId: p.petId,
-                        owner: p.owner,
-                        name: p.name,
-                        level: p.level,
-                        rarity: p.rarity,
-                        dna: p.dna,
-                        winCount: p.winCount,
-                        lossCount: p.lossCount,
-                        readyAt: BigInt(p.readyAt),
-                        xp: p.xp,
-                        generation: p.generation,
-                        parent1Id: p.parent1Id,
-                        parent2Id: p.parent2Id,
-                        breedCount: p.breedCount,
-                        speciesId: p.speciesId,
-                        spouseId: p.spouseId,
-                        breedReadyAt: BigInt(p.breedReadyAt),
-                        trainReadyAt: BigInt(p.trainReadyAt),
-                        asset: p.asset,
-                    })),
+                    rows: res.pets.map(mapPetWireToRosterPet),
                     total: res.total,
                 });
             },

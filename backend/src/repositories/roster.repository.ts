@@ -1,5 +1,6 @@
 import { prisma } from '@config/prisma';
 import { tryGrpcFindReadyOpponents } from '../grpc/rosterReads';
+import { mapRosterRowToRosterPet } from './roster.mapping';
 import type { Chain } from '@typings/chain';
 
 /**
@@ -102,28 +103,7 @@ export async function findReadyOpponents(
     ]);
 
     return {
-        rows: rows.map((row) => ({
-            chain: row.chain as Chain,
-            petId: row.petId,
-            owner: row.owner,
-            name: row.name,
-            level: row.level,
-            rarity: row.rarity,
-            dna: row.dna,
-            winCount: row.winCount,
-            lossCount: row.lossCount,
-            readyAt: row.readyAt,
-            xp: row.xp,
-            generation: row.generation,
-            parent1Id: row.parent1Id,
-            parent2Id: row.parent2Id,
-            breedCount: row.breedCount,
-            speciesId: row.speciesId,
-            spouseId: row.spouseId,
-            breedReadyAt: row.breedReadyAt,
-            trainReadyAt: row.trainReadyAt,
-            asset: row.asset,
-        })),
+        rows: rows.map(mapRosterRowToRosterPet),
         total,
     };
 }
