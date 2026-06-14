@@ -19,14 +19,14 @@ export const schema = buildSchema(`
         xp: Int!
         "0 = minted (gen-0); else max(parents)+1."
         generation: Int!
-        "Breeding lineage pet ids as decimal strings; \"0\" = none."
+        "Breeding lineage pet ids as decimal strings; '0' = none."
         parent1Id: String!
         parent2Id: String!
         "Times used as a breeding parent."
         breedCount: Int!
         "Resolved at mint from DNA + rarity tier; 0 until species pools land."
         speciesId: Int!
-        "Marriage spouse pet id as a decimal string; \"0\" = unmarried."
+        "Marriage spouse pet id as a decimal string; '0' = unmarried."
         spouseId: String!
         "Unix seconds the pet is next breed-ready (float for 64-bit safety)."
         breedReadyAt: Float!
