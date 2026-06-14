@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  GiBiceps,
   GiCrossedSwords,
   GiCrystalShine,
   GiDna1,
@@ -65,6 +66,7 @@ const Icon: React.FC<IconProps> = ({
 export default Icon;
 
 export {
+  GiBiceps as TrainIcon,
   GiCrossedSwords as BattleIcon,
   GiCrystalShine as CrystalIcon,
   GiDna1 as DnaIcon,

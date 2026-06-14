@@ -13,14 +13,16 @@ import {
     BREED_PATH,
     DASHBOARD_HOME,
     LEVELUP_PATH,
+    TRAIN_PATH,
     RENAME_PATH,
 } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
-import Icon, { BattleIcon, EggIcon, LevelUpIcon, QuillIcon } from '@components/ui/icon';
+import Icon, { BattleIcon, EggIcon, LevelUpIcon, QuillIcon, TrainIcon } from '@components/ui/icon';
 import DashboardPanel from '@components/common/dashboard-panel';
 import BattlePanel from '@components/pet/interactions/panels/battle';
 import BreedPanel from '@components/pet/interactions/panels/breed';
 import LevelUpPanel from '@components/pet/interactions/panels/level-up';
+import TrainPanel from '@components/pet/interactions/panels/train';
 import RenamePanel from '@components/pet/interactions/panels/rename';
 import StateCard from '@components/pet/interactions/state-card';
 import './index.css';
@@ -29,7 +31,7 @@ import './index.css';
 const parseActionParam = (raw: string | undefined): InteractionAction | null  => {
     if (!raw) return null;
     if (raw === 'rename') return 'changename';
-    if (raw === 'breed' || raw === 'battle' || raw === 'levelup') return raw;
+    if (raw === 'breed' || raw === 'battle' || raw === 'levelup' || raw === 'train') return raw;
     return null;
 }
 
@@ -193,6 +195,25 @@ const PetInteractions: React.FC = () => {
                             Open level up
                         </button>
                     </div>
+                    {activeChainKind === 'evm' && (
+                        <div className="feature-action-card">
+                            <div className="header"><Icon as={TrainIcon} tone={Tones.Amber} />Training Ground</div>
+                            <div className="hub-divider" />
+                            <div className="content">
+                                Train your pet for an instant XP boost.
+                                <br />
+                                Cost scales with the pet&apos;s level.
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => navigate(TRAIN_PATH)}
+                                className="lab-breed-button train-button"
+                                disabled={readyPets.length < 1}
+                            >
+                                Open training
+                            </button>
+                        </div>
+                    )}
                     <div className="feature-action-card">
                         <div className="header"><Icon as={QuillIcon} tone={Tones.Cyan} />Change Name</div>
                         <div className="hub-divider" />
@@ -220,6 +241,8 @@ const PetInteractions: React.FC = () => {
             {action === 'battle' && <BattlePanel isStandaloneView={false} />}
 
             {action === 'levelup' && <LevelUpPanel isStandaloneView={false} />}
+
+            {action === 'train' && <TrainPanel isStandaloneView={false} />}
 
             {action === 'changename' && <RenamePanel isStandaloneView={false} />}
         </DashboardPanel>
