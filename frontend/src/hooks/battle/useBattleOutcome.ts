@@ -16,6 +16,12 @@ export interface UseBattleOutcome {
     snapshotFighterStats: (fighter: Pet) => void;
     /** Arm outcome detection — call once the settle tx succeeds. */
     markPendingOutcome: () => void;
+    /**
+     * Apply the authoritative win/lose from the on-chain BattleResolved event
+     * (EVM). Resolves the result immediately and exactly; the stats refetch then
+     * only fills in `leveledUp` (the event carries no post-battle level).
+     */
+    applyResolvedOutcome: (playerWon: boolean) => void;
     /** Drop the captured snapshot (on leave). */
     clearSnapshot: () => void;
     /** Reset the resolved outcome back to null (on a new battle/rematch). */
@@ -23,9 +29,10 @@ export interface UseBattleOutcome {
 }
 
 /**
- * Detect a battle's result by diffing the fighter's on-chain win/loss stats
- * against a snapshot taken just before the settle tx. Owns the snapshot/pending
- * refs and the detection effect so the panel doesn't have to.
+ * Resolve a battle's result. On EVM the win/lose comes authoritatively from the
+ * BattleResolved event (`applyResolvedOutcome`); the on-chain stats refetch then
+ * only supplies `leveledUp`. On Solana (no event surfaced here) it falls back to
+ * diffing the fighter's win/loss stats against a pre-battle snapshot.
  */
 export const useBattleOutcome = ({ pets, selectedPet1, petsLoading }: UseBattleOutcomeArgs): UseBattleOutcome  => {
     const [battleOutcome, setBattleOutcome] = useState<BattleOutcome>(null);
@@ -33,6 +40,8 @@ export const useBattleOutcome = ({ pets, selectedPet1, petsLoading }: UseBattleO
     const preBattleStatsRef = useRef<PreBattleStats | null>(null);
     // Set true once the settle tx succeeds; cleared when the effect resolves it.
     const pendingOutcomeRef = useRef(false);
+    // Authoritative win/lose from BattleResolved (EVM); null = use the stat diff.
+    const authoritativeRef = useRef<'victory' | 'defeat' | null>(null);
 
     const snapshotFighterStats = useCallback((fighter: Pet) => {
         preBattleStatsRef.current = {
@@ -41,6 +50,7 @@ export const useBattleOutcome = ({ pets, selectedPet1, petsLoading }: UseBattleO
             level: fighter.level,
         };
         pendingOutcomeRef.current = false;
+        authoritativeRef.current = null;
         setBattleOutcome(null);
     }, []);
 
@@ -48,16 +58,25 @@ export const useBattleOutcome = ({ pets, selectedPet1, petsLoading }: UseBattleO
         pendingOutcomeRef.current = true;
     }, []);
 
+    const applyResolvedOutcome = useCallback((playerWon: boolean) => {
+        const result = playerWon ? 'victory' : 'defeat';
+        authoritativeRef.current = result;
+        // Show the verdict at once; leveledUp is filled by the stats effect below.
+        setBattleOutcome((prev) => ({ result, leveledUp: prev?.leveledUp ?? false }));
+    }, []);
+
     const clearSnapshot = useCallback(() => {
         preBattleStatsRef.current = null;
     }, []);
 
     const resetOutcome = useCallback(() => {
+        authoritativeRef.current = null;
         setBattleOutcome(null);
     }, []);
 
     // After the settle tx, refetch() updates `pets` with the new on-chain stats.
-    // Compare against the pre-battle snapshot to determine victory or defeat.
+    // The stat diff supplies `leveledUp`, and the win/lose result when no
+    // authoritative on-chain result was applied (Solana).
     useEffect(() => {
         if (!pendingOutcomeRef.current || !selectedPet1 || !preBattleStatsRef.current || petsLoading) return;
 
@@ -69,11 +88,11 @@ export const useBattleOutcome = ({ pets, selectedPet1, petsLoading }: UseBattleO
         if (updatedFighter.winCount === prevWin && updatedFighter.lossCount === prevLoss) return;
 
         setBattleOutcome({
-            result: updatedFighter.winCount > prevWin ? 'victory' : 'defeat',
+            result: authoritativeRef.current ?? (updatedFighter.winCount > prevWin ? 'victory' : 'defeat'),
             leveledUp: updatedFighter.level > prevLevel,
         });
         pendingOutcomeRef.current = false;
     }, [pets, selectedPet1, petsLoading]);
 
-    return { battleOutcome, snapshotFighterStats, markPendingOutcome, clearSnapshot, resetOutcome };
+    return { battleOutcome, snapshotFighterStats, markPendingOutcome, applyResolvedOutcome, clearSnapshot, resetOutcome };
 }

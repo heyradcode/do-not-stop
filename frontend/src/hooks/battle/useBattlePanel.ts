@@ -8,6 +8,7 @@ import {
     useOpponents,
     usePetList,
     type TxLifecycle,
+    type BattleResolvedResult,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { formatTxHashHint } from '@hooks/usePetError';
@@ -89,10 +90,13 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Outcome detection (snapshot diff against refreshed on-chain stats).
     const outcome = useBattleOutcome({ pets, selectedPet1, petsLoading });
 
-    const handleSuccess = useCallback(() => {
+    const handleSuccess = useCallback((result: BattleResolvedResult | null) => {
         setShowResult(true);
         setValidationError(null);
         outcome.markPendingOutcome();
+        // EVM: BattleResolved is authoritative — petId1 is the player's pet, so
+        // firstWins is the player's verdict. Solana resolves via the stat diff.
+        if (result) outcome.applyResolvedOutcome(result.firstWins);
         void refetch();
         void refetchOpponents();
     }, [outcome, refetch, refetchOpponents]);
