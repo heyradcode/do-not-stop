@@ -60,6 +60,14 @@ export const schema = buildSchema(`
         ): OpponentsPage!
 
         """
+        A single pet by id, for the pet-detail view — carries the same v2 fields
+        as the opponents list (lineage, marriage, cooldowns, species, Core asset).
+        Returns null when no such pet exists. Reads indexer-go's cache first
+        (ROSTER_READ_SOURCE=grpc) with automatic Postgres fallback.
+        """
+        pet(chain: String!, id: String!): OpponentPet
+
+        """
         Pre-fight win probability for pet1 vs pet2. Returns null when the
         estimate is unavailable (indexer link off or roster cache still cold) so
         the matchup UI degrades to "odds unavailable" rather than erroring.

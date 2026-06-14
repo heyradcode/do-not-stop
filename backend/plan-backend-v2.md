@@ -156,6 +156,9 @@ form already go. Purely additive; skip if not prioritized.
    marriage may belong on a pet-detail view instead. Confirm with the frontend
    before widening `OpponentPet` vs adding a `pet(id)` query backed by the
    unused `GetPetState` RPC.
+   **Update:** did both — all v2 fields stay on `OpponentPet`, *and* a `pet(chain,
+   id)` detail query now wraps `GetPetState` (gRPC-first, Prisma fallback). The
+   frontend can use whichever; no field was withheld pending their call.
 2. **EstimateWin surface** — GraphQL field vs REST, and whether it runs on the
    opponents list (N estimates) or only on a confirmed matchup (1 estimate).
    Per-row estimates multiply gRPC calls; prefer on-demand for a single matchup.

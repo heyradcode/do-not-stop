@@ -1,5 +1,5 @@
 import { prisma } from '@config/prisma';
-import { tryGrpcFindReadyOpponents } from '../grpc/rosterReads';
+import { tryGrpcFindReadyOpponents, tryGrpcGetPetState } from '../grpc/rosterReads';
 import { mapRosterRowToRosterPet } from './roster.mapping';
 import type { Chain } from '@typings/chain';
 
@@ -80,4 +80,20 @@ export async function findReadyOpponents(
         rows: rows.map(mapRosterRowToRosterPet),
         total,
     };
+}
+
+/**
+ * A single pet by (chain, petId) for the pet-detail view. Same fail-open shape
+ * as the matchmaking read: indexer-go's cache answers first when
+ * ROSTER_READ_SOURCE=grpc, otherwise (or on any gRPC fault) Prisma does.
+ * Returns null when no such pet exists on either path.
+ */
+export async function getPetById(chain: Chain, petId: string): Promise<RosterPet | null> {
+    const viaGrpc = await tryGrpcGetPetState(chain, petId);
+    if (viaGrpc) return viaGrpc;
+
+    const row = await prisma.petRoster.findUnique({
+        where: { chain_petId: { chain, petId } },
+    });
+    return row ? mapRosterRowToRosterPet(row) : null;
 }

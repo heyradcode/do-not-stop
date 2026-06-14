@@ -184,6 +184,23 @@ v2 `OpponentPet` fields (all served from the v2 `pet_roster` columns):
 | `breedReadyAt`, `trainReadyAt` | Float | unix seconds next breed/train-ready (Float for 64-bit safety, like `readyAt`) |
 | `asset` | String | Metaplex Core asset pubkey (Solana only); `""` on EVM |
 
+### `pet` — single pet detail (nullable)
+
+```graphql
+query($chain: String!, $id: String!) {
+  pet(chain: $chain, id: $id) {
+    id chain owner name dna level rarity winCount lossCount readyAt
+    xp generation parent1Id parent2Id breedCount speciesId
+    spouseId breedReadyAt trainReadyAt asset
+  }
+}
+```
+
+Backed by indexer-go's `GetPetState` RPC. Returns the same `OpponentPet` shape
+(all v2 fields) for a single pet, or `null` when no such pet exists. Reads the
+indexer cache first when `ROSTER_READ_SOURCE=grpc`, with automatic Postgres
+fallback — so it answers even when the indexer link is down.
+
 ### `winEstimate` — pre-fight odds (nullable)
 
 ```graphql

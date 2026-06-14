@@ -3,6 +3,7 @@ import { env } from '@config/env';
 import { loadGameDataService } from './gameData';
 import type { FindOpponentsParams, RosterPet } from '@repositories/roster.repository';
 import { mapPetWireToRosterPet, type PetWire } from '@repositories/roster.mapping';
+import type { Chain } from '@typings/chain';
 
 /**
  * gRPC-backed roster reads from indexer-go's write-through cache. Fail-open by
@@ -29,6 +30,12 @@ type RosterClient = grpc.Client & {
         request: Record<string, unknown>,
         options: grpc.CallOptions,
         callback: (err: grpc.ServiceError | null, res: OpponentsWire) => void,
+    ): void;
+    getPetState(
+        request: Record<string, unknown>,
+        options: grpc.CallOptions,
+        // PetResponse carries the PetWire fields plus `version`, which we drop.
+        callback: (err: grpc.ServiceError | null, res: PetWire) => void,
     ): void;
 };
 
@@ -94,5 +101,32 @@ export function tryGrpcFindReadyOpponents(
                 });
             },
         );
+    });
+}
+
+/**
+ * Single-pet read via indexer-go (pet-detail). Same fail-open contract as the
+ * matchmaking read: returns null whenever Prisma should answer instead (feature
+ * off, breaker open, timeout, any error) or when the cache has no such pet (an
+ * empty row — distinguished by the absent id).
+ */
+export function tryGrpcGetPetState(chain: Chain, petId: string): Promise<RosterPet | null> {
+    if (env.rosterReadSource !== 'grpc' || !breakerAllows()) return Promise.resolve(null);
+    const rosterClient = getClient();
+    if (!rosterClient) return Promise.resolve(null);
+
+    return new Promise((resolve) => {
+        const deadline = new Date(Date.now() + DEADLINE_MS);
+        rosterClient.getPetState({ chain, petId }, { deadline }, (err, res) => {
+            if (err) {
+                recordFailure(err.message);
+                resolve(null);
+                return;
+            }
+            consecutiveFailures = 0;
+            // A cache miss / unknown pet comes back as a defaulted (empty) row;
+            // fall through to Prisma rather than returning a blank pet.
+            resolve(res.petId ? mapPetWireToRosterPet(res) : null);
+        });
     });
 }
