@@ -68,6 +68,11 @@ Each phase is independently shippable and leaves `go test ./...` green. The
 roster path and the battle path are separable — do roster first (simpler,
 lower risk), then battle (introduces the sim).
 
+> **Status:** Phases 0–5 implemented on `feat/indexer-v2` (roster v2, battle v2
+> decode, the Go combat sim with golden-vector parity, the gRPC widening +
+> `EstimateWin`, and the parity test + docs). Phase 6 (auxiliary breed/train/
+> marriage streams) and the Metaplex Core ownership work remain decision-gated.
+
 ### Phase 0 — IDL refresh & fixtures (½–1 day)
 
 - Regenerate `internal/solana/idl/cryptopets.json` from the v2 Anchor build
