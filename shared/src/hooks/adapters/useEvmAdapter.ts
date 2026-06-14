@@ -46,15 +46,23 @@ const isInFlight = (w: WriteState, r: ReceiptState): boolean  => {
     return w.isPending || (!!w.data && !r.isSuccess && !r.isError);
 }
 
+const ZERO = '0x0000000000000000000000000000000000000000' as `0x${string}`;
+
 export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  => {
     const { evm } = usePetsConfig();
-    const contractAddress = evm?.contractAddress;
-    const abi = evm?.abi ?? [];
-    const safeAddress = (contractAddress ?? '0x0000000000000000000000000000000000000000') as `0x${string}`;
-    const canWrite = enabled && Boolean(contractAddress);
+
+    // v2 splits writes across two proxies: PetCore (ERC-721 storage, mint,
+    // level/XP, rename, transfer) and GameLogic (async battle/breed/train).
+    const petCoreAddress = evm?.petCore.address;
+    const petCoreAbi = evm?.petCore.abi ?? [];
+    const gameLogicAddress = evm?.gameLogic.address;
+    const gameLogicAbi = evm?.gameLogic.abi ?? [];
+    const petCore = (petCoreAddress ?? ZERO);
+    const gameLogic = (gameLogicAddress ?? ZERO);
+    const canWrite = enabled && Boolean(petCoreAddress) && Boolean(gameLogicAddress);
 
     // Reads — usePetsContract also provides the caller address for transferFrom.
-    const reads = usePetsContract({ contractAddress, abi, enabled });
+    const reads = usePetsContract({ contractAddress: petCoreAddress, abi: petCoreAbi, enabled });
     const evmPets = useMemo<Pet[]>(() => {
         if (!enabled) return [];
         return (reads.pets as unknown as EvmRawPet[]).map(
@@ -78,10 +86,12 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     const battleR = useWaitForTransactionReceipt({ hash: battleW.data, query: { enabled: !!battleW.data } });
     const breedR = useWaitForTransactionReceipt({ hash: breedW.data, query: { enabled: !!breedW.data } });
 
+    // PetCore: gacha starter mint. Fee (baseMintFee from GameConfig) is wired
+    // in Phase 2; mintStarter is payable and currently sent with no value.
     const createPet: AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }> = {
         async mutateAsync({ name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await createW.writeContractAsync({ address: safeAddress, abi, functionName: 'createRandom', args: [name], gas: 500000n });
+            await createW.writeContractAsync({ address: petCore, abi: petCoreAbi, functionName: 'mintStarter', args: [name], gas: 500000n });
         },
         lifecycle: toLc(createW, createR),
         isPending: isInFlight(createW, createR),
@@ -91,7 +101,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         async mutateAsync({ petId }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             await levelUpW.writeContractAsync({
-                address: safeAddress, abi, functionName: 'levelUp',
+                address: petCore, abi: petCoreAbi, functionName: 'levelUp',
                 args: [BigInt(petId)], value: 1000000000000000n, gas: 200000n,
             } as unknown as Parameters<typeof levelUpW.writeContractAsync>[0]);
         },
@@ -102,7 +112,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     const renamePet: AdapterMutation<{ petId: string; name: string }> = {
         async mutateAsync({ petId, name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await renameW.writeContractAsync({ address: safeAddress, abi, functionName: 'changeName', args: [BigInt(petId), name], gas: 100000n });
+            await renameW.writeContractAsync({ address: petCore, abi: petCoreAbi, functionName: 'changeName', args: [BigInt(petId), name], gas: 100000n });
         },
         lifecycle: toLc(renameW, renameR),
         isPending: isInFlight(renameW, renameR),
@@ -112,7 +122,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         async mutateAsync({ petId, to }) {
             if (!canWrite || !reads.address) throw new Error('EVM contract not configured or wallet not connected');
             await transferW.writeContractAsync({
-                address: safeAddress, abi, functionName: 'transferFrom',
+                address: petCore, abi: petCoreAbi, functionName: 'transferFrom',
                 args: [reads.address, to as `0x${string}`, BigInt(petId)], gas: 200000n,
             });
         },
@@ -120,19 +130,23 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         isPending: isInFlight(transferW, transferR),
     };
 
+    // GameLogic: v2 battle is async (request → settle). This requests the VRF
+    // round; settle + fight replay land in Phase 2.
     const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }> = {
         async mutateAsync({ petId1, petId2 }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await battleW.writeContractAsync({ address: safeAddress, abi, functionName: 'battle', args: [BigInt(petId1), BigInt(petId2)], gas: 300000n });
+            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], gas: 300000n });
         },
         lifecycle: toLc(battleW, battleR),
         isPending: isInFlight(battleW, battleR),
     };
 
+    // GameLogic: breed request (payable — breedFee wired in Phase 3). Offspring
+    // is minted on BreedSettled, watched in useBreedPets.
     const breedPets: AdapterMutation<{ parentId1: string; parentId2: string; name: string }> = {
         async mutateAsync({ parentId1, parentId2, name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await breedW.writeContractAsync({ address: safeAddress, abi, functionName: 'requestCreateFromDNA', args: [BigInt(parentId1), BigInt(parentId2), name], gas: 800000n });
+            await breedW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestCreateFromDNA', args: [BigInt(parentId1), BigInt(parentId2), name], gas: 800000n });
         },
         lifecycle: toLc(breedW, breedR),
         isPending: isInFlight(breedW, breedR),

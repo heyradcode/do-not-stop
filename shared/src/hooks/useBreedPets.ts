@@ -43,10 +43,10 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
     });
 
     useEffect(() => {
-        if (!isEvm || !requestReceipt || !hash || !address || !evm?.abi) return;
+        if (!isEvm || !requestReceipt || !hash || !address || !evm?.gameLogic.abi) return;
         try {
             const logs = parseEventLogs({
-                abi: evm.abi,
+                abi: evm.gameLogic.abi,
                 logs: requestReceipt.logs,
                 eventName: 'BreedRandomnessRequested',
                 strict: false,
@@ -57,7 +57,7 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         } catch {
             /* not a breed tx or ABI mismatch */
         }
-    }, [requestReceipt, hash, address, isEvm, evm?.abi]);
+    }, [requestReceipt, hash, address, isEvm, evm?.gameLogic.abi]);
 
     const notifySuccess = useCallback((name: string) => {
         onSuccessRef.current?.({ name });
@@ -68,10 +68,10 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         setPendingRequestId(null);
     }, [notifySuccess]);
 
-    // Watch for BreedFulfilled event (EVM VRF fulfillment).
+    // Watch for BreedSettled event on GameLogic (EVM VRF fulfillment).
     useWatchPetsContract({
-        contractAddress: evm?.contractAddress,
-        abi: evm?.abi ?? [],
+        contractAddress: evm?.gameLogic.address,
+        abi: evm?.gameLogic.abi ?? [],
         address: address as `0x${string}` | undefined,
         pendingRequestId: isEvm ? pendingRequestId : null,
         onBreedSuccess: isEvm ? handleBreedFulfilled : undefined,
