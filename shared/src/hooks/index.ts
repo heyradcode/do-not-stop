@@ -2,6 +2,8 @@
 export { setTokenSuccessCallback } from './chains/ethereum/useVerifySignature';
 // Low-level EVM read hook — consumed by mobile until it migrates to usePetList.
 export { usePetsContract } from './chains/ethereum/usePetsContract';
+// v2 fee schedule reader (GameConfig + per-wallet mint count).
+export { useEvmFees, type EvmFees } from './chains/ethereum/useEvmFees';
 
 export { useActiveChain, type ActiveChain } from './useActiveChain';
 export { useChainCapabilities, type ChainContext } from './useChainCapabilities';

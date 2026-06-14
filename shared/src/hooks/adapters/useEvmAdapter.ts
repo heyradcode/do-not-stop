@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { isAddress } from 'viem';
 import { usePetsContract } from '../chains/ethereum/usePetsContract';
+import { useEvmFees } from '../chains/ethereum/useEvmFees';
 import { usePetsConfig } from '../../contexts/PetsConfigContext';
 import { mapEvmPet, type EvmRawPet } from '../../utils/pets/mapEvmPet';
 import { parseContractError } from '../../utils/ethereum';
@@ -63,6 +64,10 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
 
     // Reads — usePetsContract also provides the caller address for transferFrom.
     const reads = usePetsContract({ contractAddress: petCoreAddress, abi: petCoreAbi, enabled });
+
+    // v2 fee schedule (GameConfig + per-wallet mint count). Payable writes revert
+    // when underpaid, so these must resolve before mint/level/breed.
+    const fees = useEvmFees(enabled);
     const evmPets = useMemo<Pet[]>(() => {
         if (!enabled) return [];
         return (reads.pets as unknown as EvmRawPet[]).map(
@@ -86,23 +91,29 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     const battleR = useWaitForTransactionReceipt({ hash: battleW.data, query: { enabled: !!battleW.data } });
     const breedR = useWaitForTransactionReceipt({ hash: breedW.data, query: { enabled: !!breedW.data } });
 
-    // PetCore: gacha starter mint. Fee (baseMintFee from GameConfig) is wired
-    // in Phase 2; mintStarter is payable and currently sent with no value.
+    // PetCore: gacha starter mint. Fee escalates per wallet:
+    // baseMintFee × (1 + walletMintCount). Sent as value (contract requires >=).
     const createPet: AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }> = {
         async mutateAsync({ name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await createW.writeContractAsync({ address: petCore, abi: petCoreAbi, functionName: 'mintStarter', args: [name], gas: 500000n });
+            if (fees.nextMintFee == null) throw new Error('Mint fee not loaded yet');
+            await createW.writeContractAsync({
+                address: petCore, abi: petCoreAbi, functionName: 'mintStarter',
+                args: [name], value: fees.nextMintFee, gas: 500000n,
+            } as unknown as Parameters<typeof createW.writeContractAsync>[0]);
         },
         lifecycle: toLc(createW, createR),
         isPending: isInFlight(createW, createR),
     };
 
+    // PetCore: levelUp requires msg.value == levelUpFee() exactly.
     const levelUpPet: AdapterMutation<{ petId: string }> = {
         async mutateAsync({ petId }) {
             if (!canWrite) throw new Error('EVM contract not configured');
+            if (fees.levelUpFee == null) throw new Error('Level-up fee not loaded yet');
             await levelUpW.writeContractAsync({
                 address: petCore, abi: petCoreAbi, functionName: 'levelUp',
-                args: [BigInt(petId)], value: 1000000000000000n, gas: 200000n,
+                args: [BigInt(petId)], value: fees.levelUpFee, gas: 200000n,
             } as unknown as Parameters<typeof levelUpW.writeContractAsync>[0]);
         },
         lifecycle: toLc(levelUpW, levelUpR),
@@ -141,12 +152,17 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         isPending: isInFlight(battleW, battleR),
     };
 
-    // GameLogic: breed request (payable — breedFee wired in Phase 3). Offspring
-    // is minted on BreedSettled, watched in useBreedPets.
+    // GameLogic: breed request (payable). Same-owner breeding requires
+    // msg.value >= breedFee(); cross-owner stud fees are v2.1/marriage.
+    // Offspring is minted on BreedSettled, watched in useBreedPets.
     const breedPets: AdapterMutation<{ parentId1: string; parentId2: string; name: string }> = {
         async mutateAsync({ parentId1, parentId2, name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await breedW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestCreateFromDNA', args: [BigInt(parentId1), BigInt(parentId2), name], gas: 800000n });
+            if (fees.breedFee == null) throw new Error('Breed fee not loaded yet');
+            await breedW.writeContractAsync({
+                address: gameLogic, abi: gameLogicAbi, functionName: 'requestCreateFromDNA',
+                args: [BigInt(parentId1), BigInt(parentId2), name], value: fees.breedFee, gas: 800000n,
+            } as unknown as Parameters<typeof breedW.writeContractAsync>[0]);
         },
         lifecycle: toLc(breedW, breedR),
         isPending: isInFlight(breedW, breedR),
