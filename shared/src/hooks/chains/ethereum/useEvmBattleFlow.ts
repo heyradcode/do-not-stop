@@ -1,0 +1,133 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAccount, useReadContract, useWatchContractEvent, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { parseEventLogs } from 'viem';
+import { usePetsConfig } from '../../../contexts/PetsConfigContext';
+import { useWatchVrfFulfillment } from './useWatchVrfFulfillment';
+import type { BattleResolvedResult, EvmBattlePhase } from '../../../types/battle';
+
+type UseEvmBattleFlowParams = {
+    /** `requestBattle` tx hash from the adapter; drives the rest of the flow. */
+    requestHash?: `0x${string}`;
+    enabled: boolean;
+    onResolved?: (result: BattleResolvedResult) => void;
+};
+
+/**
+ * Frontend-driven EVM battle settlement (mirrors the Solana reveal+settle
+ * pattern). Given the `requestBattle` tx hash, this:
+ *   1. parses the VRF `requestId` from `BattleRandomnessRequested`,
+ *   2. waits for the coordinator's `RandomWordsFulfilled`,
+ *   3. sends the `settleBattle(requestId)` tx,
+ *   4. decodes `BattleResolved` for the outcome + seed used by fight replay.
+ */
+export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBattleFlowParams) => {
+    const { evm } = usePetsConfig();
+    const { address } = useAccount();
+    const gameLogic = evm?.gameLogic.address;
+    const gameLogicAbi = useMemo(() => evm?.gameLogic.abi ?? [], [evm?.gameLogic.abi]);
+
+    const [requestId, setRequestId] = useState<bigint | null>(null);
+    const [phase, setPhase] = useState<EvmBattlePhase>('idle');
+    const [result, setResult] = useState<BattleResolvedResult | null>(null);
+    const [error, setError] = useState<Error | null>(null);
+    const onResolvedRef = useRef(onResolved);
+    onResolvedRef.current = onResolved;
+
+    // VRF coordinator address — only needs reading once GameLogic is configured.
+    const { data: coordinator } = useReadContract({
+        address: gameLogic,
+        abi: gameLogicAbi,
+        functionName: 's_vrfCoordinator',
+        query: { enabled: enabled && Boolean(gameLogic) },
+    });
+
+    // 1. Parse requestId from the request tx receipt.
+    const { data: requestReceipt } = useWaitForTransactionReceipt({
+        hash: enabled && requestHash ? requestHash : undefined,
+    });
+    useEffect(() => {
+        if (!enabled || !requestReceipt || !address || !evm?.gameLogic.abi) return;
+        try {
+            const logs = parseEventLogs({
+                abi: evm.gameLogic.abi,
+                logs: requestReceipt.logs,
+                eventName: 'BattleRandomnessRequested',
+                strict: false,
+            }) as unknown as { args: { requester?: string; requestId?: bigint } }[];
+            const mine = logs.find((l) => l.args.requester?.toLowerCase() === address.toLowerCase());
+            if (mine?.args.requestId != null) {
+                setRequestId(mine.args.requestId);
+                setPhase('awaiting-vrf');
+            }
+        } catch {
+            /* not a battle tx / ABI mismatch */
+        }
+    }, [enabled, requestReceipt, address, evm?.gameLogic.abi]);
+
+    // 3. settleBattle tx.
+    const settle = useWriteContract();
+    const settleSentRef = useRef(false);
+    const handleFulfilled = useCallback((id: bigint) => {
+        if (settleSentRef.current || !gameLogic) return;
+        settleSentRef.current = true;
+        setPhase('settling');
+        settle.writeContract(
+            { address: gameLogic, abi: gameLogicAbi, functionName: 'settleBattle', args: [id], gas: 500000n },
+            {
+                onSuccess: () => setPhase('resolving'),
+                onError: (e) => { setError(e as Error); setPhase('error'); },
+            },
+        );
+    }, [gameLogic, gameLogicAbi, settle]);
+
+    // 2. Wait for VRF fulfillment, then settle.
+    useWatchVrfFulfillment({
+        coordinator: enabled ? (coordinator as `0x${string}` | undefined) : undefined,
+        requestId: enabled ? requestId : null,
+        onFulfilled: handleFulfilled,
+    });
+
+    // 4. Decode BattleResolved for our requestId.
+    useWatchContractEvent({
+        address: gameLogic,
+        abi: gameLogicAbi,
+        eventName: 'BattleResolved',
+        enabled: Boolean(enabled && gameLogic && requestId != null),
+        onLogs(logs) {
+            if (requestId == null) return;
+            const typed = logs as unknown as { args: Record<string, bigint | boolean | number> }[];
+            for (const log of typed) {
+                const a = log.args;
+                if (a.requestId !== requestId) continue;
+                const resolved: BattleResolvedResult = {
+                    requestId: a.requestId as bigint,
+                    winnerId: a.winnerId as bigint,
+                    loserId: a.loserId as bigint,
+                    vrfSeed: a.vrfSeed as bigint,
+                    firstWins: a.firstWins as boolean,
+                    rounds: Number(a.rounds),
+                    winnerHpRemaining: Number(a.winnerHpRemaining),
+                    xpWin: Number(a.xpWin),
+                    xpLoss: Number(a.xpLoss),
+                };
+                setResult(resolved);
+                setPhase('resolved');
+                onResolvedRef.current?.(resolved);
+                return;
+            }
+        },
+    });
+
+    const reset = useCallback(() => {
+        setRequestId(null);
+        setPhase('idle');
+        setResult(null);
+        setError(null);
+        settleSentRef.current = false;
+        settle.reset();
+    }, [settle]);
+
+    const isActive = phase === 'awaiting-vrf' || phase === 'settling' || phase === 'resolving';
+
+    return { phase, requestId, result, error: error ?? (settle.error as Error | null), isActive, reset };
+};

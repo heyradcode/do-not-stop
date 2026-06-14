@@ -34,4 +34,5 @@ export {
     type EvmContractRef,
 } from './contexts/PetsConfigContext';
 export type { Pet, PetChain, PetAction, OpponentPet } from './types/pet';
+export type { BattleResolvedResult, EvmBattlePhase } from './types/battle';
 export { queryClient } from './queryClient';
