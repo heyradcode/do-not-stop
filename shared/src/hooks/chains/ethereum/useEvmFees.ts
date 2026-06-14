@@ -11,6 +11,8 @@ export interface EvmFees {
     breedFee?: bigint;
     /** GameConfig.trainFee() — base train fee, scaled by level on-chain. */
     trainFee?: bigint;
+    /** GameConfig.studFee() — added to breedFee for cross-owner (married) breeding. */
+    studFee?: bigint;
     /** PetCore.walletMintCount(addr) — lifetime mints, drives mint escalation. */
     walletMintCount?: bigint;
     /** Next mintStarter fee for this wallet: baseMintFee × (1 + walletMintCount). */
@@ -36,6 +38,7 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
     const { data: levelUpFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'levelUpFee', query: cfgQuery });
     const { data: breedFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'breedFee', query: cfgQuery });
     const { data: trainFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'trainFee', query: cfgQuery });
+    const { data: studFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'studFee', query: cfgQuery });
 
     const { data: walletMintCount } = useReadContract({
         address: petCore,
@@ -54,8 +57,9 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
             levelUpFee: levelUpFee as bigint | undefined,
             breedFee: breedFee as bigint | undefined,
             trainFee: trainFee as bigint | undefined,
+            studFee: studFee as bigint | undefined,
             walletMintCount: mintCount,
             nextMintFee,
         };
-    }, [baseMintFee, levelUpFee, breedFee, trainFee, walletMintCount]);
+    }, [baseMintFee, levelUpFee, breedFee, trainFee, studFee, walletMintCount]);
 };

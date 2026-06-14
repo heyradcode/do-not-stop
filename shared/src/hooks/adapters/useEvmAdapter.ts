@@ -171,16 +171,18 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         isPending: isInFlight(battleW, battleR),
     };
 
-    // GameLogic: breed request (payable). Same-owner breeding requires
-    // msg.value >= breedFee(); cross-owner stud fees are v2.1/marriage.
+    // GameLogic: breed request (payable). Same-owner requires msg.value >=
+    // breedFee(); cross-owner (married) requires breedFee() + studFee().
     // Offspring is minted on BreedSettled, watched in useBreedPets.
-    const breedPets: AdapterMutation<{ parentId1: string; parentId2: string; name: string }> = {
-        async mutateAsync({ parentId1, parentId2, name }) {
+    const breedPets: AdapterMutation<{ parentId1: string; parentId2: string; name: string; crossOwner?: boolean }> = {
+        async mutateAsync({ parentId1, parentId2, name, crossOwner }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             if (fees.breedFee == null) throw new Error('Breed fee not loaded yet');
+            if (crossOwner && fees.studFee == null) throw new Error('Stud fee not loaded yet');
+            const value = fees.breedFee + (crossOwner ? (fees.studFee ?? 0n) : 0n);
             await breedW.writeContractAsync({
                 address: gameLogic, abi: gameLogicAbi, functionName: 'requestCreateFromDNA',
-                args: [BigInt(parentId1), BigInt(parentId2), name], value: fees.breedFee, gas: 800000n,
+                args: [BigInt(parentId1), BigInt(parentId2), name], value, gas: 800000n,
             } as unknown as Parameters<typeof breedW.writeContractAsync>[0]);
         },
         lifecycle: toLc(breedW, breedR),

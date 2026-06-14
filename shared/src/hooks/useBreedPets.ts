@@ -10,6 +10,8 @@ export interface BreedPetsArgs {
     parentId1: string;
     parentId2: string;
     name: string;
+    /** EVM: parents have different owners (married) → adds the stud fee. */
+    crossOwner?: boolean;
 }
 
 export type UseBreedPetsOptions = {
@@ -131,6 +133,7 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
                 parentId1: args.parentId1,
                 parentId2: args.parentId2,
                 name: args.name.trim(),
+                crossOwner: args.crossOwner,
             });
             if (!isEvm) notifySuccess(args.name.trim()); // Solana: confirmed on resolve
         } catch {
