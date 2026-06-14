@@ -1,14 +1,15 @@
 import { prisma } from '@config/prisma';
-import { tryGrpcFindReadyOpponents } from '../grpc/rosterReads';
+import { tryGrpcFindReadyOpponents, tryGrpcGetPetState } from '../grpc/rosterReads';
+import { mapRosterRowToRosterPet } from './roster.mapping';
 import type { Chain } from '@typings/chain';
 
 /**
- * Single data-access layer for the `pet_roster` table. Both the indexer (writes)
- * and the battle feature (reads) go through here, so all roster queries live in
- * one place.
+ * Read access layer for the `pet_roster` table. indexer-go is the sole writer
+ * now (it owns event decoding + the write-through cache), so the backend only
+ * reads here — the matchmaking query, with a gRPC-cache fast path.
  */
 
-/** A roster row (also the shape the indexer upserts). */
+/** A roster row (the shape indexer-go writes; the read paths project to it). */
 export interface RosterPet {
     chain: Chain;
     petId: string;
@@ -20,6 +21,18 @@ export interface RosterPet {
     winCount: number;
     lossCount: number;
     readyAt: bigint;
+
+    // v2 fields (indexer-go writes these; contracts plan §3.4, §4.1, §3.7, §4.4, §2.3).
+    xp: number;
+    generation: number;
+    parent1Id: string; // "0" = none
+    parent2Id: string;
+    breedCount: number;
+    speciesId: number;
+    spouseId: string; // "0" = unmarried
+    breedReadyAt: bigint;
+    trainReadyAt: bigint;
+    asset: string; // Metaplex Core asset pubkey (Solana only); "" on EVM
 }
 
 export interface FindOpponentsParams {
@@ -29,32 +42,6 @@ export interface FindOpponentsParams {
     minLevel: number;
     page: number;
     pageSize: number;
-}
-
-/**
- * Upsert one pet keyed by (chain, petId). On transfer the owner changes but the
- * id is stable, so an upsert keeps the row correct without orphaning.
- */
-export async function upsertPet(pet: RosterPet): Promise<void> {
-    await prisma.petRoster.upsert({
-        where: { chain_petId: { chain: pet.chain, petId: pet.petId } },
-        create: pet,
-        update: pet,
-    });
-}
-
-/** Bounds concurrent upserts so a large scan can't exhaust the connection pool. */
-const UPSERT_BATCH_SIZE = 25;
-
-/** Upsert a batch of pets, `UPSERT_BATCH_SIZE` at a time. */
-export async function upsertManyPets(pets: RosterPet[]): Promise<void> {
-    for (let i = 0; i < pets.length; i += UPSERT_BATCH_SIZE) {
-        await Promise.all(pets.slice(i, i + UPSERT_BATCH_SIZE).map(upsertPet));
-    }
-}
-
-export async function countByChain(chain: Chain): Promise<number> {
-    return prisma.petRoster.count({ where: { chain } });
 }
 
 /**
@@ -90,18 +77,23 @@ export async function findReadyOpponents(
     ]);
 
     return {
-        rows: rows.map((row) => ({
-            chain: row.chain as Chain,
-            petId: row.petId,
-            owner: row.owner,
-            name: row.name,
-            level: row.level,
-            rarity: row.rarity,
-            dna: row.dna,
-            winCount: row.winCount,
-            lossCount: row.lossCount,
-            readyAt: row.readyAt,
-        })),
+        rows: rows.map(mapRosterRowToRosterPet),
         total,
     };
+}
+
+/**
+ * A single pet by (chain, petId) for the pet-detail view. Same fail-open shape
+ * as the matchmaking read: indexer-go's cache answers first when
+ * ROSTER_READ_SOURCE=grpc, otherwise (or on any gRPC fault) Prisma does.
+ * Returns null when no such pet exists on either path.
+ */
+export async function getPetById(chain: Chain, petId: string): Promise<RosterPet | null> {
+    const viaGrpc = await tryGrpcGetPetState(chain, petId);
+    if (viaGrpc) return viaGrpc;
+
+    const row = await prisma.petRoster.findUnique({
+        where: { chain_petId: { chain, petId } },
+    });
+    return row ? mapRosterRowToRosterPet(row) : null;
 }

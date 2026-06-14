@@ -74,6 +74,9 @@
     "exclude": [
         "node_modules",
         "dist",
+        // Vitest specs — run via esbuild, not part of the production build, so
+        // they don't get emitted to dist/ or require vitest types at build time.
+        "src/**/*.test.ts",
         // The subgraph deploy project — AssemblyScript mappings built by
         // graph-cli, not part of the backend's TypeScript program.
         "indexing/evm/subgraph"

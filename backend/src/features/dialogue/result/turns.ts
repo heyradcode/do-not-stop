@@ -1,6 +1,6 @@
 import { env } from '@config/env';
 import type { Persona } from '../llm/persona';
-import { buildBanter, buildRivalry } from '../context';
+import { buildBanter, buildBattleIntensity, buildRivalry } from '../context';
 import { fallbackDialogue } from '../llm/fallback';
 import { isHuggingFaceConfigured, requestDialogue } from '../llm/client';
 import type { DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
@@ -37,8 +37,11 @@ export async function generateTurns(
             buildRivalry(chain, attackerId, defenderId, excludeBattleId),
             opts?.banterOverride ?? buildBanter(chain, attackerId, defenderId, excludeBattleId),
         ]);
+        // How this specific battle went, when the stream has settled it (synchronous,
+        // in-memory) — colors the result reactions without changing the fixed outcome.
+        const intensity = buildBattleIntensity(chain, input.battleId || undefined);
 
-        const turns = await requestDialogue(input, attacker, defender, rivalry, banter);
+        const turns = await requestDialogue(input, attacker, defender, rivalry, banter, intensity);
 
         return { turns, model: env.hf.model };
     } catch (err) {

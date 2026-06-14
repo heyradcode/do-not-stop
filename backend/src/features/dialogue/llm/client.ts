@@ -50,13 +50,14 @@ export async function requestDialogue(
     defender: Persona,
     rivalry?: string,
     banter?: string,
+    intensity?: string,
 ): Promise<DialogueTurn[]> {
     if (!isHuggingFaceConfigured()) {
         throw new Error('HF inference is not configured (HF_API_TOKEN unset)');
     }
     return generate(
         `${SYSTEM_PROMPT}\n\n${JSON_FORMAT_INSTRUCTION}`,
-        buildUserMessage(input, attacker, defender, rivalry, banter),
+        buildUserMessage(input, attacker, defender, rivalry, banter, intensity),
     );
 }
 
