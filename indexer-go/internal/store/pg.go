@@ -40,10 +40,12 @@ func (f *PgFlusher) FlushRoster(ctx context.Context, batch []indexer.RosterUpdat
 		return nil
 	}
 
-	const cols = 11
+	const cols = 21
 	var sb strings.Builder
 	sb.WriteString(`INSERT INTO pet_roster
-  (chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at, last_version, updated_at)
+  (chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at,
+   xp, generation, parent1_id, parent2_id, breed_count, species_id, spouse_id, breed_ready_at, train_ready_at, asset,
+   last_version, updated_at)
 VALUES `)
 
 	args := make([]any, 0, len(batch)*cols)
@@ -52,11 +54,20 @@ VALUES `)
 			sb.WriteString(", ")
 		}
 		base := i * cols
-		fmt.Fprintf(&sb, "($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d, now())",
-			base+1, base+2, base+3, base+4, base+5, base+6, base+7, base+8, base+9, base+10, base+11)
+		sb.WriteByte('(')
+		for j := range cols {
+			if j > 0 {
+				sb.WriteByte(',')
+			}
+			fmt.Fprintf(&sb, "$%d", base+j+1)
+		}
+		sb.WriteString(", now())")
 		args = append(args,
 			u.Chain, u.PetID, u.Owner, u.Name, int32(u.Level), int32(u.Rarity),
-			u.DNA, int32(u.WinCount), int32(u.LossCount), u.ReadyAt, u.Version)
+			u.DNA, int32(u.WinCount), int32(u.LossCount), u.ReadyAt,
+			int32(u.XP), int32(u.Generation), u.Parent1ID, u.Parent2ID, int32(u.BreedCount),
+			int32(u.SpeciesID), u.SpouseID, u.BreedReadyAt, u.TrainReadyAt, u.Asset,
+			u.Version)
 	}
 
 	sb.WriteString(`
@@ -69,6 +80,16 @@ ON CONFLICT (chain, pet_id) DO UPDATE SET
   win_count = EXCLUDED.win_count,
   loss_count = EXCLUDED.loss_count,
   ready_at = EXCLUDED.ready_at,
+  xp = EXCLUDED.xp,
+  generation = EXCLUDED.generation,
+  parent1_id = EXCLUDED.parent1_id,
+  parent2_id = EXCLUDED.parent2_id,
+  breed_count = EXCLUDED.breed_count,
+  species_id = EXCLUDED.species_id,
+  spouse_id = EXCLUDED.spouse_id,
+  breed_ready_at = EXCLUDED.breed_ready_at,
+  train_ready_at = EXCLUDED.train_ready_at,
+  asset = EXCLUDED.asset,
   last_version = EXCLUDED.last_version,
   updated_at = now()
 WHERE pet_roster.last_version <= EXCLUDED.last_version`)
@@ -87,10 +108,11 @@ func (f *PgFlusher) InsertBattles(ctx context.Context, events []indexer.BattleEv
 		return nil
 	}
 
-	const cols = 7
+	const cols = 13
 	var sb strings.Builder
 	sb.WriteString(`INSERT INTO battle_history
-  (chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, fought_at, version)
+  (chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, loser_pet_id,
+   seed, rounds, winner_hp_remaining, xp_win, xp_loss, fought_at, version)
 VALUES `)
 
 	args := make([]any, 0, len(events)*cols)
@@ -99,9 +121,17 @@ VALUES `)
 			sb.WriteString(", ")
 		}
 		base := i * cols
-		fmt.Fprintf(&sb, "($%d,$%d,$%d,$%d,$%d,$%d,$%d)",
-			base+1, base+2, base+3, base+4, base+5, base+6, base+7)
-		args = append(args, e.Chain, e.BattleID, e.Attacker, e.Defender, e.WinnerPetID, e.FoughtAt, e.Version)
+		sb.WriteByte('(')
+		for j := range cols {
+			if j > 0 {
+				sb.WriteByte(',')
+			}
+			fmt.Fprintf(&sb, "$%d", base+j+1)
+		}
+		sb.WriteByte(')')
+		args = append(args, e.Chain, e.BattleID, e.Attacker, e.Defender, e.WinnerPetID, e.LoserPetID,
+			e.Seed, int32(e.Rounds), int32(e.WinnerHpRemaining), int32(e.XPWin), int32(e.XPLoss),
+			e.FoughtAt, e.Version)
 	}
 
 	sb.WriteString(" ON CONFLICT (chain, battle_id) DO NOTHING")
@@ -117,7 +147,9 @@ VALUES `)
 // (the table is the persistent copy of the exact data the cache mirrors).
 func (f *PgFlusher) LoadRoster(ctx context.Context) ([]indexer.RosterUpdate, error) {
 	rows, err := f.pool.Query(ctx, `
-SELECT chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at, last_version
+SELECT chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at,
+       xp, generation, parent1_id, parent2_id, breed_count, species_id, spouse_id, breed_ready_at, train_ready_at, asset,
+       last_version
 FROM pet_roster`)
 	if err != nil {
 		return nil, fmt.Errorf("store: load roster: %w", err)
@@ -128,13 +160,19 @@ FROM pet_roster`)
 	for rows.Next() {
 		var u indexer.RosterUpdate
 		var level, rarity, winCount, lossCount int32
+		var xp, generation, breedCount, speciesID int32
 		var version int64
 		if err := rows.Scan(&u.Chain, &u.PetID, &u.Owner, &u.Name, &level, &rarity,
-			&u.DNA, &winCount, &lossCount, &u.ReadyAt, &version); err != nil {
+			&u.DNA, &winCount, &lossCount, &u.ReadyAt,
+			&xp, &generation, &u.Parent1ID, &u.Parent2ID, &breedCount, &speciesID, &u.SpouseID,
+			&u.BreedReadyAt, &u.TrainReadyAt, &u.Asset,
+			&version); err != nil {
 			return nil, fmt.Errorf("store: load roster scan: %w", err)
 		}
 		u.Level, u.Rarity = uint32(level), uint32(rarity)
 		u.WinCount, u.LossCount = uint32(winCount), uint32(lossCount)
+		u.XP, u.Generation = uint32(xp), uint32(generation)
+		u.BreedCount, u.SpeciesID = uint32(breedCount), uint32(speciesID)
 		u.Version = uint64(version)
 		pets = append(pets, u)
 	}
@@ -148,7 +186,8 @@ FROM pet_roster`)
 // no cursor for.
 func (f *PgFlusher) BattlesSince(ctx context.Context, chain string, after uint64) ([]indexer.BattleEvent, error) {
 	rows, err := f.pool.Query(ctx, `
-SELECT chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, fought_at, version
+SELECT chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, loser_pet_id,
+       seed, rounds, winner_hp_remaining, xp_win, xp_loss, fought_at, version
 FROM battle_history
 WHERE chain = $1 AND version > $2
 ORDER BY version ASC`, chain, after)
@@ -160,10 +199,14 @@ ORDER BY version ASC`, chain, after)
 	var events []indexer.BattleEvent
 	for rows.Next() {
 		var e indexer.BattleEvent
+		var rounds, winnerHp, xpWin, xpLoss int32
 		var foughtAt, version int64
-		if err := rows.Scan(&e.Chain, &e.BattleID, &e.Attacker, &e.Defender, &e.WinnerPetID, &foughtAt, &version); err != nil {
+		if err := rows.Scan(&e.Chain, &e.BattleID, &e.Attacker, &e.Defender, &e.WinnerPetID, &e.LoserPetID,
+			&e.Seed, &rounds, &winnerHp, &xpWin, &xpLoss, &foughtAt, &version); err != nil {
 			return nil, fmt.Errorf("store: battles since scan: %w", err)
 		}
+		e.Rounds, e.WinnerHpRemaining = uint32(rounds), uint32(winnerHp)
+		e.XPWin, e.XPLoss = uint32(xpWin), uint32(xpLoss)
 		e.FoughtAt = foughtAt
 		e.Version = uint64(version)
 		events = append(events, e)

@@ -1,59 +1,56 @@
-import { Address, BigInt } from "@graphprotocol/graph-ts";
-import { CryptoPets } from "../generated/CryptoPets/CryptoPets";
+import { BigInt } from "@graphprotocol/graph-ts";
+import { PetCoreV1 } from "../generated/PetCoreV1/PetCoreV1";
 import { Pet } from "../generated/schema";
-import { PetData } from "./types";
+import { PETCORE_ADDRESS } from "./addresses";
 
-/** Pull on-chain state for a single pet and build a typed PetData snapshot. */
-function fetchPetData(
-  tokenId: BigInt,
-  cryptoPetsAddress: Address,
-  updatedAt: BigInt
-): PetData | null {
-  const contract = CryptoPets.bind(cryptoPetsAddress);
+// refreshPet re-reads a pet's full on-chain state from PetCoreV1 and upserts
+// the Pet entity. Every pet-touching handler funnels through here, so the
+// entity is always a faithful snapshot rather than a hand-maintained
+// accumulation. updatedAt (the block timestamp) is the per-pet version
+// indexer-go resumes from. A reverted read (e.g. a not-yet-minted id) is
+// skipped rather than written as garbage.
+export function refreshPet(petId: BigInt, updatedAt: BigInt): void {
+  const core = PetCoreV1.bind(PETCORE_ADDRESS);
 
-  const ownerResult = contract.try_ownerOf(tokenId);
-  if (ownerResult.reverted) return null;
+  const ownerRes = core.try_ownerOf(petId);
+  if (ownerRes.reverted) return;
+  const petRes = core.try_getPet(petId);
+  if (petRes.reverted) return;
+  const p = petRes.value;
 
-  const dataResult = contract.try_getById(tokenId);
-  if (dataResult.reverted) return null;
-
-  const d = dataResult.value;
-  return new PetData(
-    ownerResult.value,
-    d.name,
-    d.dna,
-    d.level.toI32(),
-    d.rarity,
-    d.winCount,
-    d.lossCount,
-    d.readyTime,
-    updatedAt
-  );
-}
-
-/** Re-read on-chain pet state and upsert the subgraph entity. */
-export function refreshPetFromChain(
-  tokenId: BigInt,
-  cryptoPetsAddress: Address,
-  updatedAt: BigInt
-): void {
-  const data = fetchPetData(tokenId, cryptoPetsAddress, updatedAt);
-  if (data == null) return;
-
-  const id = tokenId.toString();
+  const id = petId.toString();
   let pet = Pet.load(id);
   if (pet == null) {
     pet = new Pet(id);
   }
 
-  pet.owner = data.owner;
-  pet.name = data.name;
-  pet.dna = data.dna;
-  pet.level = data.level;
-  pet.rarity = data.rarity;
-  pet.winCount = data.winCount;
-  pet.lossCount = data.lossCount;
-  pet.readyAt = data.readyAt;
-  pet.updatedAt = data.updatedAt;
+  pet.owner = ownerRes.value;
+  pet.name = p.name;
+  pet.dna = p.dna;
+  pet.level = p.level.toI32();
+  pet.rarity = p.rarity;
+  pet.winCount = p.winCount;
+  pet.lossCount = p.lossCount;
+  pet.readyAt = p.readyTime;
+  pet.updatedAt = updatedAt;
+
+  // v2 fields.
+  pet.xp = p.xp.toI32();
+  pet.generation = p.generation;
+  pet.parent1Id = p.parent1Id;
+  pet.parent2Id = p.parent2Id;
+  pet.breedCount = p.breedCount;
+  pet.speciesId = p.speciesId;
+  pet.breedReadyAt = p.breedReadyAt;
+  pet.trainReadyAt = p.trainReadyAt;
+
+  // Marriage spouse lives in a separate mapping, not the Pet struct.
+  const marriage = core.try_marriageOf(petId);
+  if (!marriage.reverted) {
+    pet.spouseId = marriage.value.getSpouseId();
+  } else {
+    pet.spouseId = BigInt.zero();
+  }
+
   pet.save();
 }

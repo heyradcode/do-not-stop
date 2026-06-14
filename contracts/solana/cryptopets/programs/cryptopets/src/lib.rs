@@ -1,5 +1,8 @@
+pub mod combat;
+pub mod dna;
 pub mod errors;
 pub mod instructions;
+pub mod metadata;
 pub mod rarity;
 pub mod state;
 pub mod util;
@@ -17,25 +20,20 @@ pub mod cryptopets {
         initialize::handler(ctx, level_up_fee_lamports)
     }
 
-    pub fn create_starter_pet(
-        ctx: Context<CreateStarterPet>,
-        name: String,
-        dna: u64,
-        rarity: u8,
-    ) -> Result<()> {
-        create_starter_pet::handler(ctx, name, dna, rarity)
-    }
-
     pub fn level_up(ctx: Context<LevelUp>) -> Result<()> {
         level_up::handler(ctx)
+    }
+
+    pub fn train(ctx: Context<Train>) -> Result<()> {
+        train::handler(ctx)
     }
 
     pub fn rename_pet(ctx: Context<RenamePet>, name: String) -> Result<()> {
         rename_pet::handler(ctx, name)
     }
 
-    pub fn transfer_pet(ctx: Context<TransferPet>) -> Result<()> {
-        transfer_pet::handler(ctx)
+    pub fn set_open_to_challenges(ctx: Context<SetOpenToChallenges>, value: bool) -> Result<()> {
+        set_open_to_challenges::handler(ctx, value)
     }
 
     pub fn pause(ctx: Context<Pause>) -> Result<()> {
@@ -67,5 +65,132 @@ pub mod cryptopets {
 
     pub fn settle_breed(ctx: Context<SettleBreed>) -> Result<()> {
         settle_breed::handler(ctx)
+    }
+
+    pub fn commit_mint(
+        ctx: Context<CommitMint>,
+        randomness_account: Pubkey,
+        name: String,
+    ) -> Result<()> {
+        commit_mint::handler(ctx, randomness_account, name)
+    }
+
+    pub fn settle_mint(ctx: Context<SettleMint>) -> Result<()> {
+        settle_mint::handler(ctx)
+    }
+
+    pub fn cancel_mint(ctx: Context<CancelMint>) -> Result<()> {
+        cancel_mint::handler(ctx)
+    }
+
+    pub fn sync_metadata(ctx: Context<SyncMetadata>) -> Result<()> {
+        sync_metadata::handler(ctx)
+    }
+
+    pub fn cancel_battle(ctx: Context<CancelBattle>) -> Result<()> {
+        cancel_battle::handler(ctx)
+    }
+
+    pub fn cancel_breed(ctx: Context<CancelBreed>) -> Result<()> {
+        cancel_breed::handler(ctx)
+    }
+
+    pub fn set_battle_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_battle_cooldown_seconds(ctx, value)
+    }
+
+    pub fn set_level_up_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_level_up_fee_lamports(ctx, value)
+    }
+
+    pub fn set_randomness_expiry_slots(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_randomness_expiry_slots(ctx, value)
+    }
+
+    pub fn set_max_level(ctx: Context<SetConfig>, value: u16) -> Result<()> {
+        config::set_max_level(ctx, value)
+    }
+
+    pub fn set_level_band_width(ctx: Context<SetConfig>, value: u16) -> Result<()> {
+        config::set_level_band_width(ctx, value)
+    }
+
+    pub fn set_generation_cap(ctx: Context<SetConfig>, value: u8) -> Result<()> {
+        config::set_generation_cap(ctx, value)
+    }
+
+    pub fn set_breed_cooldown_base_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_breed_cooldown_base_seconds(ctx, value)
+    }
+
+    pub fn set_newborn_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_newborn_cooldown_seconds(ctx, value)
+    }
+
+    pub fn set_pool_size(ctx: Context<SetConfig>, tier: u8, size: u8) -> Result<()> {
+        config::set_pool_size(ctx, tier, size)
+    }
+
+    pub fn set_base_mint_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_base_mint_fee_lamports(ctx, value)
+    }
+
+    pub fn set_train_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_train_fee_lamports(ctx, value)
+    }
+
+    pub fn set_train_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_train_cooldown_seconds(ctx, value)
+    }
+
+    pub fn set_train_xp(ctx: Context<SetConfig>, value: u32) -> Result<()> {
+        config::set_train_xp(ctx, value)
+    }
+
+    pub fn set_breed_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_breed_fee_lamports(ctx, value)
+    }
+
+    pub fn set_stud_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_stud_fee_lamports(ctx, value)
+    }
+
+    pub fn set_marriage_cooldown_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_marriage_cooldown_seconds(ctx, value)
+    }
+
+    pub fn set_proposal_ttl_seconds(ctx: Context<SetConfig>, value: i64) -> Result<()> {
+        config::set_proposal_ttl_seconds(ctx, value)
+    }
+
+    pub fn withdraw_fees(ctx: Context<WithdrawFees>, amount: u64) -> Result<()> {
+        withdraw_fees::handler(ctx, amount)
+    }
+
+    pub fn propose_marriage(ctx: Context<ProposeMarriage>) -> Result<()> {
+        propose_marriage::handler(ctx)
+    }
+
+    pub fn accept_marriage(ctx: Context<AcceptMarriage>) -> Result<()> {
+        accept_marriage::handler(ctx)
+    }
+
+    pub fn cancel_marriage_proposal(
+        ctx: Context<CancelMarriageProposal>,
+        pet_a_id: u32,
+    ) -> Result<()> {
+        cancel_marriage_proposal::handler(ctx, pet_a_id)
+    }
+
+    pub fn divorce(ctx: Context<Divorce>) -> Result<()> {
+        divorce::handler(ctx)
+    }
+
+    pub fn clear_stale_marriage(ctx: Context<ClearStaleMarriage>) -> Result<()> {
+        clear_stale_marriage::handler(ctx)
+    }
+
+    pub fn withdraw_stud_fees(ctx: Context<WithdrawStudFees>) -> Result<()> {
+        withdraw_stud_fees::handler(ctx)
     }
 }

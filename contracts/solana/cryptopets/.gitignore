@@ -5,3 +5,7 @@ target
 node_modules
 test-ledger
 .yarn
+
+# Test-validator program fixtures: large binary dumps (Switchboard is ~10 MB),
+# regenerated from devnet. See tests/fixtures/README.md to re-dump.
+tests/fixtures/*.so

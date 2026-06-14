@@ -26,6 +26,7 @@ const (
 	GameDataService_StreamLiveBattles_FullMethodName  = "/cryptopets.GameDataService/StreamLiveBattles"
 	GameDataService_GetPetState_FullMethodName        = "/cryptopets.GameDataService/GetPetState"
 	GameDataService_ListReadyOpponents_FullMethodName = "/cryptopets.GameDataService/ListReadyOpponents"
+	GameDataService_EstimateWin_FullMethodName        = "/cryptopets.GameDataService/EstimateWin"
 )
 
 // GameDataServiceClient is the client API for GameDataService service.
@@ -45,6 +46,10 @@ type GameDataServiceClient interface {
 	// battle-ready (ready_at <= now), not owned by the caller, optional
 	// minimum level, ordered by (level, pet_id), paged.
 	ListReadyOpponents(ctx context.Context, in *OpponentsRequest, opts ...grpc.CallOption) (*OpponentsResponse, error)
+	// Pre-fight win estimate (plan §3.3): runs the round-based combat sim over
+	// many seeds for pet_id1 vs pet_id2 (both read from the warm roster cache)
+	// and returns pet_id1's win probability. UNAVAILABLE until the cache is warm.
+	EstimateWin(ctx context.Context, in *WinRequest, opts ...grpc.CallOption) (*WinResponse, error)
 }
 
 type gameDataServiceClient struct {
@@ -94,6 +99,16 @@ func (c *gameDataServiceClient) ListReadyOpponents(ctx context.Context, in *Oppo
 	return out, nil
 }
 
+func (c *gameDataServiceClient) EstimateWin(ctx context.Context, in *WinRequest, opts ...grpc.CallOption) (*WinResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WinResponse)
+	err := c.cc.Invoke(ctx, GameDataService_EstimateWin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GameDataServiceServer is the server API for GameDataService service.
 // All implementations must embed UnimplementedGameDataServiceServer
 // for forward compatibility.
@@ -111,6 +126,10 @@ type GameDataServiceServer interface {
 	// battle-ready (ready_at <= now), not owned by the caller, optional
 	// minimum level, ordered by (level, pet_id), paged.
 	ListReadyOpponents(context.Context, *OpponentsRequest) (*OpponentsResponse, error)
+	// Pre-fight win estimate (plan §3.3): runs the round-based combat sim over
+	// many seeds for pet_id1 vs pet_id2 (both read from the warm roster cache)
+	// and returns pet_id1's win probability. UNAVAILABLE until the cache is warm.
+	EstimateWin(context.Context, *WinRequest) (*WinResponse, error)
 	mustEmbedUnimplementedGameDataServiceServer()
 }
 
@@ -129,6 +148,9 @@ func (UnimplementedGameDataServiceServer) GetPetState(context.Context, *PetReque
 }
 func (UnimplementedGameDataServiceServer) ListReadyOpponents(context.Context, *OpponentsRequest) (*OpponentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListReadyOpponents not implemented")
+}
+func (UnimplementedGameDataServiceServer) EstimateWin(context.Context, *WinRequest) (*WinResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EstimateWin not implemented")
 }
 func (UnimplementedGameDataServiceServer) mustEmbedUnimplementedGameDataServiceServer() {}
 func (UnimplementedGameDataServiceServer) testEmbeddedByValue()                         {}
@@ -198,6 +220,24 @@ func _GameDataService_ListReadyOpponents_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GameDataService_EstimateWin_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WinRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GameDataServiceServer).EstimateWin(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GameDataService_EstimateWin_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GameDataServiceServer).EstimateWin(ctx, req.(*WinRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GameDataService_ServiceDesc is the grpc.ServiceDesc for GameDataService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -212,6 +252,10 @@ var GameDataService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListReadyOpponents",
 			Handler:    _GameDataService_ListReadyOpponents_Handler,
+		},
+		{
+			MethodName: "EstimateWin",
+			Handler:    _GameDataService_EstimateWin_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -1,0 +1,253 @@
+{
+  "description": "CombatSimV1.simulate golden vectors (plan §7). NO_SKILL = 99 (any value outside 0-7).",
+  "skillConfig": {
+    "tankHpMult": 120,
+    "shellDefMult": 125,
+    "swiftCritBonus": 50,
+    "cunningCritCap": 4000,
+    "furyDmgMult": 130,
+    "furyHpThreshold": 3000,
+    "sageMdefMult": 125,
+    "bloodlustBps": 150
+  },
+  "cases": [
+    {
+      "name": "baseline-no-skill",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 99,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "1",
+      "expected": {
+        "firstWins": false,
+        "rounds": 6,
+        "winnerHpRemaining": 174
+      }
+    },
+    {
+      "name": "seed-zero",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 99,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "0",
+      "expected": {
+        "firstWins": false,
+        "rounds": 7,
+        "winnerHpRemaining": 93
+      }
+    },
+    {
+      "name": "seed-max",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 99,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+      "expected": {
+        "firstWins": false,
+        "rounds": 6,
+        "winnerHpRemaining": 224
+      }
+    },
+    {
+      "name": "tank-skill",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 0,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "2",
+      "expected": {
+        "firstWins": false,
+        "rounds": 8,
+        "winnerHpRemaining": 74
+      }
+    },
+    {
+      "name": "shell-skill",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 1,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "3",
+      "expected": {
+        "firstWins": false,
+        "rounds": 7,
+        "winnerHpRemaining": 59
+      }
+    },
+    {
+      "name": "swift-skill",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 2,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "4",
+      "expected": {
+        "firstWins": false,
+        "rounds": 7,
+        "winnerHpRemaining": 28
+      }
+    },
+    {
+      "name": "cunning-skill",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 3,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "5",
+      "expected": {
+        "firstWins": false,
+        "rounds": 6,
+        "winnerHpRemaining": 150
+      }
+    },
+    {
+      "name": "fury-skill",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 4,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "6",
+      "expected": {
+        "firstWins": false,
+        "rounds": 6,
+        "winnerHpRemaining": 121
+      }
+    },
+    {
+      "name": "sage-skill",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 5,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "7",
+      "expected": {
+        "firstWins": false,
+        "rounds": 5,
+        "winnerHpRemaining": 243
+      }
+    },
+    {
+      "name": "rebirth-skill",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 6,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "8",
+      "expected": {
+        "firstWins": false,
+        "rounds": 8,
+        "winnerHpRemaining": 74
+      }
+    },
+    {
+      "name": "bloodlust-skill",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 7,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "9",
+      "expected": {
+        "firstWins": false,
+        "rounds": 7,
+        "winnerHpRemaining": 131
+      }
+    },
+    {
+      "name": "level-gap-max",
+      "dna1": "1234567890123456",
+      "rarity1": 5,
+      "level1": 100,
+      "skill1": 99,
+      "dna2": "9876543210987654",
+      "rarity2": 1,
+      "level2": 1,
+      "skill2": 99,
+      "seed": "10",
+      "expected": {
+        "firstWins": true,
+        "rounds": 2,
+        "winnerHpRemaining": 980
+      }
+    },
+    {
+      "name": "element-wheel-next",
+      "dna1": "1111111111111111",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 99,
+      "dna2": "1234567890123412",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "11",
+      "expected": {
+        "firstWins": false,
+        "rounds": 4,
+        "winnerHpRemaining": 248
+      }
+    },
+    {
+      "name": "mirror-tie",
+      "dna1": "1234567890123456",
+      "rarity1": 1,
+      "level1": 20,
+      "skill1": 99,
+      "dna2": "1234567890123456",
+      "rarity2": 1,
+      "level2": 20,
+      "skill2": 99,
+      "seed": "12",
+      "expected": {
+        "firstWins": true,
+        "rounds": 6,
+        "winnerHpRemaining": 52
+      }
+    }
+  ]
+}

@@ -3,37 +3,19 @@
 import 'dotenv/config';
 
 import { execSync } from 'child_process';
-import { setTimeout } from 'timers/promises';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { createPublicClient, http } from 'viem';
-import { hardhat } from 'viem/chains';
 
 import { getNetwork, resolveRpcUrl, resolveVrfParams } from './networks.js';
 
 const NETWORK_NAME =
     process.argv.find((a) => a.startsWith('--network='))?.split('=')[1] ??
-    process.env.DEPLOY_NETWORK ??
-    'localhost';
+    process.env.DEPLOY_NETWORK;
 
-const IS_LOCAL = NETWORK_NAME === 'localhost' || NETWORK_NAME === 'hardhat';
-
-const localDeployerAbi = [
-    {
-        type: 'function',
-        name: 'cryptoPets',
-        inputs: [],
-        outputs: [{ type: 'address', name: '' }],
-        stateMutability: 'view',
-    },
-    {
-        type: 'function',
-        name: 'vrfCoordinator',
-        inputs: [],
-        outputs: [{ type: 'address', name: '' }],
-        stateMutability: 'view',
-    },
-] as const;
+if (!NETWORK_NAME || NETWORK_NAME === 'localhost' || NETWORK_NAME === 'hardhat') {
+    console.error('❌ Local deploy is not supported via this script for the v2 stack. Run `pnpm test` to exercise contracts locally.');
+    process.exit(1);
+}
 
 const ignitionEnv: NodeJS.ProcessEnv = {
     ...process.env,
@@ -43,66 +25,56 @@ const ignitionEnv: NodeJS.ProcessEnv = {
     HARDHAT_IGNITION_CONFIRM_RESET: '1',
 };
 
-let chainDir: string;
-let deployCmd: string;
-
-if (IS_LOCAL) {
-    chainDir = 'chain-31337';
-    deployCmd = `pnpm hh ignition deploy ignition/modules/CryptoPets.ts --network localhost`;
-    console.log('⏳ Waiting for Hardhat node to be ready...');
-    await setTimeout(10000);
-} else {
-    const network = getNetwork(NETWORK_NAME);
-    if (!network) {
-        console.error(
-            `❌ Unknown network "${NETWORK_NAME}". See scripts/networks.ts for supported networks.`
-        );
-        process.exit(1);
-    }
-
-    if (!resolveRpcUrl(network)) {
-        console.error(
-            `❌ Missing ${network.envPrefix}_RPC_URL in contracts/ethereum/.env`
-        );
-        process.exit(1);
-    }
-    if (!process.env.PRIVATE_KEY) {
-        console.error('❌ Missing PRIVATE_KEY in contracts/ethereum/.env');
-        process.exit(1);
-    }
-
-    let vrf;
-    try {
-        vrf = resolveVrfParams(network);
-    } catch (e) {
-        console.error(`❌ ${e instanceof Error ? e.message : String(e)}`);
-        process.exit(1);
-    }
-
-    // Write the runtime parameters file. Gitignored so secrets/subscription
-    // IDs aren't committed; it's regenerated on every deploy.
-    const paramsDir = join(process.cwd(), 'ignition', 'parameters');
-    mkdirSync(paramsDir, { recursive: true });
-    const paramsPath = join(paramsDir, `.runtime-${network.name}.json`);
-    writeFileSync(
-        paramsPath,
-        JSON.stringify(
-            {
-                CryptoPetsLive: {
-                    vrfSubscriptionId: vrf.vrfSubscriptionId,
-                    vrfKeyHash: vrf.vrfKeyHash,
-                    vrfCoordinator: vrf.vrfCoordinator,
-                    vrfNativePayment: vrf.vrfNativePayment,
-                },
-            },
-            null,
-            2
-        )
+const network = getNetwork(NETWORK_NAME);
+if (!network) {
+    console.error(
+        `❌ Unknown network "${NETWORK_NAME}". See scripts/networks.ts for supported networks.`
     );
-
-    chainDir = `chain-${network.chainId}`;
-    deployCmd = `pnpm hh ignition deploy ignition/modules/CryptoPetsLive.ts --network ${network.name} --parameters ${paramsPath}`;
+    process.exit(1);
 }
+
+if (!resolveRpcUrl(network)) {
+    console.error(
+        `❌ Missing ${network.envPrefix}_RPC_URL in contracts/ethereum/.env`
+    );
+    process.exit(1);
+}
+if (!process.env.PRIVATE_KEY) {
+    console.error('❌ Missing PRIVATE_KEY in contracts/ethereum/.env');
+    process.exit(1);
+}
+
+let vrf;
+try {
+    vrf = resolveVrfParams(network);
+} catch (e) {
+    console.error(`❌ ${e instanceof Error ? e.message : String(e)}`);
+    process.exit(1);
+}
+
+// Write the runtime parameters file. Gitignored so secrets/subscription
+// IDs aren't committed; it's regenerated on every deploy.
+const paramsDir = join(process.cwd(), 'ignition', 'parameters');
+mkdirSync(paramsDir, { recursive: true });
+const paramsPath = join(paramsDir, `.runtime-${network.name}.json`);
+writeFileSync(
+    paramsPath,
+    JSON.stringify(
+        {
+            CryptoPetsV2Live: {
+                vrfSubscriptionId: vrf.vrfSubscriptionId,
+                vrfKeyHash: vrf.vrfKeyHash,
+                vrfCoordinator: vrf.vrfCoordinator,
+                vrfNativePayment: vrf.vrfNativePayment,
+            },
+        },
+        null,
+        2
+    )
+);
+
+const chainDir = `chain-${network.chainId}`;
+const deployCmd = `pnpm hh ignition deploy ignition/modules/CryptoPetsV2Live.ts --network ${network.name} --parameters ${paramsPath}`;
 
 console.log(`🚀 Deploying contracts to ${NETWORK_NAME} network...`);
 try {
@@ -139,34 +111,15 @@ async function injectContractAddress(): Promise<void> {
 
         let contractAddress: `0x${string}` | undefined;
 
-        const localDeployerAddr = (deployedAddresses['CryptoPetsModule#localDeployer'] ??
-            deployedAddresses['CryptoPetsModule#LocalCryptoPetsDeployer']) as
-            | `0x${string}`
-            | undefined;
-        // Live deployments: new generic module is CryptoPetsLive#cryptoPets.
-        // Legacy CryptoPetsSepolia#CryptoPets is kept for back-compat with
-        // pre-refactor deployments still on disk.
-        const liveAddr = (deployedAddresses['CryptoPetsLive#cryptoPets'] ??
-            deployedAddresses['CryptoPetsSepolia#cryptoPets'] ??
-            deployedAddresses['CryptoPetsSepolia#CryptoPets']) as string | undefined;
-
-        if (IS_LOCAL && localDeployerAddr) {
-            const client = createPublicClient({
-                chain: hardhat,
-                transport: http('http://127.0.0.1:8545'),
-            });
-            contractAddress = await client.readContract({
-                address: localDeployerAddr,
-                abi: localDeployerAbi,
-                functionName: 'cryptoPets',
-            });
-        } else if (liveAddr) {
+        // v2 live: PetCoreV1 proxy is the ERC-721 token contract the frontend addresses.
+        const liveAddr = deployedAddresses['CryptoPetsV2Live#PetCoreV1Proxy'] as string | undefined;
+        if (liveAddr) {
             contractAddress = liveAddr as `0x${string}`;
         }
 
         if (!contractAddress) {
             console.error(
-                '❌ CryptoPets address not found in deployed_addresses.json (expected CryptoPetsLive#cryptoPets or CryptoPetsModule#LocalCryptoPetsDeployer)'
+                '❌ PetCoreV1 proxy address not found in deployed_addresses.json (expected CryptoPetsV2Live#PetCoreV1Proxy)'
             );
             return;
         }

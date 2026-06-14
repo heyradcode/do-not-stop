@@ -286,7 +286,11 @@ func TestNewRequiresURL(t *testing.T) {
 }
 
 func battle(id, attacker, defender, winner, foughtAt string) subgraphBattle {
-	return subgraphBattle{ID: id, Attacker: attacker, Defender: defender, WinnerPetID: winner, FoughtAt: foughtAt}
+	return subgraphBattle{
+		ID: id, Attacker: attacker, Defender: defender, WinnerPetID: winner, FoughtAt: foughtAt,
+		// Fixed v2 sim outputs so the mapping is exercised. seed "291" = 0x123.
+		LoserPetID: defender, Seed: "291", Rounds: 6, WinnerHpRemaining: 174, XPWin: 100, XPLoss: 25,
+	}
 }
 
 func TestSyncBattlesSweepsHistoryThenOnlyNew(t *testing.T) {
@@ -314,6 +318,13 @@ func TestSyncBattlesSweepsHistoryThenOnlyNew(t *testing.T) {
 	if first.BattleID != "0xaaa-1" || first.Chain != "evm" || first.WinnerPetID != "1" ||
 		first.Version != 100 || first.FoughtAt != 100 {
 		t.Errorf("first event = %+v", first)
+	}
+	// v2 sim outputs map through, and the decimal seed normalizes to 0x-hex.
+	if first.Rounds != 6 || first.WinnerHpRemaining != 174 || first.XPWin != 100 || first.XPLoss != 25 {
+		t.Errorf("first event sim fields = %+v", first)
+	}
+	if first.Seed != "0x0000000000000000000000000000000000000000000000000000000000000123" {
+		t.Errorf("seed = %q, want normalized 0x-hex of decimal 291", first.Seed)
 	}
 
 	// Quiet tick: nothing new.

@@ -38,8 +38,16 @@ connection settings is skipped, so adapters roll out independently.
 | `GRPC_ADDR` | StreamLiveBattles bind address (default `localhost:50051`) |
 | `EVM_POLL_INTERVAL` / `RECONCILE_INTERVAL` | pull tick / reconciliation scan |
 
-Prereq migrations (from `backend/`): `npx prisma migrate dev` — adds
-`pet_roster.last_version` and `battle_history.version`.
+Prereq migrations (from `backend/`): `npx prisma migrate dev`. Beyond
+`pet_roster.last_version` / `battle_history.version`, the v2 schema adds the
+roster fields (`xp`, `generation`, `parent1_id`/`parent2_id`, `breed_count`,
+`species_id`, `spouse_id`, `breed_ready_at`, `train_ready_at`, `asset`) and the
+combat-sim battle fields (`loser_pet_id`, `seed`, `rounds`,
+`winner_hp_remaining`, `xp_win`, `xp_loss`). All are defaulted, so the v1 Node
+indexer keeps writing during shadow mode. **The writer is DML-only — run the
+migration before pointing indexer-go at the database.** The EVM adapter also
+expects the subgraph to expose the matching v2 Pet/Battle fields; until that
+schema bump deploys, those fields decode to their zero values.
 
 ## Ops
 
@@ -72,6 +80,22 @@ cache with a 50ms deadline, a 3-failure/30s circuit breaker, and automatic
 Prisma fallback on any error — killing indexer-go must never take reads down
 (verified: 5 reads against a dead process fail open in ~30ms total).
 
+## Combat sim (v2)
+
+`internal/combat/` is a pure Go port of the on-chain round-based battle
+simulator (`contracts/ethereum/src/CombatSimV1.sol` + the matching `combat.rs`)
+— DNA→attribute derivation, the round loop with all 8 skill archetypes, the
+XP + same-opponent-decay formulas, and `EstimateWin` (a seed-sampling pre-fight
+win probability). It lets indexer-go replay a settled battle and serve odds
+without an RPC simulation, surfaced over gRPC as `EstimateWin`.
+
+Parity is enforced, not trusted: `combat_golden_test.go` consumes the shared
+`contracts/test-vectors/{battle,xp}.json` — the *same* vectors the Hardhat and
+Anchor suites run — so the Go is a third witness to one canonical result. The
+hashing is **legacy Keccak-256** with the exact `keccak256(abi.encodePacked)`
+byte layout; a SHA3-vs-Keccak slip would fail every vector. If a vector fails,
+the Go has drifted from the contracts — fix the Go, never the vector.
+
 ## Layout
 
 ```
@@ -80,7 +104,8 @@ internal/indexer/   ChainIndexer contract + pipeline types
 internal/evm/       subgraph watermark adapter (pets + battles)
 internal/solana/    WS push adapter, Borsh decode, reconnect/backfill
 internal/store/     single version-guarded batch writer (pgx)
+internal/combat/    pure Go combat sim (cross-chain parity via golden vectors)
 internal/battlebus/ fan-out to gRPC stream subscribers
-internal/grpcsrv/   StreamLiveBattles server
+internal/grpcsrv/   StreamLiveBattles + reads + EstimateWin server
 pb/                 generated stubs (buf generate ../proto)
 ```

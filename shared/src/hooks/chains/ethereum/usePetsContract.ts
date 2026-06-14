@@ -133,16 +133,6 @@ export const usePetsContract = ({
         });
     };
 
-    const changeDna = (petId: bigint, newDna: bigint) => {
-        return writeContract({
-            address: safeAddress,
-            abi,
-            functionName: 'changeDna',
-            args: [petId, newDna],
-            gas: 100000n,
-        });
-    };
-
     const transferPet = (to: string, petId: bigint) => {
         return writeContract({
             address: safeAddress,
@@ -193,7 +183,6 @@ export const usePetsContract = ({
         battlePets,
         requestBreedFromDNA,
         attack,
-        changeDna,
         transferPet,
         hash,
         txHash: hash,
