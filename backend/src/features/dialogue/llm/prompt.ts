@@ -16,6 +16,7 @@ Rules:
 - Produce 4 to 8 turns total. Each line must be 140 characters or fewer.
 - Alternate speakers naturally; let personalities (element, record, temperament) drive the tone.
 - If a <history> block is present, weave in the rivalry or recent form for callbacks (e.g. who leads the head-to-head, a win streak) — but never let it contradict the fixed outcome.
+- If a <battle_summary> block is present, it describes how this fight actually went (how many rounds, the winner's surviving HP, the XP swing) — let it color the result reactions (a narrow grind reads differently than a quick rout), but never contradict the fixed outcome.
 - Output only the conversation in the requested JSON format — no preamble, commentary, or markdown.`;
 
 /** Appended to the system prompt to force a parseable JSON shape (no tool use). */
@@ -61,6 +62,7 @@ export function buildUserMessage(
     defender: Persona,
     rivalry?: string,
     banter?: string,
+    intensity?: string,
 ): string {
     const aName = sanitizeName(input.attacker.name);
     const bName = sanitizeName(input.defender.name);
@@ -70,6 +72,7 @@ export function buildUserMessage(
         `<outcome winner="${input.winner}" leveled_up="${input.leveledUp ? 'true' : 'false'}" />`,
     ];
     if (rivalry) parts.push(`<history>${rivalry}</history>`);
+    if (intensity) parts.push(`<battle_summary>${intensity}</battle_summary>`);
     if (banter) parts.push(`<recent_banter>${banter}</recent_banter>`);
     parts.push('Write the conversation now.');
     return parts.join('\n');

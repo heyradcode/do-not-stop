@@ -14,6 +14,15 @@ export interface BattleRecord {
     defender: string;
     winnerPetId: string;
     foughtAt: bigint;
+    // v2 round-based combat sim outputs (plan §3.3). Optional: the dialogue
+    // client-report path predates settlement and has nothing to write here, so
+    // the columns keep their schema defaults on that write.
+    loserPetId?: string;
+    seed?: string; // 0x-hex 32-byte combat seed; replays the sim off-chain
+    rounds?: number;
+    winnerHpRemaining?: number;
+    xpWin?: number;
+    xpLoss?: number;
 }
 
 /** Head-to-head summary between two specific pets. */

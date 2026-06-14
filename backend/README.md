@@ -31,6 +31,13 @@ This is the Node.js + TypeScript backend for the Web3 authentication demo. Part 
 ### Health Check (`/api/health`)
 - `GET /api/health` - Server health status
 
+### GraphQL game data (`/graphql`)
+- `POST /graphql` - JWT-protected roster/battle reads (the v2 `opponents`
+  matchmaking query and the `winEstimate` pre-fight odds query). Reads what
+  `indexer-go` writes; see [API.md](./API.md#graphql--game-data-v2) for the
+  schema, the v2 pet fields, and the `INDEXER_GRPC_ADDR` / `ROSTER_READ_SOURCE`
+  env vars + the Prisma migration prerequisite.
+
 ## Setup
 
 ### Automated (Recommended)

@@ -1,8 +1,9 @@
 import { getHeadToHead, getRecentForm } from '@repositories/history.repository';
 import { getRecentBanter } from '@repositories/conversation.repository';
+import { getChainSettledBattle } from '../../grpc/battleStream';
 import type { Chain } from '@typings/chain';
 import { withFallback } from '@utils';
-import { buildBanterContext, buildRivalryContext } from './llm/render';
+import { buildBanterContext, buildBattleSummaryContext, buildRivalryContext } from './llm/render';
 
 const BANTER_HISTORY_LIMIT = 6;
 const RECENT_FORM_LIMIT = 5;
@@ -58,4 +59,17 @@ export function buildRivalry(
         },
         '',
     );
+}
+
+/**
+ * How the settled fight actually went (rounds / surviving HP / XP swing), for
+ * the result prompt only. Read synchronously from the live battle stream's
+ * chain-truth record — returns '' when the stream is off or hasn't seen this
+ * battle, so generation proceeds unchanged. The taunt path never calls this:
+ * pre-fight banter must stay outcome-free.
+ */
+export function buildBattleIntensity(chain: Chain, battleId?: string): string {
+    if (!battleId) return '';
+    const settled = getChainSettledBattle(chain, battleId);
+    return settled ? buildBattleSummaryContext(settled) : '';
 }
