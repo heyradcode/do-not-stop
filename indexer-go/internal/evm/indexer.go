@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -169,13 +170,19 @@ func (ix *Indexer) syncBattles(ctx context.Context, battles chan<- indexer.Battl
 				return emitted, fmt.Errorf("battle %s: invalid foughtAt %q: %w", b.ID, b.FoughtAt, err)
 			}
 			event := indexer.BattleEvent{
-				Chain:       ix.chain,
-				BattleID:    b.ID,
-				Attacker:    b.Attacker,
-				Defender:    b.Defender,
-				WinnerPetID: b.WinnerPetID,
-				Version:     foughtAt,
-				FoughtAt:    int64(foughtAt),
+				Chain:             ix.chain,
+				BattleID:          b.ID,
+				Attacker:          b.Attacker,
+				Defender:          b.Defender,
+				WinnerPetID:       b.WinnerPetID,
+				LoserPetID:        idOrZero(b.LoserPetID),
+				Seed:              normalizeSeed(b.Seed),
+				Rounds:            b.Rounds,
+				WinnerHpRemaining: b.WinnerHpRemaining,
+				XPWin:             b.XPWin,
+				XPLoss:            b.XPLoss,
+				Version:           foughtAt,
+				FoughtAt:          int64(foughtAt),
 			}
 			select {
 			case <-ctx.Done():
@@ -242,6 +249,14 @@ func (ix *Indexer) toUpdate(pet subgraphPet) (indexer.RosterUpdate, error) {
 	if err != nil {
 		return indexer.RosterUpdate{}, fmt.Errorf("pet %s: invalid updatedAt %q: %w", pet.ID, pet.UpdatedAt, err)
 	}
+	breedReadyAt, err := parseTimeField(pet.BreedReadyAt)
+	if err != nil {
+		return indexer.RosterUpdate{}, fmt.Errorf("pet %s: invalid breedReadyAt %q: %w", pet.ID, pet.BreedReadyAt, err)
+	}
+	trainReadyAt, err := parseTimeField(pet.TrainReadyAt)
+	if err != nil {
+		return indexer.RosterUpdate{}, fmt.Errorf("pet %s: invalid trainReadyAt %q: %w", pet.ID, pet.TrainReadyAt, err)
+	}
 
 	return indexer.RosterUpdate{
 		Chain:     ix.chain,
@@ -255,5 +270,60 @@ func (ix *Indexer) toUpdate(pet subgraphPet) (indexer.RosterUpdate, error) {
 		LossCount: pet.LossCount,
 		ReadyAt:   readyAt,
 		Version:   updatedAt,
+
+		// v2 fields. EVM has no Metaplex Core asset (ERC-721 token id IS the
+		// pet id), so Asset stays empty.
+		XP:           pet.XP,
+		Generation:   pet.Generation,
+		Parent1ID:    idOrZero(pet.Parent1ID),
+		Parent2ID:    idOrZero(pet.Parent2ID),
+		BreedCount:   pet.BreedCount,
+		SpeciesID:    pet.SpeciesID,
+		SpouseID:     idOrZero(pet.SpouseID),
+		BreedReadyAt: breedReadyAt,
+		TrainReadyAt: trainReadyAt,
 	}, nil
+}
+
+// parseTimeField parses a BigInt cooldown string, treating "" (field absent on
+// a pre-v2 subgraph) as 0.
+func parseTimeField(s string) (int64, error) {
+	if s == "" {
+		return 0, nil
+	}
+	return strconv.ParseInt(s, 10, 64)
+}
+
+// idOrZero normalizes an optional pet-id string to "0" when the subgraph
+// omitted it, matching the on-chain "0 = none" convention.
+func idOrZero(s string) string {
+	if s == "" {
+		return "0"
+	}
+	return s
+}
+
+// normalizeSeed renders the uint256 combat seed as a canonical 0x-prefixed,
+// zero-padded 64-char lowercase hex string, matching the Solana adapter's
+// hex-encoded [u8;32] so a seed is comparable and replayable across chains.
+// Accepts either a decimal BigInt or an already-0x-hex value from the
+// subgraph; "" (pre-v2 / absent) stays "".
+func normalizeSeed(s string) string {
+	if s == "" {
+		return ""
+	}
+	var n *big.Int
+	if h, ok := strings.CutPrefix(s, "0x"); ok {
+		n, ok = new(big.Int).SetString(h, 16)
+		if !ok {
+			return s // unparseable — surface as-is rather than drop the seed
+		}
+	} else {
+		var ok bool
+		n, ok = new(big.Int).SetString(s, 10)
+		if !ok {
+			return s
+		}
+	}
+	return fmt.Sprintf("0x%064x", n)
 }

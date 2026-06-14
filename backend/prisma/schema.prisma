@@ -37,7 +37,19 @@ model PetRoster {
   dna       String // bigint serialized as string
   winCount  Int    @map("win_count")
   lossCount Int    @map("loss_count")
-  readyAt   BigInt @map("ready_at") // unix seconds the pet is next battle-ready
+  readyAt   BigInt @map("ready_at") // unix seconds the pet is next BATTLE-ready
+  /// v2 fields (contracts plan §3.4, §4.1, §3.7, §4.4, §2.3). Defaulted so the
+  /// v1 Node indexer keeps writing during shadow mode and pre-v2 rows stay valid.
+  xp           Int    @default(0) // progress toward the next level (§3.4)
+  generation   Int    @default(0) // 0 = minted (gen-0); else max(parents)+1 (§4.1)
+  parent1Id    String @default("0") @map("parent1_id") // breeding lineage; "0" = none
+  parent2Id    String @default("0") @map("parent2_id")
+  breedCount   Int    @default(0) @map("breed_count") // breeding-parent count (cooldown curve, §4.1)
+  speciesId    Int    @default(0) @map("species_id") // resolved at mint from DNA + tier (§3.7)
+  spouseId     String @default("0") @map("spouse_id") // marriage spouse pet id (§4.4); "0" = unmarried
+  breedReadyAt BigInt @default(0) @map("breed_ready_at") // unix seconds next breed-ready (§4.1)
+  trainReadyAt BigInt @default(0) @map("train_ready_at") // unix seconds next train-ready (§3.4)
+  asset        String @default("") // Metaplex Core asset pubkey (Solana only, §2.3); "" on EVM
   /// Monotonic source version (Solana slot / subgraph updatedAt). indexer-go's
   /// upsert guard discards stale writes: WHERE last_version <= EXCLUDED.last_version.
   lastVersion BigInt   @default(0) @map("last_version")
@@ -50,7 +62,7 @@ model PetRoster {
 }
 
 /// Authoritative record of settled battles, ingested from on-chain events
-/// (EVM: Battle.FightResult; Solana: settle_battle BattleResult). Powers
+/// (EVM: BattleResolved; Solana: settle_battle BattleResolved). Powers
 /// rivalry / head-to-head context for AI dialogue. See AI_BATTLE_DIALOGUE.md.
 model BattleHistory {
   chain       String // 'evm' | 'solana'
@@ -58,7 +70,15 @@ model BattleHistory {
   attacker    String   @map("attacker_pet_id")
   defender    String   @map("defender_pet_id")
   winnerPetId String   @map("winner_pet_id") // absolute id — head-to-head survives role swaps
-  foughtAt    BigInt   @map("fought_at") // unix seconds (block/tx time)
+  /// v2 round-based combat sim outputs (contracts plan §3.3). Defaulted so v1
+  /// rows / the dialogue client-report path stay valid.
+  loserPetId        String @default("0") @map("loser_pet_id")
+  seed              String @default("") // 0x-hex 32-byte combat seed; replays the sim off-chain
+  rounds            Int    @default(0)
+  winnerHpRemaining Int    @default(0) @map("winner_hp_remaining")
+  xpWin             Int    @default(0) @map("xp_win")
+  xpLoss            Int    @default(0) @map("xp_loss")
+  foughtAt          BigInt @map("fought_at") // unix seconds (block/tx time)
   /// Monotonic source version (Solana slot / EVM block timestamp). The
   /// StreamLiveBattles gRPC replay resumes from `WHERE version > after_version`.
   version     BigInt   @default(0)

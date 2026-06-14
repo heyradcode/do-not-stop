@@ -6,8 +6,10 @@ package grpcsrv
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net"
+	"strconv"
 	"time"
 
 	"google.golang.org/grpc"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/battlebus"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/cache"
+	"github.com/radcrew/do-not-stop/indexer-go/internal/combat"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
 	"github.com/radcrew/do-not-stop/indexer-go/pb"
 )
@@ -154,30 +157,94 @@ func (s *Server) ListReadyOpponents(_ context.Context, req *pb.OpponentsRequest)
 	return out, nil
 }
 
+// EstimateWin runs the combat sim over many seeds and returns pet_id1's win
+// probability against pet_id2, both read from the warm roster cache.
+func (s *Server) EstimateWin(_ context.Context, req *pb.WinRequest) (*pb.WinResponse, error) {
+	if err := s.readable(); err != nil {
+		return nil, err
+	}
+	p1, ok := s.roster.Get(req.GetChain(), req.GetPetId1())
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "pet %s/%s", req.GetChain(), req.GetPetId1())
+	}
+	p2, ok := s.roster.Get(req.GetChain(), req.GetPetId2())
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "pet %s/%s", req.GetChain(), req.GetPetId2())
+	}
+
+	dna1, rarity1, level1, err := petCombatParams(p1)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "pet %s: %v", p1.PetID, err)
+	}
+	dna2, rarity2, level2, err := petCombatParams(p2)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "pet %s: %v", p2.PetID, err)
+	}
+
+	samples := int(req.GetSamples())
+	if samples <= 0 {
+		samples = combat.DefaultWinSamples
+	}
+	// Skill archetypes derive from species pools, which are not live on-chain
+	// yet (v2.1 Phase B); pass NoSkill until they land, matching the chain.
+	p := combat.EstimateWin(
+		dna1, rarity1, level1, combat.NoSkill,
+		dna2, rarity2, level2, combat.NoSkill,
+		samples, combat.DefaultSkillConfig(),
+	)
+	return &pb.WinResponse{WinProbability: p, Samples: uint32(samples)}, nil
+}
+
+// petCombatParams projects a roster row onto the combat sim's inputs. DNA is a
+// 16-digit decimal (≤ 10^16−1, fits u64); rarity/level fit their narrow ranges.
+func petCombatParams(u indexer.RosterUpdate) (dna uint64, rarity uint8, level uint16, err error) {
+	dna, err = strconv.ParseUint(u.DNA, 10, 64)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("invalid dna %q: %w", u.DNA, err)
+	}
+	return dna, uint8(u.Rarity), uint16(u.Level), nil
+}
+
 func petToProto(u indexer.RosterUpdate) *pb.PetResponse {
 	return &pb.PetResponse{
-		Chain:     u.Chain,
-		PetId:     u.PetID,
-		Owner:     u.Owner,
-		Name:      u.Name,
-		Level:     u.Level,
-		Rarity:    u.Rarity,
-		Dna:       u.DNA,
-		WinCount:  u.WinCount,
-		LossCount: u.LossCount,
-		ReadyAt:   u.ReadyAt,
-		Version:   u.Version,
+		Chain:        u.Chain,
+		PetId:        u.PetID,
+		Owner:        u.Owner,
+		Name:         u.Name,
+		Level:        u.Level,
+		Rarity:       u.Rarity,
+		Dna:          u.DNA,
+		WinCount:     u.WinCount,
+		LossCount:    u.LossCount,
+		ReadyAt:      u.ReadyAt,
+		Version:      u.Version,
+		Xp:           u.XP,
+		Generation:   u.Generation,
+		Parent1Id:    u.Parent1ID,
+		Parent2Id:    u.Parent2ID,
+		BreedCount:   u.BreedCount,
+		SpeciesId:    u.SpeciesID,
+		SpouseId:     u.SpouseID,
+		BreedReadyAt: u.BreedReadyAt,
+		TrainReadyAt: u.TrainReadyAt,
+		Asset:        u.Asset,
 	}
 }
 
 func battleToProto(e indexer.BattleEvent) *pb.BattleEvent {
 	return &pb.BattleEvent{
-		Chain:       e.Chain,
-		BattleId:    e.BattleID,
-		AttackerPet: e.Attacker,
-		DefenderPet: e.Defender,
-		WinnerPet:   e.WinnerPetID,
-		Version:     e.Version,
-		FoughtAt:    e.FoughtAt,
+		Chain:             e.Chain,
+		BattleId:          e.BattleID,
+		AttackerPet:       e.Attacker,
+		DefenderPet:       e.Defender,
+		WinnerPet:         e.WinnerPetID,
+		Version:           e.Version,
+		FoughtAt:          e.FoughtAt,
+		LoserPet:          e.LoserPetID,
+		Seed:              e.Seed,
+		Rounds:            e.Rounds,
+		WinnerHpRemaining: e.WinnerHpRemaining,
+		XpWin:             e.XPWin,
+		XpLoss:            e.XPLoss,
 	}
 }

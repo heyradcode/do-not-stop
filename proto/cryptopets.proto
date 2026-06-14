@@ -22,6 +22,11 @@ service GameDataService {
   // battle-ready (ready_at <= now), not owned by the caller, optional
   // minimum level, ordered by (level, pet_id), paged.
   rpc ListReadyOpponents(OpponentsRequest) returns (OpponentsResponse);
+
+  // Pre-fight win estimate (plan §3.3): runs the round-based combat sim over
+  // many seeds for pet_id1 vs pet_id2 (both read from the warm roster cache)
+  // and returns pet_id1's win probability. UNAVAILABLE until the cache is warm.
+  rpc EstimateWin(WinRequest) returns (WinResponse);
 }
 
 message PetRequest {
@@ -39,8 +44,21 @@ message PetResponse {
   string dna = 7; // bigint as string, matching pet_roster.dna
   uint32 win_count = 8;
   uint32 loss_count = 9;
-  int64 ready_at = 10; // unix seconds
+  int64 ready_at = 10; // unix seconds the pet is next BATTLE-ready
   uint64 version = 11;
+
+  // v2 fields (plan §3.4, §4.1, §3.7, §4.4, §2.3). Append-only field numbers so
+  // a backend on the old proto keeps working.
+  uint32 xp = 12;
+  uint32 generation = 13;
+  string parent1_id = 14; // "0" = none
+  string parent2_id = 15;
+  uint32 breed_count = 16;
+  uint32 species_id = 17;
+  string spouse_id = 18; // "0" = unmarried
+  int64 breed_ready_at = 19; // unix seconds next breed-ready
+  int64 train_ready_at = 20; // unix seconds next train-ready
+  string asset = 21; // Metaplex Core asset pubkey (Solana only); "" on EVM
 }
 
 message OpponentsRequest {
@@ -54,6 +72,18 @@ message OpponentsRequest {
 message OpponentsResponse {
   repeated PetResponse pets = 1;
   uint32 total = 2; // total matches before paging (pagination parity)
+}
+
+message WinRequest {
+  string chain = 1;
+  string pet_id1 = 2; // the pet whose win probability is returned
+  string pet_id2 = 3; // the opponent
+  uint32 samples = 4; // seeds to sample; 0 = server default
+}
+
+message WinResponse {
+  double win_probability = 1; // pet_id1's win probability in [0,1]
+  uint32 samples = 2; // seeds actually sampled
 }
 
 message StreamRequest {
@@ -71,4 +101,12 @@ message BattleEvent {
   string winner_pet = 5; // absolute pet id — matches battle_history.winner_pet_id
   uint64 version = 6; // feed back as after_version on reconnect
   int64 fought_at = 7; // unix seconds
+
+  // v2 round-based combat sim outputs (plan §3.3). Append-only field numbers.
+  string loser_pet = 8; // absolute pet id of the loser
+  string seed = 9; // 0x-hex 32-byte combat seed; replays the sim off-chain
+  uint32 rounds = 10;
+  uint32 winner_hp_remaining = 11;
+  uint32 xp_win = 12;
+  uint32 xp_loss = 13;
 }

@@ -78,18 +78,30 @@ func (x *PetRequest) GetPetId() string {
 }
 
 type PetResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Chain         string                 `protobuf:"bytes,1,opt,name=chain,proto3" json:"chain,omitempty"`
-	PetId         string                 `protobuf:"bytes,2,opt,name=pet_id,json=petId,proto3" json:"pet_id,omitempty"`
-	Owner         string                 `protobuf:"bytes,3,opt,name=owner,proto3" json:"owner,omitempty"`
-	Name          string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	Level         uint32                 `protobuf:"varint,5,opt,name=level,proto3" json:"level,omitempty"`
-	Rarity        uint32                 `protobuf:"varint,6,opt,name=rarity,proto3" json:"rarity,omitempty"`
-	Dna           string                 `protobuf:"bytes,7,opt,name=dna,proto3" json:"dna,omitempty"` // bigint as string, matching pet_roster.dna
-	WinCount      uint32                 `protobuf:"varint,8,opt,name=win_count,json=winCount,proto3" json:"win_count,omitempty"`
-	LossCount     uint32                 `protobuf:"varint,9,opt,name=loss_count,json=lossCount,proto3" json:"loss_count,omitempty"`
-	ReadyAt       int64                  `protobuf:"varint,10,opt,name=ready_at,json=readyAt,proto3" json:"ready_at,omitempty"` // unix seconds
-	Version       uint64                 `protobuf:"varint,11,opt,name=version,proto3" json:"version,omitempty"`
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Chain     string                 `protobuf:"bytes,1,opt,name=chain,proto3" json:"chain,omitempty"`
+	PetId     string                 `protobuf:"bytes,2,opt,name=pet_id,json=petId,proto3" json:"pet_id,omitempty"`
+	Owner     string                 `protobuf:"bytes,3,opt,name=owner,proto3" json:"owner,omitempty"`
+	Name      string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	Level     uint32                 `protobuf:"varint,5,opt,name=level,proto3" json:"level,omitempty"`
+	Rarity    uint32                 `protobuf:"varint,6,opt,name=rarity,proto3" json:"rarity,omitempty"`
+	Dna       string                 `protobuf:"bytes,7,opt,name=dna,proto3" json:"dna,omitempty"` // bigint as string, matching pet_roster.dna
+	WinCount  uint32                 `protobuf:"varint,8,opt,name=win_count,json=winCount,proto3" json:"win_count,omitempty"`
+	LossCount uint32                 `protobuf:"varint,9,opt,name=loss_count,json=lossCount,proto3" json:"loss_count,omitempty"`
+	ReadyAt   int64                  `protobuf:"varint,10,opt,name=ready_at,json=readyAt,proto3" json:"ready_at,omitempty"` // unix seconds the pet is next BATTLE-ready
+	Version   uint64                 `protobuf:"varint,11,opt,name=version,proto3" json:"version,omitempty"`
+	// v2 fields (plan §3.4, §4.1, §3.7, §4.4, §2.3). Append-only field numbers so
+	// a backend on the old proto keeps working.
+	Xp            uint32 `protobuf:"varint,12,opt,name=xp,proto3" json:"xp,omitempty"`
+	Generation    uint32 `protobuf:"varint,13,opt,name=generation,proto3" json:"generation,omitempty"`
+	Parent1Id     string `protobuf:"bytes,14,opt,name=parent1_id,json=parent1Id,proto3" json:"parent1_id,omitempty"` // "0" = none
+	Parent2Id     string `protobuf:"bytes,15,opt,name=parent2_id,json=parent2Id,proto3" json:"parent2_id,omitempty"`
+	BreedCount    uint32 `protobuf:"varint,16,opt,name=breed_count,json=breedCount,proto3" json:"breed_count,omitempty"`
+	SpeciesId     uint32 `protobuf:"varint,17,opt,name=species_id,json=speciesId,proto3" json:"species_id,omitempty"`
+	SpouseId      string `protobuf:"bytes,18,opt,name=spouse_id,json=spouseId,proto3" json:"spouse_id,omitempty"`                // "0" = unmarried
+	BreedReadyAt  int64  `protobuf:"varint,19,opt,name=breed_ready_at,json=breedReadyAt,proto3" json:"breed_ready_at,omitempty"` // unix seconds next breed-ready
+	TrainReadyAt  int64  `protobuf:"varint,20,opt,name=train_ready_at,json=trainReadyAt,proto3" json:"train_ready_at,omitempty"` // unix seconds next train-ready
+	Asset         string `protobuf:"bytes,21,opt,name=asset,proto3" json:"asset,omitempty"`                                      // Metaplex Core asset pubkey (Solana only); "" on EVM
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -199,6 +211,76 @@ func (x *PetResponse) GetVersion() uint64 {
 		return x.Version
 	}
 	return 0
+}
+
+func (x *PetResponse) GetXp() uint32 {
+	if x != nil {
+		return x.Xp
+	}
+	return 0
+}
+
+func (x *PetResponse) GetGeneration() uint32 {
+	if x != nil {
+		return x.Generation
+	}
+	return 0
+}
+
+func (x *PetResponse) GetParent1Id() string {
+	if x != nil {
+		return x.Parent1Id
+	}
+	return ""
+}
+
+func (x *PetResponse) GetParent2Id() string {
+	if x != nil {
+		return x.Parent2Id
+	}
+	return ""
+}
+
+func (x *PetResponse) GetBreedCount() uint32 {
+	if x != nil {
+		return x.BreedCount
+	}
+	return 0
+}
+
+func (x *PetResponse) GetSpeciesId() uint32 {
+	if x != nil {
+		return x.SpeciesId
+	}
+	return 0
+}
+
+func (x *PetResponse) GetSpouseId() string {
+	if x != nil {
+		return x.SpouseId
+	}
+	return ""
+}
+
+func (x *PetResponse) GetBreedReadyAt() int64 {
+	if x != nil {
+		return x.BreedReadyAt
+	}
+	return 0
+}
+
+func (x *PetResponse) GetTrainReadyAt() int64 {
+	if x != nil {
+		return x.TrainReadyAt
+	}
+	return 0
+}
+
+func (x *PetResponse) GetAsset() string {
+	if x != nil {
+		return x.Asset
+	}
+	return ""
 }
 
 type OpponentsRequest struct {
@@ -329,6 +411,126 @@ func (x *OpponentsResponse) GetTotal() uint32 {
 	return 0
 }
 
+type WinRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Chain         string                 `protobuf:"bytes,1,opt,name=chain,proto3" json:"chain,omitempty"`
+	PetId1        string                 `protobuf:"bytes,2,opt,name=pet_id1,json=petId1,proto3" json:"pet_id1,omitempty"` // the pet whose win probability is returned
+	PetId2        string                 `protobuf:"bytes,3,opt,name=pet_id2,json=petId2,proto3" json:"pet_id2,omitempty"` // the opponent
+	Samples       uint32                 `protobuf:"varint,4,opt,name=samples,proto3" json:"samples,omitempty"`            // seeds to sample; 0 = server default
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WinRequest) Reset() {
+	*x = WinRequest{}
+	mi := &file_cryptopets_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WinRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WinRequest) ProtoMessage() {}
+
+func (x *WinRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cryptopets_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WinRequest.ProtoReflect.Descriptor instead.
+func (*WinRequest) Descriptor() ([]byte, []int) {
+	return file_cryptopets_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *WinRequest) GetChain() string {
+	if x != nil {
+		return x.Chain
+	}
+	return ""
+}
+
+func (x *WinRequest) GetPetId1() string {
+	if x != nil {
+		return x.PetId1
+	}
+	return ""
+}
+
+func (x *WinRequest) GetPetId2() string {
+	if x != nil {
+		return x.PetId2
+	}
+	return ""
+}
+
+func (x *WinRequest) GetSamples() uint32 {
+	if x != nil {
+		return x.Samples
+	}
+	return 0
+}
+
+type WinResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	WinProbability float64                `protobuf:"fixed64,1,opt,name=win_probability,json=winProbability,proto3" json:"win_probability,omitempty"` // pet_id1's win probability in [0,1]
+	Samples        uint32                 `protobuf:"varint,2,opt,name=samples,proto3" json:"samples,omitempty"`                                      // seeds actually sampled
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *WinResponse) Reset() {
+	*x = WinResponse{}
+	mi := &file_cryptopets_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WinResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WinResponse) ProtoMessage() {}
+
+func (x *WinResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cryptopets_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WinResponse.ProtoReflect.Descriptor instead.
+func (*WinResponse) Descriptor() ([]byte, []int) {
+	return file_cryptopets_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *WinResponse) GetWinProbability() float64 {
+	if x != nil {
+		return x.WinProbability
+	}
+	return 0
+}
+
+func (x *WinResponse) GetSamples() uint32 {
+	if x != nil {
+		return x.Samples
+	}
+	return 0
+}
+
 type StreamRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Resume point per chain so a reconnecting client misses nothing:
@@ -341,7 +543,7 @@ type StreamRequest struct {
 
 func (x *StreamRequest) Reset() {
 	*x = StreamRequest{}
-	mi := &file_cryptopets_proto_msgTypes[4]
+	mi := &file_cryptopets_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -353,7 +555,7 @@ func (x *StreamRequest) String() string {
 func (*StreamRequest) ProtoMessage() {}
 
 func (x *StreamRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cryptopets_proto_msgTypes[4]
+	mi := &file_cryptopets_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -366,7 +568,7 @@ func (x *StreamRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamRequest.ProtoReflect.Descriptor instead.
 func (*StreamRequest) Descriptor() ([]byte, []int) {
-	return file_cryptopets_proto_rawDescGZIP(), []int{4}
+	return file_cryptopets_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *StreamRequest) GetAfterVersion() map[string]uint64 {
@@ -377,21 +579,28 @@ func (x *StreamRequest) GetAfterVersion() map[string]uint64 {
 }
 
 type BattleEvent struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Chain         string                 `protobuf:"bytes,1,opt,name=chain,proto3" json:"chain,omitempty"`                       // "evm" | "solana"
-	BattleId      string                 `protobuf:"bytes,2,opt,name=battle_id,json=battleId,proto3" json:"battle_id,omitempty"` // settle sig (solana) / txHash-logIndex (evm)
-	AttackerPet   string                 `protobuf:"bytes,3,opt,name=attacker_pet,json=attackerPet,proto3" json:"attacker_pet,omitempty"`
-	DefenderPet   string                 `protobuf:"bytes,4,opt,name=defender_pet,json=defenderPet,proto3" json:"defender_pet,omitempty"`
-	WinnerPet     string                 `protobuf:"bytes,5,opt,name=winner_pet,json=winnerPet,proto3" json:"winner_pet,omitempty"` // absolute pet id — matches battle_history.winner_pet_id
-	Version       uint64                 `protobuf:"varint,6,opt,name=version,proto3" json:"version,omitempty"`                     // feed back as after_version on reconnect
-	FoughtAt      int64                  `protobuf:"varint,7,opt,name=fought_at,json=foughtAt,proto3" json:"fought_at,omitempty"`   // unix seconds
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Chain       string                 `protobuf:"bytes,1,opt,name=chain,proto3" json:"chain,omitempty"`                       // "evm" | "solana"
+	BattleId    string                 `protobuf:"bytes,2,opt,name=battle_id,json=battleId,proto3" json:"battle_id,omitempty"` // settle sig (solana) / txHash-logIndex (evm)
+	AttackerPet string                 `protobuf:"bytes,3,opt,name=attacker_pet,json=attackerPet,proto3" json:"attacker_pet,omitempty"`
+	DefenderPet string                 `protobuf:"bytes,4,opt,name=defender_pet,json=defenderPet,proto3" json:"defender_pet,omitempty"`
+	WinnerPet   string                 `protobuf:"bytes,5,opt,name=winner_pet,json=winnerPet,proto3" json:"winner_pet,omitempty"` // absolute pet id — matches battle_history.winner_pet_id
+	Version     uint64                 `protobuf:"varint,6,opt,name=version,proto3" json:"version,omitempty"`                     // feed back as after_version on reconnect
+	FoughtAt    int64                  `protobuf:"varint,7,opt,name=fought_at,json=foughtAt,proto3" json:"fought_at,omitempty"`   // unix seconds
+	// v2 round-based combat sim outputs (plan §3.3). Append-only field numbers.
+	LoserPet          string `protobuf:"bytes,8,opt,name=loser_pet,json=loserPet,proto3" json:"loser_pet,omitempty"` // absolute pet id of the loser
+	Seed              string `protobuf:"bytes,9,opt,name=seed,proto3" json:"seed,omitempty"`                         // 0x-hex 32-byte combat seed; replays the sim off-chain
+	Rounds            uint32 `protobuf:"varint,10,opt,name=rounds,proto3" json:"rounds,omitempty"`
+	WinnerHpRemaining uint32 `protobuf:"varint,11,opt,name=winner_hp_remaining,json=winnerHpRemaining,proto3" json:"winner_hp_remaining,omitempty"`
+	XpWin             uint32 `protobuf:"varint,12,opt,name=xp_win,json=xpWin,proto3" json:"xp_win,omitempty"`
+	XpLoss            uint32 `protobuf:"varint,13,opt,name=xp_loss,json=xpLoss,proto3" json:"xp_loss,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *BattleEvent) Reset() {
 	*x = BattleEvent{}
-	mi := &file_cryptopets_proto_msgTypes[5]
+	mi := &file_cryptopets_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -403,7 +612,7 @@ func (x *BattleEvent) String() string {
 func (*BattleEvent) ProtoMessage() {}
 
 func (x *BattleEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_cryptopets_proto_msgTypes[5]
+	mi := &file_cryptopets_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -416,7 +625,7 @@ func (x *BattleEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BattleEvent.ProtoReflect.Descriptor instead.
 func (*BattleEvent) Descriptor() ([]byte, []int) {
-	return file_cryptopets_proto_rawDescGZIP(), []int{5}
+	return file_cryptopets_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *BattleEvent) GetChain() string {
@@ -468,6 +677,48 @@ func (x *BattleEvent) GetFoughtAt() int64 {
 	return 0
 }
 
+func (x *BattleEvent) GetLoserPet() string {
+	if x != nil {
+		return x.LoserPet
+	}
+	return ""
+}
+
+func (x *BattleEvent) GetSeed() string {
+	if x != nil {
+		return x.Seed
+	}
+	return ""
+}
+
+func (x *BattleEvent) GetRounds() uint32 {
+	if x != nil {
+		return x.Rounds
+	}
+	return 0
+}
+
+func (x *BattleEvent) GetWinnerHpRemaining() uint32 {
+	if x != nil {
+		return x.WinnerHpRemaining
+	}
+	return 0
+}
+
+func (x *BattleEvent) GetXpWin() uint32 {
+	if x != nil {
+		return x.XpWin
+	}
+	return 0
+}
+
+func (x *BattleEvent) GetXpLoss() uint32 {
+	if x != nil {
+		return x.XpLoss
+	}
+	return 0
+}
+
 var File_cryptopets_proto protoreflect.FileDescriptor
 
 const file_cryptopets_proto_rawDesc = "" +
@@ -477,7 +728,7 @@ const file_cryptopets_proto_rawDesc = "" +
 	"\n" +
 	"PetRequest\x12\x14\n" +
 	"\x05chain\x18\x01 \x01(\tR\x05chain\x12\x15\n" +
-	"\x06pet_id\x18\x02 \x01(\tR\x05petId\"\x95\x02\n" +
+	"\x06pet_id\x18\x02 \x01(\tR\x05petId\"\xc2\x04\n" +
 	"\vPetResponse\x12\x14\n" +
 	"\x05chain\x18\x01 \x01(\tR\x05chain\x12\x15\n" +
 	"\x06pet_id\x18\x02 \x01(\tR\x05petId\x12\x14\n" +
@@ -491,7 +742,23 @@ const file_cryptopets_proto_rawDesc = "" +
 	"loss_count\x18\t \x01(\rR\tlossCount\x12\x19\n" +
 	"\bready_at\x18\n" +
 	" \x01(\x03R\areadyAt\x12\x18\n" +
-	"\aversion\x18\v \x01(\x04R\aversion\"\x9b\x01\n" +
+	"\aversion\x18\v \x01(\x04R\aversion\x12\x0e\n" +
+	"\x02xp\x18\f \x01(\rR\x02xp\x12\x1e\n" +
+	"\n" +
+	"generation\x18\r \x01(\rR\n" +
+	"generation\x12\x1d\n" +
+	"\n" +
+	"parent1_id\x18\x0e \x01(\tR\tparent1Id\x12\x1d\n" +
+	"\n" +
+	"parent2_id\x18\x0f \x01(\tR\tparent2Id\x12\x1f\n" +
+	"\vbreed_count\x18\x10 \x01(\rR\n" +
+	"breedCount\x12\x1d\n" +
+	"\n" +
+	"species_id\x18\x11 \x01(\rR\tspeciesId\x12\x1b\n" +
+	"\tspouse_id\x18\x12 \x01(\tR\bspouseId\x12$\n" +
+	"\x0ebreed_ready_at\x18\x13 \x01(\x03R\fbreedReadyAt\x12$\n" +
+	"\x0etrain_ready_at\x18\x14 \x01(\x03R\ftrainReadyAt\x12\x14\n" +
+	"\x05asset\x18\x15 \x01(\tR\x05asset\"\x9b\x01\n" +
 	"\x10OpponentsRequest\x12\x14\n" +
 	"\x05chain\x18\x01 \x01(\tR\x05chain\x12#\n" +
 	"\rexclude_owner\x18\x02 \x01(\tR\fexcludeOwner\x12\x1b\n" +
@@ -500,12 +767,21 @@ const file_cryptopets_proto_rawDesc = "" +
 	"\tpage_size\x18\x05 \x01(\rR\bpageSize\"V\n" +
 	"\x11OpponentsResponse\x12+\n" +
 	"\x04pets\x18\x01 \x03(\v2\x17.cryptopets.PetResponseR\x04pets\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\rR\x05total\"\xa2\x01\n" +
+	"\x05total\x18\x02 \x01(\rR\x05total\"n\n" +
+	"\n" +
+	"WinRequest\x12\x14\n" +
+	"\x05chain\x18\x01 \x01(\tR\x05chain\x12\x17\n" +
+	"\apet_id1\x18\x02 \x01(\tR\x06petId1\x12\x17\n" +
+	"\apet_id2\x18\x03 \x01(\tR\x06petId2\x12\x18\n" +
+	"\asamples\x18\x04 \x01(\rR\asamples\"P\n" +
+	"\vWinResponse\x12'\n" +
+	"\x0fwin_probability\x18\x01 \x01(\x01R\x0ewinProbability\x12\x18\n" +
+	"\asamples\x18\x02 \x01(\rR\asamples\"\xa2\x01\n" +
 	"\rStreamRequest\x12P\n" +
 	"\rafter_version\x18\x01 \x03(\v2+.cryptopets.StreamRequest.AfterVersionEntryR\fafterVersion\x1a?\n" +
 	"\x11AfterVersionEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\xdc\x01\n" +
+	"\x05value\x18\x02 \x01(\x04R\x05value:\x028\x01\"\x85\x03\n" +
 	"\vBattleEvent\x12\x14\n" +
 	"\x05chain\x18\x01 \x01(\tR\x05chain\x12\x1b\n" +
 	"\tbattle_id\x18\x02 \x01(\tR\bbattleId\x12!\n" +
@@ -514,11 +790,19 @@ const file_cryptopets_proto_rawDesc = "" +
 	"\n" +
 	"winner_pet\x18\x05 \x01(\tR\twinnerPet\x12\x18\n" +
 	"\aversion\x18\x06 \x01(\x04R\aversion\x12\x1b\n" +
-	"\tfought_at\x18\a \x01(\x03R\bfoughtAt2\xef\x01\n" +
+	"\tfought_at\x18\a \x01(\x03R\bfoughtAt\x12\x1b\n" +
+	"\tloser_pet\x18\b \x01(\tR\bloserPet\x12\x12\n" +
+	"\x04seed\x18\t \x01(\tR\x04seed\x12\x16\n" +
+	"\x06rounds\x18\n" +
+	" \x01(\rR\x06rounds\x12.\n" +
+	"\x13winner_hp_remaining\x18\v \x01(\rR\x11winnerHpRemaining\x12\x15\n" +
+	"\x06xp_win\x18\f \x01(\rR\x05xpWin\x12\x17\n" +
+	"\axp_loss\x18\r \x01(\rR\x06xpLoss2\xaf\x02\n" +
 	"\x0fGameDataService\x12I\n" +
 	"\x11StreamLiveBattles\x12\x19.cryptopets.StreamRequest\x1a\x17.cryptopets.BattleEvent0\x01\x12>\n" +
 	"\vGetPetState\x12\x16.cryptopets.PetRequest\x1a\x17.cryptopets.PetResponse\x12Q\n" +
-	"\x12ListReadyOpponents\x12\x1c.cryptopets.OpponentsRequest\x1a\x1d.cryptopets.OpponentsResponseB.Z,github.com/radcrew/do-not-stop/indexer-go/pbb\x06proto3"
+	"\x12ListReadyOpponents\x12\x1c.cryptopets.OpponentsRequest\x1a\x1d.cryptopets.OpponentsResponse\x12>\n" +
+	"\vEstimateWin\x12\x16.cryptopets.WinRequest\x1a\x17.cryptopets.WinResponseB.Z,github.com/radcrew/do-not-stop/indexer-go/pbb\x06proto3"
 
 var (
 	file_cryptopets_proto_rawDescOnce sync.Once
@@ -532,27 +816,31 @@ func file_cryptopets_proto_rawDescGZIP() []byte {
 	return file_cryptopets_proto_rawDescData
 }
 
-var file_cryptopets_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_cryptopets_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_cryptopets_proto_goTypes = []any{
 	(*PetRequest)(nil),        // 0: cryptopets.PetRequest
 	(*PetResponse)(nil),       // 1: cryptopets.PetResponse
 	(*OpponentsRequest)(nil),  // 2: cryptopets.OpponentsRequest
 	(*OpponentsResponse)(nil), // 3: cryptopets.OpponentsResponse
-	(*StreamRequest)(nil),     // 4: cryptopets.StreamRequest
-	(*BattleEvent)(nil),       // 5: cryptopets.BattleEvent
-	nil,                       // 6: cryptopets.StreamRequest.AfterVersionEntry
+	(*WinRequest)(nil),        // 4: cryptopets.WinRequest
+	(*WinResponse)(nil),       // 5: cryptopets.WinResponse
+	(*StreamRequest)(nil),     // 6: cryptopets.StreamRequest
+	(*BattleEvent)(nil),       // 7: cryptopets.BattleEvent
+	nil,                       // 8: cryptopets.StreamRequest.AfterVersionEntry
 }
 var file_cryptopets_proto_depIdxs = []int32{
 	1, // 0: cryptopets.OpponentsResponse.pets:type_name -> cryptopets.PetResponse
-	6, // 1: cryptopets.StreamRequest.after_version:type_name -> cryptopets.StreamRequest.AfterVersionEntry
-	4, // 2: cryptopets.GameDataService.StreamLiveBattles:input_type -> cryptopets.StreamRequest
+	8, // 1: cryptopets.StreamRequest.after_version:type_name -> cryptopets.StreamRequest.AfterVersionEntry
+	6, // 2: cryptopets.GameDataService.StreamLiveBattles:input_type -> cryptopets.StreamRequest
 	0, // 3: cryptopets.GameDataService.GetPetState:input_type -> cryptopets.PetRequest
 	2, // 4: cryptopets.GameDataService.ListReadyOpponents:input_type -> cryptopets.OpponentsRequest
-	5, // 5: cryptopets.GameDataService.StreamLiveBattles:output_type -> cryptopets.BattleEvent
-	1, // 6: cryptopets.GameDataService.GetPetState:output_type -> cryptopets.PetResponse
-	3, // 7: cryptopets.GameDataService.ListReadyOpponents:output_type -> cryptopets.OpponentsResponse
-	5, // [5:8] is the sub-list for method output_type
-	2, // [2:5] is the sub-list for method input_type
+	4, // 5: cryptopets.GameDataService.EstimateWin:input_type -> cryptopets.WinRequest
+	7, // 6: cryptopets.GameDataService.StreamLiveBattles:output_type -> cryptopets.BattleEvent
+	1, // 7: cryptopets.GameDataService.GetPetState:output_type -> cryptopets.PetResponse
+	3, // 8: cryptopets.GameDataService.ListReadyOpponents:output_type -> cryptopets.OpponentsResponse
+	5, // 9: cryptopets.GameDataService.EstimateWin:output_type -> cryptopets.WinResponse
+	6, // [6:10] is the sub-list for method output_type
+	2, // [2:6] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
 	2, // [2:2] is the sub-list for extension extendee
 	0, // [0:2] is the sub-list for field type_name
@@ -569,7 +857,7 @@ func file_cryptopets_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cryptopets_proto_rawDesc), len(file_cryptopets_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

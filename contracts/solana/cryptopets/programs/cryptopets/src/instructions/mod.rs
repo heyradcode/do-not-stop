@@ -1,23 +1,18 @@
-pub mod create_starter_pet;
-pub mod commit_battle;
-pub mod commit_breed;
-pub mod settle_battle;
-pub mod settle_breed;
-pub mod initialize;
-pub mod level_up;
-pub mod pause;
-pub mod rename_pet;
-pub mod transfer_pet;
-pub mod unpause;
+//! Instruction handlers, grouped by gameplay domain. Each group re-exports its leaf
+//! modules and their items, so `use instructions::*;` (see `lib.rs`) exposes every
+//! handler module (`initialize::`, `commit_breed::`, ...) and every `Accounts` struct
+//! exactly as it did when this directory was flat — no IDL or call-site impact.
 
-pub use create_starter_pet::*;
-pub use commit_battle::*;
-pub use commit_breed::*;
-pub use settle_battle::*;
-pub use settle_breed::*;
-pub use initialize::*;
-pub use level_up::*;
-pub use pause::*;
-pub use rename_pet::*;
-pub use transfer_pet::*;
-pub use unpause::*;
+pub mod admin;
+pub mod battle;
+pub mod breeding;
+pub mod marriage;
+pub mod mint;
+pub mod pet;
+
+pub use admin::*;
+pub use battle::*;
+pub use breeding::*;
+pub use marriage::*;
+pub use mint::*;
+pub use pet::*;

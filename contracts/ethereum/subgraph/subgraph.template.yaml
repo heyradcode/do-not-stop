@@ -1,15 +1,17 @@
-specVersion: 1.3.0
-indexerHints:
-  prune: auto
+# Template — `scripts/prepare-subgraph.mjs` fills {{...}} and writes subgraph.yaml.
+# Two v2 data sources: the PetCoreV1 proxy (pet lifecycle + marriage) and the
+# GameLogicV1 proxy (battle/breed/train). Both share src/mapping.ts and both
+# carry the PetCoreV1 ABI so handlers can read full pet state via getPet().
+specVersion: 1.0.0
 schema:
   file: ./schema.graphql
 dataSources:
-  - kind: ethereum
-    name: CryptoPets
+  - kind: ethereum/contract
+    name: PetCoreV1
     network: {{NETWORK}}
     source:
-      address: "{{CRYPTOPETS_ADDRESS}}"
-      abi: CryptoPets
+      address: "{{PETCORE_ADDRESS}}"
+      abi: PetCoreV1
       startBlock: {{START_BLOCK}}
     mapping:
       kind: ethereum/events
@@ -18,25 +20,28 @@ dataSources:
       entities:
         - Pet
       abis:
-        - name: CryptoPets
-          file: ./abis/CryptoPets.json
-        - name: Battle
-          file: ./abis/Battle.json
-        - name: Inventory
-          file: ./abis/Inventory.json
+        - name: PetCoreV1
+          file: ./abis/PetCoreV1.json
       eventHandlers:
-        - event: Transfer(indexed address,indexed address,indexed uint256)
-          handler: handleTransfer
-        - event: BreedFulfilled(indexed address,indexed uint256,indexed uint256)
-          handler: handleBreedFulfilled
-      file: ./src/crypto-pets.ts
-
-  - kind: ethereum
-    name: Battle
+        - event: NewPet(indexed uint256,string,uint256,uint8)
+          handler: handleNewPet
+        - event: PetLevelUp(indexed uint256,uint32)
+          handler: handlePetLevelUp
+        - event: PetNameChanged(indexed uint256,string)
+          handler: handlePetNameChanged
+        - event: PetTransferred(indexed uint256,address,address)
+          handler: handlePetTransferred
+        - event: MarriageAccepted(indexed uint256,indexed uint256)
+          handler: handleMarriageAccepted
+        - event: MarriageDissolved(indexed uint256,indexed uint256,string)
+          handler: handleMarriageDissolved
+      file: ./src/mapping.ts
+  - kind: ethereum/contract
+    name: GameLogicV1
     network: {{NETWORK}}
     source:
-      address: "{{BATTLE_ADDRESS}}"
-      abi: Battle
+      address: "{{GAMELOGIC_ADDRESS}}"
+      abi: GameLogicV1
       startBlock: {{START_BLOCK}}
     mapping:
       kind: ethereum/events
@@ -45,41 +50,22 @@ dataSources:
       entities:
         - Pet
         - Battle
+        - BattleRequest
+        - BreedRequest
       abis:
-        - name: CryptoPets
-          file: ./abis/CryptoPets.json
-        - name: Battle
-          file: ./abis/Battle.json
+        - name: GameLogicV1
+          file: ./abis/GameLogicV1.json
+        - name: PetCoreV1
+          file: ./abis/PetCoreV1.json
       eventHandlers:
-        - event: FightResult(uint256,uint256,bool)
-          handler: handleFightResult
-      file: ./src/battle.ts
-
-  - kind: ethereum
-    name: Inventory
-    network: {{NETWORK}}
-    source:
-      address: "{{INVENTORY_ADDRESS}}"
-      abi: Inventory
-      startBlock: {{START_BLOCK}}
-    mapping:
-      kind: ethereum/events
-      apiVersion: 0.0.9
-      language: wasm/assemblyscript
-      entities:
-        - Pet
-      abis:
-        - name: CryptoPets
-          file: ./abis/CryptoPets.json
-        - name: Inventory
-          file: ./abis/Inventory.json
-      eventHandlers:
-        - event: NewPet(uint256,string,uint256,uint8)
-          handler: handleNewPet
-        - event: PetLevelUp(uint256,uint32)
-          handler: handlePetLevelUp
-        - event: PetNameChanged(uint256,string)
-          handler: handlePetNameChanged
-        - event: PetDnaChanged(uint256,uint256)
-          handler: handlePetDnaChanged
-      file: ./src/inventory.ts
+        - event: BattleRandomnessRequested(indexed address,indexed uint256,uint256,uint256)
+          handler: handleBattleRequested
+        - event: BattleResolved(indexed uint256,indexed uint256,indexed uint256,uint256,bool,uint8,uint16,uint32,uint32)
+          handler: handleBattleResolved
+        - event: BreedRandomnessRequested(indexed address,indexed uint256,uint256,uint256)
+          handler: handleBreedRequested
+        - event: BreedSettled(indexed address,indexed uint256,indexed uint256,address)
+          handler: handleBreedSettled
+        - event: Trained(indexed uint256,uint32,uint32,uint32)
+          handler: handleTrained
+      file: ./src/mapping.ts
