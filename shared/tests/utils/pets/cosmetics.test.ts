@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { getRarityColor, getRarityName, isPetReadyAt } from './cosmetics';
+import { getRarityColor, getRarityName, isPetReadyAt } from '../../../src/utils/pets/cosmetics';
 
 describe('getRarityColor', () => {
     it('maps known rarities to their colors', () => {

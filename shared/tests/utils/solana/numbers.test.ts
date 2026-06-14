@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { BN } from '@coral-xyz/anchor';
-import { toU32 } from './numbers';
+import { toU32 } from '../../../src/utils/solana/numbers';
 
 describe('toU32', () => {
     it('unwraps a BN to a JS number', () => {

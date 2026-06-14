@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { Keypair, PublicKey } from '@solana/web3.js';
-import { isValidSolanaAddress } from './isValidSolanaAddress';
+import { isValidSolanaAddress } from '../../../src/utils/solana/isValidSolanaAddress';
 
 describe('isValidSolanaAddress', () => {
     it('accepts a freshly generated wallet public key (on the ed25519 curve)', () => {

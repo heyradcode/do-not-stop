@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { getReadyPets } from './readyPets';
-import type { Pet } from '../../hooks/chains/ethereum/usePetsContract';
+import { getReadyPets } from '../../../src/utils/ethereum/readyPets';
+import type { Pet } from '../../../src/hooks/chains/ethereum/usePetsContract';
 
 const makePet = (readyTime: bigint): Pet => ({ readyTime }) as Pet;
 

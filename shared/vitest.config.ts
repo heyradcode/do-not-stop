@@ -4,7 +4,7 @@ export default defineConfig({
     test: {
         globals: true,
         environment: 'node',
-        include: ['src/**/*.{test,spec}.ts'],
+        include: ['tests/**/*.{test,spec}.ts'],
         coverage: {
             provider: 'v8',
             reportsDirectory: './coverage',
@@ -12,7 +12,7 @@ export default defineConfig({
             // Only the pure utilities are unit-tested here; hooks/contexts depend
             // on React + wallet SDKs and are out of scope for this suite.
             include: ['src/utils/**/*.ts'],
-            exclude: ['src/utils/**/index.ts', 'src/**/*.{test,spec}.ts'],
+            exclude: ['src/utils/**/index.ts'],
         },
     },
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isValidEthAddress } from './isValidEthAddress';
+import { isValidEthAddress } from '../../../src/utils/ethereum/isValidEthAddress';
 
 describe('isValidEthAddress', () => {
     it('accepts a canonical lowercase 0x address', () => {

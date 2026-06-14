@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatSolanaActionError } from './parseSolanaTransactionError';
+import { formatSolanaActionError } from '../../../src/utils/solana/parseSolanaTransactionError';
 
 describe('formatSolanaActionError', () => {
     it('maps wallet rejection variants', () => {

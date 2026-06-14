@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { isPetReady, getTimeUntilReady } from './petReadyTime';
+import { isPetReady, getTimeUntilReady } from '../../../src/utils/ethereum/petReadyTime';
 
 // Fixed clock so bigint unix-second math is deterministic.
 const NOW = new Date('2026-01-01T00:00:00Z');

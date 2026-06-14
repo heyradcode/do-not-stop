@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseContractError } from './errorParser';
+import { parseContractError } from '../../../src/utils/ethereum/errorParser';
 
 describe('parseContractError', () => {
     describe('user rejection', () => {
