@@ -16,6 +16,7 @@ export {
     type PetMutationResult,
 } from './useCreatePet';
 export { useLevelUpPet, type LevelUpPetArgs } from './useLevelUpPet';
+export { useTrainPet, type TrainPetArgs } from './useTrainPet';
 export { useRenamePet, type RenamePetArgs } from './useRenamePet';
 export {
     useBattlePets,

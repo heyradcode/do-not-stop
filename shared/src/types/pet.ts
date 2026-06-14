@@ -3,6 +3,7 @@ export type PetChain = 'evm' | 'solana';
 export type PetAction =
     | 'create'
     | 'levelUp'
+    | 'train'
     | 'rename'
     | 'battle'
     | 'breed'

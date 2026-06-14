@@ -82,6 +82,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     const transferW = useWriteContract();
     const battleW = useWriteContract();
     const breedW = useWriteContract();
+    const trainW = useWriteContract();
 
     // Per-action receipt watchers — enabled only when the corresponding hash exists.
     const createR = useWaitForTransactionReceipt({ hash: createW.data, query: { enabled: !!createW.data } });
@@ -90,6 +91,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     const transferR = useWaitForTransactionReceipt({ hash: transferW.data, query: { enabled: !!transferW.data } });
     const battleR = useWaitForTransactionReceipt({ hash: battleW.data, query: { enabled: !!battleW.data } });
     const breedR = useWaitForTransactionReceipt({ hash: breedW.data, query: { enabled: !!breedW.data } });
+    const trainR = useWaitForTransactionReceipt({ hash: trainW.data, query: { enabled: !!trainW.data } });
 
     // PetCore: gacha starter mint. Fee escalates per wallet:
     // baseMintFee × (1 + walletMintCount). Sent as value (contract requires >=).
@@ -118,6 +120,23 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         },
         lifecycle: toLc(levelUpW, levelUpR),
         isPending: isInFlight(levelUpW, levelUpR),
+    };
+
+    // GameLogic: train pays a level-scaled fee for flat XP.
+    // scaledFee = trainFee × (100 + 2·level) / 100 (matches the contract).
+    const trainPet: AdapterMutation<{ petId: string }> = {
+        async mutateAsync({ petId }) {
+            if (!canWrite) throw new Error('EVM contract not configured');
+            if (fees.trainFee == null) throw new Error('Train fee not loaded yet');
+            const level = evmPets.find((p) => p.id === petId)?.level ?? 1;
+            const value = (fees.trainFee * BigInt(100 + 2 * level)) / 100n;
+            await trainW.writeContractAsync({
+                address: gameLogic, abi: gameLogicAbi, functionName: 'train',
+                args: [BigInt(petId)], value, gas: 250000n,
+            } as unknown as Parameters<typeof trainW.writeContractAsync>[0]);
+        },
+        lifecycle: toLc(trainW, trainR),
+        isPending: isInFlight(trainW, trainR),
     };
 
     const renamePet: AdapterMutation<{ petId: string; name: string }> = {
@@ -181,6 +200,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         },
         createPet,
         levelUpPet,
+        trainPet,
         renamePet,
         transferPet,
         battlePets,

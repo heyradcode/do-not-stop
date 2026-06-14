@@ -28,6 +28,7 @@ export const noneAdapter: ChainAdapter = {
     pets: { data: [], isLoading: false, error: null, refetch: () => undefined },
     createPet:   disconnectedMutation('create'),
     levelUpPet:  disconnectedMutation('levelUp'),
+    trainPet:    disconnectedMutation('train'),
     renamePet:   disconnectedMutation('rename'),
     transferPet: disconnectedMutation('transfer'),
     battlePets:  disconnectedMutation('battle'),
