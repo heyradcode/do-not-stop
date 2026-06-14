@@ -20,6 +20,18 @@ export interface RosterPet {
     winCount: number;
     lossCount: number;
     readyAt: bigint;
+
+    // v2 fields (indexer-go writes these; contracts plan §3.4, §4.1, §3.7, §4.4, §2.3).
+    xp: number;
+    generation: number;
+    parent1Id: string; // "0" = none
+    parent2Id: string;
+    breedCount: number;
+    speciesId: number;
+    spouseId: string; // "0" = unmarried
+    breedReadyAt: bigint;
+    trainReadyAt: bigint;
+    asset: string; // Metaplex Core asset pubkey (Solana only); "" on EVM
 }
 
 export interface FindOpponentsParams {
@@ -101,6 +113,16 @@ export async function findReadyOpponents(
             winCount: row.winCount,
             lossCount: row.lossCount,
             readyAt: row.readyAt,
+            xp: row.xp,
+            generation: row.generation,
+            parent1Id: row.parent1Id,
+            parent2Id: row.parent2Id,
+            breedCount: row.breedCount,
+            speciesId: row.speciesId,
+            spouseId: row.spouseId,
+            breedReadyAt: row.breedReadyAt,
+            trainReadyAt: row.trainReadyAt,
+            asset: row.asset,
         })),
         total,
     };

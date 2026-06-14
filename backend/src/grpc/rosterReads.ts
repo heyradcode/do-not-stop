@@ -30,6 +30,17 @@ interface PetWire {
     winCount: number;
     lossCount: number;
     readyAt: string; // int64 as string ({ longs: String })
+    // v2 fields. uint32 arrive as numbers; int64 cooldowns arrive as strings.
+    xp: number;
+    generation: number;
+    parent1Id: string;
+    parent2Id: string;
+    breedCount: number;
+    speciesId: number;
+    spouseId: string;
+    breedReadyAt: string;
+    trainReadyAt: string;
+    asset: string;
 }
 
 interface OpponentsWire {
@@ -113,6 +124,16 @@ export function tryGrpcFindReadyOpponents(
                         winCount: p.winCount,
                         lossCount: p.lossCount,
                         readyAt: BigInt(p.readyAt),
+                        xp: p.xp,
+                        generation: p.generation,
+                        parent1Id: p.parent1Id,
+                        parent2Id: p.parent2Id,
+                        breedCount: p.breedCount,
+                        speciesId: p.speciesId,
+                        spouseId: p.spouseId,
+                        breedReadyAt: BigInt(p.breedReadyAt),
+                        trainReadyAt: BigInt(p.trainReadyAt),
+                        asset: p.asset,
                     })),
                     total: res.total,
                 });

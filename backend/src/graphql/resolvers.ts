@@ -35,10 +35,13 @@ export const rootValue = {
         });
 
         return {
-            opponents: rows.map(({ petId: id, readyAt, ...rest }) => ({
+            opponents: rows.map(({ petId: id, readyAt, breedReadyAt, trainReadyAt, ...rest }) => ({
                 id,
                 ...rest,
+                // GraphQL Float can't take bigint — coerce the unix-seconds cooldowns.
                 readyAt: Number(readyAt),
+                breedReadyAt: Number(breedReadyAt),
+                trainReadyAt: Number(trainReadyAt),
             })),
             total,
             page,
