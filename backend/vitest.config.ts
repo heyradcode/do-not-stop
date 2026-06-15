@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, coverageConfigDefaults } from 'vitest/config';
 import { resolve } from 'node:path';
 
 // Mirror the tsconfig "paths" aliases so tests can import via @config, @utils, etc.
@@ -26,18 +26,20 @@ export default defineConfig({
         coverage: {
             provider: 'v8',
             reportsDirectory: './coverage',
-            reporter: ['text', 'html', 'lcov'],
-            // Scope coverage to the pure logic this unit suite targets. Routes,
-            // controllers, gRPC, GraphQL, Prisma client and generated code need
-            // integration/DB harnesses and are covered in a separate branch.
-            include: [
-                'src/utils/index.ts',
-                'src/features/auth/**/*.ts',
-                'src/features/dialogue/llm/**/*.ts',
-                'src/features/dialogue/dialogue.schema.ts',
-                'src/features/dialogue/result/turns.ts',
+            reporter: ['text', 'html', 'lcov', 'json', 'json-summary'],
+            // Whole-project scope: every source file counts toward coverage, so
+            // the percentage reflects the real project rather than a hand-picked
+            // slice. Untested files report as 0% and the number climbs as the
+            // other test branches (integration, etc.) land.
+            include: ['src/**/*.ts'],
+            exclude: [
+                ...coverageConfigDefaults.exclude,
+                'src/generated/**', // Prisma client + generated code
+                'src/types/**', // type-only declarations
+                'src/**/*.types.ts',
+                'src/server.ts', // process bootstrap
+                'src/register-path-aliases.ts',
             ],
-            exclude: ['**/*.types.ts'],
         },
     },
 });

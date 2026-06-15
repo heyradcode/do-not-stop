@@ -10,13 +10,15 @@ export default defineConfig({
             reportsDirectory: './coverage',
             reporter: ['text', 'html', 'lcov', 'json', 'json-summary'],
             // Whole-project scope: every source file counts toward coverage, so
-            // the percentage reflects the real project rather than just the pure
-            // utils. Untested files report as 0% and climb as more suites land.
-            include: ['src/**/*.ts'],
+            // the percentage reflects the real project rather than a hand-picked
+            // slice. Untested files report as 0% and the number climbs as the
+            // component/hook test branches land.
+            include: ['src/**/*.{ts,tsx}'],
             exclude: [
                 ...coverageConfigDefaults.exclude,
-                'src/types/**', // type-only declarations
-                'src/**/index.ts', // barrel re-exports
+                'src/**/*.d.ts', // vite-env.d.ts etc.
+                'src/main.tsx', // app bootstrap
+                'src/assets/**',
             ],
         },
     },
