@@ -8,7 +8,7 @@ export default defineConfig({
         coverage: {
             provider: 'v8',
             reportsDirectory: './coverage',
-            reporter: ['text', 'html', 'lcov'],
+            reporter: ['text', 'html', 'lcov', 'json', 'json-summary'],
             // Only the pure utilities are unit-tested here; hooks/contexts depend
             // on React + wallet SDKs and are out of scope for this suite.
             include: ['src/utils/**/*.ts'],

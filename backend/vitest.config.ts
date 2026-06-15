@@ -26,7 +26,7 @@ export default defineConfig({
         coverage: {
             provider: 'v8',
             reportsDirectory: './coverage',
-            reporter: ['text', 'html', 'lcov'],
+            reporter: ['text', 'html', 'lcov', 'json', 'json-summary'],
             // Scope coverage to the pure logic this unit suite targets. Routes,
             // controllers, gRPC, GraphQL, Prisma client and generated code need
             // integration/DB harnesses and are covered in a separate branch.
