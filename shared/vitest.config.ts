@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, coverageConfigDefaults } from 'vitest/config';
 
 export default defineConfig({
     test: {
@@ -9,10 +9,15 @@ export default defineConfig({
             provider: 'v8',
             reportsDirectory: './coverage',
             reporter: ['text', 'html', 'lcov', 'json', 'json-summary'],
-            // Only the pure utilities are unit-tested here; hooks/contexts depend
-            // on React + wallet SDKs and are out of scope for this suite.
-            include: ['src/utils/**/*.ts'],
-            exclude: ['src/utils/**/index.ts'],
+            // Whole-project scope: every source file counts toward coverage, so
+            // the percentage reflects the real project rather than just the pure
+            // utils. Untested files report as 0% and climb as more suites land.
+            include: ['src/**/*.ts'],
+            exclude: [
+                ...coverageConfigDefaults.exclude,
+                'src/types/**', // type-only declarations
+                'src/**/index.ts', // barrel re-exports
+            ],
         },
     },
 });

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, coverageConfigDefaults } from 'vitest/config';
 
 export default defineConfig({
     test: {
@@ -9,14 +9,16 @@ export default defineConfig({
             provider: 'v8',
             reportsDirectory: './coverage',
             reporter: ['text', 'html', 'lcov', 'json', 'json-summary'],
-            // Scope coverage to the pure utils/constants this unit suite targets.
-            // Hooks, components, contexts and chain SDK wiring depend on React +
-            // wallet SDKs and are out of scope (covered in a component branch).
-            include: [
-                'src/utils/errorParser.ts',
-                'src/constants/tokens.ts',
-                'src/constants/chains/ethereum.ts',
-                'src/constants/chains/solana.ts',
+            // Whole-project scope: every source file counts toward coverage, so
+            // the percentage reflects the real project rather than a hand-picked
+            // slice. Untested files report as 0% and the number climbs as the
+            // component/hook test branches land.
+            include: ['src/**/*.{ts,tsx}'],
+            exclude: [
+                ...coverageConfigDefaults.exclude,
+                'src/**/*.d.ts', // vite-env.d.ts etc.
+                'src/main.tsx', // app bootstrap
+                'src/assets/**',
             ],
         },
     },
