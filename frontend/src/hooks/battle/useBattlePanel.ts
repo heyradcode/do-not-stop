@@ -7,7 +7,9 @@ import {
     useBattleTaunts,
     useOpponents,
     usePetList,
+    usePendingBattle,
     type TxLifecycle,
+    type BattleResolvedResult,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { formatTxHashHint } from '@hooks/usePetError';
@@ -89,10 +91,13 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Outcome detection (snapshot diff against refreshed on-chain stats).
     const outcome = useBattleOutcome({ pets, selectedPet1, petsLoading });
 
-    const handleSuccess = useCallback(() => {
+    const handleSuccess = useCallback((result: BattleResolvedResult | null) => {
         setShowResult(true);
         setValidationError(null);
         outcome.markPendingOutcome();
+        // EVM: BattleResolved is authoritative — petId1 is the player's pet, so
+        // firstWins is the player's verdict. Solana resolves via the stat diff.
+        if (result) outcome.applyResolvedOutcome(result.firstWins);
         void refetch();
         void refetchOpponents();
     }, [outcome, refetch, refetchOpponents]);
@@ -112,6 +117,13 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         [opponents, selectedOpponent],
     );
     const fighterLevel = selectedFighter?.level ?? null;
+
+    // An unresolved battle on either pet makes requestBattle revert ("Battle
+    // pending for pet"); block the new battle until it's settled/cancelled
+    // (the PendingBattleNotice in the setup view drives that).
+    const fighterPending = usePendingBattle(selectedPet1 || undefined);
+    const opponentPending = usePendingBattle(opponent?.id);
+    const hasPendingBattle = fighterPending.isPending || opponentPending.isPending;
     const sortedOpponents = useMemo(
         () => sortOpponentsByMatch(opponents, fighterLevel),
         [opponents, fighterLevel],
@@ -379,13 +391,21 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Pre-result phase (overlay stays open through taunts → battling).
     const isBattling = battle.isPending || battle.isConfirming || rematchPending;
     const preResultTitle = isBattling ? 'The battle is underway…' : 'Face-off!';
+    // EVM v2 battle is async: request → VRF → settle. Label each phase so the
+    // long VRF wait doesn't keep showing "Awaiting your wallet".
     const preResultStatus = rematchPending
         ? 'Preparing rematch…'
-        : battle.isConfirming
-            ? 'Confirming on-chain…'
-            : battle.isPending
-                ? 'Awaiting your wallet…'
-                : null;
+        : battle.phase === 'awaiting-vrf'
+            ? 'Awaiting randomness…'
+            : battle.phase === 'settling'
+                ? 'Settling the battle…'
+                : battle.phase === 'resolving'
+                    ? 'Resolving the outcome…'
+                    : battle.isConfirming
+                        ? 'Confirming on-chain…'
+                        : battle.isPending
+                            ? 'Awaiting your wallet…'
+                            : null;
 
     const battleButtonLabel = taunts.isLoading
         ? 'Facing off…'
@@ -396,7 +416,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
                 : 'Start Battle';
     const battleDisabled =
         battle.isPending || battle.isConfirming || rematchPending || overlayOpen ||
-        !selectedPet1 || !selectedOpponent || showResult;
+        !selectedPet1 || !selectedOpponent || showResult || hasPendingBattle;
     const randomMatchDisabled = !canRandomMatch || battle.isPending || showResult;
 
     const overlay: BattleOverlayProps = {

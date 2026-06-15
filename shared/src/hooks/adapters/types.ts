@@ -57,8 +57,11 @@ export interface ChainAdapter {
     // dna/rarity are Solana-only; EVM adapters ignore them.
     createPet:   AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }>;
     levelUpPet:  AdapterMutation<{ petId: string }>;
+    /** v2 train: pay a level-scaled fee for flat XP. EVM-only (Solana rejects). */
+    trainPet:    AdapterMutation<{ petId: string }>;
     renamePet:   AdapterMutation<{ petId: string; name: string }>;
     transferPet: AdapterMutation<{ petId: string; to: string }>;
     battlePets:  AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }>;
-    breedPets:   AdapterMutation<{ parentId1: string; parentId2: string; name: string }>;
+    // crossOwner adds the stud fee (EVM married cross-owner breeding); ignored on Solana.
+    breedPets:   AdapterMutation<{ parentId1: string; parentId2: string; name: string; crossOwner?: boolean }>;
 }

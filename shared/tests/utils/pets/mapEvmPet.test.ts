@@ -45,4 +45,23 @@ describe('mapEvmPet', () => {
         expect(pet.rarity).toBe(5);
         expect(typeof pet.level).toBe('number');
     });
+
+    it('maps v2 fields when present and coerces them to numbers', () => {
+        const pet = mapEvmPet(
+            { ...raw, xp: 40n, generation: 2n, breedCount: 1n, speciesId: 17n, breedReadyAt: 1_700_000_500n, trainReadyAt: 1_700_000_900n },
+            1n,
+        );
+        expect(pet.xp).toBe(40);
+        expect(pet.generation).toBe(2);
+        expect(pet.breedCount).toBe(1);
+        expect(pet.speciesId).toBe(17);
+        expect(pet.breedReadyAt).toBe(1_700_000_500);
+        expect(pet.trainReadyAt).toBe(1_700_000_900);
+    });
+
+    it('leaves v2 fields undefined for v1 reads', () => {
+        const pet = mapEvmPet(raw, 1n);
+        expect(pet.xp).toBeUndefined();
+        expect(pet.generation).toBeUndefined();
+    });
 });

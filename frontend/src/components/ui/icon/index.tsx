@@ -1,11 +1,13 @@
 import React from 'react';
 import {
+  GiBiceps,
   GiCrossedSwords,
   GiCrystalShine,
   GiDna1,
   GiDragonHead,
   GiEggPod,
   GiFairyWand,
+  GiLinkedRings,
   GiPaperPlane,
   GiPawPrint,
   GiQuillInk,
@@ -65,12 +67,14 @@ const Icon: React.FC<IconProps> = ({
 export default Icon;
 
 export {
+  GiBiceps as TrainIcon,
   GiCrossedSwords as BattleIcon,
   GiCrystalShine as CrystalIcon,
   GiDna1 as DnaIcon,
   GiDragonHead as DragonIcon,
   GiEggPod as EggIcon,
   GiFairyWand as MagicIcon,
+  GiLinkedRings as MarriageIcon,
   GiPaperPlane as SendIcon,
   GiPawPrint as PawIcon,
   GiQuillInk as QuillIcon,
