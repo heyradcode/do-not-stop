@@ -89,7 +89,45 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         onFulfilled: handleFulfilled,
     });
 
-    // 4. Decode BattleResolved for our requestId.
+    // 4. Resolve from BattleResolved — fire at most once per battle.
+    const resolvedFiredRef = useRef(false);
+    const applyResolved = useCallback((a: Record<string, unknown>) => {
+        if (resolvedFiredRef.current) return;
+        resolvedFiredRef.current = true;
+        const resolved: BattleResolvedResult = {
+            requestId: a.requestId as bigint,
+            winnerId: a.winnerId as bigint,
+            loserId: a.loserId as bigint,
+            vrfSeed: a.vrfSeed as bigint,
+            firstWins: a.firstWins as boolean,
+            rounds: Number(a.rounds),
+            winnerHpRemaining: Number(a.winnerHpRemaining),
+            xpWin: Number(a.xpWin),
+            xpLoss: Number(a.xpLoss),
+        };
+        setResult(resolved);
+        setPhase('resolved');
+        onResolvedRef.current?.(resolved);
+    }, []);
+
+    // Primary, reliable path: BattleResolved is in the settle tx receipt we sent.
+    // Event subscriptions can lag/drop over some RPCs, so decode it from there.
+    const { data: settleReceipt } = useWaitForTransactionReceipt({
+        hash: settle.data,
+        query: { enabled: !!settle.data },
+    });
+    useEffect(() => {
+        if (!enabled || !settleReceipt || requestId == null || !evm?.gameLogic.abi) return;
+        try {
+            const logs = parseEventLogs({
+                abi: evm.gameLogic.abi, logs: settleReceipt.logs, eventName: 'BattleResolved', strict: false,
+            }) as unknown as { args: Record<string, unknown> }[];
+            const mine = logs.find((l) => l.args.requestId === requestId);
+            if (mine) applyResolved(mine.args);
+        } catch { /* ignore */ }
+    }, [enabled, settleReceipt, requestId, evm?.gameLogic.abi, applyResolved]);
+
+    // Secondary path: watch BattleResolved (covers a settle sent outside this hook).
     useWatchContractEvent({
         address: gameLogic,
         abi: gameLogicAbi,
@@ -97,24 +135,10 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         enabled: Boolean(enabled && gameLogic && requestId != null),
         onLogs(logs) {
             if (requestId == null) return;
-            const typed = logs as unknown as { args: Record<string, bigint | boolean | number> }[];
+            const typed = logs as unknown as { args: Record<string, unknown> }[];
             for (const log of typed) {
-                const a = log.args;
-                if (a.requestId !== requestId) continue;
-                const resolved: BattleResolvedResult = {
-                    requestId: a.requestId as bigint,
-                    winnerId: a.winnerId as bigint,
-                    loserId: a.loserId as bigint,
-                    vrfSeed: a.vrfSeed as bigint,
-                    firstWins: a.firstWins as boolean,
-                    rounds: Number(a.rounds),
-                    winnerHpRemaining: Number(a.winnerHpRemaining),
-                    xpWin: Number(a.xpWin),
-                    xpLoss: Number(a.xpLoss),
-                };
-                setResult(resolved);
-                setPhase('resolved');
-                onResolvedRef.current?.(resolved);
+                if (log.args.requestId !== requestId) continue;
+                applyResolved(log.args);
                 return;
             }
         },
@@ -126,6 +150,7 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         setResult(null);
         setError(null);
         settleSentRef.current = false;
+        resolvedFiredRef.current = false;
         settle.reset();
     }, [settle]);
 

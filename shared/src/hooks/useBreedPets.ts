@@ -67,7 +67,12 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         onSuccessRef.current?.({ name });
     }, []);
 
+    // Fire success at most once per breed (the settle receipt and the event
+    // watcher can both resolve).
+    const successFiredRef = useRef(false);
     const handleBreedFulfilled = useCallback(() => {
+        if (successFiredRef.current) return;
+        successFiredRef.current = true;
         notifySuccess(offspringNameRef.current);
         setPendingRequestId(null);
     }, [notifySuccess]);
@@ -102,7 +107,18 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         onFulfilled: handleVrfFulfilled,
     });
 
-    // Watch for BreedSettled event on GameLogic (emitted by settleBreed).
+    // Primary, reliable success path: we sent the settleBreed tx, so BreedSettled
+    // is in its receipt. Event subscriptions can lag/drop over some RPCs, so
+    // confirm success straight from the settle receipt.
+    const { isSuccess: settleConfirmed } = useWaitForTransactionReceipt({
+        hash: settle.data,
+        query: { enabled: !!settle.data },
+    });
+    useEffect(() => {
+        if (isEvm && settleConfirmed) handleBreedFulfilled();
+    }, [isEvm, settleConfirmed, handleBreedFulfilled]);
+
+    // Secondary path: watch BreedSettled (covers a settle sent outside this hook).
     useWatchPetsContract({
         contractAddress: evm?.gameLogic.address,
         abi: evm?.gameLogic.abi ?? [],
@@ -114,6 +130,7 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
     const reset = useCallback(() => {
         setPendingRequestId(null);
         settleSentRef.current = false;
+        successFiredRef.current = false;
         settle.reset();
         breedPets.lifecycle.reset();
     }, [settle, breedPets.lifecycle]);
@@ -126,6 +143,7 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
     const mutate = async (args: BreedPetsArgs) => {
         setPendingRequestId(null);
         settleSentRef.current = false;
+        successFiredRef.current = false;
         settle.reset();
         offspringNameRef.current = args.name.trim();
         try {
