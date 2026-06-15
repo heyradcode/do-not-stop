@@ -15,9 +15,9 @@ contract GameConfig is Ownable {
     uint256 public levelUpFee          = 0.004 ether; // level-scaled: baseFee * (100 + (L-1)^2) / 100, capped at maxLevel; 1->99 total > train's 1->99 total
     uint256 public breedFee            = 0.0005 ether;
     uint256 public baseMintFee         = 0.001 ether;
-    uint256 public battleCooldown      = 5 seconds;
-    uint256 public breedCooldownBase   = 5 seconds;   // doubles per breedCount (§4.1)
-    uint256 public newbornCooldown     = 60 seconds;  // bred pets: battle lockout after birth (§4.2)
+    uint256 public battleCooldown      = 900 seconds;   // post-battle lockout (§3.4: 15 min)
+    uint256 public breedCooldownBase   = 3600 seconds;  // doubles per breedCount, capped at 30 days (§4.1: 1h base)
+    uint256 public newbornCooldown     = 43200 seconds; // bred pets: battle lockout after birth (§4.2: 12h)
     uint256 public maxNameLength       = 32;
     uint8   public generationCap       = 20;          // max child generation (§4.1)
 

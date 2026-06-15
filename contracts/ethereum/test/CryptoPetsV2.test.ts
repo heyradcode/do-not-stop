@@ -210,7 +210,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await mintStarter(petCore, config, addr1, "Mine");
         await mintStarter(petCore, config, addr2, "Theirs");
 
-        await testClient.increaseTime({ seconds: 30 });
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
         // Step 1: request
@@ -267,7 +267,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await petCore.write.createPet(["PetB", 9876543210987654n, 1, 0, 0n, 0n], { account: deployer.account });
         await petCore.write.mintTo([deployer.account.address, 2n], { account: deployer.account });
 
-        await testClient.increaseTime({ seconds: 30 });
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
         try {
@@ -286,7 +286,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await mintStarter(petCore, config, addr1, "Mine");
         await mintStarter(petCore, config, addr2, "Theirs");
 
-        await testClient.increaseTime({ seconds: 30 });
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
         try {
@@ -313,7 +313,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const pet1 = await petCore.read.getPet([1n]);
         assert.equal(pet1.level, 12);
 
-        await testClient.increaseTime({ seconds: 30 });
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
         // Default levelBandWidth (100) tolerates an 11-level gap; tighten it to 10.
@@ -595,7 +595,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await mintStarter(petCore, config, addr1, "Mine");
         await mintStarter(petCore, config, addr2, "Theirs");
 
-        await testClient.increaseTime({ seconds: 30 });
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
         const reqHash = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
@@ -857,8 +857,8 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await gameLogic.write.settleBreed([requestId], { account: addr1.account });
         // Pet 3 is child of pet 1
 
-        // Wait for parent breed cooldowns
-        await testClient.increaseTime({ seconds: 100 });
+        // Wait for parent breed cooldowns (breedCooldownBase << 0 = 3600s for breedCount 0)
+        await testClient.increaseTime({ seconds: 3601 });
         await testClient.mine({ blocks: 1 });
 
         // Attempt to breed parent (pet 1) with its offspring (pet 3) — should be rejected
