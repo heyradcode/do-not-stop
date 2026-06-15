@@ -2,12 +2,13 @@
 import { useNavigate } from 'react-router-dom';
 import { formatEther } from 'viem';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useEvmFees, useMarriageInfo, usePetList } from '@shared/core';
+import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useEvmFees, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import { formatTxHashHint } from '@hooks/usePetError';
 import { usePetErrorToast } from '@hooks/usePetErrorToast';
+import PendingBreedNotice from './pending-breed-notice';
 import Icon, { CheckIcon, DnaIcon } from '@components/ui/icon';
 
 export type BreedPanelProps = {
@@ -45,6 +46,13 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const studFeeLabel = crossOwner && fees.studFee != null
         ? `+${formatEther(fees.studFee)} ETH stud fee`
         : null;
+
+    // An unresolved breed on either parent makes requestCreateFromDNA revert
+    // ("Breed pending for parent"); block a new breed until it's resolved
+    // (the PendingBreedNotice below drives settle/cancel).
+    const pendingP1 = usePendingBreed(selectedPet1 || undefined);
+    const pendingP2 = usePendingBreed(effectiveParent2 || undefined);
+    const hasPendingBreed = pendingP1.isPending || pendingP2.isPending;
 
     const handleSuccess = useCallback(
         ({ name }: { name: string }) => {
@@ -169,6 +177,9 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                     </label>
                 )}
 
+                <PendingBreedNotice petId={selectedPet1} label={`#${selectedPet1}`} />
+                {effectiveParent2 ? <PendingBreedNotice petId={effectiveParent2} label={`#${effectiveParent2}`} /> : null}
+
                 <div className="name-input">
                     <label>Offspring Name</label>
                     <input
@@ -183,7 +194,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 <div className="action-controls">
                     <AuthActionButton
                         onClick={handleBreed}
-                        disabled={breed.isPending || breed.isAwaitingFulfillment || !canSubmit}
+                        disabled={breed.isPending || breed.isAwaitingFulfillment || !canSubmit || hasPendingBreed}
                     >
                         {buttonLabel}
                     </AuthActionButton>
