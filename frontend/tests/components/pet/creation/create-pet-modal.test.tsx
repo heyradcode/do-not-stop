@@ -14,11 +14,12 @@ const createPet = {
 };
 let capturedOnSuccess: (() => void) | undefined;
 const petList = { refetch: vi.fn() };
-const capabilities = { isConnected: true };
+const capabilities = { isConnected: true, kind: 'solana' };
 
 vi.mock('@shared/core', () => ({
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
+    useEvmFees: () => ({ nextMintFee: null }),
     useCreatePet: (opts: { onSuccess?: () => void }) => {
         capturedOnSuccess = opts?.onSuccess;
         return createPet;

@@ -33,16 +33,23 @@ const petList = {
     ],
     refetch: vi.fn(),
 };
-const capabilities = { randomness: { provider: 'vrf' } };
+const capabilities = { randomness: { provider: 'vrf' }, kind: 'solana' };
 
 vi.mock('@shared/core', () => ({
     getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
+    useEvmFees: () => ({ studFee: null }),
+    useMarriageInfo: () => ({ isMarried: false, spouseId: undefined }),
+    usePendingBreed: () => ({ isPending: false }),
     useBreedPets: (opts: { onSuccess?: (arg: { name: string }) => void }) => {
         capturedOnSuccess = opts?.onSuccess;
         return breed;
     },
+}));
+// New sibling that reaches into PetsConfig/wagmi — stub it out.
+vi.mock('@components/pet/interactions/panels/breed/pending-breed-notice', () => ({
+    default: () => null,
 }));
 
 import BreedPanel from '@components/pet/interactions/panels/breed';
@@ -84,6 +91,7 @@ describe('BreedPanel', () => {
             parentId1: '1',
             parentId2: '2',
             name: 'Gamma',
+            crossOwner: false,
         });
     });
 

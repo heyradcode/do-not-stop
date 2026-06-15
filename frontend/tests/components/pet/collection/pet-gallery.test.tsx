@@ -33,6 +33,7 @@ vi.mock('@shared/core', () => ({
     getRarityColor: () => 'rgb(1, 2, 3)',
     getRarityName: () => 'Rare',
     getTimeUntilReady: () => '5m',
+    getPetSkill: () => null,
     isPetReady: (...a: unknown[]) => isPetReady(...a),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,

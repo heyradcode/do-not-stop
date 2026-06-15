@@ -25,6 +25,10 @@ vi.mock('@components/common', () => ({
         </button>
     ),
 }));
+// New sibling that reaches into PetsConfig/wagmi — stub it out.
+vi.mock('@components/pet/interactions/panels/battle/parts/pending-battle-notice', () => ({
+    default: () => null,
+}));
 
 import BattleSetup, {
     type BattleSetupProps,
