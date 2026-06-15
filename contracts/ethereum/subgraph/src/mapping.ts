@@ -10,18 +10,18 @@ import {
   PetTransferred,
   MarriageAccepted,
   MarriageDissolved,
-} from "../generated/PetCoreV1/PetCoreV1";
+} from "../generated/PetCore/PetCore";
 import {
   BattleRandomnessRequested,
   BattleResolved,
   BreedRandomnessRequested,
   BreedSettled,
   Trained,
-} from "../generated/GameLogicV1/GameLogicV1";
+} from "../generated/GameLogic/GameLogic";
 import { Battle, BattleRequest, BreedRequest } from "../generated/schema";
 import { refreshPet } from "./pet";
 
-// ─── PetCoreV1 ───────────────────────────────────────────────────────────────
+// ─── PetCore ───────────────────────────────────────────────────────────────
 
 export function handleNewPet(event: NewPet): void {
   refreshPet(event.params.petId, event.block.timestamp);
@@ -49,7 +49,7 @@ export function handleMarriageDissolved(event: MarriageDissolved): void {
   refreshPet(event.params.petIdB, event.block.timestamp);
 }
 
-// ─── GameLogicV1 ─────────────────────────────────────────────────────────────
+// ─── GameLogic ─────────────────────────────────────────────────────────────
 
 // BattleRandomnessRequested carries attacker (petId1) / defender (petId2) keyed
 // by requestId; persist it so the resolve handler can recover the roles.

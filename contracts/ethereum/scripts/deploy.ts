@@ -111,15 +111,15 @@ async function injectContractAddress(): Promise<void> {
 
         let contractAddress: `0x${string}` | undefined;
 
-        // v2 live: PetCoreV1 proxy is the ERC-721 token contract the frontend addresses.
-        const liveAddr = deployedAddresses['CryptoPetsV2Live#PetCoreV1Proxy'] as string | undefined;
+        // v2 live: PetCore proxy is the ERC-721 token contract the frontend addresses.
+        const liveAddr = deployedAddresses['CryptoPetsV2Live#PetCoreProxy'] as string | undefined;
         if (liveAddr) {
             contractAddress = liveAddr as `0x${string}`;
         }
 
         if (!contractAddress) {
             console.error(
-                '❌ PetCoreV1 proxy address not found in deployed_addresses.json (expected CryptoPetsV2Live#PetCoreV1Proxy)'
+                '❌ PetCore proxy address not found in deployed_addresses.json (expected CryptoPetsV2Live#PetCoreProxy)'
             );
             return;
         }

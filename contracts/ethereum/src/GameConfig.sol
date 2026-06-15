@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./CombatSimV1.sol";
+import "./CombatSim.sol";
 
 /**
  * @title GameConfig
@@ -37,7 +37,7 @@ contract GameConfig is Ownable {
     // Species pool sizes per rarity tier (1-5); speciesId = digitPair % poolSizes[rarity] (§3.7).
     mapping(uint8 => uint8) public poolSizes;
 
-    // Skill archetype balance values, passed to CombatSimV1.simulate() (§3.7).
+    // Skill archetype balance values, passed to CombatSim.simulate() (§3.7).
     uint16 public tankHpMult       = 120;  // Tank: ×/100 HP
     uint16 public shellDefMult     = 125;  // Shell: ×/100 DEF
     uint16 public swiftCritBonus   = 50;   // Swift: + bps to crit base
@@ -204,8 +204,8 @@ contract GameConfig is Ownable {
 
     // ─── views ────────────────────────────────────────────────────────────────
 
-    function getSkillConfig() external view returns (CombatSimV1.SkillConfig memory) {
-        return CombatSimV1.SkillConfig({
+    function getSkillConfig() external view returns (CombatSim.SkillConfig memory) {
+        return CombatSim.SkillConfig({
             tankHpMult:      tankHpMult,
             shellDefMult:    shellDefMult,
             swiftCritBonus:  swiftCritBonus,

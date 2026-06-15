@@ -773,7 +773,7 @@
               "type": "uint8"
             }
           ],
-          "internalType": "struct PetCoreV1.Pet",
+          "internalType": "struct PetCore.Pet",
           "name": "",
           "type": "tuple"
         }

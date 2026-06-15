@@ -4,9 +4,9 @@ pragma solidity ^0.8.24;
 import "./DnaLib.sol";
 
 /**
- * @title CombatSimV1
+ * @title CombatSim
  * @dev Stateless, pure battle simulator — deploys as a standalone contract so a balance
- *      patch is "deploy CombatSimV2, setCombatSim()" with no proxy upgrade required and
+ *      patch is "deploy a new CombatSim, setCombatSim()" with no proxy upgrade required and
  *      the old sim stays on-chain for historical replay.
  *
  *      Round model (plan §3.3):
@@ -31,14 +31,16 @@ import "./DnaLib.sol";
  *        6 Rebirth   once per battle, survive a killing blow at 1 HP
  *        7 Bloodlust heals bloodlustBps/10000 of physical damage dealt
  */
-contract CombatSimV1 {
+contract CombatSim {
+    string public constant VERSION = "1.0.0";
+
     struct BattleResult {
         bool   firstWins;
         uint8  rounds;
         uint16 winnerHpRemaining;
     }
 
-    // Skill balance values — read from GameConfig and passed in by GameLogicV1 (plan §3.7).
+    // Skill balance values — read from GameConfig and passed in by GameLogic (plan §3.7).
     struct SkillConfig {
         uint16 tankHpMult;       // ×/100, e.g. 120 = +20% HP
         uint16 shellDefMult;     // ×/100, e.g. 125 = +25% DEF

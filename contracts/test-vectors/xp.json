@@ -1,5 +1,5 @@
 {
-  "description": "XP formula + same-opponent decay golden vectors (plan §3.4, §7). calcXpCases mirror GameLogicV1._calcXp / settle_battle::calc_xp: xp = floor(baseXp * clamp(100 + 10*(oppLevel - myLevel), 0, 200) / 100). decaySequences mirror PetCoreV1.recordBattleOpponent / PetAccount::record_battle_opponent applied to a fresh pet (lastOpponentId = 0, streak = 0); expectedXp applies `calcXp(baseXp, 10, 10) >> decayShift` (myLevel == oppLevel == 10, so the base multiplier is always 100).",
+  "description": "XP formula + same-opponent decay golden vectors (plan §3.4, §7). calcXpCases mirror GameLogic._calcXp / settle_battle::calc_xp: xp = floor(baseXp * clamp(100 + 10*(oppLevel - myLevel), 0, 200) / 100). decaySequences mirror PetCore.recordBattleOpponent / PetAccount::record_battle_opponent applied to a fresh pet (lastOpponentId = 0, streak = 0); expectedXp applies `calcXp(baseXp, 10, 10) >> decayShift` (myLevel == oppLevel == 10, so the base multiplier is always 100).",
   "calcXpCases": [
     { "name": "delta-zero",                 "baseXp": 100, "myLevel": 10, "oppLevel": 10, "expectedXp": 100 },
     { "name": "delta-plus10-cap-boundary",  "baseXp": 100, "myLevel": 10, "oppLevel": 20, "expectedXp": 200 },

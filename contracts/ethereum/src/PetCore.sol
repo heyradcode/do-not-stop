@@ -9,12 +9,14 @@ import "./GameConfig.sol";
 import "./DnaLib.sol";
 
 /**
- * @title PetCoreV1
+ * @title PetCore
  * @dev UUPS-upgradeable ERC-721 that owns all pet data (DNA, stats, lineage, cooldowns).
- *      Exposes mutator methods callable only by the authorized GameLogicV1 proxy (or owner).
+ *      Exposes mutator methods callable only by the authorized GameLogic proxy (or owner).
  *      Storage layout must be append-only from this point forward.
  */
-contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeable {
+contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeable {
+    string public constant VERSION = "1.0.0";
+
     event NewPet(uint256 indexed petId, string name, uint256 dna, uint8 rarity);
     event PetLevelUp(uint256 indexed petId, uint32 newLevel);
     event PetNameChanged(uint256 indexed petId, string newName);
@@ -74,7 +76,7 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     mapping(uint256 => MarriageProposalData)  public marriageProposal;     // keyed by petIdA
     mapping(uint256 => uint256)               public marriageCooldownUntil; // petId => timestamp
 
-    // Reserve 42 slots: 8 declared above (through marriageCooldownUntil) + 42 gap = 50 for PetCoreV1's scope.
+    // Reserve 42 slots: 8 declared above (through marriageCooldownUntil) + 42 gap = 50 for PetCore's scope.
     uint256[42] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
@@ -129,7 +131,7 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         emit CallerRevoked(caller);
     }
 
-    // ─── authorized mutators (called by GameLogicV1) ─────────────────────────
+    // ─── authorized mutators (called by GameLogic) ─────────────────────────
 
     function createPet(
         string memory name_,
@@ -190,7 +192,7 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         _pets[petId].breedCount++;
     }
 
-    /// @dev Bump a wallet's lifetime mint count; called by GameLogicV1 when a requested
+    /// @dev Bump a wallet's lifetime mint count; called by GameLogic when a requested
     ///      starter mint settles, so the escalating mint fee tracks successful mints.
     function incrementWalletMintCount(address account) external onlyAuthorized {
         walletMintCount[account]++;
@@ -217,9 +219,9 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
 
     // ─── user-facing functions ────────────────────────────────────────────────
 
-    // @dev Starter minting lives in GameLogicV1 (requestMintStarter → settleMint): DNA is
+    // @dev Starter minting lives in GameLogic (requestMintStarter → settleMint): DNA is
     //      derived from a future Pyth Entropy reveal so rarity can't be ground out by
-    //      retrying or reverting (plan §4.3). GameLogicV1 calls createPet/mintTo here.
+    //      retrying or reverting (plan §4.3). GameLogic calls createPet/mintTo here.
 
     /// @notice Pay a level-scaled fee to raise a pet one level (no XP path), capped at maxLevel.
     /// @dev fee = levelUpFee * (100 + (level-1)^2) / 100 — a level-1 pet pays exactly

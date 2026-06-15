@@ -83,7 +83,7 @@ Prisma fallback on any error — killing indexer-go must never take reads down
 ## Combat sim (v2)
 
 `internal/combat/` is a pure Go port of the on-chain round-based battle
-simulator (`contracts/ethereum/src/CombatSimV1.sol` + the matching `combat.rs`)
+simulator (`contracts/ethereum/src/CombatSim.sol` + the matching `combat.rs`)
 — DNA→attribute derivation, the round loop with all 8 skill archetypes, the
 XP + same-opponent-decay formulas, and `EstimateWin` (a seed-sampling pre-fight
 win probability). It lets indexer-go replay a settled battle and serve odds

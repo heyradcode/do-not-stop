@@ -90,7 +90,7 @@
               "type": "uint16"
             }
           ],
-          "internalType": "struct CombatSimV1.SkillConfig",
+          "internalType": "struct CombatSim.SkillConfig",
           "name": "sc",
           "type": "tuple"
         }
@@ -115,7 +115,7 @@
               "type": "uint16"
             }
           ],
-          "internalType": "struct CombatSimV1.BattleResult",
+          "internalType": "struct CombatSim.BattleResult",
           "name": "result",
           "type": "tuple"
         }

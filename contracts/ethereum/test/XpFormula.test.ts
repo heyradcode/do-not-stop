@@ -5,8 +5,8 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 // Cross-chain parity fixture (plan §3.4, §7): contracts/test-vectors/xp.json pins the XP
-// formula and same-opponent decay sequences shared by GameLogicV1._calcXp /
-// PetCoreV1.recordBattleOpponent (EVM) and settle_battle::calc_xp /
+// formula and same-opponent decay sequences shared by GameLogic._calcXp /
+// PetCore.recordBattleOpponent (EVM) and settle_battle::calc_xp /
 // PetAccount::record_battle_opponent (Solana).
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -31,7 +31,7 @@ const fixture = JSON.parse(
     fs.readFileSync(path.resolve(__dirname, "../../test-vectors/xp.json"), "utf-8")
 ) as { calcXpCases: CalcXpCase[]; decaySequences: DecaySequence[] };
 
-// Mirrors GameLogicV1._calcXp / settle_battle::calc_xp.
+// Mirrors GameLogic._calcXp / settle_battle::calc_xp.
 function calcXp(baseXp: number, myLevel: number, oppLevel: number): number {
     const diff = oppLevel - myLevel;
     let mult = 100 + 10 * diff;
@@ -40,7 +40,7 @@ function calcXp(baseXp: number, myLevel: number, oppLevel: number): number {
     return Math.floor((baseXp * mult) / 100);
 }
 
-// Mirrors PetCoreV1.recordBattleOpponent / PetAccount::record_battle_opponent, starting from
+// Mirrors PetCore.recordBattleOpponent / PetAccount::record_battle_opponent, starting from
 // a fresh pet (lastOpponentId = 0, streak = 0).
 class OpponentTracker {
     lastOpponentId = 0;

@@ -44,7 +44,7 @@ const config: HardhatUserConfig = {
     // by default drops viaIR/optimizer settings from a flat `version` +
     // `settings` config (only the compiler version carries over). Define
     // both profiles explicitly so contracts that need viaIR (e.g.
-    // CombatSimV1's "stack too deep") compile under `ignition deploy` too.
+    // CombatSim's "stack too deep") compile under `ignition deploy` too.
     profiles: {
       default: {
         version: "0.8.24",

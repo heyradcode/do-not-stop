@@ -17,27 +17,27 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         // Step 1: deploy MockEntropy separately (keeps deployer initcode under EIP-3860 limit)
         const entropy = await viem.deployContract("MockEntropy", [deployerWallet.account.address]);
 
-        // Step 2: deploy GameLogicV1's implementation separately (keeps the
+        // Step 2: deploy GameLogic's implementation separately (keeps the
         // deployer's own initcode under the EIP-3860 limit)
-        const gameLogicImpl = await viem.deployContract("GameLogicV1");
+        const gameLogicImpl = await viem.deployContract("GameLogic");
 
         // Step 3: deploy the UUPS proxy stack
-        const deployer = await viem.deployContract("LocalCryptoPetsDeployerV2", [
+        const deployer = await viem.deployContract("TestDeployer", [
             entropy.address,
             gameLogicImpl.address,
         ]);
         const petCoreAddr   = await deployer.read.petCore();
         const gameLogicAddr = await deployer.read.gameLogic();
 
-        const petCore   = await viem.getContractAt("PetCoreV1",   petCoreAddr);
-        const gameLogic = await viem.getContractAt("GameLogicV1", gameLogicAddr);
+        const petCore   = await viem.getContractAt("PetCore",   petCoreAddr);
+        const gameLogic = await viem.getContractAt("GameLogic", gameLogicAddr);
         const config    = await viem.getContractAt("GameConfig",  await deployer.read.config());
 
         return { petCore, gameLogic, entropy, config };
     }
 
     // Reveals the random number for a pending entropy request, triggering
-    // GameLogicV1.entropyCallback (mirrors the off-chain Pyth keeper).
+    // GameLogic.entropyCallback (mirrors the off-chain Pyth keeper).
     async function revealEntropy(entropy: any, requestId: bigint, account: any) {
         const provider = await entropy.read.getDefaultProvider();
         await entropy.write.mockReveal([provider, requestId, TEST_RANDOMNESS], { account });
@@ -402,7 +402,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const { petCore, gameLogic, entropy, config } = await deployV2();
         const [deployer, addr1] = await viem.getWalletClients();
 
-        // Starter minting now lives behind GameLogicV1.requestMintStarter (whenNotPaused).
+        // Starter minting now lives behind GameLogic.requestMintStarter (whenNotPaused).
         await gameLogic.write.pause({ account: deployer.account });
 
         const baseMintFee = await config.read.baseMintFee();
@@ -421,7 +421,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(await petCore.read.totalPets(), 1n);
     });
 
-    it("Pause drill (GameLogicV1): blocks battle/breed/train but leaves withdrawals callable", async function () {
+    it("Pause drill (GameLogic): blocks battle/breed/train but leaves withdrawals callable", async function () {
         const { petCore, gameLogic, entropy, config } = await deployV2();
         const [deployer, addr1, addr2] = await viem.getWalletClients();
 
@@ -468,7 +468,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await gameLogic.write.unpause({ account: deployer.account });
     });
 
-    it("Pause drill (PetCoreV1): blocks mint/levelUp/marriage/transfers but leaves withdraw callable", async function () {
+    it("Pause drill (PetCore): blocks mint/levelUp/marriage/transfers but leaves withdraw callable", async function () {
         const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const [deployer, addr1, addr2] = await viem.getWalletClients();
@@ -477,7 +477,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await mintStarter(petCore, gameLogic, entropy, config, addr2, "B"); // pet 2
 
         // Request + reveal a third mint, but settle it only after (un)pausing below — the
-        // token mint flows through PetCoreV1's ERC721Pausable, so settleMint must respect it.
+        // token mint flows through PetCore's ERC721Pausable, so settleMint must respect it.
         const baseMintFee = await config.read.baseMintFee();
         const entropyFee  = await entropy.read.getFeeV2();
         const mintCount   = await petCore.read.walletMintCount([addr1.account.address]);
@@ -1023,9 +1023,9 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(sc.bloodlustBps, 150);
     });
 
-    it("Should apply the Tank skill's pre-battle HP bonus in CombatSimV1.simulate", async function () {
+    it("Should apply the Tank skill's pre-battle HP bonus in CombatSim.simulate", async function () {
         const { config } = await deployV2();
-        const combatSim = await viem.getContractAt("CombatSimV1", await config.read.combatSim());
+        const combatSim = await viem.getContractAt("CombatSim", await config.read.combatSim());
         const sc = await config.read.getSkillConfig();
 
         const dna1 = 1234567890123456n; // level-50 attacker, far stronger than dna2
@@ -1052,9 +1052,9 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         );
     });
 
-    it("Should run CombatSimV1.simulate without reverting for every skill archetype (0-7)", async function () {
+    it("Should run CombatSim.simulate without reverting for every skill archetype (0-7)", async function () {
         const { config } = await deployV2();
-        const combatSim = await viem.getContractAt("CombatSimV1", await config.read.combatSim());
+        const combatSim = await viem.getContractAt("CombatSim", await config.read.combatSim());
         const sc = await config.read.getSkillConfig();
 
         const dna1 = 1234567890123456n;

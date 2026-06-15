@@ -1,17 +1,17 @@
 # Template — `scripts/prepare-subgraph.mjs` fills {{...}} and writes subgraph.yaml.
-# Two v2 data sources: the PetCoreV1 proxy (pet lifecycle + marriage) and the
-# GameLogicV1 proxy (battle/breed/train). Both share src/mapping.ts and both
-# carry the PetCoreV1 ABI so handlers can read full pet state via getPet().
+# Two v2 data sources: the PetCore proxy (pet lifecycle + marriage) and the
+# GameLogic proxy (battle/breed/train). Both share src/mapping.ts and both
+# carry the PetCore ABI so handlers can read full pet state via getPet().
 specVersion: 1.0.0
 schema:
   file: ./schema.graphql
 dataSources:
   - kind: ethereum/contract
-    name: PetCoreV1
+    name: PetCore
     network: {{NETWORK}}
     source:
       address: "{{PETCORE_ADDRESS}}"
-      abi: PetCoreV1
+      abi: PetCore
       startBlock: {{START_BLOCK}}
     mapping:
       kind: ethereum/events
@@ -20,8 +20,8 @@ dataSources:
       entities:
         - Pet
       abis:
-        - name: PetCoreV1
-          file: ./abis/PetCoreV1.json
+        - name: PetCore
+          file: ./abis/PetCore.json
       eventHandlers:
         - event: NewPet(indexed uint256,string,uint256,uint8)
           handler: handleNewPet
@@ -37,11 +37,11 @@ dataSources:
           handler: handleMarriageDissolved
       file: ./src/mapping.ts
   - kind: ethereum/contract
-    name: GameLogicV1
+    name: GameLogic
     network: {{NETWORK}}
     source:
       address: "{{GAMELOGIC_ADDRESS}}"
-      abi: GameLogicV1
+      abi: GameLogic
       startBlock: {{START_BLOCK}}
     mapping:
       kind: ethereum/events
@@ -53,10 +53,10 @@ dataSources:
         - BattleRequest
         - BreedRequest
       abis:
-        - name: GameLogicV1
-          file: ./abis/GameLogicV1.json
-        - name: PetCoreV1
-          file: ./abis/PetCoreV1.json
+        - name: GameLogic
+          file: ./abis/GameLogic.json
+        - name: PetCore
+          file: ./abis/PetCore.json
       eventHandlers:
         - event: BattleRandomnessRequested(indexed address,indexed uint256,uint256,uint256)
           handler: handleBattleRequested

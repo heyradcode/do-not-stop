@@ -7,13 +7,13 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import {IEntropyV2} from "@pythnetwork/entropy-sdk-solidity/IEntropyV2.sol";
 import {IEntropyConsumer} from "@pythnetwork/entropy-sdk-solidity/IEntropyConsumer.sol";
 
-import "./PetCoreV1.sol";
+import "./PetCore.sol";
 import "./GameConfig.sol";
-import "./CombatSimV1.sol";
+import "./CombatSim.sol";
 import "./DnaLib.sol";
 
 /**
- * @title GameLogicV1
+ * @title GameLogic
  * @dev UUPS-upgradeable contract holding all game mechanics: battle, breed, randomness handling.
  *
  *      Both battle and breed use the store-then-settle pattern (plan §3.5):
@@ -22,7 +22,9 @@ import "./DnaLib.sol";
  *        settleBattle / settleBreed            → run sim / mix DNA, apply results
  *      This makes a failed settle retryable and keeps states symmetric across EVM/Solana.
  */
-contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, IEntropyConsumer {
+contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, IEntropyConsumer {
+
+    string public constant VERSION = "1.0.0";
 
     // ─── events ───────────────────────────────────────────────────────────────
 
@@ -95,7 +97,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
     // ─── storage (layout append-only) ────────────────────────────────────────
 
-    PetCoreV1                public petCore;
+    PetCore                public petCore;
     GameConfig               public gameConfig;
     IEntropyV2               public entropy;
 
@@ -141,7 +143,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         __Pausable_init();
         _transferOwnership(initialOwner);
 
-        petCore    = PetCoreV1(petCore_);
+        petCore    = PetCore(petCore_);
         gameConfig = GameConfig(gameConfig_);
         entropy    = IEntropyV2(entropy_);
     }
@@ -200,13 +202,13 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         require(pending.requester != address(0), "No pending battle");
         require(pending.fulfilled, "Entropy not yet fulfilled");
 
-        PetCoreV1.Pet memory p1 = petCore.getPet(pending.petId1);
-        PetCoreV1.Pet memory p2 = petCore.getPet(pending.petId2);
+        PetCore.Pet memory p1 = petCore.getPet(pending.petId1);
+        PetCore.Pet memory p2 = petCore.getPet(pending.petId2);
 
         uint8 skill1 = uint8(p1.speciesId % 8);
         uint8 skill2 = uint8(p2.speciesId % 8);
 
-        CombatSimV1.BattleResult memory sim = CombatSimV1(gameConfig.combatSim()).simulate(
+        CombatSim.BattleResult memory sim = CombatSim(gameConfig.combatSim()).simulate(
             p1.dna, p1.rarity, p1.level, skill1,
             p2.dna, p2.rarity, p2.level, skill2,
             pending.randomness,
@@ -333,8 +335,8 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         require(p.owner != address(0), "No pending breed");
         require(p.fulfilled, "Entropy not yet fulfilled");
 
-        PetCoreV1.Pet memory p1 = petCore.getPet(p.petId1);
-        PetCoreV1.Pet memory p2 = petCore.getPet(p.petId2);
+        PetCore.Pet memory p1 = petCore.getPet(p.petId1);
+        PetCore.Pet memory p2 = petCore.getPet(p.petId2);
 
         uint8 gen = (p1.generation > p2.generation ? p1.generation : p2.generation) + 1;
         require(gen <= gameConfig.generationCap(), "Generation cap reached");
@@ -515,7 +517,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     function train(uint256 petId) external payable whenNotPaused onlyPetOwner(petId) {
         require(petCore.isTrainReady(petId), "Train cooldown active");
 
-        PetCoreV1.Pet memory p = petCore.getPet(petId);
+        PetCore.Pet memory p = petCore.getPet(petId);
         uint256 scaledFee = gameConfig.trainFee() * (100 + 2 * uint256(p.level)) / 100;
         require(msg.value >= scaledFee, "Insufficient train fee");
 
@@ -524,7 +526,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         petCore.addXp(petId, trainXp);
 
         // Re-read to get updated xp and level after addXp auto-levels.
-        PetCoreV1.Pet memory after_ = petCore.getPet(petId);
+        PetCore.Pet memory after_ = petCore.getPet(petId);
         emit Trained(petId, trainXp, after_.xp, after_.level);
     }
 

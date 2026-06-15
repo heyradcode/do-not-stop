@@ -8,10 +8,10 @@
  * Env (optional — proxy addresses auto-read from ignition/deployments when present):
  *   SUBGRAPH_NETWORK=sepolia
  *   SUBGRAPH_START_BLOCK=12345678     # the v2 deploy block (the indexer reindexes from here)
- *   PETCORE_ADDRESS=0x...             # PetCoreV1 proxy
- *   GAMELOGIC_ADDRESS=0x...           # GameLogicV1 proxy
+ *   PETCORE_ADDRESS=0x...             # PetCore proxy
+ *   GAMELOGIC_ADDRESS=0x...           # GameLogic proxy
  *
- * The v2 stack (PetCoreV1 + GameLogicV1) is two UUPS proxies — index the proxy
+ * The v2 stack (PetCore + GameLogic) is two UUPS proxies — index the proxy
  * addresses, not the implementations. See ignition/modules/CryptoPetsV2Live.ts.
  */
 
@@ -107,18 +107,18 @@ function main() {
 
     const petCoreAddress = (
         process.env.PETCORE_ADDRESS ??
-        loadIgnitionAddress(network, 'CryptoPetsV2Live#PetCoreV1Proxy') ??
+        loadIgnitionAddress(network, 'CryptoPetsV2Live#PetCoreProxy') ??
         ZERO
     ).toLowerCase();
 
     const gameLogicAddress = (
         process.env.GAMELOGIC_ADDRESS ??
-        loadIgnitionAddress(network, 'CryptoPetsV2Live#GameLogicV1Proxy') ??
+        loadIgnitionAddress(network, 'CryptoPetsV2Live#GameLogicProxy') ??
         ZERO
     ).toLowerCase();
 
-    copyAbi('PetCoreV1');
-    copyAbi('GameLogicV1');
+    copyAbi('PetCore');
+    copyAbi('GameLogic');
 
     writeAddressesTs(petCoreAddress, gameLogicAddress);
     writeSubgraphYaml({
@@ -131,8 +131,8 @@ function main() {
     console.log('[subgraph] Prepared subgraph.yaml');
     console.log(`  network:     ${network}`);
     console.log(`  startBlock:  ${startBlock}`);
-    console.log(`  PetCoreV1:   ${petCoreAddress}`);
-    console.log(`  GameLogicV1: ${gameLogicAddress}`);
+    console.log(`  PetCore:   ${petCoreAddress}`);
+    console.log(`  GameLogic: ${gameLogicAddress}`);
 
     if (petCoreAddress === ZERO || gameLogicAddress === ZERO) {
         console.warn(

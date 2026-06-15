@@ -3,10 +3,10 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 /**
  * Generic v2 UUPS proxy-stack deployment for any EVM network with Chainlink VRF v2.5.
  *
- * Deploys GameConfig + CombatSimV1 (plain contracts) and the PetCoreV1 /
- * GameLogicV1 implementations behind ERC1967 proxies, then wires ownership
+ * Deploys GameConfig + CombatSim (plain contracts) and the PetCore /
+ * GameLogic implementations behind ERC1967 proxies, then wires ownership
  * and caller authorization. The deploying account ends up as `owner()` of
- * every contract (GameConfig, PetCoreV1 proxy, GameLogicV1 proxy) and as the
+ * every contract (GameConfig, PetCore proxy, GameLogic proxy) and as the
  * UUPS upgrade authority for both proxies — transfer ownership to a
  * Safe/Squads multisig (and later a timelock) as a separate follow-up once
  * the stack is verified on-chain (plan §9.1 Phase 4).
@@ -15,7 +15,7 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
  * which `scripts/deploy.ts` generates from per-network env vars. See
  * `scripts/networks.ts` for the env-var convention.
  *
- * After deployment, the GameLogicV1 proxy address must be registered as a
+ * After deployment, the GameLogic proxy address must be registered as a
  * consumer on the VRF subscription via the Chainlink subscription manager
  * (https://vrf.chain.link) — this is a manual step since the subscription
  * owner may differ from the deploying account.
@@ -30,11 +30,11 @@ const CryptoPetsV2LiveModule = buildModule("CryptoPetsV2Live", (m) => {
 
     // ── config & combat sim (plain contracts, not behind proxies) ──────────
     const config = m.contract("GameConfig", [deployer]);
-    const combatSim = m.contract("CombatSimV1", []);
+    const combatSim = m.contract("CombatSim", []);
     m.call(config, "setCombatSim", [combatSim]);
 
-    // ── PetCoreV1 proxy ─────────────────────────────────────────────────────
-    const petCoreImpl = m.contract("PetCoreV1", [], { id: "PetCoreV1Impl" });
+    // ── PetCore proxy ─────────────────────────────────────────────────────
+    const petCoreImpl = m.contract("PetCore", [], { id: "PetCoreImpl" });
     const petCoreInit = m.encodeFunctionCall(petCoreImpl, "initialize", [
         config,
         deployer,
@@ -42,12 +42,12 @@ const CryptoPetsV2LiveModule = buildModule("CryptoPetsV2Live", (m) => {
     const petCoreProxy = m.contract(
         "ERC1967Proxy",
         [petCoreImpl, petCoreInit],
-        { id: "PetCoreV1Proxy" }
+        { id: "PetCoreProxy" }
     );
-    const petCore = m.contractAt("PetCoreV1", petCoreProxy, { id: "PetCoreV1" });
+    const petCore = m.contractAt("PetCore", petCoreProxy, { id: "PetCore" });
 
-    // ── GameLogicV1 proxy ───────────────────────────────────────────────────
-    const gameLogicImpl = m.contract("GameLogicV1", [], { id: "GameLogicV1Impl" });
+    // ── GameLogic proxy ───────────────────────────────────────────────────
+    const gameLogicImpl = m.contract("GameLogic", [], { id: "GameLogicImpl" });
     const gameLogicInit = m.encodeFunctionCall(gameLogicImpl, "initialize", [
         vrfCoordinator,
         petCoreProxy,
@@ -60,10 +60,10 @@ const CryptoPetsV2LiveModule = buildModule("CryptoPetsV2Live", (m) => {
     const gameLogicProxy = m.contract(
         "ERC1967Proxy",
         [gameLogicImpl, gameLogicInit],
-        { id: "GameLogicV1Proxy" }
+        { id: "GameLogicProxy" }
     );
-    const gameLogic = m.contractAt("GameLogicV1", gameLogicProxy, {
-        id: "GameLogicV1",
+    const gameLogic = m.contractAt("GameLogic", gameLogicProxy, {
+        id: "GameLogic",
     });
 
     // ── wire up ──────────────────────────────────────────────────────────────

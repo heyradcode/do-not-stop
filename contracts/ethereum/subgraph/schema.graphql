@@ -38,7 +38,7 @@ type Pet @entity(immutable: false) {
   breedCount: Int!
   "Resolved at mint from DNA + rarity tier; 0 until species pools land."
   speciesId: Int!
-  "Marriage spouse pet id (PetCoreV1.marriageOf); 0 = unmarried."
+  "Marriage spouse pet id (PetCore.marriageOf); 0 = unmarried."
   spouseId: BigInt!
   "Unix seconds the pet is next breed-ready."
   breedReadyAt: BigInt!
