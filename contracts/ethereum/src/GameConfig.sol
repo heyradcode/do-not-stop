@@ -12,7 +12,7 @@ import "./CombatSimV1.sol";
  *      on the proxy. Owned by the same Safe/timelock that owns the proxies.
  */
 contract GameConfig is Ownable {
-    uint256 public levelUpFee          = 0.001 ether; // level-scaled: baseFee * (100 + (L-1)^2) / 100, capped at maxLevel
+    uint256 public levelUpFee          = 0.004 ether; // level-scaled: baseFee * (100 + (L-1)^2) / 100, capped at maxLevel; 1->99 total > train's 1->99 total
     uint256 public breedFee            = 0.0005 ether;
     uint256 public baseMintFee         = 0.001 ether;
     uint256 public battleCooldown      = 5 seconds;

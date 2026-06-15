@@ -16,7 +16,7 @@ export const EVM_CAPABILITIES: ChainCapabilities = {
         placeholder: '0x…',
         isValid: (v) => isAddress(v),
     },
-    levelUpFee: { amount: '0.001', symbol: 'ETH' },
+    levelUpFee: { amount: '0.004', symbol: 'ETH' },
     renameMinLevel: 2,
     randomness: { provider: 'chainlink', appliesTo: ['breed'] },
     explorerTxUrl: () => null,
