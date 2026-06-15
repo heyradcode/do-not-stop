@@ -59,7 +59,18 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
     event Trained(uint256 indexed petId, uint32 xpGained, uint32 newXp, uint32 newLevel);
 
+    event MintRequested(address indexed owner, uint256 indexed requestId);
+    event MintSettled(address indexed owner, uint256 indexed petId, uint256 indexed requestId);
+
     // ─── structs ──────────────────────────────────────────────────────────────
+
+    struct MintRequest {
+        address owner;
+        string  name;
+        uint256 mintFee;    // escrowed mint fee; refunded on cancel, kept as revenue on settle
+        uint256 randomness;
+        bool    fulfilled;
+    }
 
     struct BreedRequest {
         address owner;
@@ -80,7 +91,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         bool    fulfilled;
     }
 
-    enum RequestType { None, Breed, Battle }
+    enum RequestType { None, Breed, Battle, Mint }
 
     // ─── storage (layout append-only) ────────────────────────────────────────
 
@@ -99,8 +110,11 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     // released as a pull payment via withdrawStudFees().
     mapping(address => uint256)        public  pendingStudFees;
 
-    // Reserve 41 slots: 9 declared above (through pendingStudFees) + 41 gap = 50 total.
-    uint256[41] private __gap;
+    // Pending starter mints (plan §4.3): DNA is fixed by the Entropy reveal, not at request.
+    mapping(uint256 => MintRequest)    private _mintRequests;
+
+    // Reserve 40 slots: 10 declared above (through _mintRequests) + 40 gap = 50 total.
+    uint256[40] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
 
@@ -409,8 +423,88 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         } else if (type_ == RequestType.Breed) {
             _breedRequests[requestId].randomness  = word;
             _breedRequests[requestId].fulfilled   = true;
+        } else if (type_ == RequestType.Mint) {
+            _mintRequests[requestId].randomness   = word;
+            _mintRequests[requestId].fulfilled    = true;
         }
         // Unknown requestId → ignore (defensive; should not happen for entropy-issued sequence numbers)
+    }
+
+    // ─── starter minting (plan §4.3) ──────────────────────────────────────────
+
+    /// @notice Request a starter (gen-0) pet; DNA is derived from a future Entropy reveal so the
+    ///         rarity outcome can't be ground out by retrying or reverting on a bad result.
+    /// @dev Escalating mint fee = baseMintFee × (1 + walletMintCount), plus the Entropy fee.
+    ///      The pet is minted by settleMint once randomness is fulfilled; the count is bumped then.
+    /// @param name_ The pet's name (1..maxNameLength bytes).
+    /// @return requestId The Entropy sequence number identifying this pending mint.
+    function requestMintStarter(
+        string calldata name_
+    ) external payable whenNotPaused returns (uint256 requestId) {
+        uint256 nameLen = bytes(name_).length;
+        require(nameLen > 0 && nameLen <= gameConfig.maxNameLength(), "Invalid name length");
+
+        uint256 mintCount  = petCore.walletMintCount(msg.sender);
+        uint256 mintFee    = gameConfig.baseMintFee() * (1 + mintCount);
+        uint256 entropyFee = entropy.getFeeV2();
+        require(msg.value >= mintFee + entropyFee, "Insufficient mint/entropy fee");
+
+        requestId = _requestRandomness(entropyFee);
+
+        _requestTypes[requestId] = RequestType.Mint;
+        _mintRequests[requestId] = MintRequest({
+            owner:      msg.sender,
+            name:       name_,
+            mintFee:    mintFee,
+            randomness: 0,
+            fulfilled:  false
+        });
+
+        emit MintRequested(msg.sender, requestId);
+    }
+
+    /// @notice Mint the starter pet for a fulfilled mint request using the revealed randomness.
+    /// @dev Permissionless once entropy is fulfilled (retryable); bumps the owner's lifetime mint count.
+    /// @param requestId The pending mint's Entropy sequence number.
+    function settleMint(uint256 requestId) external whenNotPaused {
+        MintRequest memory m = _mintRequests[requestId];
+        require(m.owner != address(0), "No pending mint");
+        require(m.fulfilled, "Entropy not yet fulfilled");
+
+        delete _mintRequests[requestId];
+
+        // DNA fixed by the reveal: domain-separated hash → 16-digit DNA (DnaLib.DNA_MODULUS).
+        uint256 dna    = uint256(keccak256(abi.encodePacked(m.randomness, "starter"))) % DnaLib.DNA_MODULUS;
+        uint8   rarity = DnaLib.rarityFromDna(dna);
+
+        petCore.incrementWalletMintCount(m.owner);
+        uint256 petId = petCore.createPet(m.name, dna, rarity, 0, 0, 0);
+        petCore.mintTo(m.owner, petId);
+
+        emit MintSettled(m.owner, petId, requestId);
+    }
+
+    /// @notice Cancel an unfulfilled mint request, refunding the escrowed mint fee.
+    /// @dev Callable by the original requester or the contract owner; rejected once fulfilled —
+    ///      commit-reveal means the DNA can't be previewed and re-rolled. The Entropy fee is
+    ///      non-refundable (already paid to the provider).
+    /// @param requestId The pending mint's Entropy sequence number.
+    function cancelMint(uint256 requestId) external {
+        MintRequest memory m = _mintRequests[requestId];
+        require(m.owner != address(0), "No pending mint");
+        require(
+            msg.sender == m.owner || msg.sender == owner(),
+            "Not requester or owner"
+        );
+        require(!m.fulfilled, "Already fulfilled - call settleMint");
+
+        delete _requestTypes[requestId];
+        delete _mintRequests[requestId];
+
+        if (m.mintFee > 0) {
+            (bool ok, ) = payable(m.owner).call{value: m.mintFee}("");
+            require(ok, "Mint fee refund failed");
+        }
     }
 
     // ─── training ─────────────────────────────────────────────────────────────

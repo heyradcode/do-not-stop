@@ -186,6 +186,12 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         _pets[petId].breedCount++;
     }
 
+    /// @dev Bump a wallet's lifetime mint count; called by GameLogicV1 when a requested
+    ///      starter mint settles, so the escalating mint fee tracks successful mints.
+    function incrementWalletMintCount(address account) external onlyAuthorized {
+        walletMintCount[account]++;
+    }
+
     // Same-opponent decay (plan §3.4): tracks consecutive battles against `opponentId` and
     // returns the XP-halving shift to apply (0 = full XP, 1 = half, 2 = quarter, ...).
     // Facing a different opponent resets the streak to 0.
@@ -207,26 +213,9 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
 
     // ─── user-facing functions ────────────────────────────────────────────────
 
-    /// @notice Mint a starter (gen-0) pet; fee escalates as baseMintFee * (1 + walletMintCount).
-    /// @dev Rarity is derived from DNA digit pair 0 (DnaLib.rarityFromDna, 50/25/15/8/2 split).
-    ///      WARNING: DNA entropy is block-derived (grindable, plan §4.3) — see security notes;
-    ///      the plan's final form requests DNA from Pyth Entropy like breeding does.
-    /// @param name_ The pet's name (1..maxNameLength bytes).
-    function mintStarter(string memory name_) external payable whenNotPaused {
-        _requireValidName(name_);
-        uint256 mintCount = walletMintCount[msg.sender];
-        uint256 fee = gameConfig.baseMintFee() * (1 + mintCount);
-        require(msg.value >= fee, "Insufficient mint fee");
-        walletMintCount[msg.sender] = mintCount + 1;
-
-        uint256 randDna = uint256(
-            keccak256(abi.encodePacked(name_, block.timestamp, block.prevrandao, mintCount))
-        ) % DNA_MODULUS;
-        uint8 rarity = DnaLib.rarityFromDna(randDna);
-
-        uint256 newId = _createPet(name_, randDna, rarity, 0, 0, 0);
-        _mint(msg.sender, newId);
-    }
+    // @dev Starter minting lives in GameLogicV1 (requestMintStarter → settleMint): DNA is
+    //      derived from a future Pyth Entropy reveal so rarity can't be ground out by
+    //      retrying or reverting (plan §4.3). GameLogicV1 calls createPet/mintTo here.
 
     /// @notice Pay a level-scaled fee to raise a pet one level (no XP path), capped at maxLevel.
     /// @dev fee = levelUpFee * (100 + (level-1)^2) / 100 — a level-1 pet pays exactly
