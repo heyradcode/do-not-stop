@@ -142,17 +142,62 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(level, 2);
     });
 
-    it("Should reject level up with incorrect fee", async function () {
+    it("Should reject level up with insufficient fee", async function () {
         const { petCore, config } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
 
         await mintStarter(petCore, config, addr1, "TestPet");
 
+        const levelUpFee = await config.read.levelUpFee();
         try {
-            await petCore.write.levelUp([1n], { account: addr1.account, value: 2000000000000000n });
+            await petCore.write.levelUp([1n], { account: addr1.account, value: levelUpFee - 1n });
             assert.fail("Expected revert");
         } catch (error: unknown) {
-            assert((error as Error).message.includes("Incorrect fee amount"));
+            assert((error as Error).message.includes("Insufficient level-up fee"));
+        }
+    });
+
+    it("Should scale the level-up fee quadratically with the pet's level", async function () {
+        const { petCore, config } = await deployV2();
+        const [, addr1] = await viem.getWalletClients();
+
+        await mintStarter(petCore, config, addr1, "Scaler");
+
+        const levelUpFee = await config.read.levelUpFee();
+
+        // Level 1 -> 2: fee = levelUpFee * (100 + (1-1)^2) / 100 = levelUpFee.
+        await petCore.write.levelUp([1n], { account: addr1.account, value: levelUpFee });
+
+        // Level 2 -> 3: fee = levelUpFee * (100 + (2-1)^2) / 100 = levelUpFee * 101 / 100.
+        try {
+            await petCore.write.levelUp([1n], { account: addr1.account, value: levelUpFee });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Insufficient level-up fee"));
+        }
+
+        const scaledFee = levelUpFee * 101n / 100n;
+        await petCore.write.levelUp([1n], { account: addr1.account, value: scaledFee });
+
+        const [level] = await petCore.read.getPetStats([1n]);
+        assert.equal(level, 3);
+    });
+
+    it("Should cap levelUp at maxLevel", async function () {
+        const { petCore, config } = await deployV2();
+        const [deployer, addr1] = await viem.getWalletClients();
+
+        // Set maxLevel = 1 so a freshly minted (level-1) pet is already at the cap.
+        await config.write.setMaxLevel([1], { account: deployer.account });
+
+        await mintStarter(petCore, config, addr1, "Capped");
+
+        const levelUpFee = await config.read.levelUpFee();
+        try {
+            await petCore.write.levelUp([1n], { account: addr1.account, value: levelUpFee });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Already at max level"));
         }
     });
 

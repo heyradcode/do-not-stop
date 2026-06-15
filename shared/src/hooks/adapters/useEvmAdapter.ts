@@ -108,14 +108,18 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         isPending: isInFlight(createW, createR),
     };
 
-    // PetCore: levelUp requires msg.value == levelUpFee() exactly.
+    // PetCore: levelUp pays a level-scaled fee, capped at maxLevel.
+    // fee = levelUpFee × (100 + (level-1)²) / 100 (matches the contract).
     const levelUpPet: AdapterMutation<{ petId: string }> = {
         async mutateAsync({ petId }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             if (fees.levelUpFee == null) throw new Error('Level-up fee not loaded yet');
+            const level = evmPets.find((p) => p.id === petId)?.level ?? 1;
+            const diff = BigInt(Math.max(level - 1, 0));
+            const value = (fees.levelUpFee * (100n + diff * diff)) / 100n;
             await levelUpW.writeContractAsync({
                 address: petCore, abi: petCoreAbi, functionName: 'levelUp',
-                args: [BigInt(petId)], value: fees.levelUpFee, gas: 200000n,
+                args: [BigInt(petId)], value, gas: 200000n,
             } as unknown as Parameters<typeof levelUpW.writeContractAsync>[0]);
         },
         lifecycle: toLc(levelUpW, levelUpR),

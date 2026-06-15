@@ -228,11 +228,19 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         _mint(msg.sender, newId);
     }
 
-    /// @notice Pay the flat levelUpFee to raise a pet one level (no XP path).
+    /// @notice Pay a level-scaled fee to raise a pet one level (no XP path), capped at maxLevel.
+    /// @dev fee = levelUpFee * (100 + (level-1)^2) / 100 — a level-1 pet pays exactly
+    ///      levelUpFee, and the cost grows quadratically as the pet levels up.
     /// @param tokenId The caller's pet to level up.
     function levelUp(uint256 tokenId) external payable whenNotPaused onlyPetOwner(tokenId) {
-        require(msg.value == gameConfig.levelUpFee(), "Incorrect fee amount");
-        _pets[tokenId].level++;
+        uint32 level = _pets[tokenId].level;
+        require(level < gameConfig.maxLevel(), "Already at max level");
+
+        uint256 diff = level - 1;
+        uint256 fee = gameConfig.levelUpFee() * (100 + diff * diff) / 100;
+        require(msg.value >= fee, "Insufficient level-up fee");
+
+        _pets[tokenId].level = level + 1;
         emit PetLevelUp(tokenId, _pets[tokenId].level);
     }
 

@@ -185,7 +185,7 @@ const PetInteractions: React.FC = () => {
                             Boost your pet stats by leveling up.
                             <br />
                             {capabilities.levelUpFee
-                                ? `Cost: ${capabilities.levelUpFee.amount} ${capabilities.levelUpFee.symbol} per level.`
+                                ? `From ${capabilities.levelUpFee.amount} ${capabilities.levelUpFee.symbol} — cost rises with your pet's level.`
                                 : 'Costs a small SOL fee per level.'}
                         </div>
                         <button
