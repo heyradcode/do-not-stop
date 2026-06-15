@@ -17,12 +17,6 @@
             "@middleware/*": [
                 "./src/middleware/*"
             ],
-            "@indexer": [
-                "./src/indexer/index.ts"
-            ],
-            "@indexer/*": [
-                "./src/indexer/*"
-            ],
             "@repositories/*": [
                 "./src/repositories/*"
             ],
@@ -35,9 +29,6 @@
             "@generated/*": [
                 "./src/generated/*"
             ],
-            "@indexing/*": [
-                "./indexing/*"
-            ],
             "@graphql": [
                 "./src/graphql/index.ts"
             ]
@@ -46,9 +37,8 @@
         "esModuleInterop": true,
         "allowJs": true,
         "outDir": "./dist",
-        // rootDir spans src/ (the app) and indexing/ (the per-chain roster
-        // indexers), so the backend root is the common root → emits dist/src/...
-        // and dist/indexing/... (entry: dist/src/server.js).
+        // rootDir stays the backend root (not ./src) so emit keeps the dist/src/...
+        // layout the "main"/"start" entry (dist/src/server.js) expects.
         "rootDir": "./",
         "strict": true,
         "noImplicitAny": true,
@@ -57,6 +47,8 @@
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
         "noUncheckedIndexedAccess": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
         "noImplicitOverride": true,
         "exactOptionalPropertyTypes": true,
         "skipLibCheck": true,
@@ -68,17 +60,13 @@
         "noEmit": false
     },
     "include": [
-        "src/**/*",
-        "indexing/**/*"
+        "src/**/*"
     ],
     "exclude": [
         "node_modules",
         "dist",
         // Vitest specs — run via esbuild, not part of the production build, so
         // they don't get emitted to dist/ or require vitest types at build time.
-        "src/**/*.test.ts",
-        // The subgraph deploy project — AssemblyScript mappings built by
-        // graph-cli, not part of the backend's TypeScript program.
-        "indexing/evm/subgraph"
+        "src/**/*.test.ts"
     ]
 }
