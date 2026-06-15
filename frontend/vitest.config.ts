@@ -9,10 +9,15 @@ export default defineConfig({
             provider: 'v8',
             reportsDirectory: './coverage',
             reporter: ['text', 'html', 'lcov'],
-            // Only the pure utilities are unit-tested here; hooks/components depend
-            // on React + wallet SDKs and are out of scope for this suite.
-            include: ['src/utils/**/*.ts'],
-            exclude: ['src/utils/**/index.ts'],
+            // Scope coverage to the pure utils/constants this unit suite targets.
+            // Hooks, components, contexts and chain SDK wiring depend on React +
+            // wallet SDKs and are out of scope (covered in a component branch).
+            include: [
+                'src/utils/errorParser.ts',
+                'src/constants/tokens.ts',
+                'src/constants/chains/ethereum.ts',
+                'src/constants/chains/solana.ts',
+            ],
         },
     },
 });
