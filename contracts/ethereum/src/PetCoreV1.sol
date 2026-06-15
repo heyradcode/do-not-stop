@@ -22,6 +22,8 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     event MarriageProposed(uint256 indexed petIdA, uint256 indexed petIdB);
     event MarriageAccepted(uint256 indexed petIdA, uint256 indexed petIdB);
     event MarriageDissolved(uint256 indexed petIdA, uint256 indexed petIdB, string reason);
+    event CallerAuthorized(address indexed caller);
+    event CallerRevoked(address indexed caller);
 
     struct Pet {
         string name;
@@ -119,10 +121,12 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
 
     function authorizeCaller(address caller) external onlyOwner {
         authorizedCallers[caller] = true;
+        emit CallerAuthorized(caller);
     }
 
     function revokeCaller(address caller) external onlyOwner {
         authorizedCallers[caller] = false;
+        emit CallerRevoked(caller);
     }
 
     // ─── authorized mutators (called by GameLogicV1) ─────────────────────────
@@ -143,7 +147,7 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     }
 
     function triggerCooldown(uint256 petId) external onlyAuthorized entryExists(petId) {
-        _pets[petId].readyTime = uint32(block.timestamp + gameConfig.battleCooldown());
+        _pets[petId].readyTime = _deadline(gameConfig.battleCooldown());
     }
 
     // Set the breed-specific cooldown (does NOT touch the battle readyTime).
@@ -151,17 +155,17 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         uint256 petId,
         uint256 cooldownSeconds
     ) external onlyAuthorized entryExists(petId) {
-        _pets[petId].breedReadyAt = uint32(block.timestamp + cooldownSeconds);
+        _pets[petId].breedReadyAt = _deadline(cooldownSeconds);
     }
 
     // Override battle readyTime directly (used for newborn cooldown on bred pets).
     function setCooldown(uint256 petId, uint256 cooldownSeconds) external onlyAuthorized entryExists(petId) {
-        _pets[petId].readyTime = uint32(block.timestamp + cooldownSeconds);
+        _pets[petId].readyTime = _deadline(cooldownSeconds);
     }
 
     // Set the train-specific cooldown.
     function triggerTrainCooldown(uint256 petId) external onlyAuthorized entryExists(petId) {
-        _pets[petId].trainReadyAt = uint32(block.timestamp + gameConfig.trainCooldown());
+        _pets[petId].trainReadyAt = _deadline(gameConfig.trainCooldown());
     }
 
     function updateBattleStats(uint256 petId, bool won) external onlyAuthorized entryExists(petId) {
@@ -253,13 +257,21 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     // ─── marriage system (plan §4.4) ─────────────────────────────────────────
 
     /// @notice Caller (owner of petIdA) proposes a mutual marriage with petIdB (different owner).
-    /// @dev Overwrites any expired proposal from petIdA; a live (unexpired) proposal blocks a new one.
+    /// @dev A live (unexpired) proposal from the current owner blocks a new one; expired or
+    ///      prior-owner (stale) proposals are overwritten. Marriages invalidated by a transfer
+    ///      are auto-dissolved here so the new owner isn't locked out.
     function proposeMarriage(
         uint256 petIdA,
         uint256 petIdB
     ) external whenNotPaused onlyPetOwner(petIdA) entryExists(petIdB) {
         require(petIdA != petIdB, "Cannot marry self");
         require(ownerOf(petIdA) != ownerOf(petIdB), "Same owner doesn't need marriage");
+
+        // Clear any marriage already invalidated by a transfer; otherwise the leftover
+        // spouseId would wrongly block the current owner from marrying this pet.
+        _clearStaleMarriageFor(petIdA);
+        _clearStaleMarriageFor(petIdB);
+
         require(marriageOf[petIdA].spouseId == 0, "petIdA already married");
         require(marriageOf[petIdB].spouseId == 0, "petIdB already married");
         require(block.timestamp >= marriageCooldownUntil[petIdA], "petIdA marriage cooldown active");
@@ -273,9 +285,13 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
             "Incest: cannot marry parent/child"
         );
 
+        // onlyPetOwner(petIdA) ⇒ msg.sender == ownerOf(petIdA); a proposal whose proposer is
+        // no longer that owner is stale and may be overwritten by the current owner.
         MarriageProposalData storage existing = marriageProposal[petIdA];
         require(
-            existing.proposer == address(0) || block.timestamp > existing.expiry,
+            existing.proposer == address(0) ||
+            block.timestamp > existing.expiry ||
+            existing.proposer != ownerOf(petIdA),
             "Pending proposal exists"
         );
 
@@ -288,7 +304,9 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
     }
 
     /// @notice Caller (owner of petIdB) accepts a matching, unexpired proposal from petIdA.
-    /// @dev Re-checks that the stored proposer still owns petIdA (propose-then-sell guard).
+    /// @dev Re-checks that the stored proposer still owns petIdA (propose-then-sell guard) and
+    ///      that neither pet is under a marriage cooldown (defends against a propose→marry-and-
+    ///      divorce-elsewhere→accept sequence that would otherwise bypass the cooldown).
     function acceptMarriage(
         uint256 petIdA,
         uint256 petIdB
@@ -299,6 +317,8 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         require(ownerOf(petIdA) == prop.proposer, "Proposer no longer owns petIdA");
         require(marriageOf[petIdA].spouseId == 0, "petIdA already married");
         require(marriageOf[petIdB].spouseId == 0, "petIdB already married");
+        require(block.timestamp >= marriageCooldownUntil[petIdA], "petIdA marriage cooldown active");
+        require(block.timestamp >= marriageCooldownUntil[petIdB], "petIdB marriage cooldown active");
 
         marriageOf[petIdA] = MarriageRecord({ spouseId: petIdB, ownerSnapshot: ownerOf(petIdA) });
         marriageOf[petIdB] = MarriageRecord({ spouseId: petIdA, ownerSnapshot: ownerOf(petIdB) });
@@ -349,6 +369,21 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         delete marriageOf[petIdB];
 
         emit MarriageDissolved(petIdA, petIdB, "stale");
+    }
+
+    /// @dev Dissolve petId's marriage iff a transfer has invalidated either side's consent.
+    ///      No marriageCooldown penalty (mirrors clearStaleMarriage). No-op if not married/not stale.
+    function _clearStaleMarriageFor(uint256 petId) internal {
+        uint256 spouseId = marriageOf[petId].spouseId;
+        if (spouseId == 0) return;
+        if (
+            marriageOf[petId].ownerSnapshot != ownerOf(petId) ||
+            marriageOf[spouseId].ownerSnapshot != ownerOf(spouseId)
+        ) {
+            delete marriageOf[petId];
+            delete marriageOf[spouseId];
+            emit MarriageDissolved(petId, spouseId, "stale");
+        }
     }
 
     /// @notice True if petIdA and petIdB hold mutual, still-valid marriage records.
@@ -448,7 +483,7 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
             name:         name_,
             dna:          dna,
             level:        1,
-            readyTime:    uint32(block.timestamp + gameConfig.battleCooldown()),
+            readyTime:    _deadline(gameConfig.battleCooldown()),
             winCount:     0,
             lossCount:    0,
             rarity:       rarity,
@@ -473,6 +508,15 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         uint8 poolSize = gameConfig.poolSizes(rarity);
         if (poolSize == 0) return 0;
         return uint16(DnaLib.digitPair(dna, 6) % poolSize);
+    }
+
+    // Compute a cooldown deadline, reverting rather than silently wrapping the uint32 the
+    // Pet struct stores (cooldown fields are uint32; safe until the unix clock itself
+    // exceeds 2^32 in ~2106, after which this reverts instead of producing a bogus time).
+    function _deadline(uint256 cooldownSeconds) private view returns (uint32) {
+        uint256 t = block.timestamp + cooldownSeconds;
+        require(t <= type(uint32).max, "Cooldown overflows uint32");
+        return uint32(t);
     }
 
     function _requireValidName(string memory name_) private view {

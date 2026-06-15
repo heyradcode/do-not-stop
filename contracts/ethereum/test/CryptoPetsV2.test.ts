@@ -1263,6 +1263,53 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         );
     });
 
+    it("Should auto-clear a transfer-invalidated marriage when the new owner re-proposes", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
+        const [, addr1, addr2, addr3] = await viem.getWalletClients();
+
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A"); // pet 1
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "B"); // pet 2
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        // addr1 sells pet 1 to addr3 — the marriage is now stale (leftover spouseId on both).
+        await petCore.write.transferFrom(
+            [addr1.account.address, addr3.account.address, 1n],
+            { account: addr1.account }
+        );
+
+        // New owner can re-propose without first calling clearStaleMarriage: proposeMarriage
+        // dissolves the stale record automatically, then records the fresh proposal.
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr3.account });
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        assert.equal(await petCore.read.isMarriageValid([1n, 2n]), true);
+        const [spouseA, snapA] = await petCore.read.marriageOf([1n]);
+        assert.equal(spouseA, 2n);
+        assert.equal(snapA.toLowerCase(), addr3.account.address.toLowerCase());
+    });
+
+    it("Should let the current owner overwrite a stale pending proposal from a prior owner", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
+        const [, addr1, addr2, addr3] = await viem.getWalletClients();
+
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A"); // pet 1
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "B"); // pet 2
+
+        // addr1 proposes, then sells pet 1 to addr3 (proposal still keyed to pet 1).
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.transferFrom(
+            [addr1.account.address, addr3.account.address, 1n],
+            { account: addr1.account }
+        );
+
+        // The prior owner's proposal is stale; the new owner can overwrite it.
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr3.account });
+        const [, proposer] = await petCore.read.marriageProposal([1n]);
+        assert.equal(proposer.toLowerCase(), addr3.account.address.toLowerCase());
+    });
+
     it("Should breed cross-owner via an accepted marriage, paying breedFee + studFee", async function () {
         const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
