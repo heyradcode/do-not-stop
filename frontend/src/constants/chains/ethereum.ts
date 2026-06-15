@@ -22,7 +22,7 @@ import {
     celoAlfajores,
     gnosisChiado
 } from 'viem/chains';
-import { defineChain } from 'viem';
+import { type Chain, defineChain } from 'viem';
 
 // Hardhat Local Network
 const hardhatLocal = defineChain({
@@ -43,7 +43,7 @@ const hardhatLocal = defineChain({
 
 // Chain configuration interface
 export interface ChainConfig {
-    chain: any;
+    chain: Chain;
     name: string;
     symbol: string;
     isTestnet: boolean;

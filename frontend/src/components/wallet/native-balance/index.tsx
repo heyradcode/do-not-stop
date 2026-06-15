@@ -67,17 +67,6 @@ const NativeBalance: React.FC<NativeBalanceProps> = ({ type, className }) => {
         return null;
     }
 
-    // Debug logging for Solana balance
-    if (type === 'solana') {
-        console.log('Solana Balance Debug:', {
-            solanaConnected,
-            publicKey: publicKey?.toString(),
-            solanaBalance,
-            isSolanaLoading,
-            solanaError
-        });
-    }
-
     const isLoading = type === 'ethereum' ? isEthereumLoading : isSolanaLoading;
     const error = type === 'ethereum' ? ethereumError : solanaError;
     const balance = type === 'ethereum' ? ethereumBalance : solanaBalance;
@@ -123,7 +112,7 @@ const NativeBalance: React.FC<NativeBalanceProps> = ({ type, className }) => {
     let symbol: string;
 
     if (type === 'ethereum') {
-        formattedBalance = formatEther((balance as any).value);
+        formattedBalance = formatEther(ethereumBalance!.value);
         symbol = getNativeTokenSymbol(chain?.id);
     } else {
         formattedBalance = (balance as number).toFixed(4);

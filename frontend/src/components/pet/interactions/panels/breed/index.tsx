@@ -204,7 +204,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 </div>
 
                 {breed.isAwaitingFulfillment && (
-                    <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>
+                    <p className="pending-hint">
                         {AWAITING_HINT}
                     </p>
                 )}
@@ -218,7 +218,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
             )}
 
             {hashHint && (
-                <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>
+                <p className="pending-hint">
                     Transaction: {hashHint}
                 </p>
             )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAccount, usePublicClient } from 'wagmi';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
@@ -12,6 +12,30 @@ import TokenBalance from '@components/wallet/token-balance';
 import NativeBalance from '@components/wallet/native-balance';
 import './index.css';
 
+interface CopyableAddressProps {
+    address: string;
+    isCopied: boolean;
+    onCopy: () => void;
+}
+
+const CopyableAddress: React.FC<CopyableAddressProps> = ({ address, isCopied, onCopy }) => (
+    <div
+        className={`address ${isCopied ? 'copied' : ''}`}
+        onClick={onCopy}
+        title={isCopied ? 'Address copied!' : 'Click to copy address'}
+    >
+        <span className="address-text">{address}</span>
+        <span className="copy-icon">
+            <Icon
+                as={isCopied ? CheckIcon : CopyIcon}
+                tone={isCopied ? Tones.Emerald : Tones.Cyan}
+                glow="none"
+                className="no-gap"
+            />
+        </span>
+    </div>
+);
+
 const AccountDropdown: React.FC = () => {
     const { address, isConnected, chain } = useAccount();
     const { publicKey: solanaPublicKey, connected: solanaConnected, disconnect: solanaDisconnect } = useWallet();
@@ -21,7 +45,7 @@ const AccountDropdown: React.FC = () => {
 
     const [tokenStatus, setTokenStatus] = useState<Record<string, { fetched: boolean; balance?: bigint | number }>>({});
     const [isTokensLoading, setIsTokensLoading] = useState(false);
-    const dropdownRef = useRef<any>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const {
         isAuthenticated,
@@ -31,12 +55,25 @@ const AccountDropdown: React.FC = () => {
         isVerifying,
         isNonceLoading
     } = useAuth();
-    // Memoize popular tokens to prevent infinite re-renders
     const popularTokens = useMemo(() => getPopularTokens(chain?.id), [chain?.id]);
 
     const publicClient = usePublicClient();
 
-    // Refetch balance when dropdown opens - batch fetch ERC-20 balances
+    const handleCopyAny = useCallback(async (text: string) => {
+        try {
+            await globalThis.navigator.clipboard.writeText(text);
+        } catch {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+        }
+        setIsCopied(true);
+        globalThis.setTimeout(() => setIsCopied(false), 2000);
+    }, []);
+
     useEffect(() => {
         const fetchTokenBalances = async () => {
             if (!address) return;
@@ -44,7 +81,6 @@ const AccountDropdown: React.FC = () => {
             setIsTokensLoading(true);
 
             try {
-                // Build multicall requests for balanceOf
                 const calls = popularTokens.map(token => ({
                     address: token.address as `0x${string}`,
                     abi: [{
@@ -61,7 +97,6 @@ const AccountDropdown: React.FC = () => {
                 let results: Array<{ address: string; balance?: bigint | number; error?: unknown }> = [];
 
                 if ((publicClient as { multicall?: unknown })?.multicall) {
-                    // Use the correct viem multicall syntax
                     const multicallRes = await (publicClient as { multicall: (params: unknown) => Promise<unknown> }).multicall({
                         contracts: calls,
                         allowFailure: true
@@ -76,7 +111,6 @@ const AccountDropdown: React.FC = () => {
                     throw new Error('Multicall not available');
                 }
 
-                // Build tokenStatus map in one update
                 const newStatus: Record<string, { fetched: boolean; balance?: bigint | number }> = {};
                 for (const r of results) {
                     newStatus[r.address.toLowerCase()] = {
@@ -94,20 +128,17 @@ const AccountDropdown: React.FC = () => {
         };
 
         if (isOpen && address) {
-            // Reset token status when opening dropdown
             setTokenStatus({});
             fetchTokenBalances();
         }
     }, [isOpen, address, publicClient, popularTokens]);
 
-    // derived counts
     const fetchedCount = Object.values(tokenStatus).filter(s => s.fetched).length;
     const withBalanceCount = Object.values(tokenStatus).filter(s => {
         if (!s.balance) return false;
         return typeof s.balance === 'bigint' ? s.balance > 0n : Number(s.balance) > 0;
     }).length;
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: globalThis.MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as globalThis.Node)) {
@@ -138,37 +169,11 @@ const AccountDropdown: React.FC = () => {
         setIsOpen(false);
     };
 
-    const handleCopyAddress = async () => {
-        if (address) {
-            try {
-                await globalThis.navigator.clipboard.writeText(address);
-                setIsCopied(true);
-                // Reset the copied state after 2 seconds
-                globalThis.setTimeout(() => setIsCopied(false), 2000);
-            } catch {
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = address;
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-                setIsCopied(true);
-                // Reset the copied state after 2 seconds
-                globalThis.setTimeout(() => setIsCopied(false), 2000);
-            }
-        }
-    };
-
-    // token balances are handled by parent batch fetch; no per-token callback needed
-
-    // Format address for display
     const formatAddress = (addr: string | undefined) => {
         if (!addr) return '';
         return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
     };
 
-    /** Phantom (and others) opened via Dynamic’s modal live on `primaryWallet`, not on `@solana/wallet-adapter-react`. */
     const dynamicWalletAddress = primaryWallet?.address ?? undefined;
     const dynamicSession = Boolean(user || primaryWallet);
 
@@ -178,7 +183,6 @@ const AccountDropdown: React.FC = () => {
         (dynamicWalletAddress && formatAddress(dynamicWalletAddress)) ||
         'Connected';
 
-    // Wagmi, wallet-adapter, or Dynamic “connect-only” session (incl. Solana-only via Dynamic modal).
     const hasAnyWallet = isConnected || solanaConnected || dynamicSession;
 
     if (!hasAnyWallet) {
@@ -190,7 +194,6 @@ const AccountDropdown: React.FC = () => {
             </div>
         );
     }
-
 
     return (
         <div className="account-dropdown">
@@ -212,71 +215,32 @@ const AccountDropdown: React.FC = () => {
                         <div className="menu-header">
                             <div className="addresses">
                                 {address && (
-                                    <div
-                                        className={`address ${isCopied ? 'copied' : ''}`}
-                                        onClick={handleCopyAddress}
-                                        title={isCopied ? "Address copied!" : "Click to copy address"}
-                                    >
-                                        <span className="address-text">{address}</span>
-                                        <span className="copy-icon">
-                                            <Icon
-                                                as={isCopied ? CheckIcon : CopyIcon}
-                                                tone={isCopied ? Tones.Emerald : Tones.Cyan}
-                                                glow="none"
-                                                className="no-gap"
-                                            />
-                                        </span>
-                                    </div>
+                                    <CopyableAddress
+                                        address={address}
+                                        isCopied={isCopied}
+                                        onCopy={() => void handleCopyAny(address)}
+                                    />
                                 )}
                                 {solanaPublicKey && (
-                                    <div
-                                        className={`address ${isCopied ? 'copied' : ''}`}
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(solanaPublicKey.toString());
-                                            setIsCopied(true);
-                                            setTimeout(() => setIsCopied(false), 2000);
-                                        }}
-                                        title={isCopied ? "Address copied!" : "Click to copy address"}
-                                    >
-                                        <span className="address-text">{solanaPublicKey.toString()}</span>
-                                        <span className="copy-icon">
-                                            <Icon
-                                                as={isCopied ? CheckIcon : CopyIcon}
-                                                tone={isCopied ? Tones.Emerald : Tones.Cyan}
-                                                glow="none"
-                                                className="no-gap"
-                                            />
-                                        </span>
-                                    </div>
+                                    <CopyableAddress
+                                        address={solanaPublicKey.toString()}
+                                        isCopied={isCopied}
+                                        onCopy={() => void handleCopyAny(solanaPublicKey.toString())}
+                                    />
                                 )}
                                 {dynamicWalletAddress &&
                                     dynamicWalletAddress !== address &&
                                     dynamicWalletAddress !== solanaPublicKey?.toString() && (
-                                        <div
-                                            className={`address ${isCopied ? 'copied' : ''}`}
-                                            onClick={() => {
-                                                void navigator.clipboard.writeText(dynamicWalletAddress);
-                                                setIsCopied(true);
-                                                setTimeout(() => setIsCopied(false), 2000);
-                                            }}
-                                            title={isCopied ? "Address copied!" : "Click to copy address"}
-                                        >
-                                            <span className="address-text">{dynamicWalletAddress}</span>
-                                            <span className="copy-icon">
-                                                <Icon
-                                                    as={isCopied ? CheckIcon : CopyIcon}
-                                                    tone={isCopied ? Tones.Emerald : Tones.Cyan}
-                                                    glow="none"
-                                                    className="no-gap"
-                                                />
-                                            </span>
-                                        </div>
+                                        <CopyableAddress
+                                            address={dynamicWalletAddress}
+                                            isCopied={isCopied}
+                                            onCopy={() => void handleCopyAny(dynamicWalletAddress)}
+                                        />
                                     )}
                             </div>
                         </div>
 
                         <div className="menu-body">
-                            {/* Ethereum/EVM Balance Section */}
                             {isConnected && address && (
                                 <NeonCard as="div" className="balance">
                                     <div className="label">Ethereum Balance</div>
@@ -284,7 +248,6 @@ const AccountDropdown: React.FC = () => {
                                 </NeonCard>
                             )}
 
-                            {/* Solana Balance Section */}
                             {solanaConnected && solanaPublicKey && (
                                 <NeonCard as="div" className="balance">
                                     <div className="label">Solana Balance</div>
@@ -292,7 +255,6 @@ const AccountDropdown: React.FC = () => {
                                 </NeonCard>
                             )}
 
-                            {/* ERC-20 Tokens Section */}
                             {popularTokens.length > 0 && (
                                 <NeonCard as="div" className="tokens">
                                     <div className="label">Token Balances</div>
@@ -306,7 +268,6 @@ const AccountDropdown: React.FC = () => {
                                                 balance={tokenStatus[token.address.toLowerCase()]?.balance}
                                             />
                                         ))}
-                                        {/* Show "no ERC-20 tokens" message when all tokens are fetched and none have balance */}
                                         {!isTokensLoading &&
                                             fetchedCount === popularTokens.length &&
                                             withBalanceCount === 0 && (
@@ -318,7 +279,6 @@ const AccountDropdown: React.FC = () => {
                                 </NeonCard>
                             )}
 
-                            {/* Action Buttons */}
                             <div className="actions">
                                 {!isAuthenticated ? (
                                     <NeonButton
