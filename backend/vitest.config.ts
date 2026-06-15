@@ -1,22 +1,43 @@
 import { defineConfig } from 'vitest/config';
-import tsconfigPaths from 'vite-tsconfig-paths';
+import { resolve } from 'node:path';
 
-/**
- * vite-tsconfig-paths resolves the `@config/*`, `@routes/*`, etc. aliases
- * straight from tsconfig.json, so tests (and the modules they import) use the
- * same path mapping as the build — no hand-maintained alias list to drift.
- */
+// Mirror the tsconfig "paths" aliases so tests can import via @config, @utils, etc.
+const src = (p: string) => resolve(__dirname, 'src', p);
+
 export default defineConfig({
-    plugins: [tsconfigPaths()],
+    resolve: {
+        alias: {
+            '@config': src('config'),
+            '@routes': src('routes'),
+            '@features': src('features'),
+            '@middleware': src('middleware'),
+            '@repositories': src('repositories'),
+            '@utils': src('utils/index.ts'),
+            '@typings': src('types'),
+            '@generated': src('generated'),
+            '@graphql': src('graphql/index.ts'),
+        },
+    },
     test: {
-        include: ['src/**/*.test.ts'],
+        globals: true,
         environment: 'node',
-        // A dummy URL so modules that read env at import (env.ts requires
-        // DATABASE_URL) load under test. Prisma's client constructs its pool
-        // lazily, so nothing actually connects — the boot smoke test just
-        // verifies the module graph loads and the schema builds.
-        env: {
-            DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
+        include: ['tests/**/*.{test,spec}.ts'],
+        setupFiles: ['./tests/setup.ts'],
+        coverage: {
+            provider: 'v8',
+            reportsDirectory: './coverage',
+            reporter: ['text', 'html', 'lcov'],
+            // Scope coverage to the pure logic this unit suite targets. Routes,
+            // controllers, gRPC, GraphQL, Prisma client and generated code need
+            // integration/DB harnesses and are covered in a separate branch.
+            include: [
+                'src/utils/index.ts',
+                'src/features/auth/**/*.ts',
+                'src/features/dialogue/llm/**/*.ts',
+                'src/features/dialogue/dialogue.schema.ts',
+                'src/features/dialogue/result/turns.ts',
+            ],
+            exclude: ['**/*.types.ts'],
         },
     },
 });
