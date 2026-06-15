@@ -8,7 +8,7 @@ Two generations of contracts live in this package. See
 | File | Role |
 | --- | --- |
 | `PetCoreV1.sol` | UUPS proxy implementation: ERC-721 + pet storage (DNA, stats, lineage, cooldowns) + marriage records |
-| `GameLogicV1.sol` | UUPS proxy implementation: battle/breed/train mechanics, VRF request → store → settle |
+| `GameLogicV1.sol` | UUPS proxy implementation: battle/breed/train mechanics, Pyth Entropy request → store → settle |
 | `GameConfig.sol` | Plain (non-proxy) contract holding every tunable; swap by deploying a new one and re-pointing |
 | `CombatSimV1.sol` | Stateless pure combat simulator; balance patches deploy `CombatSimV2` and call `GameConfig.setCombatSim` |
 | `DnaLib.sol` | Internal library: DNA → attributes/rarity/element derivation (must stay bit-identical with Solana) |
@@ -19,11 +19,3 @@ Two generations of contracts live in this package. See
 `PetCoreV2` implementation into the same `PetCoreProxy`; old `CombatSimV1`
 stays on-chain so historical battles remain replayable. This follows the
 plan's own naming (§2.1).
-
-## Legacy v1 stack (deprecated) — `src/legacy/`
-
-`CryptoPets.sol` (facade) + `Inventory.sol`, `Battle.sol`, `Breeding.sol`,
-`Utils.sol`, deployed immutably via constructor `new` — the monolith the plan
-replaces. Kept only while the frontend/subgraph still target the old
-deployment (`scripts/sync-abi.js` still exports its ABI). Marked
-`@custom:deprecated`; do not extend.

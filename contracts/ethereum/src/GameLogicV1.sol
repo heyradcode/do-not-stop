@@ -136,6 +136,11 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
     // ─── battle ───────────────────────────────────────────────────────────────
 
+    /// @notice Request a battle between two ready, cross-owned pets, paying the Pyth Entropy fee.
+    /// @dev Caller must own petId1; randomness arrives via entropyCallback, then anyone settles.
+    /// @param petId1 The caller's pet.
+    /// @param petId2 The opponent's pet (must have a different owner).
+    /// @return requestId The Entropy sequence number identifying this pending battle.
     function requestBattle(
         uint256 petId1,
         uint256 petId2
@@ -143,7 +148,8 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         require(petId1 != petId2, "Can't fight self");
         require(petCore.isReady(petId1), "First pet not ready");
         require(petCore.isReady(petId2), "Second pet not ready");
-        require(petCore.ownerOf(petId1) != petCore.ownerOf(petId2), "Can't fight own pet");
+        // onlyPetOwner(petId1) already proved ownerOf(petId1) == msg.sender.
+        require(msg.sender != petCore.ownerOf(petId2), "Can't fight own pet");
 
         (uint32 lvl1, , , ) = petCore.getPetStats(petId1);
         (uint32 lvl2, , , ) = petCore.getPetStats(petId2);
@@ -172,6 +178,9 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         emit BattleRandomnessRequested(msg.sender, requestId, petId1, petId2);
     }
 
+    /// @notice Run the combat simulation for a fulfilled battle request and apply results.
+    /// @dev Permissionless: anyone may settle once entropy has been fulfilled (retryable on failure).
+    /// @param requestId The pending battle's Entropy sequence number.
     function settleBattle(uint256 requestId) external whenNotPaused {
         PendingBattle memory pending = _battleRequests[requestId];
         require(pending.requester != address(0), "No pending battle");
@@ -224,6 +233,9 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         );
     }
 
+    /// @notice Cancel an unfulfilled battle request, freeing both pets' locks.
+    /// @dev Callable by the original requester or the contract owner; rejected once fulfilled.
+    /// @param requestId The pending battle's Entropy sequence number.
     function cancelBattle(uint256 requestId) external {
         PendingBattle memory pending = _battleRequests[requestId];
         require(pending.requester != address(0), "No pending battle");
@@ -241,6 +253,12 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
     // ─── breeding ─────────────────────────────────────────────────────────────
 
+    /// @notice Request to breed two pets into a named child, paying breed (+ stud) + Entropy fees.
+    /// @dev Same-owner pays breedFee; cross-owner requires a valid marriage and escrows studFee.
+    /// @param petId1 First parent.
+    /// @param petId2 Second parent.
+    /// @param name_ Child name (1..maxNameLength bytes).
+    /// @return requestId The Entropy sequence number identifying this pending breed.
     function requestCreateFromDNA(
         uint256 petId1,
         uint256 petId2,
@@ -293,6 +311,9 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         emit BreedRandomnessRequested(msg.sender, requestId, petId1, petId2);
     }
 
+    /// @notice Mint the child for a fulfilled breed request and apply cooldowns/stud fee.
+    /// @dev Permissionless once entropy is fulfilled; reverts if it would exceed the generation cap.
+    /// @param requestId The pending breed's Entropy sequence number.
     function settleBreed(uint256 requestId) external whenNotPaused {
         BreedRequest memory p = _breedRequests[requestId];
         require(p.owner != address(0), "No pending breed");
@@ -332,6 +353,9 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         emit BreedSettled(p.owner, childId, requestId, p.otherOwner);
     }
 
+    /// @notice Cancel an unfulfilled breed request, freeing the parents and refunding any escrowed stud fee.
+    /// @dev Callable by the original owner or the contract owner; rejected once fulfilled.
+    /// @param requestId The pending breed's Entropy sequence number.
     function cancelBreed(uint256 requestId) external {
         BreedRequest memory p = _breedRequests[requestId];
         require(p.owner != address(0), "No pending breed");
@@ -353,7 +377,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         }
     }
 
-    // Pull payment for stud fees credited by cross-owner breed settlements (plan §4.4).
+    /// @notice Withdraw stud fees credited to the caller by cross-owner breed settlements (plan §4.4).
     function withdrawStudFees() external {
         uint256 amount = pendingStudFees[msg.sender];
         require(amount > 0, "No stud fees to withdraw");
@@ -391,8 +415,9 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
     // ─── training ─────────────────────────────────────────────────────────────
 
-    // Pay a level-scaled fee for a flat XP grant; once per trainCooldown (plan §3.4).
-    // trainFee(L) = baseFee × (100 + 2·L) / 100  → 1× at L1, ~3× at L100.
+    /// @notice Pay a level-scaled fee for a flat XP grant; once per trainCooldown (plan §3.4).
+    /// @dev trainFee(L) = baseFee × (100 + 2·L) / 100 → 1× at L1, ~3× at L100.
+    /// @param petId The caller's pet to train.
     function train(uint256 petId) external payable whenNotPaused onlyPetOwner(petId) {
         require(petCore.isTrainReady(petId), "Train cooldown active");
 
@@ -400,12 +425,13 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         uint256 scaledFee = gameConfig.trainFee() * (100 + 2 * uint256(p.level)) / 100;
         require(msg.value >= scaledFee, "Insufficient train fee");
 
+        uint32 trainXp = gameConfig.trainXp();
         petCore.triggerTrainCooldown(petId);
-        petCore.addXp(petId, gameConfig.trainXp());
+        petCore.addXp(petId, trainXp);
 
         // Re-read to get updated xp and level after addXp auto-levels.
         PetCoreV1.Pet memory after_ = petCore.getPet(petId);
-        emit Trained(petId, gameConfig.trainXp(), after_.xp, after_.level);
+        emit Trained(petId, trainXp, after_.xp, after_.level);
     }
 
     // ─── admin ────────────────────────────────────────────────────────────────

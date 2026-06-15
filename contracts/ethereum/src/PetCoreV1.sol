@@ -168,11 +168,6 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         if (won) { _pets[petId].winCount++; } else { _pets[petId].lossCount++; }
     }
 
-    function levelUpInternal(uint256 petId) external onlyAuthorized entryExists(petId) {
-        _pets[petId].level++;
-        emit PetLevelUp(petId, _pets[petId].level);
-    }
-
     function addXp(uint256 petId, uint32 amount) external onlyAuthorized entryExists(petId) {
         Pet storage p = _pets[petId];
         uint32 cap = gameConfig.maxLevel();
@@ -212,11 +207,11 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
 
     // ─── user-facing functions ────────────────────────────────────────────────
 
-    // Gacha starter mint (Phase 3): replaces the one-per-wallet createRandom.
-    // Fee escalates with each mint from this wallet: baseMintFee * (1 + mintCount).
-    // Rarity is derived from DNA digit pair 0 (DnaLib.rarityFromDna, 50/25/15/8/2 split).
-    // WARNING: DNA entropy is block-derived (grindable, plan §4.3) — see security notes;
-    // the plan's final form requests DNA from VRF like breeding does.
+    /// @notice Mint a starter (gen-0) pet; fee escalates as baseMintFee * (1 + walletMintCount).
+    /// @dev Rarity is derived from DNA digit pair 0 (DnaLib.rarityFromDna, 50/25/15/8/2 split).
+    ///      WARNING: DNA entropy is block-derived (grindable, plan §4.3) — see security notes;
+    ///      the plan's final form requests DNA from Pyth Entropy like breeding does.
+    /// @param name_ The pet's name (1..maxNameLength bytes).
     function mintStarter(string memory name_) external payable whenNotPaused {
         _requireValidName(name_);
         uint256 mintCount = walletMintCount[msg.sender];
@@ -233,12 +228,17 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         _mint(msg.sender, newId);
     }
 
+    /// @notice Pay the flat levelUpFee to raise a pet one level (no XP path).
+    /// @param tokenId The caller's pet to level up.
     function levelUp(uint256 tokenId) external payable whenNotPaused onlyPetOwner(tokenId) {
         require(msg.value == gameConfig.levelUpFee(), "Incorrect fee amount");
         _pets[tokenId].level++;
         emit PetLevelUp(tokenId, _pets[tokenId].level);
     }
 
+    /// @notice Rename a pet the caller owns; requires the pet to be at least NAME_CHANGE_LEVEL.
+    /// @param tokenId The caller's pet.
+    /// @param newName_ The new name (1..maxNameLength bytes).
     function changeName(
         uint256 tokenId,
         string memory newName_
@@ -255,8 +255,8 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
 
     // ─── marriage system (plan §4.4) ─────────────────────────────────────────
 
-    // Caller owns petIdA and proposes a mutual marriage with petIdB (different owner).
-    // Overwrites any expired proposal from petIdA; a live (unexpired) proposal blocks a new one.
+    /// @notice Caller (owner of petIdA) proposes a mutual marriage with petIdB (different owner).
+    /// @dev Overwrites any expired proposal from petIdA; a live (unexpired) proposal blocks a new one.
     function proposeMarriage(
         uint256 petIdA,
         uint256 petIdB
@@ -290,8 +290,8 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         emit MarriageProposed(petIdA, petIdB);
     }
 
-    // Caller owns petIdB and accepts a matching, unexpired proposal from petIdA.
-    // Re-checks that the stored proposer still owns petIdA (propose-then-sell guard).
+    /// @notice Caller (owner of petIdB) accepts a matching, unexpired proposal from petIdA.
+    /// @dev Re-checks that the stored proposer still owns petIdA (propose-then-sell guard).
     function acceptMarriage(
         uint256 petIdA,
         uint256 petIdB
@@ -310,14 +310,14 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         emit MarriageAccepted(petIdA, petIdB);
     }
 
-    // Proposer withdraws a pending proposal at any time (live or expired).
+    /// @notice Proposer withdraws a pending proposal at any time (live or expired).
     function cancelProposal(uint256 petIdA) external whenNotPaused {
         require(marriageProposal[petIdA].proposer == msg.sender, "Not the proposer");
         delete marriageProposal[petIdA];
     }
 
-    // Either spouse's owner dissolves the marriage immediately. Both pets enter
-    // marriageCooldown before either can marry again (prevents propose/divorce spam).
+    /// @notice Either spouse's owner dissolves the marriage immediately.
+    /// @dev Both pets enter marriageCooldown before either can marry again (prevents propose/divorce spam).
     function divorce(uint256 petId) external whenNotPaused entryExists(petId) {
         require(ownerOf(petId) == msg.sender, "Not the owner of this pet");
         uint256 spouseId = marriageOf[petId].spouseId;
@@ -333,8 +333,8 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         emit MarriageDissolved(petId, spouseId, "divorce");
     }
 
-    // Permissionless cleanup: either pet's owner has changed since the marriage was
-    // accepted, invalidating consent. No marriageCooldown penalty for stale dissolution.
+    /// @notice Permissionless cleanup of a marriage invalidated by a post-acceptance owner change.
+    /// @dev No marriageCooldown penalty for stale dissolution (consent was broken by transfer, not divorce).
     function clearStaleMarriage(
         uint256 petIdA,
         uint256 petIdB
@@ -354,8 +354,8 @@ contract PetCoreV1 is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgrade
         emit MarriageDissolved(petIdA, petIdB, "stale");
     }
 
-    // True if petIdA and petIdB hold mutual, still-valid marriage records
-    // (owner snapshots still match current owners).
+    /// @notice True if petIdA and petIdB hold mutual, still-valid marriage records.
+    /// @dev Valid means the owner snapshots taken at accept time still match current owners.
     function isMarriageValid(uint256 petIdA, uint256 petIdB) external view returns (bool) {
         MarriageRecord memory recA = marriageOf[petIdA];
         if (recA.spouseId != petIdB) return false;

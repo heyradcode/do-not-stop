@@ -50,6 +50,10 @@ contract CombatSimV1 {
         uint16 bloodlustBps;     // bps of physical dmg healed, e.g. 150 = 15%
     }
 
+    /// @notice Deterministically simulate a battle between two pets (see contract header for the round model).
+    /// @param seed Randomness source; identical inputs (incl. seed) always yield the same result cross-chain.
+    /// @param sc Skill balance values sourced from GameConfig.
+    /// @return result Winner flag, round count, and the winner's remaining HP.
     function simulate(
         uint256 dna1, uint8 rarity1, uint32 level1, uint8 skill1,
         uint256 dna2, uint8 rarity2, uint32 level2, uint8 skill2,
