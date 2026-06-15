@@ -44,16 +44,16 @@ func TestElementWheel(t *testing.T) {
 
 func TestResolveSpecies(t *testing.T) {
 	const dna = 807060504030201 // digitPair(dna,6) == 7
-	if got := ResolveSpecies(dna, 1, [5]uint8{8, 8, 8, 8, 8}); got != 7 {
+	if got := resolveSpecies(dna, 1, [5]uint8{8, 8, 8, 8, 8}); got != 7 {
 		t.Errorf("species = %d, want 7", got)
 	}
-	if got := ResolveSpecies(dna, 1, [5]uint8{5, 8, 8, 8, 8}); got != 2 {
+	if got := resolveSpecies(dna, 1, [5]uint8{5, 8, 8, 8, 8}); got != 2 {
 		t.Errorf("species (pool 5) = %d, want 2", got)
 	}
-	if got := ResolveSpecies(dna, 1, [5]uint8{0, 8, 8, 8, 8}); got != 0 {
+	if got := resolveSpecies(dna, 1, [5]uint8{0, 8, 8, 8, 8}); got != 0 {
 		t.Errorf("species (pool 0) = %d, want 0", got)
 	}
-	if got := ResolveSpecies(dna, 5, [5]uint8{8, 8, 8, 8, 3}); got != 1 {
+	if got := resolveSpecies(dna, 5, [5]uint8{8, 8, 8, 8, 3}); got != 1 {
 		t.Errorf("species (rarity 5) = %d, want 1", got)
 	}
 }

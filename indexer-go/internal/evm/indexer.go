@@ -2,16 +2,18 @@
 // already handles reorgs), and this adapter pages its GraphQL endpoint into
 // RosterUpdates with the subgraph's updatedAt as the monotonic version.
 // Direct port of backend/indexing/evm/indexer.ts.
+//
+// The adapter is split across files: indexer.go (type + roster scan/sync/Run),
+// battles.go (Battle entity sync), and mapping.go (subgraph row → domain
+// conversion + field parsing).
 package evm
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
-	"math/big"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
@@ -131,85 +133,6 @@ func (ix *Indexer) Run(
 	}
 }
 
-// tickBattles runs one battle sync, logging instead of failing the loop.
-func (ix *Indexer) tickBattles(ctx context.Context, battles chan<- indexer.BattleEvent) {
-	if battles == nil {
-		return
-	}
-	synced, err := ix.syncBattles(ctx, battles)
-	switch {
-	case err != nil && ctx.Err() != nil:
-	case err != nil && strings.Contains(err.Error(), "has no field `battles`"):
-		slog.Warn("evm battle sync skipped: Battle entity not deployed on subgraph yet")
-	case err != nil:
-		slog.Error("evm battle sync failed", "err", err)
-	case synced > 0:
-		slog.Info("evm battle sync", "synced", synced, "watermark", ix.battleWatermark)
-	}
-}
-
-// syncBattles pages Battle entities settled after the watermark, oldest
-// first. foughtAt is the per-chain version for resume; equal-timestamp
-// battles land in the same block, so The Graph exposes them atomically and
-// the strict `_gt` cannot split them across polls.
-func (ix *Indexer) syncBattles(ctx context.Context, battles chan<- indexer.BattleEvent) (int, error) {
-	emitted := 0
-	for {
-		page, err := ix.client.fetchBattlesPage(ctx, strconv.FormatUint(ix.battleWatermark, 10))
-		if err != nil {
-			return emitted, err
-		}
-		if len(page) == 0 {
-			return emitted, nil
-		}
-
-		maxFoughtAt := ix.battleWatermark
-		for _, b := range page {
-			foughtAt, err := strconv.ParseUint(b.FoughtAt, 10, 64)
-			if err != nil {
-				return emitted, fmt.Errorf("battle %s: invalid foughtAt %q: %w", b.ID, b.FoughtAt, err)
-			}
-			event := indexer.BattleEvent{
-				Chain:             ix.chain,
-				BattleID:          b.ID,
-				Attacker:          b.Attacker,
-				Defender:          b.Defender,
-				WinnerPetID:       b.WinnerPetID,
-				LoserPetID:        idOrZero(b.LoserPetID),
-				Seed:              normalizeSeed(b.Seed),
-				Rounds:            b.Rounds,
-				WinnerHpRemaining: b.WinnerHpRemaining,
-				XPWin:             b.XPWin,
-				XPLoss:            b.XPLoss,
-				Version:           foughtAt,
-				FoughtAt:          int64(foughtAt),
-			}
-			select {
-			case <-ctx.Done():
-				return emitted, ctx.Err()
-			case battles <- event:
-				emitted++
-			}
-			if foughtAt > maxFoughtAt {
-				maxFoughtAt = foughtAt
-			}
-		}
-
-		if maxFoughtAt == ix.battleWatermark {
-			// A full page sharing one timestamp cannot advance the cursor;
-			// bail rather than loop forever. Page size 1000 makes this a
-			// pathological case, not a real one.
-			slog.Warn("evm battle sync: page did not advance watermark", "foughtAt", maxFoughtAt)
-			return emitted, nil
-		}
-		ix.battleWatermark = maxFoughtAt
-
-		if len(page) < ix.client.pageSize {
-			return emitted, nil
-		}
-	}
-}
-
 // emit converts subgraph rows to RosterUpdates, sends them, and advances the
 // watermark to the highest updatedAt seen. The watermark only moves after
 // every row of the batch is handed off, so a send aborted by shutdown is
@@ -238,92 +161,4 @@ func (ix *Indexer) emit(
 
 	ix.watermark = maxUpdatedAt
 	return len(pets), nil
-}
-
-func (ix *Indexer) toUpdate(pet subgraphPet) (indexer.RosterUpdate, error) {
-	readyAt, err := strconv.ParseInt(pet.ReadyAt, 10, 64)
-	if err != nil {
-		return indexer.RosterUpdate{}, fmt.Errorf("pet %s: invalid readyAt %q: %w", pet.ID, pet.ReadyAt, err)
-	}
-	updatedAt, err := strconv.ParseUint(pet.UpdatedAt, 10, 64)
-	if err != nil {
-		return indexer.RosterUpdate{}, fmt.Errorf("pet %s: invalid updatedAt %q: %w", pet.ID, pet.UpdatedAt, err)
-	}
-	breedReadyAt, err := parseTimeField(pet.BreedReadyAt)
-	if err != nil {
-		return indexer.RosterUpdate{}, fmt.Errorf("pet %s: invalid breedReadyAt %q: %w", pet.ID, pet.BreedReadyAt, err)
-	}
-	trainReadyAt, err := parseTimeField(pet.TrainReadyAt)
-	if err != nil {
-		return indexer.RosterUpdate{}, fmt.Errorf("pet %s: invalid trainReadyAt %q: %w", pet.ID, pet.TrainReadyAt, err)
-	}
-
-	return indexer.RosterUpdate{
-		Chain:     ix.chain,
-		PetID:     pet.ID,
-		Owner:     strings.ToLower(pet.Owner), // EVM addresses normalize lowercase
-		Name:      pet.Name,
-		Level:     pet.Level,
-		Rarity:    pet.Rarity,
-		DNA:       pet.DNA,
-		WinCount:  pet.WinCount,
-		LossCount: pet.LossCount,
-		ReadyAt:   readyAt,
-		Version:   updatedAt,
-
-		// v2 fields. EVM has no Metaplex Core asset (ERC-721 token id IS the
-		// pet id), so Asset stays empty.
-		XP:           pet.XP,
-		Generation:   pet.Generation,
-		Parent1ID:    idOrZero(pet.Parent1ID),
-		Parent2ID:    idOrZero(pet.Parent2ID),
-		BreedCount:   pet.BreedCount,
-		SpeciesID:    pet.SpeciesID,
-		SpouseID:     idOrZero(pet.SpouseID),
-		BreedReadyAt: breedReadyAt,
-		TrainReadyAt: trainReadyAt,
-	}, nil
-}
-
-// parseTimeField parses a BigInt cooldown string, treating "" (field absent on
-// a pre-v2 subgraph) as 0.
-func parseTimeField(s string) (int64, error) {
-	if s == "" {
-		return 0, nil
-	}
-	return strconv.ParseInt(s, 10, 64)
-}
-
-// idOrZero normalizes an optional pet-id string to "0" when the subgraph
-// omitted it, matching the on-chain "0 = none" convention.
-func idOrZero(s string) string {
-	if s == "" {
-		return "0"
-	}
-	return s
-}
-
-// normalizeSeed renders the uint256 combat seed as a canonical 0x-prefixed,
-// zero-padded 64-char lowercase hex string, matching the Solana adapter's
-// hex-encoded [u8;32] so a seed is comparable and replayable across chains.
-// Accepts either a decimal BigInt or an already-0x-hex value from the
-// subgraph; "" (pre-v2 / absent) stays "".
-func normalizeSeed(s string) string {
-	if s == "" {
-		return ""
-	}
-	var n *big.Int
-	if h, ok := strings.CutPrefix(s, "0x"); ok {
-		n, ok = new(big.Int).SetString(h, 16)
-		if !ok {
-			return s // unparseable — surface as-is rather than drop the seed
-		}
-	} else {
-		var ok bool
-		n, ok = new(big.Int).SetString(s, 10)
-		if !ok {
-			return s
-		}
-	}
-	return fmt.Sprintf("0x%064x", n)
 }

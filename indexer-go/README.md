@@ -1,9 +1,8 @@
 # indexer-go
 
-Unified cross-chain indexer for Cryptopets (see `plan-unified-indexer.md` at
-the repo root). **New to Go or to this codebase? Start with
-[ARCHITECTURE.md](./ARCHITECTURE.md)** — a beginner-friendly tour of every
-package and the Go concepts behind them. One Go binary, two chain adapters behind the `ChainIndexer`
+Unified cross-chain indexer for Cryptopets (see
+[`plan-indexer-v2.md`](./plan-indexer-v2.md) for the design). One Go binary,
+two chain adapters behind the `ChainIndexer`
 interface — Solana push (WebSocket subscriptions + backfill) and EVM pull
 (subgraph watermark polling) — feeding a single version-guarded writer into
 the Prisma-owned Postgres, plus a `StreamLiveBattles` gRPC push to the Node

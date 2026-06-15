@@ -1,5 +1,5 @@
 // Package combat is the Go port of the on-chain round-based battle simulator
-// (contracts/ethereum/src/CombatSimV1.sol and the matching Rust combat.rs).
+// (contracts/ethereum/src/CombatSim.sol and the matching Rust combat.rs).
 // It exists so indexer-go and the UI can replay a settled battle and estimate
 // pre-fight win odds without an RPC simulation, deriving the exact same result
 // the chain did from the same (dna, rarity, level, skill, seed) inputs.
@@ -72,11 +72,11 @@ func elementMod(attacker, defender uint8) uint64 {
 	return 100 // non-adjacent in the 6-cycle → neutral
 }
 
-// ResolveSpecies resolves a pet's species id from its DNA cosmetic digit-pair
+// resolveSpecies resolves a pet's species id from its DNA cosmetic digit-pair
 // and its rarity tier's pool size (plan §3.7), mirroring dna::resolve_species /
-// PetCoreV1._resolveSpecies. poolSizes is indexed by rarity-1 (clamped); a pool
+// PetCore._resolveSpecies. poolSizes is indexed by rarity-1 (clamped); a pool
 // size of 0 means "no species" (id 0).
-func ResolveSpecies(dna uint64, rarity uint8, poolSizes [5]uint8) uint16 {
+func resolveSpecies(dna uint64, rarity uint8, poolSizes [5]uint8) uint16 {
 	idx := 0
 	if rarity > 1 {
 		idx = int(rarity - 1)
