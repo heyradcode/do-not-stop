@@ -1,7 +1,8 @@
 // Aggregates each package's vitest `coverage-summary.json` into a single
-// markdown table for the PR coverage comment. Packages whose suite did not
-// produce a report (e.g. it failed before writing) are shown as "no report"
-// rather than aborting, so the comment always lands.
+// markdown table for the PR coverage comment. Each row is one system (package)
+// with its four metrics plus a per-system Overall (covered/total blended across
+// the metrics). Packages whose suite did not produce a report (e.g. it failed
+// before writing) are shown as "no report" rather than aborting.
 import { readFileSync } from 'node:fs';
 
 const packages = [
@@ -16,38 +17,34 @@ const metrics = ['statements', 'branches', 'functions', 'lines'];
 const pct = (covered, total) => (total === 0 ? 100 : (covered / total) * 100);
 const cell = (m) => `${m.pct.toFixed(2)}% (${m.covered}/${m.total})`;
 
-const totals = Object.fromEntries(metrics.map((k) => [k, { covered: 0, total: 0 }]));
-const rows = [];
+// Per-system overall: pool covered/total across all four metrics.
+const overall = (total) => {
+    let covered = 0;
+    let tot = 0;
+    for (const k of metrics) {
+        covered += total[k].covered;
+        tot += total[k].total;
+    }
+    return { covered, total: tot, pct: pct(covered, tot) };
+};
 
-for (const pkg of packages) {
+const rows = packages.map((pkg) => {
     let total;
     try {
-        total = JSON.parse(
-            readFileSync(`${pkg.dir}/coverage/coverage-summary.json`, 'utf8'),
-        ).total;
+        total = JSON.parse(readFileSync(`${pkg.dir}/coverage/coverage-summary.json`, 'utf8')).total;
     } catch {
-        rows.push(`| ${pkg.name} | _no report_ | _no report_ | _no report_ | _no report_ |`);
-        continue;
+        return `| ${pkg.name} | _no report_ | _no report_ | _no report_ | _no report_ | _no report_ |`;
     }
-
-    for (const k of metrics) {
-        totals[k].covered += total[k].covered;
-        totals[k].total += total[k].total;
-    }
-    rows.push(`| ${pkg.name} | ${metrics.map((k) => cell(total[k])).join(' | ')} |`);
-}
-
-const totalRow = `| **Total** | ${metrics
-    .map((k) => `**${pct(totals[k].covered, totals[k].total).toFixed(2)}% (${totals[k].covered}/${totals[k].total})**`)
-    .join(' | ')} |`;
+    const metricCells = metrics.map((k) => cell(total[k])).join(' | ');
+    return `| ${pkg.name} | ${metricCells} | **${cell(overall(total))}** |`;
+});
 
 const markdown = [
     '## 🧪 Coverage',
     '',
-    '| Package | Statements | Branches | Functions | Lines |',
-    '| --- | --- | --- | --- | --- |',
+    '| Package | Statements | Branches | Functions | Lines | Overall |',
+    '| --- | --- | --- | --- | --- | --- |',
     ...rows,
-    totalRow,
     '',
 ].join('\n');
 
