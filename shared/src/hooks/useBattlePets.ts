@@ -1,6 +1,8 @@
 import { useCallback, useRef } from 'react';
 import { useChainAdapter } from './adapters/useChainAdapter';
 import { useTxSuccess } from './useTxSuccess';
+import { useEvmBattleFlow } from './chains/ethereum/useEvmBattleFlow';
+import type { BattleResolvedResult } from '../types/battle';
 
 export interface BattlePetsArgs {
     /** Attacker — must be a pet the caller owns. */
@@ -15,23 +17,34 @@ export interface BattlePetsArgs {
 }
 
 export type UseBattlePetsOptions = {
-    /** Fires once the battle is settled on-chain (EVM: receipt; Solana: confirm). */
-    onSuccess?: () => void;
+    /** Fires once the battle is settled on-chain (EVM: BattleResolved; Solana: confirm). */
+    onSuccess?: (result: BattleResolvedResult | null) => void;
 };
 
 export const useBattlePets = (options?: UseBattlePetsOptions) => {
-    const { battlePets } = useChainAdapter();
+    const adapter = useChainAdapter();
+    const { battlePets } = adapter;
+    const isEvm = adapter.kind === 'evm';
 
     const onSuccessRef = useRef(options?.onSuccess);
     onSuccessRef.current = options?.onSuccess;
 
-    const notifySuccess = useCallback(() => { onSuccessRef.current?.(); }, []);
+    // EVM: v2 battle is async (request → VRF → settle → BattleResolved). Success
+    // is event-driven, not receipt-driven, so the request hash feeds the flow
+    // and onSuccess fires only once the battle is actually resolved on-chain.
+    const battleFlow = useEvmBattleFlow({
+        requestHash: isEvm ? (battlePets.lifecycle.hash as `0x${string}` | undefined) : undefined,
+        enabled: isEvm,
+        onResolved: (result) => onSuccessRef.current?.(result),
+    });
 
-    // Settlement is lifecycle-driven on both chains: EVM reaches `success` when
-    // the receipt lands, Solana when the mutation resolves confirmed.
-    useTxSuccess(battlePets.lifecycle, notifySuccess);
+    // Solana: settlement is lifecycle-driven (reveal+settle resolve in-mutation).
+    useTxSuccess(battlePets.lifecycle, useCallback(() => {
+        if (!isEvm) onSuccessRef.current?.(null);
+    }, [isEvm]));
 
     const mutate = async (args: BattlePetsArgs) => {
+        battleFlow.reset();
         try {
             await battlePets.mutateAsync({
                 petId1: args.petId1,
@@ -44,17 +57,25 @@ export const useBattlePets = (options?: UseBattlePetsOptions) => {
     };
 
     const reset = useCallback(() => {
+        battleFlow.reset();
         battlePets.lifecycle.reset();
-    }, [battlePets.lifecycle]);
+    }, [battleFlow, battlePets.lifecycle]);
+
+    // On EVM the arena must stay "fighting" through VRF + settle, not just the
+    // request tx, so fold the async flow's active state into isPending.
+    const isPending = battlePets.isPending || (isEvm && battleFlow.isActive);
 
     return {
         mutate,
-        isPending: battlePets.isPending,
-        isConfirming: battlePets.lifecycle.phase === 'confirming',
+        isPending,
+        isConfirming: battlePets.lifecycle.phase === 'confirming' || (isEvm && battleFlow.phase === 'settling'),
+        isAwaitingVrf: isEvm && battleFlow.phase === 'awaiting-vrf',
+        phase: isEvm ? battleFlow.phase : undefined,
+        result: battleFlow.result,
         reset,
         clearErrors: reset,
         hash: battlePets.lifecycle.hash,
-        error: battlePets.lifecycle.error,
+        error: battlePets.lifecycle.error ?? battleFlow.error,
         lifecycle: battlePets.lifecycle,
     };
 }

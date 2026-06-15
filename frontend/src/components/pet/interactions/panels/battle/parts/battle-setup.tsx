@@ -6,6 +6,7 @@ import Icon, { BattleIcon } from '@components/ui/icon';
 import ArenaSlot from './arena-slot';
 import FighterPickerCard from './fighter-picker-card';
 import OpponentPickerCard from './opponent-picker-card';
+import PendingBattleNotice from './pending-battle-notice';
 import { opponentKey, shortAddress } from '../battle-utils';
 
 export type BattleSetupProps = {
@@ -112,6 +113,9 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 />
             </div>
         </div>
+
+        <PendingBattleNotice petId={selectedPet1} label={selectedFighter?.name} />
+        {opponent ? <PendingBattleNotice petId={opponent.id} label={opponent.name} /> : null}
 
         <section className="battle-picker-section" aria-label="Your fighters">
             <div className="section-head">

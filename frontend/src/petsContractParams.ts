@@ -1,10 +1,11 @@
-import type { Abi } from 'viem';
-import { CONTRACT_ADDRESS } from './config';
-import ethereumAbi from '@chains/ethereum/ethereumAbi.json';
+import type { PetsEvmConfig } from '@shared/core';
+import { evmContracts } from '@chains/ethereum/contracts';
 
-/** Arguments for `usePetsContract` from `@shared/core`. */
-export const petsContractParams = {
-    contractAddress: CONTRACT_ADDRESS as `0x${string}`,
-    abi: ethereumAbi.abi as Abi,
+/** v2 EVM contract config for `PetsConfigProvider` from `@shared/core`. */
+export const petsContractParams: PetsEvmConfig = {
+    petCore: evmContracts.petCore,
+    gameLogic: evmContracts.gameLogic,
+    gameConfig: evmContracts.gameConfig,
+    combatSim: evmContracts.combatSim,
     enabled: true,
-} as const;
+};
