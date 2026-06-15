@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import {IVRFCoordinatorV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/interfaces/IVRFCoordinatorV2Plus.sol";
-import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+import {IEntropyV2} from "@pythnetwork/entropy-sdk-solidity/IEntropyV2.sol";
+import {IEntropyConsumer} from "@pythnetwork/entropy-sdk-solidity/IEntropyConsumer.sol";
 
 import "./PetCoreV1.sol";
 import "./GameConfig.sol";
@@ -14,15 +14,15 @@ import "./DnaLib.sol";
 
 /**
  * @title GameLogicV1
- * @dev UUPS-upgradeable contract holding all game mechanics: battle, breed, VRF handling.
+ * @dev UUPS-upgradeable contract holding all game mechanics: battle, breed, randomness handling.
  *
  *      Both battle and breed use the store-then-settle pattern (plan §3.5):
- *        requestBattle / requestCreateFromDNA  → VRF request, store pending record
- *        rawFulfillRandomWords                 → store VRF seed only (150k gas, safe)
+ *        requestBattle / requestCreateFromDNA  → Pyth Entropy request, store pending record
+ *        entropyCallback                       → store randomness only (provider's default callback gas)
  *        settleBattle / settleBreed            → run sim / mix DNA, apply results
  *      This makes a failed settle retryable and keeps states symmetric across EVM/Solana.
  */
-contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable {
+contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, IEntropyConsumer {
 
     // ─── events ───────────────────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         uint256 indexed requestId,
         uint256 indexed winnerId,
         uint256 indexed loserId,
-        uint256 vrfSeed,
+        uint256 randomness,
         bool    firstWins,
         uint8   rounds,
         uint16  winnerHpRemaining,
@@ -66,7 +66,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         uint256 petId1;
         uint256 petId2;
         string  name;
-        uint256 vrfSeed;
+        uint256 randomness;
         bool    fulfilled;
         uint256 studFee;    // escrowed at request time; 0 for same-owner breeds (plan §4.4)
         address otherOwner; // recipient of studFee at settle; address(0) for same-owner breeds
@@ -76,7 +76,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         address requester;
         uint256 petId1;
         uint256 petId2;
-        uint256 vrfSeed;
+        uint256 randomness;
         bool    fulfilled;
     }
 
@@ -86,19 +86,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
     PetCoreV1                public petCore;
     GameConfig               public gameConfig;
-    IVRFCoordinatorV2Plus    public s_vrfCoordinator;
-    // Stored separately so rawFulfillRandomWords can check msg.sender without inheriting
-    // VRFConsumerBaseV2Upgradeable (dual-Initializable conflict with Chainlink's vendored OZ).
-    address                  private _rawVrfCoordinator;
-
-    uint256 public vrfSubscriptionId;
-    bytes32 public vrfKeyHash;
-    bool    public vrfNativePayment;
-
-    // Callback stores the VRF word only — 150k gas is sufficient (plan §3.5).
-    uint32  private constant VRF_CALLBACK_GAS_LIMIT    = 150_000;
-    uint16  private constant VRF_REQUEST_CONFIRMATIONS = 3;
-    uint32  private constant VRF_NUM_WORDS             = 1;
+    IEntropyV2               public entropy;
 
     mapping(uint256 => BreedRequest)   private _breedRequests;
     mapping(uint256 => uint256)        public  petBreedRequestId;
@@ -111,8 +99,8 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     // released as a pull payment via withdrawStudFees().
     mapping(address => uint256)        public  pendingStudFees;
 
-    // Reserve 37 slots: 13 declared above (through pendingStudFees) + 37 gap = 50 total.
-    uint256[37] private __gap;
+    // Reserve 41 slots: 9 declared above (through pendingStudFees) + 41 gap = 50 total.
+    uint256[41] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
 
@@ -129,12 +117,9 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     }
 
     function initialize(
-        address vrfCoordinator_,
+        address entropy_,
         address petCore_,
         address gameConfig_,
-        uint256 subscriptionId_,
-        bytes32 keyHash_,
-        bool    nativePayment_,
         address initialOwner
     ) public initializer {
         __UUPSUpgradeable_init();
@@ -142,13 +127,9 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         __Pausable_init();
         _transferOwnership(initialOwner);
 
-        petCore             = PetCoreV1(petCore_);
-        gameConfig          = GameConfig(gameConfig_);
-        s_vrfCoordinator    = IVRFCoordinatorV2Plus(vrfCoordinator_);
-        _rawVrfCoordinator  = vrfCoordinator_;
-        vrfSubscriptionId   = subscriptionId_;
-        vrfKeyHash          = keyHash_;
-        vrfNativePayment    = nativePayment_;
+        petCore    = PetCoreV1(petCore_);
+        gameConfig = GameConfig(gameConfig_);
+        entropy    = IEntropyV2(entropy_);
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
@@ -158,7 +139,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     function requestBattle(
         uint256 petId1,
         uint256 petId2
-    ) external whenNotPaused onlyPetOwner(petId1) returns (uint256 requestId) {
+    ) external payable whenNotPaused onlyPetOwner(petId1) returns (uint256 requestId) {
         require(petId1 != petId2, "Can't fight self");
         require(petCore.isReady(petId1), "First pet not ready");
         require(petCore.isReady(petId2), "Second pet not ready");
@@ -173,17 +154,19 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
             "Battle pending for pet"
         );
 
-        requestId = _requestVrf();
+        uint256 entropyFee = entropy.getFeeV2();
+        require(msg.value >= entropyFee, "Insufficient entropy fee");
+        requestId = _requestRandomness(entropyFee);
 
         _requestTypes[requestId]    = RequestType.Battle;
         petBattleRequestId[petId1]   = requestId;
         petBattleRequestId[petId2]   = requestId;
         _battleRequests[requestId]  = PendingBattle({
-            requester: msg.sender,
-            petId1:    petId1,
-            petId2:    petId2,
-            vrfSeed:   0,
-            fulfilled: false
+            requester:  msg.sender,
+            petId1:     petId1,
+            petId2:     petId2,
+            randomness: 0,
+            fulfilled:  false
         });
 
         emit BattleRandomnessRequested(msg.sender, requestId, petId1, petId2);
@@ -192,7 +175,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     function settleBattle(uint256 requestId) external whenNotPaused {
         PendingBattle memory pending = _battleRequests[requestId];
         require(pending.requester != address(0), "No pending battle");
-        require(pending.fulfilled, "VRF not yet fulfilled");
+        require(pending.fulfilled, "Entropy not yet fulfilled");
 
         PetCoreV1.Pet memory p1 = petCore.getPet(pending.petId1);
         PetCoreV1.Pet memory p2 = petCore.getPet(pending.petId2);
@@ -203,7 +186,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         CombatSimV1.BattleResult memory sim = CombatSimV1(gameConfig.combatSim()).simulate(
             p1.dna, p1.rarity, p1.level, skill1,
             p2.dna, p2.rarity, p2.level, skill2,
-            pending.vrfSeed,
+            pending.randomness,
             gameConfig.getSkillConfig()
         );
 
@@ -235,7 +218,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         emit BattleResolved(
             requestId,
             winnerId, loserId,
-            pending.vrfSeed,
+            pending.randomness,
             sim.firstWins, sim.rounds, sim.winnerHpRemaining,
             xpWin, xpLoss
         );
@@ -269,19 +252,20 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         address owner1 = petCore.ownerOf(petId1);
         address owner2 = petCore.ownerOf(petId2);
 
+        uint256 entropyFee = entropy.getFeeV2();
         uint256 studFeeAmount;
         address otherOwner;
 
         if (owner1 == owner2) {
             require(owner1 == msg.sender, "Not owner of both pets");
-            require(msg.value >= gameConfig.breedFee(), "Insufficient breed fee");
+            require(msg.value >= gameConfig.breedFee() + entropyFee, "Insufficient breed/entropy fee");
         } else {
             // Cross-owner breeding requires an active marriage (plan §4.4).
             require(owner1 == msg.sender || owner2 == msg.sender, "Caller must own one of the pets");
             require(petCore.isMarriageValid(petId1, petId2), "Pets are not married");
             studFeeAmount = gameConfig.studFee();
             otherOwner    = (owner1 == msg.sender) ? owner2 : owner1;
-            require(msg.value >= gameConfig.breedFee() + studFeeAmount, "Insufficient breed/stud fee");
+            require(msg.value >= gameConfig.breedFee() + studFeeAmount + entropyFee, "Insufficient breed/stud/entropy fee");
         }
 
         _validateBreedPair(petId1, petId2);
@@ -290,7 +274,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
             "Breed pending for parent"
         );
 
-        requestId = _requestVrf();
+        requestId = _requestRandomness(entropyFee);
 
         _requestTypes[requestId]  = RequestType.Breed;
         petBreedRequestId[petId1]  = requestId;
@@ -300,7 +284,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
             petId1:     petId1,
             petId2:     petId2,
             name:       name_,
-            vrfSeed:    0,
+            randomness: 0,
             fulfilled:  false,
             studFee:    studFeeAmount,
             otherOwner: otherOwner
@@ -312,7 +296,7 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
     function settleBreed(uint256 requestId) external whenNotPaused {
         BreedRequest memory p = _breedRequests[requestId];
         require(p.owner != address(0), "No pending breed");
-        require(p.fulfilled, "VRF not yet fulfilled");
+        require(p.fulfilled, "Entropy not yet fulfilled");
 
         PetCoreV1.Pet memory p1 = petCore.getPet(p.petId1);
         PetCoreV1.Pet memory p2 = petCore.getPet(p.petId2);
@@ -320,8 +304,8 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         uint8 gen = (p1.generation > p2.generation ? p1.generation : p2.generation) + 1;
         require(gen <= gameConfig.generationCap(), "Generation cap reached");
 
-        uint256 childDna = _mixDna(p1.dna, p2.dna, p.vrfSeed);
-        uint8   rarity   = _inheritRarity(p1.rarity, p2.rarity, childDna, p.vrfSeed);
+        uint256 childDna = _mixDna(p1.dna, p2.dna, p.randomness);
+        uint8   rarity   = _inheritRarity(p1.rarity, p2.rarity, childDna, p.randomness);
 
         uint256 childId = petCore.createPet(p.name, childDna, rarity, gen, p.petId1, p.petId2);
         petCore.mintTo(p.owner, childId);
@@ -378,26 +362,31 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
         require(ok, "Withdraw failed");
     }
 
-    // ─── VRF callback ─────────────────────────────────────────────────────────
+    // ─── entropy callback ─────────────────────────────────────────────────────
 
-    // Inlined to avoid the dual-Initializable conflict when inheriting Chainlink's
-    // VRFConsumerBaseV2Upgradeable alongside our OZ v4 upgradeable contracts.
-    function rawFulfillRandomWords(uint256 requestId, uint256[] memory randomWords) external {
-        require(msg.sender == _rawVrfCoordinator, "Only VRF coordinator");
-        _fulfill(requestId, randomWords[0]);
+    function getEntropy() internal view override returns (address) {
+        return address(entropy);
+    }
+
+    function entropyCallback(
+        uint64 sequenceNumber,
+        address /* provider */,
+        bytes32 randomNumber
+    ) internal override {
+        _fulfill(uint256(sequenceNumber), uint256(randomNumber));
     }
 
     function _fulfill(uint256 requestId, uint256 word) internal {
         RequestType type_ = _requestTypes[requestId];
         delete _requestTypes[requestId];
         if (type_ == RequestType.Battle) {
-            _battleRequests[requestId].vrfSeed   = word;
+            _battleRequests[requestId].randomness = word;
             _battleRequests[requestId].fulfilled  = true;
         } else if (type_ == RequestType.Breed) {
-            _breedRequests[requestId].vrfSeed    = word;
+            _breedRequests[requestId].randomness  = word;
             _breedRequests[requestId].fulfilled   = true;
         }
-        // Unknown requestId → ignore (coordinator may retry; no revert to avoid blocking)
+        // Unknown requestId → ignore (defensive; should not happen for entropy-issued sequence numbers)
     }
 
     // ─── training ─────────────────────────────────────────────────────────────
@@ -431,19 +420,8 @@ contract GameLogicV1 is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable
 
     // ─── internal helpers ─────────────────────────────────────────────────────
 
-    function _requestVrf() internal returns (uint256) {
-        return s_vrfCoordinator.requestRandomWords(
-            VRFV2PlusClient.RandomWordsRequest({
-                keyHash:              vrfKeyHash,
-                subId:                vrfSubscriptionId,
-                requestConfirmations: VRF_REQUEST_CONFIRMATIONS,
-                callbackGasLimit:     VRF_CALLBACK_GAS_LIMIT,
-                numWords:             VRF_NUM_WORDS,
-                extraArgs: VRFV2PlusClient._argsToBytes(
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: vrfNativePayment})
-                )
-            })
-        );
+    function _requestRandomness(uint256 fee) internal returns (uint256) {
+        return uint256(entropy.requestV2{value: fee}());
     }
 
     function _validateBreedPair(uint256 petId1, uint256 petId2) internal view {

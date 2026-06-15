@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/src/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import "./GameConfig.sol";
@@ -12,42 +11,37 @@ import "./GameLogicV1.sol";
 /**
  * @title LocalCryptoPetsDeployerV2
  * @dev Single-transaction local deployer for the v2 UUPS proxy stack.
- *      Accepts a pre-deployed VRF coordinator and subscription so the heavy
- *      VRFCoordinatorV2_5Mock bytecode does not inflate this contract's initcode
- *      past the EIP-3860 limit.
+ *      Accepts a pre-deployed Pyth Entropy (mock) contract so its bytecode does not
+ *      inflate this contract's initcode past the EIP-3860 limit.
  *
  *      Usage (TypeScript tests):
- *        1. Deploy VRFCoordinatorV2_5Mock, createSubscription, fundSubscription.
+ *        1. Deploy MockEntropy (from the pythnetwork entropy-sdk-solidity package).
  *        2. Deploy a standalone GameLogicV1 (the proxy implementation).
- *        3. Deploy this contract, passing (coordinator, subscriptionId, gameLogicImpl).
- *        4. Call coordinator.addConsumer(subId, deployer.gameLogic).
+ *        3. Deploy this contract, passing (entropy, gameLogicImpl).
  *
  *      GameLogicV1's implementation is deployed separately and passed in (rather than
  *      `new GameLogicV1()` here) to keep this contract's own initcode under the
- *      EIP-3860 limit — same reasoning as the pre-deployed VRF coordinator above.
+ *      EIP-3860 limit — same reasoning as the pre-deployed entropy contract above.
  *
- *      Not for production — testnets use the Hardhat Ignition module with real coordinators.
+ *      Not for production — testnets use the Hardhat Ignition module with the real
+ *      Pyth Entropy contract.
  */
 contract LocalCryptoPetsDeployerV2 {
-    address    public immutable vrfCoordinator;
-    uint256    public immutable subscriptionId;
+    address    public immutable entropy;
 
     GameConfig   public immutable config;
     CombatSimV1  public immutable combatSim;
     PetCoreV1    public immutable petCore;    // proxy, typed as impl for convenience
     GameLogicV1  public immutable gameLogic;  // proxy, typed as impl for convenience
 
-    constructor(address vrfCoordinator_, uint256 subscriptionId_, address gameLogicImpl_) payable {
+    constructor(address entropy_, address gameLogicImpl_) payable {
         address finalOwner = msg.sender;
-        vrfCoordinator = vrfCoordinator_;
-        subscriptionId = subscriptionId_;
+        entropy = entropy_;
 
         // ── config & sim ──────────────────────────────────────────────────────
         config    = new GameConfig(address(this));
         combatSim = new CombatSimV1();
         config.setCombatSim(address(combatSim));
-
-        bytes32 keyHash = keccak256(abi.encodePacked("CryptoPets-local-vrf"));
 
         // ── PetCoreV1 proxy — owner starts as address(this) for wiring ────────
         PetCoreV1 petCoreImpl = new PetCoreV1();
@@ -62,12 +56,9 @@ contract LocalCryptoPetsDeployerV2 {
         bytes memory gameLogicInit = abi.encodeCall(
             GameLogicV1.initialize,
             (
-                vrfCoordinator_,
+                entropy_,
                 address(petCore),
                 address(config),
-                subscriptionId_,
-                keyHash,
-                true,        // nativePayment
                 address(this)
             )
         );
@@ -76,8 +67,6 @@ contract LocalCryptoPetsDeployerV2 {
 
         // ── wire up (deployer is still owner of both proxies here) ────────────
         petCore.authorizeCaller(address(gameLogic));
-        // addConsumer is called by the test after deployment so the coordinator
-        // reference is not needed here (avoids importing the mock interface).
 
         // ── hand off ownership to the EOA that deployed this contract ─────────
         petCore.transferOwnership(finalOwner);
