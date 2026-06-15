@@ -86,10 +86,10 @@ func newTestFlusher(t *testing.T) *PgFlusher {
 	}
 	t.Cleanup(f.Close)
 
-	if _, err := f.pool.Exec(ctx, testDDL); err != nil {
+	if err := f.db.WithContext(ctx).Exec(testDDL).Error; err != nil {
 		t.Fatalf("create tables: %v", err)
 	}
-	if _, err := f.pool.Exec(ctx, "TRUNCATE pet_roster, battle_history"); err != nil {
+	if err := f.db.WithContext(ctx).Exec("TRUNCATE pet_roster, battle_history").Error; err != nil {
 		t.Fatalf("truncate: %v", err)
 	}
 	return f
@@ -98,10 +98,10 @@ func newTestFlusher(t *testing.T) *PgFlusher {
 func (f *PgFlusher) readRoster(t *testing.T, chain, petID string) rosterRow {
 	t.Helper()
 	var r rosterRow
-	err := f.pool.QueryRow(context.Background(),
-		"SELECT owner, level, win_count, last_version FROM pet_roster WHERE chain=$1 AND pet_id=$2",
+	err := f.db.Raw(
+		"SELECT owner, level, win_count, last_version FROM pet_roster WHERE chain=? AND pet_id=?",
 		chain, petID,
-	).Scan(&r.owner, &r.level, &r.winCount, &r.lastVersion)
+	).Row().Scan(&r.owner, &r.level, &r.winCount, &r.lastVersion)
 	if err != nil {
 		t.Fatalf("read pet %s/%s: %v", chain, petID, err)
 	}
@@ -111,7 +111,7 @@ func (f *PgFlusher) readRoster(t *testing.T, chain, petID string) rosterRow {
 func (f *PgFlusher) countRows(t *testing.T, table string) int {
 	t.Helper()
 	var n int
-	if err := f.pool.QueryRow(context.Background(), "SELECT count(*) FROM "+table).Scan(&n); err != nil {
+	if err := f.db.Raw("SELECT count(*) FROM " + table).Row().Scan(&n); err != nil {
 		t.Fatalf("count %s: %v", table, err)
 	}
 	return n
