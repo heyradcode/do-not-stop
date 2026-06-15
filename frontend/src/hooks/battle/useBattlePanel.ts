@@ -7,6 +7,7 @@ import {
     useBattleTaunts,
     useOpponents,
     usePetList,
+    usePendingBattle,
     type TxLifecycle,
     type BattleResolvedResult,
 } from '@shared/core';
@@ -116,6 +117,13 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         [opponents, selectedOpponent],
     );
     const fighterLevel = selectedFighter?.level ?? null;
+
+    // An unresolved battle on either pet makes requestBattle revert ("Battle
+    // pending for pet"); block the new battle until it's settled/cancelled
+    // (the PendingBattleNotice in the setup view drives that).
+    const fighterPending = usePendingBattle(selectedPet1 || undefined);
+    const opponentPending = usePendingBattle(opponent?.id);
+    const hasPendingBattle = fighterPending.isPending || opponentPending.isPending;
     const sortedOpponents = useMemo(
         () => sortOpponentsByMatch(opponents, fighterLevel),
         [opponents, fighterLevel],
@@ -408,7 +416,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
                 : 'Start Battle';
     const battleDisabled =
         battle.isPending || battle.isConfirming || rematchPending || overlayOpen ||
-        !selectedPet1 || !selectedOpponent || showResult;
+        !selectedPet1 || !selectedOpponent || showResult || hasPendingBattle;
     const randomMatchDisabled = !canRandomMatch || battle.isPending || showResult;
 
     const overlay: BattleOverlayProps = {
