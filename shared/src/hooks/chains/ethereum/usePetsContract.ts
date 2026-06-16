@@ -1,6 +1,11 @@
 import type { Abi } from 'viem';
-import { useAccount, useWriteContract, useReadContract, useReadContracts } from 'wagmi';
+import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 
+/**
+ * Raw PetCore pet tuple (v2 `getPet`). A superset of the v1 shape — the extra
+ * v2 fields are read straight off the struct; consumers that only need v1
+ * fields can ignore them.
+ */
 export interface Pet {
     name: string;
     dna: bigint;
@@ -9,21 +14,37 @@ export interface Pet {
     winCount: number;
     lossCount: number;
     rarity: number;
+    // v2 additions
+    xp?: number;
+    generation?: number;
+    breedCount?: number;
+    breedReadyAt?: bigint;
+    trainReadyAt?: bigint;
+    speciesId?: number;
+    parent1Id?: bigint;
+    parent2Id?: bigint;
+    lastOpponentId?: bigint;
+    sameOpponentStreak?: number;
 }
 
 type UsePetsContractParams = {
+    /** PetCore proxy address (ERC-721 storage). */
     contractAddress?: `0x${string}`;
     abi: Abi;
     enabled?: boolean;
 };
 
+/**
+ * PetCore reads: the caller's pet ids (`getByOwner`) and each pet's record
+ * (`getPet`). Writes live in the chain adapter (`useEvmAdapter`), routed across
+ * PetCore and GameLogic.
+ */
 export const usePetsContract = ({
     contractAddress,
     abi,
     enabled = true,
 }: UsePetsContractParams) => {
     const { address, isConnected } = useAccount();
-    const { writeContract, data: hash, isPending, error: writeError, reset: resetWrite } = useWriteContract();
     const isContractConfigured = Boolean(contractAddress);
     const canRead = Boolean(address && contractAddress && enabled);
     const safeAddress = (contractAddress ?? '0x0000000000000000000000000000000000000000') as `0x${string}`;
@@ -42,7 +63,7 @@ export const usePetsContract = ({
         ((petIdsData as bigint[] | undefined)?.map((petId: bigint) => ({
             address: safeAddress,
             abi,
-            functionName: 'getById' as const,
+            functionName: 'getPet' as const,
             args: [petId],
         }))) ?? [];
 
@@ -66,108 +87,20 @@ export const usePetsContract = ({
                     winCount: Number(raw.winCount),
                     lossCount: Number(raw.lossCount),
                     rarity: Number(raw.rarity),
+                    xp: raw.xp != null ? Number(raw.xp) : undefined,
+                    generation: raw.generation != null ? Number(raw.generation) : undefined,
+                    breedCount: raw.breedCount != null ? Number(raw.breedCount) : undefined,
+                    breedReadyAt: raw.breedReadyAt != null ? BigInt(raw.breedReadyAt) : undefined,
+                    trainReadyAt: raw.trainReadyAt != null ? BigInt(raw.trainReadyAt) : undefined,
+                    speciesId: raw.speciesId != null ? Number(raw.speciesId) : undefined,
+                    parent1Id: raw.parent1Id != null ? BigInt(raw.parent1Id) : undefined,
+                    parent2Id: raw.parent2Id != null ? BigInt(raw.parent2Id) : undefined,
+                    lastOpponentId: raw.lastOpponentId != null ? BigInt(raw.lastOpponentId) : undefined,
+                    sameOpponentStreak: raw.sameOpponentStreak != null ? Number(raw.sameOpponentStreak) : undefined,
                 };
             }) || [];
 
     const petIds: bigint[] = (petIdsData as bigint[]) || [];
-
-    const createRandomPet = (name: string) => {
-        return writeContract({
-            address: safeAddress,
-            abi,
-            functionName: 'createRandom',
-            args: [name],
-            gas: 500000n,
-        });
-    };
-
-    const levelUp = (petId: bigint) => {
-        return writeContract({
-            address: safeAddress,
-            abi,
-            functionName: 'levelUp',
-            args: [petId],
-            value: 1000000000000000n,
-            gas: 200000n,
-        } as unknown as Parameters<typeof writeContract>[0]);
-    };
-
-    const changeName = (petId: bigint, newName: string) => {
-        return writeContract({
-            address: safeAddress,
-            abi,
-            functionName: 'changeName',
-            args: [petId, newName],
-            gas: 100000n,
-        });
-    };
-
-    const battlePets = (petId1: bigint, petId2: bigint) => {
-        return writeContract({
-            address: safeAddress,
-            abi,
-            functionName: 'battle',
-            args: [petId1, petId2],
-            gas: 300000n,
-        });
-    };
-
-    /** Chainlink VRF: first tx requests randomness; fulfillment mints the child (local Hardhat uses mock + second tx). */
-    const requestBreedFromDNA = (parentId1: bigint, parentId2: bigint, name: string) => {
-        return writeContract({
-            address: safeAddress,
-            abi,
-            functionName: 'requestCreateFromDNA',
-            args: [parentId1, parentId2, name],
-            gas: 800000n,
-        });
-    };
-
-    const attack = (petId: bigint, targetId: bigint) => {
-        return writeContract({
-            address: safeAddress,
-            abi,
-            functionName: 'attack',
-            args: [petId, targetId],
-            gas: 300000n,
-        });
-    };
-
-    const transferPet = (to: string, petId: bigint) => {
-        return writeContract({
-            address: safeAddress,
-            abi,
-            functionName: 'transferFrom',
-            args: [address, to as `0x${string}`, petId],
-            gas: 200000n,
-        });
-    };
-
-    const isReady = (readyTime: bigint): boolean => {
-        return Number(readyTime) <= Date.now() / 1000;
-    };
-
-    const getRarityColor = (rarity: number): string => {
-        const colors = {
-            1: '#8B4513',
-            2: '#C0C0C0',
-            3: '#FFD700',
-            4: '#FF69B4',
-            5: '#8A2BE2',
-        };
-        return colors[rarity as keyof typeof colors] || '#8B4513';
-    };
-
-    const getRarityName = (rarity: number): string => {
-        const names = {
-            1: 'Common',
-            2: 'Uncommon',
-            3: 'Rare',
-            4: 'Epic',
-            5: 'Legendary',
-        };
-        return names[rarity as keyof typeof names] || 'Unknown';
-    };
 
     return {
         address,
@@ -177,24 +110,7 @@ export const usePetsContract = ({
         petIds,
         isLoading: canRead && isPetsLoading,
         contractError: petIdsError ?? petsError,
-        createRandomPet,
-        levelUp,
-        changeName,
-        battlePets,
-        requestBreedFromDNA,
-        attack,
-        transferPet,
-        hash,
-        txHash: hash,
-        isPending,
-        isWritePending: isPending,
-        isConfirming: false,
-        writeError,
-        resetWrite,
         refetchPetIds,
         refetchPetsData,
-        isReady,
-        getRarityColor,
-        getRarityName,
     };
 };

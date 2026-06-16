@@ -75,6 +75,15 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         isPending: actions.levelUpPet.isPending,
     };
 
+    // Training is an EVM-only v2 action; Solana has no train instruction.
+    const trainPet: AdapterMutation<{ petId: string }> = {
+        async mutateAsync() {
+            throw new Error('Training is not available on Solana');
+        },
+        lifecycle: { phase: 'idle', error: null, reset: () => undefined },
+        isPending: false,
+    };
+
     const renamePet: AdapterMutation<{ petId: string; name: string }> = {
         async mutateAsync({ petId, name }) {
             await actions.renamePet.mutateAsync({ petId: Number(petId), name });
@@ -128,6 +137,7 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         },
         createPet,
         levelUpPet,
+        trainPet,
         renamePet,
         transferPet,
         battlePets,

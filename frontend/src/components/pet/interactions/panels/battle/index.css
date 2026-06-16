@@ -798,3 +798,33 @@
         }
     }
 }
+
+.pending-battle-notice {
+    margin: 10px 0;
+    padding: 10px 12px;
+    border: 1px solid rgb(255 207 112 / 35%);
+    border-radius: 8px;
+    background: rgb(40 28 5 / 45%);
+    color: var(--neon-amber, #ffcf70);
+    font-size: var(--font-size-sm);
+}
+
+.pending-battle-notice p {
+    margin: 0 0 8px;
+}
+
+.pending-battle-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.pending-battle-actions button {
+    padding: 4px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.pending-battle-actions button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}

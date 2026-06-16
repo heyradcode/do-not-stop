@@ -3,6 +3,10 @@ type PetLike = {
     level: number;
     winCount: number;
     rarity: number;
+    /** v2 XP toward the next level (threshold = 100 × level); absent on v1/Solana. */
+    xp?: number;
+    /** v2 breeding generation; absent on v1/Solana. */
+    generation?: number;
 };
 
 type BattlePetLike = {
@@ -21,12 +25,23 @@ export const getPetAvatar = (dna: bigint): string => {
     return avatars[Number(dna % BigInt(avatars.length))];
 };
 
+/** XP threshold to reach the next level (PetCore: 100 × current level). */
+const xpThreshold = (level: number): number => 100 * Math.max(1, level);
+
 export const getXpPercent = (pet: PetLike): number => {
+    // v2: real XP toward the next level. Fall back to the synthetic estimate
+    // when the chain doesn't surface xp (v1/Solana).
+    if (pet.xp != null) {
+        return Math.max(0, Math.min(100, (pet.xp / xpThreshold(pet.level)) * 100));
+    }
     const value = pet.level * 12 + pet.winCount * 18 + pet.rarity * 10;
     return Math.max(0, Math.min(100, value % 101));
 };
 
 export const getXpNumbers = (pet: PetLike) => {
+    if (pet.xp != null) {
+        return { xpCurrent: pet.xp, xpMax: xpThreshold(pet.level) };
+    }
     const xpMax = Math.max(300, pet.level * 80 + 400);
     const xpCurrent = Math.floor((getXpPercent(pet) / 100) * xpMax);
     return { xpCurrent, xpMax };

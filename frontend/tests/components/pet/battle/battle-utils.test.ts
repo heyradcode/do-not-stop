@@ -1,0 +1,64 @@
+import { describe, expect, it } from 'vitest';
+import type { OpponentPet, Pet } from '@shared/core';
+
+import {
+    opponentKey,
+    shortAddress,
+    toDialoguePet,
+} from '@components/pet/interactions/panels/battle/battle-utils';
+
+describe('toDialoguePet', () => {
+    it('maps a pet to the dialogue persona shape and stringifies dna', () => {
+        const pet = {
+            id: 'p1',
+            name: 'Sparky',
+            level: 3,
+            rarity: 'rare',
+            dna: 42,
+            winCount: 5,
+            lossCount: 2,
+        } as unknown as Pet;
+
+        expect(toDialoguePet(pet)).toEqual({
+            petId: 'p1',
+            name: 'Sparky',
+            level: 3,
+            rarity: 'rare',
+            dna: '42',
+            winCount: 5,
+            lossCount: 2,
+        });
+    });
+
+    it('works for an opponent pet too', () => {
+        const opp = {
+            id: 'o1',
+            name: 'Rival',
+            level: 9,
+            rarity: 'legendary',
+            dna: 7,
+            winCount: 1,
+            lossCount: 0,
+        } as unknown as OpponentPet;
+
+        expect(toDialoguePet(opp).petId).toBe('o1');
+        expect(toDialoguePet(opp).dna).toBe('7');
+    });
+});
+
+describe('opponentKey', () => {
+    it('joins owner and id with a stable separator', () => {
+        expect(opponentKey('0xowner', 'id5')).toBe('0xowner::id5');
+    });
+});
+
+describe('shortAddress', () => {
+    it('truncates long addresses to head…tail', () => {
+        expect(shortAddress('0x1234567890abcdef')).toBe('0x1234…cdef');
+    });
+
+    it('returns short strings unchanged', () => {
+        expect(shortAddress('0x1234')).toBe('0x1234');
+        expect(shortAddress('0x1234567890')).toBe('0x1234567890');
+    });
+});

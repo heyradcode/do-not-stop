@@ -12,13 +12,13 @@ type UseWatchPetsContractParams = {
     abi: readonly unknown[];
     /** Connected wallet; events are filtered to this owner */
     address?: `0x${string}`;
-    /** VRF request id from `BreedRandomnessRequested`; must match `BreedFulfilled.requestId` */
+    /** VRF request id from `BreedRandomnessRequested`; must match `BreedSettled.requestId` */
     pendingRequestId: bigint | null;
     onBreedSuccess?: (payload: BreedSuccessPayload) => void;
 };
 
 /**
- * Subscribes to `BreedFulfilled` on CryptoPets and invokes `onBreedSuccess` when the event
+ * Subscribes to `BreedSettled` on GameLogic and invokes `onBreedSuccess` when the event
  * matches the current account and `pendingRequestId`.
  */
 export const useWatchPetsContract = ({
@@ -42,7 +42,7 @@ export const useWatchPetsContract = ({
     useWatchContractEvent({
         address: contractAddress,
         abi,
-        eventName: 'BreedFulfilled',
+        eventName: 'BreedSettled',
         enabled: Boolean(pendingRequestId != null && address && contractAddress),
         onLogs(logs) {
             if (!address) return;
