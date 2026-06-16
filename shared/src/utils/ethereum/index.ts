@@ -12,4 +12,3 @@ export {
     getLifePercent,
 } from './petCard';
 export { isPetReady, getTimeUntilReady } from './petReadyTime';
-export { getReadyPets, type ReadyPetOption } from './readyPets';
