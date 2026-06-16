@@ -33,6 +33,17 @@ describe('buildBanter', () => {
         expect(result).toBe('banter-ctx');
     });
 
+    it('filters out result-phase turns when tauntsOnly is true', async () => {
+        vi.mocked(getRecentBanter).mockResolvedValueOnce([
+            { speaker: 'attacker', text: 'Hi', phase: 'taunt' },
+            { speaker: 'defender', text: 'GG', phase: 'result' },
+        ] as never);
+        const { buildBanterContext } = await import('../../../src/features/dialogue/llm/render');
+        await buildBanter('evm', 'pet1', 'pet2', undefined, true);
+        const passedTurns = vi.mocked(buildBanterContext).mock.calls[0][0] as unknown[];
+        expect(passedTurns).toHaveLength(1);
+    });
+
     it('returns empty string when repository throws', async () => {
         vi.mocked(getRecentBanter).mockRejectedValueOnce(new Error('db down'));
         const result = await buildBanter('evm', 'pet1', 'pet2');

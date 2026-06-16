@@ -87,4 +87,16 @@ describe('getOrGenerateDialogue', () => {
         const result = await getOrGenerateDialogue({ ...input, winner: 'defender' });
         expect(result.turns).toBe(defenderWins);
     });
+
+    it('logs a warning when client-reported winner contradicts chain truth', async () => {
+        const { getChainSettledWinner } = await import('../../../../src/grpc/battleStream');
+        // chain says p2 (defender) won, but input claims attacker (p1) — triggers warn.
+        vi.mocked(getChainSettledWinner).mockReturnValue('p2');
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        await getOrGenerateDialogue(input);
+
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('contradicts chain truth'));
+        warnSpy.mockRestore();
+    });
 });

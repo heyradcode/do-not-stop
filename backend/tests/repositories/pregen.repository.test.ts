@@ -69,4 +69,89 @@ describe('InMemoryPregenStore', () => {
         await store.release('key5');
         expect(await store.take('key5')).toBeNull();
     });
+
+    it('take returns null for an expired entry', async () => {
+        vi.useFakeTimers();
+        const { getPregenStore: fresh } = await import('../../src/repositories/pregen.repository');
+        const store = await fresh();
+        await store.reserve('expkey');
+        // Advance past the 60s TTL so the entry is considered expired.
+        vi.advanceTimersByTime(61_000);
+        expect(await store.take('expkey')).toBeNull();
+        vi.useRealTimers();
+    });
+
+    it('take returns null when the promise rejects concurrently (catch path)', async () => {
+        const { getPregenStore: fresh } = await import('../../src/repositories/pregen.repository');
+        const store = await fresh();
+        await store.reserve('racekey');
+        // Start take — it will suspend at `await entry.promise`.
+        const takePromise = store.take('racekey');
+        // Release while take is suspended: deletes the entry and rejects the promise.
+        store.release('racekey');
+        expect(await takePromise).toBeNull();
+    });
+});
+
+describe('RedisPregenStore', () => {
+    let redisClient: { set: ReturnType<typeof vi.fn>; get: ReturnType<typeof vi.fn>; del: ReturnType<typeof vi.fn> };
+
+    beforeEach(() => {
+        redisClient = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
+        vi.doMock('@config/redis', () => ({ getRedis: vi.fn().mockResolvedValue(redisClient) }));
+    });
+
+    it('reserve returns true when Redis NX succeeds', async () => {
+        redisClient.set.mockResolvedValue('OK');
+        const { getPregenStore: fresh } = await import('../../src/repositories/pregen.repository');
+        const store = await fresh();
+        expect(await store.reserve('r1')).toBe(true);
+    });
+
+    it('reserve returns false when Redis NX returns null', async () => {
+        redisClient.set.mockResolvedValue(null);
+        const { getPregenStore: fresh } = await import('../../src/repositories/pregen.repository');
+        const store = await fresh();
+        expect(await store.reserve('r1')).toBe(false);
+    });
+
+    it('fulfill sets the key with JSON payload', async () => {
+        redisClient.set.mockResolvedValue('OK');
+        const { getPregenStore: fresh } = await import('../../src/repositories/pregen.repository');
+        const store = await fresh();
+        await store.fulfill('r2', payload);
+        expect(redisClient.set).toHaveBeenCalledWith('r2', JSON.stringify(payload), 'EX', 60);
+    });
+
+    it('take returns null when key is absent', async () => {
+        redisClient.get.mockResolvedValue(null);
+        const { getPregenStore: fresh } = await import('../../src/repositories/pregen.repository');
+        const store = await fresh();
+        expect(await store.take('r3')).toBeNull();
+    });
+
+    it('take returns null when value is the PENDING sentinel', async () => {
+        redisClient.get.mockResolvedValue('__pending__');
+        const { getPregenStore: fresh } = await import('../../src/repositories/pregen.repository');
+        const store = await fresh();
+        expect(await store.take('r3')).toBeNull();
+    });
+
+    it('take parses, deletes, and returns the stored payload', async () => {
+        redisClient.get.mockResolvedValue(JSON.stringify(payload));
+        redisClient.del.mockResolvedValue(1);
+        const { getPregenStore: fresh } = await import('../../src/repositories/pregen.repository');
+        const store = await fresh();
+        const result = await store.take('r4');
+        expect(result?.model).toBe('test-model');
+        expect(redisClient.del).toHaveBeenCalledWith('r4');
+    });
+
+    it('release calls del on the key', async () => {
+        redisClient.del.mockResolvedValue(1);
+        const { getPregenStore: fresh } = await import('../../src/repositories/pregen.repository');
+        const store = await fresh();
+        await store.release('r5');
+        expect(redisClient.del).toHaveBeenCalledWith('r5');
+    });
 });
