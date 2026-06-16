@@ -18,7 +18,7 @@ pub fn mix_dna_with_vrf(vrf: &[u8; 32], parent1_dna: u64, parent2_dna: u64) -> u
     let mut child: u64 = 0;
     for i in 0..8u32 {
         let digest = keccak::hashv(&[vrf, &i.to_le_bytes()]).to_bytes();
-        let pair_rand = u64::from_le_bytes(digest[0..8].try_into().unwrap());
+        let pair_rand = u64::from_le_bytes(digest[0..8].try_into().expect("8-byte slice from 32-byte digest"));
         let pick = pair_rand % 100;
         let pair = if pick < 10 {
             pair_rand % 100 // 10% mutation, always < 10 (== pick)
@@ -37,7 +37,7 @@ pub fn mix_dna_with_vrf(vrf: &[u8; 32], parent1_dna: u64, parent2_dna: u64) -> u
 /// (e.g. [`inherit_rarity`]'s `b"rarity"` roll) via the `b"mint"` tag.
 pub fn mint_dna_from_vrf(vrf: &[u8; 32]) -> u64 {
     let digest = keccak::hashv(&[vrf, b"mint"]).to_bytes();
-    u64::from_le_bytes(digest[0..8].try_into().unwrap())
+    u64::from_le_bytes(digest[0..8].try_into().expect("8-byte slice from 32-byte digest"))
 }
 
 /// Rarity inheritance (plan §4.2, mirrors EVM `GameLogicV1._inheritRarity`): recompute the
@@ -48,7 +48,7 @@ pub fn inherit_rarity(parent1_rarity: u8, parent2_rarity: u8, child_dna: u64, vr
     let base: u8 = Rarity::from_dna(child_dna).into();
     if parent1_rarity >= 4 && parent2_rarity >= 4 && base < 5 {
         let digest = keccak::hashv(&[vrf, b"rarity"]).to_bytes();
-        let bump_roll = u64::from_le_bytes(digest[0..8].try_into().unwrap()) % 100;
+        let bump_roll = u64::from_le_bytes(digest[0..8].try_into().expect("8-byte slice from 32-byte digest")) % 100;
         if bump_roll < 5 {
             return base + 1;
         }
@@ -187,7 +187,7 @@ mod tests {
         // pass the raw VRF bytes through.
         assert_ne!(
             mint_dna_from_vrf(&vrf),
-            u64::from_le_bytes(vrf[0..8].try_into().unwrap())
+            u64::from_le_bytes(vrf[0..8].try_into().expect("8-byte slice from 32-byte digest"))
         );
     }
 

@@ -47,6 +47,14 @@ pub const SKILL_BLOODLUST: u8 = 7;
 /// Sentinel for "no skill archetype" (any value outside `0..=7` works; this is the canonical one).
 pub const NO_SKILL: u8 = 8;
 
+/// Crit formula constants (mirrors `CombatSimV1.sol`):
+///   critBps = min(CRIT_BASE + CRIT_PER_INT * INT, CRIT_CAP_DEFAULT)
+///   on a hit: damage × CRIT_MULT / 100
+const CRIT_BASE: u64 = 500;
+const CRIT_PER_INT: u64 = 25;
+const CRIT_CAP_DEFAULT: u64 = 3000;
+const CRIT_MULT: u64 = 150; // 1.5× as a percentage multiplier
+
 /// Skill balance values (plan §3.7), mirrors `GameConfig`'s `tankHpMult` etc. Defaults match
 /// `GameConfig.sol`'s initializers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -259,16 +267,16 @@ fn strike(
     let crit_cap = if atk_skill == SKILL_CUNNING {
         sc.cunning_crit_cap as u64
     } else {
-        3000
+        CRIT_CAP_DEFAULT
     };
-    let crit_base = 500 + if atk_skill == SKILL_SWIFT { sc.swift_crit_bonus as u64 } else { 0 };
-    let mut crit_bps = crit_base + 25 * atk.intl as u64;
+    let crit_base = CRIT_BASE + if atk_skill == SKILL_SWIFT { sc.swift_crit_bonus as u64 } else { 0 };
+    let mut crit_bps = crit_base + CRIT_PER_INT * atk.intl as u64;
     if crit_bps > crit_cap {
         crit_bps = crit_cap;
     }
     let crit_roll = strike_roll(round_seed, slot_offset + 1);
     if crit_roll < crit_bps {
-        dmg = dmg * 150 / 100;
+        dmg = dmg * CRIT_MULT / 100;
     }
 
     if dmg == 0 {

@@ -36,7 +36,7 @@ pub enum ErrorCode {
     RandomnessNotResolved,
     #[msg("Battle cooldown exceeds the maximum allowed")]
     InvalidBattleCooldown,
-    #[msg("Level-up fee exceeds the maximum allowed")]
+    #[msg("Level-up fee is invalid")]
     InvalidLevelUpFee,
     #[msg("Fee vault balance is insufficient for this withdrawal")]
     InsufficientFeeVaultBalance,
