@@ -1,30 +1,20 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 
 /**
- * Generic v2 UUPS proxy-stack deployment for any EVM network with Chainlink VRF v2.5.
+ * Generic v2 UUPS proxy-stack deployment for any EVM network with Pyth Entropy V2.
  *
  * Deploys GameConfig + CombatSim (plain contracts) and the PetCore /
  * GameLogic implementations behind ERC1967 proxies, then wires ownership
  * and caller authorization. The deploying account ends up as `owner()` of
  * every contract (GameConfig, PetCore proxy, GameLogic proxy) and as the
- * UUPS upgrade authority for both proxies — transfer ownership to a
- * Safe/Squads multisig (and later a timelock) as a separate follow-up once
- * the stack is verified on-chain (plan §9.1 Phase 4).
+ * UUPS upgrade authority for both proxies.
  *
- * All VRF parameters are required and must be supplied via a parameters file,
- * which `scripts/deploy.ts` generates from per-network env vars. See
- * `scripts/networks.ts` for the env-var convention.
- *
- * After deployment, the GameLogic proxy address must be registered as a
- * consumer on the VRF subscription via the Chainlink subscription manager
- * (https://vrf.chain.link) — this is a manual step since the subscription
- * owner may differ from the deploying account.
+ * The `entropyAddress` parameter (Pyth Entropy V2 contract) must be supplied
+ * via a parameters file, which `scripts/deploy.ts` generates from per-network
+ * env vars. See `scripts/networks.ts` for the env-var convention.
  */
 const CryptoPetsV2LiveModule = buildModule("CryptoPetsV2Live", (m) => {
-    const vrfSubscriptionId = m.getParameter("vrfSubscriptionId");
-    const vrfKeyHash = m.getParameter("vrfKeyHash");
-    const vrfCoordinator = m.getParameter("vrfCoordinator");
-    const vrfNativePayment = m.getParameter("vrfNativePayment", false);
+    const entropyAddress = m.getParameter("entropyAddress");
 
     const deployer = m.getAccount(0);
 
@@ -49,12 +39,9 @@ const CryptoPetsV2LiveModule = buildModule("CryptoPetsV2Live", (m) => {
     // ── GameLogic proxy ───────────────────────────────────────────────────
     const gameLogicImpl = m.contract("GameLogic", [], { id: "GameLogicImpl" });
     const gameLogicInit = m.encodeFunctionCall(gameLogicImpl, "initialize", [
-        vrfCoordinator,
+        entropyAddress,
         petCoreProxy,
         config,
-        vrfSubscriptionId,
-        vrfKeyHash,
-        vrfNativePayment,
         deployer,
     ]);
     const gameLogicProxy = m.contract(

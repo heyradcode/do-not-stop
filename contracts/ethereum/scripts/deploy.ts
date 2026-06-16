@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-import { getNetwork, resolveRpcUrl, resolveVrfParams } from './networks.js';
+import { getNetwork, resolveRpcUrl, resolveEntropyParams } from './networks.js';
 
 const NETWORK_NAME =
     process.argv.find((a) => a.startsWith('--network='))?.split('=')[1] ??
@@ -44,16 +44,16 @@ if (!process.env.PRIVATE_KEY) {
     process.exit(1);
 }
 
-let vrf;
+let entropy;
 try {
-    vrf = resolveVrfParams(network);
+    entropy = resolveEntropyParams(network);
 } catch (e) {
     console.error(`❌ ${e instanceof Error ? e.message : String(e)}`);
     process.exit(1);
 }
 
-// Write the runtime parameters file. Gitignored so secrets/subscription
-// IDs aren't committed; it's regenerated on every deploy.
+// Write the runtime parameters file. Gitignored so addresses aren't
+// committed; it's regenerated on every deploy.
 const paramsDir = join(process.cwd(), 'ignition', 'parameters');
 mkdirSync(paramsDir, { recursive: true });
 const paramsPath = join(paramsDir, `.runtime-${network.name}.json`);
@@ -62,10 +62,7 @@ writeFileSync(
     JSON.stringify(
         {
             CryptoPetsV2Live: {
-                vrfSubscriptionId: vrf.vrfSubscriptionId,
-                vrfKeyHash: vrf.vrfKeyHash,
-                vrfCoordinator: vrf.vrfCoordinator,
-                vrfNativePayment: vrf.vrfNativePayment,
+                entropyAddress: entropy.entropyAddress,
             },
         },
         null,

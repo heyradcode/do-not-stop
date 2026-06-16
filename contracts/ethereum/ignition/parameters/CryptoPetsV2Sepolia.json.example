@@ -1,10 +1,6 @@
 {
   "CryptoPetsV2Live": {
-    "vrfSubscriptionId": "111590939014689107046079508135767071542806121354569782569208766455335253338867",
-
-    "_optional_overrides": "Defaults below are baked into ignition/modules/CryptoPetsV2Live.ts via scripts/networks.ts. Uncomment only if you need a different gas lane, the native-LINK payment mode, or a coordinator override.",
-    "//vrfCoordinator": "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B",
-    "//vrfKeyHash": "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae",
-    "//vrfNativePayment": false
+    "_note": "entropyAddress defaults to the Sepolia Pyth Entropy V2 address in scripts/networks.ts. Only override if you need a different deployment.",
+    "//entropyAddress": "0x41c9e39574F40Ad34c79f1C99B66A45eFB830d4c"
   }
 }
