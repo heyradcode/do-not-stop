@@ -10,7 +10,7 @@ import TrainPage from '@pages/train';
 import MarriagePage from '@pages/marriage';
 import RenamePage from '@pages/rename';
 
-/** App route tree — pages render regardless of wallet state; features gate themselves via `useIsLoggedIn`. */
+/** App route tree — pages render regardless of wallet state; features gate themselves internally. */
 const AppRoutes: React.FC = () => {
     return (
         <Routes>
