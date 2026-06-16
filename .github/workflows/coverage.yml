@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
 
-# Allow the report action to create / update the coverage comment on the PR.
+# Allow the workflow to create / update the coverage comment on the PR.
 permissions:
   contents: read
   pull-requests: write
@@ -18,20 +18,6 @@ concurrency:
 jobs:
   coverage:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - package: backend
-            filter: backend
-            directory: backend
-          - package: frontend
-            filter: frontend
-            directory: frontend
-          - package: shared
-            filter: '@shared/core'
-            directory: shared
-    name: ${{ matrix.package }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,14 +31,29 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests with coverage
-        run: pnpm --filter ${{ matrix.filter }} test:coverage
+      # Each suite runs even if an earlier one fails (if: always()), so the
+      # aggregated comment covers every package. A failing suite still fails
+      # the job overall, preserving the test signal.
+      - name: Backend coverage
+        run: pnpm --filter backend test:coverage
 
-      # Posts (and updates) a sticky coverage comment on the PR conversation,
-      # plus a job summary. Runs even if tests fail so the report still lands.
-      - name: Report coverage
+      - name: Frontend coverage
+        if: always()
+        run: pnpm --filter frontend test:coverage
+
+      - name: Shared coverage
+        if: always()
+        run: pnpm --filter '@shared/core' test:coverage
+
+      - name: Build coverage comment
+        if: always()
+        run: node scripts/coverage-comment.mjs > coverage-comment.md
+
+      # One sticky comment, updated in place, with all three packages in a
+      # single table on the PR conversation.
+      - name: Post coverage comment
         if: always() && github.event_name == 'pull_request'
-        uses: davelosert/vitest-coverage-report-action@v2
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          name: ${{ matrix.package }}
-          working-directory: ${{ matrix.directory }}
+          header: coverage
+          path: coverage-comment.md

@@ -55,4 +55,14 @@ describe('nonce.store', () => {
         expect(consumeNonce('a')).toBe(true);
         expect(consumeNonce('a')).toBe(false);
     });
+
+    it('purges expired entries when a new nonce is stored (lazy eviction)', () => {
+        storeNonce('old');
+        vi.advanceTimersByTime(TTL_MS + 1);
+        // Storing a new nonce triggers purgeExpired which deletes 'old' (covers line 38).
+        storeNonce('fresh2');
+        // 'old' was evicted, not consumed — still returns false.
+        expect(consumeNonce('old')).toBe(false);
+        consumeNonce('fresh2');
+    });
 });

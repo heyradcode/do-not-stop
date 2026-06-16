@@ -64,6 +64,16 @@ describe('buildPersona', () => {
             expect(t).toContain('seasoned fighter');
         });
 
+        it('describes a self-assured fighter when wins slightly outnumber losses', () => {
+            const t = buildPersona(pet({ level: 3, winCount: 3, lossCount: 2 })).temperament;
+            expect(t).toContain('self-assured');
+        });
+
+        it('describes even-tempered when wins equal losses', () => {
+            const t = buildPersona(pet({ level: 3, winCount: 3, lossCount: 3 })).temperament;
+            expect(t).toContain('even-tempered with something to prove');
+        });
+
         it('uses the element tone prefix', () => {
             const t = buildPersona(pet({ dna: '0' })).temperament; // fire
             expect(t.startsWith('hot-headed and aggressive')).toBe(true);
