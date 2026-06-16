@@ -37,7 +37,7 @@ pub use requests::*;
 /// asset pubkey minted into the "CryptoPets" collection by `settle_mint`/`settle_breed`'s
 /// CPI. `PetAccount`'s PDA seeds are now `[PetAccount::SEED, asset_pubkey]` (replacing
 /// `[PetAccount::SEED, owner, pet_id]`), and the Core asset's `owner` field (read via
-/// `metadata::core_asset_owner`) is the source of truth for pet ownership, replacing
+/// `utils::metadata::core_asset_owner`) is the source of truth for pet ownership, replacing
 /// `pet.owner` (now informational-only, see its doc comment). `transfer_pet` is removed —
 /// ownership transfers happen as standard Core asset transfers through any wallet. Bumps
 /// `PetAccount::SPACE` (+32 bytes). Breaking; requires redeploy + reinit of pet accounts

@@ -8,7 +8,7 @@ pub struct PetAccount {
     /// Owner at the time this pet was minted or bred (plan §2.3/v2.1 Phase A).
     /// Informational only — post-mint Core-wallet transfers do not update this field
     /// (there is no `transfer_pet` instruction). Current ownership is the Metaplex Core
-    /// asset's `owner` field, read via `metadata::core_asset_owner(&asset_account)`.
+    /// asset's `owner` field, read via `utils::metadata::core_asset_owner(&asset_account)`.
     pub owner: Pubkey,
     pub dna: u64,
     pub rarity: u8,
@@ -55,7 +55,7 @@ pub struct PetAccount {
     pub spouse_id: u32,
     /// Owner of this pet's Metaplex Core asset at the time mutual marriage consent was
     /// given (plan §4.4, mirrors EVM `marriageOf[petId].ownerSnapshot`), captured via
-    /// `metadata::core_asset_owner` in `accept_marriage`. A later Core-asset transfer
+    /// `utils::metadata::core_asset_owner` in `accept_marriage`. A later Core-asset transfer
     /// makes the marriage lazily stale, detected by `clear_stale_marriage` comparing
     /// this snapshot against the asset's current `core_asset_owner`.
     pub marriage_owner_snapshot: Pubkey,
