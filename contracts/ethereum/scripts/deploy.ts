@@ -106,22 +106,22 @@ async function injectContractAddress(): Promise<void> {
             readFileSync(deployedAddressesPath, 'utf8')
         );
 
-        let contractAddress: `0x${string}` | undefined;
+        const petCoreAddress = deployedAddresses['CryptoPetsV2Live#PetCoreProxy'] as string | undefined;
+        const gameLogicAddress = deployedAddresses['CryptoPetsV2Live#GameLogicProxy'] as string | undefined;
+        const gameConfigAddress = deployedAddresses['CryptoPetsV2Live#GameConfig'] as string | undefined;
+        const combatSimAddress = deployedAddresses['CryptoPetsV2Live#CombatSim'] as string | undefined;
 
-        // v2 live: PetCore proxy is the ERC-721 token contract the frontend addresses.
-        const liveAddr = deployedAddresses['CryptoPetsV2Live#PetCoreProxy'] as string | undefined;
-        if (liveAddr) {
-            contractAddress = liveAddr as `0x${string}`;
-        }
-
-        if (!contractAddress) {
+        if (!petCoreAddress) {
             console.error(
                 '❌ PetCore proxy address not found in deployed_addresses.json (expected CryptoPetsV2Live#PetCoreProxy)'
             );
             return;
         }
 
-        console.log(`📝 Contract address: ${contractAddress}`);
+        console.log(`📝 PetCore:   ${petCoreAddress}`);
+        console.log(`📝 GameLogic: ${gameLogicAddress ?? '(not found)'}`);
+        console.log(`📝 GameConfig: ${gameConfigAddress ?? '(not found)'}`);
+        console.log(`📝 CombatSim: ${combatSimAddress ?? '(not found)'}`);
 
         const frontendEnvLocalPath = join(
             process.cwd(),
@@ -136,19 +136,23 @@ async function injectContractAddress(): Promise<void> {
             envContent = readFileSync(frontendEnvLocalPath, 'utf8');
         }
 
-        const contractAddressLine = `VITE_CONTRACT_ADDRESS=${contractAddress}`;
+        function upsertEnvLine(lines: string[], key: string, value: string): void {
+            const idx = lines.findIndex((l) => l.startsWith(`${key}=`));
+            if (idx >= 0) {
+                lines[idx] = `${key}=${value}`;
+            } else {
+                lines.push(`${key}=${value}`);
+            }
+        }
+
         const lines = envContent
             .split('\n')
             .filter((line) => !line.startsWith('VITE_VRF_COORDINATOR='));
-        const contractAddressIndex = lines.findIndex((line) =>
-            line.startsWith('VITE_CONTRACT_ADDRESS=')
-        );
 
-        if (contractAddressIndex >= 0) {
-            lines[contractAddressIndex] = contractAddressLine;
-        } else {
-            lines.push(contractAddressLine);
-        }
+        upsertEnvLine(lines, 'VITE_PETCORE_ADDRESS', petCoreAddress);
+        if (gameLogicAddress) upsertEnvLine(lines, 'VITE_GAMELOGIC_ADDRESS', gameLogicAddress);
+        if (gameConfigAddress) upsertEnvLine(lines, 'VITE_GAMECONFIG_ADDRESS', gameConfigAddress);
+        if (combatSimAddress) upsertEnvLine(lines, 'VITE_COMBATSIM_ADDRESS', combatSimAddress);
 
         if (!lines.some((line) => line.startsWith('VITE_API_URL='))) {
             lines.push('VITE_API_URL=http://localhost:3001');
@@ -157,8 +161,8 @@ async function injectContractAddress(): Promise<void> {
         const updatedContent = lines.filter((line) => line.trim()).join('\n');
         writeFileSync(frontendEnvLocalPath, updatedContent);
 
-        console.log('✅ Contract address injected into frontend .env.local');
-        console.log(`🔗 Frontend will use contract: ${contractAddress}`);
+        console.log('✅ Contract addresses injected into frontend .env.local');
+        console.log(`🔗 Frontend will use PetCore: ${petCoreAddress}`);
 
         const mobileEnvPath = join(process.cwd(), '..', '..', 'mobile', '.env');
         let mobileEnvContent = '';
