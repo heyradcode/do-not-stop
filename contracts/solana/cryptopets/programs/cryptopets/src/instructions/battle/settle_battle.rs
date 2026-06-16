@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
-    game::{combat::{self, SkillConfig}, xp::calc_xp},
+    game::{battle_sim::{self, SkillConfig}, xp::calc_xp},
     utils::metadata::core_asset_owner,
     utils::randomness::read_revealed_randomness,
     state::{BattleRequest, GlobalState, PetAccount},
@@ -57,7 +57,7 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
     let attacker_skill = (ctx.accounts.attacker_pet.species_id % 8) as u8;
     let defender_skill = (ctx.accounts.defender_pet.species_id % 8) as u8;
 
-    let sim = combat::simulate(
+    let sim = battle_sim::simulate(
         ctx.accounts.attacker_pet.dna,
         ctx.accounts.attacker_pet.rarity,
         ctx.accounts.attacker_pet.level,
