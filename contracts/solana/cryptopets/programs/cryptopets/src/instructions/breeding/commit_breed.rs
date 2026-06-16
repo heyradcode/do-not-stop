@@ -3,7 +3,8 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{BreedRequest, GlobalState, PetAccount, StudFeeAccount, FEE_VAULT_SEED},
-    util::{assert_randomness_committed, core_asset_owner},
+    metadata::core_asset_owner,
+    randomness::assert_randomness_committed,
 };
 
 pub fn handler(

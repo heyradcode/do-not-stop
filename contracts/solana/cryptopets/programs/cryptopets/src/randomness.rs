@@ -1,60 +1,17 @@
+//! Switchboard VRF integration and VRF-derived game computations.
+//!
+//! Commit/reveal helpers validate that a Switchboard `RandomnessAccountData` account is
+//! in the correct phase for the calling instruction. DNA-mixing and rarity-inheritance
+//! functions consume the revealed 32-byte value to produce deterministic, game-critical
+//! outcomes (plan §4.2/§4.3, mirrors EVM `GameLogicV1._mixDna` / `_inheritRarity`).
+
 use anchor_lang::prelude::*;
 use solana_keccak_hasher as keccak;
 use switchboard_on_demand::RandomnessAccountData;
 
-use crate::{dna::digit_pair, errors::ErrorCode, rarity::Rarity};
+use crate::{errors::ErrorCode, sim::dna::digit_pair, sim::rarity::Rarity};
 
-/// Gene mixing with mutation (plan §4.2, mirrors EVM `GameLogicV1._mixDna`'s per-digit-pair
-/// 45%/45%/10% inheritance). For each of the 8 two-digit pairs (LSB-first, see `dna::digit_pair`):
-/// - 10%: mutation — a fresh value derived from the VRF bytes, always in `0..=9` (mirrors
-///   EVM reusing `pairRand % 100` for both the pick roll and the mutated pair, which is
-///   only ever `< 10` in that branch)
-/// - 45%: inherit parent 1's pair at this index
-/// - 45%: inherit parent 2's pair at this index
-///
-/// Bit-identical cross-chain parity isn't possible (Switchboard vs. Chainlink VRF produce
-/// different byte streams), but the mixing algorithm itself mirrors EVM's `_mixDna`.
-pub fn mix_dna_with_vrf(vrf: &[u8; 32], parent1_dna: u64, parent2_dna: u64) -> u64 {
-    let mut child: u64 = 0;
-    for i in 0..8u32 {
-        let digest = keccak::hashv(&[vrf, &i.to_le_bytes()]).to_bytes();
-        let pair_rand = u64::from_le_bytes(digest[0..8].try_into().expect("8-byte slice from 32-byte digest"));
-        let pick = pair_rand % 100;
-        let pair = if pick < 10 {
-            pair_rand % 100 // 10% mutation, always < 10 (== pick)
-        } else if pick < 55 {
-            digit_pair(parent1_dna, i) // 45% parent 1
-        } else {
-            digit_pair(parent2_dna, i) // 45% parent 2
-        };
-        child += pair * 100u64.pow(i);
-    }
-    child
-}
-
-/// Gacha mint DNA (plan §4.3): derived purely from the revealed VRF value, with no parent
-/// influence (unlike [`mix_dna_with_vrf`]). Domain-separated from other VRF derivations
-/// (e.g. [`inherit_rarity`]'s `b"rarity"` roll) via the `b"mint"` tag.
-pub fn mint_dna_from_vrf(vrf: &[u8; 32]) -> u64 {
-    let digest = keccak::hashv(&[vrf, b"mint"]).to_bytes();
-    u64::from_le_bytes(digest[0..8].try_into().expect("8-byte slice from 32-byte digest"))
-}
-
-/// Rarity inheritance (plan §4.2, mirrors EVM `GameLogicV1._inheritRarity`): recompute the
-/// base rarity from the child's DNA, then — if both parents are Epic+ (rarity >= 4) and the
-/// base rarity isn't already Legendary — roll a 5% chance, derived from the VRF seed, to
-/// bump it by one tier.
-pub fn inherit_rarity(parent1_rarity: u8, parent2_rarity: u8, child_dna: u64, vrf: &[u8; 32]) -> u8 {
-    let base: u8 = Rarity::from_dna(child_dna).into();
-    if parent1_rarity >= 4 && parent2_rarity >= 4 && base < 5 {
-        let digest = keccak::hashv(&[vrf, b"rarity"]).to_bytes();
-        let bump_roll = u64::from_le_bytes(digest[0..8].try_into().expect("8-byte slice from 32-byte digest")) % 100;
-        if bump_roll < 5 {
-            return base + 1;
-        }
-    }
-    base
-}
+// ─── Switchboard VRF commit / reveal ─────────────────────────────────────────
 
 /// Commit-phase checks: `commitIx` and the program instruction must share a transaction so
 /// `seed_slot == clock.slot - 1`.
@@ -113,21 +70,61 @@ pub fn read_revealed_randomness(
         .map_err(|_| error!(ErrorCode::RandomnessNotResolved))
 }
 
-/// Reads the current owner of a pet's Metaplex Core asset directly from its account data
-/// (plan §2.3/v2.1 Phase A re-seed). This is the source of truth for pet ownership,
-/// replacing `PetAccount.owner` (informational-only post-mint, see its doc comment).
+// ─── VRF-derived game computations ───────────────────────────────────────────
+
+/// Gene mixing with mutation (plan §4.2, mirrors EVM `GameLogicV1._mixDna`'s per-digit-pair
+/// 45%/45%/10% inheritance). For each of the 8 two-digit pairs (LSB-first, see `dna::digit_pair`):
+/// - 10%: mutation — a fresh value derived from the VRF bytes, always in `0..=9` (mirrors
+///   EVM reusing `pairRand % 100` for both the pick roll and the mutated pair, which is
+///   only ever `< 10` in that branch)
+/// - 45%: inherit parent 1's pair at this index
+/// - 45%: inherit parent 2's pair at this index
 ///
-/// UNVERIFIED: `mpl_core::accounts::BaseAssetV1::from_bytes` and its `owner: Pubkey`
-/// field follow the documented mpl-core ~0.10 `BaseAssetV1` account layout (`key`,
-/// `owner`, `update_authority`, `name`, `uri`, followed by plugin data) but have not been
-/// checked against the real crate (no cargo registry cache or Rust toolchain in this
-/// environment). Fix up against `mpl_core::accounts::BaseAssetV1` when building.
-pub fn core_asset_owner(asset_account: &AccountInfo) -> Result<Pubkey> {
-    let data = asset_account.try_borrow_data()?;
-    let asset = mpl_core::accounts::BaseAssetV1::from_bytes(&data)
-        .map_err(|_| error!(ErrorCode::InvalidPetAsset))?;
-    Ok(asset.owner)
+/// Bit-identical cross-chain parity isn't possible (Switchboard vs. Chainlink VRF produce
+/// different byte streams), but the mixing algorithm itself mirrors EVM's `_mixDna`.
+pub fn mix_dna_with_vrf(vrf: &[u8; 32], parent1_dna: u64, parent2_dna: u64) -> u64 {
+    let mut child: u64 = 0;
+    for i in 0..8u32 {
+        let digest = keccak::hashv(&[vrf, &i.to_le_bytes()]).to_bytes();
+        let pair_rand = u64::from_le_bytes(digest[0..8].try_into().expect("8-byte slice from 32-byte digest"));
+        let pick = pair_rand % 100;
+        let pair = if pick < 10 {
+            pair_rand % 100 // 10% mutation, always < 10 (== pick)
+        } else if pick < 55 {
+            digit_pair(parent1_dna, i) // 45% parent 1
+        } else {
+            digit_pair(parent2_dna, i) // 45% parent 2
+        };
+        child += pair * 100u64.pow(i);
+    }
+    child
 }
+
+/// Gacha mint DNA (plan §4.3): derived purely from the revealed VRF value, with no parent
+/// influence (unlike [`mix_dna_with_vrf`]). Domain-separated from other VRF derivations
+/// (e.g. [`inherit_rarity`]'s `b"rarity"` roll) via the `b"mint"` tag.
+pub fn mint_dna_from_vrf(vrf: &[u8; 32]) -> u64 {
+    let digest = keccak::hashv(&[vrf, b"mint"]).to_bytes();
+    u64::from_le_bytes(digest[0..8].try_into().expect("8-byte slice from 32-byte digest"))
+}
+
+/// Rarity inheritance (plan §4.2, mirrors EVM `GameLogicV1._inheritRarity`): recompute the
+/// base rarity from the child's DNA, then — if both parents are Epic+ (rarity >= 4) and the
+/// base rarity isn't already Legendary — roll a 5% chance, derived from the VRF seed, to
+/// bump it by one tier.
+pub fn inherit_rarity(parent1_rarity: u8, parent2_rarity: u8, child_dna: u64, vrf: &[u8; 32]) -> u8 {
+    let base: u8 = Rarity::from_dna(child_dna).into();
+    if parent1_rarity >= 4 && parent2_rarity >= 4 && base < 5 {
+        let digest = keccak::hashv(&[vrf, b"rarity"]).to_bytes();
+        let bump_roll = u64::from_le_bytes(digest[0..8].try_into().expect("8-byte slice from 32-byte digest")) % 100;
+        if bump_roll < 5 {
+            return base + 1;
+        }
+    }
+    base
+}
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
 
 // NOTE: not run — no Rust toolchain (cargo/anchor) available in this environment.
 #[cfg(test)]

@@ -5,14 +5,14 @@ use mpl_core::{
 };
 
 use crate::{
-    dna::resolve_species,
     errors::ErrorCode,
-    metadata::pet_attributes,
+    metadata::{core_asset_owner, pet_attributes},
+    randomness::{inherit_rarity, mix_dna_with_vrf, read_revealed_randomness},
+    sim::dna::resolve_species,
     state::{
         BreedRequest, GlobalState, PetAccount, StudFeeAccount, BREED_COOLDOWN_CAP_SECONDS,
         CURRENT_ACCOUNT_VERSION,
     },
-    util::{core_asset_owner, inherit_rarity, mix_dna_with_vrf, read_revealed_randomness},
 };
 
 pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {

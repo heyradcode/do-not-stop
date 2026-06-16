@@ -1,11 +1,9 @@
-pub mod combat;
-pub mod dna;
 pub mod errors;
 pub mod instructions;
 pub mod metadata;
-pub mod rarity;
+pub mod randomness;
+pub mod sim;
 pub mod state;
-pub mod util;
 
 use anchor_lang::{prelude::*, solana_program::system_program};
 use instructions::*;

@@ -1,4 +1,4 @@
-use crate::{errors::ErrorCode, state::GlobalState, state::PetAccount, util::core_asset_owner};
+use crate::{errors::ErrorCode, metadata::core_asset_owner, state::GlobalState, state::PetAccount};
 use anchor_lang::prelude::*;
 
 pub fn handler(ctx: Context<RenamePet>, name: String) -> Result<()> {

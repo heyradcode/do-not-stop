@@ -5,7 +5,7 @@ use crate::{
     state::GlobalState,
     state::PetAccount,
     state::FEE_VAULT_SEED,
-    util::core_asset_owner,
+    metadata::core_asset_owner,
 };
 
 pub fn handler(ctx: Context<LevelUp>) -> Result<()> {

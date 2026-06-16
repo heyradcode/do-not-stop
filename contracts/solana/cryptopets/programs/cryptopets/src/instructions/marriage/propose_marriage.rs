@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{GlobalState, MarriageProposal, PetAccount},
-    util::core_asset_owner,
+    metadata::core_asset_owner,
 };
 
 /// Mirrors EVM `PetCoreV1.proposeMarriage` (plan §4.4): `owner` proposes a mutual

@@ -1,10 +1,11 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    combat::{self, SkillConfig},
     errors::ErrorCode,
+    metadata::core_asset_owner,
+    randomness::read_revealed_randomness,
+    sim::combat::{self, SkillConfig},
     state::{BattleRequest, GlobalState, PetAccount},
-    util::{core_asset_owner, read_revealed_randomness},
 };
 
 pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {

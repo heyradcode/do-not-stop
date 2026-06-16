@@ -5,12 +5,11 @@ use mpl_core::{
 };
 
 use crate::{
-    dna::resolve_species,
     errors::ErrorCode,
     metadata::pet_attributes,
-    rarity::Rarity,
+    randomness::{mint_dna_from_vrf, read_revealed_randomness},
+    sim::{dna::resolve_species, rarity::Rarity},
     state::{GlobalState, MintRequest, PetAccount, CURRENT_ACCOUNT_VERSION},
-    util::{mint_dna_from_vrf, read_revealed_randomness},
 };
 
 /// Settle phase of the gacha mint (plan §4.3): derives DNA purely from the revealed VRF

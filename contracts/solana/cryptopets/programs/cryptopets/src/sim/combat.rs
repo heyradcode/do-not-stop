@@ -31,7 +31,7 @@
 
 use solana_keccak_hasher as keccak;
 
-use crate::dna::{self, Attrs};
+use super::dna::{self, Attrs};
 
 pub const MAX_ROUNDS: u8 = 30;
 
