@@ -72,7 +72,7 @@ export function handleBattleResolved(event: BattleResolved): void {
   battle.defender = req != null ? req.petId2.toString() : event.params.loserId.toString();
   battle.winnerPetId = event.params.winnerId.toString();
   battle.loserPetId = event.params.loserId.toString();
-  battle.seed = event.params.vrfSeed;
+  battle.seed = event.params.randomness;
   battle.rounds = event.params.rounds;
   battle.winnerHpRemaining = event.params.winnerHpRemaining;
   battle.xpWin = event.params.xpWin.toI32();
