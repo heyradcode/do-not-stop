@@ -16,6 +16,10 @@ vi.mock('../../src/hooks/useTxSuccess', () => ({
         txSuccessArgs = [lifecycle, cb];
     },
 }));
+// EVM-only async battle flow; stub it so the hook stays chain-agnostic here.
+vi.mock('../../src/hooks/chains/ethereum/useEvmBattleFlow', () => ({
+    useEvmBattleFlow: () => ({ reset: vi.fn() }),
+}));
 
 import { useBattlePets } from '../../src/hooks/useBattlePets';
 

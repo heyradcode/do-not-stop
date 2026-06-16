@@ -11,6 +11,8 @@ vi.mock('../../src/hooks/adapters/useEvmAdapter', () => ({
 vi.mock('../../src/hooks/adapters/useSolanaAdapter', () => ({
     SOLANA_CAPABILITIES: { chainLabel: 'Solana', tag: 'sol-caps' },
 }));
+// Live EVM fee reads pull wagmi/context; stub so the hook stays a pure function.
+vi.mock('../../src/hooks/chains/ethereum/useEvmFees', () => ({ useEvmFees: () => ({}) }));
 
 import { useChainCapabilities } from '../../src/hooks/useChainCapabilities';
 
