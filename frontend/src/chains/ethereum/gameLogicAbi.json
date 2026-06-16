@@ -470,7 +470,7 @@
       "name": "petCore",
       "outputs": [
         {
-          "internalType": "contract PetCore",
+          "internalType": "contract PetCoreV1",
           "name": "",
           "type": "address"
         }
