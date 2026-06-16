@@ -7,8 +7,14 @@ pub fn calc_xp(base_xp: u32, my_level: u16, opp_level: u16) -> u32 {
     if mult <= 0 {
         return 0;
     }
-    let mult = mult.min(200) as u32;
-    base_xp * mult / 100
+    let mult = mult.min(200) as u64;
+
+    // Perform multiplication and division in u64 space to prevent overflow
+    let total_xp = (base_xp as u64 * mult) / 100;
+
+    // Safe to downcast back to u32 because max value is bounded by (u32::MAX * 200) / 100
+    // which always safely fits back into a u32.
+    total_xp as u32
 }
 
 #[cfg(test)]
