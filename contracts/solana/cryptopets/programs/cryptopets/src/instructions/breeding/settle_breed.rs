@@ -11,8 +11,8 @@ use crate::{
         dna::resolve_species,
         genetics::{inherit_rarity, mix_dna_with_vrf},
     },
-    metadata::{core_asset_owner, pet_attributes},
-    randomness::read_revealed_randomness,
+    utils::metadata::{core_asset_owner, pet_attributes},
+    utils::randomness::read_revealed_randomness,
     state::{BreedRequest, GlobalState, PetAccount, StudFeeAccount, CURRENT_ACCOUNT_VERSION},
 };
 

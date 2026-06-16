@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{mint_fee_for, GlobalState, MintRequest, PetAccount, PlayerProfile, CURRENT_ACCOUNT_VERSION, FEE_VAULT_SEED},
-    randomness::assert_randomness_committed,
+    utils::randomness::assert_randomness_committed,
 };
 
 /// Commit phase of the gacha mint (plan §4.3, replaces `create_starter_pet`): charges the

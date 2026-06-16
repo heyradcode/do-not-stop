@@ -7,8 +7,8 @@ use mpl_core::{
 use crate::{
     errors::ErrorCode,
     game::{dna::resolve_species, genetics::mint_dna_from_vrf, rarity::Rarity},
-    metadata::pet_attributes,
-    randomness::read_revealed_randomness,
+    utils::metadata::pet_attributes,
+    utils::randomness::read_revealed_randomness,
     state::{GlobalState, MintRequest, PetAccount, CURRENT_ACCOUNT_VERSION},
 };
 

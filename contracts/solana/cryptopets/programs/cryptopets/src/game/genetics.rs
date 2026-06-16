@@ -2,7 +2,7 @@
 //!
 //! Pure game computations that consume a revealed 32-byte Switchboard VRF value;
 //! no Solana or Anchor account types. The actual VRF commit/reveal plumbing lives
-//! in [`crate::randomness`].
+//! in [`crate::utils::randomness`].
 
 use solana_keccak_hasher as keccak;
 

@@ -3,8 +3,8 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     game::{combat::{self, SkillConfig}, xp::calc_xp},
-    metadata::core_asset_owner,
-    randomness::read_revealed_randomness,
+    utils::metadata::core_asset_owner,
+    utils::randomness::read_revealed_randomness,
     state::{BattleRequest, GlobalState, PetAccount},
 };
 
