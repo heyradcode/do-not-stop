@@ -2,7 +2,7 @@ pub mod errors;
 pub mod instructions;
 pub mod metadata;
 pub mod randomness;
-pub mod sim;
+pub mod game;
 pub mod state;
 
 use anchor_lang::{prelude::*, solana_program::system_program};

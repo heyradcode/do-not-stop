@@ -6,13 +6,14 @@ use mpl_core::{
 
 use crate::{
     errors::ErrorCode,
-    metadata::{core_asset_owner, pet_attributes},
-    randomness::{inherit_rarity, mix_dna_with_vrf, read_revealed_randomness},
-    sim::dna::resolve_species,
-    state::{
-        BreedRequest, GlobalState, PetAccount, StudFeeAccount, BREED_COOLDOWN_CAP_SECONDS,
-        CURRENT_ACCOUNT_VERSION,
+    game::{
+        breeding::breed_cooldown_for,
+        dna::resolve_species,
+        genetics::{inherit_rarity, mix_dna_with_vrf},
     },
+    metadata::{core_asset_owner, pet_attributes},
+    randomness::read_revealed_randomness,
+    state::{BreedRequest, GlobalState, PetAccount, StudFeeAccount, CURRENT_ACCOUNT_VERSION},
 };
 
 pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
@@ -196,15 +197,6 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     });
 
     Ok(())
-}
-
-/// Breed cooldown curve (plan §4.1, mirrors EVM `GameLogicV1._breedCooldownFor`):
-/// `base_seconds << breed_count`, capped at [`BREED_COOLDOWN_CAP_SECONDS`].
-/// Clamp the shift to 31: `breed_count` (u8) can reach 255, and `i64 << 64` panics with
-/// `overflow-checks = true`; shifts beyond ~20 already exceed the cap regardless of base.
-fn breed_cooldown_for(breed_count: u8, base_seconds: i64) -> i64 {
-    let cd = base_seconds << (breed_count as u32).min(31);
-    cd.min(BREED_COOLDOWN_CAP_SECONDS)
 }
 
 #[event]

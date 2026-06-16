@@ -13,7 +13,7 @@
 use anchor_lang::prelude::*;
 use mpl_core::types::Attribute;
 
-use crate::{errors::ErrorCode, sim::dna::digit_pair};
+use crate::{errors::ErrorCode, game::dna::digit_pair};
 
 /// Builds the display-attribute list for a pet's Metaplex Core Attributes plugin.
 /// `skill` is `species_id % 8` (plan §3.7); `element` is derived from `dna`'s first

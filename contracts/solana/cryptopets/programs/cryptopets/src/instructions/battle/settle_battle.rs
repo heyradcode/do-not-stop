@@ -2,9 +2,9 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
+    game::{combat::{self, SkillConfig}, xp::calc_xp},
     metadata::core_asset_owner,
     randomness::read_revealed_randomness,
-    sim::combat::{self, SkillConfig},
     state::{BattleRequest, GlobalState, PetAccount},
 };
 
@@ -154,17 +154,6 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
     Ok(())
 }
 
-/// XP formula (plan §3.4): `baseXp * clamp(100 + 10*(oppLevel - myLevel), 0, 200) / 100`.
-fn calc_xp(base_xp: u32, my_level: u16, opp_level: u16) -> u32 {
-    let diff = opp_level as i32 - my_level as i32;
-    let mult = 100 + 10 * diff;
-    if mult <= 0 {
-        return 0;
-    }
-    let mult = mult.min(200) as u32;
-    base_xp * mult / 100
-}
-
 #[event]
 pub struct BattleResolved {
     pub attacker_pet_id: u32,
@@ -227,34 +216,3 @@ pub struct SettleBattle<'info> {
     pub randomness_account_data: UncheckedAccount<'info>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Cross-chain golden vectors (plan §3.4, §7), transcribed from
-    /// `contracts/test-vectors/xp.json`'s `calcXpCases` (kept in sync manually with
-    /// `GameLogicV1._calcXp` / `XpFormula.test.ts`).
-    #[test]
-    fn calc_xp_matches_evm_golden_vectors() {
-        let cases: &[(&str, u32, u16, u16, u32)] = &[
-            // (name, base_xp, my_level, opp_level, expected_xp)
-            ("delta-zero", 100, 10, 10, 100),
-            ("delta-plus10-cap-boundary", 100, 10, 20, 200),
-            ("delta-plus11-clamped", 100, 10, 21, 200),
-            ("delta-minus10-zero-boundary", 100, 20, 10, 0),
-            ("delta-minus11-clamped", 100, 21, 10, 0),
-            ("delta-minus5-loser-xp", 25, 15, 10, 12),
-            ("delta-plus5-loser-xp", 25, 10, 15, 37),
-            ("delta-plus15-clamped-loser-xp", 25, 5, 20, 50),
-        ];
-
-        for (name, base_xp, my_level, opp_level, expected) in cases {
-            assert_eq!(
-                calc_xp(*base_xp, *my_level, *opp_level),
-                *expected,
-                "vector \"{}\" mismatch",
-                name
-            );
-        }
-    }
-}
