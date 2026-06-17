@@ -1,9 +1,13 @@
 import React, { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { formatEther } from 'viem';
 import {
     getLifePercent,
     getReadyPetsUnified,
     useChainCapabilities,
+    useEvmFees,
+    useSolanaFees,
+    formatLamports,
     useOpponents,
     usePetList,
 } from '@shared/core';
@@ -52,6 +56,15 @@ const PetInteractions: React.FC = () => {
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
     const activeChainKind = capabilities.activeKind;
+
+    // Both fee hooks always called (rules of hooks); the inactive one is disabled.
+    const evmFees = useEvmFees(activeChainKind === 'evm');
+    const solanaFees = useSolanaFees(activeChainKind === 'solana');
+    const trainFeeLabel = activeChainKind === 'evm' && evmFees.trainFee != null
+        ? `From ${formatEther(evmFees.trainFee)} ETH — cost scales with level.`
+        : activeChainKind === 'solana' && solanaFees.trainFeeLamports != null
+            ? `From ${formatLamports(solanaFees.trainFeeLamports)} SOL — cost scales with level.`
+            : 'Cost scales with the pet\'s level.';
 
     // Preview an on-chain rival for the Battle Arena card (opponents come from
     // the roster, not a second owned pet).
@@ -197,44 +210,40 @@ const PetInteractions: React.FC = () => {
                             Open level up
                         </button>
                     </div>
-                    {activeChainKind === 'evm' && (
-                        <div className="feature-action-card">
-                            <div className="header"><Icon as={TrainIcon} tone={Tones.Amber} />Training Ground</div>
-                            <div className="hub-divider" />
-                            <div className="content">
-                                Train your pet for an instant XP boost.
-                                <br />
-                                Cost scales with the pet&apos;s level.
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => navigate(TRAIN_PATH)}
-                                className="lab-breed-button train-button"
-                                disabled={readyPets.length < 1}
-                            >
-                                Open training
-                            </button>
+                    <div className="feature-action-card">
+                        <div className="header"><Icon as={TrainIcon} tone={Tones.Amber} />Training Ground</div>
+                        <div className="hub-divider" />
+                        <div className="content">
+                            Train your pet for an instant XP boost.
+                            <br />
+                            {trainFeeLabel}
                         </div>
-                    )}
-                    {activeChainKind === 'evm' && (
-                        <div className="feature-action-card">
-                            <div className="header"><Icon as={MarriageIcon} tone={Tones.Magenta} />Marriage</div>
-                            <div className="hub-divider" />
-                            <div className="content">
-                                Marry two pets to unlock cross-owner breeding.
-                                <br />
-                                Propose, accept, or divorce.
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => navigate(MARRIAGE_PATH)}
-                                className="lab-breed-button marriage-button"
-                                disabled={pets.length < 1}
-                            >
-                                Open marriage
-                            </button>
+                        <button
+                            type="button"
+                            onClick={() => navigate(TRAIN_PATH)}
+                            className="lab-breed-button train-button"
+                            disabled={readyPets.length < 1}
+                        >
+                            Open training
+                        </button>
+                    </div>
+                    <div className="feature-action-card">
+                        <div className="header"><Icon as={MarriageIcon} tone={Tones.Magenta} />Marriage</div>
+                        <div className="hub-divider" />
+                        <div className="content">
+                            Marry two pets to unlock cross-owner breeding.
+                            <br />
+                            Propose, accept, or divorce.
                         </div>
-                    )}
+                        <button
+                            type="button"
+                            onClick={() => navigate(MARRIAGE_PATH)}
+                            className="lab-breed-button marriage-button"
+                            disabled={pets.length < 1}
+                        >
+                            Open marriage
+                        </button>
+                    </div>
                     <div className="feature-action-card">
                         <div className="header"><Icon as={QuillIcon} tone={Tones.Cyan} />Change Name</div>
                         <div className="hub-divider" />
