@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { formatEther } from 'viem';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useEvmFees, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
+import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useEvmFees, useSolanaFees, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
@@ -31,11 +31,20 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const [validationError, setValidationError] = useState<string | null>(null);
     const [breedWithSpouse, setBreedWithSpouse] = useState(false);
 
-    // Cross-owner (married) breeding — EVM only. If the first parent is married,
-    // the partner is its spouse and the request carries an extra stud fee.
     const isEvm = kind === 'evm';
-    const marriage = useMarriageInfo(isEvm ? selectedPet1 : undefined);
-    const fees = useEvmFees(isEvm);
+    const isSolana = kind === 'solana';
+
+    // readyPets before useMarriageInfo so we can pass the full Pet object.
+    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+
+    // Both fee hooks always called (rules of hooks); the inactive one is disabled.
+    const evmFees = useEvmFees(isEvm);
+    const solanaFees = useSolanaFees(isSolana);
+
+    // Cross-owner (married) breeding: first parent must be married; request carries a stud fee.
+    // useMarriageInfo expects a Pet object — look it up from readyPets.
+    const selectedPet1Object = readyPets.find(({ id }) => id === selectedPet1)?.pet;
+    const marriage = useMarriageInfo(selectedPet1Object);
     const spouseId = marriage.isMarried ? marriage.spouseId?.toString() : undefined;
     const crossOwner = breedWithSpouse && Boolean(spouseId);
     const effectiveParent2 = crossOwner ? (spouseId as string) : selectedPet2;
@@ -43,9 +52,14 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     // Reset the cross-owner toggle whenever the first parent changes.
     useEffect(() => { setBreedWithSpouse(false); }, [selectedPet1]);
 
-    const studFeeLabel = crossOwner && fees.studFee != null
-        ? `+${formatEther(fees.studFee)} ETH stud fee`
-        : null;
+    const studFeeLabel = useMemo(() => {
+        if (!crossOwner) return null;
+        if (isEvm && evmFees.studFee != null)
+            return `+${formatEther(evmFees.studFee)} ETH stud fee`;
+        if (isSolana && solanaFees.studFeeLamports != null)
+            return `+${(Number(solanaFees.studFeeLamports) / 1e9).toLocaleString('en-US', { maximumFractionDigits: 9, useGrouping: false })} SOL stud fee`;
+        return null;
+    }, [crossOwner, isEvm, isSolana, evmFees.studFee, solanaFees.studFeeLamports]);
 
     // An unresolved breed on either parent makes requestCreateFromDNA revert
     // ("Breed pending for parent"); block a new breed until it's resolved
@@ -67,7 +81,6 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     );
 
     const breed = useBreedPets({ onSuccess: handleSuccess });
-    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
     // Receipt errors are folded into `breed.error` by the chain adapter.
     usePetErrorToast(
@@ -166,7 +179,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                     </div>
                 </div>
 
-                {isEvm && marriage.isMarried && spouseId && (
+                {marriage.isMarried && spouseId && (
                     <label className="breed-spouse-toggle">
                         <input
                             type="checkbox"
