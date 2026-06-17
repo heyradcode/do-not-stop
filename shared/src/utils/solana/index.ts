@@ -3,7 +3,6 @@ export { isValidSolanaAddress } from './isValidSolanaAddress';
 export {
     globalStatePda,
     playerProfilePda,
-    petPda,
     petPdaByAsset,
     breedRequestPda,
     battleRequestPda,

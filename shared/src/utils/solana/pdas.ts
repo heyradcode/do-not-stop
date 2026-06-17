@@ -19,13 +19,6 @@ export const playerProfilePda = (programId: PublicKey, owner: PublicKey): [Publi
     return PublicKey.findProgramAddressSync([PLAYER_PROFILE_SEED, owner.toBuffer()], programId);
 }
 
-/** Pet PDA: seeds `["pet", owner, pet_id_le_u32]`. */
-export const petPda = (programId: PublicKey, owner: PublicKey, petId: number): [PublicKey, number]  => {
-    const idBuf = Buffer.alloc(4);
-    idBuf.writeUInt32LE(petId >>> 0, 0);
-    return PublicKey.findProgramAddressSync([PET_SEED, owner.toBuffer(), idBuf], programId);
-}
-
 /** Pending breed PDA while Switchboard randomness is in flight. */
 export const breedRequestPda = (programId: PublicKey, owner: PublicKey): [PublicKey, number]  => {
     return PublicKey.findProgramAddressSync([BREED_REQUEST_SEED, owner.toBuffer()], programId);
