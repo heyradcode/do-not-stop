@@ -2,8 +2,9 @@
 export { setTokenSuccessCallback } from './chains/ethereum/useVerifySignature';
 // Low-level EVM read hook — consumed by mobile until it migrates to usePetList.
 export { usePetsContract } from './chains/ethereum/usePetsContract';
-// v2 fee schedule reader (GameConfig + per-wallet mint count).
+// v2 fee schedule readers — EVM reads GameConfig, Solana reads GlobalState PDA.
 export { useEvmFees, type EvmFees } from './chains/ethereum/useEvmFees';
+export { useSolanaFees, type SolanaFees } from './chains/solana/useSolanaFees';
 // Manual recovery for an interrupted async battle (settle / cancel a pending request).
 export { usePendingBattle, type PendingBattle } from './chains/ethereum/usePendingBattle';
 export { usePendingBreed, type PendingBreed } from './chains/ethereum/usePendingBreed';

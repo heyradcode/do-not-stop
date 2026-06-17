@@ -6,6 +6,7 @@ import {
     getReadyPetsUnified,
     useChainCapabilities,
     useEvmFees,
+    useSolanaFees,
     useTrainPet,
     usePetList,
 } from '@shared/core';
@@ -19,10 +20,6 @@ export type TrainPanelProps = {
     isStandaloneView?: boolean;
 };
 
-/**
- * v2 Training Ground — pay a level-scaled fee for a flat XP grant. EVM-only:
- * the Solana adapter rejects `train`, so the panel only renders on EVM.
- */
 const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
     const { kind } = useChainCapabilities();
@@ -44,14 +41,25 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
-    // Train fee is level-scaled: trainFee × (100 + 2·level) / 100.
-    const fees = useEvmFees(kind === 'evm');
+    // Both fee hooks are always called (rules of hooks); the inactive one is disabled.
+    const evmFees = useEvmFees(kind === 'evm');
+    const solanaFees = useSolanaFees(kind === 'solana');
     const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
+
+    // Train fee is level-scaled: baseFee × (100 + 2·level) / 100.
     const trainCost = useMemo(() => {
-        if (fees.trainFee == null || selectedLevel == null) return null;
-        const scaled = (fees.trainFee * BigInt(100 + 2 * selectedLevel)) / 100n;
-        return `${formatEther(scaled)} ETH`;
-    }, [fees.trainFee, selectedLevel]);
+        if (selectedLevel == null) return null;
+        const multiplier = BigInt(100 + 2 * selectedLevel);
+        if (kind === 'evm' && evmFees.trainFee != null) {
+            const scaled = (evmFees.trainFee * multiplier) / 100n;
+            return `${formatEther(scaled)} ETH`;
+        }
+        if (kind === 'solana' && solanaFees.trainFeeLamports != null) {
+            const scaled = (solanaFees.trainFeeLamports * multiplier) / 100n;
+            return `${(Number(scaled) / 1e9).toLocaleString('en-US', { maximumFractionDigits: 9, useGrouping: false })} SOL`;
+        }
+        return null;
+    }, [kind, evmFees.trainFee, solanaFees.trainFeeLamports, selectedLevel]);
 
     useTxErrorToast(hookError);
 
