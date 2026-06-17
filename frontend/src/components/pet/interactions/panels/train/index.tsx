@@ -1,13 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatEther } from 'viem';
 import TransactionStatus from '@components/common/transaction-status';
 import {
     getReadyPetsUnified,
-    useChainCapabilities,
-    useEvmFees,
-    useSolanaFees,
-    formatLamports,
+    useFees,
     useTrainPet,
     usePetList,
 } from '@shared/core';
@@ -23,7 +19,6 @@ export type TrainPanelProps = {
 
 const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const { kind } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
 
@@ -41,26 +36,15 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
         onSuccess: handleTrainComplete,
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
-
-    // Both fee hooks are always called (rules of hooks); the inactive one is disabled.
-    const evmFees = useEvmFees(kind === 'evm');
-    const solanaFees = useSolanaFees(kind === 'solana');
+    const fees = useFees();
     const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
 
     // Train fee is level-scaled: baseFee × (100 + 2·level) / 100.
     const trainCost = useMemo(() => {
-        if (selectedLevel == null) return null;
+        if (selectedLevel == null || fees.trainFee == null) return null;
         const multiplier = BigInt(100 + 2 * selectedLevel);
-        if (kind === 'evm' && evmFees.trainFee != null) {
-            const scaled = (evmFees.trainFee * multiplier) / 100n;
-            return `${formatEther(scaled)} ETH`;
-        }
-        if (kind === 'solana' && solanaFees.trainFeeLamports != null) {
-            const scaled = (solanaFees.trainFeeLamports * multiplier) / 100n;
-            return `${formatLamports(scaled)} SOL`;
-        }
-        return null;
-    }, [kind, evmFees.trainFee, solanaFees.trainFeeLamports, selectedLevel]);
+        return fees.formatAmount((fees.trainFee * multiplier) / 100n);
+    }, [fees.trainFee, fees.formatAmount, selectedLevel]);
 
     useTxErrorToast(hookError);
 

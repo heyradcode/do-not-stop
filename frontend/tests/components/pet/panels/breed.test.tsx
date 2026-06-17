@@ -39,8 +39,12 @@ vi.mock('@shared/core', () => ({
     getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
-    useEvmFees: () => ({ studFee: null }),
-    useSolanaFees: () => ({ studFeeLamports: undefined }),
+    useFees: () => ({
+        studFee: undefined as bigint | undefined,
+        symbol: null as 'ETH' | 'SOL' | null,
+        formatAmount: (v: bigint) => `${v}`,
+        formatAmountOnly: (v: bigint) => String(v),
+    }),
     useMarriageInfo: () => ({ isMarried: false, spouseId: undefined }),
     usePendingBreed: () => ({ isPending: false }),
     useBreedPets: (opts: { onSuccess?: (arg: { name: string }) => void }) => {

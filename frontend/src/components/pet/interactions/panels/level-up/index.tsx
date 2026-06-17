@@ -1,13 +1,10 @@
 ﻿import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatEther } from 'viem';
 import TransactionStatus from '@components/common/transaction-status';
 import {
     getReadyPetsUnified,
     useChainCapabilities,
-    useEvmFees,
-    useSolanaFees,
-    formatLamports,
+    useFees,
     useLevelUpPet,
     usePetList,
 } from '@shared/core';
@@ -23,7 +20,7 @@ export type LevelUpPanelProps = {
 
 const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const { kind, levelUpFee } = useChainCapabilities();
+    const { levelUpFee } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
 
@@ -42,27 +39,16 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         onSuccess: handleLevelUpComplete,
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
-
-    // Both fee hooks always called (rules of hooks); the inactive one is disabled.
-    const evmFees = useEvmFees(kind === 'evm');
-    const solanaFees = useSolanaFees(kind === 'solana');
+    const fees = useFees();
     const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
 
     // Level-up fee is level-scaled: baseFee × (100 + (level-1)²) / 100.
     const levelUpCost = useMemo(() => {
-        if (selectedLevel == null) return null;
+        if (selectedLevel == null || fees.levelUpFee == null) return null;
         const diff = BigInt(Math.max(selectedLevel - 1, 0));
         const multiplier = 100n + diff * diff;
-        if (kind === 'evm' && evmFees.levelUpFee != null) {
-            const scaled = (evmFees.levelUpFee * multiplier) / 100n;
-            return `${formatEther(scaled)} ETH`;
-        }
-        if (kind === 'solana' && solanaFees.levelUpFeeLamports != null) {
-            const scaled = (solanaFees.levelUpFeeLamports * multiplier) / 100n;
-            return `${formatLamports(scaled)} SOL`;
-        }
-        return null;
-    }, [kind, evmFees.levelUpFee, solanaFees.levelUpFeeLamports, selectedLevel]);
+        return fees.formatAmount((fees.levelUpFee * multiplier) / 100n);
+    }, [fees.levelUpFee, fees.formatAmount, selectedLevel]);
 
     useTxErrorToast(hookError);
 

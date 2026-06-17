@@ -3,6 +3,8 @@ export { setTokenSuccessCallback } from './chains/ethereum/useVerifySignature';
 // Low-level EVM read hook — consumed by mobile until it migrates to usePetList.
 export { usePetsContract } from './chains/ethereum/usePetsContract';
 // v2 fee schedule readers — EVM reads GameConfig, Solana reads GlobalState PDA.
+// useFees is the unified chain-neutral interface; useEvmFees/useSolanaFees are low-level.
+export { useFees, type UnifiedFees } from './useFees';
 export { useEvmFees, type EvmFees } from './chains/ethereum/useEvmFees';
 export { useSolanaFees, type SolanaFees } from './chains/solana/useSolanaFees';
 // Manual recovery for an interrupted async battle (settle / cancel a pending request).

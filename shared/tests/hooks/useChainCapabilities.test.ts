@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { formatEther } from 'viem';
+import { formatLamports } from '../../src/utils/solana/numbers';
 
 const activeChain: { kind: 'evm' | 'solana' | 'none'; address: string | null } = {
     kind: 'none',
@@ -12,19 +14,26 @@ vi.mock('../../src/hooks/adapters/useSolanaAdapter', () => ({
     SOLANA_CAPABILITIES: { chainLabel: 'Solana', tag: 'sol-caps' },
 }));
 
-// Mutable fee stubs — tests override these per-case.
-const evmFees: { levelUpFee?: bigint } = {};
-const solanaFees: { levelUpFeeLamports?: bigint } = {};
-vi.mock('../../src/hooks/chains/ethereum/useEvmFees', () => ({ useEvmFees: () => evmFees }));
-vi.mock('../../src/hooks/chains/solana/useSolanaFees', () => ({ useSolanaFees: () => solanaFees }));
+// Mutable fee stub — tests override per-case.
+const fees: {
+    levelUpFee?: bigint;
+    symbol: 'ETH' | 'SOL' | null;
+    formatAmountOnly: (v: bigint) => string;
+} = {
+    levelUpFee: undefined,
+    symbol: null,
+    formatAmountOnly: (v) => String(v),
+};
+vi.mock('../../src/hooks/useFees', () => ({ useFees: () => fees }));
 
 import { useChainCapabilities } from '../../src/hooks/useChainCapabilities';
 
 beforeEach(() => {
     activeChain.kind = 'none';
     activeChain.address = null;
-    evmFees.levelUpFee = undefined;
-    solanaFees.levelUpFeeLamports = undefined;
+    fees.levelUpFee = undefined;
+    fees.symbol = null;
+    fees.formatAmountOnly = (v) => String(v);
 });
 
 // useActiveChain is mocked to a plain object, so the hook is a pure function here.
@@ -54,7 +63,9 @@ describe('useChainCapabilities', () => {
 
     it('overrides levelUpFee with live ETH value on EVM', () => {
         activeChain.kind = 'evm';
-        evmFees.levelUpFee = 4_000_000_000_000_000n; // 0.004 ETH
+        fees.levelUpFee = 4_000_000_000_000_000n; // 0.004 ETH
+        fees.symbol = 'ETH';
+        fees.formatAmountOnly = formatEther;
 
         const ctx = useChainCapabilities();
         expect(ctx.levelUpFee).toEqual({ amount: '0.004', symbol: 'ETH' });
@@ -76,7 +87,9 @@ describe('useChainCapabilities', () => {
 
     it('overrides levelUpFee with live SOL value on Solana', () => {
         activeChain.kind = 'solana';
-        solanaFees.levelUpFeeLamports = 4_000_000n; // 0.004 SOL
+        fees.levelUpFee = 4_000_000n; // 0.004 SOL
+        fees.symbol = 'SOL';
+        fees.formatAmountOnly = formatLamports;
 
         const ctx = useChainCapabilities();
         expect(ctx.levelUpFee).toEqual({ amount: '0.004', symbol: 'SOL' });
@@ -84,7 +97,7 @@ describe('useChainCapabilities', () => {
 
     it('leaves levelUpFee as the static default when fees have not loaded', () => {
         activeChain.kind = 'solana';
-        // solanaFees.levelUpFeeLamports stays undefined
+        // fees.levelUpFee stays undefined
 
         const ctx = useChainCapabilities();
         // SOLANA_CAPABILITIES stub has no levelUpFee field → falls back to undefined/null

@@ -31,8 +31,12 @@ const capabilities = { levelUpFee: null as { amount: number; symbol: string } | 
 vi.mock('@shared/core', () => ({
     getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
     useChainCapabilities: () => capabilities,
-    useEvmFees: () => ({ levelUpFee: null, nextMintFee: null, trainFee: null, breedFee: null, studFee: null }),
-    useSolanaFees: () => ({ levelUpFeeLamports: undefined, trainFeeLamports: undefined, breedFeeLamports: undefined, studFeeLamports: undefined, baseMintFeeLamports: undefined, nextMintFeeLamports: undefined }),
+    useFees: () => ({
+        levelUpFee: undefined as bigint | undefined,
+        symbol: null as 'ETH' | 'SOL' | null,
+        formatAmount: (v: bigint) => `${v}`,
+        formatAmountOnly: (v: bigint) => String(v),
+    }),
     usePetList: () => petList,
     useLevelUpPet: (opts: { onSuccess?: () => void }) => {
         capturedOnSuccess = opts?.onSuccess;

@@ -1,13 +1,10 @@
 import React, { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { formatEther } from 'viem';
 import {
     getLifePercent,
     getReadyPetsUnified,
     useChainCapabilities,
-    useEvmFees,
-    useSolanaFees,
-    formatLamports,
+    useFees,
     useOpponents,
     usePetList,
 } from '@shared/core';
@@ -57,14 +54,10 @@ const PetInteractions: React.FC = () => {
 
     const activeChainKind = capabilities.activeKind;
 
-    // Both fee hooks always called (rules of hooks); the inactive one is disabled.
-    const evmFees = useEvmFees(activeChainKind === 'evm');
-    const solanaFees = useSolanaFees(activeChainKind === 'solana');
-    const trainFeeLabel = activeChainKind === 'evm' && evmFees.trainFee != null
-        ? `From ${formatEther(evmFees.trainFee)} ETH — cost scales with level.`
-        : activeChainKind === 'solana' && solanaFees.trainFeeLamports != null
-            ? `From ${formatLamports(solanaFees.trainFeeLamports)} SOL — cost scales with level.`
-            : 'Cost scales with the pet\'s level.';
+    const fees = useFees();
+    const trainFeeLabel = fees.trainFee != null
+        ? `From ${fees.formatAmount(fees.trainFee)} — cost scales with level.`
+        : "Cost scales with the pet's level.";
 
     // Preview an on-chain rival for the Battle Arena card (opponents come from
     // the roster, not a second owned pet).

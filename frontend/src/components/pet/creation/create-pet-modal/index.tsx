@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
-import { formatEther } from 'viem';
 import {
     useChainCapabilities,
     useCreatePet,
-    useEvmFees,
-    useSolanaFees,
-    formatLamports,
+    useFees,
     usePetList,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
@@ -21,20 +18,13 @@ interface CreatePetModalProps {
 }
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
-    const { isConnected, kind } = useChainCapabilities();
+    const { isConnected } = useChainCapabilities();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
 
-    // Both fee hooks always called (rules of hooks); the inactive one is disabled.
     // Mint cost escalates per wallet: EVM baseMintFee×(1+count), Solana baseMintFee<<min(count,7).
-    const evmFees = useEvmFees(kind === 'evm');
-    const solanaFees = useSolanaFees(kind === 'solana');
-    const mintCost =
-        kind === 'evm' && evmFees.nextMintFee != null
-            ? `${formatEther(evmFees.nextMintFee)} ETH`
-        : kind === 'solana' && solanaFees.nextMintFeeLamports != null
-            ? `${formatLamports(solanaFees.nextMintFeeLamports)} SOL`
-        : null;
+    const fees = useFees();
+    const mintCost = fees.nextMintFee != null ? fees.formatAmount(fees.nextMintFee) : null;
 
     const [petName, setPetName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);

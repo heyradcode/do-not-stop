@@ -1,8 +1,7 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatEther } from 'viem';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useEvmFees, useSolanaFees, formatLamports, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
+import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useFees, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
@@ -22,7 +21,7 @@ const AWAITING_HINT = 'Hang tight—your new pet will show up in a moment.';
 
 const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const { randomness, kind } = useChainCapabilities();
+    const { randomness } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const [selectedPet1, setSelectedPet1] = useState('');
     const [selectedPet2, setSelectedPet2] = useState('');
@@ -31,15 +30,9 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const [validationError, setValidationError] = useState<string | null>(null);
     const [breedWithSpouse, setBreedWithSpouse] = useState(false);
 
-    const isEvm = kind === 'evm';
-    const isSolana = kind === 'solana';
-
     // readyPets before useMarriageInfo so we can pass the full Pet object.
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
-
-    // Both fee hooks always called (rules of hooks); the inactive one is disabled.
-    const evmFees = useEvmFees(isEvm);
-    const solanaFees = useSolanaFees(isSolana);
+    const fees = useFees();
 
     // Cross-owner (married) breeding: first parent must be married; request carries a stud fee.
     // useMarriageInfo expects a Pet object — look it up from readyPets.
@@ -53,13 +46,9 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     useEffect(() => { setBreedWithSpouse(false); }, [selectedPet1]);
 
     const studFeeLabel = useMemo(() => {
-        if (!crossOwner) return null;
-        if (isEvm && evmFees.studFee != null)
-            return `+${formatEther(evmFees.studFee)} ETH stud fee`;
-        if (isSolana && solanaFees.studFeeLamports != null)
-            return `+${formatLamports(solanaFees.studFeeLamports)} SOL stud fee`;
-        return null;
-    }, [crossOwner, isEvm, isSolana, evmFees.studFee, solanaFees.studFeeLamports]);
+        if (!crossOwner || fees.studFee == null) return null;
+        return `+${fees.formatAmount(fees.studFee)} stud fee`;
+    }, [crossOwner, fees.studFee, fees.formatAmount]);
 
     // An unresolved breed on either parent makes requestCreateFromDNA revert
     // ("Breed pending for parent"); block a new breed until it's resolved
