@@ -1,10 +1,15 @@
 import { formatEther } from 'viem';
 import { useActiveChain } from './useActiveChain';
 import { useEvmFees } from './chains/ethereum/useEvmFees';
+import { useSolanaFees } from './chains/solana/useSolanaFees';
 import { EVM_CAPABILITIES } from './adapters/useEvmAdapter';
 import { SOLANA_CAPABILITIES } from './adapters/useSolanaAdapter';
 import type { ChainCapabilities } from './adapters/types';
 import type { PetChain } from '../types/pet';
+
+/** Format lamports as a SOL string (9 decimal places, no trailing zeros). */
+const formatSol = (lamports: bigint): string =>
+    (Number(lamports) / 1e9).toLocaleString('en-US', { maximumFractionDigits: 9, useGrouping: false });
 
 const NULL_CAPABILITIES: ChainCapabilities = {
     chainLabel: '',
@@ -26,21 +31,26 @@ export interface ChainContext extends ChainCapabilities {
     walletAddress: string | null;
 }
 
-export const useChainCapabilities = (): ChainContext  => {
+export const useChainCapabilities = (): ChainContext => {
     const chain = useActiveChain();
     const isEvm = chain.kind === 'evm';
+    const isSolana = chain.kind === 'solana';
 
-    // EVM fees are read live from GameConfig; override the static placeholder
-    // level-up fee with the on-chain value once it loads.
-    const fees = useEvmFees(isEvm);
+    // Both fee hooks are always called (rules of hooks); the inactive one is disabled.
+    const evmFees = useEvmFees(isEvm);
+    const solanaFees = useSolanaFees(isSolana);
+
     const base =
         isEvm ? EVM_CAPABILITIES
-        : chain.kind === 'solana' ? SOLANA_CAPABILITIES
+        : isSolana ? SOLANA_CAPABILITIES
         : NULL_CAPABILITIES;
+
     const capabilities: ChainCapabilities =
-        isEvm && fees.levelUpFee != null
-            ? { ...base, levelUpFee: { amount: formatEther(fees.levelUpFee), symbol: 'ETH' } }
-            : base;
+        isEvm && evmFees.levelUpFee != null
+            ? { ...base, levelUpFee: { amount: formatEther(evmFees.levelUpFee), symbol: 'ETH' } }
+        : isSolana && solanaFees.levelUpFeeLamports != null
+            ? { ...base, levelUpFee: { amount: formatSol(solanaFees.levelUpFeeLamports), symbol: 'SOL' } }
+        : base;
 
     return {
         ...capabilities,
