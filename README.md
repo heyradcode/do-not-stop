@@ -21,6 +21,11 @@ This is a monorepo containing multiple interconnected projects:
 ### Shared Code
 - **[Shared Core](./shared)** - Common utilities and types used across projects
 
+## 📖 Documentation
+
+See [docs/](./docs) for architecture, testing strategy, and an index of all
+package-level docs. Start with [docs/architecture.md](./docs/architecture.md).
+
 ## 🛠️ Development
 
 See [DEVELOPMENT.md](./DEVELOPMENT.md) for:
