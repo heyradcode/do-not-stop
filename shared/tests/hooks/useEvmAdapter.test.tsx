@@ -88,7 +88,7 @@ describe('EVM_CAPABILITIES', () => {
     it('describes the Ethereum chain', () => {
         expect(EVM_CAPABILITIES.chainLabel).toBe('Ethereum');
         expect(EVM_CAPABILITIES.renameMinLevel).toBe(2);
-        expect(EVM_CAPABILITIES.levelUpFee).toEqual({ amount: '0.001', symbol: 'ETH' });
+        expect(EVM_CAPABILITIES.levelUpFee).toEqual({ amount: '0.004', symbol: 'ETH' });
     });
 
     it('validates addresses via viem', () => {
