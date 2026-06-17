@@ -7,6 +7,9 @@ const PET_SEED = Buffer.from('pet');
 const BREED_REQUEST_SEED = Buffer.from('breed-request');
 const BATTLE_REQUEST_SEED = Buffer.from('battle-request');
 const MARRIAGE_PROPOSAL_SEED = Buffer.from('marriage-proposal');
+const FEE_VAULT_SEED = Buffer.from('fee-vault');
+const MINT_REQUEST_SEED = Buffer.from('mint-request');
+const STUD_FEE_SEED = Buffer.from('stud-fee');
 
 export const globalStatePda = (programId: PublicKey): [PublicKey, number]  => {
     return PublicKey.findProgramAddressSync([GLOBAL_STATE_SEED], programId);
@@ -43,4 +46,19 @@ export const marriageProposalPda = (programId: PublicKey, petAId: number): [Publ
     const idBuf = Buffer.alloc(4);
     idBuf.writeUInt32LE(petAId >>> 0, 0);
     return PublicKey.findProgramAddressSync([MARRIAGE_PROPOSAL_SEED, idBuf], programId);
+}
+
+/** Fee vault PDA: seeds ["fee-vault"]. Collects level-up, train, breed, and mint fees. */
+export const feeVaultPda = (programId: PublicKey): [PublicKey, number]  => {
+    return PublicKey.findProgramAddressSync([FEE_VAULT_SEED], programId);
+}
+
+/** Mint request PDA: seeds ["mint-request", owner]. One per wallet, closed after settle. */
+export const mintRequestPda = (programId: PublicKey, owner: PublicKey): [PublicKey, number]  => {
+    return PublicKey.findProgramAddressSync([MINT_REQUEST_SEED, owner.toBuffer()], programId);
+}
+
+/** Stud-fee escrow PDA for cross-owner breeding: seeds ["stud-fee", other_owner]. */
+export const studFeeAccountPda = (programId: PublicKey, otherOwner: PublicKey): [PublicKey, number]  => {
+    return PublicKey.findProgramAddressSync([STUD_FEE_SEED, otherOwner.toBuffer()], programId);
 }

@@ -1,17 +1,20 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BN } from '@coral-xyz/anchor';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
-import { globalStatePda, petPda, playerProfilePda } from '../../../utils/solana/pdas';
+import {
+    feeVaultPda,
+    globalStatePda,
+    petPdaByAsset,
+} from '../../../utils/solana/pdas';
 import { battleWithSwitchboardVrf } from '../../../utils/solana/battleWithSwitchboardVrf';
 import { breedWithSwitchboardVrf } from '../../../utils/solana/breedWithSwitchboardVrf';
-import { getAccountClient } from '../../../utils/solana/accountClient';
+import { mintWithSwitchboardVrf } from '../../../utils/solana/mintWithSwitchboardVrf';
 import { useProgram } from './useProgram';
 
 export const usePetActions = () => {
     const queryClient = useQueryClient();
     const { signingWallet } = useSolanaAnchor();
-    const { program, programId, provider, toU32 } = useProgram();
+    const { program, programId, provider } = useProgram();
 
     const invalidateProgramQueries = () => queryClient.invalidateQueries({ queryKey: ['cryptopets'] });
 
@@ -28,24 +31,31 @@ export const usePetActions = () => {
         return { program, programId, owner: signingWallet.publicKey };
     };
 
-    const createStarterPet = useMutation({
-        mutationFn: async (args: { name: string; dna: bigint | number | string; rarity: number }) => {
+    /** Gacha mint: two-phase VRF flow (commit → reveal). DNA/rarity are randomised at settle. */
+    const mintPet = useMutation({
+        mutationFn: async (args: { name: string }) => {
+            const { program, programId, owner } = requireReady();
+            if (!provider) throw new Error('Solana provider is not ready');
+            return mintWithSwitchboardVrf({ program, provider, programId, owner, name: args.name });
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
+    const levelUpPet = useMutation({
+        mutationFn: async (args: { petId: number; assetKey: string }) => {
             const { program, programId, owner } = requireReady();
             const [globalState] = globalStatePda(programId);
-            const [playerProfile] = playerProfilePda(programId, owner);
-
-            const gs = (await getAccountClient(program, 'globalState').fetch(globalState)) as {
-                nextPetId?: unknown;
-            };
-            const nextPetId = toU32(gs.nextPetId);
-            const [pet] = petPda(programId, owner, nextPetId);
+            const petAsset = new PublicKey(args.assetKey);
+            const [pet] = petPdaByAsset(programId, args.assetKey);
+            const [feeVault] = feeVaultPda(programId);
 
             return program.methods
-                .createStarterPet(args.name, new BN(args.dna.toString()), args.rarity)
+                .levelUp()
                 .accounts({
                     globalState,
-                    playerProfile,
+                    petAsset,
                     pet,
+                    feeVault,
                     owner,
                     systemProgram: SystemProgram.programId,
                 })
@@ -54,17 +64,21 @@ export const usePetActions = () => {
         onSuccess: invalidateProgramQueries,
     });
 
-    const levelUpPet = useMutation({
-        mutationFn: async (args: { petId: number }) => {
+    const trainPet = useMutation({
+        mutationFn: async (args: { petId: number; assetKey: string }) => {
             const { program, programId, owner } = requireReady();
             const [globalState] = globalStatePda(programId);
-            const [pet] = petPda(programId, owner, args.petId);
+            const petAsset = new PublicKey(args.assetKey);
+            const [pet] = petPdaByAsset(programId, args.assetKey);
+            const [feeVault] = feeVaultPda(programId);
 
             return program.methods
-                .levelUp()
+                .train()
                 .accounts({
                     globalState,
+                    petAsset,
                     pet,
+                    feeVault,
                     owner,
                     systemProgram: SystemProgram.programId,
                 })
@@ -74,44 +88,19 @@ export const usePetActions = () => {
     });
 
     const renamePet = useMutation({
-        mutationFn: async (args: { petId: number; name: string }) => {
+        mutationFn: async (args: { petId: number; name: string; assetKey: string }) => {
             const { program, programId, owner } = requireReady();
             const [globalState] = globalStatePda(programId);
-            const [pet] = petPda(programId, owner, args.petId);
+            const petAsset = new PublicKey(args.assetKey);
+            const [pet] = petPdaByAsset(programId, args.assetKey);
 
             return program.methods
                 .renamePet(args.name)
                 .accounts({
                     globalState,
+                    petAsset,
                     pet,
                     owner,
-                })
-                .rpc();
-        },
-        onSuccess: invalidateProgramQueries,
-    });
-
-    const transferPet = useMutation({
-        mutationFn: async (args: { petId: number; to: string }) => {
-            const { program, programId, owner } = requireReady();
-            const toOwner = new PublicKey(args.to);
-            const [globalState] = globalStatePda(programId);
-            const [fromPlayerProfile] = playerProfilePda(programId, owner);
-            const [fromPet] = petPda(programId, owner, args.petId);
-            const [toPlayerProfile] = playerProfilePda(programId, toOwner);
-            const [toPet] = petPda(programId, toOwner, args.petId);
-
-            return program.methods
-                .transferPet()
-                .accounts({
-                    globalState,
-                    fromPlayerProfile,
-                    fromPet,
-                    toOwner,
-                    toPlayerProfile,
-                    toPet,
-                    fromOwner: owner,
-                    systemProgram: SystemProgram.programId,
                 })
                 .rpc();
         },
@@ -127,12 +116,11 @@ export const usePetActions = () => {
         mutationFn: async (args: {
             attackerPetId: number;
             defenderPetId: number;
+            attackerAssetKey: string;
             defenderOwner?: string;
         }) => {
             const { program, programId, owner } = requireReady();
-            if (!provider) {
-                throw new Error('Solana provider is not ready');
-            }
+            if (!provider) throw new Error('Solana provider is not ready');
             return battleWithSwitchboardVrf({
                 program,
                 provider,
@@ -140,6 +128,7 @@ export const usePetActions = () => {
                 owner,
                 attackerPetId: args.attackerPetId,
                 defenderPetId: args.defenderPetId,
+                attackerAssetKey: args.attackerAssetKey,
                 ...(args.defenderOwner
                     ? { defenderOwner: new PublicKey(args.defenderOwner) }
                     : {}),
@@ -150,13 +139,20 @@ export const usePetActions = () => {
 
     /**
      * Breed via Switchboard On-Demand VRF (commit + reveal), matching the EVM Chainlink flow.
+     * For cross-owner breeding, pass `parent2AssetKey` and `parent2Owner`; for same-wallet
+     * breeding both can be omitted (parent2AssetKey is looked up on-chain).
      */
     const breedPets = useMutation({
-        mutationFn: async (args: { parent1Id: number; parent2Id: number; name: string }) => {
+        mutationFn: async (args: {
+            parent1Id: number;
+            parent2Id: number;
+            name: string;
+            parent1AssetKey: string;
+            parent2AssetKey?: string;
+            parent2Owner?: string;
+        }) => {
             const { program, programId, owner } = requireReady();
-            if (!provider) {
-                throw new Error('Solana provider is not ready');
-            }
+            if (!provider) throw new Error('Solana provider is not ready');
             return breedWithSwitchboardVrf({
                 program,
                 provider,
@@ -165,16 +161,21 @@ export const usePetActions = () => {
                 parent1Id: args.parent1Id,
                 parent2Id: args.parent2Id,
                 name: args.name,
+                parent1AssetKey: args.parent1AssetKey,
+                parent2AssetKey: args.parent2AssetKey,
+                ...(args.parent2Owner
+                    ? { parent2Owner: new PublicKey(args.parent2Owner) }
+                    : {}),
             });
         },
         onSuccess: invalidateProgramQueries,
     });
 
     return {
-        createStarterPet,
+        mintPet,
         levelUpPet,
+        trainPet,
         renamePet,
-        transferPet,
         battlePets,
         breedPets,
         walletPublicKey: signingWallet?.publicKey ?? null,

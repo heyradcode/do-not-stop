@@ -1,25 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
-import bs58 from 'bs58';
-import { Buffer } from 'buffer';
 import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
 import { globalStatePda, petPdaByAsset, marriageProposalPda } from '../../../utils/solana/pdas';
-import { getAccountClient } from '../../../utils/solana/accountClient';
+import { fetchAssetByPetId, getAccountClient } from '../../../utils/solana/accountClient';
 import { useProgram } from './useProgram';
-import type { SolanaProgram } from './useProgram';
-
-/** Fetch any PetAccount by numeric ID (regardless of owner). Returns its Core asset pubkey or null. */
-const fetchAssetByPetId = async (program: SolanaProgram, petId: number): Promise<PublicKey | null> => {
-    const idBuf = Buffer.alloc(4);
-    idBuf.writeUInt32LE(petId >>> 0, 0);
-    const rows = await getAccountClient(program, 'petAccount').all([{
-        memcmp: { offset: 8, bytes: bs58.encode(idBuf) },
-    }]);
-    if (rows.length === 0) return null;
-    const asset = (rows[0].account as { asset?: unknown }).asset;
-    if (!asset || typeof asset !== 'object') return null;
-    return asset as PublicKey;
-};
 
 /** Fetch the MarriageProposal account for petAId. Returns proposer pubkey or null if no live proposal. */
 const fetchProposalProposer = async (
