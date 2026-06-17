@@ -4,6 +4,7 @@ import {
     useChainCapabilities,
     useCreatePet,
     useEvmFees,
+    useSolanaFees,
     usePetList,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
@@ -23,10 +24,15 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
 
-    // Live gacha mint cost (EVM): baseMintFee × (1 + walletMintCount).
-    const fees = useEvmFees(kind === 'evm');
-    const mintCost = kind === 'evm' && fees.nextMintFee != null
-        ? `${formatEther(fees.nextMintFee)} ETH`
+    // Both fee hooks always called (rules of hooks); the inactive one is disabled.
+    // Mint cost escalates per wallet: EVM baseMintFee×(1+count), Solana baseMintFee<<min(count,7).
+    const evmFees = useEvmFees(kind === 'evm');
+    const solanaFees = useSolanaFees(kind === 'solana');
+    const mintCost =
+        kind === 'evm' && evmFees.nextMintFee != null
+            ? `${formatEther(evmFees.nextMintFee)} ETH`
+        : kind === 'solana' && solanaFees.nextMintFeeLamports != null
+            ? `${(Number(solanaFees.nextMintFeeLamports) / 1e9).toLocaleString('en-US', { maximumFractionDigits: 9, useGrouping: false })} SOL`
         : null;
 
     const [petName, setPetName] = useState('');
