@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GraphQLObjectType } from 'graphql';
-import { schema } from './schema';
+import { schema } from '../../src/graphql/schema';
 
 /**
  * The schema is a hand-written SDL string, so a typo in a field name or type

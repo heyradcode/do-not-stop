@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
  */
 describe('app boot', () => {
     it('loads the full app wiring without throwing', async () => {
-        const { default: app } = await import('./app');
+        const { default: app } = await import('../src/app');
         // Express app is a callable request handler.
         expect(typeof app).toBe('function');
     });
