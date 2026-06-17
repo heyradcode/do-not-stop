@@ -7,6 +7,7 @@ import {
     useChainCapabilities,
     useEvmFees,
     useSolanaFees,
+    formatLamports,
     useLevelUpPet,
     usePetList,
 } from '@shared/core';
@@ -58,7 +59,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         }
         if (kind === 'solana' && solanaFees.levelUpFeeLamports != null) {
             const scaled = (solanaFees.levelUpFeeLamports * multiplier) / 100n;
-            return `${(Number(scaled) / 1e9).toLocaleString('en-US', { maximumFractionDigits: 9, useGrouping: false })} SOL`;
+            return `${formatLamports(scaled)} SOL`;
         }
         return null;
     }, [kind, evmFees.levelUpFee, solanaFees.levelUpFeeLamports, selectedLevel]);

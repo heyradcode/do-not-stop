@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { formatEther } from 'viem';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useEvmFees, useSolanaFees, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
+import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useEvmFees, useSolanaFees, formatLamports, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
@@ -57,7 +57,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         if (isEvm && evmFees.studFee != null)
             return `+${formatEther(evmFees.studFee)} ETH stud fee`;
         if (isSolana && solanaFees.studFeeLamports != null)
-            return `+${(Number(solanaFees.studFeeLamports) / 1e9).toLocaleString('en-US', { maximumFractionDigits: 9, useGrouping: false })} SOL stud fee`;
+            return `+${formatLamports(solanaFees.studFeeLamports)} SOL stud fee`;
         return null;
     }, [crossOwner, isEvm, isSolana, evmFees.studFee, solanaFees.studFeeLamports]);
 

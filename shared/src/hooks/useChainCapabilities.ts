@@ -4,12 +4,9 @@ import { useEvmFees } from './chains/ethereum/useEvmFees';
 import { useSolanaFees } from './chains/solana/useSolanaFees';
 import { EVM_CAPABILITIES } from './adapters/useEvmAdapter';
 import { SOLANA_CAPABILITIES } from './adapters/useSolanaAdapter';
+import { formatLamports } from '../utils/solana/numbers';
 import type { ChainCapabilities } from './adapters/types';
 import type { PetChain } from '../types/pet';
-
-/** Format lamports as a SOL string (9 decimal places, no trailing zeros). */
-const formatSol = (lamports: bigint): string =>
-    (Number(lamports) / 1e9).toLocaleString('en-US', { maximumFractionDigits: 9, useGrouping: false });
 
 const NULL_CAPABILITIES: ChainCapabilities = {
     chainLabel: '',
@@ -49,7 +46,7 @@ export const useChainCapabilities = (): ChainContext => {
         isEvm && evmFees.levelUpFee != null
             ? { ...base, levelUpFee: { amount: formatEther(evmFees.levelUpFee), symbol: 'ETH' } }
         : isSolana && solanaFees.levelUpFeeLamports != null
-            ? { ...base, levelUpFee: { amount: formatSol(solanaFees.levelUpFeeLamports), symbol: 'SOL' } }
+            ? { ...base, levelUpFee: { amount: formatLamports(solanaFees.levelUpFeeLamports), symbol: 'SOL' } }
         : base;
 
     return {

@@ -7,6 +7,7 @@ import {
     useChainCapabilities,
     useEvmFees,
     useSolanaFees,
+    formatLamports,
     useTrainPet,
     usePetList,
 } from '@shared/core';
@@ -56,7 +57,7 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
         }
         if (kind === 'solana' && solanaFees.trainFeeLamports != null) {
             const scaled = (solanaFees.trainFeeLamports * multiplier) / 100n;
-            return `${(Number(scaled) / 1e9).toLocaleString('en-US', { maximumFractionDigits: 9, useGrouping: false })} SOL`;
+            return `${formatLamports(scaled)} SOL`;
         }
         return null;
     }, [kind, evmFees.trainFee, solanaFees.trainFeeLamports, selectedLevel]);

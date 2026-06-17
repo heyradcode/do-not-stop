@@ -5,6 +5,7 @@ import {
     useCreatePet,
     useEvmFees,
     useSolanaFees,
+    formatLamports,
     usePetList,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
@@ -32,7 +33,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         kind === 'evm' && evmFees.nextMintFee != null
             ? `${formatEther(evmFees.nextMintFee)} ETH`
         : kind === 'solana' && solanaFees.nextMintFeeLamports != null
-            ? `${(Number(solanaFees.nextMintFeeLamports) / 1e9).toLocaleString('en-US', { maximumFractionDigits: 9, useGrouping: false })} SOL`
+            ? `${formatLamports(solanaFees.nextMintFeeLamports)} SOL`
         : null;
 
     const [petName, setPetName] = useState('');
