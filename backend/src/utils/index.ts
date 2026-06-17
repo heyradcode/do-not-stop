@@ -25,17 +25,6 @@ export function positiveMod(value: bigint, mod: number): number {
     return Number(((value % m) + m) % m);
 }
 
-export function parseIntParam(
-    value: unknown,
-    fallback: number,
-    min: number,
-    max: number
-): number {
-    const n = Number.parseInt(String(value ?? ''), 10);
-    if (Number.isNaN(n)) return fallback;
-    return Math.min(Math.max(n, min), max);
-}
-
 /**
  * Run `fn`; if it throws, log under `label` and return `fallback` instead of
  * propagating. For non-critical paths that must never block or fail the main
