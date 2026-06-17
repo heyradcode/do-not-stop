@@ -57,7 +57,7 @@ export interface ChainAdapter {
     // dna/rarity are Solana-only; EVM adapters ignore them.
     createPet:   AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }>;
     levelUpPet:  AdapterMutation<{ petId: string }>;
-    /** v2 train: pay a level-scaled fee for flat XP. EVM-only (Solana rejects). */
+    /** v2 train: pay a level-scaled fee for flat XP. */
     trainPet:    AdapterMutation<{ petId: string }>;
     renamePet:   AdapterMutation<{ petId: string; name: string }>;
     transferPet: AdapterMutation<{ petId: string; to: string }>;

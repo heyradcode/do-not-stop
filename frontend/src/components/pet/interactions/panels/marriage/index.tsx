@@ -48,9 +48,9 @@ const MarriagePetRow: React.FC<{
 };
 
 /**
- * v2.1 Marriage (EVM-only): propose between your pet and a partner pet,
- * accept an incoming proposal, divorce, or cancel an outgoing proposal.
- * A valid marriage gates cross-owner breeding (stud fee).
+ * v2.1 Marriage: propose between your pet and a partner pet, accept an
+ * incoming proposal, divorce, or cancel an outgoing proposal.
+ * Works on both EVM and Solana. A valid marriage gates cross-owner breeding (stud fee).
  */
 const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
