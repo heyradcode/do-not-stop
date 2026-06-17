@@ -39,6 +39,7 @@ vi.mock('@shared/core', () => ({
     useChainCapabilities: () => ({ kind: 'evm' }),
     usePetList: () => petList,
     useEvmFees: () => ({ trainFee: 1000000000000000n }),
+    useSolanaFees: () => ({ trainFeeLamports: undefined }),
     useTrainPet: (opts: { onSuccess?: () => void }) => {
         capturedOnSuccess = opts?.onSuccess;
         return train;

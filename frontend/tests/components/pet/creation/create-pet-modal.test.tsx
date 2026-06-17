@@ -20,6 +20,7 @@ vi.mock('@shared/core', () => ({
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
     useEvmFees: () => ({ nextMintFee: null }),
+    useSolanaFees: () => ({ nextMintFeeLamports: undefined }),
     useCreatePet: (opts: { onSuccess?: () => void }) => {
         capturedOnSuccess = opts?.onSuccess;
         return createPet;

@@ -40,6 +40,7 @@ vi.mock('@shared/core', () => ({
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
     useEvmFees: () => ({ studFee: null }),
+    useSolanaFees: () => ({ studFeeLamports: undefined }),
     useMarriageInfo: () => ({ isMarried: false, spouseId: undefined }),
     usePendingBreed: () => ({ isPending: false }),
     useBreedPets: (opts: { onSuccess?: (arg: { name: string }) => void }) => {

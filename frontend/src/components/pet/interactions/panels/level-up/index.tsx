@@ -6,6 +6,7 @@ import {
     getReadyPetsUnified,
     useChainCapabilities,
     useEvmFees,
+    useSolanaFees,
     useLevelUpPet,
     usePetList,
 } from '@shared/core';
@@ -41,15 +42,26 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
-    // Level-up fee is level-scaled: levelUpFee × (100 + (level-1)²) / 100.
-    const fees = useEvmFees(kind === 'evm');
+    // Both fee hooks always called (rules of hooks); the inactive one is disabled.
+    const evmFees = useEvmFees(kind === 'evm');
+    const solanaFees = useSolanaFees(kind === 'solana');
     const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
+
+    // Level-up fee is level-scaled: baseFee × (100 + (level-1)²) / 100.
     const levelUpCost = useMemo(() => {
-        if (fees.levelUpFee == null || selectedLevel == null) return null;
+        if (selectedLevel == null) return null;
         const diff = BigInt(Math.max(selectedLevel - 1, 0));
-        const scaled = (fees.levelUpFee * (100n + diff * diff)) / 100n;
-        return `${formatEther(scaled)} ETH`;
-    }, [fees.levelUpFee, selectedLevel]);
+        const multiplier = 100n + diff * diff;
+        if (kind === 'evm' && evmFees.levelUpFee != null) {
+            const scaled = (evmFees.levelUpFee * multiplier) / 100n;
+            return `${formatEther(scaled)} ETH`;
+        }
+        if (kind === 'solana' && solanaFees.levelUpFeeLamports != null) {
+            const scaled = (solanaFees.levelUpFeeLamports * multiplier) / 100n;
+            return `${(Number(scaled) / 1e9).toLocaleString('en-US', { maximumFractionDigits: 9, useGrouping: false })} SOL`;
+        }
+        return null;
+    }, [kind, evmFees.levelUpFee, solanaFees.levelUpFeeLamports, selectedLevel]);
 
     useTxErrorToast(hookError);
 
