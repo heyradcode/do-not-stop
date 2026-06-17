@@ -7,9 +7,9 @@ export { useEvmFees, type EvmFees } from './chains/ethereum/useEvmFees';
 // Manual recovery for an interrupted async battle (settle / cancel a pending request).
 export { usePendingBattle, type PendingBattle } from './chains/ethereum/usePendingBattle';
 export { usePendingBreed, type PendingBreed } from './chains/ethereum/usePendingBreed';
-// v2.1 marriage (EVM-only): write actions + per-pet marriage state.
-export { useMarriage, type MarriageAction } from './chains/ethereum/useMarriage';
-export { useMarriageInfo, type MarriageInfo } from './chains/ethereum/useMarriageInfo';
+// v2.1 marriage: write actions + per-pet marriage state (EVM + Solana).
+export { useMarriage, type MarriageAction } from './useMarriage';
+export { useMarriageInfo, type MarriageInfo } from './useMarriageInfo';
 
 export { useActiveChain, type ActiveChain } from './useActiveChain';
 export { useChainCapabilities, type ChainContext } from './useChainCapabilities';

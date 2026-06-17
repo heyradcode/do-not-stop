@@ -32,6 +32,12 @@ export interface Pet {
     breedReadyAt?: number;
     /** Unix seconds until this pet can train again. */
     trainReadyAt?: number;
+    /** Metaplex Core asset pubkey (base58); Solana v2.1 only. PDA seed + NFT ownership source. */
+    assetKey?: string;
+    /** Numeric pet ID of the spouse; 0 or absent = single. Solana only (EVM uses useMarriageInfo). */
+    spouseId?: number;
+    /** Unix seconds until this pet may remarry after a divorce. Solana only. */
+    marriageCooldownUntil?: number;
 }
 
 /**

@@ -6,6 +6,7 @@ const PLAYER_PROFILE_SEED = Buffer.from('player-profile');
 const PET_SEED = Buffer.from('pet');
 const BREED_REQUEST_SEED = Buffer.from('breed-request');
 const BATTLE_REQUEST_SEED = Buffer.from('battle-request');
+const MARRIAGE_PROPOSAL_SEED = Buffer.from('marriage-proposal');
 
 export const globalStatePda = (programId: PublicKey): [PublicKey, number]  => {
     return PublicKey.findProgramAddressSync([GLOBAL_STATE_SEED], programId);
@@ -30,4 +31,16 @@ export const breedRequestPda = (programId: PublicKey, owner: PublicKey): [Public
 /** Pending battle PDA (one per attacker wallet). */
 export const battleRequestPda = (programId: PublicKey, attacker: PublicKey): [PublicKey, number]  => {
     return PublicKey.findProgramAddressSync([BATTLE_REQUEST_SEED, attacker.toBuffer()], programId);
+}
+
+/** v2.1 pet PDA keyed by Metaplex Core asset address: seeds ["pet", asset_pubkey]. */
+export const petPdaByAsset = (programId: PublicKey, assetKey: string): [PublicKey, number]  => {
+    return PublicKey.findProgramAddressSync([PET_SEED, new PublicKey(assetKey).toBuffer()], programId);
+}
+
+/** Marriage proposal PDA: seeds ["marriage-proposal", pet_a_id_le_u32]. */
+export const marriageProposalPda = (programId: PublicKey, petAId: number): [PublicKey, number]  => {
+    const idBuf = Buffer.alloc(4);
+    idBuf.writeUInt32LE(petAId >>> 0, 0);
+    return PublicKey.findProgramAddressSync([MARRIAGE_PROPOSAL_SEED, idBuf], programId);
 }

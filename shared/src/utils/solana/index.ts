@@ -4,8 +4,10 @@ export {
     globalStatePda,
     playerProfilePda,
     petPda,
+    petPdaByAsset,
     breedRequestPda,
     battleRequestPda,
+    marriageProposalPda,
 } from './pdas';
 export { breedWithSwitchboardVrf } from './breedWithSwitchboardVrf';
 export { battleWithSwitchboardVrf } from './battleWithSwitchboardVrf';
