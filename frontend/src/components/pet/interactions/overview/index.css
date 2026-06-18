@@ -15,6 +15,13 @@
     &.interaction-standalone {
         max-width: 640px;
         margin-inline: auto;
+
+        /* Allow absolutely-positioned dropdowns (e.g. PetSearchDropdown) to
+           overflow the panel surface without being clipped. Standalone panels
+           do not scroll, so overflow:hidden is not needed for layout here. */
+        & .surface {
+            overflow: visible;
+        }
     }
 
     &.interaction-standalone:has(.battle-setup) {
