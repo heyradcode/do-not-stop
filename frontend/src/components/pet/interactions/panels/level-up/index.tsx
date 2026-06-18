@@ -48,7 +48,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         const diff = BigInt(Math.max(selectedLevel - 1, 0));
         const multiplier = 100n + diff * diff;
         return fees.formatAmount((fees.levelUpFee * multiplier) / 100n);
-    }, [fees.levelUpFee, fees.formatAmount, selectedLevel]);
+    }, [fees, selectedLevel]);
 
     useTxErrorToast(hookError);
 

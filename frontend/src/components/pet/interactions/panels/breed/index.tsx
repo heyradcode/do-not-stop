@@ -48,7 +48,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const studFeeLabel = useMemo(() => {
         if (!crossOwner || fees.studFee == null) return null;
         return `+${fees.formatAmount(fees.studFee)} stud fee`;
-    }, [crossOwner, fees.studFee, fees.formatAmount]);
+    }, [crossOwner, fees]);
 
     // An unresolved breed on either parent makes requestCreateFromDNA revert
     // ("Breed pending for parent"); block a new breed until it's resolved

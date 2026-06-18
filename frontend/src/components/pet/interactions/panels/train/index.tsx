@@ -44,7 +44,7 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
         if (selectedLevel == null || fees.trainFee == null) return null;
         const multiplier = BigInt(100 + 2 * selectedLevel);
         return fees.formatAmount((fees.trainFee * multiplier) / 100n);
-    }, [fees.trainFee, fees.formatAmount, selectedLevel]);
+    }, [fees, selectedLevel]);
 
     useTxErrorToast(hookError);
 

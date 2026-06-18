@@ -645,6 +645,115 @@
     }
 }
 
+/* ── Marriage tab UI ─────────────────────────────────────────────────────── */
+
+.marriage-interface {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.marriage-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 0;
+    border-bottom: 1px solid rgb(125 214 255 / 18%);
+    padding-bottom: 0;
+}
+
+.marriage-tab {
+    flex: 1;
+    padding: 10px 16px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    color: rgb(195 210 255 / 60%);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(.active) {
+        color: rgb(195 210 255 / 90%);
+        background: rgb(125 214 255 / 6%);
+    }
+
+    &.active {
+        color: var(--zi-text, #f6f3ff);
+        background: rgb(125 214 255 / 8%);
+        border-color: rgb(125 214 255 / 22%);
+        border-bottom-color: rgb(5 13 30 / 92%);
+        margin-bottom: -1px;
+    }
+}
+
+.marriage-tab-panel {
+    padding-top: 20px;
+}
+
+.marriage-tab-hint {
+    font-size: 13px;
+    color: rgb(195 210 255 / 65%);
+    margin: 0 0 16px !important;
+    text-align: left !important;
+}
+
+.marriage-status-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid rgb(125 214 255 / 14%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.marriage-status-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: rgb(195 210 255 / 50%);
+}
+
+.marriage-row-action {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &.divorce {
+        background: rgb(255 80 80 / 12%);
+        border: 1px solid rgb(255 80 80 / 36%);
+        color: #ff9a9a;
+
+        &:hover:not(:disabled) {
+            background: rgb(255 80 80 / 22%);
+            border-color: rgb(255 80 80 / 60%);
+        }
+    }
+
+    &.cancel {
+        background: rgb(255 181 67 / 10%);
+        border: 1px solid rgb(255 181 67 / 36%);
+        color: #ffd07b;
+
+        &:hover:not(:disabled) {
+            background: rgb(255 181 67 / 20%);
+            border-color: rgb(255 181 67 / 60%);
+        }
+    }
+
+    &:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+}
+
 .propose-button {
     color: #ffd07b;
     border-color: rgb(255 181 67 / 50%);
