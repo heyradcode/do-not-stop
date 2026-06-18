@@ -39,6 +39,7 @@ export {
 } from './useBreedPets';
 export { useTransferPet, type TransferPetArgs } from './useTransferPet';
 export { useOpponents, type UseOpponentsOptions } from './useOpponents';
+export { useSearchPets, type UseSearchPetsOptions, type SearchPetsResult } from './useSearchPets';
 export {
     useBattleDialogue,
     type UseBattleDialogueOptions,
