@@ -44,7 +44,13 @@ export const NETWORKS: NetworkSpec[] = [
     { name: "optimism", envPrefix: "OPTIMISM", chainId: 10 },
     { name: "optimism-sepolia", envPrefix: "OPTIMISM_SEPOLIA", chainId: 11155420 },
     { name: "base", envPrefix: "BASE", chainId: 8453 },
-    { name: "base-sepolia", envPrefix: "BASE_SEPOLIA", chainId: 84532 },
+    {
+        name: "base-sepolia",
+        envPrefix: "BASE_SEPOLIA",
+        chainId: 84532,
+        // Pyth Entropy V2 on Base Sepolia — verify at https://docs.pyth.network/entropy/chainlist
+        // defaultEntropyAddress: "0x...",  // set BASE_SEPOLIA_ENTROPY_ADDRESS in .env until confirmed
+    },
 ];
 
 export function getNetwork(name: string): NetworkSpec | undefined {
