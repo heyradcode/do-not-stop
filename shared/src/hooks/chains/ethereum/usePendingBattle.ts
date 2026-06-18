@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useReadContract, useSimulateContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
 
 export interface PendingBattleTx {
@@ -14,10 +14,12 @@ export interface PendingBattle {
     requestId?: bigint;
     /** True when this pet has an unresolved battle blocking new ones. */
     isPending: boolean;
-    /** settleBattle — works once VRF has fulfilled; permissionless. */
+    /** settleBattle — works once entropy has fulfilled; permissionless. */
     settle: PendingBattleTx;
-    /** cancelBattle — only before fulfillment; requester or contract owner. */
+    /** cancelBattle — only before entropy fulfillment; requester or contract owner. */
     cancel: PendingBattleTx;
+    /** True only while cancelBattle would succeed (entropy not yet fulfilled). */
+    canCancel: boolean;
     refetch(): void;
 }
 
@@ -44,6 +46,21 @@ export const usePendingBattle = (petId?: string): PendingBattle => {
 
     const requestId = requestIdData as bigint | undefined;
     const isPending = requestId != null && requestId !== 0n;
+
+    const { address: userAddress } = useAccount();
+
+    // Simulate cancelBattle to detect whether entropy has already been fulfilled.
+    // cancelBattle reverts with "Already fulfilled" once entropyCallback fires, so
+    // simulation failure means only settleBattle is still valid.
+    const { isSuccess: cancelFeasible } = useSimulateContract({
+        address: gameLogic,
+        abi,
+        functionName: 'cancelBattle',
+        args: requestId != null ? [requestId] : undefined,
+        account: userAddress,
+        chainId,
+        query: { enabled: isPending && requestId != null && Boolean(userAddress) },
+    });
 
     const settleW = useWriteContract();
     const cancelW = useWriteContract();
@@ -77,5 +94,5 @@ export const usePendingBattle = (petId?: string): PendingBattle => {
         hash: cancelW.data,
     };
 
-    return { requestId, isPending, settle, cancel, refetch };
+    return { requestId, isPending, settle, cancel, canCancel: cancelFeasible === true, refetch };
 };
