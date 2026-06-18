@@ -29,16 +29,10 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
 
     const fees = useFees();
 
-    // Use breed-specific cooldown (breedReadyAt) when available — battle and breed
-    // have separate cooldowns in v2; a pet on battle cooldown can still breed.
+    // Show all user pets — cooldowns are enforced by the contract, not the UI.
+    // Filtering here was hiding married pets that happened to be on battle cooldown.
     const breedablePets = useMemo(
-        () =>
-            pets
-                .filter((p) => {
-                    const cooldown = p.breedReadyAt ?? p.readyAt;
-                    return cooldown <= Date.now() / 1000;
-                })
-                .map((pet) => ({ id: pet.id, pet })),
+        () => pets.map((pet) => ({ id: pet.id, pet })),
         [pets],
     );
 
@@ -198,7 +192,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 <div className="action-controls">
                     <AuthActionButton
                         onClick={handleBreed}
-                        disabled={breed.isPending || breed.isAwaitingFulfillment || !canSubmit || hasPendingBreed}
+                        disabled={breed.isPending || breed.isAwaitingFulfillment || hasPendingBreed}
                     >
                         {buttonLabel}
                     </AuthActionButton>
