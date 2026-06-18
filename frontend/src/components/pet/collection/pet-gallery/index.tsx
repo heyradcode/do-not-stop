@@ -40,12 +40,21 @@ const PetGallery: React.FC = () => {
     const notifyError = useNotifyError();
     const [loading, setLoading] = useState(false);
     const [sendModalOpen, setSendModalOpen] = useState(false);
+    const [, setTick] = useState(0);
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [sendSelection, setSendSelection] = useState<{ pet: Pet; petId: bigint } | null>(null);
 
     useEffect(() => {
         setLoading(isLoading);
     }, [isLoading]);
+
+    // Tick every second while any pet is on cooldown so the countdown stays live.
+    const anyCooldown = pets.some((p) => !isPetReady(BigInt(p.readyAt)));
+    useEffect(() => {
+        if (!anyCooldown) return;
+        const id = setInterval(() => setTick((t) => t + 1), 1000);
+        return () => clearInterval(id);
+    }, [anyCooldown]);
 
     useEffect(() => {
         if (!error) return;
