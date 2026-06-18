@@ -5,11 +5,13 @@ import {
     useMarriage,
     useMarriageInfo,
     useAllPets,
+    useSearchPets,
     usePetList,
     useIncomingProposals,
     type IncomingProposal,
     type OpponentPet,
     type Pet,
+    type PetChain,
 } from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
 import Icon, { CheckIcon } from '@components/ui/icon';
@@ -25,15 +27,27 @@ export type MarriagePanelProps = {
 /** Romantic marriage card — shows both pets connected by a heart. */
 const MarriageCard: React.FC<{
     pet: Pet;
+    chain: PetChain | null;
     petById: Map<string, OpponentPet>;
     onDivorce: (petId: string) => void;
     busy: boolean;
-}> = ({ pet, petById, onDivorce, busy }) => {
+}> = ({ pet, chain, petById, onDivorce, busy }) => {
     const info = useMarriageInfo(pet);
-    if (!info.isMarried || !info.spouseId) return null;
 
-    const spouseId = info.spouseId.toString();
-    const spouse = petById.get(spouseId);
+    const spouseId = info.isMarried && info.spouseId ? info.spouseId.toString() : '';
+    const fromMap = spouseId ? petById.get(spouseId) : undefined;
+
+    // Fallback: search by numeric ID when the bulk allPets map is empty.
+    // useSearchPets does an exact petId match for numeric queries.
+    const { results: searched } = useSearchPets(spouseId, {
+        chain,
+        limit: 1,
+        enabled: !fromMap && Boolean(spouseId && spouseId !== '0'),
+    });
+
+    if (!info.isMarried || !spouseId) return null;
+
+    const spouse = fromMap ?? searched[0];
     const spouseName = spouse?.name ?? `#${spouseId}`;
     const spouseLevel = spouse?.level;
 
@@ -325,6 +339,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                 <MarriageCard
                                     key={p.id}
                                     pet={p}
+                                    chain={activeKind}
                                     petById={petById}
                                     busy={busy}
                                     onDivorce={(id) => void run(() => marriage.divorce.mutateAsync({ petId: id }), 'Divorced.')}

@@ -1,6 +1,6 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useFees, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
+import { useChainCapabilities, useBreedPets, useFees, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import { formatTxHashHint } from '@hooks/usePetError';
@@ -27,20 +27,33 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const [validationError, setValidationError] = useState<string | null>(null);
     const [breedWithSpouse, setBreedWithSpouse] = useState(false);
 
-    // readyPets before useMarriageInfo so we can pass the full Pet object.
-    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const fees = useFees();
 
+    // Use breed-specific cooldown (breedReadyAt) when available — battle and breed
+    // have separate cooldowns in v2; a pet on battle cooldown can still breed.
+    const breedablePets = useMemo(
+        () =>
+            pets
+                .filter((p) => {
+                    const cooldown = p.breedReadyAt ?? p.readyAt;
+                    return cooldown <= Date.now() / 1000;
+                })
+                .map((pet) => ({ id: pet.id, pet })),
+        [pets],
+    );
+
     // Cross-owner (married) breeding: first parent must be married; request carries a stud fee.
-    // useMarriageInfo expects a Pet object — look it up from readyPets.
-    const selectedPet1Object = readyPets.find(({ id }) => id === selectedPet1)?.pet;
+    // useMarriageInfo expects a Pet object — look it up from breedablePets.
+    const selectedPet1Object = breedablePets.find(({ id }) => id === selectedPet1)?.pet;
     const marriage = useMarriageInfo(selectedPet1Object);
     const spouseId = marriage.isMarried ? marriage.spouseId?.toString() : undefined;
     const crossOwner = breedWithSpouse && Boolean(spouseId);
     const effectiveParent2 = crossOwner ? (spouseId as string) : selectedPet2;
 
-    // Reset the cross-owner toggle whenever the first parent changes.
-    useEffect(() => { setBreedWithSpouse(false); }, [selectedPet1]);
+    // Auto-enable spouse breeding when a married pet is selected; reset when not married.
+    useEffect(() => {
+        setBreedWithSpouse(marriage.isMarried && Boolean(spouseId));
+    }, [marriage.isMarried, spouseId]);
 
     const studFeeLabel = useMemo(() => {
         if (!crossOwner || fees.studFee == null) return null;
@@ -127,7 +140,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                             onChange={(e) => setSelectedPet1(e.target.value)}
                         >
                             <option value="">Select pet...</option>
-                            {readyPets.map(({ id, pet }) => (
+                            {breedablePets.map(({ id, pet }) => (
                                 <option key={id} value={id}>
                                     {pet.name} (Level {pet.level})
                                 </option>
@@ -145,7 +158,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                 onChange={(e) => setSelectedPet2(e.target.value)}
                             >
                                 <option value="">Select pet...</option>
-                                {readyPets
+                                {breedablePets
                                     .filter(({ id }) => id !== selectedPet1)
                                     .map(({ id, pet }) => (
                                         <option key={id} value={id}>
