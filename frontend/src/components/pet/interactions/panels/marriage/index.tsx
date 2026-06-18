@@ -71,12 +71,13 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
     const busy = marriage.propose.isPending || marriage.accept.isPending
         || marriage.cancel.isPending || marriage.divorce.isPending;
 
-    const run = async (fn: () => Promise<void>, message: string) => {
+    const run = async (fn: () => Promise<void>, message: string, onSuccess?: () => void) => {
         setSuccess(null);
         try {
             await fn();
             setSuccess(message);
             refetch();
+            onSuccess?.();
         } catch (err) {
             console.error('[marriage]', err);
             notifyError('Marriage action failed', err, 'marriage');
@@ -144,9 +145,10 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                 type="button"
                                 className="action-button propose-button"
                                 disabled={busy || !myPet || !partnerId}
-                                onClick={() => run(
+                                onClick={() => void run(
                                     () => marriage.propose.mutateAsync({ petIdA: myPet, petIdB: partnerId }),
                                     'Proposal sent!',
+                                    () => { setMyPet(''); setPartnerId(''); },
                                 )}
                             >
                                 {marriage.propose.isPending ? 'Proposing...' : '💍 Send Proposal'}
@@ -183,9 +185,10 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                 type="button"
                                 className="action-button accept-button"
                                 disabled={busy || !acceptMyPet || !proposerId}
-                                onClick={() => run(
+                                onClick={() => void run(
                                     () => marriage.accept.mutateAsync({ petIdA: proposerId, petIdB: acceptMyPet }),
                                     'Marriage accepted!',
+                                    () => { setAcceptMyPet(''); setProposerId(''); },
                                 )}
                             >
                                 {marriage.accept.isPending ? 'Accepting...' : '💒 Accept Proposal'}
@@ -205,8 +208,8 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                     pet={p}
                                     walletAddress={walletAddress}
                                     busy={busy}
-                                    onDivorce={(id) => run(() => marriage.divorce.mutateAsync({ petId: id }), 'Divorced.')}
-                                    onCancel={(id) => run(() => marriage.cancel.mutateAsync({ petIdA: id }), 'Proposal cancelled.')}
+                                    onDivorce={(id) => void run(() => marriage.divorce.mutateAsync({ petId: id }), 'Divorced.')}
+                                    onCancel={(id) => void run(() => marriage.cancel.mutateAsync({ petIdA: id }), 'Proposal cancelled.')}
                                 />
                             ))}
                         </ul>

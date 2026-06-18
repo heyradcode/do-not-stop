@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchPets } from '@shared/core';
 import type { OpponentPet, PetChain } from '@shared/core';
 import './index.css';
@@ -25,7 +26,9 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
     const [selected, setSelected] = useState<OpponentPet | null>(null);
     const [open, setOpen] = useState(false);
     const [activeIdx, setActiveIdx] = useState(-1);
+    const [dropdownRect, setDropdownRect] = useState<DOMRect | null>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const { results, isLoading } = useSearchPets(inputText, {
@@ -37,6 +40,39 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
         ? results.filter((p) => !excludeIds.includes(p.id))
         : results;
 
+    // Measure wrapper position whenever the dropdown opens or window resizes/scrolls.
+    const measureRect = useCallback(() => {
+        if (wrapperRef.current) setDropdownRect(wrapperRef.current.getBoundingClientRect());
+    }, []);
+
+    useLayoutEffect(() => {
+        if (open) measureRect();
+    }, [open, measureRect]);
+
+    // Close on outside click (check both wrapper and portal dropdown).
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            const target = e.target as Node;
+            const inWrapper = wrapperRef.current?.contains(target) ?? false;
+            const inDropdown = dropdownRef.current?.contains(target) ?? false;
+            if (!inWrapper && !inDropdown) setOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    // Close on scroll or resize (the input moves, dropdown can't follow without re-measuring).
+    useEffect(() => {
+        if (!open) return;
+        const close = () => setOpen(false);
+        window.addEventListener('scroll', close, { capture: true, passive: true });
+        window.addEventListener('resize', close, { passive: true });
+        return () => {
+            window.removeEventListener('scroll', close, { capture: true });
+            window.removeEventListener('resize', close);
+        };
+    }, [open]);
+
     // When parent clears value externally, reset local state.
     useEffect(() => {
         if (!value) {
@@ -44,17 +80,6 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
             setInputText('');
         }
     }, [value]);
-
-    // Close dropdown on outside click.
-    useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-                setOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
 
     // Reset active row when results change.
     useEffect(() => {
@@ -110,6 +135,43 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
 
     const isSelected = selected !== null;
 
+    const dropdownPortal = open && dropdownRect
+        ? createPortal(
+            <div
+                ref={dropdownRef}
+                className="psd-dropdown"
+                role="listbox"
+                style={{
+                    position: 'fixed',
+                    top: dropdownRect.bottom + 4,
+                    left: dropdownRect.left,
+                    width: dropdownRect.width,
+                    zIndex: 9999,
+                }}
+            >
+                {isLoading && <div className="psd-state-row">Searching…</div>}
+                {!isLoading && filtered.length === 0 && inputText.trim() && (
+                    <div className="psd-state-row">No pets found</div>
+                )}
+                {filtered.map((pet, i) => (
+                    <button
+                        key={pet.id}
+                        type="button"
+                        role="option"
+                        aria-selected={i === activeIdx}
+                        className={`psd-row${i === activeIdx ? ' active' : ''}`}
+                        onMouseDown={(e) => { e.preventDefault(); handleSelect(pet); }}
+                    >
+                        <span className="psd-row-name">{pet.name}</span>
+                        <span className="psd-row-id">#{pet.id}</span>
+                        <span className="psd-row-level">Lv {pet.level}</span>
+                    </button>
+                ))}
+            </div>,
+            document.body,
+        )
+        : null;
+
     return (
         <div ref={wrapperRef} className={`pet-search-dropdown${disabled ? ' disabled' : ''}`}>
             <div className={`psd-input-wrap${isSelected ? ' is-selected' : ''}${open ? ' is-open' : ''}`}>
@@ -138,30 +200,7 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
                 )}
             </div>
 
-            {open && (
-                <div className="psd-dropdown" role="listbox">
-                    {isLoading && (
-                        <div className="psd-state-row">Searching…</div>
-                    )}
-                    {!isLoading && filtered.length === 0 && inputText.trim() && (
-                        <div className="psd-state-row">No pets found</div>
-                    )}
-                    {filtered.map((pet, i) => (
-                        <button
-                            key={pet.id}
-                            type="button"
-                            role="option"
-                            aria-selected={i === activeIdx}
-                            className={`psd-row${i === activeIdx ? ' active' : ''}`}
-                            onMouseDown={(e) => { e.preventDefault(); handleSelect(pet); }}
-                        >
-                            <span className="psd-row-name">{pet.name}</span>
-                            <span className="psd-row-id">#{pet.id}</span>
-                            <span className="psd-row-level">Lv {pet.level}</span>
-                        </button>
-                    ))}
-                </div>
-            )}
+            {dropdownPortal}
         </div>
     );
 };
