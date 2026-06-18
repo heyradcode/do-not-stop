@@ -101,10 +101,9 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         async mutateAsync({ name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             if (fees.nextMintFee == null) throw new Error('Mint fee not loaded yet');
-            if (fees.entropyFee == null) throw new Error('Entropy fee not loaded yet');
             await createW.writeContractAsync({
                 address: gameLogic, abi: gameLogicAbi, functionName: 'requestMintStarter',
-                args: [name], value: fees.nextMintFee + fees.entropyFee, gas: 500000n,
+                args: [name], value: fees.nextMintFee + (fees.entropyFee ?? 0n), gas: 500000n,
             } as unknown as Parameters<typeof createW.writeContractAsync>[0]);
         },
         lifecycle: toLc(createW, createR),

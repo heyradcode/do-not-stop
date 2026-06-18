@@ -92,29 +92,38 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
     });
 
     // Pyth Entropy address — public getter on GameLogic, set during initialize().
-    const { data: entropyAddress } = useReadContract({
+    const { data: entropyAddress, isError: entropyAddrErr } = useReadContract({
         address: gameLogic,
         abi: gameLogicAbi,
         functionName: 'entropy',
         query: { enabled: enabled && Boolean(gameLogic) },
     });
 
-    // getFeeV2() on the live Pyth contract is not staticcall-safe, so we read feeInWei
+    // getFeeV2() on the live Pyth contract fails via eth_call, so we read feeInWei
     // directly: getDefaultProvider() → getProviderInfoV2(provider) → .feeInWei
-    const { data: defaultProvider } = useReadContract({
+    const { data: defaultProvider, isError: defaultProviderErr } = useReadContract({
         address: entropyAddress as `0x${string}` | undefined,
         abi: ENTROPY_V2_ABI,
         functionName: 'getDefaultProvider',
         query: { enabled: enabled && Boolean(entropyAddress) },
     });
 
-    const { data: providerInfo } = useReadContract({
+    const { data: providerInfo, isError: providerInfoErr } = useReadContract({
         address: entropyAddress as `0x${string}` | undefined,
         abi: ENTROPY_V2_ABI,
         functionName: 'getProviderInfoV2',
         args: defaultProvider ? [defaultProvider as `0x${string}`] : undefined,
         query: { enabled: enabled && Boolean(entropyAddress && defaultProvider) },
     });
+
+    if (enabled) {
+        console.log('[fees]', {
+            gameLogic,
+            entropyAddress: entropyAddress ?? (entropyAddrErr ? 'ERR' : 'loading'),
+            defaultProvider: defaultProvider ?? (defaultProviderErr ? 'ERR' : 'loading'),
+            feeInWei: (providerInfo as { feeInWei?: bigint } | undefined)?.feeInWei ?? (providerInfoErr ? 'ERR' : 'loading'),
+        });
+    }
 
     return useMemo<EvmFees>(() => {
         const base = baseMintFee as bigint | undefined;

@@ -18,7 +18,7 @@ interface CreatePetModalProps {
 }
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
-    const { isConnected, kind } = useChainCapabilities();
+    const { isConnected } = useChainCapabilities();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
 
@@ -46,7 +46,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const isInProgress = isPending || isAwaitingFulfillment || isSettling;
     // EVM: both nextMintFee (via mintCost) AND entropyFee must be loaded before sending.
     // Solana: no entropy fee, mintCost alone is sufficient.
-    const feesLoading = mintCost == null || (kind === 'evm' && fees.entropyFee == null);
+    const feesLoading = mintCost == null;
 
     const buttonLabel = isPending
         ? 'Submitting...'
