@@ -67,7 +67,6 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
         () => kind === 'none' ? [] : pets.filter((p) => p.chain === (kind as 'evm' | 'solana')),
         [pets, kind],
     );
-    const ownPetIds = useMemo(() => chainPets.map((p) => p.id), [chainPets]);
     const busy = marriage.propose.isPending || marriage.accept.isPending
         || marriage.cancel.isPending || marriage.divorce.isPending;
 
@@ -138,7 +137,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                     onChange={setPartnerId}
                                     placeholder="Search by name or ID…"
                                     disabled={busy}
-                                    excludeIds={ownPetIds}
+                                    excludeIds={myPet ? [myPet] : []}
                                 />
                             </div>
                             <button
@@ -178,7 +177,6 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                     onChange={setProposerId}
                                     placeholder="Search by name or ID…"
                                     disabled={busy}
-                                    excludeIds={ownPetIds}
                                 />
                             </div>
                             <button
