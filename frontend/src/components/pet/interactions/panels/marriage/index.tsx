@@ -19,35 +19,64 @@ export type MarriagePanelProps = {
     isStandaloneView?: boolean;
 };
 
-const MarriagePetRow: React.FC<{
+/** Shows married pets only (not proposals). Used in the always-visible status section. */
+const MarriedPetRow: React.FC<{
     pet: Pet;
-    walletAddress: string | null;
     onDivorce: (petId: string) => void;
-    onCancel: (petId: string) => void;
     busy: boolean;
-}> = ({ pet, walletAddress, onDivorce, onCancel, busy }) => {
+}> = ({ pet, onDivorce, busy }) => {
     const info = useMarriageInfo(pet);
-    const ownProposal =
-        info.hasProposal && walletAddress != null &&
-        info.proposer?.toLowerCase() === walletAddress.toLowerCase();
-
-    let status = 'Single';
-    if (info.isMarried) status = `Married to #${info.spouseId?.toString()}`;
-    else if (ownProposal) status = `Proposal pending → #${info.proposalPetIdB?.toString()}`;
-
-    const showAny = info.isMarried || ownProposal;
-    if (!showAny) return null;
-
+    if (!info.isMarried) return null;
     return (
         <li className="marriage-row">
             <span className="marriage-pet">{pet.name} (#{pet.id})</span>
-            <span className="marriage-status">{status}</span>
-            {info.isMarried && (
-                <button type="button" className="marriage-row-action divorce" onClick={() => onDivorce(pet.id)} disabled={busy}>Divorce</button>
-            )}
-            {ownProposal && (
-                <button type="button" className="marriage-row-action cancel" onClick={() => onCancel(pet.id)} disabled={busy}>Cancel</button>
-            )}
+            <span className="marriage-status">Married to #{info.spouseId?.toString()}</span>
+            <button type="button" className="marriage-row-action divorce" onClick={() => onDivorce(pet.id)} disabled={busy}>
+                Divorce
+            </button>
+        </li>
+    );
+};
+
+/** Shows a single outgoing proposal row in the Propose tab. */
+const OutgoingProposalRow: React.FC<{
+    pet: Pet;
+    walletAddress: string | null;
+    onCancel: (petId: string) => void;
+    busy: boolean;
+}> = ({ pet, walletAddress, onCancel, busy }) => {
+    const info = useMarriageInfo(pet);
+    const isOwn =
+        info.hasProposal && walletAddress != null &&
+        info.proposer?.toLowerCase() === walletAddress.toLowerCase();
+    if (!isOwn) return null;
+
+    const expirySec = info.proposalExpiry ? Number(info.proposalExpiry) : 0;
+    const diff = expirySec - Math.floor(Date.now() / 1000);
+    const expiryLabel =
+        diff <= 0 ? 'Expired'
+        : diff < 3600 ? `${Math.ceil(diff / 60)}m`
+        : diff < 86400 ? `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`
+        : `${Math.floor(diff / 86400)}d`;
+
+    return (
+        <li className="proposal-card outgoing-proposal">
+            <div className="proposal-pets">
+                <span className="proposal-proposer">{pet.name} <span className="proposal-id">#{pet.id}</span></span>
+                <span className="proposal-arrow">→</span>
+                <span className="proposal-target">#{info.proposalPetIdB?.toString()}</span>
+            </div>
+            <div className="proposal-meta">
+                <span className="proposal-expiry">Expires {expiryLabel}</span>
+                <button
+                    type="button"
+                    className="marriage-row-action cancel"
+                    onClick={() => onCancel(pet.id)}
+                    disabled={busy}
+                >
+                    Cancel
+                </button>
+            </div>
         </li>
     );
 };
@@ -83,7 +112,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
     );
     const chainPetIds = useMemo(() => chainPets.map((p) => p.id), [chainPets]);
 
-    const { proposals, isLoading: proposalsLoading } = useIncomingProposals(
+    const { proposals: incomingProposals, isLoading: incomingLoading } = useIncomingProposals(
         activeKind,
         chainPetIds,
     );
@@ -120,6 +149,9 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
 
     const targetPetName = (id: string) => chainPets.find((p) => p.id === id)?.name ?? `#${id}`;
 
+    const handleCancel = (id: string) =>
+        void run(() => marriage.cancel.mutateAsync({ petIdA: id }), 'Proposal cancelled.');
+
     return (
         <>
             <div className="interface marriage-interface">
@@ -145,8 +177,8 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                         onClick={() => setTab('accept')}
                     >
                         💒 Accept
-                        {proposals.length > 0 && (
-                            <span className="marriage-tab-badge">{proposals.length}</span>
+                        {incomingProposals.length > 0 && (
+                            <span className="marriage-tab-badge">{incomingProposals.length}</span>
                         )}
                     </button>
                 </div>
@@ -189,6 +221,24 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                 {marriage.propose.isPending ? 'Proposing...' : '💍 Send Proposal'}
                             </button>
                         </div>
+
+                        {/* Sent proposals list */}
+                        {chainPets.length > 0 && (
+                            <div className="sent-proposals-section">
+                                <span className="sent-proposals-label">Sent proposals</span>
+                                <ul className="proposals-list">
+                                    {chainPets.map((p) => (
+                                        <OutgoingProposalRow
+                                            key={p.id}
+                                            pet={p}
+                                            walletAddress={walletAddress}
+                                            busy={busy}
+                                            onCancel={handleCancel}
+                                        />
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -197,13 +247,13 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                     <div className="marriage-tab-panel">
                         <p className="marriage-tab-hint">Pending proposals from other players to marry one of your pets.</p>
 
-                        {proposalsLoading ? (
+                        {incomingLoading ? (
                             <div className="proposals-empty">Checking for proposals…</div>
-                        ) : proposals.length === 0 ? (
+                        ) : incomingProposals.length === 0 ? (
                             <div className="proposals-empty">No pending proposals for your pets.</div>
                         ) : (
                             <ul className="proposals-list">
-                                {proposals.map((p) => (
+                                {incomingProposals.map((p) => (
                                     <li key={`${p.proposerPetId}-${p.targetPetId}`} className="proposal-card">
                                         <div className="proposal-pets">
                                             <span className="proposal-proposer">{p.proposerPetName} <span className="proposal-id">#{p.proposerPetId}</span></span>
@@ -228,19 +278,17 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                     </div>
                 )}
 
-                {/* Status list — always visible */}
+                {/* Active marriages — always visible */}
                 {chainPets.length > 0 && (
                     <div className="marriage-status-section">
-                        <span className="marriage-status-label">Your marriages &amp; proposals</span>
+                        <span className="marriage-status-label">Your marriages</span>
                         <ul className="marriage-list">
                             {chainPets.map((p) => (
-                                <MarriagePetRow
+                                <MarriedPetRow
                                     key={p.id}
                                     pet={p}
-                                    walletAddress={walletAddress}
                                     busy={busy}
                                     onDivorce={(id) => void run(() => marriage.divorce.mutateAsync({ petId: id }), 'Divorced.')}
-                                    onCancel={(id) => void run(() => marriage.cancel.mutateAsync({ petIdA: id }), 'Proposal cancelled.')}
                                 />
                             ))}
                         </ul>
