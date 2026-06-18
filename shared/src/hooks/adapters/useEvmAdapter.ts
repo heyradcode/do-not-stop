@@ -177,7 +177,8 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }> = {
         async mutateAsync({ petId1, petId2 }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], gas: 800000n, chainId: evm?.chainId });
+            if (fees.entropyFee == null) throw new Error('Entropy fee not loaded yet');
+            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], value: fees.entropyFee, gas: 800000n, chainId: evm?.chainId } as unknown as Parameters<typeof battleW.writeContractAsync>[0]);
         },
         lifecycle: toLc(battleW, battleR),
         isPending: isInFlight(battleW, battleR),
@@ -190,8 +191,9 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         async mutateAsync({ parentId1, parentId2, name, crossOwner }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             if (fees.breedFee == null) throw new Error('Breed fee not loaded yet');
+            if (fees.entropyFee == null) throw new Error('Entropy fee not loaded yet');
             if (crossOwner && fees.studFee == null) throw new Error('Stud fee not loaded yet');
-            const value = fees.breedFee + (crossOwner ? (fees.studFee ?? 0n) : 0n);
+            const value = fees.breedFee + fees.entropyFee + (crossOwner ? (fees.studFee ?? 0n) : 0n);
             await breedW.writeContractAsync({
                 address: gameLogic, abi: gameLogicAbi, functionName: 'requestCreateFromDNA',
                 args: [BigInt(parentId1), BigInt(parentId2), name], value, gas: 800000n,
