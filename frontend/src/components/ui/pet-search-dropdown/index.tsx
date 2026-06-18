@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchPets } from '@shared/core';
 import type { OpponentPet, PetChain } from '@shared/core';
@@ -26,7 +26,7 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
     const [selected, setSelected] = useState<OpponentPet | null>(null);
     const [open, setOpen] = useState(false);
     const [activeIdx, setActiveIdx] = useState(-1);
-    const [dropdownRect, setDropdownRect] = useState<DOMRect | null>(null);
+    const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties | null>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -40,16 +40,31 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
         ? results.filter((p) => !excludeIds.includes(p.id))
         : results;
 
-    // Measure wrapper position whenever the dropdown opens or window resizes/scrolls.
-    const measureRect = useCallback(() => {
-        if (wrapperRef.current) setDropdownRect(wrapperRef.current.getBoundingClientRect());
+    // Measure wrapper position and open the dropdown atomically so the portal
+    // renders in the same commit that open becomes true (avoids the blank frame
+    // that occurs when dropdownStyle is set in a separate useLayoutEffect).
+    const openDropdown = useCallback(() => {
+        if (!wrapperRef.current) return;
+        const rect = wrapperRef.current.getBoundingClientRect();
+        setDropdownStyle({
+            position: 'fixed',
+            top: rect.bottom + 4,
+            left: rect.left,
+            width: rect.width,
+            zIndex: 9999,
+        });
+        setOpen(true);
     }, []);
 
-    useLayoutEffect(() => {
-        if (open) measureRect();
-    }, [open, measureRect]);
+    // When parent clears value externally, reset local state.
+    useEffect(() => {
+        if (!value) {
+            setSelected(null);
+            setInputText('');
+        }
+    }, [value]);
 
-    // Close on outside click (check both wrapper and portal dropdown).
+    // Close dropdown on outside click (check both wrapper and the portal div).
     useEffect(() => {
         const handler = (e: MouseEvent) => {
             const target = e.target as Node;
@@ -61,10 +76,14 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    // Close on scroll or resize (the input moves, dropdown can't follow without re-measuring).
+    // Close on scroll/resize only for events outside the dropdown itself —
+    // scrolling through the results list should not close it.
     useEffect(() => {
         if (!open) return;
-        const close = () => setOpen(false);
+        const close = (e: Event) => {
+            if (dropdownRef.current?.contains(e.target as Node)) return;
+            setOpen(false);
+        };
         window.addEventListener('scroll', close, { capture: true, passive: true });
         window.addEventListener('resize', close, { passive: true });
         return () => {
@@ -72,14 +91,6 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
             window.removeEventListener('resize', close);
         };
     }, [open]);
-
-    // When parent clears value externally, reset local state.
-    useEffect(() => {
-        if (!value) {
-            setSelected(null);
-            setInputText('');
-        }
-    }, [value]);
 
     // Reset active row when results change.
     useEffect(() => {
@@ -109,12 +120,16 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
             setSelected(null);
             onChange('');
         }
-        setOpen(v.trim().length > 0);
+        if (v.trim().length > 0) {
+            openDropdown();
+        } else {
+            setOpen(false);
+        }
         setActiveIdx(-1);
     };
 
     const handleFocus = () => {
-        if (!selected && inputText.trim().length > 0) setOpen(true);
+        if (!selected && inputText.trim().length > 0) openDropdown();
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -135,19 +150,13 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
 
     const isSelected = selected !== null;
 
-    const dropdownPortal = open && dropdownRect
+    const dropdownPortal = open && dropdownStyle
         ? createPortal(
             <div
                 ref={dropdownRef}
                 className="psd-dropdown"
                 role="listbox"
-                style={{
-                    position: 'fixed',
-                    top: dropdownRect.bottom + 4,
-                    left: dropdownRect.left,
-                    width: dropdownRect.width,
-                    zIndex: 9999,
-                }}
+                style={dropdownStyle}
             >
                 {isLoading && <div className="psd-state-row">Searching…</div>}
                 {!isLoading && filtered.length === 0 && inputText.trim() && (
