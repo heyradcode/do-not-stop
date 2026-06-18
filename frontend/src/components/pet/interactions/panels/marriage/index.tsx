@@ -128,9 +128,12 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
             await fn();
             setSuccess(message);
             refetch();
-            // Invalidate all wagmi readContract caches so marriage/proposal rows
-            // reflect the new on-chain state immediately after any write.
+            // Invalidate all wagmi contract read caches (useReadContract + useReadContracts
+            // multicall) and the Solana incoming-proposals query so every marriage/proposal
+            // row reflects the new on-chain state immediately after any write.
             void queryClient.invalidateQueries({ queryKey: ['readContract'] });
+            void queryClient.invalidateQueries({ queryKey: ['readContracts'] });
+            void queryClient.invalidateQueries({ queryKey: ['incomingProposals'] });
             onSuccess?.();
         } catch (err) {
             console.error('[marriage]', err);
