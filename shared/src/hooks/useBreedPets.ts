@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import { useWatchPetsContract } from './chains/ethereum/useWatchPetsContract';
-import { useWatchVrfFulfillment } from './chains/ethereum/useWatchVrfFulfillment';
+import { useWatchEntropyFulfillment } from './chains/ethereum/useWatchEntropyFulfillment';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useChainAdapter } from './adapters/useChainAdapter';
 
@@ -77,20 +77,19 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         setPendingRequestId(null);
     }, [notifySuccess]);
 
-    // VRF coordinator address — read once GameLogic is configured (EVM).
-    const { data: coordinator } = useReadContract({
+    // Pyth Entropy address — read from GameLogic.entropy() (needed for Revealed watcher).
+    const { data: entropyAddress } = useReadContract({
         address: evm?.gameLogic.address,
         abi: evm?.gameLogic.abi ?? [],
-        functionName: 's_vrfCoordinator',
+        functionName: 'entropy',
         chainId: evm?.chainId,
         query: { enabled: isEvm && Boolean(evm?.gameLogic.address) },
     });
 
-    // settleBreed tx: sent once the coordinator fulfills our request. The mint
-    // (and BreedSettled event) happen inside this tx.
+    // settleBreed tx: sent once Pyth Entropy reveals for our request.
     const settle = useWriteContract();
     const settleSentRef = useRef(false);
-    const handleVrfFulfilled = useCallback((id: bigint) => {
+    const handleEntropyFulfilled = useCallback((id: bigint) => {
         if (settleSentRef.current || !evm?.gameLogic.address) return;
         settleSentRef.current = true;
         settle.writeContract({
@@ -103,10 +102,11 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         });
     }, [evm?.gameLogic.address, evm?.gameLogic.abi, settle]);
 
-    useWatchVrfFulfillment({
-        coordinator: isEvm ? (coordinator as `0x${string}` | undefined) : undefined,
+    useWatchEntropyFulfillment({
+        entropyAddress: isEvm ? (entropyAddress as `0x${string}` | undefined) : undefined,
+        gameLogicAddress: isEvm ? evm?.gameLogic.address : undefined,
         requestId: isEvm ? pendingRequestId : null,
-        onFulfilled: handleVrfFulfilled,
+        onFulfilled: handleEntropyFulfilled,
     });
 
     // Primary, reliable success path: we sent the settleBreed tx, so BreedSettled

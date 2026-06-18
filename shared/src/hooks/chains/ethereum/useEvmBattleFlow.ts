@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useReadContract, useWatchContractEvent, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
-import { useWatchVrfFulfillment } from './useWatchVrfFulfillment';
+import { useWatchEntropyFulfillment } from './useWatchEntropyFulfillment';
 import type { BattleResolvedResult, EvmBattlePhase } from '../../../types/battle';
 
 type UseEvmBattleFlowParams = {
@@ -34,11 +34,11 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
     const onResolvedRef = useRef(onResolved);
     onResolvedRef.current = onResolved;
 
-    // VRF coordinator address — only needs reading once GameLogic is configured.
-    const { data: coordinator } = useReadContract({
+    // Pyth Entropy address — read from GameLogic.entropy() for the Revealed watcher.
+    const { data: entropyAddress } = useReadContract({
         address: gameLogic,
         abi: gameLogicAbi,
-        functionName: 's_vrfCoordinator',
+        functionName: 'entropy',
         chainId,
         query: { enabled: enabled && Boolean(gameLogic) },
     });
@@ -84,9 +84,10 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         );
     }, [gameLogic, gameLogicAbi, settle]);
 
-    // 2. Wait for VRF fulfillment, then settle.
-    useWatchVrfFulfillment({
-        coordinator: enabled ? (coordinator as `0x${string}` | undefined) : undefined,
+    // 2. Wait for Pyth Entropy Revealed, then settle.
+    useWatchEntropyFulfillment({
+        entropyAddress: enabled ? (entropyAddress as `0x${string}` | undefined) : undefined,
+        gameLogicAddress: enabled ? gameLogic : undefined,
         requestId: enabled ? requestId : null,
         onFulfilled: handleFulfilled,
     });
