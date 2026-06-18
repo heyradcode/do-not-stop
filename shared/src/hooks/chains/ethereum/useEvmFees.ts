@@ -2,40 +2,15 @@ import { useMemo } from 'react';
 import { useAccount, useReadContract } from 'wagmi';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
 
-// getFeeV2() on the real Pyth Entropy fails via eth_call (staticcall) — it's not fully
-// staticcall-compatible despite being declared view. Instead we read feeInWei directly
-// from the ProviderInfo struct, which is a plain storage read and always works.
+// getFeeV2() is confirmed to work via eth_call on Base Sepolia — use it directly.
+// It returns the exact fee the contract reads on-chain (feeInWei + any fee-manager
+// overhead), which is 1 wei MORE than getProviderInfoV2.feeInWei alone.
+// Sending even 1 wei less triggers "Insufficient mint/entropy fee".
 const ENTROPY_V2_ABI = [
     {
         inputs: [],
-        name: 'getDefaultProvider',
-        outputs: [{ internalType: 'address', name: 'provider', type: 'address' }],
-        stateMutability: 'view',
-        type: 'function' as const,
-    },
-    {
-        inputs: [{ internalType: 'address', name: 'provider', type: 'address' }],
-        name: 'getProviderInfoV2',
-        outputs: [{
-            components: [
-                { internalType: 'uint128', name: 'feeInWei', type: 'uint128' },
-                { internalType: 'uint128', name: 'accruedFeesInWei', type: 'uint128' },
-                { internalType: 'bytes32', name: 'originalCommitment', type: 'bytes32' },
-                { internalType: 'uint64', name: 'originalCommitmentSequenceNumber', type: 'uint64' },
-                { internalType: 'bytes', name: 'commitmentMetadata', type: 'bytes' },
-                { internalType: 'bytes', name: 'uri', type: 'bytes' },
-                { internalType: 'uint64', name: 'endSequenceNumber', type: 'uint64' },
-                { internalType: 'uint64', name: 'sequenceNumber', type: 'uint64' },
-                { internalType: 'bytes32', name: 'currentCommitment', type: 'bytes32' },
-                { internalType: 'uint64', name: 'currentCommitmentSequenceNumber', type: 'uint64' },
-                { internalType: 'address', name: 'feeManager', type: 'address' },
-                { internalType: 'uint32', name: 'maxNumHashes', type: 'uint32' },
-                { internalType: 'uint32', name: 'defaultGasLimit', type: 'uint32' },
-            ],
-            internalType: 'struct EntropyStructsV2.ProviderInfo',
-            name: 'info',
-            type: 'tuple',
-        }],
+        name: 'getFeeV2',
+        outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }],
         stateMutability: 'view',
         type: 'function' as const,
     },
@@ -94,7 +69,7 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
     });
 
     // Pyth Entropy address — public getter on GameLogic, set during initialize().
-    const { data: entropyAddress, isError: entropyAddrErr } = useReadContract({
+    const { data: entropyAddress } = useReadContract({
         address: gameLogic,
         abi: gameLogicAbi,
         functionName: 'entropy',
@@ -102,33 +77,16 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
         query: { enabled: enabled && Boolean(gameLogic) },
     });
 
-    // getFeeV2() on the live Pyth contract fails via eth_call, so we read feeInWei
-    // directly: getDefaultProvider() → getProviderInfoV2(provider) → .feeInWei
-    const { data: defaultProvider, isError: defaultProviderErr } = useReadContract({
+    // getFeeV2() returns the exact fee the contract uses (feeInWei + fee-manager
+    // overhead). Reading feeInWei from getProviderInfoV2 misses the overhead by
+    // 1+ wei and causes "Insufficient mint/entropy fee" reverts.
+    const { data: entropyFeeRaw } = useReadContract({
         address: entropyAddress as `0x${string}` | undefined,
         abi: ENTROPY_V2_ABI,
-        functionName: 'getDefaultProvider',
+        functionName: 'getFeeV2',
         chainId,
         query: { enabled: enabled && Boolean(entropyAddress) },
     });
-
-    const { data: providerInfo, isError: providerInfoErr } = useReadContract({
-        address: entropyAddress as `0x${string}` | undefined,
-        abi: ENTROPY_V2_ABI,
-        functionName: 'getProviderInfoV2',
-        args: defaultProvider ? [defaultProvider as `0x${string}`] : undefined,
-        chainId,
-        query: { enabled: enabled && Boolean(entropyAddress && defaultProvider) },
-    });
-
-    if (enabled) {
-        console.log('[fees]', {
-            gameLogic,
-            entropyAddress: entropyAddress ?? (entropyAddrErr ? 'ERR' : 'loading'),
-            defaultProvider: defaultProvider ?? (defaultProviderErr ? 'ERR' : 'loading'),
-            feeInWei: (providerInfo as { feeInWei?: bigint } | undefined)?.feeInWei ?? (providerInfoErr ? 'ERR' : 'loading'),
-        });
-    }
 
     return useMemo<EvmFees>(() => {
         const base = baseMintFee as bigint | undefined;
@@ -142,7 +100,7 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
             studFee: studFee as bigint | undefined,
             walletMintCount: mintCount,
             nextMintFee,
-            entropyFee: (providerInfo as { feeInWei?: bigint } | undefined)?.feeInWei,
+            entropyFee: entropyFeeRaw as bigint | undefined,
         };
-    }, [baseMintFee, levelUpFee, breedFee, trainFee, studFee, walletMintCount, providerInfo]);
+    }, [baseMintFee, levelUpFee, breedFee, trainFee, studFee, walletMintCount, entropyFeeRaw]);
 };
