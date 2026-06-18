@@ -29,8 +29,8 @@ export const NETWORKS: NetworkSpec[] = [
         name: "sepolia",
         envPrefix: "SEPOLIA",
         chainId: 11155111,
-        // Pyth Entropy V2 on Sepolia — verify at https://docs.pyth.network/entropy/contract-addresses
-        defaultEntropyAddress: "0x41c9e39574F40Ad34c79f1C99B66A45eFB830d4c",
+        // Pyth Entropy V2 on Sepolia — verify at https://docs.pyth.network/entropy/chainlist
+        defaultEntropyAddress: "0x41c9e39574f40ad34c79f1c99b66a45efb830d4c",
     },
     { name: "mainnet", envPrefix: "MAINNET", chainId: 1 },
     { name: "bsc", envPrefix: "BSC", chainId: 56 },
@@ -71,9 +71,9 @@ export function resolveEntropyParams(
     if (!entropyAddress) {
         throw new Error(
             `Missing Pyth Entropy address for network "${network.name}". ` +
-                `Set ${p}_ENTROPY_ADDRESS in contracts/ethereum/.env, or add a ` +
-                `defaultEntropyAddress to this network in scripts/networks.ts.\n` +
-                `Find the address at https://docs.pyth.network/entropy/contract-addresses`
+            `Set ${p}_ENTROPY_ADDRESS in contracts/ethereum/.env, or add a ` +
+            `defaultEntropyAddress to this network in scripts/networks.ts.\n` +
+            `Find the address at https://docs.pyth.network/entropy/contract-addresses`
         );
     }
 
