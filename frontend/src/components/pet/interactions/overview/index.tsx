@@ -145,7 +145,7 @@ const PetInteractions: React.FC = () => {
                             type="button"
                             onClick={() => navigate(BREED_PATH)}
                             className="lab-breed-button"
-                            disabled={readyPets.length < 2}
+                            disabled={pets.length < 1}
                         >
                             Start breeding
                         </button>
