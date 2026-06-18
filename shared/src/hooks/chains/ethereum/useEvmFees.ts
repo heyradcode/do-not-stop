@@ -2,6 +2,16 @@ import { useMemo } from 'react';
 import { useAccount, useReadContract } from 'wagmi';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
 
+const ENTROPY_GET_FEE_ABI = [
+    {
+        inputs: [],
+        name: 'getFeeV2',
+        outputs: [{ internalType: 'uint128', name: '', type: 'uint128' }],
+        stateMutability: 'pure',
+        type: 'function' as const,
+    },
+] as const;
+
 export interface EvmFees {
     /** GameConfig.baseMintFee() — base gacha mint fee before per-wallet escalation. */
     baseMintFee?: bigint;
@@ -17,6 +27,8 @@ export interface EvmFees {
     walletMintCount?: bigint;
     /** Next mintStarter fee for this wallet: baseMintFee × (1 + walletMintCount). */
     nextMintFee?: bigint;
+    /** Pyth Entropy getFeeV2() — must be added to nextMintFee when calling requestMintStarter. */
+    entropyFee?: bigint;
 }
 
 /**
@@ -32,6 +44,8 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
     const gameConfigAbi = useMemo(() => evm?.gameConfig?.abi ?? [], [evm?.gameConfig?.abi]);
     const petCore = evm?.petCore.address;
     const petCoreAbi = useMemo(() => evm?.petCore.abi ?? [], [evm?.petCore.abi]);
+    const gameLogic = evm?.gameLogic?.address;
+    const gameLogicAbi = useMemo(() => evm?.gameLogic?.abi ?? [], [evm?.gameLogic?.abi]);
 
     const cfgQuery = { enabled: enabled && Boolean(gameConfig) };
     const { data: baseMintFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'baseMintFee', query: cfgQuery });
@@ -48,6 +62,23 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
         query: { enabled: enabled && Boolean(petCore && address) },
     });
 
+    // Pyth Entropy address (public getter on GameLogic) — needed for the mint fee and
+    // for watching fulfillment in useWatchEntropyFulfillment.
+    const { data: entropyAddress } = useReadContract({
+        address: gameLogic,
+        abi: gameLogicAbi,
+        functionName: 'entropy',
+        query: { enabled: enabled && Boolean(gameLogic) },
+    });
+
+    // Entropy fee that must be bundled with requestMintStarter (covers Pyth oracle cost).
+    const { data: entropyFeeData } = useReadContract({
+        address: entropyAddress as `0x${string}` | undefined,
+        abi: ENTROPY_GET_FEE_ABI,
+        functionName: 'getFeeV2',
+        query: { enabled: enabled && Boolean(entropyAddress) },
+    });
+
     return useMemo<EvmFees>(() => {
         const base = baseMintFee as bigint | undefined;
         const mintCount = walletMintCount as bigint | undefined;
@@ -60,6 +91,7 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
             studFee: studFee as bigint | undefined,
             walletMintCount: mintCount,
             nextMintFee,
+            entropyFee: entropyFeeData as bigint | undefined,
         };
-    }, [baseMintFee, levelUpFee, breedFee, trainFee, studFee, walletMintCount]);
+    }, [baseMintFee, levelUpFee, breedFee, trainFee, studFee, walletMintCount, entropyFeeData]);
 };

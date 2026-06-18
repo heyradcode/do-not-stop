@@ -37,11 +37,21 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         onClose();
     };
 
-    const { mutate, isPending, error: hookError, reset, lifecycle } = useCreatePet({
+    const { mutate, isPending, isAwaitingFulfillment, isSettling, error: hookError, reset, lifecycle } = useCreatePet({
         onSuccess: handleCreateComplete,
     });
 
     useTxErrorToast(hookError);
+
+    const isInProgress = isPending || isAwaitingFulfillment || isSettling;
+
+    const buttonLabel = isPending
+        ? 'Submitting...'
+        : isAwaitingFulfillment
+          ? 'Awaiting randomness...'
+          : isSettling
+            ? 'Settling mint...'
+            : mintCost ? `Create Pet (${mintCost})` : 'Create Pet';
 
     const handleCreatePet = async () => {
         if (!isConnected) {
@@ -65,6 +75,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     };
 
     const handleClose = () => {
+        if (isInProgress) return; // don't discard an in-flight mint — the fee is already spent
         setPetName('');
         setSuccess(null);
         reset();
@@ -78,7 +89,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
             <div className="dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="header">
                     <h2><Icon as={PawIcon} tone={Tones.Cyan} />Create Your First Pet</h2>
-                    <button className="close" onClick={handleClose}>
+                    <button className="close" onClick={handleClose} disabled={isInProgress}>
                         ×
                     </button>
                 </div>
@@ -96,7 +107,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                                 onChange={(e) => setPetName(e.target.value)}
                                 placeholder="Enter pet name..."
                                 maxLength={20}
-                                disabled={isPending}
+                                disabled={isInProgress}
                             />
                         </div>
 
@@ -106,13 +117,17 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
 
                         <button
                             onClick={handleCreatePet}
-                            disabled={isPending || !petName.trim() || !isConnected}
+                            disabled={isInProgress || !petName.trim() || !isConnected}
                             className="submit"
                         >
-                            {isPending
-                                ? 'Creating...'
-                                : mintCost ? `Create Pet (${mintCost})` : 'Create Pet'}
+                            {buttonLabel}
                         </button>
+
+                        {isAwaitingFulfillment && (
+                            <p className="pending-hint">
+                                Hang tight — your pet will appear once randomness is revealed.
+                            </p>
+                        )}
                     </div>
 
                     {success && (
