@@ -18,6 +18,9 @@ export interface PetsEvmConfig {
     gameConfig?: EvmContractRef;
     combatSim?: EvmContractRef;
     enabled?: boolean;
+    /** EVM chain ID the contracts are deployed on. Passed to read hooks so they
+     *  use the right RPC regardless of which chain the wallet is connected to. */
+    chainId?: number;
 }
 
 export interface PetsConfigContextValue {

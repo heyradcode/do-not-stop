@@ -25,6 +25,7 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
     const { address } = useAccount();
     const gameLogic = evm?.gameLogic.address;
     const gameLogicAbi = useMemo(() => evm?.gameLogic.abi ?? [], [evm?.gameLogic.abi]);
+    const chainId = evm?.chainId;
 
     const [requestId, setRequestId] = useState<bigint | null>(null);
     const [phase, setPhase] = useState<EvmBattlePhase>('idle');
@@ -38,6 +39,7 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         address: gameLogic,
         abi: gameLogicAbi,
         functionName: 's_vrfCoordinator',
+        chainId,
         query: { enabled: enabled && Boolean(gameLogic) },
     });
 

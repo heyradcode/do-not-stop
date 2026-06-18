@@ -30,12 +30,13 @@ export const useMarriageInfo = (petId?: string): MarriageInfo => {
     const { evm } = usePetsConfig();
     const petCore = evm?.petCore.address;
     const abi = useMemo(() => evm?.petCore.abi ?? [], [evm?.petCore.abi]);
+    const chainId = evm?.chainId;
     const enabled = Boolean(petCore && petId);
     const args = petId ? [BigInt(petId)] as const : undefined;
 
-    const marriage = useReadContract({ address: petCore, abi, functionName: 'marriageOf', args, query: { enabled } });
-    const proposal = useReadContract({ address: petCore, abi, functionName: 'marriageProposal', args, query: { enabled } });
-    const cooldown = useReadContract({ address: petCore, abi, functionName: 'marriageCooldownUntil', args, query: { enabled } });
+    const marriage = useReadContract({ address: petCore, abi, functionName: 'marriageOf', args, chainId, query: { enabled } });
+    const proposal = useReadContract({ address: petCore, abi, functionName: 'marriageProposal', args, chainId, query: { enabled } });
+    const cooldown = useReadContract({ address: petCore, abi, functionName: 'marriageCooldownUntil', args, chainId, query: { enabled } });
 
     return useMemo<MarriageInfo>(() => {
         const m = marriage.data as readonly [bigint, string] | undefined;

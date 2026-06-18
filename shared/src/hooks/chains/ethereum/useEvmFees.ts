@@ -69,6 +69,7 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
     const { evm } = usePetsConfig();
     const { address } = useAccount();
 
+    const chainId = evm?.chainId;
     const gameConfig = evm?.gameConfig?.address;
     const gameConfigAbi = useMemo(() => evm?.gameConfig?.abi ?? [], [evm?.gameConfig?.abi]);
     const petCore = evm?.petCore.address;
@@ -77,17 +78,18 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
     const gameLogicAbi = useMemo(() => evm?.gameLogic?.abi ?? [], [evm?.gameLogic?.abi]);
 
     const cfgQuery = { enabled: enabled && Boolean(gameConfig) };
-    const { data: baseMintFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'baseMintFee', query: cfgQuery });
-    const { data: levelUpFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'levelUpFee', query: cfgQuery });
-    const { data: breedFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'breedFee', query: cfgQuery });
-    const { data: trainFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'trainFee', query: cfgQuery });
-    const { data: studFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'studFee', query: cfgQuery });
+    const { data: baseMintFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'baseMintFee', chainId, query: cfgQuery });
+    const { data: levelUpFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'levelUpFee', chainId, query: cfgQuery });
+    const { data: breedFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'breedFee', chainId, query: cfgQuery });
+    const { data: trainFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'trainFee', chainId, query: cfgQuery });
+    const { data: studFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'studFee', chainId, query: cfgQuery });
 
     const { data: walletMintCount } = useReadContract({
         address: petCore,
         abi: petCoreAbi,
         functionName: 'walletMintCount',
         args: address ? [address] : undefined,
+        chainId,
         query: { enabled: enabled && Boolean(petCore && address) },
     });
 
@@ -96,6 +98,7 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
         address: gameLogic,
         abi: gameLogicAbi,
         functionName: 'entropy',
+        chainId,
         query: { enabled: enabled && Boolean(gameLogic) },
     });
 
@@ -105,6 +108,7 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
         address: entropyAddress as `0x${string}` | undefined,
         abi: ENTROPY_V2_ABI,
         functionName: 'getDefaultProvider',
+        chainId,
         query: { enabled: enabled && Boolean(entropyAddress) },
     });
 
@@ -113,6 +117,7 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
         abi: ENTROPY_V2_ABI,
         functionName: 'getProviderInfoV2',
         args: defaultProvider ? [defaultProvider as `0x${string}`] : undefined,
+        chainId,
         query: { enabled: enabled && Boolean(entropyAddress && defaultProvider) },
     });
 

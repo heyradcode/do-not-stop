@@ -80,6 +80,7 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
         address: evm?.gameLogic.address,
         abi: evm?.gameLogic.abi ?? [],
         functionName: 'entropy',
+        chainId: evm?.chainId,
         query: { enabled: isEvm && Boolean(evm?.gameLogic.address) },
     });
 

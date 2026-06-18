@@ -30,6 +30,7 @@ export const usePendingBreed = (petId?: string): PendingBreed => {
     const { evm } = usePetsConfig();
     const gameLogic = evm?.gameLogic.address;
     const abi = evm?.gameLogic.abi ?? [];
+    const chainId = evm?.chainId;
     const enabled = Boolean(gameLogic && petId);
 
     const { data: requestIdData, refetch: refetchId } = useReadContract({
@@ -37,6 +38,7 @@ export const usePendingBreed = (petId?: string): PendingBreed => {
         abi,
         functionName: 'petBreedRequestId',
         args: petId ? [BigInt(petId)] : undefined,
+        chainId,
         query: { enabled },
     });
 

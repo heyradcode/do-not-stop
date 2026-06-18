@@ -63,7 +63,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     const canWrite = enabled && Boolean(petCoreAddress) && Boolean(gameLogicAddress);
 
     // Reads — usePetsContract also provides the caller address for transferFrom.
-    const reads = usePetsContract({ contractAddress: petCoreAddress, abi: petCoreAbi, enabled });
+    const reads = usePetsContract({ contractAddress: petCoreAddress, abi: petCoreAbi, enabled, chainId: evm?.chainId });
 
     // v2 fee schedule (GameConfig + per-wallet mint count). Payable writes revert
     // when underpaid, so these must resolve before mint/level/breed.

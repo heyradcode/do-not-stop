@@ -82,6 +82,7 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         address: evm?.gameLogic.address,
         abi: evm?.gameLogic.abi ?? [],
         functionName: 's_vrfCoordinator',
+        chainId: evm?.chainId,
         query: { enabled: isEvm && Boolean(evm?.gameLogic.address) },
     });
 

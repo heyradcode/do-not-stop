@@ -32,6 +32,8 @@ type UsePetsContractParams = {
     contractAddress?: `0x${string}`;
     abi: Abi;
     enabled?: boolean;
+    /** EVM chain ID — forces reads onto this chain regardless of wallet chain. */
+    chainId?: number;
 };
 
 /**
@@ -43,6 +45,7 @@ export const usePetsContract = ({
     contractAddress,
     abi,
     enabled = true,
+    chainId,
 }: UsePetsContractParams) => {
     const { address, isConnected } = useAccount();
     const isContractConfigured = Boolean(contractAddress);
@@ -54,6 +57,7 @@ export const usePetsContract = ({
         abi,
         functionName: 'getByOwner',
         args: address ? [address] : undefined,
+        chainId,
         query: {
             enabled: canRead,
         },
@@ -69,6 +73,7 @@ export const usePetsContract = ({
 
     const { data: petsData, isLoading: isPetsLoading, error: petsError, refetch: refetchPetsData } = useReadContracts({
         contracts: petReadContracts,
+        chainId,
         query: {
             enabled: canRead && petReadContracts.length > 0,
         },
