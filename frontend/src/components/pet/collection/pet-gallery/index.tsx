@@ -49,7 +49,11 @@ const PetGallery: React.FC = () => {
     }, [isLoading]);
 
     // Tick every second while any pet is on cooldown so the countdown stays live.
-    const anyCooldown = pets.some((p) => !isPetReady(BigInt(p.readyAt)));
+    const anyCooldown = pets.some((p) =>
+        !isPetReady(BigInt(p.readyAt)) ||
+        (p.breedReadyAt != null && !isPetReady(BigInt(p.breedReadyAt))) ||
+        (p.trainReadyAt != null && !isPetReady(BigInt(p.trainReadyAt))),
+    );
     useEffect(() => {
         if (!anyCooldown) return;
         const id = setInterval(() => setTick((t) => t + 1), 1000);
@@ -176,6 +180,16 @@ const PetGallery: React.FC = () => {
                                     <div className="xp-bar">
                                         <div className="xp-fill" style={{ width: `${getXpPercent(pet)}%` }} />
                                     </div>
+                                    {(pet.winCount > 0 || pet.lossCount > 0 || (pet.breedCount != null && pet.breedCount > 0)) && (
+                                        <div className="pet-record">
+                                            <span className="record-wins">{pet.winCount}W</span>
+                                            <span className="record-sep">/</span>
+                                            <span className="record-losses">{pet.lossCount}L</span>
+                                            {pet.breedCount != null && pet.breedCount > 0 && (
+                                                <span className="record-breeds">· {pet.breedCount} bred</span>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="pet-properties">
@@ -189,11 +203,25 @@ const PetGallery: React.FC = () => {
                                     ))}
                                 </div>
 
-                                {!isPetReady(BigInt(pet.readyAt)) && (
+                                {(!isPetReady(BigInt(pet.readyAt)) ||
+                                    (pet.breedReadyAt != null && !isPetReady(BigInt(pet.breedReadyAt))) ||
+                                    (pet.trainReadyAt != null && !isPetReady(BigInt(pet.trainReadyAt)))) && (
                                     <div className="pet-status">
-                                        <div className="status cooldown">
-                                            ⏰ Ready in {getTimeUntilReady(BigInt(pet.readyAt))}
-                                        </div>
+                                        {!isPetReady(BigInt(pet.readyAt)) && (
+                                            <div className="status cooldown">
+                                                ⚔️ Battle ready in {getTimeUntilReady(BigInt(pet.readyAt))}
+                                            </div>
+                                        )}
+                                        {pet.breedReadyAt != null && !isPetReady(BigInt(pet.breedReadyAt)) && (
+                                            <div className="status cooldown">
+                                                🥚 Breed ready in {getTimeUntilReady(BigInt(pet.breedReadyAt))}
+                                            </div>
+                                        )}
+                                        {pet.trainReadyAt != null && !isPetReady(BigInt(pet.trainReadyAt)) && (
+                                            <div className="status cooldown">
+                                                💪 Train ready in {getTimeUntilReady(BigInt(pet.trainReadyAt))}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

@@ -39,7 +39,7 @@ const parseActionParam = (raw: string | undefined): InteractionAction | null  =>
 }
 
 /**
- * Dashboard interactions hub (`/dashboard`, `/dashboard/interactions/:action?`).
+ * Dashboard interactions hub (`/main`).
  * Standalone `/breed` … `/rename` are separate router entries + `InteractionStandalone`.
  */
 const PetInteractions: React.FC = () => {

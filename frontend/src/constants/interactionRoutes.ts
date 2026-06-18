@@ -28,7 +28,7 @@ export const STANDALONE_INTERACTION_HEADERS: Record<InteractionAction, Standalon
 };
 
 /** Dashboard home (hub + gallery). */
-export const DASHBOARD_HOME = '/dashboard';
+export const DASHBOARD_HOME = '/main';
 
 /** Top-level interaction routes (e.g. /breed) — no gallery; interaction UI only. */
 export const BREED_PATH = '/breed';
