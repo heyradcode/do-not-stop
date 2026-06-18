@@ -101,9 +101,11 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         async mutateAsync({ name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             if (fees.nextMintFee == null) throw new Error('Mint fee not loaded yet');
+            if (fees.entropyFee == null) throw new Error('Entropy fee not loaded yet');
             await createW.writeContractAsync({
                 address: gameLogic, abi: gameLogicAbi, functionName: 'requestMintStarter',
-                args: [name], value: fees.nextMintFee + (fees.entropyFee ?? 0n), gas: 500000n,
+                args: [name], value: fees.nextMintFee + fees.entropyFee, gas: 500000n,
+                chainId: evm?.chainId,
             } as unknown as Parameters<typeof createW.writeContractAsync>[0]);
         },
         lifecycle: toLc(createW, createR),
@@ -122,6 +124,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
             await levelUpW.writeContractAsync({
                 address: petCore, abi: petCoreAbi, functionName: 'levelUp',
                 args: [BigInt(petId)], value, gas: 200000n,
+                chainId: evm?.chainId,
             } as unknown as Parameters<typeof levelUpW.writeContractAsync>[0]);
         },
         lifecycle: toLc(levelUpW, levelUpR),
@@ -139,6 +142,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
             await trainW.writeContractAsync({
                 address: gameLogic, abi: gameLogicAbi, functionName: 'train',
                 args: [BigInt(petId)], value, gas: 250000n,
+                chainId: evm?.chainId,
             } as unknown as Parameters<typeof trainW.writeContractAsync>[0]);
         },
         lifecycle: toLc(trainW, trainR),
@@ -148,7 +152,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     const renamePet: AdapterMutation<{ petId: string; name: string }> = {
         async mutateAsync({ petId, name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await renameW.writeContractAsync({ address: petCore, abi: petCoreAbi, functionName: 'changeName', args: [BigInt(petId), name], gas: 100000n });
+            await renameW.writeContractAsync({ address: petCore, abi: petCoreAbi, functionName: 'changeName', args: [BigInt(petId), name], gas: 100000n, chainId: evm?.chainId });
         },
         lifecycle: toLc(renameW, renameR),
         isPending: isInFlight(renameW, renameR),
@@ -159,7 +163,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
             if (!canWrite || !reads.address) throw new Error('EVM contract not configured or wallet not connected');
             await transferW.writeContractAsync({
                 address: petCore, abi: petCoreAbi, functionName: 'transferFrom',
-                args: [reads.address, to as `0x${string}`, BigInt(petId)], gas: 200000n,
+                args: [reads.address, to as `0x${string}`, BigInt(petId)], gas: 200000n, chainId: evm?.chainId,
             });
         },
         lifecycle: toLc(transferW, transferR),
@@ -173,7 +177,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }> = {
         async mutateAsync({ petId1, petId2 }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], gas: 800000n });
+            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], gas: 800000n, chainId: evm?.chainId });
         },
         lifecycle: toLc(battleW, battleR),
         isPending: isInFlight(battleW, battleR),
@@ -191,6 +195,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
             await breedW.writeContractAsync({
                 address: gameLogic, abi: gameLogicAbi, functionName: 'requestCreateFromDNA',
                 args: [BigInt(parentId1), BigInt(parentId2), name], value, gas: 800000n,
+                chainId: evm?.chainId,
             } as unknown as Parameters<typeof breedW.writeContractAsync>[0]);
         },
         lifecycle: toLc(breedW, breedR),

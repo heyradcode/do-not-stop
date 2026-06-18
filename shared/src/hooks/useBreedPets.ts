@@ -99,6 +99,7 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
             functionName: 'settleBreed',
             args: [id],
             gas: 800000n,
+            chainId: evm.chainId,
         });
     }, [evm?.gameLogic.address, evm?.gameLogic.abi, settle]);
 

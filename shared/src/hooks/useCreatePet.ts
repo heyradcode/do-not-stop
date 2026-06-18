@@ -91,7 +91,7 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
         if (settleSentRef.current || !evm?.gameLogic.address) return;
         settleSentRef.current = true;
         settle.writeContract(
-            { address: evm.gameLogic.address, abi: evm.gameLogic.abi, functionName: 'settleMint', args: [id], gas: 500000n },
+            { address: evm.gameLogic.address, abi: evm.gameLogic.abi, functionName: 'settleMint', args: [id], gas: 500000n, chainId: evm.chainId },
             { onError: (e) => console.error('[settleMint]', e) },
         );
     }, [evm?.gameLogic.address, evm?.gameLogic.abi, settle]);

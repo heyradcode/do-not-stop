@@ -76,7 +76,7 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         settle.writeContract(
             // settle runs the full combat sim + auto-leveling + writes; give it a
             // generous explicit limit (consistent with the request/breed paths).
-            { address: gameLogic, abi: gameLogicAbi, functionName: 'settleBattle', args: [id], gas: 800000n },
+            { address: gameLogic, abi: gameLogicAbi, functionName: 'settleBattle', args: [id], gas: 800000n, chainId },
             {
                 onSuccess: () => setPhase('resolving'),
                 onError: (e) => { setError(e as Error); setPhase('error'); },

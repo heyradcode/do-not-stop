@@ -50,7 +50,8 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const isInProgress = isPending || isAwaitingFulfillment || isSettling;
     // EVM: both nextMintFee (via mintCost) AND entropyFee must be loaded before sending.
     // Solana: no entropy fee, mintCost alone is sufficient.
-    const feesLoading = mintCost == null;
+    const isEvm = fees.symbol === 'ETH';
+    const feesLoading = mintCost == null || (isEvm && fees.entropyFee == null);
 
     const buttonLabel = isPending
         ? 'Submitting...'
