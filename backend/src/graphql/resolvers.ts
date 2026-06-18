@@ -1,4 +1,4 @@
-import { findReadyOpponents, getPetById, type RosterPet } from '@repositories/roster.repository';
+import { findReadyOpponents, getPetById, searchPets, type RosterPet } from '@repositories/roster.repository';
 import { tryGrpcEstimateWin } from '../grpc/estimateWin';
 import { isSupportedChain, SUPPORTED_CHAINS } from '@typings/chain';
 
@@ -24,6 +24,12 @@ interface WinEstimateArgs {
 interface PetArgs {
     chain: string;
     id: string;
+}
+
+interface SearchPetsArgs {
+    chain: string;
+    query: string;
+    limit?: number | null;
 }
 
 export interface GraphQLContext {
@@ -71,6 +77,16 @@ export const rootValue = {
             page,
             pageSize,
         };
+    },
+
+    searchPets: async (args: SearchPetsArgs) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        const limit = Math.min(20, Math.max(1, args.limit ?? 10));
+        const rows = await searchPets({ chain: args.chain, query: args.query, limit });
+        return rows.map(toOpponentPet);
     },
 
     pet: async (args: PetArgs) => {

@@ -82,6 +82,40 @@ export async function findReadyOpponents(
     };
 }
 
+export interface SearchPetsParams {
+    chain: Chain;
+    /** Name prefix (case-insensitive) or exact numeric pet ID to match. */
+    query: string;
+    limit: number;
+}
+
+/**
+ * Search pets by name prefix (ILIKE) or exact numeric ID. Used by the
+ * marriage proposal flow so players can find a partner's pet without
+ * knowing its ID up front. No cooldown/level filter — any pet matches.
+ */
+export async function searchPets(params: SearchPetsParams): Promise<RosterPet[]> {
+    const { chain, query, limit } = params;
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+
+    // If the query is a pure integer, do an exact ID match first for speed.
+    const isNumeric = /^\d+$/.test(trimmed);
+
+    const rows = await prisma.petRoster.findMany({
+        where: {
+            chain,
+            ...(isNumeric
+                ? { petId: trimmed }
+                : { name: { contains: trimmed, mode: 'insensitive' } }),
+        },
+        orderBy: [{ level: 'desc' }, { petId: 'asc' }],
+        take: limit,
+    });
+
+    return rows.map(mapRosterRowToRosterPet);
+}
+
 /**
  * A single pet by (chain, petId) for the pet-detail view. Same fail-open shape
  * as the matchmaking read: indexer-go's cache answers first when
