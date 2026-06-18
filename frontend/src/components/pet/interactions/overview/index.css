@@ -645,6 +645,40 @@
     }
 }
 
+.propose-button {
+    color: #ffd07b;
+    border-color: rgb(255 181 67 / 50%);
+    box-shadow:
+        inset 0 0 14px rgb(255 181 67 / 16%),
+        0 0 14px rgb(255 181 67 / 22%);
+    grid-column: 1 / -1;
+
+    &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        border-color: rgb(255 181 67 / 70%);
+        box-shadow:
+            inset 0 0 20px rgb(255 181 67 / 24%),
+            0 0 22px rgb(255 181 67 / 38%);
+    }
+}
+
+.accept-button {
+    color: #9effd4;
+    border-color: rgb(0 255 157 / 48%);
+    box-shadow:
+        inset 0 0 14px rgb(0 255 157 / 14%),
+        0 0 14px rgb(0 255 157 / 22%);
+    grid-column: 1 / -1;
+
+    &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        border-color: rgb(0 255 157 / 64%);
+        box-shadow:
+            inset 0 0 20px rgb(0 255 157 / 22%),
+            0 0 22px rgb(0 255 157 / 36%);
+    }
+}
+
 .marriage-list {
     list-style: none;
     margin: 12px 0;

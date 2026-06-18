@@ -114,10 +114,11 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                     </div>
                     <button
                         type="button"
+                        className="action-button propose-button"
                         disabled={busy || !myPet || !partnerId.trim()}
                         onClick={() => run(() => marriage.propose.mutateAsync({ petIdA: myPet, petIdB: partnerId.trim() }), 'Proposal sent!')}
                     >
-                        {marriage.propose.isPending ? 'Proposing...' : 'Propose'}
+                        {marriage.propose.isPending ? 'Proposing...' : '💍 Propose'}
                     </button>
                 </div>
 
@@ -137,10 +138,11 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                     </div>
                     <button
                         type="button"
+                        className="action-button accept-button"
                         disabled={busy || !acceptMyPet || !proposerId.trim()}
                         onClick={() => run(() => marriage.accept.mutateAsync({ petIdA: proposerId.trim(), petIdB: acceptMyPet }), 'Marriage accepted!')}
                     >
-                        {marriage.accept.isPending ? 'Accepting...' : 'Accept'}
+                        {marriage.accept.isPending ? 'Accepting...' : '💒 Accept'}
                     </button>
                 </div>
 
