@@ -8,6 +8,7 @@ import {
 } from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
 import Icon, { CheckIcon } from '@components/ui/icon';
+import PetSearchDropdown from '@components/ui/pet-search-dropdown';
 import { Tones } from '@constants/tones';
 
 type MarriageTab = 'propose' | 'accept';
@@ -50,7 +51,7 @@ const MarriagePetRow: React.FC<{
 };
 
 const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }) => {
-    const { kind, walletAddress } = useChainCapabilities();
+    const { kind, activeKind, walletAddress } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
     const marriage = useMarriage();
@@ -66,6 +67,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
         () => kind === 'none' ? [] : pets.filter((p) => p.chain === (kind as 'evm' | 'solana')),
         [pets, kind],
     );
+    const ownPetIds = useMemo(() => chainPets.map((p) => p.id), [chainPets]);
     const busy = marriage.propose.isPending || marriage.accept.isPending
         || marriage.cancel.isPending || marriage.divorce.isPending;
 
@@ -116,7 +118,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                 {/* Tab content */}
                 {tab === 'propose' && (
                     <div className="marriage-tab-panel">
-                        <p className="marriage-tab-hint">Select one of your pets and enter your partner&apos;s pet ID to send a marriage proposal.</p>
+                        <p className="marriage-tab-hint">Select one of your pets, then search for your partner&apos;s pet to send a marriage proposal.</p>
                         <div className="picker">
                             <div className="field">
                                 <label>Your pet</label>
@@ -128,20 +130,22 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                 </select>
                             </div>
                             <div className="field">
-                                <label>Partner&apos;s pet ID</label>
-                                <input
+                                <label>Partner&apos;s pet</label>
+                                <PetSearchDropdown
+                                    chain={activeKind}
                                     value={partnerId}
-                                    onChange={(e) => setPartnerId(e.target.value)}
-                                    placeholder="e.g. 42"
-                                    inputMode="numeric"
+                                    onChange={setPartnerId}
+                                    placeholder="Search by name or ID…"
+                                    disabled={busy}
+                                    excludeIds={ownPetIds}
                                 />
                             </div>
                             <button
                                 type="button"
                                 className="action-button propose-button"
-                                disabled={busy || !myPet || !partnerId.trim()}
+                                disabled={busy || !myPet || !partnerId}
                                 onClick={() => run(
-                                    () => marriage.propose.mutateAsync({ petIdA: myPet, petIdB: partnerId.trim() }),
+                                    () => marriage.propose.mutateAsync({ petIdA: myPet, petIdB: partnerId }),
                                     'Proposal sent!',
                                 )}
                             >
@@ -153,7 +157,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
 
                 {tab === 'accept' && (
                     <div className="marriage-tab-panel">
-                        <p className="marriage-tab-hint">Enter the proposer&apos;s pet ID and select which of your pets to marry them with.</p>
+                        <p className="marriage-tab-hint">Search for the proposer&apos;s pet, then select which of your pets to marry them with.</p>
                         <div className="picker">
                             <div className="field">
                                 <label>Your pet</label>
@@ -165,20 +169,22 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                 </select>
                             </div>
                             <div className="field">
-                                <label>Proposer&apos;s pet ID</label>
-                                <input
+                                <label>Proposer&apos;s pet</label>
+                                <PetSearchDropdown
+                                    chain={activeKind}
                                     value={proposerId}
-                                    onChange={(e) => setProposerId(e.target.value)}
-                                    placeholder="e.g. 7"
-                                    inputMode="numeric"
+                                    onChange={setProposerId}
+                                    placeholder="Search by name or ID…"
+                                    disabled={busy}
+                                    excludeIds={ownPetIds}
                                 />
                             </div>
                             <button
                                 type="button"
                                 className="action-button accept-button"
-                                disabled={busy || !acceptMyPet || !proposerId.trim()}
+                                disabled={busy || !acceptMyPet || !proposerId}
                                 onClick={() => run(
-                                    () => marriage.accept.mutateAsync({ petIdA: proposerId.trim(), petIdB: acceptMyPet }),
+                                    () => marriage.accept.mutateAsync({ petIdA: proposerId, petIdB: acceptMyPet }),
                                     'Marriage accepted!',
                                 )}
                             >
