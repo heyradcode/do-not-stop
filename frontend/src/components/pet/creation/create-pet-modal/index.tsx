@@ -44,6 +44,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     useTxErrorToast(hookError);
 
     const isInProgress = isPending || isAwaitingFulfillment || isSettling;
+    const feesLoading = mintCost == null;
 
     const buttonLabel = isPending
         ? 'Submitting...'
@@ -51,7 +52,9 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
           ? 'Awaiting randomness...'
           : isSettling
             ? 'Settling mint...'
-            : mintCost ? `Create Pet (${mintCost})` : 'Create Pet';
+            : feesLoading
+              ? 'Loading fees...'
+              : `Create Pet (${mintCost})`;
 
     const handleCreatePet = async () => {
         if (!isConnected) {
@@ -117,7 +120,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
 
                         <button
                             onClick={handleCreatePet}
-                            disabled={isInProgress || !petName.trim() || !isConnected}
+                            disabled={isInProgress || feesLoading || !petName.trim() || !isConnected}
                             className="submit"
                         >
                             {buttonLabel}

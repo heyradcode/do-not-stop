@@ -54,6 +54,7 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
     onSuccessRef.current = options?.onSuccess;
 
     const [pendingRequestId, setPendingRequestId] = useState<bigint | null>(null);
+    const [preWriteError, setPreWriteError] = useState<Error | null>(null);
     const hash = createPet.lifecycle.hash;
 
     // 1. Parse MintRequested requestId from the request tx receipt (EVM only).
@@ -139,6 +140,7 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
 
     const reset = useCallback(() => {
         setPendingRequestId(null);
+        setPreWriteError(null);
         settleSentRef.current = false;
         successFiredRef.current = false;
         settle.reset();
@@ -148,17 +150,20 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
     return {
         mutate: async (args) => {
             setPendingRequestId(null);
+            setPreWriteError(null);
             settleSentRef.current = false;
             successFiredRef.current = false;
             settle.reset();
             try {
                 await createPet.mutateAsync({ name: args.name, dna: args.dna, rarity: args.rarity });
-            } catch {
-                // error tracked in createPet.lifecycle.error
+            } catch (e) {
+                // errors thrown before writeContractAsync (e.g. fee not loaded) aren't
+                // captured by the lifecycle — surface them here so the error toast fires.
+                if (!createPet.lifecycle.error) setPreWriteError(e as Error);
             }
         },
         isPending: createPet.isPending,
-        error: createPet.lifecycle.error ?? (settle.error as Error | null),
+        error: createPet.lifecycle.error ?? preWriteError ?? (settle.error as Error | null),
         hash: createPet.lifecycle.hash,
         reset,
         lifecycle: createPet.lifecycle,
