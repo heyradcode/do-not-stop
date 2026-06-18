@@ -2,12 +2,23 @@ import { useMemo } from 'react';
 import { useAccount, useReadContract } from 'wagmi';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
 
-const ENTROPY_GET_FEE_ABI = [
+// Minimal Pyth Entropy ABI — only what's needed to read the fee.
+// The real Pyth Entropy on live networks requires getFeeV2(address provider),
+// not the no-args overload that the mock exposes. We first read getDefaultProvider()
+// then pass it to getFeeV2(address) to be compatible with both mock and live.
+const ENTROPY_ABI = [
     {
         inputs: [],
+        name: 'getDefaultProvider',
+        outputs: [{ internalType: 'address', name: '', type: 'address' }],
+        stateMutability: 'view',
+        type: 'function' as const,
+    },
+    {
+        inputs: [{ internalType: 'address', name: 'provider', type: 'address' }],
         name: 'getFeeV2',
         outputs: [{ internalType: 'uint128', name: '', type: 'uint128' }],
-        stateMutability: 'pure',
+        stateMutability: 'view',
         type: 'function' as const,
     },
 ] as const;
@@ -71,12 +82,21 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
         query: { enabled: enabled && Boolean(gameLogic) },
     });
 
-    // Entropy fee that must be bundled with requestMintStarter (covers Pyth oracle cost).
+    // The live Pyth Entropy requires getFeeV2(address provider), not the no-args overload.
+    // Read the default provider first, then pass it to getFeeV2.
+    const { data: defaultProvider } = useReadContract({
+        address: entropyAddress as `0x${string}` | undefined,
+        abi: ENTROPY_ABI,
+        functionName: 'getDefaultProvider',
+        query: { enabled: enabled && Boolean(entropyAddress) },
+    });
+
     const { data: entropyFeeData } = useReadContract({
         address: entropyAddress as `0x${string}` | undefined,
-        abi: ENTROPY_GET_FEE_ABI,
+        abi: ENTROPY_ABI,
         functionName: 'getFeeV2',
-        query: { enabled: enabled && Boolean(entropyAddress) },
+        args: defaultProvider ? [defaultProvider as `0x${string}`] : undefined,
+        query: { enabled: enabled && Boolean(entropyAddress && defaultProvider) },
     });
 
     return useMemo<EvmFees>(() => {
