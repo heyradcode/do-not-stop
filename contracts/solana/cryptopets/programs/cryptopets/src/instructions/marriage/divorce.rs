@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{GlobalState, PetAccount},
-    util::core_asset_owner,
+    utils::metadata::core_asset_owner,
 };
 
 /// Mirrors EVM `PetCoreV1.divorce` (plan §4.4): `owner` (pet's owner) dissolves the

@@ -59,45 +59,51 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         return ((petsQuery.data ?? []) as SolanaPetAccountRow[]).map(mapSolanaPet);
     }, [enabled, petsQuery.data]);
 
+    const requireAssetKey = (petId: string): string => {
+        const pet = solanaPets.find(p => p.id === petId);
+        if (!pet?.assetKey) throw new Error(`Asset key not found for pet ${petId}`);
+        return pet.assetKey;
+    };
+
     const createPet: AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }> = {
-        async mutateAsync({ name, dna, rarity }) {
-            await actions.createStarterPet.mutateAsync({ name, dna: dna ?? 0n, rarity: rarity ?? 1 });
+        async mutateAsync({ name }) {
+            await actions.mintPet.mutateAsync({ name });
         },
-        lifecycle: toLc(actions.createStarterPet),
-        isPending: actions.createStarterPet.isPending,
+        lifecycle: toLc(actions.mintPet),
+        isPending: actions.mintPet.isPending,
     };
 
     const levelUpPet: AdapterMutation<{ petId: string }> = {
         async mutateAsync({ petId }) {
-            await actions.levelUpPet.mutateAsync({ petId: Number(petId) });
+            await actions.levelUpPet.mutateAsync({ petId: Number(petId), assetKey: requireAssetKey(petId) });
         },
         lifecycle: toLc(actions.levelUpPet),
         isPending: actions.levelUpPet.isPending,
     };
 
-    // Training is an EVM-only v2 action; Solana has no train instruction.
     const trainPet: AdapterMutation<{ petId: string }> = {
-        async mutateAsync() {
-            throw new Error('Training is not available on Solana');
+        async mutateAsync({ petId }) {
+            await actions.trainPet.mutateAsync({ petId: Number(petId), assetKey: requireAssetKey(petId) });
         },
-        lifecycle: { phase: 'idle', error: null, reset: () => undefined },
-        isPending: false,
+        lifecycle: toLc(actions.trainPet),
+        isPending: actions.trainPet.isPending,
     };
 
     const renamePet: AdapterMutation<{ petId: string; name: string }> = {
         async mutateAsync({ petId, name }) {
-            await actions.renamePet.mutateAsync({ petId: Number(petId), name });
+            await actions.renamePet.mutateAsync({ petId: Number(petId), name, assetKey: requireAssetKey(petId) });
         },
         lifecycle: toLc(actions.renamePet),
         isPending: actions.renamePet.isPending,
     };
 
+    // Transfers happen via Metaplex Core (NFT transfer) — no program-level instruction in v2.1.
     const transferPet: AdapterMutation<{ petId: string; to: string }> = {
-        async mutateAsync({ petId, to }) {
-            await actions.transferPet.mutateAsync({ petId: Number(petId), to });
+        async mutateAsync() {
+            throw new Error('Solana pet transfers use Metaplex Core — use the NFT wallet interface');
         },
-        lifecycle: toLc(actions.transferPet),
-        isPending: actions.transferPet.isPending,
+        lifecycle: { phase: 'idle', error: null, reset: () => undefined },
+        isPending: false,
     };
 
     const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }> = {
@@ -105,6 +111,7 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
             await actions.battlePets.mutateAsync({
                 attackerPetId: Number(petId1),
                 defenderPetId: Number(petId2),
+                attackerAssetKey: requireAssetKey(petId1),
                 ...(defenderOwner ? { defenderOwner } : {}),
             });
         },
@@ -114,10 +121,14 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
 
     const breedPets: AdapterMutation<{ parentId1: string; parentId2: string; name: string }> = {
         async mutateAsync({ parentId1, parentId2, name }) {
+            const parent1AssetKey = requireAssetKey(parentId1);
+            const parent2Pet = solanaPets.find(p => p.id === parentId2);
             await actions.breedPets.mutateAsync({
                 parent1Id: Number(parentId1),
                 parent2Id: Number(parentId2),
                 name,
+                parent1AssetKey,
+                parent2AssetKey: parent2Pet?.assetKey,
             });
         },
         lifecycle: toLc(actions.breedPets),

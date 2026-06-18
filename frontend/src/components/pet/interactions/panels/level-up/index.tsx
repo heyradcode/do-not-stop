@@ -4,6 +4,7 @@ import TransactionStatus from '@components/common/transaction-status';
 import {
     getReadyPetsUnified,
     useChainCapabilities,
+    useFees,
     useLevelUpPet,
     usePetList,
 } from '@shared/core';
@@ -38,6 +39,16 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         onSuccess: handleLevelUpComplete,
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+    const fees = useFees();
+    const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
+
+    // Level-up fee is level-scaled: baseFee × (100 + (level-1)²) / 100.
+    const levelUpCost = useMemo(() => {
+        if (selectedLevel == null || fees.levelUpFee == null) return null;
+        const diff = BigInt(Math.max(selectedLevel - 1, 0));
+        const multiplier = 100n + diff * diff;
+        return fees.formatAmount((fees.levelUpFee * multiplier) / 100n);
+    }, [fees.levelUpFee, fees.formatAmount, selectedLevel]);
 
     useTxErrorToast(hookError);
 
@@ -64,9 +75,11 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
     const buttonLabel = isPending
         ? 'Leveling Up...'
-        : levelUpFee
-            ? `Level Up (${levelUpFee.amount} ${levelUpFee.symbol})`
-            : 'Level Up';
+        : levelUpCost
+            ? `Level Up (${levelUpCost})`
+            : levelUpFee
+                ? `Level Up (from ${levelUpFee.amount} ${levelUpFee.symbol})`
+                : 'Level Up';
 
     return (
         <>
@@ -76,7 +89,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                         <h4>â¬†ï¸ Level Up Pet</h4>
                         <p>
                             {levelUpFee
-                                ? `Pay ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet`
+                                ? `Pay from ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet — cost rises with level`
                                 : 'Pay a small SOL fee to level up your pet'}
                         </p>
                     </>
@@ -97,6 +110,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                             ))}
                         </select>
                     </div>
+                    {levelUpCost && <p className="level-up-cost">Cost: {levelUpCost}</p>}
                 </div>
 
                 <div className="action-controls">

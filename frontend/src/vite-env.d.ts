@@ -4,8 +4,6 @@ interface ImportMetaEnv {
     readonly VITE_DYNAMIC_ENVIRONMENT_ID: string;
     readonly VITE_SOLANA_LOCAL_RPC_URL?: string;
     readonly VITE_API_URL?: string;
-    /** @deprecated v1 single-contract address; v2 splits into PetCore + GameLogic below. */
-    readonly VITE_CONTRACT_ADDRESS?: string;
     /** v2 PetCore UUPS proxy address (ERC-721 storage, mint, level/XP, marriage). */
     readonly VITE_PETCORE_ADDRESS?: string;
     /** v2 GameLogic UUPS proxy address (async battle/breed/train + VRF). */

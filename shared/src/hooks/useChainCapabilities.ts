@@ -1,6 +1,5 @@
-import { formatEther } from 'viem';
 import { useActiveChain } from './useActiveChain';
-import { useEvmFees } from './chains/ethereum/useEvmFees';
+import { useFees } from './useFees';
 import { EVM_CAPABILITIES } from './adapters/useEvmAdapter';
 import { SOLANA_CAPABILITIES } from './adapters/useSolanaAdapter';
 import type { ChainCapabilities } from './adapters/types';
@@ -26,20 +25,18 @@ export interface ChainContext extends ChainCapabilities {
     walletAddress: string | null;
 }
 
-export const useChainCapabilities = (): ChainContext  => {
+export const useChainCapabilities = (): ChainContext => {
     const chain = useActiveChain();
-    const isEvm = chain.kind === 'evm';
+    const fees = useFees();
 
-    // EVM fees are read live from GameConfig; override the static placeholder
-    // level-up fee with the on-chain value once it loads.
-    const fees = useEvmFees(isEvm);
     const base =
-        isEvm ? EVM_CAPABILITIES
+        chain.kind === 'evm' ? EVM_CAPABILITIES
         : chain.kind === 'solana' ? SOLANA_CAPABILITIES
         : NULL_CAPABILITIES;
+
     const capabilities: ChainCapabilities =
-        isEvm && fees.levelUpFee != null
-            ? { ...base, levelUpFee: { amount: formatEther(fees.levelUpFee), symbol: 'ETH' } }
+        fees.levelUpFee != null && fees.symbol != null
+            ? { ...base, levelUpFee: { amount: fees.formatAmountOnly(fees.levelUpFee), symbol: fees.symbol } }
             : base;
 
     return {

@@ -19,7 +19,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
             <BattleSetup {...setup} />
 
             {hashHint && (
-                <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>
+                <p className="pending-hint">
                     Transaction: {hashHint}
                 </p>
             )}

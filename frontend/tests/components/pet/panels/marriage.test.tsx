@@ -50,10 +50,10 @@ beforeEach(() => {
 });
 
 describe('MarriagePanel', () => {
-    it('shows evm-only message when chain is not evm', () => {
-        capabilities.kind = 'solana';
+    it('prompts to connect when no chain is active', () => {
+        capabilities.kind = 'none';
         render(<MarriagePanel />);
-        expect(screen.getByText('Marriage is available on Ethereum only.')).toBeInTheDocument();
+        expect(screen.getByText('Connect a wallet to use marriage.')).toBeInTheDocument();
     });
 
     it('renders pet selectors and proposal form', () => {
@@ -88,7 +88,7 @@ describe('MarriagePanel', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Propose' }));
         // Wait for the async run() to settle, then check the error handler.
         await vi.waitFor(() => expect(mocks.notifyError).toHaveBeenCalled());
-        expect(mocks.notifyError).toHaveBeenCalledWith('Marriage action failed', undefined, 'marriage-error');
+        expect(mocks.notifyError).toHaveBeenCalledWith('Marriage action failed', expect.any(Error), 'marriage');
     });
 
     it('navigates home on Done', async () => {

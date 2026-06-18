@@ -1,4 +1,4 @@
-import { http } from 'viem';
+import { type Chain, http } from 'viem';
 import { createConfig } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { CHAINS } from '@constants/chains';
@@ -10,7 +10,7 @@ const allChains = CHAINS.map((chainConfig) => chainConfig.chain);
  * with the injected (browser wallet) connector and an `http` transport per chain.
  */
 export const wagmiConfig = createConfig({
-    chains: allChains as any,
+    chains: allChains as [Chain, ...Chain[]],
     connectors: [injected()],
     multiInjectedProviderDiscovery: false,
     transports: Object.fromEntries(

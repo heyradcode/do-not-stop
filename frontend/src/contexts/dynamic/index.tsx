@@ -23,7 +23,7 @@ const customEvmNetworks = CHAINS.map(chainConfig => ({
         iconUrl: 'https://app.dynamic.xyz/assets/networks/eth.svg',
     },
     networkId: chainConfig.chain.id,
-    rpcUrls: chainConfig.chain.rpcUrls.default.http,
+    rpcUrls: [...chainConfig.chain.rpcUrls.default.http],
     vanityName: chainConfig.name,
 }));
 

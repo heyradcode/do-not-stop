@@ -5,7 +5,7 @@ use mpl_core::{
 };
 
 use crate::{
-    metadata::pet_attributes,
+    utils::metadata::pet_attributes,
     state::{GlobalState, PetAccount},
 };
 

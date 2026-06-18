@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { formatEther } from 'viem';
 import {
     useChainCapabilities,
     useCreatePet,
-    useEvmFees,
+    useFees,
     usePetList,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
@@ -19,15 +18,13 @@ interface CreatePetModalProps {
 }
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
-    const { isConnected, kind } = useChainCapabilities();
+    const { isConnected } = useChainCapabilities();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
 
-    // Live gacha mint cost (EVM): baseMintFee × (1 + walletMintCount).
-    const fees = useEvmFees(kind === 'evm');
-    const mintCost = kind === 'evm' && fees.nextMintFee != null
-        ? `${formatEther(fees.nextMintFee)} ETH`
-        : null;
+    // Mint cost escalates per wallet: EVM baseMintFee×(1+count), Solana baseMintFee<<min(count,7).
+    const fees = useFees();
+    const mintCost = fees.nextMintFee != null ? fees.formatAmount(fees.nextMintFee) : null;
 
     const [petName, setPetName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);

@@ -24,7 +24,7 @@ const MarriagePetRow: React.FC<{
     onCancel: (petId: string) => void;
     busy: boolean;
 }> = ({ pet, walletAddress, onDivorce, onCancel, busy }) => {
-    const info = useMarriageInfo(pet.id);
+    const info = useMarriageInfo(pet);
     const ownProposal =
         info.hasProposal && walletAddress != null &&
         info.proposer?.toLowerCase() === walletAddress.toLowerCase();
@@ -48,9 +48,9 @@ const MarriagePetRow: React.FC<{
 };
 
 /**
- * v2.1 Marriage (EVM-only): propose between your pet and a partner pet,
- * accept an incoming proposal, divorce, or cancel an outgoing proposal.
- * A valid marriage gates cross-owner breeding (stud fee).
+ * v2.1 Marriage: propose between your pet and a partner pet, accept an
+ * incoming proposal, divorce, or cancel an outgoing proposal.
+ * Works on both EVM and Solana. A valid marriage gates cross-owner breeding (stud fee).
  */
 const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
@@ -65,7 +65,10 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
     const [proposerId, setProposerId] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
 
-    const evmPets = useMemo(() => pets.filter((p) => p.chain === 'evm'), [pets]);
+    const chainPets = useMemo(
+        () => kind === 'none' ? [] : pets.filter((p) => p.chain === (kind as 'evm' | 'solana')),
+        [pets, kind],
+    );
     const busy = marriage.propose.isPending || marriage.accept.isPending
         || marriage.cancel.isPending || marriage.divorce.isPending;
 
@@ -77,12 +80,12 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
             refetch();
         } catch (err) {
             console.error('[marriage]', err);
-            notifyError('Marriage action failed', undefined, 'marriage-error');
+            notifyError('Marriage action failed', err, 'marriage');
         }
     };
 
-    if (kind !== 'evm') {
-        return <p>Marriage is available on Ethereum only.</p>;
+    if (kind === 'none') {
+        return <p>Connect a wallet to use marriage.</p>;
     }
 
     return (
@@ -100,7 +103,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                         <label>Propose: your pet</label>
                         <select value={myPet} onChange={(e) => setMyPet(e.target.value)}>
                             <option value="">Select your pet...</option>
-                            {evmPets.map((p) => (
+                            {chainPets.map((p) => (
                                 <option key={p.id} value={p.id}>{p.name} (#{p.id})</option>
                             ))}
                         </select>
@@ -123,7 +126,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                         <label>Accept: your pet</label>
                         <select value={acceptMyPet} onChange={(e) => setAcceptMyPet(e.target.value)}>
                             <option value="">Select your pet...</option>
-                            {evmPets.map((p) => (
+                            {chainPets.map((p) => (
                                 <option key={p.id} value={p.id}>{p.name} (#{p.id})</option>
                             ))}
                         </select>
@@ -142,7 +145,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                 </div>
 
                 <ul className="marriage-list">
-                    {evmPets.map((p) => (
+                    {chainPets.map((p) => (
                         <MarriagePetRow
                             key={p.id}
                             pet={p}

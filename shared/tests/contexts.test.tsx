@@ -94,9 +94,10 @@ describe('PetsConfigContext', () => {
     });
 
     it('provides the configured EVM contract settings', () => {
+        const ref = { address: '0x1234567890123456789012345678901234567890' as `0x${string}`, abi: [] as unknown as Abi };
         const evm: PetsEvmConfig = {
-            contractAddress: '0x1234567890123456789012345678901234567890',
-            abi: [] as unknown as Abi,
+            petCore: ref,
+            gameLogic: ref,
             enabled: true,
         };
 

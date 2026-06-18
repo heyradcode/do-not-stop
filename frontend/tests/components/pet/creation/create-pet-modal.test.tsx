@@ -19,7 +19,12 @@ const capabilities = { isConnected: true, kind: 'solana' };
 vi.mock('@shared/core', () => ({
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
-    useEvmFees: () => ({ nextMintFee: null }),
+    useFees: () => ({
+        nextMintFee: undefined as bigint | undefined,
+        symbol: null as 'ETH' | 'SOL' | null,
+        formatAmount: (v: bigint) => `${v}`,
+        formatAmountOnly: (v: bigint) => String(v),
+    }),
     useCreatePet: (opts: { onSuccess?: () => void }) => {
         capturedOnSuccess = opts?.onSuccess;
         return createPet;

@@ -1,8 +1,7 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatEther } from 'viem';
 import TransactionStatus from '@components/common/transaction-status';
-import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useEvmFees, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
+import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useFees, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
@@ -22,7 +21,7 @@ const AWAITING_HINT = 'Hang tight—your new pet will show up in a moment.';
 
 const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const { randomness, kind } = useChainCapabilities();
+    const { randomness } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const [selectedPet1, setSelectedPet1] = useState('');
     const [selectedPet2, setSelectedPet2] = useState('');
@@ -31,11 +30,14 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const [validationError, setValidationError] = useState<string | null>(null);
     const [breedWithSpouse, setBreedWithSpouse] = useState(false);
 
-    // Cross-owner (married) breeding — EVM only. If the first parent is married,
-    // the partner is its spouse and the request carries an extra stud fee.
-    const isEvm = kind === 'evm';
-    const marriage = useMarriageInfo(isEvm ? selectedPet1 : undefined);
-    const fees = useEvmFees(isEvm);
+    // readyPets before useMarriageInfo so we can pass the full Pet object.
+    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+    const fees = useFees();
+
+    // Cross-owner (married) breeding: first parent must be married; request carries a stud fee.
+    // useMarriageInfo expects a Pet object — look it up from readyPets.
+    const selectedPet1Object = readyPets.find(({ id }) => id === selectedPet1)?.pet;
+    const marriage = useMarriageInfo(selectedPet1Object);
     const spouseId = marriage.isMarried ? marriage.spouseId?.toString() : undefined;
     const crossOwner = breedWithSpouse && Boolean(spouseId);
     const effectiveParent2 = crossOwner ? (spouseId as string) : selectedPet2;
@@ -43,9 +45,10 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     // Reset the cross-owner toggle whenever the first parent changes.
     useEffect(() => { setBreedWithSpouse(false); }, [selectedPet1]);
 
-    const studFeeLabel = crossOwner && fees.studFee != null
-        ? `+${formatEther(fees.studFee)} ETH stud fee`
-        : null;
+    const studFeeLabel = useMemo(() => {
+        if (!crossOwner || fees.studFee == null) return null;
+        return `+${fees.formatAmount(fees.studFee)} stud fee`;
+    }, [crossOwner, fees.studFee, fees.formatAmount]);
 
     // An unresolved breed on either parent makes requestCreateFromDNA revert
     // ("Breed pending for parent"); block a new breed until it's resolved
@@ -67,7 +70,6 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     );
 
     const breed = useBreedPets({ onSuccess: handleSuccess });
-    const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
     // Receipt errors are folded into `breed.error` by the chain adapter.
     usePetErrorToast(
@@ -166,7 +168,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                     </div>
                 </div>
 
-                {isEvm && marriage.isMarried && spouseId && (
+                {marriage.isMarried && spouseId && (
                     <label className="breed-spouse-toggle">
                         <input
                             type="checkbox"
@@ -204,7 +206,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 </div>
 
                 {breed.isAwaitingFulfillment && (
-                    <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>
+                    <p className="pending-hint">
                         {AWAITING_HINT}
                     </p>
                 )}
@@ -218,7 +220,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
             )}
 
             {hashHint && (
-                <p className="breed-pending-hint" style={{ marginTop: '0.75rem', fontSize: '0.9rem', opacity: 0.85 }}>
+                <p className="pending-hint">
                     Transaction: {hashHint}
                 </p>
             )}

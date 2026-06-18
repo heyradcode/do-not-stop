@@ -5,7 +5,6 @@ import {
     battleRequestPda,
     breedRequestPda,
     globalStatePda,
-    petPda,
     playerProfilePda,
 } from '../../../src/utils/solana/pdas';
 
@@ -35,13 +34,6 @@ describe('solana PDAs', () => {
 
         const all = [global, profile, breed, battle].map((k) => k.toBase58());
         expect(new Set(all).size).toBe(4);
-    });
-
-    it('encodes the pet id so different ids give different PDAs', () => {
-        const pet1 = petPda(programId, owner, 1);
-        const pet2 = petPda(programId, owner, 2);
-        isPdaResult(pet1);
-        expect(pet1[0].equals(pet2[0])).toBe(false);
     });
 
     it('ties the player profile PDA to its owner', () => {

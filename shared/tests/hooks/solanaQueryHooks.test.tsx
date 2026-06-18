@@ -23,23 +23,6 @@ vi.mock('../../src/utils/solana/accountClient', () => ({
     getAccountClient: () => ({ fetchNullable, all: vi.fn().mockResolvedValue([]) }),
 }));
 
-// Stub PDAs — return a fake PublicKey-like object.
-const fakePk = (label: string) => ({ toBase58: () => label });
-vi.mock('../../src/utils/solana/pdas', () => ({
-    globalStatePda: (_id: unknown) => [fakePk('globalPda')],
-    playerProfilePda: (_id: unknown, _owner: unknown) => [fakePk('profilePda')],
-}));
-
-// SolanaAnchorContext — provide a signing wallet for playerProfile tests.
-const anchorCtx: { signingWallet: { publicKey: ReturnType<typeof fakePk> } | null } = {
-    signingWallet: null,
-};
-vi.mock('../../src/contexts/SolanaAnchorContext', () => ({
-    useSolanaAnchor: () => anchorCtx,
-}));
-
-import { useGlobalState } from '../../src/hooks/chains/solana/useGlobalState';
-import { usePlayerProfile } from '../../src/hooks/chains/solana/usePlayerProfile';
 import { usePets } from '../../src/hooks/chains/solana/usePets';
 
 function wrapper({ children }: { children: React.ReactNode }) {
@@ -52,52 +35,7 @@ beforeEach(() => {
     programStub.program = program;
     programStub.programId = programId;
     programStub.isReady = true;
-    anchorCtx.signingWallet = null;
     fetchNullable.mockResolvedValue(null);
-});
-
-// ---------- useGlobalState ----------
-describe('useGlobalState', () => {
-    it('returns a query object when program is ready', () => {
-        const { result } = renderHook(() => useGlobalState(), { wrapper });
-        // Query is enabled and will fire; we just care it returns the tanstack shape.
-        expect(result.current).toHaveProperty('status');
-        expect(result.current).toHaveProperty('data');
-    });
-
-    it('query is disabled when program is not ready', () => {
-        programStub.isReady = false;
-        const { result } = renderHook(() => useGlobalState(), { wrapper });
-        expect(result.current.fetchStatus).toBe('idle');
-    });
-
-    it('query is disabled when program is null', () => {
-        programStub.program = null;
-        const { result } = renderHook(() => useGlobalState(), { wrapper });
-        expect(result.current.fetchStatus).toBe('idle');
-    });
-});
-
-// ---------- usePlayerProfile ----------
-describe('usePlayerProfile', () => {
-    it('query is disabled when no signing wallet', () => {
-        anchorCtx.signingWallet = null;
-        const { result } = renderHook(() => usePlayerProfile(), { wrapper });
-        expect(result.current.fetchStatus).toBe('idle');
-    });
-
-    it('query is enabled with a signing wallet and ready program', () => {
-        anchorCtx.signingWallet = { publicKey: fakePk('ownerPK') };
-        const { result } = renderHook(() => usePlayerProfile(), { wrapper });
-        expect(result.current).toHaveProperty('status');
-    });
-
-    it('query is disabled when program is not ready', () => {
-        anchorCtx.signingWallet = { publicKey: fakePk('ownerPK') };
-        programStub.isReady = false;
-        const { result } = renderHook(() => usePlayerProfile(), { wrapper });
-        expect(result.current.fetchStatus).toBe('idle');
-    });
 });
 
 // ---------- usePets ----------
@@ -108,14 +46,14 @@ describe('usePets', () => {
     });
 
     it('query is enabled with an owner and ready program', () => {
-        const owner = fakePk('ownerPK') as unknown as import('@solana/web3.js').PublicKey;
+        const owner = { toBase58: () => 'ownerPK' } as unknown as import('@solana/web3.js').PublicKey;
         const { result } = renderHook(() => usePets(owner), { wrapper });
         expect(result.current).toHaveProperty('status');
     });
 
     it('query is disabled when program is not ready', () => {
         programStub.isReady = false;
-        const owner = fakePk('ownerPK') as unknown as import('@solana/web3.js').PublicKey;
+        const owner = { toBase58: () => 'ownerPK' } as unknown as import('@solana/web3.js').PublicKey;
         const { result } = renderHook(() => usePets(owner), { wrapper });
         expect(result.current.fetchStatus).toBe('idle');
     });

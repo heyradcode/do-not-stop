@@ -1,4 +1,8 @@
+import bs58 from 'bs58';
+import { Buffer } from 'buffer';
+import { PublicKey } from '@solana/web3.js';
 import type { Idl, Program } from '@coral-xyz/anchor';
+import { PET_ACCOUNT_ID_MEMCMP_OFFSET } from './constants';
 
 export type AnchorAccountClient = {
     fetch: (key: unknown) => Promise<unknown>;
@@ -18,4 +22,23 @@ export const getAccountClient = (program: Program<Idl>, name: string): AnchorAcc
         throw new Error(`IDL has no account client for "${name}"`);
     }
     return client as AnchorAccountClient;
+}
+
+/**
+ * Look up any `PetAccount` by its numeric ID using a memcmp filter on the `id` field
+ * (offset 8, 4 bytes LE). Returns the on-chain Core asset `PublicKey`, or `null` if not found.
+ */
+export const fetchAssetByPetId = async (
+    program: Program<Idl>,
+    petId: number,
+): Promise<PublicKey | null>  => {
+    const idBuf = Buffer.alloc(4);
+    idBuf.writeUInt32LE(petId >>> 0, 0);
+    const rows = await getAccountClient(program, 'petAccount').all([{
+        memcmp: { offset: PET_ACCOUNT_ID_MEMCMP_OFFSET, bytes: bs58.encode(idBuf) },
+    }]);
+    if (rows.length === 0) return null;
+    const asset = (rows[0].account as { asset?: unknown }).asset;
+    if (!asset || typeof asset !== 'object') return null;
+    return asset as PublicKey;
 }

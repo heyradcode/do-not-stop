@@ -5,7 +5,7 @@ import { usePetsConfig } from '../../../contexts/PetsConfigContext';
 export interface EvmFees {
     /** GameConfig.baseMintFee() — base gacha mint fee before per-wallet escalation. */
     baseMintFee?: bigint;
-    /** GameConfig.levelUpFee() — exact value required by PetCore.levelUp. */
+    /** GameConfig.levelUpFee() — base fee for PetCore.levelUp, scaled by level on-chain. */
     levelUpFee?: bigint;
     /** GameConfig.breedFee() — same-owner breed fee (stud fee is v2.1/marriage). */
     breedFee?: bigint;

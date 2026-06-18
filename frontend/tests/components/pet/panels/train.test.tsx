@@ -19,8 +19,6 @@ vi.mock('@components/ui/icon', () => ({
 }));
 vi.mock('@constants/tones', () => ({ Tones: { Emerald: 'emerald' } }));
 vi.mock('@components/common/transaction-status', () => ({ default: () => null }));
-vi.mock('viem', () => ({ formatEther: (v: bigint) => `${v}` }));
-
 const train = {
     mutate: vi.fn(),
     isPending: false,
@@ -36,9 +34,13 @@ const petList = {
 
 vi.mock('@shared/core', () => ({
     getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
-    useChainCapabilities: () => ({ kind: 'evm' }),
     usePetList: () => petList,
-    useEvmFees: () => ({ trainFee: 1000000000000000n }),
+    useFees: () => ({
+        trainFee: 1000000000000000n,
+        symbol: 'ETH',
+        formatAmount: (v: bigint) => `${v} ETH`,
+        formatAmountOnly: (v: bigint) => String(v),
+    }),
     useTrainPet: (opts: { onSuccess?: () => void }) => {
         capturedOnSuccess = opts?.onSuccess;
         return train;

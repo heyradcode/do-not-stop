@@ -4,11 +4,11 @@ import { fileURLToPath } from "node:url";
 
 import { network } from "hardhat";
 
-// Generates contracts/test-vectors/battle.json by running CombatSimV1.simulate
+// Generates contracts/test-vectors/battle.json by running CombatSim.simulate
 // against a curated set of inputs (plan §7 cross-chain golden vectors). The
 // output file is the source of truth for Hardhat, Anchor, and indexer-go tests
 // — re-run this script (`pnpm hh run scripts/gen-battle-vectors.ts`) whenever
-// CombatSimV1 / combat.rs intentionally change.
+// CombatSim / combat.rs intentionally change.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -68,7 +68,7 @@ const cases: VectorCase[] = [
 
 async function main() {
     const { viem } = await network.connect();
-    const combatSim = await viem.deployContract("CombatSimV1");
+    const combatSim = await viem.deployContract("CombatSim");
 
     const vectors = [];
     for (const c of cases) {
@@ -97,7 +97,7 @@ async function main() {
     }
 
     const out = {
-        description: "CombatSimV1.simulate golden vectors (plan §7). NO_SKILL = 99 (any value outside 0-7).",
+        description: "CombatSim.simulate golden vectors (plan §7). NO_SKILL = 99 (any value outside 0-7).",
         skillConfig: SKILL_CONFIG,
         cases: vectors,
     };

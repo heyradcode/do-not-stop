@@ -7,7 +7,7 @@ export interface PetSkill {
 
 /**
  * The 8 passive skill archetypes, in the canonical order the combat sim keys
- * off (CombatSimV1 doc comment / plan §3.7). Index = speciesId % 8.
+ * off (CombatSim doc comment / plan §3.7). Index = speciesId % 8.
  */
 const SKILL_ARCHETYPES: readonly { name: string; description: string }[] = [
     { name: 'Tank',      description: 'Boosted HP pool before battle.' },

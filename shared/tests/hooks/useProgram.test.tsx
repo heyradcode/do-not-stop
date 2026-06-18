@@ -47,7 +47,6 @@ describe('useProgram', () => {
         expect(result.current.program).toBeNull();
         expect(result.current.isReady).toBe(false);
         expect(fetchIdl).not.toHaveBeenCalled();
-        expect(typeof result.current.toU32).toBe('function');
     });
 
     it('loads the program once the IDL is fetched', async () => {

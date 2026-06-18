@@ -1,15 +1,12 @@
 /**
  * Registry of EVM networks where CryptoPets can be deployed.
  *
- * Limited to chains supported by Chainlink VRF v2.5:
- *   https://docs.chain.link/vrf/v2-5/supported-networks
+ * Limited to chains supported by Pyth Entropy V2:
+ *   https://docs.pyth.network/entropy/contract-addresses
  *
  * For each network, set these env vars in contracts/ethereum/.env:
  *   <PREFIX>_RPC_URL
- *   <PREFIX>_VRF_SUBSCRIPTION_ID
- *   <PREFIX>_VRF_COORDINATOR        (optional if `defaultVrfCoordinator` is set below)
- *   <PREFIX>_VRF_KEY_HASH           (optional if `defaultVrfKeyHash` is set below)
- *   <PREFIX>_VRF_NATIVE_PAYMENT     (optional, default false)
+ *   <PREFIX>_ENTROPY_ADDRESS   (optional if `defaultEntropyAddress` is set below)
  *
  * Plus the shared:
  *   PRIVATE_KEY
@@ -23,10 +20,8 @@ export interface NetworkSpec {
     envPrefix: string;
     /** EVM chain id. Used to locate `ignition/deployments/chain-<chainId>/`. */
     chainId: number;
-    /** Optional VRF coordinator default. If unset, env override is required. */
-    defaultVrfCoordinator?: `0x${string}`;
-    /** Optional VRF key hash default (gas lane). If unset, env override is required. */
-    defaultVrfKeyHash?: `0x${string}`;
+    /** Pyth Entropy V2 contract address for this network. If unset, env override is required. */
+    defaultEntropyAddress?: `0x${string}`;
 }
 
 export const NETWORKS: NetworkSpec[] = [
@@ -34,9 +29,8 @@ export const NETWORKS: NetworkSpec[] = [
         name: "sepolia",
         envPrefix: "SEPOLIA",
         chainId: 11155111,
-        defaultVrfCoordinator: "0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B",
-        defaultVrfKeyHash:
-            "0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae",
+        // Pyth Entropy V2 on Sepolia — verify at https://docs.pyth.network/entropy/contract-addresses
+        defaultEntropyAddress: "0x41c9e39574F40Ad34c79f1C99B66A45eFB830d4c",
     },
     { name: "mainnet", envPrefix: "MAINNET", chainId: 1 },
     { name: "bsc", envPrefix: "BSC", chainId: 56 },
@@ -57,51 +51,33 @@ export function getNetwork(name: string): NetworkSpec | undefined {
     return NETWORKS.find((n) => n.name === name);
 }
 
-export interface ResolvedVrfParams {
-    vrfCoordinator: `0x${string}`;
-    vrfKeyHash: `0x${string}`;
-    vrfSubscriptionId: string;
-    vrfNativePayment: boolean;
+export interface ResolvedEntropyParams {
+    entropyAddress: `0x${string}`;
 }
 
 /**
- * Reads VRF parameters for `network` from env, falling back to registry defaults.
- * Throws a clear error (with a Chainlink docs link) on missing required values.
+ * Reads the Pyth Entropy address for `network` from env, falling back to the
+ * registry default. Throws a clear error (with a docs link) on missing values.
  */
-export function resolveVrfParams(
+export function resolveEntropyParams(
     network: NetworkSpec,
     env: NodeJS.ProcessEnv = process.env
-): ResolvedVrfParams {
+): ResolvedEntropyParams {
     const p = network.envPrefix;
-    const missing: string[] = [];
 
-    const vrfSubscriptionId = env[`${p}_VRF_SUBSCRIPTION_ID`];
-    if (!vrfSubscriptionId) missing.push(`${p}_VRF_SUBSCRIPTION_ID`);
+    const entropyAddress = (env[`${p}_ENTROPY_ADDRESS`] ??
+        network.defaultEntropyAddress) as `0x${string}` | undefined;
 
-    const vrfCoordinator = (env[`${p}_VRF_COORDINATOR`] ??
-        network.defaultVrfCoordinator) as `0x${string}` | undefined;
-    if (!vrfCoordinator) missing.push(`${p}_VRF_COORDINATOR`);
-
-    const vrfKeyHash = (env[`${p}_VRF_KEY_HASH`] ??
-        network.defaultVrfKeyHash) as `0x${string}` | undefined;
-    if (!vrfKeyHash) missing.push(`${p}_VRF_KEY_HASH`);
-
-    if (missing.length > 0) {
+    if (!entropyAddress) {
         throw new Error(
-            `Missing required env var(s) for network "${network.name}": ${missing.join(
-                ", "
-            )}.\n` +
-                `Find the VRF coordinator + gas-lane key hash for this chain at ` +
-                `https://docs.chain.link/vrf/v2-5/supported-networks and set them in contracts/ethereum/.env`
+            `Missing Pyth Entropy address for network "${network.name}". ` +
+                `Set ${p}_ENTROPY_ADDRESS in contracts/ethereum/.env, or add a ` +
+                `defaultEntropyAddress to this network in scripts/networks.ts.\n` +
+                `Find the address at https://docs.pyth.network/entropy/contract-addresses`
         );
     }
 
-    return {
-        vrfCoordinator: vrfCoordinator!,
-        vrfKeyHash: vrfKeyHash!,
-        vrfSubscriptionId: vrfSubscriptionId!,
-        vrfNativePayment: env[`${p}_VRF_NATIVE_PAYMENT`] === "true",
-    };
+    return { entropyAddress };
 }
 
 /**

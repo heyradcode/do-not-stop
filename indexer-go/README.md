@@ -1,9 +1,8 @@
 # indexer-go
 
-Unified cross-chain indexer for Cryptopets (see `plan-unified-indexer.md` at
-the repo root). **New to Go or to this codebase? Start with
-[ARCHITECTURE.md](./ARCHITECTURE.md)** — a beginner-friendly tour of every
-package and the Go concepts behind them. One Go binary, two chain adapters behind the `ChainIndexer`
+Unified cross-chain indexer for Cryptopets (see
+[`plan-indexer-v2.md`](./plan-indexer-v2.md) for the design). One Go binary,
+two chain adapters behind the `ChainIndexer`
 interface — Solana push (WebSocket subscriptions + backfill) and EVM pull
 (subgraph watermark polling) — feeding a single version-guarded writer into
 the Prisma-owned Postgres, plus a `StreamLiveBattles` gRPC push to the Node
@@ -83,7 +82,7 @@ Prisma fallback on any error — killing indexer-go must never take reads down
 ## Combat sim (v2)
 
 `internal/combat/` is a pure Go port of the on-chain round-based battle
-simulator (`contracts/ethereum/src/CombatSimV1.sol` + the matching `combat.rs`)
+simulator (`contracts/ethereum/src/CombatSim.sol` + the matching `combat.rs`)
 — DNA→attribute derivation, the round loop with all 8 skill archetypes, the
 XP + same-opponent-decay formulas, and `EstimateWin` (a seed-sampling pre-fight
 win probability). It lets indexer-go replay a settled battle and serve odds

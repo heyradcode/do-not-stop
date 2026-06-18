@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./CombatSimV1.sol";
+import "./CombatSim.sol";
 
 /**
  * @title GameConfig
@@ -12,12 +12,12 @@ import "./CombatSimV1.sol";
  *      on the proxy. Owned by the same Safe/timelock that owns the proxies.
  */
 contract GameConfig is Ownable {
-    uint256 public levelUpFee          = 0.001 ether;
+    uint256 public levelUpFee          = 0.004 ether; // level-scaled: baseFee * (100 + (L-1)^2) / 100, capped at maxLevel; 1->99 total > train's 1->99 total
     uint256 public breedFee            = 0.0005 ether;
     uint256 public baseMintFee         = 0.001 ether;
-    uint256 public battleCooldown      = 5 seconds;
-    uint256 public breedCooldownBase   = 5 seconds;   // doubles per breedCount (§4.1)
-    uint256 public newbornCooldown     = 60 seconds;  // bred pets: battle lockout after birth (§4.2)
+    uint256 public battleCooldown      = 900 seconds;   // post-battle lockout (§3.4: 15 min)
+    uint256 public breedCooldownBase   = 3600 seconds;  // doubles per breedCount, capped at 30 days (§4.1: 1h base)
+    uint256 public newbornCooldown     = 43200 seconds; // bred pets: battle lockout after birth (§4.2: 12h)
     uint256 public maxNameLength       = 32;
     uint8   public generationCap       = 20;          // max child generation (§4.1)
 
@@ -37,7 +37,7 @@ contract GameConfig is Ownable {
     // Species pool sizes per rarity tier (1-5); speciesId = digitPair % poolSizes[rarity] (§3.7).
     mapping(uint8 => uint8) public poolSizes;
 
-    // Skill archetype balance values, passed to CombatSimV1.simulate() (§3.7).
+    // Skill archetype balance values, passed to CombatSim.simulate() (§3.7).
     uint16 public tankHpMult       = 120;  // Tank: ×/100 HP
     uint16 public shellDefMult     = 125;  // Shell: ×/100 DEF
     uint16 public swiftCritBonus   = 50;   // Swift: + bps to crit base
@@ -204,8 +204,8 @@ contract GameConfig is Ownable {
 
     // ─── views ────────────────────────────────────────────────────────────────
 
-    function getSkillConfig() external view returns (CombatSimV1.SkillConfig memory) {
-        return CombatSimV1.SkillConfig({
+    function getSkillConfig() external view returns (CombatSim.SkillConfig memory) {
+        return CombatSim.SkillConfig({
             tankHpMult:      tankHpMult,
             shellDefMult:    shellDefMult,
             swiftCritBonus:  swiftCritBonus,

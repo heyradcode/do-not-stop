@@ -48,19 +48,7 @@ export const INTERACTION_ROUTES: readonly string[] = [
   RENAME_PATH,
 ];
 
-/** Nested interactions under dashboard (legacy / bookmarked URLs). */
-export const DASHBOARD_INTERACTIONS = '/dashboard/interactions';
-
-export type InteractionSlug = 'breed' | 'battle' | 'levelup' | 'train' | 'marriage' | 'rename';
-
 export const isInteractionRoute = (pathname: string): boolean  => {
   const path = pathname.replace(/\/$/, '') || '/';
-  if (INTERACTION_ROUTES.includes(path)) return true;
-  // Also hide the gallery for legacy /dashboard/interactions/* pages
-  // (so PetInteractions and PetGallery don't fight for the same space).
-  return path === DASHBOARD_INTERACTIONS || path.startsWith(`${DASHBOARD_INTERACTIONS}/`);
-}
-
-export const interactionPath = (slug: InteractionSlug): string  => {
-  return `${DASHBOARD_INTERACTIONS}/${slug}`;
+  return INTERACTION_ROUTES.includes(path);
 }

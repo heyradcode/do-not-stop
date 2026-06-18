@@ -1,11 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatEther } from 'viem';
 import TransactionStatus from '@components/common/transaction-status';
 import {
     getReadyPetsUnified,
-    useChainCapabilities,
-    useEvmFees,
+    useFees,
     useTrainPet,
     usePetList,
 } from '@shared/core';
@@ -19,13 +17,8 @@ export type TrainPanelProps = {
     isStandaloneView?: boolean;
 };
 
-/**
- * v2 Training Ground — pay a level-scaled fee for a flat XP grant. EVM-only:
- * the Solana adapter rejects `train`, so the panel only renders on EVM.
- */
 const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
     const navigate = useNavigate();
-    const { kind } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
 
@@ -43,15 +36,15 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
         onSuccess: handleTrainComplete,
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
-
-    // Train fee is level-scaled: trainFee × (100 + 2·level) / 100.
-    const fees = useEvmFees(kind === 'evm');
+    const fees = useFees();
     const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
+
+    // Train fee is level-scaled: baseFee × (100 + 2·level) / 100.
     const trainCost = useMemo(() => {
-        if (fees.trainFee == null || selectedLevel == null) return null;
-        const scaled = (fees.trainFee * BigInt(100 + 2 * selectedLevel)) / 100n;
-        return `${formatEther(scaled)} ETH`;
-    }, [fees.trainFee, selectedLevel]);
+        if (selectedLevel == null || fees.trainFee == null) return null;
+        const multiplier = BigInt(100 + 2 * selectedLevel);
+        return fees.formatAmount((fees.trainFee * multiplier) / 100n);
+    }, [fees.trainFee, fees.formatAmount, selectedLevel]);
 
     useTxErrorToast(hookError);
 

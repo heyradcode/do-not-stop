@@ -3,98 +3,143 @@ package store
 import (
 	"context"
 	"fmt"
-	"strings"
+	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"gorm.io/gorm/logger"
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
 )
 
 // PgFlusher writes to the tables the backend's Prisma schema owns (DML only —
-// schema changes always arrive via Prisma migrations).
+// schema changes always arrive via Prisma migrations, never from here; the
+// GORM models below mirror the existing columns and AutoMigrate is never run).
 type PgFlusher struct {
-	pool *pgxpool.Pool
+	db *gorm.DB
 }
 
-// NewPgFlusher connects a pool and verifies it with a ping.
+// petRosterRow maps indexer.RosterUpdate onto the pet_roster table. Columns are
+// pinned with explicit tags because the domain fields use unsigned ints (no
+// Postgres equivalent) and names like DNA/XPWin don't round-trip through GORM's
+// default snake_case naming. UpdatedAt mirrors Prisma's @updatedAt (client-set).
+type petRosterRow struct {
+	Chain        string    `gorm:"column:chain;primaryKey"`
+	PetID        string    `gorm:"column:pet_id;primaryKey"`
+	Owner        string    `gorm:"column:owner"`
+	Name         string    `gorm:"column:name"`
+	Level        int32     `gorm:"column:level"`
+	Rarity       int32     `gorm:"column:rarity"`
+	DNA          string    `gorm:"column:dna"`
+	WinCount     int32     `gorm:"column:win_count"`
+	LossCount    int32     `gorm:"column:loss_count"`
+	ReadyAt      int64     `gorm:"column:ready_at"`
+	XP           int32     `gorm:"column:xp"`
+	Generation   int32     `gorm:"column:generation"`
+	Parent1ID    string    `gorm:"column:parent1_id"`
+	Parent2ID    string    `gorm:"column:parent2_id"`
+	BreedCount   int32     `gorm:"column:breed_count"`
+	SpeciesID    int32     `gorm:"column:species_id"`
+	SpouseID     string    `gorm:"column:spouse_id"`
+	BreedReadyAt int64     `gorm:"column:breed_ready_at"`
+	TrainReadyAt int64     `gorm:"column:train_ready_at"`
+	Asset        string    `gorm:"column:asset"`
+	LastVersion  int64     `gorm:"column:last_version"`
+	UpdatedAt    time.Time `gorm:"column:updated_at"`
+}
+
+func (petRosterRow) TableName() string { return "pet_roster" }
+
+// battleRow maps indexer.BattleEvent onto battle_history. created_at is omitted
+// so the table's CURRENT_TIMESTAMP default fills it (matching the old INSERT).
+type battleRow struct {
+	Chain             string `gorm:"column:chain;primaryKey"`
+	BattleID          string `gorm:"column:battle_id;primaryKey"`
+	AttackerPetID     string `gorm:"column:attacker_pet_id"`
+	DefenderPetID     string `gorm:"column:defender_pet_id"`
+	WinnerPetID       string `gorm:"column:winner_pet_id"`
+	LoserPetID        string `gorm:"column:loser_pet_id"`
+	Seed              string `gorm:"column:seed"`
+	Rounds            int32  `gorm:"column:rounds"`
+	WinnerHpRemaining int32  `gorm:"column:winner_hp_remaining"`
+	XPWin             int32  `gorm:"column:xp_win"`
+	XPLoss            int32  `gorm:"column:xp_loss"`
+	FoughtAt          int64  `gorm:"column:fought_at"`
+	Version           int64  `gorm:"column:version"`
+}
+
+func (battleRow) TableName() string { return "battle_history" }
+
+// rosterUpdateColumns are every non-key column, set to EXCLUDED.<col> on
+// conflict — the upsert's "freshest write wins" body (guarded by last_version).
+var rosterUpdateColumns = []string{
+	"owner", "name", "level", "rarity", "dna", "win_count", "loss_count", "ready_at",
+	"xp", "generation", "parent1_id", "parent2_id", "breed_count", "species_id",
+	"spouse_id", "breed_ready_at", "train_ready_at", "asset", "last_version", "updated_at",
+}
+
+// NewPgFlusher opens a GORM connection (pgx driver) and verifies it with a ping.
 func NewPgFlusher(ctx context.Context, databaseURL string) (*PgFlusher, error) {
-	pool, err := pgxpool.New(ctx, databaseURL)
+	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{
+		// App logging is slog; let GORM stay quiet and surface errors via return.
+		Logger: logger.Default.LogMode(logger.Silent),
+		// Single-statement writes don't need GORM's implicit transaction wrapper.
+		SkipDefaultTransaction: true,
+		// Cap multi-row INSERTs so a large batch can't blow Postgres' 65535-param limit.
+		CreateBatchSize: 1000,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("store: connect: %w", err)
 	}
-	if err := pool.Ping(ctx); err != nil {
-		pool.Close()
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("store: db handle: %w", err)
+	}
+	if err := sqlDB.PingContext(ctx); err != nil {
+		_ = sqlDB.Close()
 		return nil, fmt.Errorf("store: ping: %w", err)
 	}
-	return &PgFlusher{pool: pool}, nil
+	return &PgFlusher{db: db}, nil
 }
 
-func (f *PgFlusher) Close() { f.pool.Close() }
+func (f *PgFlusher) Close() {
+	if sqlDB, err := f.db.DB(); err == nil {
+		_ = sqlDB.Close()
+	}
+}
 
-// FlushRoster bulk-upserts one coalesced batch. The WHERE guard is the
+// FlushRoster bulk-upserts one coalesced batch. The conflict WHERE guard is the
 // idempotency core: stale or replayed versions are discarded by Postgres
 // itself, so delivery order never matters. updated_at mirrors Prisma's
-// @updatedAt semantics, which the Node client manages client-side.
+// @updatedAt semantics, which the Node client also manages client-side.
 func (f *PgFlusher) FlushRoster(ctx context.Context, batch []indexer.RosterUpdate) error {
 	if len(batch) == 0 {
 		return nil
 	}
 
-	const cols = 21
-	var sb strings.Builder
-	sb.WriteString(`INSERT INTO pet_roster
-  (chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at,
-   xp, generation, parent1_id, parent2_id, breed_count, species_id, spouse_id, breed_ready_at, train_ready_at, asset,
-   last_version, updated_at)
-VALUES `)
-
-	args := make([]any, 0, len(batch)*cols)
+	now := time.Now()
+	rows := make([]petRosterRow, len(batch))
 	for i, u := range batch {
-		if i > 0 {
-			sb.WriteString(", ")
+		rows[i] = petRosterRow{
+			Chain: u.Chain, PetID: u.PetID, Owner: u.Owner, Name: u.Name,
+			Level: int32(u.Level), Rarity: int32(u.Rarity), DNA: u.DNA,
+			WinCount: int32(u.WinCount), LossCount: int32(u.LossCount), ReadyAt: u.ReadyAt,
+			XP: int32(u.XP), Generation: int32(u.Generation), Parent1ID: u.Parent1ID, Parent2ID: u.Parent2ID,
+			BreedCount: int32(u.BreedCount), SpeciesID: int32(u.SpeciesID), SpouseID: u.SpouseID,
+			BreedReadyAt: u.BreedReadyAt, TrainReadyAt: u.TrainReadyAt, Asset: u.Asset,
+			LastVersion: int64(u.Version), UpdatedAt: now,
 		}
-		base := i * cols
-		sb.WriteByte('(')
-		for j := range cols {
-			if j > 0 {
-				sb.WriteByte(',')
-			}
-			fmt.Fprintf(&sb, "$%d", base+j+1)
-		}
-		sb.WriteString(", now())")
-		args = append(args,
-			u.Chain, u.PetID, u.Owner, u.Name, int32(u.Level), int32(u.Rarity),
-			u.DNA, int32(u.WinCount), int32(u.LossCount), u.ReadyAt,
-			int32(u.XP), int32(u.Generation), u.Parent1ID, u.Parent2ID, int32(u.BreedCount),
-			int32(u.SpeciesID), u.SpouseID, u.BreedReadyAt, u.TrainReadyAt, u.Asset,
-			u.Version)
 	}
 
-	sb.WriteString(`
-ON CONFLICT (chain, pet_id) DO UPDATE SET
-  owner = EXCLUDED.owner,
-  name = EXCLUDED.name,
-  level = EXCLUDED.level,
-  rarity = EXCLUDED.rarity,
-  dna = EXCLUDED.dna,
-  win_count = EXCLUDED.win_count,
-  loss_count = EXCLUDED.loss_count,
-  ready_at = EXCLUDED.ready_at,
-  xp = EXCLUDED.xp,
-  generation = EXCLUDED.generation,
-  parent1_id = EXCLUDED.parent1_id,
-  parent2_id = EXCLUDED.parent2_id,
-  breed_count = EXCLUDED.breed_count,
-  species_id = EXCLUDED.species_id,
-  spouse_id = EXCLUDED.spouse_id,
-  breed_ready_at = EXCLUDED.breed_ready_at,
-  train_ready_at = EXCLUDED.train_ready_at,
-  asset = EXCLUDED.asset,
-  last_version = EXCLUDED.last_version,
-  updated_at = now()
-WHERE pet_roster.last_version <= EXCLUDED.last_version`)
-
-	_, err := f.pool.Exec(ctx, sb.String(), args...)
+	err := f.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "chain"}, {Name: "pet_id"}},
+		DoUpdates: clause.AssignmentColumns(rosterUpdateColumns),
+		Where: clause.Where{Exprs: []clause.Expression{
+			clause.Expr{SQL: "pet_roster.last_version <= excluded.last_version"},
+		}},
+	}).Create(&rows).Error
 	if err != nil {
 		return fmt.Errorf("store: roster upsert (%d rows): %w", len(batch), err)
 	}
@@ -108,35 +153,20 @@ func (f *PgFlusher) InsertBattles(ctx context.Context, events []indexer.BattleEv
 		return nil
 	}
 
-	const cols = 13
-	var sb strings.Builder
-	sb.WriteString(`INSERT INTO battle_history
-  (chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, loser_pet_id,
-   seed, rounds, winner_hp_remaining, xp_win, xp_loss, fought_at, version)
-VALUES `)
-
-	args := make([]any, 0, len(events)*cols)
+	rows := make([]battleRow, len(events))
 	for i, e := range events {
-		if i > 0 {
-			sb.WriteString(", ")
+		rows[i] = battleRow{
+			Chain: e.Chain, BattleID: e.BattleID, AttackerPetID: e.Attacker, DefenderPetID: e.Defender,
+			WinnerPetID: e.WinnerPetID, LoserPetID: e.LoserPetID, Seed: e.Seed,
+			Rounds: int32(e.Rounds), WinnerHpRemaining: int32(e.WinnerHpRemaining),
+			XPWin: int32(e.XPWin), XPLoss: int32(e.XPLoss), FoughtAt: e.FoughtAt, Version: int64(e.Version),
 		}
-		base := i * cols
-		sb.WriteByte('(')
-		for j := range cols {
-			if j > 0 {
-				sb.WriteByte(',')
-			}
-			fmt.Fprintf(&sb, "$%d", base+j+1)
-		}
-		sb.WriteByte(')')
-		args = append(args, e.Chain, e.BattleID, e.Attacker, e.Defender, e.WinnerPetID, e.LoserPetID,
-			e.Seed, int32(e.Rounds), int32(e.WinnerHpRemaining), int32(e.XPWin), int32(e.XPLoss),
-			e.FoughtAt, e.Version)
 	}
 
-	sb.WriteString(" ON CONFLICT (chain, battle_id) DO NOTHING")
-
-	_, err := f.pool.Exec(ctx, sb.String(), args...)
+	err := f.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "chain"}, {Name: "battle_id"}},
+		DoNothing: true,
+	}).Create(&rows).Error
 	if err != nil {
 		return fmt.Errorf("store: battle insert (%d rows): %w", len(events), err)
 	}
@@ -146,37 +176,24 @@ VALUES `)
 // LoadRoster reads the whole pet_roster table — the cache warm-up source
 // (the table is the persistent copy of the exact data the cache mirrors).
 func (f *PgFlusher) LoadRoster(ctx context.Context) ([]indexer.RosterUpdate, error) {
-	rows, err := f.pool.Query(ctx, `
-SELECT chain, pet_id, owner, name, level, rarity, dna, win_count, loss_count, ready_at,
-       xp, generation, parent1_id, parent2_id, breed_count, species_id, spouse_id, breed_ready_at, train_ready_at, asset,
-       last_version
-FROM pet_roster`)
-	if err != nil {
+	var rows []petRosterRow
+	if err := f.db.WithContext(ctx).Find(&rows).Error; err != nil {
 		return nil, fmt.Errorf("store: load roster: %w", err)
 	}
-	defer rows.Close()
 
-	var pets []indexer.RosterUpdate
-	for rows.Next() {
-		var u indexer.RosterUpdate
-		var level, rarity, winCount, lossCount int32
-		var xp, generation, breedCount, speciesID int32
-		var version int64
-		if err := rows.Scan(&u.Chain, &u.PetID, &u.Owner, &u.Name, &level, &rarity,
-			&u.DNA, &winCount, &lossCount, &u.ReadyAt,
-			&xp, &generation, &u.Parent1ID, &u.Parent2ID, &breedCount, &speciesID, &u.SpouseID,
-			&u.BreedReadyAt, &u.TrainReadyAt, &u.Asset,
-			&version); err != nil {
-			return nil, fmt.Errorf("store: load roster scan: %w", err)
+	pets := make([]indexer.RosterUpdate, len(rows))
+	for i, r := range rows {
+		pets[i] = indexer.RosterUpdate{
+			Chain: r.Chain, PetID: r.PetID, Owner: r.Owner, Name: r.Name,
+			Level: uint32(r.Level), Rarity: uint32(r.Rarity), DNA: r.DNA,
+			WinCount: uint32(r.WinCount), LossCount: uint32(r.LossCount), ReadyAt: r.ReadyAt,
+			XP: uint32(r.XP), Generation: uint32(r.Generation), Parent1ID: r.Parent1ID, Parent2ID: r.Parent2ID,
+			BreedCount: uint32(r.BreedCount), SpeciesID: uint32(r.SpeciesID), SpouseID: r.SpouseID,
+			BreedReadyAt: r.BreedReadyAt, TrainReadyAt: r.TrainReadyAt, Asset: r.Asset,
+			Version: uint64(r.LastVersion),
 		}
-		u.Level, u.Rarity = uint32(level), uint32(rarity)
-		u.WinCount, u.LossCount = uint32(winCount), uint32(lossCount)
-		u.XP, u.Generation = uint32(xp), uint32(generation)
-		u.BreedCount, u.SpeciesID = uint32(breedCount), uint32(speciesID)
-		u.Version = uint64(version)
-		pets = append(pets, u)
 	}
-	return pets, rows.Err()
+	return pets, nil
 }
 
 // BattlesSince reads chain-indexed battles newer than `after` for the gRPC
@@ -185,31 +202,23 @@ FROM pet_roster`)
 // when after >= 0 — exactly the rows a resuming stream consumer already has
 // no cursor for.
 func (f *PgFlusher) BattlesSince(ctx context.Context, chain string, after uint64) ([]indexer.BattleEvent, error) {
-	rows, err := f.pool.Query(ctx, `
-SELECT chain, battle_id, attacker_pet_id, defender_pet_id, winner_pet_id, loser_pet_id,
-       seed, rounds, winner_hp_remaining, xp_win, xp_loss, fought_at, version
-FROM battle_history
-WHERE chain = $1 AND version > $2
-ORDER BY version ASC`, chain, after)
+	var rows []battleRow
+	err := f.db.WithContext(ctx).
+		Where("chain = ? AND version > ?", chain, after).
+		Order("version ASC").
+		Find(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("store: battles since: %w", err)
 	}
-	defer rows.Close()
 
-	var events []indexer.BattleEvent
-	for rows.Next() {
-		var e indexer.BattleEvent
-		var rounds, winnerHp, xpWin, xpLoss int32
-		var foughtAt, version int64
-		if err := rows.Scan(&e.Chain, &e.BattleID, &e.Attacker, &e.Defender, &e.WinnerPetID, &e.LoserPetID,
-			&e.Seed, &rounds, &winnerHp, &xpWin, &xpLoss, &foughtAt, &version); err != nil {
-			return nil, fmt.Errorf("store: battles since scan: %w", err)
+	events := make([]indexer.BattleEvent, len(rows))
+	for i, r := range rows {
+		events[i] = indexer.BattleEvent{
+			Chain: r.Chain, BattleID: r.BattleID, Attacker: r.AttackerPetID, Defender: r.DefenderPetID,
+			WinnerPetID: r.WinnerPetID, LoserPetID: r.LoserPetID, Seed: r.Seed,
+			Rounds: uint32(r.Rounds), WinnerHpRemaining: uint32(r.WinnerHpRemaining),
+			XPWin: uint32(r.XPWin), XPLoss: uint32(r.XPLoss), FoughtAt: r.FoughtAt, Version: uint64(r.Version),
 		}
-		e.Rounds, e.WinnerHpRemaining = uint32(rounds), uint32(winnerHp)
-		e.XPWin, e.XPLoss = uint32(xpWin), uint32(xpLoss)
-		e.FoughtAt = foughtAt
-		e.Version = uint64(version)
-		events = append(events, e)
 	}
-	return events, rows.Err()
+	return events, nil
 }

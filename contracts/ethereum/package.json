@@ -29,6 +29,6 @@
         "viem": "^2.37.8"
     },
     "dependencies": {
-        "@chainlink/contracts": "1.4.0"
+        "@pythnetwork/entropy-sdk-solidity": "^2.2.1"
     }
 }

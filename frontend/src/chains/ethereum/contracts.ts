@@ -15,32 +15,32 @@ import combatSimAbi from '@chains/ethereum/combatSimAbi.json';
  * Sepolia (chain 11155111) deployment so local dev works out of the box.
  * See `contracts/ethereum/ignition/deployments/chain-11155111/deployed_addresses.json`.
  */
-const SEPOLIA_PETCORE = '0x0BB0e03259Cf9DA7B0A3e258e2D17d68D7be9d33';
-const SEPOLIA_GAMELOGIC = '0xaDEC55D3b9B2517D37C4bAbbb0dDc9F34de256ee';
-const SEPOLIA_GAMECONFIG = '0xc8acCDc7D20B85326D586A7Fc861453E6550cCef';
-const SEPOLIA_COMBATSIM = '0xca8Cb84D8e7619e783A2e546715BBe948E169C45';
+const SEPOLIA_PETCORE = '0xd30D9Cf66079774b5A41Cc69af44D890b942FbE2';
+const SEPOLIA_GAMELOGIC = '0x7C9f4634142a43633F3a1104733Cc4f0d0a21Aa3';
+const SEPOLIA_GAMECONFIG = '0xcbf789aae13BbF971e1aD2532f236E77a8CaE735';
+const SEPOLIA_COMBATSIM = '0x101FaF23889C2aE39d76A6257e372e3983e1F3E7';
 
-export interface EvmContract {
+interface EvmContract {
     address: `0x${string}`;
     abi: Abi;
 }
 
-export const petCoreContract: EvmContract = {
+const petCoreContract: EvmContract = {
     address: (import.meta.env.VITE_PETCORE_ADDRESS || SEPOLIA_PETCORE) as `0x${string}`,
     abi: petCoreAbi.abi as Abi,
 };
 
-export const gameLogicContract: EvmContract = {
+const gameLogicContract: EvmContract = {
     address: (import.meta.env.VITE_GAMELOGIC_ADDRESS || SEPOLIA_GAMELOGIC) as `0x${string}`,
     abi: gameLogicAbi.abi as Abi,
 };
 
-export const gameConfigContract: EvmContract = {
+const gameConfigContract: EvmContract = {
     address: (import.meta.env.VITE_GAMECONFIG_ADDRESS || SEPOLIA_GAMECONFIG) as `0x${string}`,
     abi: gameConfigAbi.abi as Abi,
 };
 
-export const combatSimContract: EvmContract = {
+const combatSimContract: EvmContract = {
     address: (import.meta.env.VITE_COMBATSIM_ADDRESS || SEPOLIA_COMBATSIM) as `0x${string}`,
     abi: combatSimAbi.abi as Abi,
 };
