@@ -1,8 +1,6 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import { getReadyPetsUnified, useChainCapabilities, useBreedPets, useFees, useMarriageInfo, usePendingBreed, usePetList } from '@shared/core';
-import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import { formatTxHashHint } from '@hooks/usePetError';
@@ -20,7 +18,6 @@ const BREED_FAIL_MESSAGE = 'Failed to breed pets. Please try again.';
 const AWAITING_HINT = 'Hang tight—your new pet will show up in a moment.';
 
 const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
-    const navigate = useNavigate();
     const { randomness } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const [selectedPet1, setSelectedPet1] = useState('');
@@ -64,9 +61,8 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
             setSelectedPet2('');
             setNewPetName('');
             void refetch();
-            navigate(DASHBOARD_HOME);
         },
-        [navigate, refetch]
+        [refetch]
     );
 
     const breed = useBreedPets({ onSuccess: handleSuccess });
@@ -111,13 +107,6 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
             name: newPetName.trim(),
             crossOwner,
         });
-    };
-
-    const handleCancel = () => {
-        setSuccess(null);
-        setValidationError(null);
-        breed.reset();
-        navigate(DASHBOARD_HOME);
     };
 
     return (
@@ -200,9 +189,6 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                     >
                         {buttonLabel}
                     </AuthActionButton>
-                    <button type="button" onClick={handleCancel} className="cancel-button">
-                        Cancel
-                    </button>
                 </div>
 
                 {breed.isAwaitingFulfillment && (

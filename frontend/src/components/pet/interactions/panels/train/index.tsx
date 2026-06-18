@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
 import {
     getReadyPetsUnified,
@@ -7,7 +6,6 @@ import {
     useTrainPet,
     usePetList,
 } from '@shared/core';
-import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
@@ -18,7 +16,6 @@ export type TrainPanelProps = {
 };
 
 const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
-    const navigate = useNavigate();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
 
@@ -29,7 +26,6 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
         setSuccess('Pet trained successfully!');
         setSelectedPet('');
         refetch();
-        navigate(DASHBOARD_HOME);
     };
 
     const { mutate, isPending, error: hookError, reset, lifecycle } = useTrainPet({
@@ -62,11 +58,6 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
         } catch (err) {
             console.error('[train]', err);
         }
-    };
-
-    const handleCancel = () => {
-        setSuccess(null);
-        navigate(DASHBOARD_HOME);
     };
 
     const buttonLabel = isPending
@@ -104,9 +95,6 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                 <div className="action-controls">
                     <button type="button" onClick={handleTrain} disabled={isPending || !selectedPet}>
                         {buttonLabel}
-                    </button>
-                    <button type="button" onClick={handleCancel} className="cancel-button">
-                        Cancel
                     </button>
                 </div>
             </div>

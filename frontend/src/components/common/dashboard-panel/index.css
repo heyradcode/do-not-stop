@@ -105,6 +105,26 @@
             inset-block-start: 0;
             inset-inline-end: 0;
         }
+
+        .panel-back {
+            position: absolute;
+            inset-block-start: 0;
+            inset-inline-start: 0;
+            background: transparent;
+            border: none;
+            color: var(--pc-text-muted);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 4px 2px;
+            letter-spacing: 0.3px;
+            transition: color 0.2s ease;
+            line-height: 1;
+
+            &:hover {
+                color: var(--pc-text);
+            }
+        }
     }
 
     .state-body {

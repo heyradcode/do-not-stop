@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
     useChainCapabilities,
     useMarriage,
@@ -7,7 +6,6 @@ import {
     usePetList,
     type Pet,
 } from '@shared/core';
-import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useNotifyError } from '@hooks/useNotifyError';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
@@ -52,7 +50,6 @@ const MarriagePetRow: React.FC<{
 };
 
 const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }) => {
-    const navigate = useNavigate();
     const { kind, walletAddress } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
@@ -210,11 +207,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                     </div>
                 )}
 
-                <div className="action-controls">
-                    <button type="button" onClick={() => navigate(DASHBOARD_HOME)} className="cancel-button">
-                        Done
-                    </button>
-                </div>
+
             </div>
 
             {success && (
