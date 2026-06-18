@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+    useApiClient,
     useChainCapabilities,
     useMarriage,
     useMarriageInfo,
     useAllPets,
-    useSearchPets,
     usePetList,
     useIncomingProposals,
     type IncomingProposal,
@@ -17,6 +17,31 @@ import { useNotifyError } from '@hooks/useNotifyError';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import PetSearchDropdown from '@components/ui/pet-search-dropdown';
 import { Tones } from '@constants/tones';
+
+const SPOUSE_GQL = `query SpousePet($chain:String!,$id:String!){pet(chain:$chain,id:$id){id name level}}`;
+
+/** Direct no-debounce pet lookup by ID — fires immediately on mount. */
+const useSpousePet = (
+    chain: PetChain | null,
+    spouseId: string,
+    skip: boolean,
+): { name?: string; level?: number } => {
+    const apiClient = useApiClient();
+    const baseURL = apiClient.defaults.baseURL ?? '';
+    const { data } = useQuery({
+        queryKey: ['pet', baseURL, chain, spouseId],
+        enabled: !skip && Boolean(chain && spouseId && spouseId !== '0'),
+        queryFn: async () => {
+            const res = await apiClient.post<{ data?: { pet: { id: string; name: string; level: number } | null } }>(
+                '/graphql',
+                { query: SPOUSE_GQL, variables: { chain, id: spouseId } },
+            );
+            return res.data.data?.pet ?? null;
+        },
+        staleTime: 60_000,
+    });
+    return { name: data?.name, level: data?.level };
+};
 
 type MarriageTab = 'propose' | 'accept';
 
@@ -37,19 +62,14 @@ const MarriageCard: React.FC<{
     const spouseId = info.isMarried && info.spouseId ? info.spouseId.toString() : '';
     const fromMap = spouseId ? petById.get(spouseId) : undefined;
 
-    // Fallback: search by numeric ID when the bulk allPets map is empty.
-    // useSearchPets does an exact petId match for numeric queries.
-    const { results: searched } = useSearchPets(spouseId, {
-        chain,
-        limit: 1,
-        enabled: !fromMap && Boolean(spouseId && spouseId !== '0'),
-    });
+    // Direct no-debounce fallback: single pet(chain, id) query fires immediately
+    // when the bulk allPets map doesn't have this pet yet.
+    const fetched = useSpousePet(chain, spouseId, Boolean(fromMap));
 
     if (!info.isMarried || !spouseId) return null;
 
-    const spouse = fromMap ?? searched[0];
-    const spouseName = spouse?.name ?? `#${spouseId}`;
-    const spouseLevel = spouse?.level;
+    const spouseName = fromMap?.name ?? fetched.name ?? `#${spouseId}`;
+    const spouseLevel = fromMap?.level ?? fetched.level;
 
     return (
         <li className="marriage-card">
