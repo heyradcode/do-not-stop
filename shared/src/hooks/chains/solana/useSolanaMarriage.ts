@@ -1,9 +1,9 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
 import { globalStatePda, petPdaByAsset, marriageProposalPda } from '../../../utils/solana/pdas';
 import { fetchAssetByPetId, getAccountClient } from '../../../utils/solana/accountClient';
-import { useProgram } from './useProgram';
+import { useProgram, type SolanaProgram } from './useProgram';
 
 /** Fetch the MarriageProposal account for petAId. Returns proposer pubkey or null if no live proposal. */
 const fetchProposalProposer = async (
@@ -141,8 +141,8 @@ export const useSolanaMarriage = () => {
         onSuccess: invalidate,
     });
 
-    const toAction = <TArgs,>(m: typeof propose): SolanaMarriageAction<TArgs> => ({
-        mutateAsync: m.mutateAsync as unknown as (args: TArgs) => Promise<void>,
+    const toAction = <TArgs,>(m: UseMutationResult<string, Error, TArgs, unknown>): SolanaMarriageAction<TArgs> => ({
+        mutateAsync: (args: TArgs) => m.mutateAsync(args).then(() => undefined),
         isPending: m.isPending,
         error: m.error as Error | null,
         reset: m.reset,
