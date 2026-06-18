@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useReadContracts } from 'wagmi';
 import TransactionStatus from '@components/common/transaction-status';
@@ -109,6 +109,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
 
     const [tab, setTab] = useState<BreedTab>('own');
     const [success, setSuccess] = useState<string | null>(null);
+    const autoSwitched = useRef(false);
 
     // ── My Pets tab state ──────────────────────────────────────────────────────
     const [ownPet1, setOwnPet1] = useState('');
@@ -121,6 +122,15 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
 
     const allPets = useMemo(() => pets.map((pet) => ({ id: pet.id, pet })), [pets]);
     const marriedPets = useMyMarriedPets(pets, kind);
+
+    // Auto-switch to "With Spouse" once (on first data load) if the user has a
+    // married pet but not enough own pets to use the "My Pets" tab.
+    useEffect(() => {
+        if (!autoSwitched.current && marriedPets.length > 0 && pets.length < 2) {
+            autoSwitched.current = true;
+            setTab('spouse');
+        }
+    }, [marriedPets.length, pets.length]);
 
     const selectedMarriage = marriedPets.find((m) => m.pet.id === marriedPetId);
     const spouseId = selectedMarriage?.spouseId;
@@ -212,43 +222,55 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 {/* ── My Pets tab ──────────────────────────────────────────────── */}
                 {tab === 'own' && (
                     <div className="breed-tab-panel">
-                        <p className="breed-tab-hint">Select two of your pets to breed together.</p>
-                        <div className="picker">
-                            <div className="field">
-                                <label>First Parent</label>
-                                <select value={ownPet1} onChange={(e) => setOwnPet1(e.target.value)}>
-                                    <option value="">Select pet…</option>
-                                    {allPets.map(({ id, pet }) => (
-                                        <option key={id} value={id}>
-                                            {pet.name} (Lv {pet.level})
-                                        </option>
-                                    ))}
-                                </select>
+                        {pets.length < 2 ? (
+                            <div className="breed-no-married">
+                                <p>You need at least 2 pets to breed here.</p>
+                                {marriedPets.length > 0
+                                    ? <p>Your pet is married — use the <strong>With Spouse</strong> tab to breed!</p>
+                                    : <p>Create more pets or use the Marriage page to pair up.</p>
+                                }
                             </div>
-                            <div className="field">
-                                <label>Second Parent</label>
-                                <select value={ownPet2} onChange={(e) => setOwnPet2(e.target.value)}>
-                                    <option value="">Select pet…</option>
-                                    {allPets.filter(({ id }) => id !== ownPet1).map(({ id, pet }) => (
-                                        <option key={id} value={id}>
-                                            {pet.name} (Lv {pet.level})
-                                        </option>
-                                    ))}
-                                </select>
+                        ) : (
+                        <>
+                            <p className="breed-tab-hint">Select two of your pets to breed together.</p>
+                            <div className="picker">
+                                <div className="field">
+                                    <label>First Parent</label>
+                                    <select value={ownPet1} onChange={(e) => setOwnPet1(e.target.value)}>
+                                        <option value="">Select pet…</option>
+                                        {allPets.map(({ id, pet }) => (
+                                            <option key={id} value={id}>
+                                                {pet.name} (Lv {pet.level})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="field">
+                                    <label>Second Parent</label>
+                                    <select value={ownPet2} onChange={(e) => setOwnPet2(e.target.value)}>
+                                        <option value="">Select pet…</option>
+                                        {allPets.filter(({ id }) => id !== ownPet1).map(({ id, pet }) => (
+                                            <option key={id} value={id}>
+                                                {pet.name} (Lv {pet.level})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
-                        </div>
-                        <PendingBreedNotice petId={ownPet1 || undefined} label={`#${ownPet1}`} />
-                        <PendingBreedNotice petId={ownPet2 || undefined} label={`#${ownPet2}`} />
-                        <div className="name-input">
-                            <label>Offspring Name</label>
-                            <input
-                                type="text"
-                                value={ownChildName}
-                                onChange={(e) => setOwnChildName(e.target.value)}
-                                placeholder="Name for the new pet…"
-                                maxLength={20}
-                            />
-                        </div>
+                            <PendingBreedNotice petId={ownPet1 || undefined} label={`#${ownPet1}`} />
+                            <PendingBreedNotice petId={ownPet2 || undefined} label={`#${ownPet2}`} />
+                            <div className="name-input">
+                                <label>Offspring Name</label>
+                                <input
+                                    type="text"
+                                    value={ownChildName}
+                                    onChange={(e) => setOwnChildName(e.target.value)}
+                                    placeholder="Name for the new pet…"
+                                    maxLength={20}
+                                />
+                            </div>
+                        </>
+                        )}
                     </div>
                 )}
 
