@@ -4,9 +4,11 @@ import {
     useChainCapabilities,
     useMarriage,
     useMarriageInfo,
+    useAllPets,
     usePetList,
     useIncomingProposals,
     type IncomingProposal,
+    type OpponentPet,
     type Pet,
 } from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
@@ -20,19 +22,40 @@ export type MarriagePanelProps = {
     isStandaloneView?: boolean;
 };
 
-/** Shows married pets only (not proposals). Used in the always-visible status section. */
-const MarriedPetRow: React.FC<{
+/** Romantic marriage card — shows both pets connected by a heart. */
+const MarriageCard: React.FC<{
     pet: Pet;
+    petById: Map<string, OpponentPet>;
     onDivorce: (petId: string) => void;
     busy: boolean;
-}> = ({ pet, onDivorce, busy }) => {
+}> = ({ pet, petById, onDivorce, busy }) => {
     const info = useMarriageInfo(pet);
-    if (!info.isMarried) return null;
+    if (!info.isMarried || !info.spouseId) return null;
+
+    const spouseId = info.spouseId.toString();
+    const spouse = petById.get(spouseId);
+    const spouseName = spouse?.name ?? `#${spouseId}`;
+    const spouseLevel = spouse?.level;
+
     return (
-        <li className="marriage-row">
-            <span className="marriage-pet">{pet.name} (#{pet.id})</span>
-            <span className="marriage-status">Married to #{info.spouseId?.toString()}</span>
-            <button type="button" className="marriage-row-action divorce" onClick={() => onDivorce(pet.id)} disabled={busy}>
+        <li className="marriage-card">
+            <div className="marriage-pair">
+                <div className="marriage-partner">
+                    <span className="partner-name">{pet.name}</span>
+                    <span className="partner-meta">#{pet.id} · Lv {pet.level}</span>
+                </div>
+                <span className="marriage-heart" aria-hidden>❤</span>
+                <div className="marriage-partner">
+                    <span className="partner-name">{spouseName}</span>
+                    <span className="partner-meta">#{spouseId}{spouseLevel != null ? ` · Lv ${spouseLevel}` : ''}</span>
+                </div>
+            </div>
+            <button
+                type="button"
+                className="marriage-row-action divorce"
+                onClick={() => onDivorce(pet.id)}
+                disabled={busy}
+            >
                 Divorce
             </button>
         </li>
@@ -113,6 +136,13 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
         [pets, kind],
     );
     const chainPetIds = useMemo(() => chainPets.map((p) => p.id), [chainPets]);
+
+    // All pets on this chain — used for spouse name lookup in marriage cards.
+    const { pets: allRosterPets } = useAllPets(activeKind);
+    const petById = useMemo<Map<string, OpponentPet>>(
+        () => new Map(allRosterPets.map((p) => [p.id, p])),
+        [allRosterPets],
+    );
 
     const { proposals: incomingProposals, isLoading: incomingLoading } = useIncomingProposals(
         activeKind,
@@ -289,12 +319,13 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                 {/* Active marriages — always visible */}
                 {chainPets.length > 0 && (
                     <div className="marriage-status-section">
-                        <span className="marriage-status-label">Your marriages</span>
+                        <span className="marriage-status-label">❤ Your marriages</span>
                         <ul className="marriage-list">
                             {chainPets.map((p) => (
-                                <MarriedPetRow
+                                <MarriageCard
                                     key={p.id}
                                     pet={p}
+                                    petById={petById}
                                     busy={busy}
                                     onDivorce={(id) => void run(() => marriage.divorce.mutateAsync({ petId: id }), 'Divorced.')}
                                 />
