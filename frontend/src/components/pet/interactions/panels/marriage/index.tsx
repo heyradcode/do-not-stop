@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     useChainCapabilities,
     useMarriage,
@@ -99,6 +100,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
     const marriage = useMarriage();
+    const queryClient = useQueryClient();
 
     const [tab, setTab] = useState<MarriageTab>('propose');
     const [myPet, setMyPet] = useState('');
@@ -126,6 +128,9 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
             await fn();
             setSuccess(message);
             refetch();
+            // Invalidate all wagmi readContract caches so marriage/proposal rows
+            // reflect the new on-chain state immediately after any write.
+            void queryClient.invalidateQueries({ queryKey: ['readContract'] });
             onSuccess?.();
         } catch (err) {
             console.error('[marriage]', err);
