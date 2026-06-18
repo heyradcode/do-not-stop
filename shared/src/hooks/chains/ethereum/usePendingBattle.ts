@@ -60,7 +60,7 @@ export const usePendingBattle = (petId?: string): PendingBattle => {
     const settle: PendingBattleTx = {
         async run() {
             if (!gameLogic || requestId == null) throw new Error('No pending battle to settle');
-            await settleW.writeContractAsync({ address: gameLogic, abi, functionName: 'settleBattle', args: [requestId], gas: 800000n });
+            await settleW.writeContractAsync({ address: gameLogic, abi, functionName: 'settleBattle', args: [requestId], gas: 800000n, chainId });
         },
         isPending: settleW.isPending || (!!settleW.data && !settleR.isSuccess && !settleR.isError),
         error: (settleW.error as Error | null) ?? (settleR.isError ? (settleR.error as Error) : null),
@@ -70,7 +70,7 @@ export const usePendingBattle = (petId?: string): PendingBattle => {
     const cancel: PendingBattleTx = {
         async run() {
             if (!gameLogic || requestId == null) throw new Error('No pending battle to cancel');
-            await cancelW.writeContractAsync({ address: gameLogic, abi, functionName: 'cancelBattle', args: [requestId], gas: 200000n });
+            await cancelW.writeContractAsync({ address: gameLogic, abi, functionName: 'cancelBattle', args: [requestId], gas: 200000n, chainId });
         },
         isPending: cancelW.isPending || (!!cancelW.data && !cancelR.isSuccess && !cancelR.isError),
         error: (cancelW.error as Error | null) ?? (cancelR.isError ? (cancelR.error as Error) : null),
