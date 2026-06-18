@@ -13,6 +13,8 @@ export interface UnifiedFees {
     studFee?: bigint;
     /** Next mint fee for this wallet, including per-wallet escalation. */
     nextMintFee?: bigint;
+    /** EVM only: Pyth Entropy fee bundled with requestMintStarter. Undefined until loaded. */
+    entropyFee?: bigint;
     walletMintCount?: number;
     /** Native currency symbol for the active chain, null when disconnected. */
     symbol: 'ETH' | 'SOL' | null;
@@ -59,6 +61,7 @@ export const useFees = (): UnifiedFees => {
                 trainFee:       evmFees.trainFee,
                 studFee:        evmFees.studFee,
                 nextMintFee:    evmFees.nextMintFee,
+                entropyFee:     evmFees.entropyFee,
                 walletMintCount: evmFees.walletMintCount != null ? Number(evmFees.walletMintCount) : undefined,
                 symbol: 'ETH',
                 formatAmountOnly: ETH_AMOUNT,
