@@ -40,6 +40,8 @@ export {
 export { useTransferPet, type TransferPetArgs } from './useTransferPet';
 export { useOpponents, type UseOpponentsOptions } from './useOpponents';
 export { useSearchPets, type UseSearchPetsOptions, type SearchPetsResult } from './useSearchPets';
+export { useAllPets, type UseAllPetsOptions } from './useAllPets';
+export { useIncomingProposals, type IncomingProposal } from './useIncomingProposals';
 export { useWinEstimate, type WinEstimateResult } from './useWinEstimate';
 export {
     useBattleDialogue,

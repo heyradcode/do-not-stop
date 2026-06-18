@@ -74,6 +74,13 @@ export const schema = buildSchema(`
         ): [OpponentPet!]!
 
         """
+        Return every pet on a chain (ordered by petId). Used by the
+        incoming-proposals flow so the client can batch-read on-chain
+        marriageProposal state for all known pets.
+        """
+        allPets(chain: String!, limit: Int): [OpponentPet!]!
+
+        """
         A single pet by id, for the pet-detail view — carries the same v2 fields
         as the opponents list (lineage, marriage, cooldowns, species, Core asset).
         Returns null when no such pet exists. Reads indexer-go's cache first

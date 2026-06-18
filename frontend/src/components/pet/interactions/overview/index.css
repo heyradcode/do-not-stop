@@ -934,3 +934,172 @@
     opacity: 0.85;
     font-size: var(--font-size-xs);
 }
+
+/* Accept tab — tab badge (unread count) */
+.marriage-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    margin-left: 6px;
+    border-radius: 9px;
+    background: rgb(0 255 157 / 22%);
+    border: 1px solid rgb(0 255 157 / 48%);
+    color: #9effd4;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Accept tab — empty state */
+.proposals-empty {
+    padding: 20px 12px;
+    font-size: 13px;
+    color: rgb(125 214 255 / 40%);
+    font-style: italic;
+    text-align: center;
+}
+
+/* Accept tab — proposals list */
+.proposals-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.proposal-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid rgb(0 255 157 / 22%);
+    border-radius: 8px;
+    background: rgb(0 255 157 / 4%);
+}
+
+.proposal-pets {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    flex-wrap: wrap;
+}
+
+.proposal-proposer {
+    color: rgb(195 210 255 / 90%);
+}
+
+.proposal-arrow {
+    color: rgb(0 255 157 / 60%);
+}
+
+.proposal-target {
+    color: #9effd4;
+}
+
+.proposal-id {
+    font-weight: 400;
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.proposal-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.proposal-expiry {
+    font-size: 11px;
+    color: rgb(125 214 255 / 45%);
+}
+
+.accept-inline {
+    background: rgb(0 255 157 / 10%);
+    border: 1px solid rgb(0 255 157 / 36%);
+    color: #9effd4;
+    padding: 4px 12px;
+    font-size: 12px;
+
+    &:hover:not(:disabled) {
+        background: rgb(0 255 157 / 20%);
+        border-color: rgb(0 255 157 / 60%);
+    }
+}
+
+/* Confirm accept modal */
+.marriage-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 55%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 8000;
+    padding: 16px;
+}
+
+.marriage-confirm-dialog {
+    background: rgb(5 13 30 / 97%);
+    border: 1px solid rgb(0 255 157 / 36%);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 0 40px rgb(0 255 157 / 14%);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.confirm-title {
+    margin: 0;
+    font-size: 16px;
+    color: #9effd4;
+}
+
+.confirm-body {
+    margin: 0;
+    font-size: 14px;
+    color: rgb(195 210 255 / 80%);
+    line-height: 1.5;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.confirm-cancel {
+    padding: 8px 18px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid rgb(125 214 255 / 25%);
+    color: rgb(195 210 255 / 70%);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+        background: rgb(125 214 255 / 8%);
+        border-color: rgb(125 214 255 / 50%);
+    }
+
+    &:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+}
+
+.confirm-accept {
+    padding: 8px 20px !important;
+    font-size: 13px !important;
+}

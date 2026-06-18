@@ -117,6 +117,20 @@ export async function searchPets(params: SearchPetsParams): Promise<RosterPet[]>
 }
 
 /**
+ * All pets for a given chain, ordered by petId. Used by the incoming-proposals
+ * flow so the frontend can batch-check on-chain marriageProposal state for every
+ * known pet without a separate search round-trip.
+ */
+export async function getAllPets(chain: Chain, limit: number): Promise<RosterPet[]> {
+    const rows = await prisma.petRoster.findMany({
+        where: { chain },
+        orderBy: { petId: 'asc' },
+        take: limit,
+    });
+    return rows.map(mapRosterRowToRosterPet);
+}
+
+/**
  * A single pet by (chain, petId) for the pet-detail view. Same fail-open shape
  * as the matchmaking read: indexer-go's cache answers first when
  * ROSTER_READ_SOURCE=grpc, otherwise (or on any gRPC fault) Prisma does.
