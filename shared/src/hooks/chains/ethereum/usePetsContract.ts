@@ -63,17 +63,19 @@ export const usePetsContract = ({
         },
     });
 
+    // chainId is embedded per-contract because useReadContracts ignores a
+    // top-level chainId prop and always overwrites it with useChainId() (wallet).
     const petReadContracts =
         ((petIdsData as bigint[] | undefined)?.map((petId: bigint) => ({
             address: safeAddress,
             abi,
             functionName: 'getPet' as const,
             args: [petId],
+            ...(chainId != null ? { chainId } : {}),
         }))) ?? [];
 
     const { data: petsData, isLoading: isPetsLoading, error: petsError, refetch: refetchPetsData } = useReadContracts({
         contracts: petReadContracts,
-        chainId,
         query: {
             enabled: canRead && petReadContracts.length > 0,
         },

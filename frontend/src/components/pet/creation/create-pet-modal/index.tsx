@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     useChainCapabilities,
     useCreatePet,
     useFees,
-    usePetList,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
@@ -19,7 +19,7 @@ interface CreatePetModalProps {
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const { isConnected } = useChainCapabilities();
-    const { refetch } = usePetList();
+    const queryClient = useQueryClient();
     const notifyError = useNotifyError();
 
     // Mint cost escalates per wallet: EVM baseMintFee×(1+count), Solana baseMintFee<<min(count,7).
@@ -33,7 +33,11 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const handleCreateComplete = () => {
         setSuccess(`Pet "${petName.trim()}" created successfully!`);
         setPetName('');
-        refetch();
+        // Bust the entire contract-read cache so the gallery picks up the new pet
+        // immediately — avoids stale reads when the wallet's chain differs from
+        // the contract's chain (useReadContracts overwrites chainId with the wallet's).
+        void queryClient.invalidateQueries({ queryKey: ['readContract'] });
+        void queryClient.invalidateQueries({ queryKey: ['readContracts'] });
         onClose();
     };
 
