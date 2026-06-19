@@ -88,7 +88,7 @@
                 }
             }
 
-            input {
+            input:not(.psd-input) {
                 padding: 11px 14px;
                 border: 1px solid rgb(125 214 255 / 28%);
                 border-radius: 4px;
