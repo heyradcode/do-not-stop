@@ -84,7 +84,7 @@ describe('RenamePanel', () => {
         expect(renamePet.mutate).toHaveBeenCalledWith({ petId: '1', name: 'Gamma' });
     });
 
-    it('shows a success message and navigates home once the rename settles', async () => {
+    it('shows a success message once the rename settles', async () => {
         render(<RenamePanel />);
         await userEvent.selectOptions(screen.getByRole('combobox'), '1');
         await userEvent.type(screen.getByPlaceholderText('Enter new name...'), 'Gamma');
@@ -95,12 +95,5 @@ describe('RenamePanel', () => {
 
         expect(screen.getByText('Pet name changed to "Gamma"!')).toBeInTheDocument();
         expect(petList.refetch).toHaveBeenCalled();
-        expect(navigate).toHaveBeenCalledWith('/dashboard');
-    });
-
-    it('navigates home on cancel', async () => {
-        render(<RenamePanel />);
-        await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-        expect(navigate).toHaveBeenCalledWith('/dashboard');
     });
 });

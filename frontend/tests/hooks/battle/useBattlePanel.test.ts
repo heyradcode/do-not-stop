@@ -46,6 +46,7 @@ vi.mock('@shared/core', () => ({
     useBattleTaunts: () => taunts,
     useOpponents: () => ({ opponents, isLoading: false, isFetching: false, refetch: vi.fn() }),
     usePendingBattle: () => ({ isPending: false }),
+    useWinEstimate: () => ({ winProbability: null, isLoading: false, samples: null }),
 }));
 
 import { useBattlePanel } from '@hooks/battle/useBattlePanel';

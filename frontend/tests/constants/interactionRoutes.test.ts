@@ -37,8 +37,8 @@ describe('constants', () => {
         expect(INTERACTION_ROUTES).toContain('/breed');
     });
 
-    it('DASHBOARD_HOME is /dashboard', () => {
-        expect(DASHBOARD_HOME).toBe('/dashboard');
+    it('DASHBOARD_HOME is /main', () => {
+        expect(DASHBOARD_HOME).toBe('/main');
     });
 
     it('BREED_PATH and BATTLE_PATH are correct', () => {

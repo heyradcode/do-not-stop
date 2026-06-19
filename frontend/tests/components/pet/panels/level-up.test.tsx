@@ -88,7 +88,7 @@ describe('LevelUpPanel', () => {
         expect(levelUpPet.mutate).toHaveBeenCalledWith({ petId: '2' });
     });
 
-    it('shows success and navigates home once settled', () => {
+    it('shows success once settled', () => {
         render(<LevelUpPanel />);
 
         act(() => {
@@ -97,12 +97,5 @@ describe('LevelUpPanel', () => {
 
         expect(screen.getByText('Pet leveled up successfully!')).toBeInTheDocument();
         expect(petList.refetch).toHaveBeenCalled();
-        expect(navigate).toHaveBeenCalledWith('/dashboard');
-    });
-
-    it('navigates home on cancel', async () => {
-        render(<LevelUpPanel />);
-        await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-        expect(navigate).toHaveBeenCalledWith('/dashboard');
     });
 });

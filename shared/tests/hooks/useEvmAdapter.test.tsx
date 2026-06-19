@@ -36,6 +36,7 @@ const fees = {
     trainFee: 3n,
     breedFee: 4n,
     studFee: 5n,
+    entropyFee: 0n,
 };
 const config: {
     evm:
@@ -76,6 +77,7 @@ beforeEach(() => {
         trainFee: 3n,
         breedFee: 4n,
         studFee: 5n,
+        entropyFee: 0n,
     });
     config.evm = {
         petCore: { address: '0x1111111111111111111111111111111111111111', abi: [] },
@@ -122,8 +124,8 @@ describe('useEvmAdapter', () => {
         await result.current.createPet.mutateAsync({ name: 'Sparky' });
         expect(write.writeContractAsync).toHaveBeenCalledWith(
             expect.objectContaining({
-                address: '0x1111111111111111111111111111111111111111',
-                functionName: 'mintStarter',
+                address: '0x2222222222222222222222222222222222222222',
+                functionName: 'requestMintStarter',
                 args: ['Sparky'],
                 value: 10n,
             }),

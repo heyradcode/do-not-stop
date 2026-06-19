@@ -9,7 +9,9 @@ const writeQueue = [settleW, cancelW];
 let writeIdx = 0;
 
 vi.mock('wagmi', () => ({
+    useAccount: () => ({ address: '0xowner' }),
     useReadContract: () => readContract,
+    useSimulateContract: () => ({ isSuccess: false }),
     useWriteContract: () => writeQueue[writeIdx++ % 2],
     useWaitForTransactionReceipt: () => ({ isSuccess: false, isError: false, error: null }),
 }));

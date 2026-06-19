@@ -15,9 +15,10 @@ vi.mock('wagmi', () => ({
     useReadContract: () => ({ data: undefined }),
     useWriteContract: () => ({ writeContract: vi.fn(), reset: vi.fn(), data: undefined }),
     useWaitForTransactionReceipt: () => ({ data: undefined, isSuccess: false }),
+    useWatchContractEvent: vi.fn(),
 }));
 vi.mock('../../src/hooks/chains/ethereum/useWatchPetsContract', () => ({ useWatchPetsContract: vi.fn() }));
-vi.mock('../../src/hooks/chains/ethereum/useWatchVrfFulfillment', () => ({ useWatchVrfFulfillment: vi.fn() }));
+vi.mock('../../src/hooks/chains/ethereum/useWatchEntropyFulfillment', () => ({ useWatchEntropyFulfillment: vi.fn() }));
 vi.mock('../../src/contexts/PetsConfigContext', () => ({ usePetsConfig: () => ({ evm: undefined }) }));
 
 import { useBreedPets } from '../../src/hooks/useBreedPets';
