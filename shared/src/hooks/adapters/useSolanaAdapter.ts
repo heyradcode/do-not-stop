@@ -58,8 +58,16 @@ const toLc = <TData = string,>(m: SolanaMutation<TData>): TxLifecycle => {
     };
 }
 
+/** Infer Solana Explorer cluster param from an RPC endpoint URL. */
+const clusterParam = (rpcEndpoint: string): string => {
+    if (rpcEndpoint.includes('devnet')) return 'devnet';
+    if (rpcEndpoint.includes('mainnet')) return 'mainnet-beta';
+    if (rpcEndpoint.includes('testnet')) return 'testnet';
+    return `custom&customUrl=${encodeURIComponent(rpcEndpoint)}`;
+};
+
 export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  => {
-    const { signingWallet } = useSolanaAnchor();
+    const { signingWallet, connection } = useSolanaAnchor();
     const owner = enabled && signingWallet?.publicKey ? signingWallet.publicKey : null;
 
     const actions = usePetActions();
@@ -172,11 +180,14 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         isPending: actions.breedPets.isPending,
     };
 
+    const explorerTxUrl = (hash: string) =>
+        `https://explorer.solana.com/tx/${hash}?cluster=${clusterParam(connection.rpcEndpoint)}`;
+
     return {
         kind: 'solana',
         address: signingWallet?.publicKey?.toBase58() ?? null,
         isConnected: enabled && Boolean(signingWallet?.publicKey),
-        capabilities: SOLANA_CAPABILITIES,
+        capabilities: { ...SOLANA_CAPABILITIES, explorerTxUrl },
         pets: {
             data: solanaPets,
             isLoading: petsQuery.isLoading || petsQuery.isFetching,

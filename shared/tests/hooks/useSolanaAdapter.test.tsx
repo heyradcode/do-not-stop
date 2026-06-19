@@ -36,7 +36,9 @@ const anchor = { signingWallet: { publicKey: Keypair.generate().publicKey } as {
 
 vi.mock('../../src/hooks/chains/solana/usePetActions', () => ({ usePetActions: () => actions }));
 vi.mock('../../src/hooks/chains/solana/usePets', () => ({ usePets: () => petsQuery }));
-vi.mock('../../src/contexts/SolanaAnchorContext', () => ({ useSolanaAnchor: () => anchor }));
+vi.mock('../../src/contexts/SolanaAnchorContext', () => ({
+    useSolanaAnchor: () => ({ ...anchor, connection: { rpcEndpoint: 'https://api.devnet.solana.com' } }),
+}));
 vi.mock('../../src/hooks/chains/solana/useProgram', () => ({
     useProgram: () => ({ program: null, programId: null, provider: null, isConfigured: false, isLoading: false, isFetching: false, error: null, refetch: vi.fn(), isReady: false }),
 }));
@@ -75,6 +77,10 @@ describe('SOLANA_CAPABILITIES', () => {
         expect(SOLANA_CAPABILITIES.randomness.provider).toBe('switchboard');
     });
 
+    it('base explorerTxUrl returns null (cluster resolved at runtime)', () => {
+        expect(SOLANA_CAPABILITIES.explorerTxUrl('abc')).toBeNull();
+    });
+
     it('validates base58 addresses', () => {
         expect(SOLANA_CAPABILITIES.address.isValid(validAddress)).toBe(true);
         expect(SOLANA_CAPABILITIES.address.isValid('not-base58!!')).toBe(false);
@@ -93,7 +99,14 @@ describe('useSolanaAdapter', () => {
         expect(result.current.kind).toBe('solana');
         expect(result.current.isConnected).toBe(true);
         expect(result.current.address).toBe(anchor.signingWallet!.publicKey.toString());
-        expect(result.current.capabilities).toBe(SOLANA_CAPABILITIES);
+        expect(result.current.capabilities.chainLabel).toBe('Solana');
+    });
+
+    it('explorerTxUrl includes devnet cluster from rpcEndpoint', () => {
+        const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
+        const url = result.current.capabilities.explorerTxUrl('mysig123');
+        expect(url).toContain('explorer.solana.com/tx/mysig123');
+        expect(url).toContain('cluster=devnet');
     });
 
     it('is disconnected without a signing wallet', () => {
