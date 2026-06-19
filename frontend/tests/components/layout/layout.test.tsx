@@ -2,9 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-vi.mock('@shared/core', () => ({
-    useAuth: () => ({ isAuthenticated: true, isRestoring: false }),
-}));
 vi.mock('@components/wallet/account-dropdown', () => ({ default: () => <div data-testid="account-dropdown" /> }));
 vi.mock('@components/wallet/solana-wallet-trigger', () => ({ default: () => <div data-testid="solana-trigger" /> }));
 vi.mock('@components/pet/collection/pet-gallery', () => ({ default: () => <div data-testid="pet-gallery" /> }));

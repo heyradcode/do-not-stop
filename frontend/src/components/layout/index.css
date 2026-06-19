@@ -130,7 +130,7 @@
   }
 }
 
-.main-content.authenticated {
+.main-content {
   /* Fill exactly the viewport below the fixed header; never scroll the page itself. */
   height: calc(100vh - var(--main-header-offset));
   padding: var(--spacing-md) var(--spacing-lg);
@@ -162,7 +162,7 @@
 
 /* Dashboard view (interactions hub + pet gallery): split horizontally 50/50 so
    both panels share equal width and the pet cards render in full. */
-.main-content.authenticated:has(.dashboard-panel.pet-collection) {
+.main-content:has(.dashboard-panel.pet-collection) {
   flex-direction: row;
   align-items: stretch;
 
@@ -220,14 +220,14 @@
 }
 
 @media (max-width: 1024px) {
-  .main-content.authenticated {
+  .main-content {
     padding: var(--spacing-sm) var(--spacing-md);
     gap: var(--spacing-sm);
   }
 
   /* Stack panels vertically on narrow screens; allow the page to scroll
      so both interactions and gallery remain usable. */
-  .main-content.authenticated:has(.dashboard-panel.pet-collection) {
+  .main-content:has(.dashboard-panel.pet-collection) {
     flex-direction: column;
     overflow-y: auto;
     overflow-x: hidden;
@@ -258,14 +258,9 @@
   }
 }
 
-/* Blank frame while stored-token restoration runs — prevents sign-in gate flash */
-.sign-in-restoring {
-    flex: 1;
-    background: var(--neon-base-bg, #06080f);
-}
 
 @media (max-width: 640px) {
-  .main-content.authenticated:has(.dashboard-panel.pet-collection)
+  .main-content:has(.dashboard-panel.pet-collection)
     > .dashboard-panel.pet-interactions .action-buttons {
     display: grid;
     grid-template-columns: 1fr;

@@ -14,6 +14,7 @@ import {
     type PetChain,
 } from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
+import { AuthActionButton } from '@components/common';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import PetSearchDropdown from '@components/ui/pet-search-dropdown';
 import { Tones } from '@constants/tones';
@@ -84,14 +85,13 @@ const MarriageCard: React.FC<{
                     <span className="partner-meta">#{spouseId}{spouseLevel != null ? ` · Lv ${spouseLevel}` : ''}</span>
                 </div>
             </div>
-            <button
-                type="button"
+            <AuthActionButton
                 className="marriage-row-action divorce"
                 onClick={() => onDivorce(pet.id)}
                 disabled={busy}
             >
                 Divorce
-            </button>
+            </AuthActionButton>
         </li>
     );
 };
@@ -126,14 +126,13 @@ const OutgoingProposalRow: React.FC<{
             </div>
             <div className="proposal-meta">
                 <span className="proposal-expiry">Expires {expiryLabel}</span>
-                <button
-                    type="button"
+                <AuthActionButton
                     className="marriage-row-action cancel"
                     onClick={() => onCancel(pet.id)}
                     disabled={busy}
                 >
                     Cancel
-                </button>
+                </AuthActionButton>
             </div>
         </li>
     );
@@ -280,8 +279,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                     excludeIds={myPet ? [myPet] : []}
                                 />
                             </div>
-                            <button
-                                type="button"
+                            <AuthActionButton
                                 className="action-button propose-button"
                                 disabled={busy || !myPet || !partnerId}
                                 onClick={() => void run(
@@ -291,7 +289,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                                 )}
                             >
                                 {marriage.propose.isPending ? 'Proposing...' : '💍 Send Proposal'}
-                            </button>
+                            </AuthActionButton>
                         </div>
 
                         {/* Sent proposals list */}

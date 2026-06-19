@@ -33,6 +33,7 @@ const petList = {
 };
 
 vi.mock('@shared/core', () => ({
+    useAuth: () => ({ isAuthenticated: true, isSigning: false, isVerifying: false, isNonceLoading: false, signAndLogin: vi.fn() }),
     getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
     usePetList: () => petList,
     useFees: () => ({

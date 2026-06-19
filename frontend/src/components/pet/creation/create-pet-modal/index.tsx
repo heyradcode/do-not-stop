@@ -8,6 +8,7 @@ import {
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
 import TransactionStatus from '@components/common/transaction-status';
+import { AuthActionButton } from '@components/common';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
@@ -125,13 +126,13 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                             <p className="mint-cost">Mint cost: {mintCost}</p>
                         )}
 
-                        <button
+                        <AuthActionButton
                             onClick={handleCreatePet}
                             disabled={isInProgress || feesLoading || !petName.trim() || !isConnected}
                             className="submit"
                         >
                             {buttonLabel}
-                        </button>
+                        </AuthActionButton>
 
                         {isAwaitingFulfillment && (
                             <p className="pending-hint">

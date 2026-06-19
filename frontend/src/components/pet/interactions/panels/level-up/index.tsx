@@ -1,5 +1,6 @@
 ﻿import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
+import { AuthActionButton } from '@components/common';
 import {
     getReadyPetsUnified,
     useChainCapabilities,
@@ -105,9 +106,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 </div>
 
                 <div className="action-controls">
-                    <button type="button" onClick={handleLevelUp} disabled={isPending || !selectedPet}>
+                    <AuthActionButton onClick={handleLevelUp} disabled={isPending || !selectedPet}>
                         {buttonLabel}
-                    </button>
+                    </AuthActionButton>
                 </div>
             </div>
 

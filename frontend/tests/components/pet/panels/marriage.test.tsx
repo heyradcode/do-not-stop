@@ -45,6 +45,7 @@ const marriageInfo = { isMarried: false, hasProposal: false, spouseId: undefined
 let incomingProposals: { proposerPetId: string; proposerPetName: string; proposerOwner: string; targetPetId: string; expiry: number }[] = [];
 
 vi.mock('@shared/core', () => ({
+    useAuth: () => ({ isAuthenticated: true, isSigning: false, isVerifying: false, isNonceLoading: false, signAndLogin: vi.fn() }),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
     useAllPets: () => ({ pets: petList.pets }),

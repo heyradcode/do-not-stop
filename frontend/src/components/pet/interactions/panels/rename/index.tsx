@@ -1,5 +1,6 @@
 ﻿import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
+import { AuthActionButton } from '@components/common';
 import {
     getReadyPetsUnified,
     useChainCapabilities,
@@ -103,9 +104,9 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
 
                 <div className="action-controls">
-                    <button type="button" onClick={handleChangeName} disabled={isPending || !selectedPet || !newName.trim()}>
+                    <AuthActionButton onClick={handleChangeName} disabled={isPending || !selectedPet || !newName.trim()}>
                         {isPending ? 'Changing Name...' : 'Change Name'}
-                    </button>
+                    </AuthActionButton>
                 </div>
             </div>
 

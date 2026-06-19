@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
+import { AuthActionButton } from '@components/common';
 import {
     getReadyPetsUnified,
     useFees,
@@ -93,9 +94,9 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                 </div>
 
                 <div className="action-controls">
-                    <button type="button" onClick={handleTrain} disabled={isPending || !selectedPet}>
+                    <AuthActionButton onClick={handleTrain} disabled={isPending || !selectedPet}>
                         {buttonLabel}
-                    </button>
+                    </AuthActionButton>
                 </div>
             </div>
 
