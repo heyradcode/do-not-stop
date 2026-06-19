@@ -111,6 +111,19 @@ export const usePetActions = () => {
         onSuccess: invalidateProgramQueries,
     });
 
+    const setOpenToChallenges = useMutation({
+        mutationFn: async (args: { petId: number; assetKey: string; value: boolean }) => {
+            const { program, programId, owner } = requireReady();
+            const petAsset = new PublicKey(args.assetKey);
+            const [pet] = petPdaByAsset(programId, args.assetKey);
+            return program.methods
+                .setOpenToChallenges(args.value)
+                .accounts({ petAsset, pet, owner })
+                .rpc();
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
     /**
      * Battle the signer's pet (attacker) against any pet. When `defenderOwner` is
      * omitted it defaults to the signer (same-wallet battle); pass a foreign owner
@@ -192,6 +205,7 @@ export const usePetActions = () => {
         levelUpPet,
         trainPet,
         renamePet,
+        setOpenToChallenges,
         battlePets,
         battleSubPhase,
         breedPets,

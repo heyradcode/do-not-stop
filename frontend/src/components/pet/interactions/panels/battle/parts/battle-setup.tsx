@@ -7,6 +7,7 @@ import ArenaSlot from './arena-slot';
 import FighterPickerCard from './fighter-picker-card';
 import OpponentPickerCard from './opponent-picker-card';
 import PendingBattleNotice from './pending-battle-notice';
+import OpenToChallengesToggle from './open-to-challenges-toggle';
 import { opponentKey, shortAddress } from '../battle-utils';
 
 export type BattleSetupProps = {
@@ -118,6 +119,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
 
         <PendingBattleNotice petId={selectedPet1} label={selectedFighter?.name} checkSolana />
         {opponent ? <PendingBattleNotice petId={opponent.id} label={opponent.name} /> : null}
+        <OpenToChallengesToggle petId={selectedPet1} currentValue={selectedFighter?.openToChallenges} />
 
         <section className="battle-picker-section" aria-label="Your fighters">
             <div className="section-head">

@@ -74,5 +74,6 @@ export const mapSolanaPet = (row: SolanaPetAccountRow): Pet  => {
         trainReadyAt: toNumber(a.trainReadyTime) || undefined,
         spouseId: spouseId !== 0 ? spouseId : undefined,
         marriageCooldownUntil: toNumber(a.marriageCooldownUntil) || undefined,
+        openToChallenges: typeof a.openToChallenges === 'boolean' ? a.openToChallenges : undefined,
     };
 }

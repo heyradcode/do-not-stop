@@ -13,6 +13,8 @@ export { usePendingBreed, type PendingBreed } from './chains/ethereum/usePending
 // Solana pending VRF requests — auto-resumed on next action, hooks are for UI notice only.
 export { usePendingSolanaBattle, type PendingSolanaBattle } from './chains/solana/usePendingSolanaBattle';
 export { usePendingSolanaBreed, type PendingSolanaBreed } from './chains/solana/usePendingSolanaBreed';
+// Solana defender-consent toggle (openToChallenges). No-op on EVM.
+export { useSetOpenToChallenges, type UseSetOpenToChallengesResult } from './useSetOpenToChallenges';
 // v2.1 marriage: write actions + per-pet marriage state (EVM + Solana).
 export { useMarriage, type MarriageAction } from './useMarriage';
 export { useMarriageInfo, type MarriageInfo } from './useMarriageInfo';
