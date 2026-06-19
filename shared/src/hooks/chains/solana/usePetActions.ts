@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
@@ -15,6 +16,9 @@ export const usePetActions = () => {
     const queryClient = useQueryClient();
     const { signingWallet } = useSolanaAnchor();
     const { program, programId, provider } = useProgram();
+
+    const [battleSubPhase, setBattleSubPhase] = useState<'idle' | 'awaiting-vrf'>('idle');
+    const [breedSubPhase, setBreedSubPhase] = useState<'idle' | 'awaiting-vrf'>('idle');
 
     const invalidateProgramQueries = () => queryClient.invalidateQueries({ queryKey: ['cryptopets'] });
 
@@ -121,18 +125,24 @@ export const usePetActions = () => {
         mutationFn: async (args) => {
             const { program, programId, owner } = requireReady();
             if (!provider) throw new Error('Solana provider is not ready');
-            return battleWithSwitchboardVrf({
-                program,
-                provider,
-                programId,
-                owner,
-                attackerPetId: args.attackerPetId,
-                defenderPetId: args.defenderPetId,
-                attackerAssetKey: args.attackerAssetKey,
-                ...(args.defenderOwner
-                    ? { defenderOwner: new PublicKey(args.defenderOwner) }
-                    : {}),
-            });
+            setBattleSubPhase('idle');
+            try {
+                return await battleWithSwitchboardVrf({
+                    program,
+                    provider,
+                    programId,
+                    owner,
+                    attackerPetId: args.attackerPetId,
+                    defenderPetId: args.defenderPetId,
+                    attackerAssetKey: args.attackerAssetKey,
+                    ...(args.defenderOwner
+                        ? { defenderOwner: new PublicKey(args.defenderOwner) }
+                        : {}),
+                    onCommitted: () => setBattleSubPhase('awaiting-vrf'),
+                });
+            } finally {
+                setBattleSubPhase('idle');
+            }
         },
         onSuccess: invalidateProgramQueries,
     });
@@ -153,20 +163,26 @@ export const usePetActions = () => {
         }) => {
             const { program, programId, owner } = requireReady();
             if (!provider) throw new Error('Solana provider is not ready');
-            return breedWithSwitchboardVrf({
-                program,
-                provider,
-                programId,
-                owner,
-                parent1Id: args.parent1Id,
-                parent2Id: args.parent2Id,
-                name: args.name,
-                parent1AssetKey: args.parent1AssetKey,
-                parent2AssetKey: args.parent2AssetKey,
-                ...(args.parent2Owner
-                    ? { parent2Owner: new PublicKey(args.parent2Owner) }
-                    : {}),
-            });
+            setBreedSubPhase('idle');
+            try {
+                return await breedWithSwitchboardVrf({
+                    program,
+                    provider,
+                    programId,
+                    owner,
+                    parent1Id: args.parent1Id,
+                    parent2Id: args.parent2Id,
+                    name: args.name,
+                    parent1AssetKey: args.parent1AssetKey,
+                    parent2AssetKey: args.parent2AssetKey,
+                    ...(args.parent2Owner
+                        ? { parent2Owner: new PublicKey(args.parent2Owner) }
+                        : {}),
+                    onCommitted: () => setBreedSubPhase('awaiting-vrf'),
+                });
+            } finally {
+                setBreedSubPhase('idle');
+            }
         },
         onSuccess: invalidateProgramQueries,
     });
@@ -177,7 +193,9 @@ export const usePetActions = () => {
         trainPet,
         renamePet,
         battlePets,
+        battleSubPhase,
         breedPets,
+        breedSubPhase,
         walletPublicKey: signingWallet?.publicKey ?? null,
         walletConnected: Boolean(signingWallet?.publicKey),
     };

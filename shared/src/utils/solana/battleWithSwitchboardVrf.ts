@@ -65,11 +65,13 @@ export type BattleWithVrfArgs = {
     attackerAssetKey: string;
     /** Defaults to `owner` for same-wallet battles. */
     defenderOwner?: PublicKey;
+    /** Fires after commit tx confirms, while the oracle is fulfilling randomness. */
+    onCommitted?: () => void;
 };
 
 /** Completes a battle whose commit phase succeeded but settle was never submitted. */
 const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<BattleVrfResult | null> => {
-    const { program, provider, programId, owner } = args;
+    const { program, provider, programId, owner, onCommitted } = args;
     const connection = provider.connection;
     const [battleRequestKey] = battleRequestPda(programId, owner);
     const pending = await getAccountClient(program, 'battleRequest').fetchNullable(battleRequestKey);
@@ -92,6 +94,7 @@ const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<BattleVr
     const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
     const randomness = new sb.Randomness(queue.program, randomnessPk);
 
+    onCommitted?.();
     await sleep(COMMIT_REVEAL_WAIT_MS);
     const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
 
@@ -138,6 +141,7 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
         defenderPetId,
         attackerAssetKey,
         defenderOwner = owner,
+        onCommitted,
     } = args;
     const connection = provider.connection;
 
@@ -186,6 +190,7 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
         computeUnitLimitMultiple: 1.3,
     });
     await sendSignedTx(provider, commitTx, [rngKp]);
+    onCommitted?.();
 
     await sleep(COMMIT_REVEAL_WAIT_MS);
     const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);

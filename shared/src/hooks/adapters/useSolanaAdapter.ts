@@ -126,6 +126,14 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         isPending: false,
     };
 
+    const battleLc = useMemo<TxLifecycle>(() => {
+        const lc = toLc(actions.battlePets);
+        if (actions.battleSubPhase === 'awaiting-vrf' && lc.phase === 'awaiting-wallet') {
+            return { ...lc, phase: 'awaiting-vrf' as TxPhase };
+        }
+        return lc;
+    }, [actions.battlePets, actions.battleSubPhase]);
+
     const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, BattleResolvedResult | null> = {
         async mutateAsync({ petId1, petId2, defenderOwner }) {
             const { sig, firstWins } = await actions.battlePets.mutateAsync({
@@ -137,7 +145,7 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
             if (firstWins === null) return null;
             return { firstWins, sig, requestId: 0n, winnerId: 0n, loserId: 0n, vrfSeed: 0n, rounds: 0, winnerHpRemaining: 0, xpWin: 0, xpLoss: 0 };
         },
-        lifecycle: toLc(actions.battlePets),
+        lifecycle: battleLc,
         isPending: actions.battlePets.isPending,
     };
 
@@ -176,7 +184,13 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
                 parent2Owner,
             });
         },
-        lifecycle: toLc(actions.breedPets),
+        lifecycle: (() => {
+            const lc = toLc(actions.breedPets);
+            if (actions.breedSubPhase === 'awaiting-vrf' && lc.phase === 'awaiting-wallet') {
+                return { ...lc, phase: 'awaiting-vrf' as TxPhase };
+            }
+            return lc;
+        })(),
         isPending: actions.breedPets.isPending,
     };
 
