@@ -79,6 +79,14 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         }
     }, [pets.length]);
 
+    // Auto-select the only pet in the "With Spouse" tab so the user doesn't
+    // have to pick from a single-item dropdown.
+    useEffect(() => {
+        if (tab === 'spouse' && pets.length === 1 && !spousePetId) {
+            setSpousePetId(pets[0].id);
+        }
+    }, [tab, pets, spousePetId]);
+
     // Selected pet for "With Spouse" tab — use the proven useMarriageInfo hook
     // (same as the marriage panel) to detect if the selected pet is married.
     const selectedSpousePet = allPets.find(({ id }) => id === spousePetId)?.pet;
@@ -90,7 +98,10 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         return fees.formatAmount(fees.studFee);
     }, [fees]);
 
-    // Pending breed state is tab-specific — only check the relevant pets
+    // Pending breed state is tab-specific — only check the relevant pets.
+    // For cross-owner: we check both pets (contract rejects new requests when either
+    // has a pending one), but only show the recovery UI for the user's OWN pet —
+    // the spouse's pet notice would show settle/cancel buttons the user can't use.
     const pendingOwn1 = usePendingBreed(tab === 'own' ? ownPet1 || undefined : undefined);
     const pendingOwn2 = usePendingBreed(tab === 'own' ? ownPet2 || undefined : undefined);
     const pendingMarried = usePendingBreed(tab === 'spouse' ? spousePetId || undefined : undefined);
@@ -201,8 +212,12 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                         </select>
                                     </div>
                                 </div>
-                                <PendingBreedNotice petId={ownPet1 || undefined} label={`#${ownPet1}`} />
-                                <PendingBreedNotice petId={ownPet2 || undefined} label={`#${ownPet2}`} />
+                                {!breed.isAwaitingFulfillment && (
+                                    <>
+                                        <PendingBreedNotice petId={ownPet1 || undefined} label={`#${ownPet1}`} />
+                                        <PendingBreedNotice petId={ownPet2 || undefined} label={`#${ownPet2}`} />
+                                    </>
+                                )}
                                 <div className="name-input">
                                     <label>Offspring Name</label>
                                     <input
@@ -266,8 +281,13 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                         Stud fee: <strong>{studFeeLabel}</strong> — paid to the spouse owner.
                                     </div>
                                 )}
-                                <PendingBreedNotice petId={spousePetId || undefined} label={`#${spousePetId}`} />
-                                <PendingBreedNotice petId={spouseId} label={`Spouse #${spouseId}`} />
+                                {/* Only show recovery notice for the user's own pet.
+                                    The spouse's pet also has a pending flag while the breed
+                                    is in-flight, but the user can't settle/cancel it and
+                                    showing those buttons there is confusing. */}
+                                {!breed.isAwaitingFulfillment && (
+                                    <PendingBreedNotice petId={spousePetId || undefined} label={`#${spousePetId}`} />
+                                )}
                                 <div className="name-input">
                                     <label>Offspring Name</label>
                                     <input
