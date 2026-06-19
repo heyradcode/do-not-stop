@@ -74,15 +74,17 @@
     margin: 0;
 }
 
-/* Partner (spouse) info — styled to match the select/input look */
+/* Partner (spouse) info — mirrors .picker .field select sizing exactly */
 .spouse-value {
     display: flex;
     align-items: center;
-    padding: 8px 12px;
-    min-height: 38px;
+    padding: 11px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.25px;
     background: rgb(255 181 67 / 6%);
     border: 1px solid rgb(255 181 67 / 22%);
-    border-radius: 6px;
+    border-radius: 4px;
     color: #ffd07b;
     font-size: 13px;
     font-weight: 600;
