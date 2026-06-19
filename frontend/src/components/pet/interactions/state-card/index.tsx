@@ -9,6 +9,8 @@ export type StateCardProps = {
     children?: React.ReactNode;
     /** Extra classes on the outer panel (e.g. `wallet-disconnected`, `interaction-standalone`). */
     containerClassName?: string;
+    /** Passed to DashboardPanel — renders a ← Back button in the top-left title bar. */
+    back?: () => void;
 };
 
 /**
@@ -27,6 +29,7 @@ const StateCard: React.FC<StateCardProps> = ({
     helpText,
     children,
     containerClassName,
+    back,
 }) => {
     const isWalletDisconnected = containerClassName?.includes('wallet-disconnected');
     const composedClass = `pet-interactions${containerClassName ? ` ${containerClassName}` : ''}`;
@@ -38,6 +41,7 @@ const StateCard: React.FC<StateCardProps> = ({
             headingId="pet-interactions-heading"
             description={isWalletDisconnected ? description : undefined}
             centerDescription={isWalletDisconnected}
+            back={back}
         >
             {!isWalletDisconnected && description ? (
                 <p className="description">{description}</p>

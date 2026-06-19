@@ -1,5 +1,5 @@
 import React from 'react';
-import { type OpponentPet, type Pet, type ReadyPet } from '@shared/core';
+import { type OpponentPet, type Pet, type ReadyPet, type WinEstimateResult } from '@shared/core';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import Icon, { BattleIcon } from '@components/ui/icon';
@@ -35,6 +35,7 @@ export type BattleSetupProps = {
     battleDisabled: boolean;
     battleButtonLabel: string;
     onCancel: () => void;
+    winEstimate: WinEstimateResult;
 };
 
 /** The battle setup screen: arena, fighter/opponent pickers, and action controls. */
@@ -64,6 +65,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
     battleDisabled,
     battleButtonLabel,
     onCancel,
+    winEstimate,
 }) => (
     <div className="interface battle-setup">
         {!isStandaloneView && (
@@ -181,6 +183,26 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 </div>
             )}
         </section>
+
+        {isArenaReady && (
+            <div className="win-estimate">
+                {winEstimate.isLoading ? (
+                    <span className="win-estimate-loading">Calculating odds…</span>
+                ) : winEstimate.winProbability != null ? (
+                    <>
+                        <span className="win-estimate-label">Win odds</span>
+                        <span className={`win-estimate-value${winEstimate.winProbability >= 0.5 ? ' favorable' : ' unfavorable'}`}>
+                            {Math.round(winEstimate.winProbability * 100)}%
+                        </span>
+                        {winEstimate.samples != null && (
+                            <span className="win-estimate-samples">({winEstimate.samples.toLocaleString()} sim)</span>
+                        )}
+                    </>
+                ) : (
+                    <span className="win-estimate-unavailable">Odds unavailable</span>
+                )}
+            </div>
+        )}
 
         <div className="action-controls">
             <AuthActionButton onClick={onBattle} disabled={battleDisabled}>

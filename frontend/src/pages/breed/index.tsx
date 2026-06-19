@@ -4,7 +4,7 @@ import BreedPanel from '@components/pet/interactions/panels/breed';
 
 /** Top-level `/breed` page — breed panel (standalone UI). */
 const BreedPage: React.FC = () => (
-    <InteractionStandalone action="breed" minPets={2}>
+    <InteractionStandalone action="breed" minPets={1}>
         <BreedPanel />
     </InteractionStandalone>
 );

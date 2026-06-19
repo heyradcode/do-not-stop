@@ -5,7 +5,7 @@ export {
     getSolanaAuthAddress,
     type SolanaAuthSigner,
 } from './auth/solanaAuthStore';
-export { createAuthApiClient, setStorageAdapter, getStorageAdapter } from './api';
+export { createAuthApiClient, setStorageAdapter, getStorageAdapter, setUnauthorizedCallback } from './api';
 export type { AuthApiClient, StorageAdapter } from './api';
 export * from './hooks';
 export * from './utils';

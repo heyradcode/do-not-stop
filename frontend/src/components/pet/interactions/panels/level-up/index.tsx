@@ -1,6 +1,6 @@
 ﻿import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
+import { AuthActionButton } from '@components/common';
 import {
     getReadyPetsUnified,
     useChainCapabilities,
@@ -8,7 +8,6 @@ import {
     useLevelUpPet,
     usePetList,
 } from '@shared/core';
-import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
@@ -19,7 +18,6 @@ export type LevelUpPanelProps = {
 };
 
 const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) => {
-    const navigate = useNavigate();
     const { levelUpFee } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
@@ -32,7 +30,6 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         setSuccess('Pet leveled up successfully!');
         setSelectedPet('');
         refetch();
-        navigate(DASHBOARD_HOME);
     };
 
     const { mutate, isPending, error: hookError, reset, lifecycle } = useLevelUpPet({
@@ -48,7 +45,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         const diff = BigInt(Math.max(selectedLevel - 1, 0));
         const multiplier = 100n + diff * diff;
         return fees.formatAmount((fees.levelUpFee * multiplier) / 100n);
-    }, [fees.levelUpFee, fees.formatAmount, selectedLevel]);
+    }, [fees, selectedLevel]);
 
     useTxErrorToast(hookError);
 
@@ -66,11 +63,6 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         } catch (err) {
             console.error('[level-up]', err);
         }
-    };
-
-    const handleCancel = () => {
-        setSuccess(null);
-        navigate(DASHBOARD_HOME);
     };
 
     const buttonLabel = isPending
@@ -114,12 +106,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 </div>
 
                 <div className="action-controls">
-                    <button type="button" onClick={handleLevelUp} disabled={isPending || !selectedPet}>
+                    <AuthActionButton onClick={handleLevelUp} disabled={isPending || !selectedPet}>
                         {buttonLabel}
-                    </button>
-                    <button type="button" onClick={handleCancel} className="cancel-button">
-                        Cancel
-                    </button>
+                    </AuthActionButton>
                 </div>
             </div>
 

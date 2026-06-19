@@ -39,7 +39,7 @@ const parseActionParam = (raw: string | undefined): InteractionAction | null  =>
 }
 
 /**
- * Dashboard interactions hub (`/dashboard`, `/dashboard/interactions/:action?`).
+ * Dashboard interactions hub (`/main`).
  * Standalone `/breed` … `/rename` are separate router entries + `InteractionStandalone`.
  */
 const PetInteractions: React.FC = () => {
@@ -145,7 +145,7 @@ const PetInteractions: React.FC = () => {
                             type="button"
                             onClick={() => navigate(BREED_PATH)}
                             className="lab-breed-button"
-                            disabled={readyPets.length < 2}
+                            disabled={pets.length < 1}
                         >
                             Start breeding
                         </button>

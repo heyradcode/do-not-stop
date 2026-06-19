@@ -33,6 +33,7 @@ const petList = {
 };
 
 vi.mock('@shared/core', () => ({
+    useAuth: () => ({ isAuthenticated: true, isSigning: false, isVerifying: false, isNonceLoading: false, signAndLogin: vi.fn() }),
     getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
     usePetList: () => petList,
     useFees: () => ({
@@ -75,23 +76,17 @@ describe('TrainPanel', () => {
         expect(train.mutate).toHaveBeenCalledWith({ petId: '1' });
     });
 
-    it('shows success message and navigates home after training', () => {
+    it('shows success message after training', () => {
         render(<TrainPanel />);
         act(() => { capturedOnSuccess?.(); });
         expect(screen.getByText('Pet trained successfully!')).toBeInTheDocument();
-        expect(mocks.navigate).toHaveBeenCalledWith('/dashboard');
+        expect(petList.refetch).toHaveBeenCalled();
     });
 
     it('shows Training... label while pending', () => {
         train.isPending = true;
         render(<TrainPanel />);
         expect(screen.getByRole('button', { name: 'Training...' })).toBeInTheDocument();
-    });
-
-    it('navigates home on cancel', async () => {
-        render(<TrainPanel />);
-        await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-        expect(mocks.navigate).toHaveBeenCalledWith('/dashboard');
     });
 
     it('shows the train cost when a pet is selected and fee is available', async () => {

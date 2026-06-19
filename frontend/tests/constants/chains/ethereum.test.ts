@@ -15,9 +15,9 @@ describe('getNativeTokenSymbol', () => {
     });
 
     it('returns the mapped symbol for a known chain', () => {
-        expect(getNativeTokenSymbol(56)).toBe('BNB');
-        expect(getNativeTokenSymbol(137)).toBe('MATIC');
-        expect(getNativeTokenSymbol(43114)).toBe('AVAX');
+        expect(getNativeTokenSymbol(42161)).toBe('ETH');   // Arbitrum
+        expect(getNativeTokenSymbol(8453)).toBe('ETH');    // Base
+        expect(getNativeTokenSymbol(10)).toBe('ETH');      // Optimism
     });
 
     it('falls back to ETH for an unknown chain id', () => {
@@ -27,10 +27,10 @@ describe('getNativeTokenSymbol', () => {
 
 describe('getChainConfig', () => {
     it('finds a chain config by chain id', () => {
-        const config = getChainConfig(1);
+        const config = getChainConfig(42161);
 
         expect(config).toBeDefined();
-        expect(config?.name).toBe('Ethereum');
+        expect(config?.name).toBe('Arbitrum');
         expect(config?.isTestnet).toBe(false);
     });
 

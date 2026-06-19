@@ -29,6 +29,7 @@ const petList = {
 const capabilities = { levelUpFee: null as { amount: number; symbol: string } | null };
 
 vi.mock('@shared/core', () => ({
+    useAuth: () => ({ isAuthenticated: true, isSigning: false, isVerifying: false, isNonceLoading: false, signAndLogin: vi.fn() }),
     getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
     useChainCapabilities: () => capabilities,
     useFees: () => ({
@@ -88,7 +89,7 @@ describe('LevelUpPanel', () => {
         expect(levelUpPet.mutate).toHaveBeenCalledWith({ petId: '2' });
     });
 
-    it('shows success and navigates home once settled', () => {
+    it('shows success once settled', () => {
         render(<LevelUpPanel />);
 
         act(() => {
@@ -97,12 +98,5 @@ describe('LevelUpPanel', () => {
 
         expect(screen.getByText('Pet leveled up successfully!')).toBeInTheDocument();
         expect(petList.refetch).toHaveBeenCalled();
-        expect(navigate).toHaveBeenCalledWith('/dashboard');
-    });
-
-    it('navigates home on cancel', async () => {
-        render(<LevelUpPanel />);
-        await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-        expect(navigate).toHaveBeenCalledWith('/dashboard');
     });
 });

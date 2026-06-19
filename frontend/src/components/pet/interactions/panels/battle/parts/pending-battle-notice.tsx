@@ -27,16 +27,20 @@ const PendingBattleNotice: React.FC<PendingBattleNoticeProps> = ({ petId, label 
     return (
         <div className="pending-battle-notice">
             <p>
-                <strong>{who}</strong> has an unresolved battle. Settle it once the
-                randomness is ready, or cancel it if it hasn&apos;t arrived yet.
+                <strong>{who}</strong> has an unresolved battle.
+                {pending.canCancel
+                    ? ' Settle it once randomness is ready, or cancel it now.'
+                    : ' Randomness has arrived — settle to complete the battle.'}
             </p>
             <div className="pending-battle-actions">
                 <button type="button" onClick={() => void pending.settle.run()} disabled={busy}>
                     {pending.settle.isPending ? 'Settling…' : 'Settle'}
                 </button>
-                <button type="button" onClick={() => void pending.cancel.run()} disabled={busy}>
-                    {pending.cancel.isPending ? 'Cancelling…' : 'Cancel'}
-                </button>
+                {pending.canCancel && (
+                    <button type="button" onClick={() => void pending.cancel.run()} disabled={busy}>
+                        {pending.cancel.isPending ? 'Cancelling…' : 'Cancel'}
+                    </button>
+                )}
             </div>
         </div>
     );

@@ -17,6 +17,16 @@ const adapter = {
     trainPet: makeAction(),
 };
 
+vi.mock('../../src/contexts/PetsConfigContext', () => ({ usePetsConfig: () => ({ evm: undefined }) }));
+vi.mock('wagmi', () => ({
+    useAccount: () => ({ address: undefined }),
+    useReadContract: () => ({ data: undefined }),
+    useWriteContract: () => ({ writeContract: vi.fn(), writeContractAsync: vi.fn(), reset: vi.fn(), isPending: false, data: undefined, error: null }),
+    useWaitForTransactionReceipt: () => ({ isSuccess: false, isError: false, data: undefined }),
+    useWatchContractEvent: vi.fn(),
+}));
+vi.mock('../../src/hooks/chains/ethereum/useWatchPetsContract', () => ({ useWatchPetsContract: vi.fn() }));
+vi.mock('../../src/hooks/chains/ethereum/useWatchEntropyFulfillment', () => ({ useWatchEntropyFulfillment: vi.fn() }));
 vi.mock('../../src/hooks/adapters/useChainAdapter', () => ({ useChainAdapter: () => adapter }));
 
 let txSuccessRegistry: Array<[unknown, (() => void) | undefined]> = [];

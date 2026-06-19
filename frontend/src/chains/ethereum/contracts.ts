@@ -15,10 +15,10 @@ import combatSimAbi from '@chains/ethereum/combatSimAbi.json';
  * Sepolia (chain 11155111) deployment so local dev works out of the box.
  * See `contracts/ethereum/ignition/deployments/chain-11155111/deployed_addresses.json`.
  */
-const SEPOLIA_PETCORE = '0xd30D9Cf66079774b5A41Cc69af44D890b942FbE2';
-const SEPOLIA_GAMELOGIC = '0x7C9f4634142a43633F3a1104733Cc4f0d0a21Aa3';
-const SEPOLIA_GAMECONFIG = '0xcbf789aae13BbF971e1aD2532f236E77a8CaE735';
-const SEPOLIA_COMBATSIM = '0x101FaF23889C2aE39d76A6257e372e3983e1F3E7';
+const SEPOLIA_PETCORE = '0xD94B02fC6238AcE5c0Fd767bFf8f5A1FCD9B59DB';
+const SEPOLIA_GAMELOGIC = '0x87E3E1e3EB22eC45fB99715BdF91911697997Be4';
+const SEPOLIA_GAMECONFIG = '0xE16e0e982D390C4F826D00Fc0E771846a002F10B';
+const SEPOLIA_COMBATSIM = '0x81A7E05fFd0E2D41e3CdA232e34175d2b9c921a4';
 
 interface EvmContract {
     address: `0x${string}`;

@@ -1,13 +1,12 @@
 ﻿import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
+import { AuthActionButton } from '@components/common';
 import {
     getReadyPetsUnified,
     useChainCapabilities,
     usePetList,
     useRenamePet,
 } from '@shared/core';
-import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon, QuillIcon } from '@components/ui/icon';
@@ -18,7 +17,6 @@ export type RenamePanelProps = {
 };
 
 const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) => {
-    const navigate = useNavigate();
     const { renameMinLevel } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
@@ -33,7 +31,6 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
         setSelectedPet('');
         setNewName('');
         refetch();
-        navigate(DASHBOARD_HOME);
     };
 
     const { mutate, isPending, error: hookError, reset, lifecycle } = useRenamePet({
@@ -62,11 +59,6 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
         } catch (err) {
             console.error('[rename]', err);
         }
-    };
-
-    const handleCancel = () => {
-        setSuccess(null);
-        navigate(DASHBOARD_HOME);
     };
 
     return (
@@ -112,12 +104,9 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
 
                 <div className="action-controls">
-                    <button type="button" onClick={handleChangeName} disabled={isPending || !selectedPet || !newName.trim()}>
+                    <AuthActionButton onClick={handleChangeName} disabled={isPending || !selectedPet || !newName.trim()}>
                         {isPending ? 'Changing Name...' : 'Change Name'}
-                    </button>
-                    <button type="button" onClick={handleCancel} className="cancel-button">
-                        Cancel
-                    </button>
+                    </AuthActionButton>
                 </div>
             </div>
 

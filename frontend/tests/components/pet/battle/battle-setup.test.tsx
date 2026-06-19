@@ -65,6 +65,7 @@ const baseProps = (over: Partial<BattleSetupProps> = {}): BattleSetupProps => ({
     battleDisabled: false,
     battleButtonLabel: 'Battle!',
     onCancel: vi.fn(),
+    winEstimate: { isLoading: false, winProbability: null, samples: null },
     ...over,
 });
 

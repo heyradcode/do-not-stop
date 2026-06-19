@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+vi.mock('@tanstack/react-query', () => ({
+    useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+}));
 vi.mock('@hooks/useNotifyError', () => ({ useNotifyError: () => vi.fn() }));
 vi.mock('@hooks/useTxErrorToast', () => ({ useTxErrorToast: vi.fn() }));
 
@@ -17,17 +20,19 @@ const petList = { refetch: vi.fn() };
 const capabilities = { isConnected: true, kind: 'solana' };
 
 vi.mock('@shared/core', () => ({
+    useAuth: () => ({ isAuthenticated: true, isSigning: false, isVerifying: false, isNonceLoading: false, signAndLogin: vi.fn() }),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
     useFees: () => ({
-        nextMintFee: undefined as bigint | undefined,
-        symbol: null as 'ETH' | 'SOL' | null,
-        formatAmount: (v: bigint) => `${v}`,
+        nextMintFee: 10n,
+        entropyFee: undefined as bigint | undefined,
+        symbol: 'SOL' as 'ETH' | 'SOL' | null,
+        formatAmount: () => '0.01 SOL',
         formatAmountOnly: (v: bigint) => String(v),
     }),
     useCreatePet: (opts: { onSuccess?: () => void }) => {
         capturedOnSuccess = opts?.onSuccess;
-        return createPet;
+        return { ...createPet, isAwaitingFulfillment: false, isSettling: false };
     },
 }));
 
@@ -58,20 +63,20 @@ describe('CreatePetModal', () => {
 
     it('keeps submit disabled without a name', () => {
         renderModal();
-        expect(screen.getByRole('button', { name: 'Create Pet' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Create Pet/ })).toBeDisabled();
     });
 
     it('keeps submit disabled when the wallet is not connected', async () => {
         capabilities.isConnected = false;
         renderModal();
         await userEvent.type(screen.getByPlaceholderText('Enter pet name...'), 'Sparky');
-        expect(screen.getByRole('button', { name: 'Create Pet' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Create Pet/ })).toBeDisabled();
     });
 
     it('creates a pet with the trimmed name', async () => {
         renderModal();
         await userEvent.type(screen.getByPlaceholderText('Enter pet name...'), '  Sparky  ');
-        await userEvent.click(screen.getByRole('button', { name: 'Create Pet' }));
+        await userEvent.click(screen.getByRole('button', { name: /Create Pet/ }));
 
         expect(createPet.mutate).toHaveBeenCalledWith({ name: 'Sparky' });
     });
@@ -85,7 +90,6 @@ describe('CreatePetModal', () => {
         });
 
         expect(screen.getByText('Pet "Sparky" created successfully!')).toBeInTheDocument();
-        expect(petList.refetch).toHaveBeenCalled();
         expect(onClose).toHaveBeenCalledOnce();
     });
 

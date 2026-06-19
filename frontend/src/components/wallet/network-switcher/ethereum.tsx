@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAccount, useSwitchChain } from 'wagmi';
-import { CHAINS, getChainsByType, getChainConfig } from '@constants/chains/ethereum';
+import { CHAINS, getChainConfig, getMainnetChains, getTestnetChains } from '@constants/chains/ethereum';
 import { Tones } from '@constants/tones';
 import { NeonButton, NeonModal } from '@components/ui';
 import Icon, { CheckIcon } from '@components/ui/icon';
@@ -16,19 +16,13 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
     const [isOpen, setIsOpen] = useState(false);
     const [showTestnets, setShowTestnets] = useState(() => {
         if (!chain) return false;
-        return CHAINS.some(
-            chainConfig => chainConfig.chain.id === chain.id && chainConfig.isTestnet
-        );
+        return CHAINS.some(c => c.chain.id === chain.id && c.isTestnet);
     });
 
     if (!chain) return null;
 
-    const visibleChains = getChainsByType(showTestnets);
-    const currentChainConfig = getChainConfig(chain?.id || 0);
-
-    const handleTestnetToggle = (checked: boolean) => {
-        setShowTestnets(checked);
-    };
+    const visibleChains = showTestnets ? getTestnetChains() : getMainnetChains();
+    const currentChainConfig = getChainConfig(chain.id);
 
     const handleNetworkSelect = (chainId: number) => {
         switchChain({ chainId });
@@ -38,9 +32,7 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
     return (
         <div className={`network-switcher ${className || ''}`}>
             {switchError && (
-                <div className="error">
-                    Error: {switchError.message}
-                </div>
+                <div className="error">Error: {switchError.message}</div>
             )}
 
             <NeonButton
@@ -64,7 +56,7 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                         <input
                             type="checkbox"
                             checked={showTestnets}
-                            onChange={(e) => handleTestnetToggle(e.target.checked)}
+                            onChange={(e) => setShowTestnets(e.target.checked)}
                             disabled={isPending}
                         />
                         <span>Testnets</span>

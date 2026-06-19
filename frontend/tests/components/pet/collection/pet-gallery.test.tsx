@@ -112,7 +112,7 @@ describe('PetGallery', () => {
         petList.pets = [aPet()];
         render(<PetGallery />);
 
-        expect(screen.getByText(/Ready in 5m/)).toBeInTheDocument();
+        expect(screen.getByText(/ready in 5m/i)).toBeInTheDocument();
     });
 
     it('refetches when the refresh button is clicked', async () => {

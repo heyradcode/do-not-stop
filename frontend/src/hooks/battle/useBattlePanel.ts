@@ -8,6 +8,7 @@ import {
     useOpponents,
     usePetList,
     usePendingBattle,
+    useWinEstimate,
     type TxLifecycle,
     type BattleResolvedResult,
 } from '@shared/core';
@@ -128,6 +129,13 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         () => sortOpponentsByMatch(opponents, fighterLevel),
         [opponents, fighterLevel],
     );
+
+    const winEstimate = useWinEstimate(
+        activeChainKind,
+        selectedPet1 || null,
+        opponent?.id ?? null,
+    );
+
     const isArenaReady = Boolean(selectedFighter && opponent && !battle.isPending && !showResult);
     const isArenaFighting = battle.isPending;
 
@@ -469,6 +477,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         battleDisabled,
         battleButtonLabel,
         onCancel: handleCancel,
+        winEstimate,
     };
 
     return {
