@@ -1,0 +1,92 @@
+.sign-in-gate {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    /* Same grid background as the authenticated content area */
+    background:
+        repeating-linear-gradient(0deg, var(--neon-grid-line) 0 1px, transparent 1px 48px),
+        repeating-linear-gradient(90deg, var(--neon-grid-line) 0 1px, transparent 1px 48px),
+        linear-gradient(180deg, var(--neon-base-bg) 0%, var(--neon-band-bg) 100%);
+}
+
+.sign-in-card {
+    width: 100%;
+    max-width: 400px;
+    background: rgb(5 13 30 / 88%);
+    border: 1px solid rgb(125 214 255 / 22%);
+    border-radius: 16px;
+    padding: 40px 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    box-shadow:
+        0 0 0 1px rgb(125 214 255 / 8%),
+        0 24px 64px rgb(0 0 0 / 55%),
+        inset 0 1px 0 rgb(125 214 255 / 12%);
+    text-align: center;
+}
+
+.sign-in-icon {
+    font-size: 48px;
+    line-height: 1;
+    filter: drop-shadow(0 0 18px rgb(125 214 255 / 40%));
+}
+
+.sign-in-title {
+    margin: 0;
+    font-family: var(--title-font);
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #f6f3ff;
+    text-shadow:
+        0 0 10px rgb(125 214 255 / 45%),
+        0 0 24px rgb(125 214 255 / 22%);
+}
+
+.sign-in-desc {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgb(195 210 255 / 65%);
+    max-width: 300px;
+}
+
+.sign-in-address {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgb(125 214 255 / 5%);
+    border: 1px solid rgb(125 214 255 / 18%);
+    border-radius: 8px;
+    width: 100%;
+    justify-content: center;
+}
+
+.sign-in-address-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: rgb(125 214 255 / 50%);
+}
+
+.sign-in-address-value {
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Monaco', 'Menlo', monospace;
+    color: var(--neon-cyan);
+    letter-spacing: 0.3px;
+}
+
+.sign-in-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}

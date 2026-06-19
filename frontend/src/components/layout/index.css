@@ -258,6 +258,12 @@
   }
 }
 
+/* Blank frame while stored-token restoration runs — prevents sign-in gate flash */
+.sign-in-restoring {
+    flex: 1;
+    background: var(--neon-base-bg, #06080f);
+}
+
 @media (max-width: 640px) {
   .main-content.authenticated:has(.dashboard-panel.pet-collection)
     > .dashboard-panel.pet-interactions .action-buttons {

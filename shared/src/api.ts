@@ -12,6 +12,12 @@ export interface StorageAdapter {
 // Global storage adapter (shared between API client and AuthContext)
 let storageAdapter: StorageAdapter | undefined;
 
+// Called when any API response returns 401 — lets AuthContext clear its state.
+let unauthorizedCallback: (() => void) | undefined;
+export const setUnauthorizedCallback = (cb: () => void): void => {
+    unauthorizedCallback = cb;
+};
+
 /**
  * Sets the storage adapter for platform-specific token storage
  * Used by both API client interceptors and AuthContext
@@ -54,6 +60,7 @@ export const createAuthApiClient = (baseURL: string): AxiosInstance => {
         async (error: AxiosError) => {
             if (error.response?.status === 401 && storageAdapter) {
                 await storageAdapter.removeToken();
+                unauthorizedCallback?.();
             }
             return Promise.reject(error);
         }
