@@ -6,7 +6,7 @@ import {
     globalStatePda,
     petPdaByAsset,
 } from '../../../utils/solana/pdas';
-import { battleWithSwitchboardVrf } from '../../../utils/solana/battleWithSwitchboardVrf';
+import { battleWithSwitchboardVrf, type BattleVrfResult } from '../../../utils/solana/battleWithSwitchboardVrf';
 import { breedWithSwitchboardVrf } from '../../../utils/solana/breedWithSwitchboardVrf';
 import { mintWithSwitchboardVrf } from '../../../utils/solana/mintWithSwitchboardVrf';
 import { useProgram } from './useProgram';
@@ -112,13 +112,13 @@ export const usePetActions = () => {
      * omitted it defaults to the signer (same-wallet battle); pass a foreign owner
      * pubkey for PvP against another player's pet.
      */
-    const battlePets = useMutation({
-        mutationFn: async (args: {
-            attackerPetId: number;
-            defenderPetId: number;
-            attackerAssetKey: string;
-            defenderOwner?: string;
-        }) => {
+    const battlePets = useMutation<BattleVrfResult, Error, {
+        attackerPetId: number;
+        defenderPetId: number;
+        attackerAssetKey: string;
+        defenderOwner?: string;
+    }>({
+        mutationFn: async (args) => {
             const { program, programId, owner } = requireReady();
             if (!provider) throw new Error('Solana provider is not ready');
             return battleWithSwitchboardVrf({

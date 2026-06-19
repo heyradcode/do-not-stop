@@ -38,19 +38,27 @@ export const useBattlePets = (options?: UseBattlePetsOptions) => {
         onResolved: (result) => onSuccessRef.current?.(result),
     });
 
-    // Solana: settlement is lifecycle-driven (reveal+settle resolve in-mutation).
+    // Solana: success fires from the mutateAsync return value (BattleResolvedResult | null).
+    // useTxSuccess is kept as a fallback only — the ref prevents double-firing.
+    const solanaBattleFiredRef = useRef(false);
     useTxSuccess(battlePets.lifecycle, useCallback(() => {
-        if (!isEvm) onSuccessRef.current?.(null);
+        if (!isEvm && !solanaBattleFiredRef.current) onSuccessRef.current?.(null);
+        solanaBattleFiredRef.current = false;
     }, [isEvm]));
 
     const mutate = async (args: BattlePetsArgs) => {
         battleFlow.reset();
+        solanaBattleFiredRef.current = false;
         try {
-            await battlePets.mutateAsync({
+            const result = await battlePets.mutateAsync({
                 petId1: args.petId1,
                 petId2: args.petId2,
                 defenderOwner: args.defenderOwner,
             });
+            if (!isEvm) {
+                solanaBattleFiredRef.current = true;
+                onSuccessRef.current?.(result ?? null);
+            }
         } catch {
             // error tracked in battlePets.lifecycle.error
         }

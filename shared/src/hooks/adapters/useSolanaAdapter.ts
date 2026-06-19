@@ -8,6 +8,7 @@ import { mapSolanaPet, type SolanaPetAccountRow } from '../../utils/pets/mapSola
 import { formatSolanaActionError } from '../../utils/solana';
 import { fetchAssetByPetId, fetchMarriageOwnerSnapshot } from '../../utils/solana/accountClient';
 import type { Pet } from '../../types/pet';
+import type { BattleResolvedResult } from '../../types/battle';
 import type { ChainAdapter, AdapterMutation, TxLifecycle, TxPhase, ChainCapabilities } from './types';
 
 export const SOLANA_CAPABILITIES: ChainCapabilities = {
@@ -36,6 +37,14 @@ type SolanaMutation<TData = string> = {
     reset: () => void;
 };
 
+const resolveHash = (data: unknown): string | undefined => {
+    if (typeof data === 'string') return data;
+    if (data && typeof data === 'object' && 'sig' in data && typeof (data as { sig: unknown }).sig === 'string') {
+        return (data as { sig: string }).sig;
+    }
+    return undefined;
+}
+
 const toLc = <TData = string,>(m: SolanaMutation<TData>): TxLifecycle => {
     let phase: TxPhase = 'idle';
     if (m.isError) phase = 'error';
@@ -43,7 +52,7 @@ const toLc = <TData = string,>(m: SolanaMutation<TData>): TxLifecycle => {
     else if (m.isPending) phase = 'awaiting-wallet';
     return {
         phase,
-        hash: typeof m.data === 'string' ? m.data : undefined,
+        hash: resolveHash(m.data),
         error: m.error,
         reset: m.reset,
     };
@@ -109,14 +118,16 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         isPending: false,
     };
 
-    const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }> = {
+    const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, BattleResolvedResult | null> = {
         async mutateAsync({ petId1, petId2, defenderOwner }) {
-            await actions.battlePets.mutateAsync({
+            const { sig, firstWins } = await actions.battlePets.mutateAsync({
                 attackerPetId: Number(petId1),
                 defenderPetId: Number(petId2),
                 attackerAssetKey: requireAssetKey(petId1),
                 ...(defenderOwner ? { defenderOwner } : {}),
             });
+            if (firstWins === null) return null;
+            return { firstWins, sig, requestId: 0n, winnerId: 0n, loserId: 0n, vrfSeed: 0n, rounds: 0, winnerHpRemaining: 0, xpWin: 0, xpLoss: 0 };
         },
         lifecycle: toLc(actions.battlePets),
         isPending: actions.battlePets.isPending,

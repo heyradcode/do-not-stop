@@ -174,11 +174,12 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     // a VRF request, which the RPC can't gas-estimate (estimateGas returns the
     // block limit → "gas limit too high"), so a manual limit is REQUIRED — sized
     // like breed's working VRF path, not v1's synchronous-battle 300k.
-    const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }> = {
+    const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, null> = {
         async mutateAsync({ petId1, petId2 }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             if (fees.entropyFee == null) throw new Error('Entropy fee not loaded yet');
             await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], value: fees.entropyFee, gas: 800000n, chainId: evm?.chainId } as unknown as Parameters<typeof battleW.writeContractAsync>[0]);
+            return null;
         },
         lifecycle: toLc(battleW, battleR),
         isPending: isInFlight(battleW, battleR),

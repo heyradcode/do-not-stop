@@ -1,4 +1,5 @@
 import type { AnchorProvider, Program , Idl } from '@coral-xyz/anchor';
+import { EventParser } from '@coral-xyz/anchor';
 import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import * as sb from '@switchboard-xyz/on-demand';
 import { battleRequestPda, globalStatePda, petPdaByAsset } from './pdas';
@@ -12,6 +13,32 @@ import {
     waitForRevealIx,
 } from './switchboardVrfTx';
 import { sleep } from '../common';
+
+/** Parse `firstWins` from the `BattleResolved` Anchor event in settle tx logs. */
+const parseFirstWins = async (
+    program: Program<Idl>,
+    connection: AnchorProvider['connection'],
+    sig: string,
+): Promise<boolean | null> => {
+    try {
+        const tx = await connection.getTransaction(sig, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0,
+        });
+        const logs = tx?.meta?.logMessages ?? [];
+        const parser = new EventParser(program.programId, program.coder);
+        for (const event of parser.parseLogs(logs)) {
+            if (event.name === 'BattleResolved') {
+                return (event.data as { firstWins: boolean }).firstWins;
+            }
+        }
+    } catch {
+        // Non-fatal — caller gets null and UI falls back to stat-diff.
+    }
+    return null;
+}
+
+export type BattleVrfResult = { sig: string; firstWins: boolean | null };
 
 const toPublicKey = (value: unknown): PublicKey  => {
     if (value instanceof PublicKey) return value;
@@ -41,7 +68,7 @@ export type BattleWithVrfArgs = {
 };
 
 /** Completes a battle whose commit phase succeeded but settle was never submitted. */
-const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<string | null> => {
+const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<BattleVrfResult | null> => {
     const { program, provider, programId, owner } = args;
     const connection = provider.connection;
     const [battleRequestKey] = battleRequestPda(programId, owner);
@@ -90,14 +117,16 @@ const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<string |
         computeUnitPrice: 75_000,
         computeUnitLimitMultiple: 1.3,
     });
-    return sendSignedTx(provider, settleTx);
+    const sig = await sendSignedTx(provider, settleTx);
+    const firstWins = await parseFirstWins(program, connection, sig);
+    return { sig, firstWins };
 }
 
 /**
  * Two-phase battle using Switchboard On-Demand VRF (commit → reveal).
- * Returns the settle transaction signature.
+ * Returns the settle tx signature and parsed `firstWins` from the `BattleResolved` event.
  */
-export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise<string> => {
+export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise<BattleVrfResult> => {
     const resumed = await trySettlePendingBattle(args);
     if (resumed) return resumed;
 
@@ -184,5 +213,7 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
         computeUnitLimitMultiple: 1.3,
     });
     // Reveal + settle after oracle fulfills randomness (wallet prompt 2 of 2).
-    return sendSignedTx(provider, settleTx);
+    const sig = await sendSignedTx(provider, settleTx);
+    const firstWins = await parseFirstWins(program, connection, sig);
+    return { sig, firstWins };
 }

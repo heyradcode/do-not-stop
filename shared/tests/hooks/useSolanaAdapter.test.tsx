@@ -3,13 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { Keypair } from '@solana/web3.js';
 
-const makeMutation = () => ({
-    mutateAsync: vi.fn().mockResolvedValue(undefined),
+const makeMutation = (resolvedValue: unknown = undefined) => ({
+    mutateAsync: vi.fn().mockResolvedValue(resolvedValue),
     isPending: false,
     isSuccess: false,
     isError: false,
     error: null as Error | null,
-    data: undefined as string | undefined,
+    data: undefined as unknown,
     reset: vi.fn(),
 });
 
@@ -28,7 +28,7 @@ const actions = {
     levelUpPet: makeMutation(),
     trainPet: makeMutation(),
     renamePet: makeMutation(),
-    battlePets: makeMutation(),
+    battlePets: makeMutation({ sig: 'settle-sig', firstWins: true }),
     breedPets: makeMutation(),
 };
 const petsQuery = { data: testPets, isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
@@ -56,9 +56,14 @@ const validAddress = Keypair.generate().publicKey.toBase58();
 
 beforeEach(() => {
     vi.clearAllMocks();
-    Object.values(actions).forEach((m) =>
-        Object.assign(m, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined }),
-    );
+    Object.assign(actions.mintPet,   { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.levelUpPet, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.trainPet,   { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.renamePet,  { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.battlePets, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.breedPets,  { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    actions.battlePets.mutateAsync.mockResolvedValue({ sig: 'settle-sig', firstWins: true });
+    actions.breedPets.mutateAsync.mockResolvedValue(undefined);
     anchor.signingWallet = { publicKey: Keypair.generate().publicKey };
 });
 

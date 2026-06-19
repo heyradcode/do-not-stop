@@ -1,4 +1,5 @@
 import type { Pet } from '../../types/pet';
+import type { BattleResolvedResult } from '../../types/battle';
 
 export type TxPhase =
     | 'idle'
@@ -15,8 +16,8 @@ export interface TxLifecycle {
     reset(): void;
 }
 
-export interface AdapterMutation<TArgs> {
-    mutateAsync(args: TArgs): Promise<void>;
+export interface AdapterMutation<TArgs, TResult = void> {
+    mutateAsync(args: TArgs): Promise<TResult>;
     lifecycle: TxLifecycle;
     isPending: boolean;
 }
@@ -61,7 +62,7 @@ export interface ChainAdapter {
     trainPet:    AdapterMutation<{ petId: string }>;
     renamePet:   AdapterMutation<{ petId: string; name: string }>;
     transferPet: AdapterMutation<{ petId: string; to: string }>;
-    battlePets:  AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }>;
+    battlePets:  AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, BattleResolvedResult | null>;
     // crossOwner adds the stud fee (EVM married cross-owner breeding); ignored on Solana.
     breedPets:   AdapterMutation<{ parentId1: string; parentId2: string; name: string; crossOwner?: boolean }>;
 }
