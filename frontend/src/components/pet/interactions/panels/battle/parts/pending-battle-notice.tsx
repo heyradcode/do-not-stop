@@ -24,19 +24,29 @@ type PendingBattleNoticeProps = {
 const PendingBattleNotice: React.FC<PendingBattleNoticeProps> = ({ petId, label, checkSolana = false }) => {
     const pending = usePendingBattle(petId);
     const solanaPending = usePendingSolanaBattle(checkSolana);
-    useTxErrorToast(pending.settle.error ?? pending.cancel.error);
+    useTxErrorToast(pending.settle.error ?? pending.cancel.error ?? solanaPending.cancel.error);
 
     if (!pending.isPending && !solanaPending.isPending) return null;
 
     const who = label ?? `#${petId}`;
 
     if (solanaPending.isPending && !pending.isPending) {
+        const busy = solanaPending.cancel.isPending;
         return (
             <div className="pending-battle-notice">
                 <p>
-                    You have an unresolved battle on Solana. Starting a new battle will
-                    resume it automatically.
+                    You have an unresolved battle on Solana.
+                    {solanaPending.canCancel
+                        ? ' Randomness has expired — cancel to free the pet for a new battle.'
+                        : ' Starting a new battle will resume it automatically.'}
                 </p>
+                {solanaPending.canCancel && (
+                    <div className="pending-battle-actions">
+                        <button type="button" onClick={() => void solanaPending.cancel.run()} disabled={busy}>
+                            {busy ? 'Cancelling…' : 'Cancel'}
+                        </button>
+                    </div>
+                )}
             </div>
         );
     }
