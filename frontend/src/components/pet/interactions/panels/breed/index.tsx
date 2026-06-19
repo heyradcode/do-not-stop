@@ -18,6 +18,7 @@ import { AuthActionButton } from '@components/common';
 import { formatTxHashHint } from '@hooks/usePetError';
 import { usePetErrorToast } from '@hooks/usePetErrorToast';
 import PendingBreedNotice from './pending-breed-notice';
+import StudFeeBalance from './stud-fee-balance';
 import Icon, { CheckIcon, DnaIcon } from '@components/ui/icon';
 import './index.css';
 
@@ -354,6 +355,8 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                         )}
                     </div>
                 )}
+
+                <StudFeeBalance />
 
                 <div className="action-controls">
                     <AuthActionButton

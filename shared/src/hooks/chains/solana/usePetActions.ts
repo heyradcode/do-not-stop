@@ -6,6 +6,7 @@ import {
     feeVaultPda,
     globalStatePda,
     petPdaByAsset,
+    studFeeAccountPda,
 } from '../../../utils/solana/pdas';
 import { battleWithSwitchboardVrf, type BattleVrfResult } from '../../../utils/solana/battleWithSwitchboardVrf';
 import { breedWithSwitchboardVrf } from '../../../utils/solana/breedWithSwitchboardVrf';
@@ -108,6 +109,18 @@ export const usePetActions = () => {
                     pet,
                     owner,
                 })
+                .rpc();
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
+    const withdrawStudFees = useMutation({
+        mutationFn: async () => {
+            const { program, programId, owner } = requireReady();
+            const [studFeeAccount] = studFeeAccountPda(programId, owner);
+            return program.methods
+                .withdrawStudFees()
+                .accounts({ owner, studFeeAccount })
                 .rpc();
         },
         onSuccess: invalidateProgramQueries,
@@ -232,6 +245,7 @@ export const usePetActions = () => {
         levelUpPet,
         trainPet,
         renamePet,
+        withdrawStudFees,
         syncMetadata,
         setOpenToChallenges,
         battlePets,

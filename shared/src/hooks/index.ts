@@ -17,6 +17,8 @@ export { usePendingSolanaBreed, type PendingSolanaBreed } from './chains/solana/
 export { useSetOpenToChallenges, type UseSetOpenToChallengesResult } from './useSetOpenToChallenges';
 // Solana NFT metadata sync — re-publishes on-chain state to Metaplex Core attributes. No-op on EVM.
 export { useSyncMetadata, type UseSyncMetadataResult } from './useSyncMetadata';
+// Solana stud fee earnings: balance query + withdraw_stud_fees action.
+export { useStudFees, type UseStudFeesResult } from './useStudFees';
 // v2.1 marriage: write actions + per-pet marriage state (EVM + Solana).
 export { useMarriage, type MarriageAction } from './useMarriage';
 export { useMarriageInfo, type MarriageInfo } from './useMarriageInfo';
