@@ -233,7 +233,7 @@ func buildBattleLog(attacker, defender uint32, attackerWon bool) string {
 
 func TestParseBattleResults(t *testing.T) {
 	logs := []string{
-		"Program 78AXV46ks5oFoJHkukvbsfZTJixdj2MeStzuC6thiUry invoke [1]",
+		"Program 88HGagCw4i3BTMHEpdQy3YLeHrkTSKgXmvq66HJXKM7k invoke [1]",
 		"Program log: Instruction: SettleBattle",
 		buildBattleLog(7, 9, true),
 		programDataPrefix + "bm90LWFuLWV2ZW50", // valid b64, wrong shape — skipped

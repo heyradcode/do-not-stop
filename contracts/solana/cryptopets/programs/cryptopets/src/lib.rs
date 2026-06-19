@@ -7,7 +7,7 @@ pub mod utils;
 use anchor_lang::{prelude::*, solana_program::system_program};
 use instructions::*;
 
-declare_id!("78AXV46ks5oFoJHkukvbsfZTJixdj2MeStzuC6thiUry");
+declare_id!("88HGagCw4i3BTMHEpdQy3YLeHrkTSKgXmvq66HJXKM7k");
 
 #[program]
 pub mod cryptopets {
