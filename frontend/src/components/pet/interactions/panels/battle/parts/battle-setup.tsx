@@ -116,7 +116,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
             </div>
         </div>
 
-        <PendingBattleNotice petId={selectedPet1} label={selectedFighter?.name} />
+        <PendingBattleNotice petId={selectedPet1} label={selectedFighter?.name} checkSolana />
         {opponent ? <PendingBattleNotice petId={opponent.id} label={opponent.name} /> : null}
 
         <section className="battle-picker-section" aria-label="Your fighters">

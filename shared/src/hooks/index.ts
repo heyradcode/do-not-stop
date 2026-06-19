@@ -10,6 +10,9 @@ export { useSolanaFees, type SolanaFees } from './chains/solana/useSolanaFees';
 // Manual recovery for an interrupted async battle (settle / cancel a pending request).
 export { usePendingBattle, type PendingBattle } from './chains/ethereum/usePendingBattle';
 export { usePendingBreed, type PendingBreed } from './chains/ethereum/usePendingBreed';
+// Solana pending VRF requests — auto-resumed on next action, hooks are for UI notice only.
+export { usePendingSolanaBattle, type PendingSolanaBattle } from './chains/solana/usePendingSolanaBattle';
+export { usePendingSolanaBreed, type PendingSolanaBreed } from './chains/solana/usePendingSolanaBreed';
 // v2.1 marriage: write actions + per-pet marriage state (EVM + Solana).
 export { useMarriage, type MarriageAction } from './useMarriage';
 export { useMarriageInfo, type MarriageInfo } from './useMarriageInfo';

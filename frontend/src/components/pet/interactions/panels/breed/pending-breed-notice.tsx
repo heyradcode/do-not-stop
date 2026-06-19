@@ -1,5 +1,5 @@
 import React from 'react';
-import { usePendingBreed } from '@shared/core';
+import { usePendingBreed, usePendingSolanaBreed } from '@shared/core';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 
 type PendingBreedNoticeProps = {
@@ -7,23 +7,40 @@ type PendingBreedNoticeProps = {
     petId?: string;
     /** Friendly label for the pet (e.g. its name); falls back to the id. */
     label?: string;
+    /**
+     * When true, also checks if the current Solana wallet has a pending breed
+     * request. Pass only once per breed panel to avoid duplicate banners.
+     */
+    checkSolana?: boolean;
 };
 
 /**
  * Recovery banner for an interrupted async breed. v2 breed is request → VRF →
  * settle; if the settle tx never lands, the parents stay pending and can't breed
- * again. This lets the player resolve it: Settle once VRF has fulfilled (mints
- * the offspring), or Cancel beforehand.
+ * again. EVM: Settle once VRF has fulfilled, or Cancel beforehand.
+ * Solana: recovery is automatic on the next breed attempt.
  */
-const PendingBreedNotice: React.FC<PendingBreedNoticeProps> = ({ petId, label }) => {
+const PendingBreedNotice: React.FC<PendingBreedNoticeProps> = ({ petId, label, checkSolana = false }) => {
     const pending = usePendingBreed(petId);
+    const solanaPending = usePendingSolanaBreed(checkSolana);
     useTxErrorToast(pending.settle.error ?? pending.cancel.error);
 
-    if (!pending.isPending) return null;
+    if (!pending.isPending && !solanaPending.isPending) return null;
 
     const who = label ?? `#${petId}`;
-    const busy = pending.settle.isPending || pending.cancel.isPending;
 
+    if (solanaPending.isPending && !pending.isPending) {
+        return (
+            <div className="pending-battle-notice">
+                <p>
+                    You have an unresolved breed on Solana. Starting a new breed will
+                    resume it and mint the offspring automatically.
+                </p>
+            </div>
+        );
+    }
+
+    const busy = pending.settle.isPending || pending.cancel.isPending;
     return (
         <div className="pending-battle-notice">
             <p>

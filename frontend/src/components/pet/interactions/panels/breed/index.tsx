@@ -261,7 +261,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                 )}
                                 {!breed.isAwaitingFulfillment && (
                                     <>
-                                        <PendingBreedNotice petId={ownPet1 || undefined} label={`#${ownPet1}`} />
+                                        <PendingBreedNotice petId={ownPet1 || undefined} label={`#${ownPet1}`} checkSolana />
                                         <PendingBreedNotice petId={ownPet2 || undefined} label={`#${ownPet2}`} />
                                     </>
                                 )}
