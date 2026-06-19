@@ -6,9 +6,7 @@ import { battleRequestPda, globalStatePda, petPdaByAsset } from './pdas';
 import { fetchAssetByPetId, getAccountClient } from './accountClient';
 import { toU32 } from './numbers';
 import {
-    COMMIT_REVEAL_WAIT_MS,
-    REVEAL_BACKOFF_MS,
-    REVEAL_RETRIES,
+    vrfTimingForEndpoint,
     sendSignedTx,
     waitForRevealIx,
 } from './switchboardVrfTx';
@@ -93,10 +91,11 @@ const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<BattleVr
 
     const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
     const randomness = new sb.Randomness(queue.program, randomnessPk);
+    const { commitRevealWaitMs, revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
 
     onCommitted?.();
-    await sleep(COMMIT_REVEAL_WAIT_MS);
-    const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
+    await sleep(commitRevealWaitMs);
+    const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
     const settleBattleIx = await program.methods
         .settleBattle()
@@ -192,8 +191,9 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
     await sendSignedTx(provider, commitTx, [rngKp]);
     onCommitted?.();
 
-    await sleep(COMMIT_REVEAL_WAIT_MS);
-    const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
+    const { commitRevealWaitMs, revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
+    await sleep(commitRevealWaitMs);
+    const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
     const settleBattleIx = await program.methods
         .settleBattle()

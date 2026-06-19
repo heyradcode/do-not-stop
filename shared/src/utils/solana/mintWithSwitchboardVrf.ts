@@ -10,9 +10,7 @@ import {
 } from './pdas';
 import { getAccountClient } from './accountClient';
 import {
-    COMMIT_REVEAL_WAIT_MS,
-    REVEAL_BACKOFF_MS,
-    REVEAL_RETRIES,
+    vrfTimingForEndpoint,
     sendSignedTx,
     waitForRevealIx,
 } from './switchboardVrfTx';
@@ -57,8 +55,9 @@ const trySettlePendingMint = async (args: MintWithVrfArgs): Promise<string | nul
     const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
     const randomness = new sb.Randomness(queue.program, randomnessPk);
 
-    await sleep(COMMIT_REVEAL_WAIT_MS);
-    const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
+    const { commitRevealWaitMs, revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
+    await sleep(commitRevealWaitMs);
+    const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
     const assetKp = Keypair.generate();
     const [pet] = petPdaByAsset(programId, assetKp.publicKey.toBase58());
@@ -145,8 +144,9 @@ export const mintWithSwitchboardVrf = async (args: MintWithVrfArgs): Promise<str
     });
     await sendSignedTx(provider, commitTx, [rngKp]);
 
-    await sleep(COMMIT_REVEAL_WAIT_MS);
-    const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
+    const { commitRevealWaitMs, revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
+    await sleep(commitRevealWaitMs);
+    const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
     const assetKp = Keypair.generate();
     const [pet] = petPdaByAsset(programId, assetKp.publicKey.toBase58());
