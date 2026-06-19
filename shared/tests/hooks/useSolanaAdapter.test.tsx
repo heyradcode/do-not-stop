@@ -37,6 +37,9 @@ const anchor = { signingWallet: { publicKey: Keypair.generate().publicKey } as {
 vi.mock('../../src/hooks/chains/solana/usePetActions', () => ({ usePetActions: () => actions }));
 vi.mock('../../src/hooks/chains/solana/usePets', () => ({ usePets: () => petsQuery }));
 vi.mock('../../src/contexts/SolanaAnchorContext', () => ({ useSolanaAnchor: () => anchor }));
+vi.mock('../../src/hooks/chains/solana/useProgram', () => ({
+    useProgram: () => ({ program: null, programId: null, provider: null, isConfigured: false, isLoading: false, isFetching: false, error: null, refetch: vi.fn(), isReady: false }),
+}));
 // Avoid loading Switchboard builders; expose only the real error formatter.
 vi.mock('../../src/utils/solana', async () => {
     const mod = await import('../../src/utils/solana/parseSolanaTransactionError');
@@ -117,7 +120,17 @@ describe('useSolanaAdapter', () => {
             name: 'Baby',
             parent1AssetKey: ASSET_1,
             parent2AssetKey: ASSET_2,
+            parent2Owner: undefined,
         });
+    });
+
+    it('cross-owner breed: errors when program not ready (null programId)', async () => {
+        // With programId=null the adapter can't look up the spouse on-chain.
+        // crossOwner=true should throw rather than silently send the wrong owner.
+        const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
+        await expect(
+            result.current.breedPets.mutateAsync({ parentId1: '1', parentId2: '99', name: 'Baby', crossOwner: true }),
+        ).rejects.toThrow(/not found on-chain|program.*not ready|programId/i);
     });
 
     it('includes defenderOwner and attackerAssetKey in battle', async () => {

@@ -26,6 +26,26 @@ export const getAccountClient = (program: Program<Idl>, name: string): AnchorAcc
 }
 
 /**
+ * Fetch the `marriage_owner_snapshot` field from a `PetAccount` keyed by its Core asset
+ * pubkey. This is the spouse's wallet captured at `accept_marriage` time and is the
+ * correct `parent2Owner` for cross-owner Solana breeding. Returns `null` when the account
+ * doesn't exist or the snapshot is the zero pubkey (pet is not married).
+ */
+export const fetchMarriageOwnerSnapshot = async (
+    program: Program<Idl>,
+    programId: PublicKey,
+    assetKey: PublicKey,
+): Promise<PublicKey | null> => {
+    const [petPda] = petPdaByAsset(programId, assetKey.toBase58());
+    const account = await getAccountClient(program, 'petAccount').fetchNullable(petPda);
+    if (!account) return null;
+    const snap = (account as Record<string, unknown>).marriageOwnerSnapshot;
+    if (!snap || typeof snap !== 'object') return null;
+    const pk = snap as PublicKey;
+    return pk.equals(PublicKey.default) ? null : pk;
+}
+
+/**
  * Look up any `PetAccount` by its numeric ID using a memcmp filter on the `id` field
  * (offset 8, 4 bytes LE). Returns the on-chain Core asset `PublicKey`, or `null` if not found.
  */
