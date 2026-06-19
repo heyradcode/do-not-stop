@@ -21,8 +21,8 @@ function fieldsOf(typeName: string): Record<string, { type: string }> {
 describe('GraphQL schema — Query surface', () => {
     const query = fieldsOf('Query');
 
-    it('exposes opponents, pet, and winEstimate', () => {
-        expect(Object.keys(query).sort()).toEqual(['opponents', 'pet', 'winEstimate']);
+    it('exposes opponents, pet, searchPets, allPets, and winEstimate', () => {
+        expect(Object.keys(query).sort()).toEqual(['allPets', 'opponents', 'pet', 'searchPets', 'winEstimate']);
     });
 
     it('returns a non-null OpponentsPage from opponents', () => {
