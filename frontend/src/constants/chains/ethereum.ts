@@ -62,3 +62,6 @@ export const getMainnetChains = (): ChainConfig[] =>
 
 export const getTestnetChains = (): ChainConfig[] =>
     CHAINS.filter(c => c.isTestnet);
+
+export const getChainsByType = (showTestnets: boolean): ChainConfig[] =>
+    showTestnets ? getTestnetChains() : getMainnetChains();
