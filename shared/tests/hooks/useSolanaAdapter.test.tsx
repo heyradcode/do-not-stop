@@ -30,6 +30,11 @@ const actions = {
     renamePet: makeMutation(),
     battlePets: makeMutation({ sig: 'settle-sig', firstWins: true }),
     breedPets: makeMutation(),
+    setOpenToChallenges: makeMutation(),
+    syncMetadata: makeMutation(),
+    withdrawStudFees: makeMutation(),
+    battleSubPhase: 'idle' as 'idle' | 'awaiting-vrf',
+    breedSubPhase: 'idle' as 'idle' | 'awaiting-vrf',
 };
 const petsQuery = { data: testPets, isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
 const anchor = { signingWallet: { publicKey: Keypair.generate().publicKey } as { publicKey: unknown } | null };
@@ -64,8 +69,13 @@ beforeEach(() => {
     Object.assign(actions.renamePet,  { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.battlePets, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.breedPets,  { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.setOpenToChallenges, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.syncMetadata, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.withdrawStudFees, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     actions.battlePets.mutateAsync.mockResolvedValue({ sig: 'settle-sig', firstWins: true });
     actions.breedPets.mutateAsync.mockResolvedValue(undefined);
+    actions.battleSubPhase = 'idle';
+    actions.breedSubPhase = 'idle';
     anchor.signingWallet = { publicKey: Keypair.generate().publicKey };
 });
 
