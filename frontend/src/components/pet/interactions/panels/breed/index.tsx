@@ -126,7 +126,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         if (!relEnabled || !breedInfoData) return false;
         const r1 = breedInfoData[0];
         const r2 = breedInfoData[1];
-        if (r1.status !== 'success' || r2.status !== 'success') return false;
+        if (!r1 || !r2 || r1.status !== 'success' || r2.status !== 'success') return false;
         const [, , p1a, p1b] = r1.result as readonly [number, number, bigint, bigint];
         const [, , p2a, p2b] = r2.result as readonly [number, number, bigint, bigint];
         const id1 = BigInt(relPetA);
