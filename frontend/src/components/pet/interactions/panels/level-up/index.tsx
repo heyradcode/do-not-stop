@@ -12,6 +12,7 @@ import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
+import SyncMetadataButton from './sync-metadata-button';
 
 export type LevelUpPanelProps = {
     isStandaloneView?: boolean;
@@ -24,9 +25,11 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
     const [selectedPet, setSelectedPet] = useState<string>('');
     const [success, setSuccess] = useState<string | null>(null);
+    const [leveledUpPetId, setLeveledUpPetId] = useState<string | null>(null);
 
     // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
     const handleLevelUpComplete = () => {
+        setLeveledUpPetId(selectedPet);
         setSuccess('Pet leveled up successfully!');
         setSelectedPet('');
         refetch();
@@ -116,6 +119,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 <div className="success-message">
                     <Icon as={CheckIcon} tone={Tones.Emerald} />
                     {success}
+                    <SyncMetadataButton petId={leveledUpPetId ?? undefined} />
                 </div>
             )}
 

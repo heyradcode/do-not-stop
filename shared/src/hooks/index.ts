@@ -15,6 +15,8 @@ export { usePendingSolanaBattle, type PendingSolanaBattle } from './chains/solan
 export { usePendingSolanaBreed, type PendingSolanaBreed } from './chains/solana/usePendingSolanaBreed';
 // Solana defender-consent toggle (openToChallenges). No-op on EVM.
 export { useSetOpenToChallenges, type UseSetOpenToChallengesResult } from './useSetOpenToChallenges';
+// Solana NFT metadata sync — re-publishes on-chain state to Metaplex Core attributes. No-op on EVM.
+export { useSyncMetadata, type UseSyncMetadataResult } from './useSyncMetadata';
 // v2.1 marriage: write actions + per-pet marriage state (EVM + Solana).
 export { useMarriage, type MarriageAction } from './useMarriage';
 export { useMarriageInfo, type MarriageInfo } from './useMarriageInfo';

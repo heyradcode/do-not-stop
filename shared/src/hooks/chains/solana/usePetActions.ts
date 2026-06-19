@@ -10,6 +10,8 @@ import {
 import { battleWithSwitchboardVrf, type BattleVrfResult } from '../../../utils/solana/battleWithSwitchboardVrf';
 import { breedWithSwitchboardVrf } from '../../../utils/solana/breedWithSwitchboardVrf';
 import { mintWithSwitchboardVrf } from '../../../utils/solana/mintWithSwitchboardVrf';
+import { getAccountClient } from '../../../utils/solana/accountClient';
+import { MPL_CORE_PROGRAM_ID } from '../../../utils/solana/constants';
 import { useProgram } from './useProgram';
 
 export const usePetActions = () => {
@@ -111,6 +113,31 @@ export const usePetActions = () => {
         onSuccess: invalidateProgramQueries,
     });
 
+    const syncMetadata = useMutation({
+        mutationFn: async (args: { assetKey: string }) => {
+            const { program, programId, owner } = requireReady();
+            const petAsset = new PublicKey(args.assetKey);
+            const [pet] = petPdaByAsset(programId, args.assetKey);
+            const [globalState] = globalStatePda(programId);
+            const gs = (await getAccountClient(program, 'globalState').fetch(globalState)) as { collection: unknown };
+            const collection = gs.collection instanceof PublicKey
+                ? gs.collection
+                : new PublicKey(String((gs.collection as { toBase58(): string }).toBase58?.() ?? gs.collection));
+            return program.methods
+                .syncMetadata()
+                .accounts({
+                    globalState,
+                    asset: petAsset,
+                    pet,
+                    mplCoreProgram: new PublicKey(MPL_CORE_PROGRAM_ID),
+                    collection,
+                    payer: owner,
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc();
+        },
+    });
+
     const setOpenToChallenges = useMutation({
         mutationFn: async (args: { petId: number; assetKey: string; value: boolean }) => {
             const { program, programId, owner } = requireReady();
@@ -205,6 +232,7 @@ export const usePetActions = () => {
         levelUpPet,
         trainPet,
         renamePet,
+        syncMetadata,
         setOpenToChallenges,
         battlePets,
         battleSubPhase,
