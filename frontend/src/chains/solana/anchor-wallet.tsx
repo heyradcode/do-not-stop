@@ -61,8 +61,13 @@ export const SolanaAnchorWallet = ({ children }: { children: ReactNode }) => {
         []
     );
 
+    const idlAddress = useMemo(
+        () => parseProgramId(import.meta.env.VITE_CRYPTOPETS_IDL_ADDRESS),
+        []
+    );
+
     return (
-        <SolanaAnchorProvider connection={connection} programId={programId} signingWallet={signingWallet ?? null}>
+        <SolanaAnchorProvider connection={connection} programId={programId} idlAddress={idlAddress} signingWallet={signingWallet ?? null}>
             {children}
         </SolanaAnchorProvider>
     );

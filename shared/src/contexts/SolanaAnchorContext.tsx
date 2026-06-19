@@ -11,6 +11,8 @@ export type SolanaSigningWallet = {
 export type SolanaAnchorContextValue = {
     connection: Connection;
     programId: PublicKey | null;
+    /** Explicit IDL account address; overrides the PDA derived from programId in `useProgram`. */
+    idlAddress: PublicKey | null;
     signingWallet: SolanaSigningWallet | null;
 };
 
@@ -28,6 +30,7 @@ export type SolanaAnchorProviderProps = {
     children: ReactNode;
     connection: Connection;
     programId: PublicKey | null;
+    idlAddress?: PublicKey | null;
     signingWallet: SolanaSigningWallet | null;
 };
 
@@ -35,15 +38,17 @@ export const SolanaAnchorProvider = ({
     children,
     connection,
     programId,
+    idlAddress = null,
     signingWallet,
 }: SolanaAnchorProviderProps) => {
     const value = useMemo(
         (): SolanaAnchorContextValue => ({
             connection,
             programId,
+            idlAddress,
             signingWallet,
         }),
-        [connection, programId, signingWallet]
+        [connection, programId, idlAddress, signingWallet]
     );
 
     return <SolanaAnchorContext.Provider value={value}>{children}</SolanaAnchorContext.Provider>;

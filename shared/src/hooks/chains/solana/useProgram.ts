@@ -15,7 +15,7 @@ const READ_ONLY_WALLET: SolanaSigningWallet = {
 export type SolanaProgram = Program<Idl>;
 
 export const useProgram = () => {
-    const { connection, programId, signingWallet } = useSolanaAnchor();
+    const { connection, programId, idlAddress, signingWallet } = useSolanaAnchor();
 
     const providerWallet = signingWallet ?? READ_ONLY_WALLET;
 
@@ -34,6 +34,7 @@ export const useProgram = () => {
             'program',
             connection.rpcEndpoint,
             programId?.toBase58() ?? 'none',
+            idlAddress?.toBase58() ?? 'derived',
             signingWallet?.publicKey?.toBase58() ?? 'read-only',
         ],
         enabled: programId !== null,
@@ -41,7 +42,10 @@ export const useProgram = () => {
             if (!programId) {
                 throw new Error('Solana program id is not configured');
             }
-            const idl = await Program.fetchIdl(programId, provider);
+            // Use an explicit IDL account address when provided (VITE_CRYPTOPETS_IDL_ADDRESS),
+            // otherwise fall back to the PDA Anchor derives from the program id.
+            const fetchAddress = idlAddress ?? programId;
+            const idl = await Program.fetchIdl(fetchAddress, provider);
             if (!idl) {
                 throw new Error(
                     'IDL not found on-chain for this program. Deploy the IDL (`anchor idl init`) or point RPC at a cluster where it exists.'
