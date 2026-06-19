@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useReadContracts } from 'wagmi';
 import TransactionStatus from '@components/common/transaction-status';
 import {
     useApiClient,
@@ -8,6 +9,7 @@ import {
     useFees,
     useMarriageInfo,
     usePendingBreed,
+    usePetsConfig,
     usePetList,
     type PetChain,
 } from '@shared/core';
@@ -51,7 +53,8 @@ const SpouseLabel: React.FC<{ chain: PetChain | null; spouseId: string }> = ({ c
 };
 
 const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
-    const { randomness, activeKind } = useChainCapabilities();
+    const { randomness, activeKind, kind } = useChainCapabilities();
+    const { evm } = usePetsConfig();
     const { pets, refetch } = usePetList();
     const fees = useFees();
 
@@ -98,6 +101,45 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         return fees.formatAmount(fees.studFee);
     }, [fees]);
 
+    // ── Relative / lineage check (EVM only) ────────────────────────────────────
+    // Read getBreedInfo for both candidate parents to detect parent-child or
+    // sibling relationships before submission — the contract rejects these.
+    const isEvm = kind === 'evm';
+    const petCoreAddress = evm?.petCore.address as `0x${string}` | undefined;
+    const petCoreAbi = useMemo(() => evm?.petCore.abi ?? [], [evm?.petCore.abi]);
+    const relPetA = tab === 'own' ? ownPet1 : spousePetId;
+    const relPetB = tab === 'own' ? ownPet2 : (spouseId ?? '');
+    const relEnabled = isEvm && Boolean(petCoreAddress && relPetA && relPetB);
+
+    const { data: breedInfoData } = useReadContracts({
+        contracts: relEnabled
+            ? [
+                  { address: petCoreAddress!, abi: petCoreAbi, functionName: 'getBreedInfo' as const, args: [BigInt(relPetA)] as const, chainId: evm?.chainId },
+                  { address: petCoreAddress!, abi: petCoreAbi, functionName: 'getBreedInfo' as const, args: [BigInt(relPetB)] as const, chainId: evm?.chainId },
+              ]
+            : [],
+        allowFailure: true,
+        query: { enabled: relEnabled, staleTime: 60_000 },
+    });
+
+    const areRelated = useMemo(() => {
+        if (!relEnabled || !breedInfoData) return false;
+        const r1 = breedInfoData[0];
+        const r2 = breedInfoData[1];
+        if (r1.status !== 'success' || r2.status !== 'success') return false;
+        const [, , p1a, p1b] = r1.result as readonly [number, number, bigint, bigint];
+        const [, , p2a, p2b] = r2.result as readonly [number, number, bigint, bigint];
+        const id1 = BigInt(relPetA);
+        const id2 = BigInt(relPetB);
+        // Parent-child
+        if (id1 === p2a || id1 === p2b) return true;
+        if (id2 === p1a || id2 === p1b) return true;
+        // Siblings (share a non-zero parent)
+        if (p1a !== 0n && (p1a === p2a || p1a === p2b)) return true;
+        if (p1b !== 0n && (p1b === p2a || p1b === p2b)) return true;
+        return false;
+    }, [relEnabled, breedInfoData, relPetA, relPetB]);
+
     // Pending breed state is tab-specific — only check the relevant pets.
     // For cross-owner: we check both pets (contract rejects new requests when either
     // has a pending one), but only show the recovery UI for the user's OWN pet —
@@ -137,8 +179,8 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
 
     const canSubmit =
         tab === 'own'
-            ? Boolean(ownPet1 && ownPet2 && ownChildName.trim())
-            : Boolean(spousePetId && spouseId && spouseChildName.trim());
+            ? Boolean(ownPet1 && ownPet2 && ownChildName.trim() && !areRelated)
+            : Boolean(spousePetId && spouseId && spouseChildName.trim() && !areRelated);
 
     const handleBreed = () => {
         breed.clearErrors();
@@ -212,6 +254,11 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                         </select>
                                     </div>
                                 </div>
+                                {areRelated && (
+                                    <p className="breed-relative-warning">
+                                        These pets are relatives and cannot breed together.
+                                    </p>
+                                )}
                                 {!breed.isAwaitingFulfillment && (
                                     <>
                                         <PendingBreedNotice petId={ownPet1 || undefined} label={`#${ownPet1}`} />
@@ -280,6 +327,11 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                     <div className="stud-fee-notice">
                                         Stud fee: <strong>{studFeeLabel}</strong> — paid to the spouse owner.
                                     </div>
+                                )}
+                                {areRelated && (
+                                    <p className="breed-relative-warning">
+                                        Your pet and their spouse are relatives and cannot breed together.
+                                    </p>
                                 )}
                                 {/* Only show recovery notice for the user's own pet.
                                     The spouse's pet also has a pending flag while the breed

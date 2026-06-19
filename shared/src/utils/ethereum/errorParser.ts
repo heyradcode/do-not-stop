@@ -119,6 +119,16 @@ const mapRevertReasonToFriendlyMessage = (revertReason: string): string  => {
         return '🐾 You already have a pet! Create a new one by breeding or battling.';
     }
 
+    if (
+        reason.includes('relative') ||
+        reason.includes('lineage') ||
+        reason.includes('ancestor') ||
+        reason.includes('inbreed') ||
+        reason.includes('same family')
+    ) {
+        return 'These pets are relatives and cannot breed together.';
+    }
+
     if (reason.includes('insufficient funds')) {
         return '💰 Insufficient funds for this transaction.';
     }

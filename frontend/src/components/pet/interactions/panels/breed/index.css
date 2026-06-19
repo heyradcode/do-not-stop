@@ -108,6 +108,16 @@
     }
 }
 
+/* Relative / lineage conflict warning */
+.breed-relative-warning {
+    font-size: 13px;
+    color: rgb(255 110 110 / 85%);
+    padding: 8px 12px;
+    background: rgb(255 80 80 / 6%);
+    border: 1px solid rgb(255 80 80 / 20%);
+    border-radius: 6px;
+}
+
 /* Empty state when no pets are married */
 .breed-no-married {
     text-align: center;
