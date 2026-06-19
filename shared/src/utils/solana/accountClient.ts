@@ -3,6 +3,7 @@ import { Buffer } from 'buffer';
 import { PublicKey } from '@solana/web3.js';
 import type { Idl, Program } from '@coral-xyz/anchor';
 import { PET_ACCOUNT_ID_MEMCMP_OFFSET } from './constants';
+import { petPdaByAsset } from './pdas';
 
 export type AnchorAccountClient = {
     fetch: (key: unknown) => Promise<unknown>;

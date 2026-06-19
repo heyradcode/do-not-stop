@@ -66,6 +66,12 @@ export const mapSolanaPet = (row: SolanaPetAccountRow): Pet  => {
         lossCount: toNumber(a.lossCount),
         readyAt: toNumber(a.readyTime),
         assetKey: toBase58Key(a.asset),
+        xp: toNumber(a.xp) || undefined,
+        generation: toNumber(a.generation),
+        speciesId: toNumber(a.speciesId) || undefined,
+        breedCount: toNumber(a.breedCount),
+        breedReadyAt: toNumber(a.breedReadyTime) || undefined,
+        trainReadyAt: toNumber(a.trainReadyTime) || undefined,
         spouseId: spouseId !== 0 ? spouseId : undefined,
         marriageCooldownUntil: toNumber(a.marriageCooldownUntil) || undefined,
     };
