@@ -4,7 +4,8 @@
   "scripts": {
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
-    "inject-ngrok": "tsx scripts/inject-ngrok.ts"
+    "inject-ngrok": "tsx scripts/inject-ngrok.ts",
+    "initialize": "tsx scripts/initialize.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1"
