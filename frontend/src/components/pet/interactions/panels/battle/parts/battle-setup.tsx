@@ -121,6 +121,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
         {opponent ? <PendingBattleNotice petId={opponent.id} label={opponent.name} /> : null}
         <OpenToChallengesToggle petId={selectedPet1} currentValue={selectedFighter?.openToChallenges} />
 
+        <div className="battle-rosters">
         <section className="battle-picker-section" aria-label="Your fighters">
             <div className="section-head">
                 <h5 className="section-title">Your fighters</h5>
@@ -185,6 +186,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 </div>
             )}
         </section>
+        </div>
 
         {isArenaReady && (
             <div className="win-estimate">

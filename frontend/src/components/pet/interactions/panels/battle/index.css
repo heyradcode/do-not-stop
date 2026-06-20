@@ -257,41 +257,83 @@
     }
 }
 
-.battle-picker-strip {
+/* Two-lane matchmaking layout: your fighters on the left, opponents on the right,
+   each lane scrolling vertically and independently. The VS arena stays above and
+   the Start Battle bar below, so neither list pushes the action off-screen. */
+.battle-rosters {
     display: flex;
+    gap: 14px;
+    width: 100%;
+    min-width: 0;
+    align-items: stretch;
+}
+
+.battle-rosters .battle-picker-section {
+    flex: 1 1 0;
+    min-width: 0;
+    background: rgb(8 14 30 / 42%);
+    border: 1px solid var(--zi-border);
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: inset 0 0 24px rgb(0 0 0 / 22%);
+}
+
+/* Lane identity: fighters read cyan (you), opponents read magenta (them). */
+.battle-rosters .battle-picker-section[aria-label='Your fighters'] {
+    border-color: rgb(125 214 255 / 32%);
+    box-shadow: inset 0 0 24px rgb(125 214 255 / 6%);
+}
+
+.battle-rosters .battle-picker-section[aria-label='Opponents'] {
+    border-color: rgb(255 110 196 / 32%);
+    box-shadow: inset 0 0 24px rgb(255 110 196 / 6%);
+}
+
+.battle-rosters .battle-picker-section[aria-label='Opponents'] .section-title {
+    color: #ff9ad6;
+}
+
+/* The header stays pinned while the card list below it scrolls. */
+.battle-rosters .section-head {
+    flex: 0 0 auto;
+}
+
+.battle-picker-strip,
+.battle-opponent-grid {
+    display: flex;
+    flex-direction: column;
     gap: 10px;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 6px;
-    scroll-padding: 6px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: clamp(240px, 44vh, 560px);
+    padding: 4px;
+    scroll-padding: 4px;
     scrollbar-width: thin;
     scrollbar-color: var(--neon-cyan) transparent;
 
     .battle-picker-card {
-        flex: 0 0 min(168px, calc(100% - 12px));
-        max-width: calc(100% - 12px);
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: 100%;
     }
 }
 
 .battle-opponent-grid {
-    display: flex;
-    gap: 10px;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 6px;
-    scroll-padding: 6px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--neon-cyan) transparent;
+    scrollbar-color: #ff9ad6 transparent;
+}
 
-    .battle-picker-card {
-        flex: 0 0 min(168px, calc(100% - 12px));
-        max-width: calc(100% - 12px);
+/* Stack the two lanes on narrow screens so each stays usable. */
+@media (max-width: 720px) {
+    .battle-rosters {
+        flex-direction: column;
+    }
+
+    .battle-picker-strip,
+    .battle-opponent-grid {
+        max-height: clamp(180px, 30vh, 360px);
     }
 }
 
