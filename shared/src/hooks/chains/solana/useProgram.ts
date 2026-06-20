@@ -15,7 +15,7 @@ const READ_ONLY_WALLET: SolanaSigningWallet = {
 export type SolanaProgram = Program<Idl>;
 
 export const useProgram = () => {
-    const { connection, programId, idlAddress, signingWallet } = useSolanaAnchor();
+    const { connection, programId, signingWallet } = useSolanaAnchor();
 
     const providerWallet = signingWallet ?? READ_ONLY_WALLET;
 
@@ -28,42 +28,44 @@ export const useProgram = () => {
         [connection, providerWallet]
     );
 
-    const query = useQuery({
-        queryKey: [
-            'cryptopets',
-            'program',
-            connection.rpcEndpoint,
-            programId?.toBase58() ?? 'none',
-            idlAddress?.toBase58() ?? 'derived',
-            signingWallet?.publicKey?.toBase58() ?? 'read-only',
-        ],
+    // IDL is a global program artifact — it never changes per wallet.
+    // Keyed only on (endpoint, programId) so we fetch it exactly once and
+    // re-use across wallet connections, eliminating the re-fetch delay each
+    // time a wallet is connected or switched.
+    const idlQuery = useQuery({
+        queryKey: ['cryptopets', 'idl', connection.rpcEndpoint, programId?.toBase58() ?? 'none'],
         enabled: programId !== null,
-        queryFn: async (): Promise<SolanaProgram> => {
+        staleTime: Infinity,
+        queryFn: async (): Promise<Idl> => {
             if (!programId) {
                 throw new Error('Solana program id is not configured');
             }
-            // Use an explicit IDL account address when provided (VITE_CRYPTOPETS_IDL_ADDRESS),
-            // otherwise fall back to the PDA Anchor derives from the program id.
-            const fetchAddress = idlAddress ?? programId;
-            const idl = await Program.fetchIdl(fetchAddress, provider);
+            const idl = await Program.fetchIdl(programId, provider);
             if (!idl) {
                 throw new Error(
                     'IDL not found on-chain for this program. Deploy the IDL (`anchor idl init`) or point RPC at a cluster where it exists.'
                 );
             }
-            return new Program(idl, provider) as SolanaProgram;
+            return idl;
         },
     });
 
+    // Program is rebuilt from the cached IDL whenever the provider changes
+    // (wallet connect/disconnect/switch). No extra network request.
+    const program = useMemo<SolanaProgram | null>(() => {
+        if (!idlQuery.data) return null;
+        return new Program(idlQuery.data, provider) as SolanaProgram;
+    }, [idlQuery.data, provider]);
+
     return {
         programId,
-        program: query.data ?? null,
+        program,
         provider: signingWallet ? provider : null,
         isConfigured: programId !== null,
-        isLoading: query.isPending,
-        isFetching: query.isFetching,
-        error: query.error,
-        refetch: query.refetch,
-        isReady: Boolean(programId && query.data),
+        isLoading: idlQuery.isPending,
+        isFetching: idlQuery.isFetching,
+        error: idlQuery.error,
+        refetch: idlQuery.refetch,
+        isReady: Boolean(programId && program),
     };
 }
