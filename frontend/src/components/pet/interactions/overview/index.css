@@ -17,8 +17,11 @@
         margin-inline: auto;
     }
 
+    /* The battle setup is a 3-column stage (fighters · arena · opponents); give it
+       the surrounding space instead of the narrow single-panel cap so the lanes
+       spread to the edges and the arena stays centered. */
     &.interaction-standalone:has(.battle-setup) {
-        max-width: 760px;
+        max-width: min(1440px, 100%);
     }
 
     .description {
