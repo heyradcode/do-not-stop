@@ -1,8 +1,8 @@
 import type { AnchorProvider, Program , Idl } from '@coral-xyz/anchor';
 import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import * as sb from '@switchboard-xyz/on-demand';
-import { battleRequestPda, globalStatePda, petPda } from './pdas';
-import { getAccountClient } from './accountClient';
+import { battleRequestPda, globalStatePda, petPdaByAsset } from './pdas';
+import { fetchAssetByPetId, getAccountClient } from './accountClient';
 import { toU32 } from './numbers';
 import {
     COMMIT_REVEAL_WAIT_MS,
@@ -21,6 +21,12 @@ const toPublicKey = (value: unknown): PublicKey  => {
     return new PublicKey(String(value));
 }
 
+const requireAsset = async (program: Program<Idl>, petId: number): Promise<PublicKey>  => {
+    const asset = await fetchAssetByPetId(program, petId);
+    if (!asset) throw new Error(`Pet ${petId} not found on-chain`);
+    return asset;
+}
+
 export type BattleWithVrfArgs = {
     program: Program<Idl>;
     provider: AnchorProvider;
@@ -28,6 +34,8 @@ export type BattleWithVrfArgs = {
     owner: PublicKey;
     attackerPetId: number;
     defenderPetId: number;
+    /** Pubkey of the asset account for the attacker's pet (v2.1 asset-keyed PDA). */
+    attackerAssetKey: string;
     /** Defaults to `owner` for same-wallet battles. */
     defenderOwner?: PublicKey;
 };
@@ -47,9 +55,12 @@ const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<string |
     const randomnessPk = toPublicKey(req.randomnessAccount);
 
     const [globalState] = globalStatePda(programId);
-    const [attackerPet] = petPda(programId, owner, attackerPetId);
-    const [defenderPet] = petPda(programId, defenderOwnerPk, defenderPetId);
     const [battleRequest] = battleRequestPda(programId, owner);
+
+    const attackerAsset = await requireAsset(program, attackerPetId);
+    const defenderAsset = await requireAsset(program, defenderPetId);
+    const [attackerPet] = petPdaByAsset(programId, attackerAsset.toBase58());
+    const [defenderPet] = petPdaByAsset(programId, defenderAsset.toBase58());
 
     const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
     const randomness = new sb.Randomness(queue.program, randomnessPk);
@@ -62,8 +73,10 @@ const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<string |
         .accounts({
             globalState,
             attackerOwner: owner,
+            attackerAsset,
             attackerPet,
             defenderOwner: defenderOwnerPk,
+            defenderAsset,
             defenderPet,
             battleRequest,
             randomnessAccountData: randomnessPk,
@@ -93,15 +106,18 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
         provider,
         programId,
         owner,
-        attackerPetId,
         defenderPetId,
+        attackerAssetKey,
         defenderOwner = owner,
     } = args;
     const connection = provider.connection;
 
+    const attackerAsset = new PublicKey(attackerAssetKey);
+    const defenderAsset = await requireAsset(program, defenderPetId);
+
     const [globalState] = globalStatePda(programId);
-    const [attackerPet] = petPda(programId, owner, attackerPetId);
-    const [defenderPet] = petPda(programId, defenderOwner, defenderPetId);
+    const [attackerPet] = petPdaByAsset(programId, attackerAssetKey);
+    const [defenderPet] = petPdaByAsset(programId, defenderAsset.toBase58());
     const [battleRequest] = battleRequestPda(programId, owner);
 
     const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
@@ -121,8 +137,10 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
         .accounts({
             globalState,
             attackerOwner: owner,
+            attackerAsset,
             attackerPet,
             defenderOwner,
+            defenderAsset,
             defenderPet,
             battleRequest,
             randomnessAccountData: rngKp.publicKey,
@@ -148,8 +166,10 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
         .accounts({
             globalState,
             attackerOwner: owner,
+            attackerAsset,
             attackerPet,
             defenderOwner,
+            defenderAsset,
             defenderPet,
             battleRequest,
             randomnessAccountData: rngKp.publicKey,

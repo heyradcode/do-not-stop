@@ -36,6 +36,7 @@ const fees = {
     trainFee: 3n,
     breedFee: 4n,
     studFee: 5n,
+    entropyFee: 0n,
 };
 const config: {
     evm:
@@ -76,6 +77,7 @@ beforeEach(() => {
         trainFee: 3n,
         breedFee: 4n,
         studFee: 5n,
+        entropyFee: 0n,
     });
     config.evm = {
         petCore: { address: '0x1111111111111111111111111111111111111111', abi: [] },
@@ -88,7 +90,7 @@ describe('EVM_CAPABILITIES', () => {
     it('describes the Ethereum chain', () => {
         expect(EVM_CAPABILITIES.chainLabel).toBe('Ethereum');
         expect(EVM_CAPABILITIES.renameMinLevel).toBe(2);
-        expect(EVM_CAPABILITIES.levelUpFee).toEqual({ amount: '0.001', symbol: 'ETH' });
+        expect(EVM_CAPABILITIES.levelUpFee).toEqual({ amount: '0.004', symbol: 'ETH' });
     });
 
     it('validates addresses via viem', () => {
@@ -122,8 +124,8 @@ describe('useEvmAdapter', () => {
         await result.current.createPet.mutateAsync({ name: 'Sparky' });
         expect(write.writeContractAsync).toHaveBeenCalledWith(
             expect.objectContaining({
-                address: '0x1111111111111111111111111111111111111111',
-                functionName: 'mintStarter',
+                address: '0x2222222222222222222222222222222222222222',
+                functionName: 'requestMintStarter',
                 args: ['Sparky'],
                 value: 10n,
             }),

@@ -6,10 +6,7 @@ export interface TrainPetArgs {
     petId: string;
 }
 
-/**
- * v2 train: pay a level-scaled fee for a flat XP grant (EVM-only; the Solana
- * adapter rejects). Settlement is lifecycle-driven on the train tx receipt.
- */
+/** v2 train: pay a level-scaled fee for a flat XP grant. Settlement is lifecycle-driven. */
 export const useTrainPet = (options?: PetMutationOptions): PetMutationResult<TrainPetArgs>  => {
     const { trainPet } = useChainAdapter();
     useTxSuccess(trainPet.lifecycle, options?.onSuccess);

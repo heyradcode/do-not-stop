@@ -6,7 +6,6 @@ vi.mock('@utils', () => ({
     sanitizeName: vi.fn((s: string) => s),
     isEvmAddress: vi.fn(),
     positiveMod: vi.fn(),
-    parseIntParam: vi.fn(),
     withFallback: vi.fn(),
 }));
 vi.mock('../../../src/features/auth/nonce.store', () => ({

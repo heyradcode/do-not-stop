@@ -32,6 +32,7 @@ vi.mock('@components/pet/interactions/state-card', () => ({
 }));
 vi.mock('@constants/tones', () => ({ Tones: { Violet: 'violet' } }));
 vi.mock('@components/pet/interactions/overview/index.css', () => ({}));
+vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));
 
 import InteractionStandalone from '@components/pet/interactions/standalone';
 

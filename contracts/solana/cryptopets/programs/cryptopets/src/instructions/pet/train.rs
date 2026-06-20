@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{train_fee_for, GlobalState, PetAccount, FEE_VAULT_SEED},
-    util::core_asset_owner,
+    utils::metadata::core_asset_owner,
 };
 
 /// Pay a level-scaled fee for a flat XP grant, once per train cooldown (plan §3.4,

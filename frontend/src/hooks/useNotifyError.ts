@@ -18,17 +18,3 @@ export const useNotifyError = () => {
     );
 }
 
-/** Logs a cancellation/info message without treating it as a hard failure. */
-export const useNotifyInfo = () => {
-    const toast = useToast();
-
-    return useCallback(
-        (message: string, rawError?: unknown, context = 'action') => {
-            if (rawError !== undefined) {
-                console.error(`[${context}]`, rawError);
-            }
-            toast.info(message);
-        },
-        [toast],
-    );
-}

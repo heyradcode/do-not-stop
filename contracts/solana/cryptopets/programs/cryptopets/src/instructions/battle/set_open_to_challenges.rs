@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{errors::ErrorCode, state::PetAccount, util::core_asset_owner};
+use crate::{errors::ErrorCode, utils::metadata::core_asset_owner, state::PetAccount};
 
 /// Interim defender-consent fix (§3.5/§6 Solana #3): lets a pet's owner opt their pet
 /// out of (or back into) being targeted as a defender in `commit_battle`.

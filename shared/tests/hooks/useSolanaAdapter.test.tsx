@@ -13,26 +13,39 @@ const makeMutation = () => ({
     reset: vi.fn(),
 });
 
+const ASSET_1 = Keypair.generate().publicKey.toBase58();
+const ASSET_2 = Keypair.generate().publicKey.toBase58();
+const ASSET_5 = Keypair.generate().publicKey.toBase58();
+
+const testPets = [
+    { id: '1', chain: 'solana' as const, name: 'Alpha', dna: 0n, level: 1, rarity: 1, winCount: 0, lossCount: 0, readyAt: 0, assetKey: ASSET_1 },
+    { id: '2', chain: 'solana' as const, name: 'Beta',  dna: 0n, level: 1, rarity: 1, winCount: 0, lossCount: 0, readyAt: 0, assetKey: ASSET_2 },
+    { id: '5', chain: 'solana' as const, name: 'Gamma', dna: 0n, level: 2, rarity: 1, winCount: 0, lossCount: 0, readyAt: 0, assetKey: ASSET_5 },
+];
+
 const actions = {
-    createStarterPet: makeMutation(),
+    mintPet: makeMutation(),
     levelUpPet: makeMutation(),
+    trainPet: makeMutation(),
     renamePet: makeMutation(),
-    transferPet: makeMutation(),
     battlePets: makeMutation(),
     breedPets: makeMutation(),
 };
-const petsQuery = { data: [], isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
+const petsQuery = { data: testPets, isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
 const anchor = { signingWallet: { publicKey: Keypair.generate().publicKey } as { publicKey: unknown } | null };
 
 vi.mock('../../src/hooks/chains/solana/usePetActions', () => ({ usePetActions: () => actions }));
 vi.mock('../../src/hooks/chains/solana/usePets', () => ({ usePets: () => petsQuery }));
 vi.mock('../../src/contexts/SolanaAnchorContext', () => ({ useSolanaAnchor: () => anchor }));
-// Barrel pulls the crash-on-load Switchboard builders — expose only the real
-// error formatter from its own (Switchboard-free) module.
+// Avoid loading Switchboard builders; expose only the real error formatter.
 vi.mock('../../src/utils/solana', async () => {
     const mod = await import('../../src/utils/solana/parseSolanaTransactionError');
     return { formatSolanaActionError: mod.formatSolanaActionError };
 });
+// mapSolanaPet: return the row as-is since petsQuery.data already contains mapped Pet objects.
+vi.mock('../../src/utils/pets/mapSolanaPet', () => ({
+    mapSolanaPet: (row: unknown) => row,
+}));
 
 import { SOLANA_CAPABILITIES, useSolanaAdapter } from '../../src/hooks/adapters/useSolanaAdapter';
 
@@ -82,48 +95,71 @@ describe('useSolanaAdapter', () => {
         expect(result.current.address).toBeNull();
     });
 
-    it('maps mutations to pet actions with numeric ids and defaults', async () => {
+    it('maps mutations to pet actions with numeric ids and asset keys', async () => {
         const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
 
         await result.current.createPet.mutateAsync({ name: 'S' });
-        expect(actions.createStarterPet.mutateAsync).toHaveBeenCalledWith({ name: 'S', dna: 0n, rarity: 1 });
+        expect(actions.mintPet.mutateAsync).toHaveBeenCalledWith({ name: 'S' });
 
         await result.current.levelUpPet.mutateAsync({ petId: '5' });
-        expect(actions.levelUpPet.mutateAsync).toHaveBeenCalledWith({ petId: 5 });
+        expect(actions.levelUpPet.mutateAsync).toHaveBeenCalledWith({ petId: 5, assetKey: ASSET_5 });
+
+        await result.current.trainPet.mutateAsync({ petId: '5' });
+        expect(actions.trainPet.mutateAsync).toHaveBeenCalledWith({ petId: 5, assetKey: ASSET_5 });
+
+        await result.current.renamePet.mutateAsync({ petId: '5', name: 'NewName' });
+        expect(actions.renamePet.mutateAsync).toHaveBeenCalledWith({ petId: 5, name: 'NewName', assetKey: ASSET_5 });
 
         await result.current.breedPets.mutateAsync({ parentId1: '1', parentId2: '2', name: 'Baby' });
-        expect(actions.breedPets.mutateAsync).toHaveBeenCalledWith({ parent1Id: 1, parent2Id: 2, name: 'Baby' });
+        expect(actions.breedPets.mutateAsync).toHaveBeenCalledWith({
+            parent1Id: 1,
+            parent2Id: 2,
+            name: 'Baby',
+            parent1AssetKey: ASSET_1,
+            parent2AssetKey: ASSET_2,
+        });
     });
 
-    it('includes defenderOwner only when provided', async () => {
+    it('includes defenderOwner and attackerAssetKey in battle', async () => {
         const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
 
         await result.current.battlePets.mutateAsync({ petId1: '1', petId2: '2' });
-        expect(actions.battlePets.mutateAsync).toHaveBeenCalledWith({ attackerPetId: 1, defenderPetId: 2 });
+        expect(actions.battlePets.mutateAsync).toHaveBeenCalledWith({
+            attackerPetId: 1,
+            defenderPetId: 2,
+            attackerAssetKey: ASSET_1,
+        });
 
         await result.current.battlePets.mutateAsync({ petId1: '1', petId2: '2', defenderOwner: '0xo' });
         expect(actions.battlePets.mutateAsync).toHaveBeenLastCalledWith({
             attackerPetId: 1,
             defenderPetId: 2,
+            attackerAssetKey: ASSET_1,
             defenderOwner: '0xo',
         });
     });
 
     it('derives the lifecycle phase from the action mutation state', () => {
-        actions.createStarterPet.isPending = true;
+        actions.mintPet.isPending = true;
         let hook = renderHook(() => useSolanaAdapter({ enabled: true }));
         expect(hook.result.current.createPet.lifecycle.phase).toBe('awaiting-wallet');
 
-        actions.createStarterPet.isPending = false;
-        actions.createStarterPet.isSuccess = true;
-        actions.createStarterPet.data = 'sig123';
+        actions.mintPet.isPending = false;
+        actions.mintPet.isSuccess = true;
+        actions.mintPet.data = 'sig123';
         hook = renderHook(() => useSolanaAdapter({ enabled: true }));
         expect(hook.result.current.createPet.lifecycle.phase).toBe('success');
         expect(hook.result.current.createPet.lifecycle.hash).toBe('sig123');
 
-        actions.createStarterPet.isSuccess = false;
-        actions.createStarterPet.isError = true;
+        actions.mintPet.isSuccess = false;
+        actions.mintPet.isError = true;
         hook = renderHook(() => useSolanaAdapter({ enabled: true }));
         expect(hook.result.current.createPet.lifecycle.phase).toBe('error');
+    });
+
+    it('transferPet throws with an explanatory message', async () => {
+        const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
+        await expect(result.current.transferPet.mutateAsync({ petId: '1', to: validAddress }))
+            .rejects.toThrow(/Metaplex Core/);
     });
 });

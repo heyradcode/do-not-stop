@@ -1,5 +1,10 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAccount, useReadContract, useWatchContractEvent, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { parseEventLogs } from 'viem';
 import { useChainAdapter } from './adapters/useChainAdapter';
 import { useTxSuccess } from './useTxSuccess';
+import { usePetsConfig } from '../contexts/PetsConfigContext';
+import { useWatchEntropyFulfillment } from './chains/ethereum/useWatchEntropyFulfillment';
 import type { TxLifecycle } from './adapters/types';
 
 export interface CreatePetArgs {
@@ -12,7 +17,7 @@ export interface CreatePetArgs {
 
 export interface PetMutationOptions {
     /**
-     * Fires once the transaction is fully settled (EVM: receipt confirmed;
+     * Fires once the transaction is fully settled (EVM: MintSettled/BreedSettled confirmed;
      * Solana: mutation resolved). Do NOT check `lifecycle.phase` after
      * `await mutate(...)` instead — that closure reads a stale phase.
      */
@@ -27,17 +32,143 @@ export interface PetMutationResult<TArgs> {
     /** EVM tx hash (0x…) or Solana signature, once submitted. */
     hash?: string | undefined;
     lifecycle: TxLifecycle;
+    /** EVM async mint only: true while waiting for Pyth Entropy fulfillment. */
+    isAwaitingFulfillment?: boolean;
+    /** EVM async mint only: true while the settleMint tx is in-flight. */
+    isSettling?: boolean;
 }
 
+/**
+ * EVM: two-phase flow — requestMintStarter (payable, async) then settleMint once
+ * Pyth Entropy reveals. onSuccess fires after MintSettled.
+ * Solana: single-tx, success is lifecycle-driven.
+ */
 export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<CreatePetArgs>  => {
-    const { createPet } = useChainAdapter();
-    useTxSuccess(createPet.lifecycle, options?.onSuccess);
+    const adapter = useChainAdapter();
+    const { createPet } = adapter;
+    const isEvm = adapter.kind === 'evm';
+    const { evm } = usePetsConfig();
+    const { address } = useAccount();
+
+    const onSuccessRef = useRef(options?.onSuccess);
+    onSuccessRef.current = options?.onSuccess;
+
+    const [pendingRequestId, setPendingRequestId] = useState<bigint | null>(null);
+    const [preWriteError, setPreWriteError] = useState<Error | null>(null);
+    const hash = createPet.lifecycle.hash;
+
+    // 1. Parse MintRequested requestId from the request tx receipt (EVM only).
+    const { data: requestReceipt } = useWaitForTransactionReceipt({
+        hash: isEvm && hash ? (hash as `0x${string}`) : undefined,
+    });
+    useEffect(() => {
+        if (!isEvm || !requestReceipt || !address || !evm?.gameLogic.abi) return;
+        try {
+            const logs = parseEventLogs({
+                abi: evm.gameLogic.abi,
+                logs: requestReceipt.logs,
+                eventName: 'MintRequested',
+                strict: false,
+            }) as unknown as { args: { owner?: string; requestId?: bigint } }[];
+            const mine = logs.find((l) => l.args.owner?.toLowerCase() === address.toLowerCase());
+            if (mine?.args.requestId != null) setPendingRequestId(mine.args.requestId);
+        } catch { /* not a mint tx / ABI mismatch */ }
+    }, [isEvm, requestReceipt, address, evm?.gameLogic.abi]);
+
+    // Read the Pyth Entropy contract address from GameLogic (needed for the Revealed watcher).
+    const { data: entropyAddress } = useReadContract({
+        address: evm?.gameLogic.address,
+        abi: evm?.gameLogic.abi ?? [],
+        functionName: 'entropy',
+        chainId: evm?.chainId,
+        query: { enabled: isEvm && Boolean(evm?.gameLogic.address) },
+    });
+
+    // 3. settleMint tx — fired once Entropy reveals.
+    const settle = useWriteContract();
+    const settleSentRef = useRef(false);
+    const handleEntropyFulfilled = useCallback((id: bigint) => {
+        if (settleSentRef.current || !evm?.gameLogic.address) return;
+        settleSentRef.current = true;
+        settle.writeContract(
+            { address: evm.gameLogic.address, abi: evm.gameLogic.abi, functionName: 'settleMint', args: [id], gas: 500000n, chainId: evm.chainId },
+            { onError: (e) => console.error('[settleMint]', e) },
+        );
+    }, [evm?.gameLogic.address, evm?.gameLogic.abi, settle]);
+
+    // 2. Watch Pyth Entropy `Revealed` (caller = gameLogic, sequenceNumber = requestId).
+    useWatchEntropyFulfillment({
+        entropyAddress: isEvm ? (entropyAddress as `0x${string}` | undefined) : undefined,
+        gameLogicAddress: isEvm ? evm?.gameLogic.address : undefined,
+        requestId: isEvm ? pendingRequestId : null,
+        onFulfilled: handleEntropyFulfilled,
+    });
+
+    const successFiredRef = useRef(false);
+    const handleMintSettled = useCallback(() => {
+        if (successFiredRef.current) return;
+        successFiredRef.current = true;
+        setPendingRequestId(null);
+        onSuccessRef.current?.();
+    }, []);
+
+    // 4a. Primary: resolve from settle tx receipt (we sent settleMint, so MintSettled is in its logs).
+    const { isSuccess: settleConfirmed } = useWaitForTransactionReceipt({
+        hash: settle.data,
+        query: { enabled: !!settle.data },
+    });
+    useEffect(() => {
+        if (isEvm && settleConfirmed) handleMintSettled();
+    }, [isEvm, settleConfirmed, handleMintSettled]);
+
+    // 4b. Secondary: watch MintSettled event (covers a settle sent outside this hook).
+    useWatchContractEvent({
+        address: evm?.gameLogic.address,
+        abi: evm?.gameLogic.abi ?? [],
+        eventName: 'MintSettled',
+        enabled: Boolean(isEvm && evm?.gameLogic.address && pendingRequestId != null),
+        onLogs(logs) {
+            if (pendingRequestId == null) return;
+            const typed = logs as unknown as { args: { requestId?: bigint } }[];
+            if (typed.some((l) => l.args.requestId === pendingRequestId)) handleMintSettled();
+        },
+    });
+
+    // Solana: success is lifecycle-driven (single confirmed tx).
+    // EVM: pass undefined so useTxSuccess doesn't fire onSuccess after the request tx;
+    //      it still calls lifecycle.reset() which is fine (we've already parsed requestId).
+    useTxSuccess(createPet.lifecycle, !isEvm ? options?.onSuccess : undefined);
+
+    const reset = useCallback(() => {
+        setPendingRequestId(null);
+        setPreWriteError(null);
+        settleSentRef.current = false;
+        successFiredRef.current = false;
+        settle.reset();
+        createPet.lifecycle.reset();
+    }, [settle, createPet.lifecycle]);
+
     return {
-        mutate: (args) => createPet.mutateAsync({ name: args.name, dna: args.dna, rarity: args.rarity }),
+        mutate: async (args) => {
+            setPendingRequestId(null);
+            setPreWriteError(null);
+            settleSentRef.current = false;
+            successFiredRef.current = false;
+            settle.reset();
+            try {
+                await createPet.mutateAsync({ name: args.name, dna: args.dna, rarity: args.rarity });
+            } catch (e) {
+                // errors thrown before writeContractAsync (e.g. fee not loaded) aren't
+                // captured by the lifecycle — surface them here so the error toast fires.
+                if (!createPet.lifecycle.error) setPreWriteError(e as Error);
+            }
+        },
         isPending: createPet.isPending,
-        error: createPet.lifecycle.error,
+        error: createPet.lifecycle.error ?? preWriteError ?? (settle.error as Error | null),
         hash: createPet.lifecycle.hash,
-        reset: createPet.lifecycle.reset,
+        reset,
         lifecycle: createPet.lifecycle,
+        isAwaitingFulfillment: isEvm && pendingRequestId != null,
+        isSettling: isEvm && settle.isPending,
     };
 }

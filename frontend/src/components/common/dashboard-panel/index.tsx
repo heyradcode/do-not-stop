@@ -7,6 +7,8 @@ export type DashboardPanelProps = {
     description?: React.ReactNode;
     /** Controls aligned to the header corner (e.g. refresh). */
     actions?: React.ReactNode;
+    /** If provided, renders a ← Back button in the top-left of the title bar. */
+    back?: () => void;
     /** Renders below the title bar; intended for the main panel content. */
     children?: React.ReactNode;
     /** Extra classes on the outer `.dashboard-panel` section. */
@@ -25,6 +27,7 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({
     title,
     description,
     actions,
+    back,
     children,
     className,
     headingId = 'dashboard-panel-heading',
@@ -36,6 +39,11 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({
         <section className={rootClass} aria-labelledby={headingId}>
             <div className="surface">
                 <header className="title-bar">
+                    {back != null ? (
+                        <button type="button" className="panel-back" onClick={back} aria-label="Back">
+                            ← Back
+                        </button>
+                    ) : null}
                     <div className="intro">
                         <h2 id={headingId} className="heading">
                             {title}

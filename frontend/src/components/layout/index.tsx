@@ -9,14 +9,8 @@ import './index.css';
 
 const TITLE = 'Crypto Pets';
 
-/**
- * App layout: the shared chrome (header + wallet), the routed page (`<Outlet/>`),
- * and the pet collection (hidden on full-page interaction routes). Used as the
- * layout-route element wrapping every page.
- */
 const Layout: React.FC = () => {
   const location = useLocation();
-  /** Full-page interaction routes hide the pet collection. */
   const isGalleryHidden = isInteractionRoute(location.pathname);
 
   return (
@@ -30,10 +24,11 @@ const Layout: React.FC = () => {
         </div>
       </div>
 
-      <div className="main-content authenticated">
+      <div className="main-content">
         <Outlet />
         {!isGalleryHidden && <PetGallery />}
       </div>
+
       <SolanaWalletTrigger />
     </div>
   );

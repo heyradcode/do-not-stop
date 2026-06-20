@@ -1,5 +1,5 @@
 {
-  "description": "CombatSimV1.simulate golden vectors (plan §7). NO_SKILL = 99 (any value outside 0-7).",
+  "description": "CombatSim.simulate golden vectors (plan §7). NO_SKILL = 99 (any value outside 0-7).",
   "skillConfig": {
     "tankHpMult": 120,
     "shellDefMult": 125,

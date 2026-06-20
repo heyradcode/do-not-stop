@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useReadContract, useSimulateContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
 
 export interface PendingBattleTx {
@@ -14,10 +14,12 @@ export interface PendingBattle {
     requestId?: bigint;
     /** True when this pet has an unresolved battle blocking new ones. */
     isPending: boolean;
-    /** settleBattle — works once VRF has fulfilled; permissionless. */
+    /** settleBattle — works once entropy has fulfilled; permissionless. */
     settle: PendingBattleTx;
-    /** cancelBattle — only before fulfillment; requester or contract owner. */
+    /** cancelBattle — only before entropy fulfillment; requester or contract owner. */
     cancel: PendingBattleTx;
+    /** True only while cancelBattle would succeed (entropy not yet fulfilled). */
+    canCancel: boolean;
     refetch(): void;
 }
 
@@ -30,6 +32,7 @@ export const usePendingBattle = (petId?: string): PendingBattle => {
     const { evm } = usePetsConfig();
     const gameLogic = evm?.gameLogic.address;
     const abi = evm?.gameLogic.abi ?? [];
+    const chainId = evm?.chainId;
     const enabled = Boolean(gameLogic && petId);
 
     const { data: requestIdData, refetch: refetchId } = useReadContract({
@@ -37,11 +40,27 @@ export const usePendingBattle = (petId?: string): PendingBattle => {
         abi,
         functionName: 'petBattleRequestId',
         args: petId ? [BigInt(petId)] : undefined,
+        chainId,
         query: { enabled },
     });
 
     const requestId = requestIdData as bigint | undefined;
     const isPending = requestId != null && requestId !== 0n;
+
+    const { address: userAddress } = useAccount();
+
+    // Simulate cancelBattle to detect whether entropy has already been fulfilled.
+    // cancelBattle reverts with "Already fulfilled" once entropyCallback fires, so
+    // simulation failure means only settleBattle is still valid.
+    const { isSuccess: cancelFeasible } = useSimulateContract({
+        address: gameLogic,
+        abi,
+        functionName: 'cancelBattle',
+        args: requestId != null ? [requestId] : undefined,
+        account: userAddress,
+        chainId,
+        query: { enabled: isPending && requestId != null && Boolean(userAddress) },
+    });
 
     const settleW = useWriteContract();
     const cancelW = useWriteContract();
@@ -58,7 +77,7 @@ export const usePendingBattle = (petId?: string): PendingBattle => {
     const settle: PendingBattleTx = {
         async run() {
             if (!gameLogic || requestId == null) throw new Error('No pending battle to settle');
-            await settleW.writeContractAsync({ address: gameLogic, abi, functionName: 'settleBattle', args: [requestId], gas: 800000n });
+            await settleW.writeContractAsync({ address: gameLogic, abi, functionName: 'settleBattle', args: [requestId], gas: 800000n, chainId });
         },
         isPending: settleW.isPending || (!!settleW.data && !settleR.isSuccess && !settleR.isError),
         error: (settleW.error as Error | null) ?? (settleR.isError ? (settleR.error as Error) : null),
@@ -68,12 +87,12 @@ export const usePendingBattle = (petId?: string): PendingBattle => {
     const cancel: PendingBattleTx = {
         async run() {
             if (!gameLogic || requestId == null) throw new Error('No pending battle to cancel');
-            await cancelW.writeContractAsync({ address: gameLogic, abi, functionName: 'cancelBattle', args: [requestId], gas: 200000n });
+            await cancelW.writeContractAsync({ address: gameLogic, abi, functionName: 'cancelBattle', args: [requestId], gas: 200000n, chainId });
         },
         isPending: cancelW.isPending || (!!cancelW.data && !cancelR.isSuccess && !cancelR.isError),
         error: (cancelW.error as Error | null) ?? (cancelR.isError ? (cancelR.error as Error) : null),
         hash: cancelW.data,
     };
 
-    return { requestId, isPending, settle, cancel, refetch };
+    return { requestId, isPending, settle, cancel, canCancel: cancelFeasible === true, refetch };
 };

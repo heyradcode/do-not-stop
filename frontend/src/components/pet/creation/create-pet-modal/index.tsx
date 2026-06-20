@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { formatEther } from 'viem';
+import { useQueryClient } from '@tanstack/react-query';
 import {
     useChainCapabilities,
     useCreatePet,
-    useEvmFees,
-    usePetList,
+    useFees,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
 import TransactionStatus from '@components/common/transaction-status';
+import { AuthActionButton } from '@components/common';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
@@ -19,15 +19,13 @@ interface CreatePetModalProps {
 }
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
-    const { isConnected, kind } = useChainCapabilities();
-    const { refetch } = usePetList();
+    const { isConnected } = useChainCapabilities();
+    const queryClient = useQueryClient();
     const notifyError = useNotifyError();
 
-    // Live gacha mint cost (EVM): baseMintFee × (1 + walletMintCount).
-    const fees = useEvmFees(kind === 'evm');
-    const mintCost = kind === 'evm' && fees.nextMintFee != null
-        ? `${formatEther(fees.nextMintFee)} ETH`
-        : null;
+    // Mint cost escalates per wallet: EVM baseMintFee×(1+count), Solana baseMintFee<<min(count,7).
+    const fees = useFees();
+    const mintCost = fees.nextMintFee != null ? fees.formatAmount(fees.nextMintFee) : null;
 
     const [petName, setPetName] = useState('');
     const [success, setSuccess] = useState<string | null>(null);
@@ -36,15 +34,35 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const handleCreateComplete = () => {
         setSuccess(`Pet "${petName.trim()}" created successfully!`);
         setPetName('');
-        refetch();
+        // Bust the entire contract-read cache so the gallery picks up the new pet
+        // immediately — avoids stale reads when the wallet's chain differs from
+        // the contract's chain (useReadContracts overwrites chainId with the wallet's).
+        void queryClient.invalidateQueries({ queryKey: ['readContract'] });
+        void queryClient.invalidateQueries({ queryKey: ['readContracts'] });
         onClose();
     };
 
-    const { mutate, isPending, error: hookError, reset, lifecycle } = useCreatePet({
+    const { mutate, isPending, isAwaitingFulfillment, isSettling, error: hookError, reset, lifecycle } = useCreatePet({
         onSuccess: handleCreateComplete,
     });
 
     useTxErrorToast(hookError);
+
+    const isInProgress = isPending || isAwaitingFulfillment || isSettling;
+    // EVM: both nextMintFee (via mintCost) AND entropyFee must be loaded before sending.
+    // Solana: no entropy fee, mintCost alone is sufficient.
+    const isEvm = fees.symbol === 'ETH';
+    const feesLoading = mintCost == null || (isEvm && fees.entropyFee == null);
+
+    const buttonLabel = isPending
+        ? 'Submitting...'
+        : isAwaitingFulfillment
+          ? 'Awaiting randomness...'
+          : isSettling
+            ? 'Settling mint...'
+            : feesLoading
+              ? 'Loading fees...'
+              : `Create Pet (${mintCost})`;
 
     const handleCreatePet = async () => {
         if (!isConnected) {
@@ -68,6 +86,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     };
 
     const handleClose = () => {
+        if (isInProgress) return; // don't discard an in-flight mint — the fee is already spent
         setPetName('');
         setSuccess(null);
         reset();
@@ -81,7 +100,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
             <div className="dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="header">
                     <h2><Icon as={PawIcon} tone={Tones.Cyan} />Create Your First Pet</h2>
-                    <button className="close" onClick={handleClose}>
+                    <button className="close" onClick={handleClose} disabled={isInProgress}>
                         ×
                     </button>
                 </div>
@@ -99,7 +118,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                                 onChange={(e) => setPetName(e.target.value)}
                                 placeholder="Enter pet name..."
                                 maxLength={20}
-                                disabled={isPending}
+                                disabled={isInProgress}
                             />
                         </div>
 
@@ -107,15 +126,19 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                             <p className="mint-cost">Mint cost: {mintCost}</p>
                         )}
 
-                        <button
+                        <AuthActionButton
                             onClick={handleCreatePet}
-                            disabled={isPending || !petName.trim() || !isConnected}
+                            disabled={isInProgress || feesLoading || !petName.trim() || !isConnected}
                             className="submit"
                         >
-                            {isPending
-                                ? 'Creating...'
-                                : mintCost ? `Create Pet (${mintCost})` : 'Create Pet'}
-                        </button>
+                            {buttonLabel}
+                        </AuthActionButton>
+
+                        {isAwaitingFulfillment && (
+                            <p className="pending-hint">
+                                Hang tight — your pet will appear once randomness is revealed.
+                            </p>
+                        )}
                     </div>
 
                     {success && (

@@ -25,6 +25,8 @@ vi.mock('@constants/chains/ethereum', () => {
     return {
         CHAINS,
         getChainsByType: (testnet: boolean) => CHAINS.filter((c) => c.isTestnet === testnet),
+        getMainnetChains: () => CHAINS.filter((c) => !c.isTestnet),
+        getTestnetChains: () => CHAINS.filter((c) => c.isTestnet),
         getChainConfig: (id: number) => CHAINS.find((c) => c.chain.id === id),
     };
 });

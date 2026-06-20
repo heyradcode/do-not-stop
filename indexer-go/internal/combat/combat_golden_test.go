@@ -10,7 +10,7 @@ import (
 )
 
 // The shared cross-chain golden vectors (plan §7), generated against
-// CombatSimV1.simulate. These same files are consumed by the Hardhat and
+// CombatSim.simulate. These same files are consumed by the Hardhat and
 // Anchor test suites; consuming them here makes the Go port a third witness to
 // the one canonical result. If a case fails, this port has drifted from the
 // contracts — fix the Go, never the vector.
@@ -143,13 +143,13 @@ func TestCalcXPAndDecayMatchGoldenVectors(t *testing.T) {
 	}
 
 	for _, c := range v.CalcXPCases {
-		if got := CalcXP(c.BaseXP, c.MyLevel, c.OppLevel); got != c.ExpectedXP {
-			t.Errorf("CalcXP %q: got %d, want %d", c.Name, got, c.ExpectedXP)
+		if got := calcXP(c.BaseXP, c.MyLevel, c.OppLevel); got != c.ExpectedXP {
+			t.Errorf("calcXP %q: got %d, want %d", c.Name, got, c.ExpectedXP)
 		}
 	}
 
 	for _, seq := range v.DecaySequences {
-		shifts := ApplyDecay(seq.OpponentIDs)
+		shifts := applyDecay(seq.OpponentIDs)
 		if len(shifts) != len(seq.ExpectedDecayShifts) {
 			t.Fatalf("decay %q: got %d shifts, want %d", seq.Name, len(shifts), len(seq.ExpectedDecayShifts))
 		}
@@ -159,7 +159,7 @@ func TestCalcXPAndDecayMatchGoldenVectors(t *testing.T) {
 			}
 			// expectedXp = calcXp(baseXp, 10, 10) >> shift (both levels 10 in the fixture).
 			wantXP := seq.ExpectedXP[i]
-			gotXP := CalcXP(seq.BaseXP, 10, 10) >> shift
+			gotXP := calcXP(seq.BaseXP, 10, 10) >> shift
 			if gotXP != wantXP {
 				t.Errorf("decay %q step %d: xp %d, want %d", seq.Name, i, gotXP, wantXP)
 			}

@@ -5,19 +5,18 @@ use crate::{
     state::GlobalState,
     state::PetAccount,
     state::FEE_VAULT_SEED,
-    util::core_asset_owner,
+    utils::metadata::core_asset_owner,
 };
 
 pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
     let global_state = &mut ctx.accounts.global_state;
 
-    // enforce pause
     require!(!global_state.paused, ErrorCode::Paused);
 
     require_keys_eq!(
         core_asset_owner(&ctx.accounts.pet_asset.to_account_info())?,
         ctx.accounts.owner.key(),
-        LevelUpError::Unauthorized
+        ErrorCode::Unauthorized
     );
 
     let pet = &mut ctx.accounts.pet;
@@ -27,9 +26,8 @@ pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
         ErrorCode::MaxLevelReached
     );
 
-    // transfer lamports to the fee vault
     let fee = global_state.level_up_fee_lamports;
-    require!(fee > 0, LevelUpError::InvalidFee);
+    require!(fee > 0, ErrorCode::InvalidLevelUpFee);
 
     let cpi_ctx = CpiContext::new(
         ctx.accounts.system_program.to_account_info(),
@@ -40,24 +38,16 @@ pub fn handler(ctx: Context<LevelUp>) -> Result<()> {
     );
     anchor_lang::system_program::transfer(cpi_ctx, fee)?;
 
-    pet.level = pet.level.checked_add(1).unwrap();
+    pet.level = pet.level.checked_add(1).ok_or(ErrorCode::ArithmeticOverflow)?;
 
     Ok(())
-}
-
-#[error_code]
-pub enum LevelUpError {
-    #[msg("Pet fee invalid")]
-    InvalidFee,
-    #[msg("Not authorized to level this pet")]
-    Unauthorized,
 }
 
 #[derive(Accounts)]
 pub struct LevelUp<'info> {
     #[account(
         mut,
-        seeds = [  GlobalState::SEED],
+        seeds = [GlobalState::SEED],
         bump = global_state.bump,
     )]
     pub global_state: Account<'info, GlobalState>,

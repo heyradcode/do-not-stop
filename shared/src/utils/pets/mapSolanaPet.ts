@@ -45,8 +45,16 @@ export interface SolanaPetAccountRow {
     account: Record<string, unknown>;
 }
 
+const toBase58Key = (value: unknown): string | undefined => {
+    if (!value || typeof value !== 'object') return undefined;
+    const obj = value as Record<string, unknown>;
+    if (typeof obj['toBase58'] === 'function') return (obj as { toBase58(): string }).toBase58();
+    return undefined;
+}
+
 export const mapSolanaPet = (row: SolanaPetAccountRow): Pet  => {
     const a = row.account;
+    const spouseId = toNumber(a.spouseId);
     return {
         id: toNumber(a.id).toString(),
         chain: 'solana',
@@ -57,5 +65,8 @@ export const mapSolanaPet = (row: SolanaPetAccountRow): Pet  => {
         winCount: toNumber(a.winCount),
         lossCount: toNumber(a.lossCount),
         readyAt: toNumber(a.readyTime),
+        assetKey: toBase58Key(a.asset),
+        spouseId: spouseId !== 0 ? spouseId : undefined,
+        marriageCooldownUntil: toNumber(a.marriageCooldownUntil) || undefined,
     };
 }

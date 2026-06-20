@@ -3,7 +3,8 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{BattleRequest, GlobalState, PetAccount},
-    util::{assert_randomness_committed, core_asset_owner},
+    utils::metadata::core_asset_owner,
+    utils::randomness::assert_randomness_committed,
 };
 
 pub fn handler(ctx: Context<CommitBattle>, randomness_account: Pubkey) -> Result<()> {

@@ -1,13 +1,13 @@
 ﻿import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import TransactionStatus from '@components/common/transaction-status';
+import { AuthActionButton } from '@components/common';
 import {
     getReadyPetsUnified,
     useChainCapabilities,
+    useFees,
     useLevelUpPet,
     usePetList,
 } from '@shared/core';
-import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
@@ -18,7 +18,6 @@ export type LevelUpPanelProps = {
 };
 
 const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) => {
-    const navigate = useNavigate();
     const { levelUpFee } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
@@ -31,13 +30,22 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         setSuccess('Pet leveled up successfully!');
         setSelectedPet('');
         refetch();
-        navigate(DASHBOARD_HOME);
     };
 
     const { mutate, isPending, error: hookError, reset, lifecycle } = useLevelUpPet({
         onSuccess: handleLevelUpComplete,
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
+    const fees = useFees();
+    const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
+
+    // Level-up fee is level-scaled: baseFee × (100 + (level-1)²) / 100.
+    const levelUpCost = useMemo(() => {
+        if (selectedLevel == null || fees.levelUpFee == null) return null;
+        const diff = BigInt(Math.max(selectedLevel - 1, 0));
+        const multiplier = 100n + diff * diff;
+        return fees.formatAmount((fees.levelUpFee * multiplier) / 100n);
+    }, [fees, selectedLevel]);
 
     useTxErrorToast(hookError);
 
@@ -57,16 +65,13 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         }
     };
 
-    const handleCancel = () => {
-        setSuccess(null);
-        navigate(DASHBOARD_HOME);
-    };
-
     const buttonLabel = isPending
         ? 'Leveling Up...'
-        : levelUpFee
-            ? `Level Up (${levelUpFee.amount} ${levelUpFee.symbol})`
-            : 'Level Up';
+        : levelUpCost
+            ? `Level Up (${levelUpCost})`
+            : levelUpFee
+                ? `Level Up (from ${levelUpFee.amount} ${levelUpFee.symbol})`
+                : 'Level Up';
 
     return (
         <>
@@ -76,7 +81,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                         <h4>â¬†ï¸ Level Up Pet</h4>
                         <p>
                             {levelUpFee
-                                ? `Pay ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet`
+                                ? `Pay from ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet — cost rises with level`
                                 : 'Pay a small SOL fee to level up your pet'}
                         </p>
                     </>
@@ -97,15 +102,13 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                             ))}
                         </select>
                     </div>
+                    {levelUpCost && <p className="level-up-cost">Cost: {levelUpCost}</p>}
                 </div>
 
                 <div className="action-controls">
-                    <button type="button" onClick={handleLevelUp} disabled={isPending || !selectedPet}>
+                    <AuthActionButton onClick={handleLevelUp} disabled={isPending || !selectedPet}>
                         {buttonLabel}
-                    </button>
-                    <button type="button" onClick={handleCancel} className="cancel-button">
-                        Cancel
-                    </button>
+                    </AuthActionButton>
                 </div>
             </div>
 

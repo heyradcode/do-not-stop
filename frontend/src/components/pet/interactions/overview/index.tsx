@@ -4,6 +4,7 @@ import {
     getLifePercent,
     getReadyPetsUnified,
     useChainCapabilities,
+    useFees,
     useOpponents,
     usePetList,
 } from '@shared/core';
@@ -38,7 +39,7 @@ const parseActionParam = (raw: string | undefined): InteractionAction | null  =>
 }
 
 /**
- * Dashboard interactions hub (`/dashboard`, `/dashboard/interactions/:action?`).
+ * Dashboard interactions hub (`/main`).
  * Standalone `/breed` … `/rename` are separate router entries + `InteractionStandalone`.
  */
 const PetInteractions: React.FC = () => {
@@ -52,6 +53,11 @@ const PetInteractions: React.FC = () => {
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
 
     const activeChainKind = capabilities.activeKind;
+
+    const fees = useFees();
+    const trainFeeLabel = fees.trainFee != null
+        ? `From ${fees.formatAmount(fees.trainFee)} — cost scales with level.`
+        : "Cost scales with the pet's level.";
 
     // Preview an on-chain rival for the Battle Arena card (opponents come from
     // the roster, not a second owned pet).
@@ -139,7 +145,7 @@ const PetInteractions: React.FC = () => {
                             type="button"
                             onClick={() => navigate(BREED_PATH)}
                             className="lab-breed-button"
-                            disabled={readyPets.length < 2}
+                            disabled={pets.length < 1}
                         >
                             Start breeding
                         </button>
@@ -185,7 +191,7 @@ const PetInteractions: React.FC = () => {
                             Boost your pet stats by leveling up.
                             <br />
                             {capabilities.levelUpFee
-                                ? `Cost: ${capabilities.levelUpFee.amount} ${capabilities.levelUpFee.symbol} per level.`
+                                ? `From ${capabilities.levelUpFee.amount} ${capabilities.levelUpFee.symbol} — cost rises with your pet's level.`
                                 : 'Costs a small SOL fee per level.'}
                         </div>
                         <button
@@ -197,44 +203,40 @@ const PetInteractions: React.FC = () => {
                             Open level up
                         </button>
                     </div>
-                    {activeChainKind === 'evm' && (
-                        <div className="feature-action-card">
-                            <div className="header"><Icon as={TrainIcon} tone={Tones.Amber} />Training Ground</div>
-                            <div className="hub-divider" />
-                            <div className="content">
-                                Train your pet for an instant XP boost.
-                                <br />
-                                Cost scales with the pet&apos;s level.
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => navigate(TRAIN_PATH)}
-                                className="lab-breed-button train-button"
-                                disabled={readyPets.length < 1}
-                            >
-                                Open training
-                            </button>
+                    <div className="feature-action-card">
+                        <div className="header"><Icon as={TrainIcon} tone={Tones.Amber} />Training Ground</div>
+                        <div className="hub-divider" />
+                        <div className="content">
+                            Train your pet for an instant XP boost.
+                            <br />
+                            {trainFeeLabel}
                         </div>
-                    )}
-                    {activeChainKind === 'evm' && (
-                        <div className="feature-action-card">
-                            <div className="header"><Icon as={MarriageIcon} tone={Tones.Magenta} />Marriage</div>
-                            <div className="hub-divider" />
-                            <div className="content">
-                                Marry two pets to unlock cross-owner breeding.
-                                <br />
-                                Propose, accept, or divorce.
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => navigate(MARRIAGE_PATH)}
-                                className="lab-breed-button marriage-button"
-                                disabled={pets.length < 1}
-                            >
-                                Open marriage
-                            </button>
+                        <button
+                            type="button"
+                            onClick={() => navigate(TRAIN_PATH)}
+                            className="lab-breed-button train-button"
+                            disabled={readyPets.length < 1}
+                        >
+                            Open training
+                        </button>
+                    </div>
+                    <div className="feature-action-card">
+                        <div className="header"><Icon as={MarriageIcon} tone={Tones.Magenta} />Marriage</div>
+                        <div className="hub-divider" />
+                        <div className="content">
+                            Marry two pets to unlock cross-owner breeding.
+                            <br />
+                            Propose, accept, or divorce.
                         </div>
-                    )}
+                        <button
+                            type="button"
+                            onClick={() => navigate(MARRIAGE_PATH)}
+                            className="lab-breed-button marriage-button"
+                            disabled={pets.length < 1}
+                        >
+                            Open marriage
+                        </button>
+                    </div>
                     <div className="feature-action-card">
                         <div className="header"><Icon as={QuillIcon} tone={Tones.Cyan} />Change Name</div>
                         <div className="hub-divider" />

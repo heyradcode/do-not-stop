@@ -1,16 +1,16 @@
 import { BigInt } from "@graphprotocol/graph-ts";
-import { PetCoreV1 } from "../generated/PetCoreV1/PetCoreV1";
+import { PetCore } from "../generated/PetCore/PetCore";
 import { Pet } from "../generated/schema";
 import { PETCORE_ADDRESS } from "./addresses";
 
-// refreshPet re-reads a pet's full on-chain state from PetCoreV1 and upserts
+// refreshPet re-reads a pet's full on-chain state from PetCore and upserts
 // the Pet entity. Every pet-touching handler funnels through here, so the
 // entity is always a faithful snapshot rather than a hand-maintained
 // accumulation. updatedAt (the block timestamp) is the per-pet version
 // indexer-go resumes from. A reverted read (e.g. a not-yet-minted id) is
 // skipped rather than written as garbage.
 export function refreshPet(petId: BigInt, updatedAt: BigInt): void {
-  const core = PetCoreV1.bind(PETCORE_ADDRESS);
+  const core = PetCore.bind(PETCORE_ADDRESS);
 
   const ownerRes = core.try_ownerOf(petId);
   if (ownerRes.reverted) return;

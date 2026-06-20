@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Backend for Web3 authentication example",
+  "description": "Cryptopets backend: Web3 auth, dialogue LLM, and gRPC/GraphQL game-data APIs",
   "main": "dist/src/server.js",
   "engines": {
     "node": ">=20"
@@ -11,8 +11,6 @@
     "start": "node dist/src/server.js",
     "dev": "nodemon",
     "clean": "rm -rf dist",
-    "test": "vitest run",
-    "test:watch": "vitest",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -28,7 +26,6 @@
     "@grpc/proto-loader": "^0.8.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
-    "@solana/web3.js": "^1.98.4",
     "ai": "^6.0.197",
     "bs58": "^6.0.0",
     "cors": "^2.8.5",
@@ -36,6 +33,7 @@
     "ethers": "^6.8.1",
     "express": "^4.18.2",
     "express-rate-limit": "^8.5.2",
+    "graphql": "^16.11.0",
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.2",
     "module-alias": "^2.2.3",
@@ -54,7 +52,6 @@
     "prisma": "^7.8.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.8"
   }
 }

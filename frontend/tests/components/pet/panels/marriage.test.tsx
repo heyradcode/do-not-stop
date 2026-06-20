@@ -9,13 +9,28 @@ const mocks = vi.hoisted(() => ({
     notifyError: vi.fn(),
 }));
 
+vi.mock('@tanstack/react-query', () => ({
+    useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+    useQuery: () => ({ data: undefined, isLoading: false, error: null }),
+}));
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('@constants/interactionRoutes', () => ({ DASHBOARD_HOME: '/dashboard' }));
 vi.mock('@hooks/useNotifyError', () => ({ useNotifyError: () => mocks.notifyError }));
 vi.mock('@components/ui/icon', () => ({ default: () => null, CheckIcon: () => null }));
 vi.mock('@constants/tones', () => ({ Tones: { Emerald: 'emerald' } }));
+// PetSearchDropdown uses useSearchPets (not tested here) — stub it as a plain text input.
+vi.mock('@components/ui/pet-search-dropdown', () => ({
+    default: ({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) => (
+        <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder ?? 'Search'}
+        />
+    ),
+}));
 
-const capabilities = { kind: 'evm' as string, walletAddress: '0xwallet' as string | null };
+const capabilities = { kind: 'evm' as string, activeKind: 'evm' as string | null, walletAddress: '0xwallet' as string | null };
 const marriage = {
     propose: { mutateAsync: vi.fn(), isPending: false },
     accept: { mutateAsync: vi.fn(), isPending: false },
@@ -26,13 +41,18 @@ const petList = {
     pets: [{ id: '1', name: 'Rex', chain: 'evm' }, { id: '2', name: 'Blaze', chain: 'evm' }] as { id: string; name: string; chain: string }[],
     refetch: vi.fn(),
 };
-const marriageInfo = { isMarried: false, hasProposal: false, spouseId: undefined as string | undefined, proposer: undefined as string | undefined, proposalPetIdB: undefined as string | undefined };
+const marriageInfo = { isMarried: false, hasProposal: false, spouseId: undefined as string | undefined, proposer: undefined as string | undefined, proposalPetIdB: undefined as string | undefined, proposalExpiry: undefined as bigint | undefined };
+let incomingProposals: { proposerPetId: string; proposerPetName: string; proposerOwner: string; targetPetId: string; expiry: number }[] = [];
 
 vi.mock('@shared/core', () => ({
+    useAuth: () => ({ isAuthenticated: true, isSigning: false, isVerifying: false, isNonceLoading: false, signAndLogin: vi.fn() }),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
+    useAllPets: () => ({ pets: petList.pets }),
+    useIncomingProposals: () => ({ proposals: incomingProposals, isLoading: false }),
     useMarriage: () => marriage,
     useMarriageInfo: () => marriageInfo,
+    useApiClient: () => ({ defaults: { baseURL: '' }, post: vi.fn() }),
 }));
 
 import MarriagePanel from '@components/pet/interactions/panels/marriage';
@@ -40,41 +60,42 @@ import MarriagePanel from '@components/pet/interactions/panels/marriage';
 beforeEach(() => {
     vi.clearAllMocks();
     capabilities.kind = 'evm';
+    capabilities.activeKind = 'evm';
     capabilities.walletAddress = '0xwallet';
     Object.assign(marriage.propose, { isPending: false });
     Object.assign(marriage.accept, { isPending: false });
     Object.assign(marriage.cancel, { isPending: false });
     Object.assign(marriage.divorce, { isPending: false });
     petList.pets = [{ id: '1', name: 'Rex', chain: 'evm' }, { id: '2', name: 'Blaze', chain: 'evm' }];
-    Object.assign(marriageInfo, { isMarried: false, hasProposal: false, spouseId: undefined, proposer: undefined, proposalPetIdB: undefined });
+    Object.assign(marriageInfo, { isMarried: false, hasProposal: false, spouseId: undefined, proposer: undefined, proposalPetIdB: undefined, proposalExpiry: undefined });
+    incomingProposals = [];
 });
 
 describe('MarriagePanel', () => {
-    it('shows evm-only message when chain is not evm', () => {
-        capabilities.kind = 'solana';
+    it('prompts to connect when no chain is active', () => {
+        capabilities.kind = 'none';
         render(<MarriagePanel />);
-        expect(screen.getByText('Marriage is available on Ethereum only.')).toBeInTheDocument();
+        expect(screen.getByText('Connect a wallet to use marriage.')).toBeInTheDocument();
     });
 
-    it('renders pet selectors and proposal form', () => {
+    it('renders the propose tab with a pet select and partner search', () => {
         render(<MarriagePanel />);
-        const selects = screen.getAllByRole('combobox');
-        expect(selects.length).toBeGreaterThanOrEqual(2);
-        expect(screen.getByPlaceholderText('e.g. 42')).toBeInTheDocument();
+        expect(screen.getByRole('combobox')).toBeInTheDocument();
+        expect(screen.getByPlaceholderText('Search by name or ID…')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Send Proposal/ })).toBeInTheDocument();
     });
 
-    it('disables Propose when no pet or partner is selected', () => {
+    it('disables Send Proposal when no pet or partner is selected', () => {
         render(<MarriagePanel />);
-        expect(screen.getByRole('button', { name: 'Propose' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Send Proposal/ })).toBeDisabled();
     });
 
     it('calls propose.mutateAsync and shows success when proposal is submitted', async () => {
         marriage.propose.mutateAsync.mockResolvedValue(undefined);
         render(<MarriagePanel />);
-        const [proposeSelect] = screen.getAllByRole('combobox');
-        await userEvent.selectOptions(proposeSelect, '1');
-        await userEvent.type(screen.getByPlaceholderText('e.g. 42'), '5');
-        await userEvent.click(screen.getByRole('button', { name: 'Propose' }));
+        await userEvent.selectOptions(screen.getByRole('combobox'), '1');
+        await userEvent.type(screen.getByPlaceholderText('Search by name or ID…'), '5');
+        await userEvent.click(screen.getByRole('button', { name: /Send Proposal/ }));
         expect(marriage.propose.mutateAsync).toHaveBeenCalledWith({ petIdA: '1', petIdB: '5' });
         expect(await screen.findByText('Proposal sent!')).toBeInTheDocument();
     });
@@ -82,28 +103,20 @@ describe('MarriagePanel', () => {
     it('calls notifyError when mutateAsync throws', async () => {
         marriage.propose.mutateAsync.mockRejectedValue(new Error('revert'));
         render(<MarriagePanel />);
-        const [proposeSelect] = screen.getAllByRole('combobox');
-        await userEvent.selectOptions(proposeSelect, '1');
-        await userEvent.type(screen.getByPlaceholderText('e.g. 42'), '5');
-        await userEvent.click(screen.getByRole('button', { name: 'Propose' }));
-        // Wait for the async run() to settle, then check the error handler.
+        await userEvent.selectOptions(screen.getByRole('combobox'), '1');
+        await userEvent.type(screen.getByPlaceholderText('Search by name or ID…'), '5');
+        await userEvent.click(screen.getByRole('button', { name: /Send Proposal/ }));
         await vi.waitFor(() => expect(mocks.notifyError).toHaveBeenCalled());
-        expect(mocks.notifyError).toHaveBeenCalledWith('Marriage action failed', undefined, 'marriage-error');
+        expect(mocks.notifyError).toHaveBeenCalledWith('Marriage action failed', expect.any(Error), 'marriage');
     });
 
-    it('navigates home on Done', async () => {
-        render(<MarriagePanel />);
-        await userEvent.click(screen.getByRole('button', { name: 'Done' }));
-        expect(mocks.navigate).toHaveBeenCalledWith('/dashboard');
-    });
-
-    it('shows Divorce button when a pet is married', () => {
+    it('shows Divorce button for each married pet', () => {
         Object.assign(marriageInfo, { isMarried: true, spouseId: '9' });
         render(<MarriagePanel />);
         expect(screen.getAllByRole('button', { name: 'Divorce' })).toHaveLength(2);
     });
 
-    it('shows Cancel button for own pending proposals', () => {
+    it('shows Cancel button for own outgoing proposals', () => {
         Object.assign(marriageInfo, { hasProposal: true, proposer: '0xwallet', proposalPetIdB: '7' });
         render(<MarriagePanel />);
         expect(screen.getAllByRole('button', { name: 'Cancel' })).toHaveLength(2);
@@ -115,14 +128,24 @@ describe('MarriagePanel', () => {
         expect(screen.getByRole('button', { name: 'Proposing...' })).toBeInTheDocument();
     });
 
-    it('accepts a proposal via accept form', async () => {
+    it('shows incoming proposals in the Accept tab and allows acceptance', async () => {
         marriage.accept.mutateAsync.mockResolvedValue(undefined);
+        incomingProposals = [{
+            proposerPetId: '3',
+            proposerPetName: 'Tiger',
+            proposerOwner: '0xother',
+            targetPetId: '1',
+            expiry: Math.floor(Date.now() / 1000) + 3600,
+        }];
         render(<MarriagePanel />);
-        const selects = screen.getAllByRole('combobox');
-        await userEvent.selectOptions(selects[1], '2');
-        await userEvent.type(screen.getByPlaceholderText('e.g. 7'), '3');
+        // Switch to Accept tab (the tab button has emoji prefix)
+        await userEvent.click(screen.getByRole('button', { name: /💒 Accept/ }));
+        // Click Accept on the proposal row
         await userEvent.click(screen.getByRole('button', { name: 'Accept' }));
-        expect(marriage.accept.mutateAsync).toHaveBeenCalledWith({ petIdA: '3', petIdB: '2' });
+        // Confirm dialog appears
+        expect(screen.getByText(/Accept Proposal/)).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: /Confirm/ }));
+        expect(marriage.accept.mutateAsync).toHaveBeenCalledWith({ petIdA: '3', petIdB: '1' });
         expect(await screen.findByText('Marriage accepted!')).toBeInTheDocument();
     });
 });

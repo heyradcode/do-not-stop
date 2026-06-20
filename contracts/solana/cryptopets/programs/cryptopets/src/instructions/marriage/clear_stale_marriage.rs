@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::PetAccount,
-    util::core_asset_owner,
+    utils::metadata::core_asset_owner,
 };
 
 /// Permissionless cleanup, mirrors EVM `PetCoreV1.clearStaleMarriage` (plan §4.4): either

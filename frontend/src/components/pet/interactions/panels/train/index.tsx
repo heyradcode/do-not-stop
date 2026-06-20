@@ -1,15 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { formatEther } from 'viem';
 import TransactionStatus from '@components/common/transaction-status';
+import { AuthActionButton } from '@components/common';
 import {
     getReadyPetsUnified,
-    useChainCapabilities,
-    useEvmFees,
+    useFees,
     useTrainPet,
     usePetList,
 } from '@shared/core';
-import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
@@ -19,13 +16,7 @@ export type TrainPanelProps = {
     isStandaloneView?: boolean;
 };
 
-/**
- * v2 Training Ground — pay a level-scaled fee for a flat XP grant. EVM-only:
- * the Solana adapter rejects `train`, so the panel only renders on EVM.
- */
 const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
-    const navigate = useNavigate();
-    const { kind } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
 
@@ -36,22 +27,21 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
         setSuccess('Pet trained successfully!');
         setSelectedPet('');
         refetch();
-        navigate(DASHBOARD_HOME);
     };
 
     const { mutate, isPending, error: hookError, reset, lifecycle } = useTrainPet({
         onSuccess: handleTrainComplete,
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
-
-    // Train fee is level-scaled: trainFee × (100 + 2·level) / 100.
-    const fees = useEvmFees(kind === 'evm');
+    const fees = useFees();
     const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
+
+    // Train fee is level-scaled: baseFee × (100 + 2·level) / 100.
     const trainCost = useMemo(() => {
-        if (fees.trainFee == null || selectedLevel == null) return null;
-        const scaled = (fees.trainFee * BigInt(100 + 2 * selectedLevel)) / 100n;
-        return `${formatEther(scaled)} ETH`;
-    }, [fees.trainFee, selectedLevel]);
+        if (selectedLevel == null || fees.trainFee == null) return null;
+        const multiplier = BigInt(100 + 2 * selectedLevel);
+        return fees.formatAmount((fees.trainFee * multiplier) / 100n);
+    }, [fees, selectedLevel]);
 
     useTxErrorToast(hookError);
 
@@ -69,11 +59,6 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
         } catch (err) {
             console.error('[train]', err);
         }
-    };
-
-    const handleCancel = () => {
-        setSuccess(null);
-        navigate(DASHBOARD_HOME);
     };
 
     const buttonLabel = isPending
@@ -109,12 +94,9 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                 </div>
 
                 <div className="action-controls">
-                    <button type="button" onClick={handleTrain} disabled={isPending || !selectedPet}>
+                    <AuthActionButton onClick={handleTrain} disabled={isPending || !selectedPet}>
                         {buttonLabel}
-                    </button>
-                    <button type="button" onClick={handleCancel} className="cancel-button">
-                        Cancel
-                    </button>
+                    </AuthActionButton>
                 </div>
             </div>
 

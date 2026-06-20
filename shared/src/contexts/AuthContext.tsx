@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { useAccount, useSignMessage } from 'wagmi';
 import { useNonce, useVerifySignature } from '../hooks/chains/ethereum';
-import { getStorageAdapter } from '../api';
+import { getStorageAdapter, setUnauthorizedCallback } from '../api';
 import {
     getSolanaAuthSigner,
     subscribeSolanaAuth,
@@ -24,6 +24,8 @@ interface User {
 
 interface AuthContextType {
     isAuthenticated: boolean;
+    /** True during the initial check of a stored token — avoids a sign-in gate flash on refresh. */
+    isRestoring: boolean;
     user: User | null;
     logout: () => Promise<void> | void;
     signAndLogin: () => Promise<void> | void;
@@ -31,6 +33,17 @@ interface AuthContextType {
     isVerifying: boolean;
     isNonceLoading: boolean;
 }
+
+/** Decode a JWT and return true if it exists and hasn't expired. */
+const isJwtValid = (token: string): boolean => {
+    try {
+        const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(b64)) as { exp?: number };
+        return typeof payload.exp === 'number' && payload.exp > Date.now() / 1000;
+    } catch {
+        return false;
+    }
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -45,9 +58,30 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { address, isConnected, chainId } = useAccount();
     const [isAuthenticated, setAuthenticated] = useState(false);
+    const [isRestoring, setRestoring] = useState(true);
     const [user, setUser] = useState<User | null>(null);
     const [pendingNonce, setPendingNonce] = useState<string | null>(null);
     const [isSolanaSigning, setSolanaSigning] = useState(false);
+
+    // Restore auth from a previously stored JWT on mount (no network call needed —
+    // we just check the expiry; the token is re-validated by the backend on the
+    // next protected API call).
+    useEffect(() => {
+        const adapter = getStorageAdapter();
+        const token = adapter ? (adapter.getToken() as string | null) : null;
+        if (token && isJwtValid(token)) {
+            setAuthenticated(true);
+        }
+        setRestoring(false);
+    }, []);
+
+    // When any API response returns 401 (expired / revoked token), clear auth state.
+    useEffect(() => {
+        setUnauthorizedCallback(() => {
+            setAuthenticated(false);
+            setUser(null);
+        });
+    }, []);
 
     const solanaAuthAddress = useSyncExternalStore(
         subscribeSolanaAuth,
@@ -188,6 +222,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         <AuthContext.Provider
             value={{
                 isAuthenticated,
+                isRestoring,
                 user,
                 logout,
                 signAndLogin,

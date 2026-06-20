@@ -3,7 +3,8 @@ use anchor_lang::prelude::*;
 use crate::{
     errors::ErrorCode,
     state::{BreedRequest, GlobalState, PetAccount, StudFeeAccount, FEE_VAULT_SEED},
-    util::{assert_randomness_committed, core_asset_owner},
+    utils::metadata::core_asset_owner,
+    utils::randomness::assert_randomness_committed,
 };
 
 pub fn handler(
@@ -126,6 +127,10 @@ pub fn handler(
     breed_request.other_owner = other_owner;
     breed_request.set_name(&name)?;
 
+    // Lock parents out of battles for the duration of the pending breed window (mirrors
+    // EVM `requestCreateFromDNA`'s `setCooldown` call). This is a battle cooldown, not
+    // a breed cooldown — the breed-specific cooldown is applied at `settle_breed` once
+    // the child is actually created, to prevent parents from being re-bred immediately.
     let cooldown_seconds = ctx.accounts.global_state.battle_cooldown_seconds;
     ctx.accounts.parent1.trigger_cooldown(now, cooldown_seconds);
     ctx.accounts.parent2.trigger_cooldown(now, cooldown_seconds);

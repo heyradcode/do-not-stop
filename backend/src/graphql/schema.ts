@@ -60,6 +60,27 @@ export const schema = buildSchema(`
         ): OpponentsPage!
 
         """
+        Search pets by name prefix or exact numeric ID across the whole roster.
+        Returns up to 'limit' results (default 10, max 20).
+        Useful for marriage proposal flows where the user needs to find another
+        player's pet without knowing its exact ID up front.
+        """
+        searchPets(
+            chain: String!
+            "Name prefix (case-insensitive) or exact numeric pet ID."
+            query: String!
+            "Maximum results to return; default 10, capped at 20."
+            limit: Int
+        ): [OpponentPet!]!
+
+        """
+        Return every pet on a chain (ordered by petId). Used by the
+        incoming-proposals flow so the client can batch-read on-chain
+        marriageProposal state for all known pets.
+        """
+        allPets(chain: String!, limit: Int): [OpponentPet!]!
+
+        """
         A single pet by id, for the pet-detail view — carries the same v2 fields
         as the opponents list (lineage, marriage, cooldowns, species, Core asset).
         Returns null when no such pet exists. Reads indexer-go's cache first

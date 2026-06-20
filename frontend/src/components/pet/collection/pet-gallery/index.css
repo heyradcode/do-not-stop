@@ -478,6 +478,20 @@
     letter-spacing: 0.4px;
 }
 
+.pet-record {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.3px;
+
+    .record-wins  { color: rgb(125 214 255 / 75%); font-weight: 700; }
+    .record-sep   { color: rgb(195 210 255 / 30%); }
+    .record-losses { color: rgb(195 210 255 / 45%); font-weight: 600; }
+    .record-breeds { color: rgb(195 210 255 / 35%); font-style: italic; margin-left: 4px; }
+}
+
 .xp-value {
     color: var(--neon-cyan);
     font-weight: 700;
@@ -542,6 +556,9 @@
 .pet-status {
     padding: 0 12px;
     margin-block-start: var(--spacing-xs);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 
     @media (max-width: 480px) {
         margin-block-start: var(--spacing-xs);

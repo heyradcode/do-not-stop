@@ -4,7 +4,6 @@ import {
     createNonce,
     sanitizeName,
     positiveMod,
-    parseIntParam,
     withFallback,
 } from '../../src/utils/index';
 
@@ -73,23 +72,6 @@ describe('positiveMod', () => {
     });
 });
 
-describe('parseIntParam', () => {
-    it('parses valid integers and clamps to [min, max]', () => {
-        expect(parseIntParam('5', 1, 0, 10)).toBe(5);
-        expect(parseIntParam('100', 1, 0, 10)).toBe(10);
-        expect(parseIntParam('-5', 1, 0, 10)).toBe(0);
-    });
-
-    it('returns the fallback for non-numeric or nullish input', () => {
-        expect(parseIntParam('abc', 3, 0, 10)).toBe(3);
-        expect(parseIntParam(undefined, 3, 0, 10)).toBe(3);
-        expect(parseIntParam(null, 3, 0, 10)).toBe(3);
-    });
-
-    it('accepts numeric values as well as strings', () => {
-        expect(parseIntParam(7, 1, 0, 10)).toBe(7);
-    });
-});
 
 describe('withFallback', () => {
     afterEach(() => vi.restoreAllMocks());

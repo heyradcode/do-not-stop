@@ -7,60 +7,62 @@ import { decodeAbiParameters, parseEventLogs } from "viem";
 describe("CryptoPetsV2 (UUPS proxies)", async function () {
     const { viem } = await network.connect();
 
+    // Fixed test randomness fed back via MockEntropy.mockReveal — the exact value
+    // doesn't matter for the combat-sim/breed determinism checks below.
+    const TEST_RANDOMNESS = `0x${"ab".repeat(32)}` as const;
+
     async function deployV2() {
-        const publicClient = await viem.getPublicClient();
+        const [deployerWallet] = await viem.getWalletClients();
 
-        // Step 1: deploy VRF mock separately (keeps deployer initcode under EIP-3860 limit)
-        const vrf = await viem.deployContract("VRFCoordinatorV2_5Mock", [
-            100_000_000_000_000_000n,  // baseFee (0.1 ether)
-            1_000_000_000n,            // gasPrice (1 gwei)
-            4_000_000_000_000_000n,    // weiPerUnitLink
-        ]);
+        // Step 1: deploy MockEntropy separately (keeps deployer initcode under EIP-3860 limit)
+        const entropy = await viem.deployContract("MockEntropy", [deployerWallet.account.address]);
 
-        // Create subscription and read subId from event
-        const createHash = await vrf.write.createSubscription();
-        const createReceipt = await publicClient.waitForTransactionReceipt({ hash: createHash });
-        const createLogs = parseEventLogs({
-            abi: vrf.abi,
-            logs: createReceipt.logs,
-            eventName: "SubscriptionCreated",
-            strict: false,
-        });
-        const subscriptionId: bigint = createLogs[0].args.subId;
-
-        await vrf.write.fundSubscriptionWithNative([subscriptionId], {
-            value: 100_000_000_000_000_000_000n
-        });
-
-        // Step 2: deploy GameLogicV1's implementation separately (keeps the
+        // Step 2: deploy GameLogic's implementation separately (keeps the
         // deployer's own initcode under the EIP-3860 limit)
-        const gameLogicImpl = await viem.deployContract("GameLogicV1");
+        const gameLogicImpl = await viem.deployContract("GameLogic");
 
         // Step 3: deploy the UUPS proxy stack
-        const deployer = await viem.deployContract("LocalCryptoPetsDeployerV2", [
-            vrf.address,
-            subscriptionId,
+        const deployer = await viem.deployContract("TestDeployer", [
+            entropy.address,
             gameLogicImpl.address,
         ]);
         const petCoreAddr   = await deployer.read.petCore();
         const gameLogicAddr = await deployer.read.gameLogic();
 
-        const petCore   = await viem.getContractAt("PetCoreV1",   petCoreAddr);
-        const gameLogic = await viem.getContractAt("GameLogicV1", gameLogicAddr);
+        const petCore   = await viem.getContractAt("PetCore",   petCoreAddr);
+        const gameLogic = await viem.getContractAt("GameLogic", gameLogicAddr);
         const config    = await viem.getContractAt("GameConfig",  await deployer.read.config());
 
-        // Step 3: register gameLogic as a VRF consumer
-        await vrf.write.addConsumer([subscriptionId, gameLogicAddr]);
-
-        return { petCore, gameLogic, vrf, config };
+        return { petCore, gameLogic, entropy, config };
     }
 
-    // Helper: mint a starter pet for a wallet, computing escalating fee automatically.
-    async function mintStarter(petCore: any, config: any, wallet: any, name: string) {
+    // Reveals the random number for a pending entropy request, triggering
+    // GameLogic.entropyCallback (mirrors the off-chain Pyth keeper).
+    async function revealEntropy(entropy: any, requestId: bigint, account: any) {
+        const provider = await entropy.read.getDefaultProvider();
+        await entropy.write.mockReveal([provider, requestId, TEST_RANDOMNESS], { account });
+    }
+
+    // Helper: mint a starter pet via the async Entropy flow (request → reveal → settle),
+    // computing the escalating mint fee + entropy fee automatically.
+    async function mintStarter(petCore: any, gameLogic: any, entropy: any, config: any, wallet: any, name: string) {
+        const publicClient = await viem.getPublicClient();
         const mintCount   = await petCore.read.walletMintCount([wallet.account.address]);
         const baseMintFee = await config.read.baseMintFee();
-        const fee         = baseMintFee * (1n + mintCount);
-        await petCore.write.mintStarter([name], { account: wallet.account, value: fee });
+        const entropyFee  = await entropy.read.getFeeV2();
+        const fee         = baseMintFee * (1n + mintCount) + entropyFee;
+
+        const reqHash = await gameLogic.write.requestMintStarter([name], {
+            account: wallet.account, value: fee
+        });
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const reqLogs = parseEventLogs({
+            abi: gameLogic.abi, logs: reqReceipt.logs, eventName: "MintRequested", strict: false
+        });
+        const requestId = reqLogs[0].args.requestId;
+
+        await revealEntropy(entropy, requestId, wallet.account);
+        await gameLogic.write.settleMint([requestId], { account: wallet.account });
     }
 
     // Hardhat sometimes can't infer a revert reason for early-require reverts (the
@@ -83,13 +85,12 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should mint a starter pet with escalating fee", async function () {
-        const { petCore, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
 
-        const baseMintFee = await config.read.baseMintFee();
-
-        // First mint: fee = baseMintFee * 1
-        await petCore.write.mintStarter(["First"], { account: addr1.account, value: baseMintFee });
+        // First mint (count 0 → fee = baseMintFee × 1) and second (count 1 → × 2) are
+        // both routed through the async Entropy flow by the mintStarter helper.
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "First");
 
         assert.equal(await petCore.read.totalPets(), 1n);
         assert.equal(await petCore.read.walletMintCount([addr1.account.address]), 1n);
@@ -102,38 +103,40 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(pet.parent1Id, 0n);
         assert.equal(pet.parent2Id, 0n);
 
-        // Second mint: fee = baseMintFee * 2
-        await petCore.write.mintStarter(["Second"], { account: addr1.account, value: baseMintFee * 2n });
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Second");
         assert.equal(await petCore.read.totalPets(), 2n);
         assert.equal(await petCore.read.walletMintCount([addr1.account.address]), 2n);
     });
 
-    it("Should reject mintStarter with insufficient fee", async function () {
-        const { petCore, config } = await deployV2();
+    it("Should reject requestMintStarter with insufficient fee", async function () {
+        const { gameLogic, config, entropy } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
 
         const baseMintFee = await config.read.baseMintFee();
+        const entropyFee  = await entropy.read.getFeeV2();
 
         try {
-            await petCore.write.mintStarter(["Test"], {
+            await gameLogic.write.requestMintStarter(["Test"], {
                 account: addr1.account,
-                value: baseMintFee - 1n  // one wei short
+                value: baseMintFee + entropyFee - 1n  // one wei short of mint + entropy
             });
             assert.fail("Expected revert");
         } catch (error: unknown) {
-            assert((error as Error).message.includes("Insufficient mint fee"));
+            assert((error as Error).message.includes("Insufficient mint/entropy fee"));
         }
     });
 
     it("Should reject pet names that are empty or too long", async function () {
-        const { petCore, config } = await deployV2();
+        const { gameLogic, config, entropy } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
 
         const baseMintFee = await config.read.baseMintFee();
+        const entropyFee  = await entropy.read.getFeeV2();
+        const fee = baseMintFee + entropyFee;
 
         for (const name of ["", "a".repeat(33)]) {
             try {
-                await petCore.write.mintStarter([name], { account: addr1.account, value: baseMintFee });
+                await gameLogic.write.requestMintStarter([name], { account: addr1.account, value: fee });
                 assert.fail(`Expected revert for name: "${name}"`);
             } catch (error: unknown) {
                 assert((error as Error).message.includes("Invalid name length"));
@@ -141,11 +144,67 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         }
     });
 
-    it("Should level up pet with correct fee", async function () {
-        const { petCore, config } = await deployV2();
+    it("Should refund the mint fee when an unfulfilled mint request is cancelled", async function () {
+        const { gameLogic, config, entropy } = await deployV2();
+        const publicClient = await viem.getPublicClient();
         const [, addr1] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "TestPet");
+        const baseMintFee = await config.read.baseMintFee();
+        const entropyFee  = await entropy.read.getFeeV2();
+
+        const reqHash = await gameLogic.write.requestMintStarter(["Refundable"], {
+            account: addr1.account, value: baseMintFee + entropyFee
+        });
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const requestId = parseEventLogs({
+            abi: gameLogic.abi, logs: reqReceipt.logs, eventName: "MintRequested", strict: false
+        })[0].args.requestId;
+
+        // Only the escrowed mint fee is refundable; the entropy fee was already paid out.
+        const contractBefore = await publicClient.getBalance({ address: gameLogic.address });
+        await gameLogic.write.cancelMint([requestId], { account: addr1.account });
+        const contractAfter = await publicClient.getBalance({ address: gameLogic.address });
+        assert.equal(contractBefore - contractAfter, baseMintFee);
+    });
+
+    it("Should reject cancelMint once the request is fulfilled (no DNA re-rolling)", async function () {
+        const { petCore, gameLogic, config, entropy } = await deployV2();
+        const publicClient = await viem.getPublicClient();
+        const [, addr1] = await viem.getWalletClients();
+
+        const baseMintFee = await config.read.baseMintFee();
+        const entropyFee  = await entropy.read.getFeeV2();
+
+        const reqHash = await gameLogic.write.requestMintStarter(["Committed"], {
+            account: addr1.account, value: baseMintFee + entropyFee
+        });
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const requestId = parseEventLogs({
+            abi: gameLogic.abi, logs: reqReceipt.logs, eventName: "MintRequested", strict: false
+        })[0].args.requestId;
+
+        // Reveal fixes the DNA. After that the requester is committed — they cannot cancel
+        // and re-roll for a better rarity; settleMint is the only way forward.
+        await revealEntropy(entropy, requestId, addr1.account);
+
+        try {
+            await gameLogic.write.cancelMint([requestId], { account: addr1.account });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Already fulfilled - call settleMint"));
+        }
+
+        // settleMint still succeeds with the committed randomness, minting the pet.
+        await gameLogic.write.settleMint([requestId], { account: addr1.account });
+        assert.equal(await petCore.read.totalPets(), 1n);
+        assert.equal((await petCore.read.ownerOf([1n])).toLowerCase(), addr1.account.address.toLowerCase());
+    });
+
+    it("Should level up pet with correct fee", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
+        const [, addr1] = await viem.getWalletClients();
+
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "TestPet");
 
         const levelUpFee = await config.read.levelUpFee();
         await petCore.write.levelUp([1n], { account: addr1.account, value: levelUpFee });
@@ -154,30 +213,75 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(level, 2);
     });
 
-    it("Should reject level up with incorrect fee", async function () {
-        const { petCore, config } = await deployV2();
+    it("Should reject level up with insufficient fee", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "TestPet");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "TestPet");
 
+        const levelUpFee = await config.read.levelUpFee();
         try {
-            await petCore.write.levelUp([1n], { account: addr1.account, value: 2000000000000000n });
+            await petCore.write.levelUp([1n], { account: addr1.account, value: levelUpFee - 1n });
             assert.fail("Expected revert");
         } catch (error: unknown) {
-            assert((error as Error).message.includes("Incorrect fee amount"));
+            assert((error as Error).message.includes("Insufficient level-up fee"));
         }
     });
 
-    it("Should battle via VRF request->store->settle", async function () {
-        const { petCore, gameLogic, vrf, config } = await deployV2();
+    it("Should scale the level-up fee quadratically with the pet's level", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
+        const [, addr1] = await viem.getWalletClients();
+
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Scaler");
+
+        const levelUpFee = await config.read.levelUpFee();
+
+        // Level 1 -> 2: fee = levelUpFee * (100 + (1-1)^2) / 100 = levelUpFee.
+        await petCore.write.levelUp([1n], { account: addr1.account, value: levelUpFee });
+
+        // Level 2 -> 3: fee = levelUpFee * (100 + (2-1)^2) / 100 = levelUpFee * 101 / 100.
+        try {
+            await petCore.write.levelUp([1n], { account: addr1.account, value: levelUpFee });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Insufficient level-up fee"));
+        }
+
+        const scaledFee = levelUpFee * 101n / 100n;
+        await petCore.write.levelUp([1n], { account: addr1.account, value: scaledFee });
+
+        const [level] = await petCore.read.getPetStats([1n]);
+        assert.equal(level, 3);
+    });
+
+    it("Should cap levelUp at maxLevel", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
+        const [deployer, addr1] = await viem.getWalletClients();
+
+        // Set maxLevel = 1 so a freshly minted (level-1) pet is already at the cap.
+        await config.write.setMaxLevel([1], { account: deployer.account });
+
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Capped");
+
+        const levelUpFee = await config.read.levelUpFee();
+        try {
+            await petCore.write.levelUp([1n], { account: addr1.account, value: levelUpFee });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Already at max level"));
+        }
+    });
+
+    it("Should battle via entropy request->store->settle", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Mine");
-        await mintStarter(petCore, config, addr2, "Theirs");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs");
 
-        await testClient.increaseTime({ seconds: 30 });
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
         // Step 1: request
@@ -192,10 +296,8 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const requestId = reqLogs[0].args.requestId;
         assert(requestId != null, "No BattleRandomnessRequested event emitted");
 
-        // Step 2: VRF fulfills
-        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], {
-            account: addr1.account
-        });
+        // Step 2: entropy fulfills
+        await revealEntropy(entropy, requestId, addr1.account);
 
         // Step 3: settle
         const settleHash = await gameLogic.write.settleBattle([requestId], {
@@ -236,7 +338,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await petCore.write.createPet(["PetB", 9876543210987654n, 1, 0, 0n, 0n], { account: deployer.account });
         await petCore.write.mintTo([deployer.account.address, 2n], { account: deployer.account });
 
-        await testClient.increaseTime({ seconds: 30 });
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
         try {
@@ -248,14 +350,14 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject battle with a pet the caller does not own", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const testClient = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Mine");
-        await mintStarter(petCore, config, addr2, "Theirs");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs");
 
-        await testClient.increaseTime({ seconds: 30 });
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
         try {
@@ -267,12 +369,12 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject requestBattle when the level gap exceeds levelBandWidth", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const testClient = await viem.getTestClient();
         const [deployer, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Strong");
-        await mintStarter(petCore, config, addr2, "Weak");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Strong");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Weak");
 
         // Level pet 1 up to level 12 (11 level-ups from level 1), one addXp call per level
         // since add_xp/addXp applies at most one level-up per call (plan §3.4).
@@ -282,7 +384,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const pet1 = await petCore.read.getPet([1n]);
         assert.equal(pet1.level, 12);
 
-        await testClient.increaseTime({ seconds: 30 });
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
         // Default levelBandWidth (100) tolerates an 11-level gap; tighten it to 10.
@@ -297,31 +399,34 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should pause and block actions", async function () {
-        const { petCore, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [deployer, addr1] = await viem.getWalletClients();
 
-        await petCore.write.pause({ account: deployer.account });
+        // Starter minting now lives behind GameLogic.requestMintStarter (whenNotPaused).
+        await gameLogic.write.pause({ account: deployer.account });
 
         const baseMintFee = await config.read.baseMintFee();
+        const entropyFee  = await entropy.read.getFeeV2();
         try {
-            await petCore.write.mintStarter(["TestPet"], { account: addr1.account, value: baseMintFee });
+            await gameLogic.write.requestMintStarter(["TestPet"], {
+                account: addr1.account, value: baseMintFee + entropyFee
+            });
             assert.fail("Expected revert while paused");
         } catch (error: unknown) {
-            assert((error as Error).message.includes("Pausable: token transfer while paused") ||
-                   (error as Error).message.includes("paused"));
+            assert((error as Error).message.includes("Pausable: paused"));
         }
 
-        await petCore.write.unpause({ account: deployer.account });
-        await petCore.write.mintStarter(["TestPet"], { account: addr1.account, value: baseMintFee });
+        await gameLogic.write.unpause({ account: deployer.account });
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "TestPet");
         assert.equal(await petCore.read.totalPets(), 1n);
     });
 
-    it("Pause drill (GameLogicV1): blocks battle/breed/train but leaves withdrawals callable", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+    it("Pause drill (GameLogic): blocks battle/breed/train but leaves withdrawals callable", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [deployer, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "A"); // pet 1
-        await mintStarter(petCore, config, addr2, "B"); // pet 2
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A"); // pet 1
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "B"); // pet 2
 
         await gameLogic.write.pause({ account: deployer.account });
 
@@ -363,21 +468,37 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await gameLogic.write.unpause({ account: deployer.account });
     });
 
-    it("Pause drill (PetCoreV1): blocks mint/levelUp/marriage/transfers but leaves withdraw callable", async function () {
-        const { petCore, config } = await deployV2();
+    it("Pause drill (PetCore): blocks mint/levelUp/marriage/transfers but leaves withdraw callable", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
+        const publicClient = await viem.getPublicClient();
         const [deployer, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "A"); // pet 1
-        await mintStarter(petCore, config, addr2, "B"); // pet 2
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A"); // pet 1
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "B"); // pet 2
+
+        // Request + reveal a third mint, but settle it only after (un)pausing below — the
+        // token mint flows through PetCore's ERC721Pausable, so settleMint must respect it.
+        const baseMintFee = await config.read.baseMintFee();
+        const entropyFee  = await entropy.read.getFeeV2();
+        const mintCount   = await petCore.read.walletMintCount([addr1.account.address]);
+        const reqHash = await gameLogic.write.requestMintStarter(["C"], {
+            account: addr1.account, value: baseMintFee * (1n + mintCount) + entropyFee
+        });
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const pendingMintId = parseEventLogs({
+            abi: gameLogic.abi, logs: reqReceipt.logs, eventName: "MintRequested", strict: false
+        })[0].args.requestId;
+        await revealEntropy(entropy, pendingMintId, addr1.account);
 
         await petCore.write.pause({ account: deployer.account });
 
-        const baseMintFee = await config.read.baseMintFee();
+        // Minting the token (settleMint → mintTo) is blocked while the core is paused.
         try {
-            await petCore.write.mintStarter(["C"], { account: addr1.account, value: baseMintFee });
+            await gameLogic.write.settleMint([pendingMintId], { account: addr1.account });
             assert.fail("Expected revert while paused");
         } catch (error: unknown) {
-            assert((error as Error).message.includes("Pausable: paused"));
+            assert((error as Error).message.includes("Pausable: token transfer while paused") ||
+                   (error as Error).message.includes("paused"));
         }
 
         const levelUpFee = await config.read.levelUpFee();
@@ -411,8 +532,8 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
 
         await petCore.write.unpause({ account: deployer.account });
 
-        // Normal operation resumes
-        await mintStarter(petCore, config, addr1, "C");
+        // Normal operation resumes: the previously-revealed mint now settles.
+        await gameLogic.write.settleMint([pendingMintId], { account: addr1.account });
         assert.equal(await petCore.read.totalPets(), 3n);
     });
 
@@ -428,15 +549,15 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         }
     });
 
-    it("Should breed using Chainlink VRF with generation and lineage tracking", async function () {
-        const { petCore, gameLogic, vrf, config } = await deployV2();
+    it("Should breed using Pyth Entropy with generation and lineage tracking", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1] = await viem.getWalletClients();
 
         // Both parents must be owned by the same caller (plan §4.1)
-        await mintStarter(petCore, config, addr1, "ParentA");
-        await mintStarter(petCore, config, addr1, "ParentB");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "ParentA");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "ParentB");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -456,10 +577,8 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         const requestId = reqLogs[0].args.requestId;
         assert(requestId != null);
 
-        // Step 2: VRF fulfills (just stores seed, 150k gas callback)
-        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], {
-            account: addr1.account
-        });
+        // Step 2: entropy fulfills (just stores the randomness)
+        await revealEntropy(entropy, requestId, addr1.account);
 
         // Pet is NOT yet minted — need to call settleBreed
         assert.equal(await petCore.read.totalPets(), 2n);
@@ -492,12 +611,12 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject breeding with insufficient fee", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const testClient = await viem.getTestClient();
         const [, addr1] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "ParentA");
-        await mintStarter(petCore, config, addr1, "ParentB");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "ParentA");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "ParentB");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -511,18 +630,18 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             );
             assert.fail("Expected revert");
         } catch (error: unknown) {
-            assert((error as Error).message.includes("Insufficient breed fee"));
+            assert((error as Error).message.includes("Insufficient breed/entropy fee"));
         }
     });
 
     it("Should cancel a pending breed request before fulfillment", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "ParentA");
-        await mintStarter(petCore, config, addr1, "ParentB");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "ParentA");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "ParentB");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -558,15 +677,15 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should cancel a pending battle request before fulfillment", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Mine");
-        await mintStarter(petCore, config, addr2, "Theirs");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs");
 
-        await testClient.increaseTime({ seconds: 30 });
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
         const reqHash = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
@@ -593,11 +712,11 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should train a pet: pay level-scaled fee, receive XP, trigger train cooldown", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const testClient = await viem.getTestClient();
         const [, addr1] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Trainee");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Trainee");
 
         const pet = await petCore.read.getPet([1n]);
         const level = BigInt(pet.level);
@@ -624,10 +743,10 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject train when fee is insufficient", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Trainee");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Trainee");
 
         try {
             await gameLogic.write.train([1n], { account: addr1.account, value: 0n });
@@ -638,10 +757,10 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject train when train cooldown is active", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Trainee");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Trainee");
 
         const pet = await petCore.read.getPet([1n]);
         const level = BigInt(pet.level);
@@ -659,13 +778,13 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should apply newborn cooldown to bred offspring (not battle cooldown)", async function () {
-        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "ParentA");
-        await mintStarter(petCore, config, addr1, "ParentB");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "ParentA");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "ParentB");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -683,7 +802,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             strict: false
         });
         const requestId = reqLogs[0].args.requestId;
-        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], { account: addr1.account });
+        await revealEntropy(entropy, requestId, addr1.account);
         await gameLogic.write.settleBreed([requestId], { account: addr1.account });
 
         // Offspring is pet 3
@@ -707,7 +826,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject breed that would exceed the generation cap", async function () {
-        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [deployer, addr1] = await viem.getWalletClients();
@@ -716,8 +835,8 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await config.write.setGenerationCap([1], { account: deployer.account });
 
         // Mint two gen-0 parents
-        await mintStarter(petCore, config, addr1, "Alpha");
-        await mintStarter(petCore, config, addr1, "Beta");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Alpha");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Beta");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -737,7 +856,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             strict: false
         });
         const req1Id = req1Logs[0].args.requestId;
-        await vrf.write.fulfillRandomWords([req1Id, gameLogic.address], { account: addr1.account });
+        await revealEntropy(entropy, req1Id, addr1.account);
         await gameLogic.write.settleBreed([req1Id], { account: addr1.account });
         // Pet 3 is now generation 1
 
@@ -746,7 +865,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await testClient.mine({ blocks: 1 });
 
         // Mint a fresh gen-0 pet for the second breed attempt
-        await mintStarter(petCore, config, addr1, "Gamma");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Gamma");
         // Pet 4 is gen-0
 
         await testClient.increaseTime({ seconds: 30 });
@@ -765,7 +884,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             strict: false
         });
         const req2Id = req2Logs[0].args.requestId;
-        await vrf.write.fulfillRandomWords([req2Id, gameLogic.address], { account: addr1.account });
+        await revealEntropy(entropy, req2Id, addr1.account);
 
         try {
             await gameLogic.write.settleBreed([req2Id], { account: addr1.account });
@@ -776,12 +895,12 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject breeding when caller does not own the second parent and pets are not married", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const testClient = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Mine");
-        await mintStarter(petCore, config, addr2, "Theirs"); // addr2 owns pet 2
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs"); // addr2 owns pet 2
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -799,14 +918,14 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject breeding a pet with its own offspring (incest guard)", async function () {
-        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1] = await viem.getWalletClients();
 
         // Breed pet 1 + pet 2 → pet 3 (gen-1)
-        await mintStarter(petCore, config, addr1, "Parent1");
-        await mintStarter(petCore, config, addr1, "Parent2");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Parent1");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Parent2");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -824,12 +943,12 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             strict: false
         });
         const requestId = reqLogs[0].args.requestId;
-        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], { account: addr1.account });
+        await revealEntropy(entropy, requestId, addr1.account);
         await gameLogic.write.settleBreed([requestId], { account: addr1.account });
         // Pet 3 is child of pet 1
 
-        // Wait for parent breed cooldowns
-        await testClient.increaseTime({ seconds: 100 });
+        // Wait for parent breed cooldowns (breedCooldownBase << 0 = 3600s for breedCount 0)
+        await testClient.increaseTime({ seconds: 3601 });
         await testClient.mine({ blocks: 1 });
 
         // Attempt to breed parent (pet 1) with its offspring (pet 3) — should be rejected
@@ -845,13 +964,13 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should stop granting XP once pet reaches maxLevel", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [deployer, addr1] = await viem.getWalletClients();
 
         // Set maxLevel = 2 so a level-1 pet is one level-up away from cap
         await config.write.setMaxLevel([2], { account: deployer.account });
 
-        await mintStarter(petCore, config, addr1, "Capped");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Capped");
         // Pet starts at level 1 — grant enough XP to hit maxLevel
         await petCore.write.addXp([1n, 100n], { account: deployer.account }); // level-up threshold = 100*1
         const atCap = await petCore.read.getPet([1n]);
@@ -865,10 +984,10 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should resolve and store speciesId at mint from DNA digit-pair 6 and the rarity pool size", async function () {
-        const { petCore, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Speciesy");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Speciesy");
         const pet = await petCore.read.getPet([1n]);
 
         const poolSize = await config.read.poolSizes([pet.rarity]);
@@ -877,7 +996,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should default poolSizes to 8 for tiers 1-5 and store speciesId as 0 when a pool size is 0", async function () {
-        const { petCore, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [deployer, addr1] = await viem.getWalletClients();
 
         for (let tier = 1; tier <= 5; tier++) {
@@ -885,7 +1004,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             await config.write.setPoolSize([tier, 0], { account: deployer.account });
         }
 
-        await mintStarter(petCore, config, addr1, "NoSpecies");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "NoSpecies");
         const pet = await petCore.read.getPet([1n]);
         assert.equal(pet.speciesId, 0, "speciesId should be 0 when the rarity tier's pool size is 0");
     });
@@ -904,9 +1023,9 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(sc.bloodlustBps, 150);
     });
 
-    it("Should apply the Tank skill's pre-battle HP bonus in CombatSimV1.simulate", async function () {
+    it("Should apply the Tank skill's pre-battle HP bonus in CombatSim.simulate", async function () {
         const { config } = await deployV2();
-        const combatSim = await viem.getContractAt("CombatSimV1", await config.read.combatSim());
+        const combatSim = await viem.getContractAt("CombatSim", await config.read.combatSim());
         const sc = await config.read.getSkillConfig();
 
         const dna1 = 1234567890123456n; // level-50 attacker, far stronger than dna2
@@ -933,9 +1052,9 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         );
     });
 
-    it("Should run CombatSimV1.simulate without reverting for every skill archetype (0-7)", async function () {
+    it("Should run CombatSim.simulate without reverting for every skill archetype (0-7)", async function () {
         const { config } = await deployV2();
-        const combatSim = await viem.getContractAt("CombatSimV1", await config.read.combatSim());
+        const combatSim = await viem.getContractAt("CombatSim", await config.read.combatSim());
         const sc = await config.read.getSkillConfig();
 
         const dna1 = 1234567890123456n;
@@ -956,11 +1075,11 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
     it("Should propose and accept a marriage between cross-owner pets", async function () {
-        const { petCore, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Alice"); // pet 1
-        await mintStarter(petCore, config, addr2, "Bob");   // pet 2
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Alice"); // pet 1
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Bob");   // pet 2
 
         await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
         const [propPetIdB, propProposer] = await petCore.read.marriageProposal([1n]);
@@ -982,11 +1101,11 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject proposeMarriage when both pets share the same owner", async function () {
-        const { petCore, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "A");
-        await mintStarter(petCore, config, addr1, "B");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "B");
 
         try {
             await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
@@ -997,11 +1116,11 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should allow the proposer to cancel a pending marriage proposal", async function () {
-        const { petCore, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "A");
-        await mintStarter(petCore, config, addr2, "B");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "B");
 
         await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
         await petCore.write.cancelProposal([1n], { account: addr1.account });
@@ -1018,11 +1137,11 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject acceptMarriage if the proposer transferred away petIdA (propose-then-sell guard)", async function () {
-        const { petCore, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1, addr2, addr3] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "A");
-        await mintStarter(petCore, config, addr2, "B");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "B");
 
         await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
 
@@ -1040,14 +1159,14 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject proposeMarriage between a pet and its own parent/child (incest guard)", async function () {
-        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
 
         // Breed pet 1 + pet 2 (both owned by addr1) -> pet 3 (child)
-        await mintStarter(petCore, config, addr1, "Parent1");
-        await mintStarter(petCore, config, addr1, "Parent2");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Parent1");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Parent2");
 
         await testClient.increaseTime({ seconds: 30 });
         await testClient.mine({ blocks: 1 });
@@ -1065,7 +1184,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             strict: false
         });
         const requestId = reqLogs[0].args.requestId;
-        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], { account: addr1.account });
+        await revealEntropy(entropy, requestId, addr1.account);
         await gameLogic.write.settleBreed([requestId], { account: addr1.account });
         // Pet 3 is child of pet 1
 
@@ -1084,11 +1203,11 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should divorce a marriage and apply marriageCooldown to both pets", async function () {
-        const { petCore, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "A");
-        await mintStarter(petCore, config, addr2, "B");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "B");
 
         await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
         await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
@@ -1114,11 +1233,11 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should clear a stale marriage after a transfer without applying marriageCooldown", async function () {
-        const { petCore, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const [, addr1, addr2, addr3] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "A");
-        await mintStarter(petCore, config, addr2, "B");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "B");
 
         await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
         await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
@@ -1144,14 +1263,61 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         );
     });
 
+    it("Should auto-clear a transfer-invalidated marriage when the new owner re-proposes", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
+        const [, addr1, addr2, addr3] = await viem.getWalletClients();
+
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A"); // pet 1
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "B"); // pet 2
+
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        // addr1 sells pet 1 to addr3 — the marriage is now stale (leftover spouseId on both).
+        await petCore.write.transferFrom(
+            [addr1.account.address, addr3.account.address, 1n],
+            { account: addr1.account }
+        );
+
+        // New owner can re-propose without first calling clearStaleMarriage: proposeMarriage
+        // dissolves the stale record automatically, then records the fresh proposal.
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr3.account });
+        await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
+
+        assert.equal(await petCore.read.isMarriageValid([1n, 2n]), true);
+        const [spouseA, snapA] = await petCore.read.marriageOf([1n]);
+        assert.equal(spouseA, 2n);
+        assert.equal(snapA.toLowerCase(), addr3.account.address.toLowerCase());
+    });
+
+    it("Should let the current owner overwrite a stale pending proposal from a prior owner", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
+        const [, addr1, addr2, addr3] = await viem.getWalletClients();
+
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "A"); // pet 1
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "B"); // pet 2
+
+        // addr1 proposes, then sells pet 1 to addr3 (proposal still keyed to pet 1).
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
+        await petCore.write.transferFrom(
+            [addr1.account.address, addr3.account.address, 1n],
+            { account: addr1.account }
+        );
+
+        // The prior owner's proposal is stale; the new owner can overwrite it.
+        await petCore.write.proposeMarriage([1n, 2n], { account: addr3.account });
+        const [, proposer] = await petCore.read.marriageProposal([1n]);
+        assert.equal(proposer.toLowerCase(), addr3.account.address.toLowerCase());
+    });
+
     it("Should breed cross-owner via an accepted marriage, paying breedFee + studFee", async function () {
-        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Alice"); // pet 1
-        await mintStarter(petCore, config, addr2, "Bob");   // pet 2
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Alice"); // pet 1
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Bob");   // pet 2
 
         await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
         await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
@@ -1175,7 +1341,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         });
         const requestId = reqLogs[0].args.requestId;
 
-        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], { account: addr1.account });
+        await revealEntropy(entropy, requestId, addr1.account);
 
         const settleHash = await gameLogic.write.settleBreed([requestId], { account: addr1.account });
         const settleReceipt = await publicClient.waitForTransactionReceipt({ hash: settleHash });
@@ -1202,12 +1368,12 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should reject a cross-owner breed when msg.value does not cover breedFee + studFee", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const testClient = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Alice");
-        await mintStarter(petCore, config, addr2, "Bob");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Alice");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Bob");
 
         await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
         await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
@@ -1224,18 +1390,18 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             );
             assert.fail("Expected revert");
         } catch (error: unknown) {
-            assert((error as Error).message.includes("Insufficient breed/stud fee"));
+            assert((error as Error).message.includes("Insufficient breed/stud/entropy fee"));
         }
     });
 
     it("Should refund the escrowed stud fee when a cross-owner breed request is cancelled", async function () {
-        const { petCore, gameLogic, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Alice");
-        await mintStarter(petCore, config, addr2, "Bob");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Alice");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Bob");
 
         await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
         await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
@@ -1275,13 +1441,13 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
     });
 
     it("Should let an owner withdraw credited stud fees via withdrawStudFees", async function () {
-        const { petCore, gameLogic, vrf, config } = await deployV2();
+        const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();
         const testClient   = await viem.getTestClient();
         const [, addr1, addr2] = await viem.getWalletClients();
 
-        await mintStarter(petCore, config, addr1, "Alice");
-        await mintStarter(petCore, config, addr2, "Bob");
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Alice");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Bob");
 
         await petCore.write.proposeMarriage([1n, 2n], { account: addr1.account });
         await petCore.write.acceptMarriage([1n, 2n], { account: addr2.account });
@@ -1305,7 +1471,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         });
         const requestId = reqLogs[0].args.requestId;
 
-        await vrf.write.fulfillRandomWords([requestId, gameLogic.address], { account: addr1.account });
+        await revealEntropy(entropy, requestId, addr1.account);
         await gameLogic.write.settleBreed([requestId], { account: addr1.account });
 
         assert.equal(await gameLogic.read.pendingStudFees([addr2.account.address]), studFee);
