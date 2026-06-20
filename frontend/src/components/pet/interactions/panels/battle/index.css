@@ -257,10 +257,10 @@
     }
 }
 
-/* Two-lane matchmaking layout: your fighters on the left, opponents on the right,
-   each lane scrolling vertically and independently. The VS arena stays above and
-   the Start Battle bar below, so neither list pushes the action off-screen. */
-.battle-rosters {
+/* Arena stage: fighters lane on the outer-left, the VS arena card (with win odds
+   + Start Battle) in the center, opponents lane on the outer-right. Each lane
+   scrolls vertically and independently so neither pushes the action off-screen. */
+.battle-stage {
     display: flex;
     gap: 14px;
     width: 100%;
@@ -268,7 +268,17 @@
     align-items: stretch;
 }
 
-.battle-rosters .battle-picker-section {
+/* Center column holds the arena card, win odds, and the action bar. It gets the
+   most room so the VS slots stay legible. */
+.battle-center {
+    flex: 1.6 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.battle-stage .battle-picker-section {
     flex: 1 1 0;
     min-width: 0;
     background: rgb(8 14 30 / 42%);
@@ -279,22 +289,22 @@
 }
 
 /* Lane identity: fighters read cyan (you), opponents read magenta (them). */
-.battle-rosters .battle-picker-section[aria-label='Your fighters'] {
+.battle-stage .battle-picker-section[aria-label='Your fighters'] {
     border-color: rgb(125 214 255 / 32%);
     box-shadow: inset 0 0 24px rgb(125 214 255 / 6%);
 }
 
-.battle-rosters .battle-picker-section[aria-label='Opponents'] {
+.battle-stage .battle-picker-section[aria-label='Opponents'] {
     border-color: rgb(255 110 196 / 32%);
     box-shadow: inset 0 0 24px rgb(255 110 196 / 6%);
 }
 
-.battle-rosters .battle-picker-section[aria-label='Opponents'] .section-title {
+.battle-stage .battle-picker-section[aria-label='Opponents'] .section-title {
     color: #ff9ad6;
 }
 
 /* The header stays pinned while the card list below it scrolls. */
-.battle-rosters .section-head {
+.battle-stage .section-head {
     flex: 0 0 auto;
 }
 
@@ -308,7 +318,7 @@
     box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: clamp(240px, 44vh, 560px);
+    max-height: clamp(260px, 52vh, 620px);
     padding: 4px;
     scroll-padding: 4px;
     scrollbar-width: thin;
@@ -325,10 +335,15 @@
     scrollbar-color: #ff9ad6 transparent;
 }
 
-/* Stack the two lanes on narrow screens so each stays usable. */
-@media (max-width: 720px) {
-    .battle-rosters {
+/* Below 960px the three columns get cramped: stack them, with the arena +
+   Start Battle on top, then the two lanes. */
+@media (max-width: 960px) {
+    .battle-stage {
         flex-direction: column;
+    }
+
+    .battle-center {
+        order: -1;
     }
 
     .battle-picker-strip,
