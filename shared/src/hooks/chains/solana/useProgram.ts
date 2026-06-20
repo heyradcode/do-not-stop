@@ -15,7 +15,7 @@ const READ_ONLY_WALLET: SolanaSigningWallet = {
 export type SolanaProgram = Program<Idl>;
 
 export const useProgram = () => {
-    const { connection, programId, signingWallet } = useSolanaAnchor();
+    const { connection, programId, idlAddress, signingWallet } = useSolanaAnchor();
 
     const providerWallet = signingWallet ?? READ_ONLY_WALLET;
 
@@ -33,14 +33,21 @@ export const useProgram = () => {
     // re-use across wallet connections, eliminating the re-fetch delay each
     // time a wallet is connected or switched.
     const idlQuery = useQuery({
-        queryKey: ['cryptopets', 'idl', connection.rpcEndpoint, programId?.toBase58() ?? 'none'],
+        queryKey: [
+            'cryptopets',
+            'idl',
+            connection.rpcEndpoint,
+            programId?.toBase58() ?? 'none',
+            idlAddress?.toBase58() ?? 'derived',
+        ],
         enabled: programId !== null,
         staleTime: Infinity,
         queryFn: async (): Promise<Idl> => {
             if (!programId) {
                 throw new Error('Solana program id is not configured');
             }
-            const idl = await Program.fetchIdl(programId, provider);
+            const fetchAddress = idlAddress ?? programId;
+            const idl = await Program.fetchIdl(fetchAddress, provider);
             if (!idl) {
                 throw new Error(
                     'IDL not found on-chain for this program. Deploy the IDL (`anchor idl init`) or point RPC at a cluster where it exists.'
