@@ -29,6 +29,10 @@ pub mod cryptopets {
         rename_pet::handler(ctx, name)
     }
 
+    pub fn transfer_pet(ctx: Context<TransferPet>) -> Result<()> {
+        transfer_pet::handler(ctx)
+    }
+
     pub fn set_open_to_challenges(ctx: Context<SetOpenToChallenges>, value: bool) -> Result<()> {
         set_open_to_challenges::handler(ctx, value)
     }

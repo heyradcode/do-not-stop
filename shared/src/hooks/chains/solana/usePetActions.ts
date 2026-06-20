@@ -114,6 +114,33 @@ export const usePetActions = () => {
         onSuccess: invalidateProgramQueries,
     });
 
+    const transferPet = useMutation({
+        mutationFn: async (args: { assetKey: string; to: string }) => {
+            const { program, programId, owner } = requireReady();
+            const petAsset = new PublicKey(args.assetKey);
+            const [pet] = petPdaByAsset(programId, args.assetKey);
+            const [globalState] = globalStatePda(programId);
+            const gs = (await getAccountClient(program, 'globalState').fetch(globalState)) as { collection: unknown };
+            const collection = gs.collection instanceof PublicKey
+                ? gs.collection
+                : new PublicKey(String((gs.collection as { toBase58(): string }).toBase58?.() ?? gs.collection));
+            return program.methods
+                .transferPet()
+                .accounts({
+                    globalState,
+                    petAsset,
+                    pet,
+                    collection,
+                    newOwner: new PublicKey(args.to),
+                    owner,
+                    mplCoreProgram: new PublicKey(MPL_CORE_PROGRAM_ID),
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc();
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
     const withdrawStudFees = useMutation({
         mutationFn: async () => {
             const { program, programId, owner } = requireReady();
@@ -245,6 +272,7 @@ export const usePetActions = () => {
         levelUpPet,
         trainPet,
         renamePet,
+        transferPet,
         withdrawStudFees,
         syncMetadata,
         setOpenToChallenges,

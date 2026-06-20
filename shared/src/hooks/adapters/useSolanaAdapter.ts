@@ -117,13 +117,14 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         isPending: actions.renamePet.isPending,
     };
 
-    // Transfers happen via Metaplex Core (NFT transfer) — no program-level instruction in v2.1.
+    // `transfer_pet` CPIs mpl-core TransferV1 to move the Core asset and syncs the
+    // denormalized `PetAccount.owner` so the gallery's owner-memcmp query follows the pet.
     const transferPet: AdapterMutation<{ petId: string; to: string }> = {
-        async mutateAsync() {
-            throw new Error('Solana pet transfers use Metaplex Core — use the NFT wallet interface');
+        async mutateAsync({ petId, to }) {
+            await actions.transferPet.mutateAsync({ assetKey: requireAssetKey(petId), to });
         },
-        lifecycle: { phase: 'idle', error: null, reset: () => undefined },
-        isPending: false,
+        lifecycle: toLc(actions.transferPet),
+        isPending: actions.transferPet.isPending,
     };
 
     const battleLc = useMemo<TxLifecycle>(() => {

@@ -30,6 +30,7 @@ const actions = {
     renamePet: makeMutation(),
     battlePets: makeMutation({ sig: 'settle-sig', firstWins: true }),
     breedPets: makeMutation(),
+    transferPet: makeMutation(),
     setOpenToChallenges: makeMutation(),
     syncMetadata: makeMutation(),
     withdrawStudFees: makeMutation(),
@@ -69,6 +70,7 @@ beforeEach(() => {
     Object.assign(actions.renamePet,  { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.battlePets, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.breedPets,  { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.transferPet, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.setOpenToChallenges, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.syncMetadata, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.withdrawStudFees, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
@@ -198,9 +200,9 @@ describe('useSolanaAdapter', () => {
         expect(hook.result.current.createPet.lifecycle.phase).toBe('error');
     });
 
-    it('transferPet throws with an explanatory message', async () => {
+    it('transferPet forwards the pet asset key and recipient', async () => {
         const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
-        await expect(result.current.transferPet.mutateAsync({ petId: '1', to: validAddress }))
-            .rejects.toThrow(/Metaplex Core/);
+        await result.current.transferPet.mutateAsync({ petId: '1', to: validAddress });
+        expect(actions.transferPet.mutateAsync).toHaveBeenCalledWith({ assetKey: ASSET_1, to: validAddress });
     });
 });

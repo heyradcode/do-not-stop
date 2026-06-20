@@ -6,8 +6,10 @@ pub mod level_up;
 pub mod rename_pet;
 pub mod sync_metadata;
 pub mod train;
+pub mod transfer_pet;
 
 pub use level_up::*;
 pub use rename_pet::*;
 pub use sync_metadata::*;
 pub use train::*;
+pub use transfer_pet::*;
