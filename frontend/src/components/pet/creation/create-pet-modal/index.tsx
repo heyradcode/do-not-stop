@@ -8,7 +8,6 @@ import {
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
 import TransactionStatus from '@components/common/transaction-status';
-import { AuthActionButton } from '@components/common';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
@@ -126,13 +125,16 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                             <p className="mint-cost">Mint cost: {mintCost}</p>
                         )}
 
-                        <AuthActionButton
+                        {/* Creating a pet is fully on-chain (Switchboard VRF + program) and
+                            needs no backend session — gate on wallet connection only, not SIWS auth. */}
+                        <button
+                            type="button"
                             onClick={handleCreatePet}
                             disabled={isInProgress || feesLoading || !petName.trim() || !isConnected}
                             className="submit"
                         >
                             {buttonLabel}
-                        </AuthActionButton>
+                        </button>
 
                         {isAwaitingFulfillment && (
                             <p className="pending-hint">
