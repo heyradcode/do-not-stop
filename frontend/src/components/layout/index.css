@@ -160,6 +160,19 @@
   }
 }
 
+/* The interactions panel hosts tall content (battle setup, breed, etc.) whose
+   action buttons sit at the bottom. The generic .panel-body is `overflow: hidden`,
+   which clips them once the content exceeds the panel height. Let the body scroll
+   here (the title bar stays pinned) so the Start Battle / action buttons are always
+   reachable. Applies in every layout that shows this panel (standalone or beside
+   the gallery); the stacked mobile dashboard re-overrides this to `visible` below. */
+.dashboard-panel.pet-interactions .panel-body {
+  overflow-x: clip;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-cyan) transparent;
+}
+
 /* Dashboard view (interactions hub + pet gallery): split horizontally 50/50 so
    both panels share equal width and the pet cards render in full. */
 .main-content:has(.dashboard-panel.pet-collection) {
@@ -240,6 +253,12 @@
       overflow: visible;
 
       & .surface {
+        overflow: visible;
+      }
+
+      /* Stacked layout scrolls the whole page (main-content), so the panel body
+         should grow with its content rather than scroll on its own. */
+      & .panel-body {
         overflow: visible;
       }
 
