@@ -143,16 +143,122 @@
 .breed-parents {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
-    align-items: center;
+    align-items: start;
     gap: 12px;
     margin-bottom: 16px;
 }
 
-.breed-parents__egg {
-    font-size: 30px;
+/* ── DNA helix + compatibility + egg centre ─────────────────────────────────── */
+.breed-dna {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 116px;
+    padding: 4px 0;
+}
+
+.breed-dna__label {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgb(195 210 255 / 32%);
+}
+
+.breed-dna__helix {
+    display: block;
+    overflow: visible;
+    filter: drop-shadow(0 0 4px rgb(125 214 255 / 25%));
+}
+
+.breed-dna__strand {
+    animation: cp-strand-glow 2.5s ease-in-out infinite;
+}
+.breed-dna__strand--b {
+    animation-delay: 0.5s;
+}
+.breed-dna__node {
+    animation: cp-node-blink 2.5s ease-in-out infinite;
+}
+
+/* Compatibility ring */
+.breed-dna__compat {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.breed-dna__compat-svg {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+}
+
+.breed-dna__compat-arc {
+    filter: drop-shadow(0 0 5px rgb(125 214 255 / 70%));
+    animation: cp-compat-draw 0.9s ease both;
+    transition: stroke-dasharray 0.5s ease;
+}
+
+.breed-dna__compat-text {
+    position: relative;
+    z-index: 1;
+    text-align: center;
     line-height: 1;
-    filter: drop-shadow(0 0 10px rgb(255 207 112 / 70%));
+}
+
+.breed-dna__compat-pct {
+    display: block;
+    font-family: var(--title-font);
+    font-size: 14px;
+    font-weight: 900;
+    color: var(--neon-cyan);
+}
+
+.breed-dna__compat-cap {
+    display: block;
+    margin-top: 2px;
+    font-size: 7px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: rgb(195 210 255 / 45%);
+}
+
+/* Egg / offspring estimate */
+.breed-dna__egg {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 6px;
+    border-radius: 10px;
+    border: 1px solid rgb(255 207 112 / 32%);
+    background: rgb(10 16 32 / 92%);
+}
+
+.breed-dna__egg-emoji {
+    font-size: 26px;
+    line-height: 1;
+    filter: drop-shadow(0 0 10px rgb(255 207 112 / 80%));
     animation: cp-float 2.8s ease-in-out infinite;
+}
+
+.breed-dna__egg-rarity {
+    font-family: var(--title-font);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.breed-dna__egg-gen {
+    font-size: 9px;
+    color: rgb(195 210 255 / 40%);
 }
 
 .breed-parent {
@@ -265,13 +371,18 @@
     .breed-parents {
         grid-template-columns: 1fr;
     }
-    .breed-parents__egg {
+    .breed-dna {
         justify-self: center;
+        width: 100%;
+        max-width: 200px;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .breed-parents__egg,
+    .breed-dna__egg-emoji,
+    .breed-dna__strand,
+    .breed-dna__node,
+    .breed-dna__compat-arc,
     .breed-parent__stat-fill {
         animation: none;
     }

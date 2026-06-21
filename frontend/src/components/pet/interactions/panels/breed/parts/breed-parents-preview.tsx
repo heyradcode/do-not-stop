@@ -1,5 +1,6 @@
 import React from 'react';
 import { getPetAvatar, getPetClass, getPetProperties, type Pet } from '@shared/core';
+import BreedDnaCenter from './breed-dna-center';
 
 type BreedParentsPreviewProps = {
     petA: Pet | null;
@@ -63,9 +64,7 @@ const ParentCard: React.FC<{ pet: Pet | null; side: 'a' | 'b' }> = ({ pet, side 
 const BreedParentsPreview: React.FC<BreedParentsPreviewProps> = ({ petA, petB }) => (
     <div className="breed-parents">
         <ParentCard pet={petA} side="a" />
-        <div className="breed-parents__egg" aria-hidden>
-            🥚
-        </div>
+        <BreedDnaCenter petA={petA} petB={petB} />
         <ParentCard pet={petB} side="b" />
     </div>
 );
