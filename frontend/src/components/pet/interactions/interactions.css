@@ -167,6 +167,80 @@
     }
 }
 
+/* =============================================================================
+   Per-view theming for standalone interaction screens (battle, breed, …).
+   `interaction-standalone--<action>` sets a wash + accent; the shared chrome
+   below left-aligns the title bar to match the redesign mock.
+   ============================================================================= */
+.interaction-standalone--battle {
+    --view-wash: var(--wash-battle);
+    --view-accent: 255 123 203;
+}
+.interaction-standalone--breed {
+    --view-wash: var(--wash-breed);
+    --view-accent: 255 207 112;
+}
+.interaction-standalone--levelup {
+    --view-wash: var(--wash-levelup);
+    --view-accent: 181 140 255;
+}
+.interaction-standalone--train {
+    --view-wash: var(--wash-train);
+    --view-accent: 125 214 255;
+}
+.interaction-standalone--marriage {
+    --view-wash: var(--wash-marriage);
+    --view-accent: 255 123 203;
+}
+.interaction-standalone--changename {
+    --view-wash: var(--wash-rename);
+    --view-accent: 125 214 255;
+}
+
+/* Wash sits behind the panel content instead of the flat card gradient. */
+.dashboard-panel.pet-interactions.interaction-standalone .surface {
+    background: var(--view-wash, var(--pc-surface-bg));
+    border-color: rgb(var(--view-accent, 101 131 255) / 22%);
+}
+
+/* Left-aligned header: ← Back · accent-glow title · subtitle, with an accent rule. */
+.dashboard-panel.pet-interactions.interaction-standalone .title-bar {
+    justify-content: flex-start;
+    gap: 14px;
+    padding-block-end: 12px;
+    margin-block-end: var(--pc-spacing-md);
+    border-block-end: 1px solid rgb(var(--view-accent, 101 131 255) / 16%);
+}
+
+.dashboard-panel.pet-interactions.interaction-standalone .title-bar .intro {
+    width: auto;
+    text-align: start;
+}
+
+.dashboard-panel.pet-interactions.interaction-standalone .title-bar .heading {
+    text-shadow: 0 0 14px rgb(var(--view-accent, 185 160 255) / 50%);
+}
+
+.dashboard-panel.pet-interactions.interaction-standalone .title-bar .panel-back {
+    position: static;
+    transform: none;
+    border: 1px solid rgb(101 131 255 / 22%);
+    border-radius: 5px;
+    padding: 6px 12px;
+    font-weight: 600;
+
+    &:hover {
+        border-color: rgb(101 131 255 / 50%);
+    }
+}
+
+/* Keep the centered layout for the connect/empty state cards (no back-nav flow). */
+.dashboard-panel.pet-interactions.interaction-standalone.wallet-disconnected .title-bar {
+    justify-content: center;
+    border-block-end: none;
+    padding-block-end: 0;
+}
+
 .interaction-standalone-header {
     text-align: center;
     margin-bottom: var(--spacing-lg);

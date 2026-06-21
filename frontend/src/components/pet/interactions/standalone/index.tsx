@@ -26,10 +26,13 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({
     const header = STANDALONE_INTERACTION_HEADERS[action];
     const goBack = () => navigate(DASHBOARD_HOME);
 
+    // Per-view class drives the background wash + accent color (see interactions.css).
+    const viewClass = `interaction-standalone interaction-standalone--${action}`;
+
     if (!isConnected) {
         return (
             <StateCard
-                containerClassName="interaction-standalone wallet-disconnected"
+                containerClassName={`${viewClass} wallet-disconnected`}
                 title={
                     <>
                         <Icon as={BattleIcon} tone={Tones.Violet} />
@@ -45,7 +48,7 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({
     if (isLoading && pets.length === 0) {
         return (
             <DashboardPanel
-                className="pet-interactions interaction-standalone"
+                className={`pet-interactions ${viewClass}`}
                 title={
                     <>
                         <Icon as={header.Icon} tone={Tones.Violet} />
@@ -65,7 +68,7 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({
     if (pets.length === 0) {
         return (
             <StateCard
-                containerClassName="interaction-standalone"
+                containerClassName={viewClass}
                 title={
                     <>
                         <Icon as={header.Icon} tone={Tones.Violet} />
@@ -82,7 +85,7 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({
     if (minPets > 1 && pets.length < minPets) {
         return (
             <StateCard
-                containerClassName="interaction-standalone"
+                containerClassName={viewClass}
                 title={
                     <>
                         <Icon as={header.Icon} tone={Tones.Violet} />
@@ -99,7 +102,7 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({
 
     return (
         <StateCard
-            containerClassName="interaction-standalone"
+            containerClassName={viewClass}
             title={
                 <>
                     <Icon as={header.Icon} tone={Tones.Violet} />
