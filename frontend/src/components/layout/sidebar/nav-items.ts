@@ -5,6 +5,7 @@ import {
     EggIcon,
     LevelUpIcon,
     MarriageIcon,
+    PawIcon,
     QuillIcon,
     SparklesIcon,
     TrainIcon,
@@ -13,6 +14,7 @@ import {
 import {
     BATTLE_PATH,
     BREED_PATH,
+    DASHBOARD_HOME,
     LEVELUP_PATH,
     MARRIAGE_PATH,
     RENAME_PATH,
@@ -31,11 +33,13 @@ export type NavItem = {
 };
 
 /**
- * Left-nav actions, ordered to match the redesign mock. Six are wired to real
- * routes; Inventory and Shard Forge are deferred (see FRONTEND_REDESIGN_PLAN.md
- * §8) and shown disabled until backend/contract support lands.
+ * Left-nav actions, ordered to match the redesign mock. Gallery + six feature
+ * screens are wired to real routes; Inventory and Shard Forge are deferred (see
+ * FRONTEND_REDESIGN_PLAN.md §8) and shown disabled until backend/contract
+ * support lands.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
+    { id: 'gallery', label: 'Gallery', Icon: PawIcon, tone: 'cyan', path: DASHBOARD_HOME },
     { id: 'battle', label: 'Battle Arena', Icon: BattleIcon, tone: 'magenta', path: BATTLE_PATH },
     { id: 'breed', label: 'Breeding Lab', Icon: EggIcon, tone: 'amber', path: BREED_PATH },
     { id: 'levelup', label: 'Level Up', Icon: LevelUpIcon, tone: 'violet', path: LEVELUP_PATH },
