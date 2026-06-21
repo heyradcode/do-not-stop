@@ -2,7 +2,11 @@
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import {
+    getPetAvatar,
+    getPetClass,
     getReadyPetsUnified,
+    getXpNumbers,
+    getXpPercent,
     useChainCapabilities,
     useFees,
     useLevelUpPet,
@@ -13,6 +17,7 @@ import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 import SyncMetadataButton from './sync-metadata-button';
+import './index.css';
 
 export type LevelUpPanelProps = {
     isStandaloneView?: boolean;
@@ -46,7 +51,8 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const fees = useFees();
-    const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
+    const selectedPetObj = readyPets.find(({ id }) => id === selectedPet)?.pet ?? null;
+    const selectedLevel = selectedPetObj?.level;
 
     // Level-up fee is level-scaled: baseFee × (100 + (level-1)²) / 100.
     const levelUpCost = useMemo(() => {
@@ -91,13 +97,52 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
             <div className="interface">
                 {!isStandaloneView && (
                     <>
-                        <h4>â¬†ï¸ Level Up Pet</h4>
+                        <h4>⬆️ Level Up Pet</h4>
                         <p>
                             {levelUpFee
                                 ? `Pay from ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet — cost rises with level`
                                 : 'Pay a small SOL fee to level up your pet'}
                         </p>
                     </>
+                )}
+
+                {selectedPetObj && (
+                    <div className="lvl-showcase">
+                        <div className="lvl-rings">
+                            <span className="lvl-ring" />
+                            <span className="lvl-ring" />
+                            <span className="lvl-ring" />
+                            <span className="lvl-avatar">{getPetAvatar(selectedPetObj.dna)}</span>
+                        </div>
+                        <div className="lvl-name">{selectedPetObj.name}</div>
+                        <div className="lvl-class">{getPetClass(selectedPetObj.dna)}</div>
+                        <div className="lvl-transition">
+                            <span className="lvl-badge lvl-badge--cur">
+                                Lv.{selectedPetObj.level}
+                            </span>
+                            <span className="lvl-arrow" aria-hidden>
+                                →
+                            </span>
+                            <span className="lvl-badge lvl-badge--next">
+                                Lv.{selectedPetObj.level + 1}
+                            </span>
+                        </div>
+                        <div className="lvl-xp">
+                            <div className="lvl-xp-row">
+                                <span>XP</span>
+                                <span>
+                                    {getXpNumbers(selectedPetObj).xpCurrent}/
+                                    {getXpNumbers(selectedPetObj).xpMax}
+                                </span>
+                            </div>
+                            <div className="lvl-xp-track">
+                                <div
+                                    className="lvl-xp-fill"
+                                    style={{ width: `${getXpPercent(selectedPetObj)}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 <div className="picker">
