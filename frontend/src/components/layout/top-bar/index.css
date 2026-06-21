@@ -1,0 +1,100 @@
+/* Shell header — wordmark, status badges, wallet control. */
+.cp-topbar {
+    height: var(--shell-header-height);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 12px;
+    background: rgb(5 8 18 / 96%);
+    border-bottom: 1px solid rgb(101 131 255 / 16%);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 4px 24px rgb(0 0 0 / 55%);
+    overflow: hidden;
+}
+
+.cp-topbar__title {
+    font-family: var(--title-font);
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: #f4f2ff;
+    text-shadow: 0 0 14px rgb(185 160 255 / 70%), 0 0 36px rgb(108 72 255 / 40%);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.cp-topbar__spacer {
+    flex: 1;
+}
+
+.cp-topbar__badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.cp-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.cp-badge__strong {
+    font-family: var(--title-font);
+    font-size: 10px;
+    letter-spacing: 1px;
+}
+
+.cp-badge__muted {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.cp-badge__sep {
+    width: 1px;
+    height: 11px;
+    background: rgb(255 215 0 / 28%);
+}
+
+.cp-badge--gold {
+    background: rgb(255 215 0 / 8%);
+    border: 1px solid rgb(255 215 0 / 35%);
+    color: var(--neon-gold);
+    animation: cp-glow-pulse 3s ease-in-out infinite;
+}
+
+.cp-badge--gold .cp-badge__muted {
+    color: rgb(255 215 0 / 65%);
+}
+
+.cp-badge--streak {
+    background: rgb(255 207 112 / 7%);
+    border: 1px solid rgb(255 207 112 / 28%);
+    color: var(--neon-amber);
+    animation: cp-streak-fire 2.2s ease-in-out infinite;
+}
+
+.cp-badge--wins {
+    background: rgb(125 214 255 / 6%);
+    border: 1px solid rgb(125 214 255 / 18%);
+    color: rgb(125 214 255 / 82%);
+}
+
+.cp-topbar__wallet {
+    flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+    .cp-badge--gold,
+    .cp-badge--streak {
+        display: none;
+    }
+}

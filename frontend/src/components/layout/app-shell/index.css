@@ -1,0 +1,41 @@
+/* Three-region app shell: ambient bg + sidebar + header + content slot. */
+.cp-shell {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--neon-base-bg);
+    color: var(--cp-text-body-dark);
+    font-family: var(--content-font);
+}
+
+/* Frame sits above the ambient background layer. */
+.cp-shell__frame {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.cp-shell__main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.cp-shell__content {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(125 214 255 / 35%) transparent;
+}

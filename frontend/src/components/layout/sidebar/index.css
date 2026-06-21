@@ -1,0 +1,279 @@
+/* Collapsible left nav — icon rail that expands on hover / focus-within. */
+.cp-sidebar {
+    --label-opacity: 0;
+    position: relative;
+    z-index: 2;
+    width: var(--shell-sidebar-collapsed);
+    min-width: var(--shell-sidebar-collapsed);
+    height: 100%;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgb(6 10 22 / 99%), rgb(3 6 16 / 100%));
+    border-right: 1px solid rgb(101 131 255 / 14%);
+    box-shadow: 4px 0 28px rgb(0 0 0 / 55%);
+    transition: width var(--shell-transition), min-width var(--shell-transition);
+}
+
+.cp-sidebar:hover,
+.cp-sidebar:focus-within {
+    --label-opacity: 1;
+    width: var(--shell-sidebar-expanded);
+    min-width: var(--shell-sidebar-expanded);
+}
+
+/* Labels fade with the rail; kept out of layout flow width so text doesn't wrap */
+.cp-sidebar__wordmark,
+.cp-nav-item__label,
+.cp-nav-item__soon,
+.cp-sidebar__quests,
+.cp-sidebar__rank-copy {
+    opacity: var(--label-opacity);
+    transition: opacity 0.22s ease;
+    white-space: nowrap;
+}
+
+/* Brand / logo */
+.cp-sidebar__brand {
+    height: var(--shell-header-height);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 18px;
+    border: none;
+    border-bottom: 1px solid rgb(101 131 255 / 10%);
+    border-radius: 0;
+    background: transparent;
+    cursor: pointer;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.cp-sidebar__brand:hover {
+    box-shadow: none;
+    border-color: transparent;
+    border-bottom-color: rgb(101 131 255 / 10%);
+}
+
+.cp-sidebar__logo {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+    animation: cp-orb-float 4s ease-in-out infinite;
+}
+
+.cp-sidebar__wordmark {
+    font-family: var(--title-font);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 2.5px;
+    color: rgb(181 140 255 / 75%);
+    text-transform: uppercase;
+}
+
+/* Nav list */
+.cp-sidebar__nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+    gap: 2px;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.cp-nav-item {
+    --tone-rgb: 125 214 255;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: var(--shell-nav-item-height);
+    padding: 0 18px;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    cursor: pointer;
+    overflow: hidden;
+    text-align: left;
+    transition: background 0.18s ease;
+}
+
+.cp-nav-item.tone-cyan {
+    --tone-rgb: 125 214 255;
+}
+.cp-nav-item.tone-violet {
+    --tone-rgb: 181 140 255;
+}
+.cp-nav-item.tone-magenta {
+    --tone-rgb: 255 123 203;
+}
+.cp-nav-item.tone-amber {
+    --tone-rgb: 255 207 112;
+}
+.cp-nav-item.tone-emerald {
+    --tone-rgb: 15 255 174;
+}
+
+.cp-nav-item:hover:not(:disabled) {
+    background: rgb(125 214 255 / 5%);
+    box-shadow: none;
+    border-color: transparent;
+    border-left-color: rgb(var(--tone-rgb) / 45%);
+}
+
+.cp-nav-item.is-active {
+    background: rgb(var(--tone-rgb) / 8%);
+    border-left-color: rgb(var(--tone-rgb) / 100%);
+}
+
+.cp-nav-item.is-deferred {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.cp-nav-item__icon {
+    display: flex;
+    width: 24px;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+}
+
+.cp-nav-item__label {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: rgb(195 210 255 / 78%);
+}
+
+.cp-nav-item.is-active .cp-nav-item__label {
+    color: rgb(var(--tone-rgb) / 100%);
+}
+
+.cp-nav-item__soon {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: rgb(195 210 255 / 45%);
+    border: 1px solid rgb(101 131 255 / 22%);
+    border-radius: 999px;
+    padding: 2px 7px;
+    flex-shrink: 0;
+}
+
+/* Divider */
+.cp-sidebar__divider {
+    height: 1px;
+    flex-shrink: 0;
+    background: linear-gradient(90deg, transparent, rgb(101 131 255 / 18%), transparent);
+}
+
+/* Quests (placeholder) */
+.cp-sidebar__quests {
+    flex-shrink: 0;
+    padding: 14px;
+    overflow: hidden;
+}
+
+.cp-sidebar__section-title {
+    font-family: var(--title-font);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgb(125 214 255 / 50%);
+    margin-bottom: 12px;
+}
+
+.cp-quest-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.cp-quest__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.cp-quest__label {
+    font-size: 11px;
+    color: rgb(195 210 255 / 70%);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+
+.cp-quest__reward {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgb(15 255 174 / 90%);
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.cp-quest__track {
+    height: 3px;
+    background: rgb(255 255 255 / 6%);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.cp-quest__fill {
+    height: 100%;
+    background: var(--neon-gradient-line);
+    border-radius: 2px;
+    box-shadow: 0 0 5px rgb(125 214 255 / 40%);
+}
+
+/* Rank footer (placeholder) */
+.cp-sidebar__rank {
+    flex-shrink: 0;
+    border-top: 1px solid rgb(101 131 255 / 10%);
+    padding: 12px 18px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow: hidden;
+}
+
+.cp-sidebar__rank-icon {
+    font-size: 18px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 6px rgb(255 215 0 / 60%));
+}
+
+.cp-sidebar__rank-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--neon-gold);
+    letter-spacing: 0.6px;
+}
+
+.cp-sidebar__rank-sub {
+    font-size: 10px;
+    color: rgb(195 210 255 / 45%);
+    margin-top: 2px;
+}
+
+@media (max-width: 720px) {
+    .cp-sidebar,
+    .cp-sidebar:hover,
+    .cp-sidebar:focus-within {
+        width: var(--shell-sidebar-collapsed);
+        min-width: var(--shell-sidebar-collapsed);
+        --label-opacity: 0;
+    }
+    .cp-sidebar__quests {
+        display: none;
+    }
+}
