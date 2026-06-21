@@ -18,6 +18,15 @@ import './index.css';
 
 const MAX_NAME_LEN = 20;
 
+/** Curated name-theme suggestions — a naming aid. Clicking one fills an example
+ *  name and tints the live preview; the user can edit freely afterward. */
+const RENAME_THEMES = [
+    { label: 'Mythic', color: '#ffcf70', icon: '🐉', example: 'Draconis Rex' },
+    { label: 'Cyber', color: '#7dd6ff', icon: '⚡', example: 'Nyx-7' },
+    { label: 'Celestial', color: '#b58cff', icon: '✨', example: 'Astra Vega' },
+    { label: 'Shadow', color: '#ff7bcb', icon: '🌑', example: 'Umbra Vael' },
+] as const;
+
 export type RenamePanelProps = {
     isStandaloneView?: boolean;
 };
@@ -29,6 +38,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
 
     const [selectedPet, setSelectedPet] = useState<string>('');
     const [newName, setNewName] = useState('');
+    const [activeTheme, setActiveTheme] = useState<number | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
     // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
@@ -103,7 +113,19 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
 
                 {selectedPetObj && (
                     <PetShowcase avatar={getPetAvatar(selectedPetObj.dna)} accent="cyan">
-                        <div className="rename-preview">{previewName}</div>
+                        <div
+                            className="rename-preview"
+                            style={
+                                activeTheme != null
+                                    ? {
+                                          color: RENAME_THEMES[activeTheme].color,
+                                          textShadow: `0 0 18px ${RENAME_THEMES[activeTheme].color}, 0 0 36px ${RENAME_THEMES[activeTheme].color}55`,
+                                      }
+                                    : undefined
+                            }
+                        >
+                            {previewName}
+                        </div>
                         <div className="rename-sub">
                             {getPetClass(selectedPetObj.dna)} · Lv.{selectedPetObj.level}
                         </div>
@@ -141,10 +163,50 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                             id="rename-new-name"
                             type="text"
                             value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
+                            onChange={(e) => {
+                                setNewName(e.target.value);
+                                setActiveTheme(null);
+                            }}
                             placeholder="Enter new name..."
                             maxLength={MAX_NAME_LEN}
                         />
+                    </div>
+                </div>
+
+                <div className="rename-themes">
+                    <div className="rename-themes__title">Name Theme</div>
+                    <div className="rename-themes__grid">
+                        {RENAME_THEMES.map((theme, i) => (
+                            <button
+                                type="button"
+                                key={theme.label}
+                                className={`rename-theme${activeTheme === i ? ' is-active' : ''}`}
+                                style={
+                                    activeTheme === i
+                                        ? {
+                                              borderColor: theme.color,
+                                              boxShadow: `0 0 16px ${theme.color}3d`,
+                                          }
+                                        : undefined
+                                }
+                                onClick={() => {
+                                    setNewName(theme.example);
+                                    setActiveTheme(i);
+                                }}
+                            >
+                                <span
+                                    className="rename-theme__icon"
+                                    style={{ filter: `drop-shadow(0 0 6px ${theme.color})` }}
+                                    aria-hidden
+                                >
+                                    {theme.icon}
+                                </span>
+                                <span className="rename-theme__label" style={{ color: theme.color }}>
+                                    {theme.label}
+                                </span>
+                                <span className="rename-theme__example">{theme.example}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 

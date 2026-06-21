@@ -264,13 +264,13 @@
 .breed-parent {
     min-width: 0;
     border-radius: 12px;
-    padding: 12px;
-    border: 1px solid rgb(255 207 112 / 24%);
-    background: var(--neon-surface);
+    overflow: hidden;
+    border: 1px solid rgb(255 207 112 / 28%);
+    background: linear-gradient(180deg, rgb(10 16 32 / 97%), rgb(6 10 22 / 99%));
 }
 
 .breed-parent--b {
-    border-color: rgb(181 140 255 / 24%);
+    border-color: rgb(181 140 255 / 28%);
 }
 
 .breed-parent.is-empty {
@@ -289,22 +289,92 @@
     color: rgb(195 210 255 / 40%);
 }
 
-.breed-parent__head {
+/* Avatar panel with rarity / level / bred badges */
+.breed-parent__visual {
+    position: relative;
+    height: 120px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
+    justify-content: center;
+    overflow: hidden;
+    border-bottom: 1px solid rgb(255 207 112 / 12%);
+    background: radial-gradient(circle at 50% 50%, rgb(255 207 112 / 18%), transparent 65%), #070e1e;
+}
+
+.breed-parent--b .breed-parent__visual {
+    border-bottom-color: rgb(181 140 255 / 12%);
+    background: radial-gradient(circle at 50% 50%, rgb(181 140 255 / 18%), transparent 65%), #070e1e;
+}
+
+.breed-parent__rarity {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    border: 1px solid;
+    border-radius: 3px;
+    padding: 2px 7px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    background: rgb(5 13 30 / 55%);
+}
+
+.breed-parent__level {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgb(5 13 30 / 88%);
+    color: var(--neon-cyan);
+    border: 1px solid rgb(125 214 255 / 32%);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.breed-parent--b .breed-parent__level {
+    color: var(--neon-violet);
+    border-color: rgb(181 140 255 / 32%);
+}
+
+.breed-parent__bred {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+    background: rgb(255 207 112 / 12%);
+    color: var(--neon-amber);
+    border: 1px solid rgb(255 207 112 / 30%);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.breed-parent--b .breed-parent__bred {
+    background: rgb(181 140 255 / 12%);
+    color: var(--neon-violet);
+    border-color: rgb(181 140 255 / 30%);
 }
 
 .breed-parent__avatar {
-    font-size: 2rem;
+    font-size: 3.25rem;
     line-height: 1;
     flex-shrink: 0;
-    filter: drop-shadow(0 0 12px rgb(255 207 112 / 45%));
+    animation: cp-float 3.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 18px rgb(255 207 112 / 55%));
 }
 
 .breed-parent--b .breed-parent__avatar {
-    filter: drop-shadow(0 0 12px rgb(181 140 255 / 45%));
+    animation-duration: 4.2s;
+    filter: drop-shadow(0 0 18px rgb(181 140 255 / 55%));
+}
+
+.breed-parent__body {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .breed-parent__name {
@@ -320,7 +390,7 @@
 .breed-parent__class {
     font-size: 10px;
     color: rgb(195 210 255 / 50%);
-    margin-top: 2px;
+    margin-bottom: 2px;
 }
 
 .breed-parent__stats {
@@ -344,6 +414,15 @@
     flex-shrink: 0;
 }
 
+.breed-parent__stat-value {
+    font-size: 11px;
+    font-weight: 800;
+    color: #f4f2ff;
+    width: 22px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
 .breed-parent__stat-track {
     flex: 1;
     height: 5px;
@@ -358,13 +437,172 @@
     animation: cp-bar-grow 0.7s ease both;
 }
 
-.breed-parent__stat-value {
-    font-size: 11px;
-    font-weight: 800;
-    color: #f4f2ff;
-    width: 22px;
-    text-align: right;
+/* XP / HP meters */
+.breed-parent__meters {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.breed-parent__meter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.breed-parent__meter-label {
+    font-size: 8px;
+    font-weight: 700;
+    width: 18px;
     flex-shrink: 0;
+}
+
+.breed-parent__meter-label--xp {
+    color: rgb(125 214 255 / 50%);
+}
+
+.breed-parent__meter-label--hp {
+    color: rgb(15 255 174 / 50%);
+}
+
+.breed-parent__meter-track {
+    flex: 1;
+    height: 4px;
+    background: var(--neon-inset);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.breed-parent__meter-fill {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.breed-parent__meter-fill--xp {
+    background: linear-gradient(90deg, #7dd6ff, #b58cff);
+}
+
+.breed-parent__meter-fill--hp {
+    background: linear-gradient(90deg, #0fffae, #7dd6ff);
+}
+
+.breed-parent__meter-value {
+    font-size: 9px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.breed-parent__meter-value--xp {
+    color: rgb(125 214 255 / 70%);
+}
+
+.breed-parent__meter-value--hp {
+    color: rgb(15 255 174 / 70%);
+}
+
+/* W / L record */
+.breed-parent__record {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid rgb(101 131 255 / 10%);
+    font-size: 10px;
+    color: rgb(195 210 255 / 45%);
+}
+
+.breed-parent__wr {
+    font-weight: 700;
+    color: rgb(125 214 255 / 70%);
+}
+
+.breed-parent--b .breed-parent__wr {
+    color: rgb(181 140 255 / 70%);
+}
+
+/* ── Offspring trait prediction ─────────────────────────────────────────────── */
+.breed-traits {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid rgb(255 207 112 / 12%);
+    background: rgb(4 9 20 / 70%);
+}
+
+.breed-traits__title {
+    font-family: var(--title-font);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgb(195 210 255 / 35%);
+    margin-bottom: 10px;
+}
+
+.breed-traits__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+.breed-trait {
+    min-width: 0;
+    background: rgb(10 16 32 / 90%);
+    border: 1px solid rgb(101 131 255 / 18%);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.breed-trait__label {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.breed-trait__vs {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 6px;
+}
+
+.breed-trait__val {
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.breed-trait__val--a {
+    background: rgb(125 214 255 / 10%);
+    border: 1px solid rgb(125 214 255 / 25%);
+    color: var(--neon-cyan);
+}
+
+.breed-trait__val--b {
+    background: rgb(255 123 203 / 10%);
+    border: 1px solid rgb(255 123 203 / 25%);
+    color: var(--neon-magenta);
+}
+
+.breed-trait__sep {
+    font-size: 9px;
+    color: rgb(195 210 255 / 30%);
+}
+
+.breed-trait__range {
+    font-size: 10px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.breed-trait__dom {
+    font-size: 9px;
+    color: rgb(195 210 255 / 35%);
 }
 
 @media (max-width: 560px) {
@@ -376,6 +614,9 @@
         width: 100%;
         max-width: 200px;
     }
+    .breed-traits__grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -383,6 +624,7 @@
     .breed-dna__strand,
     .breed-dna__node,
     .breed-dna__compat-arc,
+    .breed-parent__avatar,
     .breed-parent__stat-fill {
         animation: none;
     }

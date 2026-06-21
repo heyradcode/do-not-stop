@@ -31,3 +31,66 @@
 .rename-reqs .is-pending {
     color: rgb(195 210 255 / 45%);
 }
+
+/* ── Name themes (naming aid) ────────────────────────────────────────────── */
+.rename-themes__title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgb(195 210 255 / 50%);
+    margin-bottom: 10px;
+}
+
+.rename-themes__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.rename-theme {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 2px solid rgb(101 131 255 / 18%);
+    background: rgb(10 16 32 / 70%);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.rename-theme:hover {
+    background: rgb(125 214 255 / 5%);
+    border-color: rgb(125 214 255 / 32%);
+}
+
+.rename-theme.is-active {
+    background: rgb(125 214 255 / 6%);
+}
+
+.rename-theme__icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.rename-theme__label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+}
+
+.rename-theme__example {
+    font-family: var(--title-font);
+    font-size: 9px;
+    color: rgb(195 210 255 / 50%);
+    word-break: break-all;
+}
+
+@media (max-width: 560px) {
+    .rename-themes__grid {
+        grid-template-columns: 1fr;
+    }
+}

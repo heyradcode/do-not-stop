@@ -96,36 +96,49 @@ const PetGallery: React.FC = () => {
 
     return (
         <div className="cp-idle">
-            {/* Stat strip — Pets & Wins are real; Global rank + leaderboard are placeholders */}
+            {/* Stat strip — Pets & Wins are real; Global rank is a placeholder */}
             <div className="cp-idle__stats">
                 <div className="cp-stat cp-stat--cyan">
-                    <div className="cp-stat__value">{pets.length}</div>
-                    <div className="cp-stat__label">Pets</div>
+                    <span className="cp-stat__icon" aria-hidden>
+                        🐾
+                    </span>
+                    <div className="cp-stat__body">
+                        <div className="cp-stat__value">{pets.length}</div>
+                        <div className="cp-stat__label">Pets</div>
+                    </div>
                 </div>
                 <div className="cp-stat cp-stat--violet">
-                    <div className="cp-stat__value">{totalWins}</div>
-                    <div className="cp-stat__label">Wins</div>
+                    <span className="cp-stat__icon" aria-hidden>
+                        ⚔
+                    </span>
+                    <div className="cp-stat__body">
+                        <div className="cp-stat__value">{totalWins}</div>
+                        <div className="cp-stat__label">Wins</div>
+                    </div>
                 </div>
                 <div className="cp-stat cp-stat--gold">
-                    <div className="cp-stat__value">#3</div>
-                    <div className="cp-stat__label">Global</div>
+                    <span className="cp-stat__icon" aria-hidden>
+                        🏆
+                    </span>
+                    <div className="cp-stat__body">
+                        <div className="cp-stat__value">#3</div>
+                        <div className="cp-stat__label">Global Rank</div>
+                    </div>
                 </div>
-                <div className="cp-leaderboard">
-                    <div className="cp-leaderboard__title">🏆 Leaderboard</div>
-                    <ul className="cp-leaderboard__list">
-                        {LEADERBOARD_PLACEHOLDER.map((row) => (
-                            <li
-                                key={row.rank}
-                                className={`cp-lb-row${row.me ? ' is-me' : ''}`}
-                            >
-                                <span className="cp-lb-row__rank">#{row.rank}</span>
-                                <span className="cp-lb-row__name">{row.name}</span>
-                                <span className="cp-lb-row__tier">{row.tier}</span>
-                                <span className="cp-lb-row__wins">{row.wins}W</span>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+            </div>
+
+            {/* Leaderboard — full-width row below the stats (placeholder ranking data) */}
+            <div className="cp-leaderboard">
+                <div className="cp-leaderboard__title">🏆 Leaderboard</div>
+                <ul className="cp-leaderboard__list">
+                    {LEADERBOARD_PLACEHOLDER.map((row) => (
+                        <li key={row.rank} className={`cp-lb-row${row.me ? ' is-me' : ''}`}>
+                            <span className="cp-lb-row__rank">#{row.rank}</span>
+                            <span className="cp-lb-row__name">{row.name}</span>
+                            <span className="cp-lb-row__tier">{row.tier}</span>
+                        </li>
+                    ))}
+                </ul>
             </div>
 
             {isLoading && (
