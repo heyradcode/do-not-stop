@@ -1,11 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
-import { getReadyPetsUnified, useChainCapabilities, useFees, useTrainPet, usePetList } from '@shared/core';
+import {
+    getPetAvatar,
+    getPetClass,
+    getReadyPetsUnified,
+    getXpNumbers,
+    getXpPercent,
+    useChainCapabilities,
+    useFees,
+    useTrainPet,
+    usePetList,
+} from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
+import './index.css';
 
 export type TrainPanelProps = {
     isStandaloneView?: boolean;
@@ -36,7 +47,8 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const fees = useFees();
-    const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
+    const selectedPetObj = readyPets.find(({ id }) => id === selectedPet)?.pet ?? null;
+    const selectedLevel = selectedPetObj?.level;
 
     // Train fee is level-scaled: baseFee × (100 + 2·level) / 100.
     const trainCost = useMemo(() => {
@@ -77,6 +89,33 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                         <h4>💪 Train Pet</h4>
                         <p>Pay a level-scaled fee for an instant XP boost.</p>
                     </>
+                )}
+
+                {selectedPetObj && (
+                    <div className="train-status">
+                        <div className="train-status__visual">
+                            <span className="train-status__level">Lv.{selectedPetObj.level}</span>
+                            <span className="train-status__avatar">
+                                {getPetAvatar(selectedPetObj.dna)}
+                            </span>
+                        </div>
+                        <div className="train-status__body">
+                            <div className="train-status__name">{selectedPetObj.name}</div>
+                            <div className="train-status__class">
+                                {getPetClass(selectedPetObj.dna)}
+                            </div>
+                            <div className="train-status__xp-track">
+                                <div
+                                    className="train-status__xp-fill"
+                                    style={{ width: `${getXpPercent(selectedPetObj)}%` }}
+                                />
+                            </div>
+                            <div className="train-status__xp">
+                                {getXpNumbers(selectedPetObj).xpCurrent}/
+                                {getXpNumbers(selectedPetObj).xpMax} XP
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 <div className="picker">
