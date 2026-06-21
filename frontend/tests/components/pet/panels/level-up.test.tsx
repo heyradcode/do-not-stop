@@ -29,6 +29,10 @@ const petList = {
 const capabilities = { levelUpFee: null as { amount: number; symbol: string } | null, isConnected: true };
 
 vi.mock('@shared/core', () => ({
+    getPetAvatar: () => '🐉',
+    getPetClass: () => 'Warrior',
+    getXpNumbers: () => ({ xpCurrent: 10, xpMax: 100 }),
+    getXpPercent: () => 10,
     getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
     useChainCapabilities: () => capabilities,
     useFees: () => ({

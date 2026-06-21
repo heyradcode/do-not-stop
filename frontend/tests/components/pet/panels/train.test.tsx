@@ -34,6 +34,10 @@ const petList = {
 
 vi.mock('@shared/core', () => ({
     useChainCapabilities: () => ({ isConnected: true }),
+    getPetAvatar: () => '🐉',
+    getPetClass: () => 'Warrior',
+    getXpNumbers: () => ({ xpCurrent: 10, xpMax: 100 }),
+    getXpPercent: () => 10,
     getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
     usePetList: () => petList,
     useFees: () => ({
