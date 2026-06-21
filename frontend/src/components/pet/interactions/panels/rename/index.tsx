@@ -1,11 +1,21 @@
 ﻿import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
-import { getReadyPetsUnified, useChainCapabilities, usePetList, useRenamePet } from '@shared/core';
+import {
+    getPetAvatar,
+    getPetClass,
+    getReadyPetsUnified,
+    useChainCapabilities,
+    usePetList,
+    useRenamePet,
+} from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon, QuillIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
+import './index.css';
+
+const MAX_NAME_LEN = 20;
 
 export type RenamePanelProps = {
     isStandaloneView?: boolean;
@@ -49,6 +59,10 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
         [readyPets, renameMinLevel],
     );
 
+    const selectedPetObj = selectablePets.find(({ id }) => id === selectedPet)?.pet ?? null;
+    const previewName = newName.trim() || selectedPetObj?.name || 'New Name';
+    const meetsMin = newName.trim().length >= 2;
+
     const handleChangeName = async () => {
         if (!isConnected) {
             notifyError('Please connect your wallet first', undefined, 'rename-validation');
@@ -86,6 +100,30 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                     </>
                 )}
 
+                {selectedPetObj && (
+                    <div className="rename-showcase">
+                        <div className="rename-rings">
+                            <span className="rename-ring" />
+                            <span className="rename-ring" />
+                            <span className="rename-avatar">
+                                {getPetAvatar(selectedPetObj.dna)}
+                            </span>
+                        </div>
+                        <div className="rename-preview">{previewName}</div>
+                        <div className="rename-sub">
+                            {getPetClass(selectedPetObj.dna)} · Lv.{selectedPetObj.level}
+                        </div>
+                        <div className="rename-reqs">
+                            <div className={meetsMin ? 'is-ok' : 'is-pending'}>
+                                {meetsMin ? '✓' : '○'} Min 2 characters
+                            </div>
+                            <div className="is-ok">
+                                ✓ Max {MAX_NAME_LEN} characters ({newName.length})
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="picker">
                     <div className="field">
                         <label htmlFor="rename-pet">Select Pet</label>
@@ -111,7 +149,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
                             placeholder="Enter new name..."
-                            maxLength={20}
+                            maxLength={MAX_NAME_LEN}
                         />
                     </div>
                 </div>
