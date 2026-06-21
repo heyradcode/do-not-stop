@@ -13,6 +13,7 @@ import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon, QuillIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
+import PetShowcase from '../_shared/pet-showcase';
 import './index.css';
 
 const MAX_NAME_LEN = 20;
@@ -101,14 +102,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 )}
 
                 {selectedPetObj && (
-                    <div className="rename-showcase">
-                        <div className="rename-rings">
-                            <span className="rename-ring" />
-                            <span className="rename-ring" />
-                            <span className="rename-avatar">
-                                {getPetAvatar(selectedPetObj.dna)}
-                            </span>
-                        </div>
+                    <PetShowcase avatar={getPetAvatar(selectedPetObj.dna)} accent="cyan">
                         <div className="rename-preview">{previewName}</div>
                         <div className="rename-sub">
                             {getPetClass(selectedPetObj.dna)} · Lv.{selectedPetObj.level}
@@ -121,7 +115,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                                 ✓ Max {MAX_NAME_LEN} characters ({newName.length})
                             </div>
                         </div>
-                    </div>
+                    </PetShowcase>
                 )}
 
                 <div className="picker">

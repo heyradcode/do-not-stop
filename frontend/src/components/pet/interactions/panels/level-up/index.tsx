@@ -17,6 +17,7 @@ import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 import SyncMetadataButton from './sync-metadata-button';
+import PetShowcase from '../_shared/pet-showcase';
 import './index.css';
 
 export type LevelUpPanelProps = {
@@ -107,13 +108,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 )}
 
                 {selectedPetObj && (
-                    <div className="lvl-showcase">
-                        <div className="lvl-rings">
-                            <span className="lvl-ring" />
-                            <span className="lvl-ring" />
-                            <span className="lvl-ring" />
-                            <span className="lvl-avatar">{getPetAvatar(selectedPetObj.dna)}</span>
-                        </div>
+                    <PetShowcase avatar={getPetAvatar(selectedPetObj.dna)} accent="violet">
                         <div className="lvl-name">{selectedPetObj.name}</div>
                         <div className="lvl-class">{getPetClass(selectedPetObj.dna)}</div>
                         <div className="lvl-transition">
@@ -142,7 +137,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                                 />
                             </div>
                         </div>
-                    </div>
+                    </PetShowcase>
                 )}
 
                 <div className="picker">

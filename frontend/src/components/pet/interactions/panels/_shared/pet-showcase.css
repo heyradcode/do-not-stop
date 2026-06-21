@@ -1,0 +1,60 @@
+/* Shared ring-avatar hero (level-up, rename). Accent via --sc-accent (rgb triple). */
+.pet-showcase {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    text-align: center;
+}
+
+.pet-showcase__rings {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pet-showcase__ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid rgb(var(--sc-accent) / 28%);
+    animation: cp-power-ring 2.6s ease-out infinite;
+}
+
+.pet-showcase__ring:nth-child(1) {
+    inset: 0;
+}
+.pet-showcase__ring:nth-child(2) {
+    inset: 16px;
+    animation-delay: 0.6s;
+}
+.pet-showcase__ring:nth-child(3) {
+    inset: 32px;
+    animation-delay: 1.2s;
+}
+
+.pet-showcase__avatar {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 98px;
+    height: 98px;
+    font-size: 3.5rem;
+    line-height: 1;
+    border-radius: 18px;
+    animation: cp-float 3.6s ease-in-out infinite;
+    filter: drop-shadow(0 0 28px rgb(var(--sc-accent) / 80%));
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pet-showcase__ring,
+    .pet-showcase__avatar {
+        animation: none;
+    }
+}

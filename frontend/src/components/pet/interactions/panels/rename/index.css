@@ -1,53 +1,4 @@
-/* Rename showcase — glowing avatar + live name preview + requirements (cyan). */
-.rename-showcase {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 18px;
-    text-align: center;
-}
-
-.rename-rings {
-    position: relative;
-    width: 150px;
-    height: 150px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.rename-ring {
-    position: absolute;
-    border-radius: 50%;
-    border: 2px solid rgb(125 214 255 / 22%);
-    animation: cp-power-ring 3s ease-out infinite;
-}
-
-.rename-ring:nth-child(1) {
-    inset: 0;
-}
-.rename-ring:nth-child(2) {
-    inset: 18px;
-    animation-delay: 0.7s;
-}
-
-.rename-avatar {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100px;
-    height: 100px;
-    font-size: 3.6rem;
-    line-height: 1;
-    border-radius: 18px;
-    animation: cp-float 3.8s ease-in-out infinite;
-    filter: drop-shadow(0 0 28px rgb(125 214 255 / 75%));
-}
-
+/* Rename details below the shared ring-avatar hero (live preview + requirements). */
 .rename-preview {
     font-family: var(--title-font);
     font-size: 18px;
@@ -79,11 +30,4 @@
 
 .rename-reqs .is-pending {
     color: rgb(195 210 255 / 45%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .rename-ring,
-    .rename-avatar {
-        animation: none;
-    }
 }
