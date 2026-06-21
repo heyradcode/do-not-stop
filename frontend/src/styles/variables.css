@@ -52,6 +52,50 @@
         ),
         radial-gradient(circle at 80% 20%, rgb(32 163 255 / 14%) 0%, transparent 44%),
         var(--neon-base-bg);
+
+    /* Accent tokens introduced by the redesign (badges, streak, emerald HP, gold rank) */
+    --neon-gold: #ffd700;
+    --neon-amber: #ffcf70;
+    --neon-emerald: #0fffae;
+
+    /* Rarity ladder (common → legendary) */
+    --rarity-common: #9ca3af;
+    --rarity-rare: #7dd6ff;
+    --rarity-epic: #b58cff;
+    --rarity-legendary: #ff7bcb;
+
+    /* Panel surfaces used across shell + cards */
+    --neon-surface: linear-gradient(160deg, rgb(10 16 34 / 97%), rgb(6 10 24 / 99%));
+    --neon-surface-flat: rgb(10 16 32 / 88%);
+    --neon-inset: rgb(5 13 30 / 80%);
+
+    /* Per-view radial background washes (content area accents by feature) */
+    --wash-battle: radial-gradient(circle at 50% 110%, rgb(255 123 203 / 14%), transparent 55%),
+        var(--neon-base-bg);
+    --wash-breed: radial-gradient(circle at 50% 0%, rgb(255 207 112 / 13%), transparent 50%),
+        radial-gradient(circle at 20% 100%, rgb(181 140 255 / 8%), transparent 40%),
+        var(--neon-base-bg);
+    --wash-levelup: radial-gradient(circle at 50% 0%, rgb(181 140 255 / 16%), transparent 50%),
+        radial-gradient(circle at 50% 100%, rgb(255 215 0 / 10%), transparent 50%),
+        var(--neon-base-bg);
+    --wash-train: radial-gradient(circle at 20% 0%, rgb(125 214 255 / 12%), transparent 45%),
+        radial-gradient(circle at 80% 100%, rgb(15 255 174 / 8%), transparent 45%),
+        var(--neon-base-bg);
+    --wash-marriage: radial-gradient(circle at 50% 0%, rgb(255 123 203 / 15%), transparent 50%),
+        var(--neon-base-bg);
+    --wash-rename: radial-gradient(circle at 50% 0%, rgb(125 214 255 / 12%), transparent 45%),
+        var(--neon-base-bg);
+}
+
+/* =============================================================================
+   App shell dimensions (sidebar + header)
+   ============================================================================= */
+:root {
+    --shell-sidebar-collapsed: 72px;
+    --shell-sidebar-expanded: 236px;
+    --shell-header-height: 64px;
+    --shell-nav-item-height: 50px;
+    --shell-transition: 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* =============================================================================
