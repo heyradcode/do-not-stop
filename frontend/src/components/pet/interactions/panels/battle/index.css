@@ -8,6 +8,9 @@
     min-width: 0;
     max-width: 100%;
     overflow-x: clip;
+    /* Fill the panel height so the stage stretches instead of hugging the top. */
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .battle-setup-arena {
@@ -266,6 +269,9 @@
     width: 100%;
     min-width: 0;
     align-items: stretch;
+    /* Stretch to fill the battle-setup height; lanes scroll inside their column. */
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 /* Center column holds the arena card, win odds, and the action bar. It gets the
@@ -276,6 +282,12 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+/* Pin the action bar to the bottom of the center column so the arena + odds sit
+   up top and the filled height reads as intentional. */
+.battle-center .action-controls {
+    margin-top: auto;
 }
 
 .battle-stage .battle-picker-section {
@@ -318,7 +330,9 @@
     box-sizing: border-box;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: clamp(260px, 52vh, 620px);
+    /* Fill the lane's remaining height (below its header) and scroll within. */
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 4px;
     scroll-padding: 4px;
     scrollbar-width: thin;
@@ -338,6 +352,13 @@
 /* Below 960px the three columns get cramped: stack them, with the arena +
    Start Battle on top, then the two lanes. */
 @media (max-width: 960px) {
+    /* Stacked: let the content take its natural height and the panel scroll,
+       rather than flex-filling a single viewport of stacked lanes. */
+    .dashboard-panel.pet-interactions .interface.battle-setup,
+    .battle-stage {
+        flex: 0 0 auto;
+    }
+
     .battle-stage {
         flex-direction: column;
     }
@@ -348,6 +369,7 @@
 
     .battle-picker-strip,
     .battle-opponent-grid {
+        flex: 0 0 auto;
         max-height: clamp(180px, 30vh, 360px);
     }
 }
