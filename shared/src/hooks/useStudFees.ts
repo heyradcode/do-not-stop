@@ -58,7 +58,7 @@ export const useStudFees = (): UseStudFeesResult => {
         amountLamports,
         isLoading: query.isLoading,
         withdraw: {
-            run: actions.withdrawStudFees.mutateAsync,
+            run: async () => { await actions.withdrawStudFees.mutateAsync(); },
             isPending: actions.withdrawStudFees.isPending,
             error: actions.withdrawStudFees.error as Error | null,
         },

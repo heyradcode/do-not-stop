@@ -43,6 +43,7 @@ vi.mock('@shared/core', () => ({
         capturedOnSuccess = opts?.onSuccess;
         return levelUpPet;
     },
+    useSyncMetadata: () => ({ sync: vi.fn(), isPending: false, error: null }),
 }));
 
 import LevelUpPanel from '@components/pet/interactions/panels/level-up';

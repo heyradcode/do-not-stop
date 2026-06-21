@@ -25,8 +25,11 @@ vi.mock('@components/common', () => ({
         </button>
     ),
 }));
-// New sibling that reaches into PetsConfig/wagmi — stub it out.
+// Siblings that reach into PetsConfig/wagmi/Anchor — stub them out.
 vi.mock('@components/pet/interactions/panels/battle/parts/pending-battle-notice', () => ({
+    default: () => null,
+}));
+vi.mock('@components/pet/interactions/panels/battle/parts/open-to-challenges-toggle', () => ({
     default: () => null,
 }));
 
