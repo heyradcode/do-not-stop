@@ -18,12 +18,34 @@
     position: relative;
     overflow: hidden;
 
+    /* Card shell — directional fighter/opponent tint with deep dark base */
+    background:
+        linear-gradient(90deg, rgb(125 214 255 / 5%) 0%, transparent 38%, transparent 62%, rgb(255 110 196 / 5%) 100%),
+        radial-gradient(ellipse 100% 120% at 50% 110%, rgb(255 110 196 / 9%), transparent 55%),
+        linear-gradient(170deg, rgb(11 18 40 / 97%), rgb(5 9 22 / 99%));
+    border: 1px solid rgb(255 110 196 / 26%);
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 4%),
+        inset 0 0 48px rgb(255 110 196 / 4%),
+        0 0 24px rgb(255 110 196 / 8%),
+        0 8px 32px rgb(0 0 0 / 30%);
+
+    /* Suppress the hub-divider — gap handles spacing */
+    .hub-divider {
+        display: none;
+    }
+
     .header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 8px;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 700;
         color: var(--zi-text);
     }
@@ -38,55 +60,87 @@
     .arena-badge {
         background: rgb(255 110 196 / 10%);
         color: #ff9ad6;
-        border: 1px solid rgb(255 110 196 / 44%);
+        border: 1px solid rgb(255 110 196 / 40%);
         border-radius: 999px;
-        padding: 2px 8px;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.4px;
+        padding: 3px 10px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.6px;
         text-transform: uppercase;
-        box-shadow: 0 0 8px rgb(255 110 196 / 22%);
+        box-shadow: 0 0 10px rgb(255 110 196 / 18%), inset 0 0 8px rgb(255 110 196 / 6%);
         white-space: nowrap;
     }
 
     .arena-slot {
-        background: var(--zi-card-bg);
-        border: 2px solid var(--zi-border);
-        border-radius: 8px;
-        padding: 8px;
+        background: rgb(4 8 20 / 82%);
+        border: 1px solid var(--zi-border);
+        border-radius: 12px;
+        padding: 10px;
         display: grid;
-        gap: 6px;
+        gap: 8px;
         min-width: 0;
         max-width: 100%;
         width: 100%;
-        min-height: 72px;
+        min-height: 88px;
         box-sizing: border-box;
         overflow: hidden;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
         &.is-empty {
             border-style: dashed;
-            border-color: rgb(125 214 255 / 28%);
             align-content: center;
             justify-items: center;
             text-align: center;
+            background: rgb(4 8 18 / 55%);
 
             .slot-placeholder {
                 animation: battle-slot-pulse 2.4s ease-in-out infinite;
             }
         }
 
-        &.is-selected {
-            border-color: rgb(255 110 196 / 65%);
-            box-shadow: inset 0 0 14px rgb(255 110 196 / 18%);
-            animation: battle-slot-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-        }
-
         &.is-flash {
             animation: battle-slot-flash 0.52s ease;
+        }
+
+        /* Fighter (left) = cyan identity */
+        &.arena-slot-fighter {
+            border-color: rgb(125 214 255 / 20%);
+
+            &.is-empty {
+                border-color: rgb(125 214 255 / 16%);
+            }
+
+            &.is-selected {
+                border-color: rgb(125 214 255 / 52%);
+                box-shadow: inset 0 0 18px rgb(125 214 255 / 10%), 0 0 10px rgb(125 214 255 / 8%);
+                animation: battle-slot-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+            }
+        }
+
+        /* Opponent (right) = magenta identity */
+        &.arena-slot-opponent {
+            border-color: rgb(255 110 196 / 20%);
+
+            &.is-empty {
+                border-color: rgb(255 110 196 / 16%);
+            }
+
+            &.is-selected {
+                border-color: rgb(255 110 196 / 58%);
+                box-shadow: inset 0 0 18px rgb(255 110 196 / 12%), 0 0 10px rgb(255 110 196 / 8%);
+                animation: battle-slot-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+            }
         }
     }
 
     &.is-ready {
+        border-color: rgb(255 110 196 / 42%);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 4%),
+            inset 0 0 48px rgb(255 110 196 / 6%),
+            0 0 32px rgb(255 110 196 / 14%),
+            0 8px 32px rgb(0 0 0 / 30%);
+
         .center {
             .icon {
                 animation: battle-vs-glow 1.8s ease-in-out infinite;
@@ -95,7 +149,7 @@
             .vs {
                 animation: battle-vs-pulse 1.8s ease-in-out infinite;
                 color: #ff9ad6;
-                text-shadow: 0 0 10px rgb(255 110 196 / 45%);
+                text-shadow: 0 0 16px rgb(255 110 196 / 55%);
             }
         }
     }
@@ -109,20 +163,52 @@
     }
 
     &.is-result {
-        border-color: rgb(0 255 157 / 38%);
-        box-shadow: inset 0 0 18px rgb(0 255 157 / 10%);
+        border-color: rgb(0 255 157 / 40%);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 4%),
+            inset 0 0 48px rgb(0 255 157 / 8%),
+            0 0 30px rgb(0 255 157 / 16%),
+            0 8px 32px rgb(0 0 0 / 30%);
     }
 
     .content {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        gap: 10px;
+        align-items: center;
         min-width: 0;
         overflow: hidden;
     }
 
     .center {
         flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 0 4px;
 
         .icon {
-            box-shadow: inset 0 0 10px rgb(255 110 196 / 24%);
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, rgb(255 110 196 / 20%), rgb(255 110 196 / 6%) 65%, transparent);
+            border: 1px solid rgb(255 110 196 / 34%);
+            box-shadow:
+                inset 0 0 14px rgb(255 110 196 / 22%),
+                0 0 20px rgb(255 110 196 / 12%);
+        }
+
+        .vs {
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            color: rgb(255 110 196 / 58%);
+            text-shadow: 0 0 10px rgb(255 110 196 / 28%);
+            line-height: 1;
         }
     }
 
@@ -143,16 +229,16 @@
 
     .slot-avatar {
         flex-shrink: 0;
-        width: 32px;
-        height: 32px;
+        width: 38px;
+        height: 38px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.35rem;
+        font-size: 1.5rem;
         line-height: 1;
-        border-radius: 8px;
-        background: rgb(5 13 30 / 78%);
-        border: 1px solid rgb(125 214 255 / 18%);
+        border-radius: 10px;
+        background: rgb(5 13 30 / 82%);
+        border: 1px solid rgb(125 214 255 / 16%);
     }
 
     .slot-meta {
@@ -162,7 +248,7 @@
     }
 
     .slot-name {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
         color: var(--zi-text);
         overflow: hidden;
@@ -179,17 +265,17 @@
     }
 
     .life-track {
-        height: 7px;
-        background: rgb(5 13 30 / 78%);
-        border: 1px solid rgb(0 255 157 / 18%);
+        height: 5px;
+        background: rgb(4 8 18 / 90%);
         border-radius: 999px;
         overflow: hidden;
     }
 
     .life-fill {
         height: 100%;
-        background: linear-gradient(90deg, #0fffae, #9effd4);
-        box-shadow: inset 0 0 6px rgb(0 255 157 / 35%);
+        background: linear-gradient(90deg, #0dffb4, #7dffcc);
+        box-shadow: 0 0 8px rgb(0 255 157 / 55%);
+        border-radius: 999px;
     }
 }
 
@@ -282,12 +368,9 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-}
-
-/* Pin the action bar to the bottom of the center column so the arena + odds sit
-   up top and the filled height reads as intentional. */
-.battle-center .action-controls {
-    margin-top: auto;
+    /* Center the arena (and odds + action bar) vertically within the full-height
+       column, so the VS card sits in the middle rather than hugging the top. */
+    justify-content: center;
 }
 
 .battle-stage .battle-picker-section {
@@ -782,11 +865,11 @@
 @keyframes battle-vs-glow {
     0%,
     100% {
-        box-shadow: inset 0 0 10px rgb(255 110 196 / 24%);
+        box-shadow: inset 0 0 14px rgb(255 110 196 / 22%), 0 0 20px rgb(255 110 196 / 12%);
     }
 
     50% {
-        box-shadow: inset 0 0 16px rgb(255 110 196 / 38%);
+        box-shadow: inset 0 0 20px rgb(255 110 196 / 38%), 0 0 28px rgb(255 110 196 / 22%);
     }
 }
 
@@ -799,11 +882,19 @@
 @keyframes battle-arena-clash {
     0%,
     100% {
-        box-shadow: inset 0 0 0 rgb(255 110 196 / 0%);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 4%),
+            inset 0 0 48px rgb(255 110 196 / 4%),
+            0 0 24px rgb(255 110 196 / 8%),
+            0 8px 32px rgb(0 0 0 / 30%);
     }
 
     50% {
-        box-shadow: inset 0 0 28px rgb(255 110 196 / 16%);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 4%),
+            inset 0 0 60px rgb(255 110 196 / 20%),
+            0 0 40px rgb(255 110 196 / 22%),
+            0 8px 32px rgb(0 0 0 / 30%);
     }
 }
 
@@ -858,13 +949,18 @@
 @media (max-width: 768px) {
     .battle-setup-arena {
         .content {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: 1fr;
         }
 
         .center {
-            flex-direction: row !important;
+            flex-direction: row;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
+
+            .icon {
+                width: 36px;
+                height: 36px;
+            }
         }
 
         .header {
