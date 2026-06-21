@@ -1,40 +1,58 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     getGeneration,
-    getPropertyEmoji,
-    getXpNumbers,
-    getXpPercent,
+    getLifePercent,
     getPetAvatar,
     getPetClass,
-    getPetElement,
     getPetProperties,
     getPetSkill,
     getRarityColor,
     getRarityName,
+    getXpNumbers,
+    getXpPercent,
     useChainCapabilities,
     usePetList,
     type Pet,
 } from '@shared/core';
+import { BATTLE_PATH } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
-import Icon, {
-    CloseIcon,
-    CrystalIcon,
-    DragonIcon,
-    EggIcon,
-    MagicIcon,
-    PawIcon,
-    SendIcon,
-    SparklesIcon,
-} from '@components/ui/icon';
+import Icon, { BattleIcon, CloseIcon, PawIcon, SendIcon } from '@components/ui/icon';
 import NeonButton from '@components/ui/neon-button';
 import CreatePetModal from '@components/pet/creation/create-pet-modal';
-import PetCollectionLayout from '@components/pet/collection/pet-collection-layout';
 import SendPetModal from '@components/pet/transfer/send-pet-modal';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { usePetCooldowns } from '@hooks/usePetCooldowns';
 import './index.css';
 
+/** Placeholder leaderboard rows — pending real ranking data (plan §8 Q3). */
+const LEADERBOARD_PLACEHOLDER = [
+    { rank: 1, name: 'CryptoKing', wins: 842, tier: 'Diamond', me: false },
+    { rank: 2, name: 'DragonMstr', wins: 721, tier: 'Diamond', me: false },
+    { rank: 3, name: 'You', wins: 649, tier: 'Gold', me: true },
+    { rank: 4, name: 'PetLegend', wins: 511, tier: 'Gold', me: false },
+    { rank: 5, name: 'BreedKing', wins: 402, tier: 'Platinum', me: false },
+] as const;
+
+/** Four stat tiles derived from the pet's DNA properties. AGI has no backing in
+ *  the data model, so the fourth tile shows VIT (life); see plan §8 Q2. */
+const petStatTiles = (pet: Pet): { label: string; value: number }[] => {
+    const p = getPetProperties(pet);
+    return [
+        { label: 'STR', value: p.attack },
+        { label: 'INT', value: p.intelligence },
+        { label: 'DEF', value: p.defense },
+        { label: 'VIT', value: p.life },
+    ];
+};
+
+const winRatio = (pet: Pet): number => {
+    const total = pet.winCount + pet.lossCount;
+    return total === 0 ? 0 : Math.round((pet.winCount / total) * 100);
+};
+
 const PetGallery: React.FC = () => {
+    const navigate = useNavigate();
     const { isConnected } = useChainCapabilities();
     const { pets, isLoading, error, refetch } = usePetList();
     const notifyError = useNotifyError();
@@ -43,8 +61,12 @@ const PetGallery: React.FC = () => {
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [sendSelection, setSendSelection] = useState<{ pet: Pet; petId: bigint } | null>(null);
 
-    // Owns the 1s tick and the per-pet readiness math so the view stays declarative.
     const { statusFor } = usePetCooldowns(pets);
+
+    const totalWins = useMemo(
+        () => pets.reduce((sum, pet) => sum + (pet.winCount ?? 0), 0),
+        [pets],
+    );
 
     useEffect(() => {
         setLoading(isLoading);
@@ -67,236 +89,222 @@ const PetGallery: React.FC = () => {
 
     if (!isConnected) {
         return (
-            <PetCollectionLayout
-                className="wallet-disconnected"
-                title={
-                    <>
-                        <Icon as={PawIcon} tone={Tones.Cyan} />
-                        Your Pet Collection
-                    </>
-                }
-                description="Connect your wallet to view your pets"
-            />
+            <div className="cp-idle cp-idle--message">
+                <div className="cp-idle__prompt">
+                    <Icon as={PawIcon} tone={Tones.Cyan} glow="strong" className="no-gap" />
+                    <h2>Your Pet Collection</h2>
+                    <p>Connect your wallet to view your pets.</p>
+                </div>
+            </div>
         );
     }
 
     return (
-        <>
-            <PetCollectionLayout
-                title={
-                    <>
-                        <Icon as={PawIcon} tone={Tones.Cyan} />
-                        Your Pets
-                    </>
-                }
-                actions={
-                    <button
-                        type="button"
-                        onClick={() => refetch()}
-                        className="refresh"
-                        disabled={loading}
-                        title={loading ? 'Loading...' : 'Refresh'}
-                    >
-                        {loading ? '⟳' : '↻'}
-                    </button>
-                }
-            >
-                {loading && (
-                    <div className="loading-container">
-                        <div className="loading-spinner"></div>
-                        <p>Loading your pets...</p>
-                    </div>
-                )}
+        <div className="cp-idle">
+            {/* Stat strip — Pets & Wins are real; Global rank + leaderboard are placeholders */}
+            <div className="cp-idle__stats">
+                <div className="cp-stat cp-stat--cyan">
+                    <div className="cp-stat__value">{pets.length}</div>
+                    <div className="cp-stat__label">Pets</div>
+                </div>
+                <div className="cp-stat cp-stat--violet">
+                    <div className="cp-stat__value">{totalWins}</div>
+                    <div className="cp-stat__label">Wins</div>
+                </div>
+                <div className="cp-stat cp-stat--gold">
+                    <div className="cp-stat__value">#3</div>
+                    <div className="cp-stat__label">Global</div>
+                </div>
+                <div className="cp-leaderboard">
+                    <div className="cp-leaderboard__title">🏆 Leaderboard</div>
+                    <ul className="cp-leaderboard__list">
+                        {LEADERBOARD_PLACEHOLDER.map((row) => (
+                            <li
+                                key={row.rank}
+                                className={`cp-lb-row${row.me ? ' is-me' : ''}`}
+                            >
+                                <span className="cp-lb-row__rank">#{row.rank}</span>
+                                <span className="cp-lb-row__name">{row.name}</span>
+                                <span className="cp-lb-row__tier">{row.tier}</span>
+                                <span className="cp-lb-row__wins">{row.wins}W</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
 
-                {error && (
-                    <div className="error-container">
-                        <p>
-                            <Icon as={CloseIcon} tone={Tones.Magenta} />
-                            Failed to load pet data. Please try again.
-                        </p>
-                        <NeonButton tone="magenta" size="sm" onClick={() => refetch()}>
-                            Try Again
-                        </NeonButton>
-                    </div>
-                )}
+            {loading && (
+                <div className="loading-container">
+                    <div className="loading-spinner" />
+                    <p>Loading your pets...</p>
+                </div>
+            )}
 
-                {!loading && !error && pets.length === 0 && (
-                    <div className="empty-state">
-                        <div className="altar" aria-hidden>
-                            <span className="ring ring-outer" />
-                            <span className="ring ring-mid" />
-                            <span className="ring ring-inner" />
-                            <span className="orb orb-tl">
-                                <Icon
-                                    as={CrystalIcon}
-                                    tone={Tones.Cyan}
-                                    glow="strong"
-                                    className="no-gap"
-                                />
-                            </span>
-                            <span className="orb orb-tr">
-                                <Icon
-                                    as={SparklesIcon}
-                                    tone={Tones.Magenta}
-                                    glow="strong"
-                                    className="no-gap"
-                                />
-                            </span>
-                            <span className="orb orb-bl">
-                                <Icon
-                                    as={EggIcon}
-                                    tone={Tones.Amber}
-                                    glow="strong"
-                                    className="no-gap"
-                                />
-                            </span>
-                            <span className="orb orb-br">
-                                <Icon
-                                    as={MagicIcon}
-                                    tone={Tones.Violet}
-                                    glow="strong"
-                                    className="no-gap"
-                                />
-                            </span>
-                            <span className="core">
-                                <Icon
-                                    as={DragonIcon}
-                                    tone={Tones.Violet}
-                                    glow="strong"
-                                    className="no-gap"
-                                />
-                            </span>
-                        </div>
-                        <div className="empty-copy">
-                            <h3>Awaken your first companion</h3>
-                            <p>Step into the altar — name a pet and bring it to life.</p>
-                        </div>
-                        <NeonButton tone="cyan" onClick={() => setCreateModalOpen(true)}>
-                            <Icon as={PawIcon} tone={Tones.Cyan} />
-                            Create your first pet
-                        </NeonButton>
-                    </div>
-                )}
+            {error && !loading && (
+                <div className="error-container">
+                    <p>
+                        <Icon as={CloseIcon} tone={Tones.Magenta} />
+                        Failed to load pet data. Please try again.
+                    </p>
+                    <NeonButton tone="magenta" size="sm" onClick={() => refetch()}>
+                        Try Again
+                    </NeonButton>
+                </div>
+            )}
 
-                {!loading && !error && pets.length > 0 && (
-                    <div className="pet-grid">
-                        {pets.map((pet) => {
-                            const cd = statusFor(pet);
-                            return (
-                                <div key={`${pet.chain}-${pet.id}`} className="pet-card">
-                                    <div className="pet-visual">
-                                        <div
-                                            className="rarity-badge"
-                                            style={{ backgroundColor: getRarityColor(pet.rarity) }}
-                                        >
-                                            {getRarityName(pet.rarity)}
-                                        </div>
-                                        <div className="element-tag">{getPetElement(pet.dna)}</div>
-                                        {getPetSkill(pet.speciesId) ? (
-                                            <div
-                                                className="skill-badge"
-                                                title={getPetSkill(pet.speciesId)?.description}
-                                            >
-                                                {getPetSkill(pet.speciesId)?.name}
-                                            </div>
-                                        ) : null}
-                                        <div className="pet-avatar">{getPetAvatar(pet.dna)}</div>
-                                        <div className="level-badge">Lv. {pet.level}</div>
+            {!loading && !error && (
+                <div className="cp-pet-grid">
+                    {pets.map((pet) => {
+                        const cd = statusFor(pet);
+                        const rarityColor = getRarityColor(pet.rarity);
+                        const xp = getXpNumbers(pet);
+                        return (
+                            <div key={`${pet.chain}-${pet.id}`} className="cp-pet-card">
+                                <div
+                                    className="cp-pet-card__rarity-bar"
+                                    style={{
+                                        background: rarityColor,
+                                        boxShadow: `0 0 8px ${rarityColor}`,
+                                    }}
+                                />
+                                <div className="cp-pet-card__visual">
+                                    <div
+                                        className="cp-pet-card__rarity"
+                                        style={{ color: rarityColor, borderColor: rarityColor }}
+                                    >
+                                        {getRarityName(pet.rarity)}
                                     </div>
+                                    <div className="cp-pet-card__level">Lv. {pet.level}</div>
+                                    {getPetSkill(pet.speciesId) ? (
+                                        <div
+                                            className="cp-pet-card__skill"
+                                            title={getPetSkill(pet.speciesId)?.description}
+                                        >
+                                            {getPetSkill(pet.speciesId)?.name}
+                                        </div>
+                                    ) : null}
+                                    <div className="cp-pet-card__avatar">
+                                        {getPetAvatar(pet.dna)}
+                                    </div>
+                                </div>
 
-                                    <div className="pet-main-info">
-                                        <div className="pet-header">
-                                            <h3>{pet.name}</h3>
-                                            <span className="pet-dna">
+                                <div className="cp-pet-card__info">
+                                    <div className="cp-pet-card__head">
+                                        <div>
+                                            <div className="cp-pet-card__name">{pet.name}</div>
+                                            <div className="cp-pet-card__class">
                                                 {getPetClass(pet.dna)} · Gen{' '}
                                                 {pet.generation ?? getGeneration(pet.dna)}
+                                            </div>
+                                        </div>
+                                        <div className="cp-pet-card__hp">
+                                            <span className="cp-pet-card__hp-label">HP</span>
+                                            <span className="cp-pet-card__hp-value">
+                                                {getLifePercent(pet)}%
                                             </span>
                                         </div>
-                                        <div className="xp-row">
-                                            <span className="xp-label">XP</span>
-                                            <span className="xp-value">
-                                                {getXpNumbers(pet).xpCurrent}/
-                                                {getXpNumbers(pet).xpMax}
+                                    </div>
+
+                                    <div className="cp-pet-card__xp">
+                                        <div className="cp-pet-card__xp-row">
+                                            <span className="cp-pet-card__xp-label">XP</span>
+                                            <span className="cp-pet-card__xp-value">
+                                                {xp.xpCurrent}/{xp.xpMax}
                                             </span>
                                         </div>
-                                        <div className="xp-bar">
+                                        <div className="cp-pet-card__xp-track">
                                             <div
-                                                className="xp-fill"
+                                                className="cp-pet-card__xp-fill"
                                                 style={{ width: `${getXpPercent(pet)}%` }}
                                             />
                                         </div>
-                                        {(pet.winCount > 0 ||
-                                            pet.lossCount > 0 ||
-                                            (pet.breedCount != null && pet.breedCount > 0)) && (
-                                            <div className="pet-record">
-                                                <span className="record-wins">{pet.winCount}W</span>
-                                                <span className="record-sep">/</span>
-                                                <span className="record-losses">
-                                                    {pet.lossCount}L
-                                                </span>
-                                                {pet.breedCount != null && pet.breedCount > 0 && (
-                                                    <span className="record-breeds">
-                                                        · {pet.breedCount} bred
-                                                    </span>
-                                                )}
+                                    </div>
+
+                                    <div className="cp-pet-card__record">
+                                        <span className="cp-pet-card__wins">{pet.winCount}W</span>
+                                        <span className="cp-pet-card__sep">/</span>
+                                        <span className="cp-pet-card__losses">
+                                            {pet.lossCount}L
+                                        </span>
+                                        <span className="cp-pet-card__dot">·</span>
+                                        <span className="cp-pet-card__wr">{winRatio(pet)}% WR</span>
+                                    </div>
+                                </div>
+
+                                <div className="cp-pet-card__stats">
+                                    {petStatTiles(pet).map((s) => (
+                                        <div className="cp-stat-tile" key={s.label}>
+                                            <div className="cp-stat-tile__label">{s.label}</div>
+                                            <div className="cp-stat-tile__value">{s.value}</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {cd.onCooldown && (
+                                    <div className="cp-pet-card__status">
+                                        {cd.battleOnCooldown && (
+                                            <div className="cp-cooldown">
+                                                ⚔️ Battle ready in {cd.battleLabel}
+                                            </div>
+                                        )}
+                                        {cd.breedOnCooldown && (
+                                            <div className="cp-cooldown">
+                                                🥚 Breed ready in {cd.breedLabel}
+                                            </div>
+                                        )}
+                                        {cd.trainOnCooldown && (
+                                            <div className="cp-cooldown">
+                                                💪 Train ready in {cd.trainLabel}
                                             </div>
                                         )}
                                     </div>
+                                )}
 
-                                    <div className="pet-properties">
-                                        {Object.entries(getPetProperties(pet)).map(
-                                            ([key, value]) => (
-                                                <div className="property-item" key={key}>
-                                                    <span className="property-name" title={key}>
-                                                        {getPropertyEmoji(key)}
-                                                    </span>
-                                                    <span className="property-value">{value}</span>
-                                                </div>
-                                            ),
-                                        )}
-                                    </div>
-
-                                    {cd.onCooldown && (
-                                        <div className="pet-status">
-                                            {cd.battleOnCooldown && (
-                                                <div className="status cooldown">
-                                                    ⚔️ Battle ready in {cd.battleLabel}
-                                                </div>
-                                            )}
-                                            {cd.breedOnCooldown && (
-                                                <div className="status cooldown">
-                                                    🥚 Breed ready in {cd.breedLabel}
-                                                </div>
-                                            )}
-                                            {cd.trainOnCooldown && (
-                                                <div className="status cooldown">
-                                                    💪 Train ready in {cd.trainLabel}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    <div className="pet-actions">
-                                        <button
-                                            type="button"
-                                            className={`send-button${
-                                                cd.battleReady ? ' is-ready' : ' on-cooldown'
-                                            }`}
-                                            onClick={() => handleSendClick(pet)}
-                                        >
-                                            <Icon
-                                                as={SendIcon}
-                                                tone={cd.battleReady ? Tones.Emerald : Tones.Amber}
-                                            />
-                                            Send
-                                        </button>
-                                    </div>
+                                <div className="cp-pet-card__actions">
+                                    <button
+                                        type="button"
+                                        className="cp-pet-card__battle"
+                                        onClick={() => navigate(BATTLE_PATH)}
+                                    >
+                                        <Icon
+                                            as={BattleIcon}
+                                            tone={Tones.Magenta}
+                                            glow="none"
+                                            className="no-gap"
+                                        />
+                                        Battle
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`cp-pet-card__send${
+                                            cd.battleReady ? ' is-ready' : ' on-cooldown'
+                                        }`}
+                                        onClick={() => handleSendClick(pet)}
+                                        title="Send / transfer pet"
+                                        aria-label={`Send ${pet.name}`}
+                                    >
+                                        <Icon
+                                            as={SendIcon}
+                                            tone={cd.battleReady ? Tones.Emerald : Tones.Amber}
+                                            glow="none"
+                                            className="no-gap"
+                                        />
+                                    </button>
                                 </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </PetCollectionLayout>
+                            </div>
+                        );
+                    })}
+
+                    <button
+                        type="button"
+                        className="cp-summon-tile"
+                        onClick={() => setCreateModalOpen(true)}
+                    >
+                        <span className="cp-summon-tile__plus">+</span>
+                        <span className="cp-summon-tile__label">Summon a Pet</span>
+                    </button>
+                </div>
+            )}
 
             {sendModalOpen && sendSelection && (
                 <SendPetModal
@@ -308,7 +316,7 @@ const PetGallery: React.FC = () => {
             )}
 
             <CreatePetModal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} />
-        </>
+        </div>
     );
 };
 
