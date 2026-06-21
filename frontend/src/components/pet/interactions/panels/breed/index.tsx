@@ -83,11 +83,18 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         }
     }, [pets.length]);
 
-    // Auto-select the only pet in the "With Spouse" tab so the user doesn't
-    // have to pick from a single-item dropdown.
+    // Auto-select in the "With Spouse" tab:
+    // 1. Prefer the first pet that already carries spouseId (Solana on-chain field).
+    // 2. Fall back to the only pet when there is just one (EVM — marriage detected
+    //    lazily via useMarriageInfo after selection).
     useEffect(() => {
-        if (tab === 'spouse' && pets.length === 1 && !spousePetId) {
-            setSpousePetId(pets[0].id);
+        if (tab === 'spouse' && !spousePetId) {
+            const marriedPet = pets.find(p => p.spouseId != null && p.spouseId !== 0);
+            if (marriedPet) {
+                setSpousePetId(marriedPet.id);
+            } else if (pets.length === 1) {
+                setSpousePetId(pets[0].id);
+            }
         }
     }, [tab, pets, spousePetId]);
 
@@ -292,7 +299,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                     <option value="">Select pet…</option>
                                     {allPets.map(({ id, pet }) => (
                                         <option key={id} value={id}>
-                                            {pet.name} (Lv {pet.level})
+                                            {pet.name} (Lv {pet.level}){pet.spouseId ? ` ↔ #${pet.spouseId}` : ''}
                                         </option>
                                     ))}
                                 </select>
