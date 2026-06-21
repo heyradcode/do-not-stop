@@ -44,28 +44,13 @@ export const STANDALONE_INTERACTION_HEADERS: Record<
     changename: { Icon: QuillIcon, label: 'Rename Pet', sub: "Change your pet's name" },
 };
 
-/** Dashboard home (hub + gallery). */
+/** Dashboard home (idle gallery). */
 export const DASHBOARD_HOME = '/main';
 
-/** Top-level interaction routes (e.g. /breed) — no gallery; interaction UI only. */
+/** Top-level interaction routes (e.g. /breed) — interaction UI only. */
 export const BREED_PATH = '/breed';
 export const BATTLE_PATH = '/battle';
 export const LEVELUP_PATH = '/levelup';
 export const TRAIN_PATH = '/train';
 export const MARRIAGE_PATH = '/marriage';
 export const RENAME_PATH = '/rename';
-
-/** Routes where the layout shows only the interaction flow (gallery hidden). */
-export const INTERACTION_ROUTES: readonly string[] = [
-    BREED_PATH,
-    BATTLE_PATH,
-    LEVELUP_PATH,
-    TRAIN_PATH,
-    MARRIAGE_PATH,
-    RENAME_PATH,
-];
-
-export const isInteractionRoute = (pathname: string): boolean => {
-    const path = pathname.replace(/\/$/, '') || '/';
-    return INTERACTION_ROUTES.includes(path);
-};
