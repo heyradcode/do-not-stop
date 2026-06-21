@@ -1,4 +1,4 @@
-/* Ambient shell background: particle canvas + scanline sweep + grid overlay.
+/* Ambient shell background: particle canvas + grid overlay.
    Fills its positioned parent, sits behind content, never captures pointer. */
 .cp-ambient {
     position: absolute;
@@ -15,16 +15,6 @@
     width: 100%;
     height: 100%;
     display: block;
-}
-
-.cp-ambient__scanline {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 100px;
-    background: linear-gradient(transparent, rgb(125 214 255 / 2.2%), transparent);
-    animation: cp-scanline 9s linear infinite;
 }
 
 .cp-ambient__grid {

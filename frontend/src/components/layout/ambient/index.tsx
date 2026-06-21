@@ -35,8 +35,8 @@ const makeParticle = (width: number, height: number): Particle => ({
 });
 
 /**
- * Ambient background for the app shell: a particle canvas plus a scanline sweep
- * and a faint grid overlay (both pure CSS). Purely decorative and
+ * Ambient background for the app shell: a particle canvas plus a faint grid
+ * overlay (pure CSS). Purely decorative and
  * pointer-events:none, so it never intercepts interaction. Honors
  * prefers-reduced-motion by rendering a single static frame instead of looping.
  */
@@ -112,7 +112,6 @@ const Ambient: React.FC = () => {
     return (
         <div className="cp-ambient" aria-hidden="true">
             <canvas ref={canvasRef} className="cp-ambient__canvas" />
-            <div className="cp-ambient__scanline" />
             <div className="cp-ambient__grid" />
         </div>
     );
