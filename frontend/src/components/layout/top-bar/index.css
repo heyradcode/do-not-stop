@@ -10,7 +10,10 @@
     border-bottom: 1px solid rgb(101 131 255 / 16%);
     backdrop-filter: blur(14px);
     box-shadow: 0 4px 24px rgb(0 0 0 / 55%);
-    overflow: hidden;
+    /* Stacking context above the content so the wallet dropdown menu, which
+       drops below the header, renders on top instead of being clipped/covered. */
+    position: relative;
+    z-index: 10;
 }
 
 .cp-topbar__title {
@@ -90,6 +93,15 @@
 
 .cp-topbar__wallet {
     flex-shrink: 0;
+}
+
+/* AccountDropdown defaults to position:fixed (a corner overlay). Inside the
+   header it must flow inline with the badges — position:static neutralizes the
+   fixed top/right offsets so the wallet + network switcher don't float over
+   (and overlap) the rest of the header. */
+.cp-topbar__wallet .account-dropdown {
+    position: static;
+    gap: 8px;
 }
 
 @media (max-width: 720px) {
