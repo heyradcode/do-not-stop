@@ -441,6 +441,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         open: overlayOpen,
         showResult,
         battleOutcome: outcome.battleOutcome,
+        fighter: selectedFighter,
         opponent,
         resultTurns: dialogue.resultTurns,
         dialogueLoading: dialogue.dialogueLoading,
