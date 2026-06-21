@@ -138,3 +138,141 @@
         color: rgb(255 181 67 / 75%);
     }
 }
+
+/* ── Parent A · egg · Parent B preview (real stats) ─────────────────────────── */
+.breed-parents {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.breed-parents__egg {
+    font-size: 30px;
+    line-height: 1;
+    filter: drop-shadow(0 0 10px rgb(255 207 112 / 70%));
+    animation: cp-float 2.8s ease-in-out infinite;
+}
+
+.breed-parent {
+    min-width: 0;
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid rgb(255 207 112 / 24%);
+    background: var(--neon-surface);
+}
+
+.breed-parent--b {
+    border-color: rgb(181 140 255 / 24%);
+}
+
+.breed-parent.is-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 128px;
+    border-style: dashed;
+}
+
+.breed-parent__placeholder {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: rgb(195 210 255 / 40%);
+}
+
+.breed-parent__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.breed-parent__avatar {
+    font-size: 2rem;
+    line-height: 1;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 12px rgb(255 207 112 / 45%));
+}
+
+.breed-parent--b .breed-parent__avatar {
+    filter: drop-shadow(0 0 12px rgb(181 140 255 / 45%));
+}
+
+.breed-parent__name {
+    font-family: var(--title-font);
+    font-size: 13px;
+    font-weight: 700;
+    color: #f4f2ff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.breed-parent__class {
+    font-size: 10px;
+    color: rgb(195 210 255 / 50%);
+    margin-top: 2px;
+}
+
+.breed-parent__stats {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.breed-parent__stat {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.breed-parent__stat-label {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    width: 24px;
+    flex-shrink: 0;
+}
+
+.breed-parent__stat-track {
+    flex: 1;
+    height: 5px;
+    background: var(--neon-inset);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.breed-parent__stat-fill {
+    height: 100%;
+    border-radius: 999px;
+    animation: cp-bar-grow 0.7s ease both;
+}
+
+.breed-parent__stat-value {
+    font-size: 11px;
+    font-weight: 800;
+    color: #f4f2ff;
+    width: 22px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+@media (max-width: 560px) {
+    .breed-parents {
+        grid-template-columns: 1fr;
+    }
+    .breed-parents__egg {
+        justify-self: center;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .breed-parents__egg,
+    .breed-parent__stat-fill {
+        animation: none;
+    }
+}

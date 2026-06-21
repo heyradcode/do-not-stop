@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Pet } from '@shared/core';
 import PendingBreedNotice from './pending-breed-notice';
+import BreedParentsPreview from './breed-parents-preview';
 
 type OwnPetsTabProps = {
     petCount: number;
@@ -42,9 +43,13 @@ const OwnPetsTab: React.FC<OwnPetsTabProps> = ({
         );
     }
 
+    const parentA = allPets.find(({ id }) => id === pet1)?.pet ?? null;
+    const parentB = allPets.find(({ id }) => id === pet2)?.pet ?? null;
+
     return (
         <div className="breed-tab-panel">
             <p className="breed-tab-hint">Select two of your pets to breed together.</p>
+            <BreedParentsPreview petA={parentA} petB={parentB} />
             <div className="picker">
                 <div className="field">
                     <label htmlFor="breed-parent1">First Parent</label>

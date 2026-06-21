@@ -51,6 +51,9 @@ const petList = {
 const capabilities = { randomness: { provider: 'vrf' }, kind: 'solana' };
 
 vi.mock('@shared/core', () => ({
+    getPetAvatar: () => '🐉',
+    getPetClass: () => 'Warrior',
+    getPetProperties: () => ({ life: 70, attack: 50, defense: 40, intelligence: 60 }),
     getReadyPetsUnified: (pets: { id: string; level: number }[]) =>
         pets.map((p) => ({ id: p.id, pet: p })),
     useChainCapabilities: () => capabilities,
