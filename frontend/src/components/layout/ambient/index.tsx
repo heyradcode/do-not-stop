@@ -51,14 +51,18 @@ const Ambient: React.FC = () => {
 
         let particles: Particle[] = [];
 
+        const reduced = prefersReducedMotion();
+
         const resize = () => {
             const w = canvas.offsetWidth || window.innerWidth;
             const h = canvas.offsetHeight || window.innerHeight;
             canvas.width = w;
             canvas.height = h;
             particles = Array.from({ length: PARTICLE_COUNT }, () => makeParticle(w, h));
+            // Setting canvas.width clears it; the animation loop repaints on its own,
+            // but the static (reduced-motion) frame must be redrawn here.
+            if (reduced) draw(false);
         };
-        resize();
 
         const draw = (advance: boolean) => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -83,8 +87,10 @@ const Ambient: React.FC = () => {
             ctx.globalAlpha = 1;
         };
 
-        if (prefersReducedMotion()) {
-            draw(false);
+        resize();
+
+        if (reduced) {
+            // resize() painted the static frame and repaints it on every resize.
             window.addEventListener('resize', resize);
             return () => window.removeEventListener('resize', resize);
         }

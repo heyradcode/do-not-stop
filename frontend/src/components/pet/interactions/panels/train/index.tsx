@@ -49,6 +49,7 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
     const fees = useFees();
     const selectedPetObj = readyPets.find(({ id }) => id === selectedPet)?.pet ?? null;
     const selectedLevel = selectedPetObj?.level;
+    const selectedXp = selectedPetObj ? getXpNumbers(selectedPetObj) : null;
 
     // Train fee is level-scaled: baseFee × (100 + 2·level) / 100.
     const trainCost = useMemo(() => {
@@ -111,8 +112,7 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                                 />
                             </div>
                             <div className="train-status__xp">
-                                {getXpNumbers(selectedPetObj).xpCurrent}/
-                                {getXpNumbers(selectedPetObj).xpMax} XP
+                                {selectedXp?.xpCurrent}/{selectedXp?.xpMax} XP
                             </div>
                         </div>
                     </div>

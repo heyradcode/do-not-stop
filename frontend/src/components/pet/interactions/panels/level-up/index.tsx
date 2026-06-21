@@ -54,6 +54,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     const fees = useFees();
     const selectedPetObj = readyPets.find(({ id }) => id === selectedPet)?.pet ?? null;
     const selectedLevel = selectedPetObj?.level;
+    const selectedXp = selectedPetObj ? getXpNumbers(selectedPetObj) : null;
 
     // Level-up fee is level-scaled: baseFee × (100 + (level-1)²) / 100.
     const levelUpCost = useMemo(() => {
@@ -126,8 +127,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                             <div className="lvl-xp-row">
                                 <span>XP</span>
                                 <span>
-                                    {getXpNumbers(selectedPetObj).xpCurrent}/
-                                    {getXpNumbers(selectedPetObj).xpMax}
+                                    {selectedXp?.xpCurrent}/{selectedXp?.xpMax}
                                 </span>
                             </div>
                             <div className="lvl-xp-track">

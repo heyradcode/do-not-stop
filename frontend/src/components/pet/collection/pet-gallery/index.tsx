@@ -56,7 +56,6 @@ const PetGallery: React.FC = () => {
     const { isConnected } = useChainCapabilities();
     const { pets, isLoading, error, refetch } = usePetList();
     const notifyError = useNotifyError();
-    const [loading, setLoading] = useState(false);
     const [sendModalOpen, setSendModalOpen] = useState(false);
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [sendSelection, setSendSelection] = useState<{ pet: Pet; petId: bigint } | null>(null);
@@ -67,10 +66,6 @@ const PetGallery: React.FC = () => {
         () => pets.reduce((sum, pet) => sum + (pet.winCount ?? 0), 0),
         [pets],
     );
-
-    useEffect(() => {
-        setLoading(isLoading);
-    }, [isLoading]);
 
     useEffect(() => {
         if (!error) return;
@@ -133,14 +128,14 @@ const PetGallery: React.FC = () => {
                 </div>
             </div>
 
-            {loading && (
+            {isLoading && (
                 <div className="loading-container">
                     <div className="loading-spinner" />
                     <p>Loading your pets...</p>
                 </div>
             )}
 
-            {error && !loading && (
+            {error && !isLoading && (
                 <div className="error-container">
                     <p>
                         <Icon as={CloseIcon} tone={Tones.Magenta} />
@@ -152,12 +147,13 @@ const PetGallery: React.FC = () => {
                 </div>
             )}
 
-            {!loading && !error && (
+            {!isLoading && !error && (
                 <div className="cp-pet-grid">
                     {pets.map((pet) => {
                         const cd = statusFor(pet);
                         const rarityColor = getRarityColor(pet.rarity);
                         const xp = getXpNumbers(pet);
+                        const skill = getPetSkill(pet.speciesId);
                         return (
                             <div key={`${pet.chain}-${pet.id}`} className="cp-pet-card">
                                 <div
@@ -175,12 +171,12 @@ const PetGallery: React.FC = () => {
                                         {getRarityName(pet.rarity)}
                                     </div>
                                     <div className="cp-pet-card__level">Lv. {pet.level}</div>
-                                    {getPetSkill(pet.speciesId) ? (
+                                    {skill ? (
                                         <div
                                             className="cp-pet-card__skill"
-                                            title={getPetSkill(pet.speciesId)?.description}
+                                            title={skill.description}
                                         >
-                                            {getPetSkill(pet.speciesId)?.name}
+                                            {skill.name}
                                         </div>
                                     ) : null}
                                     <div className="cp-pet-card__avatar">
