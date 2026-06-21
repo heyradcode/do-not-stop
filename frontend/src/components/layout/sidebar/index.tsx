@@ -54,12 +54,7 @@ const Sidebar: React.FC = () => {
                             title={item.deferred ? `${item.label} — coming soon` : item.label}
                         >
                             <span className="cp-nav-item__icon" aria-hidden>
-                                <Icon
-                                    as={item.Icon}
-                                    tone={item.tone}
-                                    glow={isActive ? 'strong' : 'soft'}
-                                    className="no-gap"
-                                />
+                                <img src={item.iconSrc} alt="" width={24} height={24} />
                             </span>
                             <span className="cp-nav-item__label">{item.label}</span>
                             {item.deferred && <span className="cp-nav-item__soon">Soon</span>}

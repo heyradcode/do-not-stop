@@ -136,9 +136,27 @@
 .cp-nav-item__icon {
     display: flex;
     width: 24px;
+    height: 24px;
+    align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: 18px;
+}
+
+.cp-nav-item__icon img {
+    display: block;
+    width: 24px;
+    height: 24px;
+    opacity: 0.72;
+    transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.cp-nav-item:hover:not(:disabled) .cp-nav-item__icon img,
+.cp-nav-item.is-active .cp-nav-item__icon img {
+    opacity: 1;
+}
+
+.cp-nav-item.is-active .cp-nav-item__icon img {
+    filter: drop-shadow(0 0 5px rgb(var(--tone-rgb) / 55%));
 }
 
 .cp-nav-item__label {
