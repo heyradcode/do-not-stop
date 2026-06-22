@@ -29,4 +29,4 @@ export const useTxErrorToast = (
 
         toast.error(parsed.message);
     }, [parsed, writeError, toast]);
-}
+};

@@ -11,10 +11,16 @@ type OutgoingProposalRowProps = {
 
 /** A single outgoing proposal row in the Propose tab. Renders nothing unless this
  *  pet has a pending proposal owned by the connected wallet. */
-const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({ pet, walletAddress, onCancel, busy }) => {
+const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({
+    pet,
+    walletAddress,
+    onCancel,
+    busy,
+}) => {
     const info = useMarriageInfo(pet);
     const isOwn =
-        info.hasProposal && walletAddress != null &&
+        info.hasProposal &&
+        walletAddress != null &&
         info.proposer?.toLowerCase() === walletAddress.toLowerCase();
     if (!isOwn) return null;
 
@@ -23,7 +29,9 @@ const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({ pet, walletAd
     return (
         <li className="proposal-card outgoing-proposal">
             <div className="proposal-pets">
-                <span className="proposal-proposer">{pet.name} <span className="proposal-id">#{pet.id}</span></span>
+                <span className="proposal-proposer">
+                    {pet.name} <span className="proposal-id">#{pet.id}</span>
+                </span>
                 <span className="proposal-arrow">→</span>
                 <span className="proposal-target">#{info.proposalPetIdB?.toString()}</span>
             </div>

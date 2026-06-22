@@ -18,10 +18,7 @@ export const SolanaWalletProvider: React.FC<SolanaWalletProviderProps> = ({
 }) => {
     const networkConfig = SOLANA_NETWORKS.find((n) => n.name === network) || SOLANA_NETWORKS[0];
 
-    const wallets = useMemo(
-        () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
-        []
-    );
+    const wallets = useMemo(() => [new PhantomWalletAdapter(), new SolflareWalletAdapter()], []);
 
     return (
         <ConnectionProvider endpoint={networkConfig.rpcUrl}>

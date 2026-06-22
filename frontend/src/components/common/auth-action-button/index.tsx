@@ -11,8 +11,8 @@ const AuthActionButton: React.FC<Props> = ({ onClick, disabled, children, ...res
         const signingLabel = isNonceLoading
             ? 'Getting nonce…'
             : isSigning
-              ? 'Check your wallet…'
-              : 'Verifying…';
+            ? 'Check your wallet…'
+            : 'Verifying…';
         return (
             <button type="button" onClick={() => signAndLogin()} disabled={isSigningIn} {...rest}>
                 {isSigningIn ? signingLabel : 'Sign in to Play'}

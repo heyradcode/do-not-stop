@@ -10,28 +10,28 @@ import './index.css';
 const TITLE = 'Crypto Pets';
 
 const Layout: React.FC = () => {
-  const location = useLocation();
-  const isGalleryHidden = isInteractionRoute(location.pathname);
+    const location = useLocation();
+    const isGalleryHidden = isInteractionRoute(location.pathname);
 
-  return (
-    <div className="main-container">
-      <div className="main-header">
-        <div className="title">
-          <h1>{TITLE}</h1>
+    return (
+        <div className="main-container">
+            <div className="main-header">
+                <div className="title">
+                    <h1>{TITLE}</h1>
+                </div>
+                <div className="wallet-section">
+                    <AccountDropdown />
+                </div>
+            </div>
+
+            <div className="main-content">
+                <Outlet />
+                {!isGalleryHidden && <PetGallery />}
+            </div>
+
+            <SolanaWalletTrigger />
         </div>
-        <div className="wallet-section">
-          <AccountDropdown />
-        </div>
-      </div>
-
-      <div className="main-content">
-        <Outlet />
-        {!isGalleryHidden && <PetGallery />}
-      </div>
-
-      <SolanaWalletTrigger />
-    </div>
-  );
+    );
 };
 
 export default Layout;

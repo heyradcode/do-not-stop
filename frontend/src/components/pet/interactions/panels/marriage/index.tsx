@@ -31,7 +31,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
     const [success, setSuccess] = useState<string | null>(null);
 
     const chainPets = useMemo(
-        () => kind === 'none' ? [] : pets.filter((p) => p.chain === (kind as 'evm' | 'solana')),
+        () => (kind === 'none' ? [] : pets.filter((p) => p.chain === (kind as 'evm' | 'solana'))),
         [pets, kind],
     );
     const chainPetIds = useMemo(() => chainPets.map((p) => p.id), [chainPets]);
@@ -48,8 +48,11 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
         chainPetIds,
     );
 
-    const busy = marriage.propose.isPending || marriage.accept.isPending
-        || marriage.cancel.isPending || marriage.divorce.isPending;
+    const busy =
+        marriage.propose.isPending ||
+        marriage.accept.isPending ||
+        marriage.cancel.isPending ||
+        marriage.divorce.isPending;
 
     /** Run a marriage write, surface success/error, and refresh on-chain reads.
      *  Resolves true on success so callers can reset their own UI. */
@@ -94,7 +97,9 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
         void run(
             () => marriage.accept.mutateAsync({ petIdA: proposal.proposerPetId, petIdB: myPetId }),
             'Marriage accepted!',
-        ).then((ok) => { if (ok) setPendingAccept(null); });
+        ).then((ok) => {
+            if (ok) setPendingAccept(null);
+        });
     };
 
     const openAccept = (proposal: IncomingProposal) =>
@@ -110,7 +115,11 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                     </>
                 )}
 
-                <MarriageTabBar tab={tab} onChange={setTab} proposalCount={incomingProposals.length} />
+                <MarriageTabBar
+                    tab={tab}
+                    onChange={setTab}
+                    proposalCount={incomingProposals.length}
+                />
 
                 {tab === 'propose' && (
                     <ProposeTab

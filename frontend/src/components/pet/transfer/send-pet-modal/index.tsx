@@ -1,9 +1,5 @@
 import React, { useState } from 'react';
-import {
-    useChainCapabilities,
-    usePetList,
-    useTransferPet,
-} from '@shared/core';
+import { useChainCapabilities, usePetList, useTransferPet } from '@shared/core';
 import TransactionStatus from '@components/common/transaction-status';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
@@ -21,12 +17,7 @@ interface SendPetModalProps {
     petId: bigint;
 }
 
-const SendPetModal: React.FC<SendPetModalProps> = ({
-    isOpen,
-    onClose,
-    pet,
-    petId,
-}) => {
+const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId }) => {
     const { address: addrCaps, chainLabel, walletAddress } = useChainCapabilities();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
@@ -42,7 +33,13 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
         onClose();
     };
 
-    const { mutate, isPending, error: hookError, reset, lifecycle } = useTransferPet({
+    const {
+        mutate,
+        isPending,
+        error: hookError,
+        reset,
+        lifecycle,
+    } = useTransferPet({
         onSuccess: handleTransferComplete,
     });
 
@@ -94,11 +91,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
             <div className="dialog" onClick={(e) => e.stopPropagation()}>
                 <div className="header">
                     <h2>Send Pet</h2>
-                    <button
-                        className="close"
-                        onClick={handleClose}
-                        disabled={isPending}
-                    >
+                    <button className="close" onClick={handleClose} disabled={isPending}>
                         ×
                     </button>
                 </div>
@@ -107,9 +100,15 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                     <div className="preview">
                         <h3>{pet.name}</h3>
                         <div className="details">
-                            <p><strong>Level:</strong> {pet.level}</p>
-                            <p><strong>DNA:</strong> {pet.dna.toString()}</p>
-                            <p><strong>Rarity:</strong> {pet.rarity}</p>
+                            <p>
+                                <strong>Level:</strong> {pet.level}
+                            </p>
+                            <p>
+                                <strong>DNA:</strong> {pet.dna.toString()}
+                            </p>
+                            <p>
+                                <strong>Rarity:</strong> {pet.rarity}
+                            </p>
                         </div>
                     </div>
 
@@ -130,11 +129,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({
                     </div>
 
                     <div className="actions">
-                        <button
-                            className="cancel"
-                            onClick={handleClose}
-                            disabled={isPending}
-                        >
+                        <button className="cancel" onClick={handleClose} disabled={isPending}>
                             Cancel
                         </button>
                         <button

@@ -20,7 +20,11 @@ type PendingBreedNoticeProps = {
  * again. EVM: Settle once VRF has fulfilled, or Cancel beforehand.
  * Solana: recovery is automatic on the next breed attempt.
  */
-const PendingBreedNotice: React.FC<PendingBreedNoticeProps> = ({ petId, label, checkSolana = false }) => {
+const PendingBreedNotice: React.FC<PendingBreedNoticeProps> = ({
+    petId,
+    label,
+    checkSolana = false,
+}) => {
     const pending = usePendingBreed(petId);
     const solanaPending = usePendingSolanaBreed(checkSolana);
     useTxErrorToast(pending.settle.error ?? pending.cancel.error ?? solanaPending.cancel.error);
@@ -41,7 +45,11 @@ const PendingBreedNotice: React.FC<PendingBreedNoticeProps> = ({ petId, label, c
                 </p>
                 {solanaPending.canCancel && (
                     <div className="pending-battle-actions">
-                        <button type="button" onClick={() => void solanaPending.cancel.run()} disabled={busy}>
+                        <button
+                            type="button"
+                            onClick={() => void solanaPending.cancel.run()}
+                            disabled={busy}
+                        >
                             {busy ? 'Cancelling…' : 'Cancel'}
                         </button>
                     </div>
@@ -54,9 +62,8 @@ const PendingBreedNotice: React.FC<PendingBreedNoticeProps> = ({ petId, label, c
     return (
         <div className="pending-battle-notice">
             <p>
-                <strong>{who}</strong> has an unresolved breed. Settle it once the
-                randomness is ready (mints the offspring), or cancel it if it
-                hasn&apos;t arrived yet.
+                <strong>{who}</strong> has an unresolved breed. Settle it once the randomness is
+                ready (mints the offspring), or cancel it if it hasn&apos;t arrived yet.
             </p>
             <div className="pending-battle-actions">
                 <button type="button" onClick={() => void pending.settle.run()} disabled={busy}>

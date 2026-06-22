@@ -35,7 +35,13 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         refetch();
     };
 
-    const { mutate, isPending, error: hookError, reset, lifecycle } = useLevelUpPet({
+    const {
+        mutate,
+        isPending,
+        error: hookError,
+        reset,
+        lifecycle,
+    } = useLevelUpPet({
         onSuccess: handleLevelUpComplete,
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
@@ -71,10 +77,10 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     const buttonLabel = isPending
         ? 'Leveling Up...'
         : levelUpCost
-            ? `Level Up (${levelUpCost})`
-            : levelUpFee
-                ? `Level Up (from ${levelUpFee.amount} ${levelUpFee.symbol})`
-                : 'Level Up';
+        ? `Level Up (${levelUpCost})`
+        : levelUpFee
+        ? `Level Up (from ${levelUpFee.amount} ${levelUpFee.symbol})`
+        : 'Level Up';
 
     return (
         <>

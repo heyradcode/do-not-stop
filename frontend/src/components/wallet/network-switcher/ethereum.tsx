@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useAccount, useSwitchChain } from 'wagmi';
-import { CHAINS, getChainConfig, getMainnetChains, getTestnetChains } from '@constants/chains/ethereum';
+import {
+    CHAINS,
+    getChainConfig,
+    getMainnetChains,
+    getTestnetChains,
+} from '@constants/chains/ethereum';
 import { Tones } from '@constants/tones';
 import { NeonButton, NeonModal } from '@components/ui';
 import Icon, { CheckIcon } from '@components/ui/icon';
@@ -16,7 +21,7 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
     const [isOpen, setIsOpen] = useState(false);
     const [showTestnets, setShowTestnets] = useState(() => {
         if (!chain) return false;
-        return CHAINS.some(c => c.chain.id === chain.id && c.isTestnet);
+        return CHAINS.some((c) => c.chain.id === chain.id && c.isTestnet);
     });
 
     if (!chain) return null;
@@ -31,9 +36,7 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
 
     return (
         <div className={`network-switcher ${className || ''}`}>
-            {switchError && (
-                <div className="error">Error: {switchError.message}</div>
-            )}
+            {switchError && <div className="error">Error: {switchError.message}</div>}
 
             <NeonButton
                 className="trigger"
@@ -42,7 +45,7 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                 tone={Tones.Azure}
                 size="sm"
             >
-                {isPending ? 'Switching...' : (currentChainConfig?.name || 'Unknown')} ▼
+                {isPending ? 'Switching...' : currentChainConfig?.name || 'Unknown'} ▼
             </NeonButton>
 
             <NeonModal
@@ -51,7 +54,7 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                 title="Select Network"
                 className="network-neon-modal"
                 contentClassName="network-neon-modal-content"
-                headerActions={(
+                headerActions={
                     <label className="testnet-toggle">
                         <input
                             type="checkbox"
@@ -61,13 +64,15 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                         />
                         <span>Testnets</span>
                     </label>
-                )}
+                }
             >
                 <div className="network-list">
                     {visibleChains.map(({ chain: chainConfig, name, symbol, isTestnet }) => (
                         <NeonButton
                             key={chainConfig.id}
-                            className={`option ${chain.id === chainConfig.id ? 'active' : ''} ${isTestnet ? 'testnet' : ''}`}
+                            className={`option ${chain.id === chainConfig.id ? 'active' : ''} ${
+                                isTestnet ? 'testnet' : ''
+                            }`}
                             onClick={() => handleNetworkSelect(chainConfig.id)}
                             disabled={isPending}
                             tone={Tones.Azure}
@@ -80,7 +85,12 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                             </span>
                             {chain.id === chainConfig.id && (
                                 <span className="option-check">
-                                    <Icon as={CheckIcon} tone={Tones.Emerald} glow="soft" className="no-gap" />
+                                    <Icon
+                                        as={CheckIcon}
+                                        tone={Tones.Emerald}
+                                        glow="soft"
+                                        className="no-gap"
+                                    />
                                 </span>
                             )}
                         </NeonButton>

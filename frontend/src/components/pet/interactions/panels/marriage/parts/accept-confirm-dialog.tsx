@@ -23,15 +23,12 @@ const AcceptConfirmDialog: React.FC<AcceptConfirmDialogProps> = ({
         <div className="marriage-confirm-dialog" onClick={(e) => e.stopPropagation()}>
             <h5 className="confirm-title">💒 Accept Proposal?</h5>
             <p className="confirm-body">
-                <strong>{pending.proposal.proposerPetName}</strong> (#{pending.proposal.proposerPetId}) will marry your <strong>{targetPetName(pending.myPetId)}</strong> (#{pending.myPetId}).
+                <strong>{pending.proposal.proposerPetName}</strong> (#
+                {pending.proposal.proposerPetId}) will marry your{' '}
+                <strong>{targetPetName(pending.myPetId)}</strong> (#{pending.myPetId}).
             </p>
             <div className="confirm-actions">
-                <button
-                    type="button"
-                    className="confirm-cancel"
-                    onClick={onCancel}
-                    disabled={busy}
-                >
+                <button type="button" className="confirm-cancel" onClick={onCancel} disabled={busy}>
                     Cancel
                 </button>
                 <button

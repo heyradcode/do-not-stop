@@ -12,7 +12,9 @@ export const SolanaAnchorWallet = ({ children }: { children: ReactNode }) => {
     const { connection } = useConnection();
     const adapterWallet = useAnchorWallet();
     const dynamicSolanaWallet = useDynamicSolanaWallet();
-    const [dynamicSigningWallet, setDynamicSigningWallet] = useState<SolanaSigningWallet | null>(null);
+    const [dynamicSigningWallet, setDynamicSigningWallet] = useState<SolanaSigningWallet | null>(
+        null,
+    );
 
     useEffect(() => {
         let cancelled = false;
@@ -56,21 +58,23 @@ export const SolanaAnchorWallet = ({ children }: { children: ReactNode }) => {
 
     const signingWallet = adapterWallet ?? dynamicSigningWallet;
 
-    const programId = useMemo(
-        () => parseProgramId(import.meta.env.VITE_CRYPTOPETS_PROGRAM_ID),
-        []
-    );
+    const programId = useMemo(() => parseProgramId(import.meta.env.VITE_CRYPTOPETS_PROGRAM_ID), []);
 
     const idlAddress = useMemo(
         () => parseProgramId(import.meta.env.VITE_CRYPTOPETS_IDL_ADDRESS),
-        []
+        [],
     );
 
     return (
-        <SolanaAnchorProvider connection={connection} programId={programId} idlAddress={idlAddress} signingWallet={signingWallet ?? null}>
+        <SolanaAnchorProvider
+            connection={connection}
+            programId={programId}
+            idlAddress={idlAddress}
+            signingWallet={signingWallet ?? null}
+        >
             {children}
         </SolanaAnchorProvider>
     );
-}
+};
 
 export default SolanaAnchorWallet;

@@ -14,6 +14,6 @@ export const wagmiConfig = createConfig({
     connectors: [injected()],
     multiInjectedProviderDiscovery: false,
     transports: Object.fromEntries(
-        allChains.map((chain) => [chain.id, http(chain.rpcUrls.default.http[0])])
+        allChains.map((chain) => [chain.id, http(chain.rpcUrls.default.http[0])]),
     ),
 });

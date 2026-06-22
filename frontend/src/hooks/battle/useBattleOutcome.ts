@@ -34,7 +34,11 @@ export interface UseBattleOutcome {
  * only supplies `leveledUp`. On Solana (no event surfaced here) it falls back to
  * diffing the fighter's win/loss stats against a pre-battle snapshot.
  */
-export const useBattleOutcome = ({ pets, selectedPet1, petsLoading }: UseBattleOutcomeArgs): UseBattleOutcome  => {
+export const useBattleOutcome = ({
+    pets,
+    selectedPet1,
+    petsLoading,
+}: UseBattleOutcomeArgs): UseBattleOutcome => {
     const [battleOutcome, setBattleOutcome] = useState<BattleOutcome>(null);
     // Snapshot taken before battle.mutate; cleared after the outcome resolves.
     const preBattleStatsRef = useRef<PreBattleStats | null>(null);
@@ -78,21 +82,40 @@ export const useBattleOutcome = ({ pets, selectedPet1, petsLoading }: UseBattleO
     // The stat diff supplies `leveledUp`, and the win/lose result when no
     // authoritative on-chain result was applied (Solana).
     useEffect(() => {
-        if (!pendingOutcomeRef.current || !selectedPet1 || !preBattleStatsRef.current || petsLoading) return;
+        if (
+            !pendingOutcomeRef.current ||
+            !selectedPet1 ||
+            !preBattleStatsRef.current ||
+            petsLoading
+        )
+            return;
 
         const updatedFighter = pets.find((p) => p.id === selectedPet1);
         if (!updatedFighter) return;
 
-        const { winCount: prevWin, lossCount: prevLoss, level: prevLevel } = preBattleStatsRef.current;
+        const {
+            winCount: prevWin,
+            lossCount: prevLoss,
+            level: prevLevel,
+        } = preBattleStatsRef.current;
         // Stats haven't refreshed yet — wait for the next update.
         if (updatedFighter.winCount === prevWin && updatedFighter.lossCount === prevLoss) return;
 
         setBattleOutcome({
-            result: authoritativeRef.current ?? (updatedFighter.winCount > prevWin ? 'victory' : 'defeat'),
+            result:
+                authoritativeRef.current ??
+                (updatedFighter.winCount > prevWin ? 'victory' : 'defeat'),
             leveledUp: updatedFighter.level > prevLevel,
         });
         pendingOutcomeRef.current = false;
     }, [pets, selectedPet1, petsLoading]);
 
-    return { battleOutcome, snapshotFighterStats, markPendingOutcome, applyResolvedOutcome, clearSnapshot, resetOutcome };
-}
+    return {
+        battleOutcome,
+        snapshotFighterStats,
+        markPendingOutcome,
+        applyResolvedOutcome,
+        clearSnapshot,
+        resetOutcome,
+    };
+};

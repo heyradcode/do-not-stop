@@ -71,7 +71,10 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
     <div className="interface battle-setup">
         {!isStandaloneView && (
             <>
-                <h4><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Pets</h4>
+                <h4>
+                    <Icon as={BattleIcon} tone={Tones.Magenta} />
+                    Battle Pets
+                </h4>
                 <p>{subtitle}</p>
             </>
         )}
@@ -103,7 +106,10 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
             <div className="battle-center">
                 <div className={arenaClassName}>
                     <div className="header">
-                        <span><Icon as={BattleIcon} tone={Tones.Magenta} />Battle Arena</span>
+                        <span>
+                            <Icon as={BattleIcon} tone={Tones.Magenta} />
+                            Battle Arena
+                        </span>
                         <div className="arena-actions">
                             <button
                                 type="button"
@@ -119,16 +125,32 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                                 Random match
                             </button>
                             <span className="arena-badge">
-                                {isArenaFighting ? 'Fighting' : showResult ? 'Complete' : isArenaReady ? 'Ready' : 'Setup'}
+                                {isArenaFighting
+                                    ? 'Fighting'
+                                    : showResult
+                                    ? 'Complete'
+                                    : isArenaReady
+                                    ? 'Ready'
+                                    : 'Setup'}
                             </span>
                         </div>
                     </div>
                     <div className="hub-divider" />
                     <div className="content">
-                        <ArenaSlot pet={selectedFighter} placeholder="Choose fighter" side="fighter" />
+                        <ArenaSlot
+                            pet={selectedFighter}
+                            placeholder="Choose fighter"
+                            side="fighter"
+                        />
                         <div className="center">
                             <div className="icon">
-                                <Icon as={BattleIcon} tone={Tones.Magenta} glow="strong" className="no-gap" size={18} />
+                                <Icon
+                                    as={BattleIcon}
+                                    tone={Tones.Magenta}
+                                    glow="strong"
+                                    className="no-gap"
+                                    size={18}
+                                />
                             </div>
                             <div className="vs">VS</div>
                         </div>
@@ -142,9 +164,18 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                     </div>
                 </div>
 
-                <PendingBattleNotice petId={selectedPet1} label={selectedFighter?.name} checkSolana />
-                {opponent ? <PendingBattleNotice petId={opponent.id} label={opponent.name} /> : null}
-                <OpenToChallengesToggle petId={selectedPet1} currentValue={selectedFighter?.openToChallenges} />
+                <PendingBattleNotice
+                    petId={selectedPet1}
+                    label={selectedFighter?.name}
+                    checkSolana
+                />
+                {opponent ? (
+                    <PendingBattleNotice petId={opponent.id} label={opponent.name} />
+                ) : null}
+                <OpenToChallengesToggle
+                    petId={selectedPet1}
+                    currentValue={selectedFighter?.openToChallenges}
+                />
 
                 {isArenaReady && (
                     <div className="win-estimate">
@@ -153,11 +184,19 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                         ) : winEstimate.winProbability != null ? (
                             <>
                                 <span className="win-estimate-label">Win odds</span>
-                                <span className={`win-estimate-value${winEstimate.winProbability >= 0.5 ? ' favorable' : ' unfavorable'}`}>
+                                <span
+                                    className={`win-estimate-value${
+                                        winEstimate.winProbability >= 0.5
+                                            ? ' favorable'
+                                            : ' unfavorable'
+                                    }`}
+                                >
                                     {Math.round(winEstimate.winProbability * 100)}%
                                 </span>
                                 {winEstimate.samples != null && (
-                                    <span className="win-estimate-samples">({winEstimate.samples.toLocaleString()} sim)</span>
+                                    <span className="win-estimate-samples">
+                                        ({winEstimate.samples.toLocaleString()} sim)
+                                    </span>
                                 )}
                             </>
                         ) : (
@@ -197,7 +236,8 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                     <div className="battle-picker-empty">Finding challengers in the arena…</div>
                 ) : sortedOpponents.length === 0 ? (
                     <div className="battle-picker-empty">
-                        No opponents available right now. Check back after more players join the roster.
+                        No opponents available right now. Check back after more players join the
+                        roster.
                     </div>
                 ) : (
                     <div className="battle-opponent-grid">
@@ -210,7 +250,11 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                                     fighterLevel={fighterLevel}
                                     selected={selectedOpponentKey === key}
                                     onSelect={onSelectOpponent}
-                                    cardRef={selectedOpponentKey === key ? selectedOpponentCardRef : undefined}
+                                    cardRef={
+                                        selectedOpponentKey === key
+                                            ? selectedOpponentCardRef
+                                            : undefined
+                                    }
                                 />
                             );
                         })}

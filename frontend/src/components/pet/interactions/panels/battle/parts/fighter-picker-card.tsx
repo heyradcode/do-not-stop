@@ -9,7 +9,12 @@ type FighterPickerCardProps = {
 };
 
 /** Selectable card for one of the player's own ready fighters. */
-const FighterPickerCard: React.FC<FighterPickerCardProps> = ({ pet, petId, selected, onSelect }) => (
+const FighterPickerCard: React.FC<FighterPickerCardProps> = ({
+    pet,
+    petId,
+    selected,
+    onSelect,
+}) => (
     <button
         type="button"
         className={`battle-picker-card${selected ? ' is-selected' : ''}`}
@@ -26,7 +31,10 @@ const FighterPickerCard: React.FC<FighterPickerCardProps> = ({ pet, petId, selec
             </div>
         </div>
         <div className="card-stats">
-            <span className="stat-pill rarity" style={{ backgroundColor: getRarityColor(pet.rarity) }}>
+            <span
+                className="stat-pill rarity"
+                style={{ backgroundColor: getRarityColor(pet.rarity) }}
+            >
                 {getRarityName(pet.rarity)}
             </span>
             <span className="stat-pill">

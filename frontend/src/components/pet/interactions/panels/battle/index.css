@@ -19,8 +19,13 @@
     overflow: hidden;
 
     /* Card shell — directional fighter/opponent tint with deep dark base */
-    background:
-        linear-gradient(90deg, rgb(125 214 255 / 5%) 0%, transparent 38%, transparent 62%, rgb(255 110 196 / 5%) 100%),
+    background: linear-gradient(
+            90deg,
+            rgb(125 214 255 / 5%) 0%,
+            transparent 38%,
+            transparent 62%,
+            rgb(255 110 196 / 5%) 100%
+        ),
         radial-gradient(ellipse 100% 120% at 50% 110%, rgb(255 110 196 / 9%), transparent 55%),
         linear-gradient(170deg, rgb(11 18 40 / 97%), rgb(5 9 22 / 99%));
     border: 1px solid rgb(255 110 196 / 26%);
@@ -29,11 +34,8 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    box-shadow:
-        inset 0 1px 0 rgb(255 255 255 / 4%),
-        inset 0 0 48px rgb(255 110 196 / 4%),
-        0 0 24px rgb(255 110 196 / 8%),
-        0 8px 32px rgb(0 0 0 / 30%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%), inset 0 0 48px rgb(255 110 196 / 4%),
+        0 0 24px rgb(255 110 196 / 8%), 0 8px 32px rgb(0 0 0 / 30%);
 
     /* Suppress the hub-divider — gap handles spacing */
     .hub-divider {
@@ -135,11 +137,8 @@
 
     &.is-ready {
         border-color: rgb(255 110 196 / 42%);
-        box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 4%),
-            inset 0 0 48px rgb(255 110 196 / 6%),
-            0 0 32px rgb(255 110 196 / 14%),
-            0 8px 32px rgb(0 0 0 / 30%);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%), inset 0 0 48px rgb(255 110 196 / 6%),
+            0 0 32px rgb(255 110 196 / 14%), 0 8px 32px rgb(0 0 0 / 30%);
 
         .center {
             .icon {
@@ -164,11 +163,8 @@
 
     &.is-result {
         border-color: rgb(0 255 157 / 40%);
-        box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 4%),
-            inset 0 0 48px rgb(0 255 157 / 8%),
-            0 0 30px rgb(0 255 157 / 16%),
-            0 8px 32px rgb(0 0 0 / 30%);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%), inset 0 0 48px rgb(0 255 157 / 8%),
+            0 0 30px rgb(0 255 157 / 16%), 0 8px 32px rgb(0 0 0 / 30%);
     }
 
     .content {
@@ -195,11 +191,14 @@
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            background: radial-gradient(circle at center, rgb(255 110 196 / 20%), rgb(255 110 196 / 6%) 65%, transparent);
+            background: radial-gradient(
+                circle at center,
+                rgb(255 110 196 / 20%),
+                rgb(255 110 196 / 6%) 65%,
+                transparent
+            );
             border: 1px solid rgb(255 110 196 / 34%);
-            box-shadow:
-                inset 0 0 14px rgb(255 110 196 / 22%),
-                0 0 20px rgb(255 110 196 / 12%);
+            box-shadow: inset 0 0 14px rgb(255 110 196 / 22%), 0 0 20px rgb(255 110 196 / 12%);
         }
 
         .vs {
@@ -491,8 +490,7 @@
 
         &:focus-visible {
             border-color: rgb(255 110 196 / 85%);
-            box-shadow:
-                inset 0 0 0 1px rgb(255 110 196 / 55%),
+            box-shadow: inset 0 0 0 1px rgb(255 110 196 / 55%),
                 inset 0 0 16px rgb(255 110 196 / 24%);
         }
     }
@@ -519,8 +517,7 @@
         font-size: 1.6rem;
         line-height: 1;
         border-radius: 10px;
-        background:
-            radial-gradient(circle at 30% 30%, rgb(125 214 255 / 20%), transparent 60%),
+        background: radial-gradient(circle at 30% 30%, rgb(125 214 255 / 20%), transparent 60%),
             rgb(5 13 30 / 82%);
         border: 1px solid rgb(125 214 255 / 18%);
     }
@@ -633,9 +630,7 @@
             letter-spacing: 0.7px;
             text-transform: uppercase;
             cursor: pointer;
-            box-shadow:
-                inset 0 0 12px rgb(255 110 196 / 14%),
-                0 0 12px rgb(255 110 196 / 22%);
+            box-shadow: inset 0 0 12px rgb(255 110 196 / 14%), 0 0 12px rgb(255 110 196 / 22%);
 
             &:hover:not(:disabled) {
                 transform: translateY(-1px);
@@ -670,9 +665,7 @@
     border-radius: 16px;
     padding: 32px 28px 28px;
     text-align: center;
-    box-shadow:
-        inset 0 0 32px rgb(0 255 157 / 8%),
-        0 0 40px rgb(0 255 157 / 16%),
+    box-shadow: inset 0 0 32px rgb(0 255 157 / 8%), 0 0 40px rgb(0 255 157 / 16%),
         0 24px 60px rgb(0 0 0 / 55%);
     animation: battle-result-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -722,9 +715,7 @@
 
     &.is-defeat {
         border-color: rgb(255 110 196 / 42%);
-        box-shadow:
-            inset 0 0 32px rgb(255 110 196 / 8%),
-            0 0 40px rgb(255 110 196 / 16%),
+        box-shadow: inset 0 0 32px rgb(255 110 196 / 8%), 0 0 40px rgb(255 110 196 / 16%),
             0 24px 60px rgb(0 0 0 / 55%);
 
         .art svg {
@@ -738,9 +729,7 @@
 
     &.is-pending {
         border-color: rgb(125 214 255 / 28%);
-        box-shadow:
-            inset 0 0 24px rgb(125 214 255 / 5%),
-            0 0 28px rgb(125 214 255 / 10%),
+        box-shadow: inset 0 0 24px rgb(125 214 255 / 5%), 0 0 28px rgb(125 214 255 / 10%),
             0 24px 60px rgb(0 0 0 / 55%);
 
         .art svg {
@@ -767,15 +756,11 @@
     background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
     border: 1px solid rgb(255 110 196 / 55%);
     color: #ff9ad6;
-    box-shadow:
-        inset 0 0 12px rgb(255 110 196 / 14%),
-        0 0 12px rgb(255 110 196 / 22%);
+    box-shadow: inset 0 0 12px rgb(255 110 196 / 14%), 0 0 12px rgb(255 110 196 / 22%);
 
     &.is-defeat {
         border-color: rgb(255 110 196 / 38%);
-        box-shadow:
-            inset 0 0 10px rgb(255 110 196 / 10%),
-            0 0 8px rgb(255 110 196 / 16%);
+        box-shadow: inset 0 0 10px rgb(255 110 196 / 10%), 0 0 8px rgb(255 110 196 / 16%);
     }
 
     &:hover:not(:disabled) {
@@ -882,19 +867,13 @@
 @keyframes battle-arena-clash {
     0%,
     100% {
-        box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 4%),
-            inset 0 0 48px rgb(255 110 196 / 4%),
-            0 0 24px rgb(255 110 196 / 8%),
-            0 8px 32px rgb(0 0 0 / 30%);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%), inset 0 0 48px rgb(255 110 196 / 4%),
+            0 0 24px rgb(255 110 196 / 8%), 0 8px 32px rgb(0 0 0 / 30%);
     }
 
     50% {
-        box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 4%),
-            inset 0 0 60px rgb(255 110 196 / 20%),
-            0 0 40px rgb(255 110 196 / 22%),
-            0 8px 32px rgb(0 0 0 / 30%);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 4%), inset 0 0 60px rgb(255 110 196 / 20%),
+            0 0 40px rgb(255 110 196 / 22%), 0 8px 32px rgb(0 0 0 / 30%);
     }
 }
 
@@ -921,8 +900,12 @@
 }
 
 @keyframes battle-result-pending-spin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

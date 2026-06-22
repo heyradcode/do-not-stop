@@ -27,26 +27,26 @@ export interface ChainConfig {
 
 export const CHAINS: ChainConfig[] = [
     // Local dev
-    { chain: hardhatLocal,    name: 'Hardhat Local',    symbol: 'ETH', isTestnet: true  },
+    { chain: hardhatLocal, name: 'Hardhat Local', symbol: 'ETH', isTestnet: true },
     // Arbitrum
-    { chain: arbitrum,        name: 'Arbitrum',         symbol: 'ETH', isTestnet: false },
-    { chain: arbitrumSepolia, name: 'Arbitrum Sepolia', symbol: 'ETH', isTestnet: true  },
+    { chain: arbitrum, name: 'Arbitrum', symbol: 'ETH', isTestnet: false },
+    { chain: arbitrumSepolia, name: 'Arbitrum Sepolia', symbol: 'ETH', isTestnet: true },
     // Optimism
-    { chain: optimism,        name: 'Optimism',         symbol: 'ETH', isTestnet: false },
-    { chain: optimismSepolia, name: 'Optimism Sepolia', symbol: 'ETH', isTestnet: true  },
+    { chain: optimism, name: 'Optimism', symbol: 'ETH', isTestnet: false },
+    { chain: optimismSepolia, name: 'Optimism Sepolia', symbol: 'ETH', isTestnet: true },
     // Base
-    { chain: base,            name: 'Base',             symbol: 'ETH', isTestnet: false },
-    { chain: baseSepolia,     name: 'Base Sepolia',     symbol: 'ETH', isTestnet: true  },
+    { chain: base, name: 'Base', symbol: 'ETH', isTestnet: false },
+    { chain: baseSepolia, name: 'Base Sepolia', symbol: 'ETH', isTestnet: true },
 ];
 
 export const CHAIN_SYMBOLS: { [key: number]: string } = {
-    31337:    'ETH', // Hardhat Local
-    42161:    'ETH', // Arbitrum
-    421614:   'ETH', // Arbitrum Sepolia
-    10:       'ETH', // Optimism
+    31337: 'ETH', // Hardhat Local
+    42161: 'ETH', // Arbitrum
+    421614: 'ETH', // Arbitrum Sepolia
+    10: 'ETH', // Optimism
     11155420: 'ETH', // Optimism Sepolia
-    8453:     'ETH', // Base
-    84532:    'ETH', // Base Sepolia
+    8453: 'ETH', // Base
+    84532: 'ETH', // Base Sepolia
 };
 
 export const getNativeTokenSymbol = (chainId?: number): string => {
@@ -55,13 +55,11 @@ export const getNativeTokenSymbol = (chainId?: number): string => {
 };
 
 export const getChainConfig = (chainId: number): ChainConfig | undefined =>
-    CHAINS.find(c => c.chain.id === chainId);
+    CHAINS.find((c) => c.chain.id === chainId);
 
-export const getMainnetChains = (): ChainConfig[] =>
-    CHAINS.filter(c => !c.isTestnet);
+export const getMainnetChains = (): ChainConfig[] => CHAINS.filter((c) => !c.isTestnet);
 
-export const getTestnetChains = (): ChainConfig[] =>
-    CHAINS.filter(c => c.isTestnet);
+export const getTestnetChains = (): ChainConfig[] => CHAINS.filter((c) => c.isTestnet);
 
 export const getChainsByType = (showTestnets: boolean): ChainConfig[] =>
     showTestnets ? getTestnetChains() : getMainnetChains();

@@ -1,6 +1,6 @@
 import React from 'react';
 import { DynamicContextProvider } from '@dynamic-labs/sdk-react-core';
-import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
+import { EthereumWalletConnectors } from '@dynamic-labs/ethereum';
 import { SolanaWalletConnectors } from '@dynamic-labs/solana';
 import { DynamicWagmiConnector } from '@dynamic-labs/wagmi-connector';
 import { CHAINS, SOLANA_NETWORKS } from '@constants/chains';
@@ -10,8 +10,10 @@ interface DynamicProviderProps {
 }
 
 // Convert existing chain configs to Dynamic.xyz format
-const customEvmNetworks = CHAINS.map(chainConfig => ({
-    blockExplorerUrls: chainConfig.chain.blockExplorers?.default?.url ? [chainConfig.chain.blockExplorers.default.url] : [],
+const customEvmNetworks = CHAINS.map((chainConfig) => ({
+    blockExplorerUrls: chainConfig.chain.blockExplorers?.default?.url
+        ? [chainConfig.chain.blockExplorers.default.url]
+        : [],
     chainId: chainConfig.chain.id,
     chainName: chainConfig.chain.name,
     iconUrls: ['https://app.dynamic.xyz/assets/networks/eth.svg'],
@@ -27,11 +29,16 @@ const customEvmNetworks = CHAINS.map(chainConfig => ({
     vanityName: chainConfig.name,
 }));
 
-const customSolanaNetworks = SOLANA_NETWORKS.map(network => ({
+const customSolanaNetworks = SOLANA_NETWORKS.map((network) => ({
     blockExplorerUrls: ['https://explorer.solana.com'],
-    chainId: network.name === 'Solana Local' ? 999 :
-        network.name === 'Solana Mainnet' ? 101 :
-            network.name === 'Solana Devnet' ? 103 : 102,
+    chainId:
+        network.name === 'Solana Local'
+            ? 999
+            : network.name === 'Solana Mainnet'
+            ? 101
+            : network.name === 'Solana Devnet'
+            ? 103
+            : 102,
     chainName: network.name,
     iconUrls: ['https://app.dynamic.xyz/assets/networks/solana.svg'],
     name: 'Solana',
@@ -41,9 +48,14 @@ const customSolanaNetworks = SOLANA_NETWORKS.map(network => ({
         symbol: 'SOL',
         iconUrl: 'https://app.dynamic.xyz/assets/networks/solana.svg',
     },
-    networkId: network.name === 'Solana Local' ? 999 :
-        network.name === 'Solana Mainnet' ? 101 :
-            network.name === 'Solana Devnet' ? 103 : 102,
+    networkId:
+        network.name === 'Solana Local'
+            ? 999
+            : network.name === 'Solana Mainnet'
+            ? 101
+            : network.name === 'Solana Devnet'
+            ? 103
+            : 102,
     rpcUrls: [network.rpcUrl],
     vanityName: network.name,
 }));
@@ -66,12 +78,10 @@ export const DynamicProvider: React.FC<DynamicProviderProps> = ({ children }) =>
                     evmNetworks: customEvmNetworks,
                     solNetworks: customSolanaNetworks,
                 },
-                initialAuthenticationMode: 'connect-only'
+                initialAuthenticationMode: 'connect-only',
             }}
         >
-            <DynamicWagmiConnector>
-                {children}
-            </DynamicWagmiConnector>
+            <DynamicWagmiConnector>{children}</DynamicWagmiConnector>
         </DynamicContextProvider>
     );
 };

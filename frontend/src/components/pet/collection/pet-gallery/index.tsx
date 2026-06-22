@@ -49,10 +49,11 @@ const PetGallery: React.FC = () => {
     }, [isLoading]);
 
     // Tick every second while any pet is on cooldown so the countdown stays live.
-    const anyCooldown = pets.some((p) =>
-        !isPetReady(BigInt(p.readyAt)) ||
-        (p.breedReadyAt != null && !isPetReady(BigInt(p.breedReadyAt))) ||
-        (p.trainReadyAt != null && !isPetReady(BigInt(p.trainReadyAt))),
+    const anyCooldown = pets.some(
+        (p) =>
+            !isPetReady(BigInt(p.readyAt)) ||
+            (p.breedReadyAt != null && !isPetReady(BigInt(p.breedReadyAt))) ||
+            (p.trainReadyAt != null && !isPetReady(BigInt(p.trainReadyAt))),
     );
     useEffect(() => {
         if (!anyCooldown) return;
@@ -79,7 +80,12 @@ const PetGallery: React.FC = () => {
         return (
             <PetCollectionLayout
                 className="wallet-disconnected"
-                title={<><Icon as={PawIcon} tone={Tones.Cyan} />Your Pet Collection</>}
+                title={
+                    <>
+                        <Icon as={PawIcon} tone={Tones.Cyan} />
+                        Your Pet Collection
+                    </>
+                }
                 description="Connect your wallet to view your pets"
             />
         );
@@ -88,7 +94,12 @@ const PetGallery: React.FC = () => {
     return (
         <>
             <PetCollectionLayout
-                title={<><Icon as={PawIcon} tone={Tones.Cyan} />Your Pets</>}
+                title={
+                    <>
+                        <Icon as={PawIcon} tone={Tones.Cyan} />
+                        Your Pets
+                    </>
+                }
                 actions={
                     <button
                         type="button"
@@ -110,7 +121,10 @@ const PetGallery: React.FC = () => {
 
                 {error && (
                     <div className="error-container">
-                        <p><Icon as={CloseIcon} tone={Tones.Magenta} />Failed to load pet data. Please try again.</p>
+                        <p>
+                            <Icon as={CloseIcon} tone={Tones.Magenta} />
+                            Failed to load pet data. Please try again.
+                        </p>
                         <button type="button" onClick={() => refetch()} className="retry-button">
                             Try Again
                         </button>
@@ -123,11 +137,46 @@ const PetGallery: React.FC = () => {
                             <span className="ring ring-outer" />
                             <span className="ring ring-mid" />
                             <span className="ring ring-inner" />
-                            <span className="orb orb-tl"><Icon as={CrystalIcon} tone={Tones.Cyan} glow="strong" className="no-gap" /></span>
-                            <span className="orb orb-tr"><Icon as={SparklesIcon} tone={Tones.Magenta} glow="strong" className="no-gap" /></span>
-                            <span className="orb orb-bl"><Icon as={EggIcon} tone={Tones.Amber} glow="strong" className="no-gap" /></span>
-                            <span className="orb orb-br"><Icon as={MagicIcon} tone={Tones.Violet} glow="strong" className="no-gap" /></span>
-                            <span className="core"><Icon as={DragonIcon} tone={Tones.Violet} glow="strong" className="no-gap" /></span>
+                            <span className="orb orb-tl">
+                                <Icon
+                                    as={CrystalIcon}
+                                    tone={Tones.Cyan}
+                                    glow="strong"
+                                    className="no-gap"
+                                />
+                            </span>
+                            <span className="orb orb-tr">
+                                <Icon
+                                    as={SparklesIcon}
+                                    tone={Tones.Magenta}
+                                    glow="strong"
+                                    className="no-gap"
+                                />
+                            </span>
+                            <span className="orb orb-bl">
+                                <Icon
+                                    as={EggIcon}
+                                    tone={Tones.Amber}
+                                    glow="strong"
+                                    className="no-gap"
+                                />
+                            </span>
+                            <span className="orb orb-br">
+                                <Icon
+                                    as={MagicIcon}
+                                    tone={Tones.Violet}
+                                    glow="strong"
+                                    className="no-gap"
+                                />
+                            </span>
+                            <span className="core">
+                                <Icon
+                                    as={DragonIcon}
+                                    tone={Tones.Violet}
+                                    glow="strong"
+                                    className="no-gap"
+                                />
+                            </span>
                         </div>
                         <div className="empty-copy">
                             <h3>Awaken your first companion</h3>
@@ -138,7 +187,8 @@ const PetGallery: React.FC = () => {
                             className="create-first-pet-button"
                             onClick={() => setCreateModalOpen(true)}
                         >
-                            <Icon as={PawIcon} tone={Tones.Cyan} />Create your first pet
+                            <Icon as={PawIcon} tone={Tones.Cyan} />
+                            Create your first pet
                         </button>
                     </div>
                 )}
@@ -156,7 +206,10 @@ const PetGallery: React.FC = () => {
                                     </div>
                                     <div className="element-tag">{getPetElement(pet.dna)}</div>
                                     {getPetSkill(pet.speciesId) ? (
-                                        <div className="skill-badge" title={getPetSkill(pet.speciesId)?.description}>
+                                        <div
+                                            className="skill-badge"
+                                            title={getPetSkill(pet.speciesId)?.description}
+                                        >
                                             {getPetSkill(pet.speciesId)?.name}
                                         </div>
                                     ) : null}
@@ -168,7 +221,8 @@ const PetGallery: React.FC = () => {
                                     <div className="pet-header">
                                         <h3>{pet.name}</h3>
                                         <span className="pet-dna">
-                                            {getPetClass(pet.dna)} · Gen {pet.generation ?? getGeneration(pet.dna)}
+                                            {getPetClass(pet.dna)} · Gen{' '}
+                                            {pet.generation ?? getGeneration(pet.dna)}
                                         </span>
                                     </div>
                                     <div className="xp-row">
@@ -178,15 +232,22 @@ const PetGallery: React.FC = () => {
                                         </span>
                                     </div>
                                     <div className="xp-bar">
-                                        <div className="xp-fill" style={{ width: `${getXpPercent(pet)}%` }} />
+                                        <div
+                                            className="xp-fill"
+                                            style={{ width: `${getXpPercent(pet)}%` }}
+                                        />
                                     </div>
-                                    {(pet.winCount > 0 || pet.lossCount > 0 || (pet.breedCount != null && pet.breedCount > 0)) && (
+                                    {(pet.winCount > 0 ||
+                                        pet.lossCount > 0 ||
+                                        (pet.breedCount != null && pet.breedCount > 0)) && (
                                         <div className="pet-record">
                                             <span className="record-wins">{pet.winCount}W</span>
                                             <span className="record-sep">/</span>
                                             <span className="record-losses">{pet.lossCount}L</span>
                                             {pet.breedCount != null && pet.breedCount > 0 && (
-                                                <span className="record-breeds">· {pet.breedCount} bred</span>
+                                                <span className="record-breeds">
+                                                    · {pet.breedCount} bred
+                                                </span>
                                             )}
                                         </div>
                                     )}
@@ -204,34 +265,53 @@ const PetGallery: React.FC = () => {
                                 </div>
 
                                 {(!isPetReady(BigInt(pet.readyAt)) ||
-                                    (pet.breedReadyAt != null && !isPetReady(BigInt(pet.breedReadyAt))) ||
-                                    (pet.trainReadyAt != null && !isPetReady(BigInt(pet.trainReadyAt)))) && (
+                                    (pet.breedReadyAt != null &&
+                                        !isPetReady(BigInt(pet.breedReadyAt))) ||
+                                    (pet.trainReadyAt != null &&
+                                        !isPetReady(BigInt(pet.trainReadyAt)))) && (
                                     <div className="pet-status">
                                         {!isPetReady(BigInt(pet.readyAt)) && (
                                             <div className="status cooldown">
-                                                ⚔️ Battle ready in {getTimeUntilReady(BigInt(pet.readyAt))}
+                                                ⚔️ Battle ready in{' '}
+                                                {getTimeUntilReady(BigInt(pet.readyAt))}
                                             </div>
                                         )}
-                                        {pet.breedReadyAt != null && !isPetReady(BigInt(pet.breedReadyAt)) && (
-                                            <div className="status cooldown">
-                                                🥚 Breed ready in {getTimeUntilReady(BigInt(pet.breedReadyAt))}
-                                            </div>
-                                        )}
-                                        {pet.trainReadyAt != null && !isPetReady(BigInt(pet.trainReadyAt)) && (
-                                            <div className="status cooldown">
-                                                💪 Train ready in {getTimeUntilReady(BigInt(pet.trainReadyAt))}
-                                            </div>
-                                        )}
+                                        {pet.breedReadyAt != null &&
+                                            !isPetReady(BigInt(pet.breedReadyAt)) && (
+                                                <div className="status cooldown">
+                                                    🥚 Breed ready in{' '}
+                                                    {getTimeUntilReady(BigInt(pet.breedReadyAt))}
+                                                </div>
+                                            )}
+                                        {pet.trainReadyAt != null &&
+                                            !isPetReady(BigInt(pet.trainReadyAt)) && (
+                                                <div className="status cooldown">
+                                                    💪 Train ready in{' '}
+                                                    {getTimeUntilReady(BigInt(pet.trainReadyAt))}
+                                                </div>
+                                            )}
                                     </div>
                                 )}
 
                                 <div className="pet-actions">
                                     <button
                                         type="button"
-                                        className={`send-button${isPetReady(BigInt(pet.readyAt)) ? ' is-ready' : ' on-cooldown'}`}
+                                        className={`send-button${
+                                            isPetReady(BigInt(pet.readyAt))
+                                                ? ' is-ready'
+                                                : ' on-cooldown'
+                                        }`}
                                         onClick={() => handleSendClick(pet)}
                                     >
-                                        <Icon as={SendIcon} tone={isPetReady(BigInt(pet.readyAt)) ? Tones.Emerald : Tones.Amber} />Send
+                                        <Icon
+                                            as={SendIcon}
+                                            tone={
+                                                isPetReady(BigInt(pet.readyAt))
+                                                    ? Tones.Emerald
+                                                    : Tones.Amber
+                                            }
+                                        />
+                                        Send
                                     </button>
                                 </div>
                             </div>

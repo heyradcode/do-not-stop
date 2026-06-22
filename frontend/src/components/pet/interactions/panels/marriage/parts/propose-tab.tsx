@@ -38,14 +38,19 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
 
     return (
         <div className="marriage-tab-panel">
-            <p className="marriage-tab-hint">Select one of your pets, then search for your partner&apos;s pet to send a marriage proposal.</p>
+            <p className="marriage-tab-hint">
+                Select one of your pets, then search for your partner&apos;s pet to send a marriage
+                proposal.
+            </p>
             <div className="picker">
                 <div className="field">
                     <label>Your pet</label>
                     <select value={myPet} onChange={(e) => setMyPet(e.target.value)}>
                         <option value="">Select your pet...</option>
                         {chainPets.map((p) => (
-                            <option key={p.id} value={p.id}>{p.name} (#{p.id})</option>
+                            <option key={p.id} value={p.id}>
+                                {p.name} (#{p.id})
+                            </option>
                         ))}
                     </select>
                 </div>

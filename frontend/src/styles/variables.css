@@ -2,177 +2,184 @@
    Palette primitives — single source for hex/rgba (dark-only theme + components)
    ============================================================================= */
 :root {
-  --cp-white: #ffffff;
-  --cp-text-body-dark: #f3f4f6;
-  --cp-text-muted-dark: #c7ccd4;
-  --cp-text-light-dark: #9ca3af;
-  --cp-border-dark: #2b3240;
-  --cp-bg-dark: #141923;
-  --cp-bg-muted-dark: #1d2430;
-  --cp-bg-hover-dark: #273244;
+    --cp-white: #ffffff;
+    --cp-text-body-dark: #f3f4f6;
+    --cp-text-muted-dark: #c7ccd4;
+    --cp-text-light-dark: #9ca3af;
+    --cp-border-dark: #2b3240;
+    --cp-bg-dark: #141923;
+    --cp-bg-muted-dark: #1d2430;
+    --cp-bg-hover-dark: #273244;
 
-  --cp-shadow-10: rgba(0, 0, 0, 0.1);
-  --cp-shadow-15: rgba(0, 0, 0, 0.15);
-  --cp-shadow-35: rgba(0, 0, 0, 0.35);
-  --cp-shadow-50: rgba(0, 0, 0, 0.5);
-  --cp-shadow-25: rgba(0, 0, 0, 0.25);
+    --cp-shadow-10: rgba(0, 0, 0, 0.1);
+    --cp-shadow-15: rgba(0, 0, 0, 0.15);
+    --cp-shadow-35: rgba(0, 0, 0, 0.35);
+    --cp-shadow-50: rgba(0, 0, 0, 0.5);
+    --cp-shadow-25: rgba(0, 0, 0, 0.25);
 
-  --cp-brand-primary: #667eea;
-  --cp-brand-secondary: #764ba2;
+    --cp-brand-primary: #667eea;
+    --cp-brand-secondary: #764ba2;
 
-  /* Splash / index root (slightly different from card `--color-background`) */
-  --cp-body-text-dark: #e5e7eb;
-  --cp-body-bg-dark: #050812;
-  --cp-link: #7dd6ff;
-  --cp-link-hover: #b58cff;
+    /* Splash / index root (slightly different from card `--color-background`) */
+    --cp-body-text-dark: #e5e7eb;
+    --cp-body-bg-dark: #050812;
+    --cp-link: #7dd6ff;
+    --cp-link-hover: #b58cff;
 
-  --cp-shadow-button: rgba(102, 126, 234, 0.3);
-  --cp-shadow-button-hover: rgba(102, 126, 234, 0.4);
+    --cp-shadow-button: rgba(102, 126, 234, 0.3);
+    --cp-shadow-button-hover: rgba(102, 126, 234, 0.4);
 
-  /* Neon tri-color — mirrors website (cyan / violet / magenta) */
-  --neon-cyan: #7dd6ff;
-  --neon-cyan-strong: #29a8ff;
-  --neon-violet: #b58cff;
-  --neon-violet-strong: #8a62ff;
-  --neon-magenta: #ff7bcb;
-  --neon-magenta-strong: #ff6ec4;
+    /* Neon tri-color — mirrors website (cyan / violet / magenta) */
+    --neon-cyan: #7dd6ff;
+    --neon-cyan-strong: #29a8ff;
+    --neon-violet: #b58cff;
+    --neon-violet-strong: #8a62ff;
+    --neon-magenta: #ff7bcb;
+    --neon-magenta-strong: #ff6ec4;
 
-  --neon-grid-line: rgb(255 255 255 / 3%);
-  --neon-base-bg: #050812;
-  --neon-band-bg: #070a14;
-  --neon-border-soft: rgb(101 131 255 / 22%);
-  --neon-border-strong: rgb(148 191 255 / 42%);
-  --neon-text-glow: rgb(185 160 255 / 50%);
+    --neon-grid-line: rgb(255 255 255 / 3%);
+    --neon-base-bg: #050812;
+    --neon-band-bg: #070a14;
+    --neon-border-soft: rgb(101 131 255 / 22%);
+    --neon-border-strong: rgb(148 191 255 / 42%);
+    --neon-text-glow: rgb(185 160 255 / 50%);
 
-  --neon-gradient-line: linear-gradient(90deg, #7dd6ff 0%, #b58cff 60%, #ff7bcb 100%);
-  --neon-gradient-wash:
-    radial-gradient(circle at 20% 0%, rgb(87 57 230 / 30%) 0%, transparent 38%),
-    radial-gradient(circle at 80% 20%, rgb(32 163 255 / 14%) 0%, transparent 44%),
-    var(--neon-base-bg);
+    --neon-gradient-line: linear-gradient(90deg, #7dd6ff 0%, #b58cff 60%, #ff7bcb 100%);
+    --neon-gradient-wash: radial-gradient(
+            circle at 20% 0%,
+            rgb(87 57 230 / 30%) 0%,
+            transparent 38%
+        ),
+        radial-gradient(circle at 80% 20%, rgb(32 163 255 / 14%) 0%, transparent 44%),
+        var(--neon-base-bg);
 }
 
 /* =============================================================================
    Semantic tokens (layout shell, gallery, modals)
    ============================================================================= */
 :root {
-  --color-primary: var(--cp-brand-primary);
-  --color-secondary: var(--cp-brand-secondary);
-  --color-text: var(--cp-text-body-dark);
-  --color-text-muted: var(--cp-text-muted-dark);
-  --color-text-light: var(--cp-text-light-dark);
-  --color-border: var(--cp-border-dark);
-  --color-background: var(--cp-bg-dark);
-  --color-background-light: var(--cp-bg-muted-dark);
-  --color-background-hover: var(--cp-bg-hover-dark);
-  --color-shadow: var(--cp-shadow-35);
-  --color-shadow-hover: var(--cp-shadow-50);
-  --color-shadow-button: var(--cp-shadow-button);
-  --color-shadow-button-hover: var(--cp-shadow-button-hover);
+    --color-primary: var(--cp-brand-primary);
+    --color-secondary: var(--cp-brand-secondary);
+    --color-text: var(--cp-text-body-dark);
+    --color-text-muted: var(--cp-text-muted-dark);
+    --color-text-light: var(--cp-text-light-dark);
+    --color-border: var(--cp-border-dark);
+    --color-background: var(--cp-bg-dark);
+    --color-background-light: var(--cp-bg-muted-dark);
+    --color-background-hover: var(--cp-bg-hover-dark);
+    --color-shadow: var(--cp-shadow-35);
+    --color-shadow-hover: var(--cp-shadow-50);
+    --color-shadow-button: var(--cp-shadow-button);
+    --color-shadow-button-hover: var(--cp-shadow-button-hover);
 }
 
 /* =============================================================================
    Typography — matches `website/` (Orbitron titles + Inter body)
    ============================================================================= */
 :root {
-  --title-font: 'Orbitron', 'Eurostile', 'Bank Gothic', system-ui, sans-serif;
-  --content-font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    --title-font: 'Orbitron', 'Eurostile', 'Bank Gothic', system-ui, sans-serif;
+    --content-font: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
 /* =============================================================================
    Main layout scale (rem) — shared by header, interactions, modals
    ============================================================================= */
 :root {
-  --spacing-xs: 0.5rem;
-  --spacing-sm: 1rem;
-  --spacing-md: 1.5rem;
-  --spacing-lg: 2rem;
-  --spacing-xl: 2.5rem;
-  --spacing-2xl: 3rem;
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 1rem;
+    --spacing-md: 1.5rem;
+    --spacing-lg: 2rem;
+    --spacing-xl: 2.5rem;
+    --spacing-2xl: 3rem;
 
-  --border-radius: 16px;
-  --border-radius-sm: 8px;
+    --border-radius: 16px;
+    --border-radius-sm: 8px;
 
-  --font-size-sm: 0.875rem;
-  --font-size-base: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-2xl: 1.5rem;
-  --font-size-3xl: 2rem;
-  --font-size-4xl: 2.5rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 2rem;
+    --font-size-4xl: 2.5rem;
 
-  --transition: all 0.3s ease;
-  --transition-fast: all 0.2s ease;
+    --transition: all 0.3s ease;
+    --transition-fast: all 0.2s ease;
 
-  --z-header: 50;
-  --z-modal: 1000;
+    --z-header: 50;
+    --z-modal: 1000;
 
-  /* Space reserved for fixed `.main-header` (row: title + wallet; must cover wrap height on small screens) */
-  --main-header-offset: 100px;
+    /* Space reserved for fixed `.main-header` (row: title + wallet; must cover wrap height on small screens) */
+    --main-header-offset: 100px;
 
-  --gradient-primary: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+    --gradient-primary: linear-gradient(
+        135deg,
+        var(--color-primary) 0%,
+        var(--color-secondary) 100%
+    );
 }
 
 @media (max-width: 768px) {
-  :root {
-    --main-header-offset: 128px;
-  }
+    :root {
+        --main-header-offset: 128px;
+    }
 }
 
 /* =============================================================================
    Legacy aliases (App.css, older snippets)
    ============================================================================= */
 :root {
-  --primary-color: #007bff;
-  --primary-hover: #0056b3;
-  --secondary-color: #6c757d;
-  --success-color: #28a745;
-  --danger-color: #dc3545;
-  --warning-color: #17a2b8;
-  --warning-hover: #138496;
-  --info-color: #007bff;
-  --light-color: #f8f9fa;
-  --dark-color: #343a40;
+    --primary-color: #007bff;
+    --primary-hover: #0056b3;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #17a2b8;
+    --warning-hover: #138496;
+    --info-color: #007bff;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
 
-  --text-primary: var(--color-text);
-  --text-secondary: #555;
-  --text-muted: var(--color-text-muted);
-  --text-light: #fff;
+    --text-primary: var(--color-text);
+    --text-secondary: #555;
+    --text-muted: var(--color-text-muted);
+    --text-light: #fff;
 
-  --bg-primary: var(--color-background);
-  --bg-secondary: var(--color-background-light);
-  --bg-dark: #343a40;
+    --bg-primary: var(--color-background);
+    --bg-secondary: var(--color-background-light);
+    --bg-dark: #343a40;
 
-  --border-color: #dee2e6;
-  --border-light: #eee;
-  --border-dark: #adb5bd;
+    --border-color: #dee2e6;
+    --border-light: #eee;
+    --border-dark: #adb5bd;
 
-  --spacing-xxl: 24px;
-  --spacing-xxxl: 32px;
+    --spacing-xxl: 24px;
+    --spacing-xxxl: 32px;
 
-  --font-xs: 12px;
-  --font-sm: 14px;
-  --font-md: 16px;
-  --font-lg: 18px;
-  --font-xl: 20px;
-  --font-xxl: 24px;
+    --font-xs: 12px;
+    --font-sm: 14px;
+    --font-md: 16px;
+    --font-lg: 18px;
+    --font-xl: 20px;
+    --font-xxl: 24px;
 
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.15);
-  --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.15);
+    --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.2);
 
-  --transition-normal: 0.2s ease;
-  --transition-slow: 0.3s ease;
+    --transition-normal: 0.2s ease;
+    --transition-slow: 0.3s ease;
 
-  --z-dropdown: 1000;
-  --z-sticky: 1020;
-  --z-fixed: 1030;
-  --z-modal-backdrop: 1040;
-  --z-popover: 1060;
-  --z-tooltip: 1070;
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
 }

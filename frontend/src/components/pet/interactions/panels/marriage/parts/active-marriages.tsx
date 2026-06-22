@@ -11,7 +11,13 @@ type ActiveMarriagesProps = {
 };
 
 /** "Your marriages" section — one card per married pet (others render nothing). */
-const ActiveMarriages: React.FC<ActiveMarriagesProps> = ({ chainPets, chain, petById, busy, onDivorce }) => (
+const ActiveMarriages: React.FC<ActiveMarriagesProps> = ({
+    chainPets,
+    chain,
+    petById,
+    busy,
+    onDivorce,
+}) => (
     <div className="marriage-status-section">
         <span className="marriage-status-label">❤ Your marriages</span>
         <ul className="marriage-list">

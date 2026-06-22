@@ -23,9 +23,7 @@ const MarriageTabBar: React.FC<MarriageTabBarProps> = ({ tab, onChange, proposal
             onClick={() => onChange('accept')}
         >
             💒 Accept
-            {proposalCount > 0 && (
-                <span className="marriage-tab-badge">{proposalCount}</span>
-            )}
+            {proposalCount > 0 && <span className="marriage-tab-badge">{proposalCount}</span>}
         </button>
     </div>
 );

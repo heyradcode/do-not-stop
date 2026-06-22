@@ -1,12 +1,7 @@
 ﻿import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
 import { AuthActionButton } from '@components/common';
-import {
-    getReadyPetsUnified,
-    useChainCapabilities,
-    usePetList,
-    useRenamePet,
-} from '@shared/core';
+import { getReadyPetsUnified, useChainCapabilities, usePetList, useRenamePet } from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon, QuillIcon } from '@components/ui/icon';
@@ -33,7 +28,13 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
         refetch();
     };
 
-    const { mutate, isPending, error: hookError, reset, lifecycle } = useRenamePet({
+    const {
+        mutate,
+        isPending,
+        error: hookError,
+        reset,
+        lifecycle,
+    } = useRenamePet({
         onSuccess: handleRenameComplete,
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
@@ -41,8 +42,11 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
     useTxErrorToast(hookError);
 
     const selectablePets = useMemo(
-        () => (renameMinLevel > 1 ? readyPets.filter(({ pet }) => pet.level >= renameMinLevel) : readyPets),
-        [readyPets, renameMinLevel]
+        () =>
+            renameMinLevel > 1
+                ? readyPets.filter(({ pet }) => pet.level >= renameMinLevel)
+                : readyPets,
+        [readyPets, renameMinLevel],
     );
 
     const handleChangeName = async () => {
@@ -66,7 +70,10 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
             <div className="interface">
                 {!isStandaloneView && (
                     <>
-                        <h4><Icon as={QuillIcon} tone={Tones.Cyan} />Change Pet Name</h4>
+                        <h4>
+                            <Icon as={QuillIcon} tone={Tones.Cyan} />
+                            Change Pet Name
+                        </h4>
                         <p>
                             {renameMinLevel > 1
                                 ? `Change your pet's name (requires level ${renameMinLevel}+)`
@@ -104,7 +111,10 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
 
                 <div className="action-controls">
-                    <AuthActionButton onClick={handleChangeName} disabled={isPending || !selectedPet || !newName.trim()}>
+                    <AuthActionButton
+                        onClick={handleChangeName}
+                        disabled={isPending || !selectedPet || !newName.trim()}
+                    >
                         {isPending ? 'Changing Name...' : 'Change Name'}
                     </AuthActionButton>
                 </div>

@@ -28,7 +28,9 @@ const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({
         <button
             ref={cardRef}
             type="button"
-            className={`battle-picker-card${selected ? ' is-selected' : ''}${matchTier !== 'unknown' ? ` match-${matchTier}` : ''}`}
+            className={`battle-picker-card${selected ? ' is-selected' : ''}${
+                matchTier !== 'unknown' ? ` match-${matchTier}` : ''
+            }`}
             aria-pressed={selected}
             onClick={() => onSelect(key)}
         >
@@ -47,7 +49,10 @@ const OpponentPickerCard: React.FC<OpponentPickerCardProps> = ({
                 {matchLabel ? (
                     <span className={`stat-pill match-${matchTier}`}>{matchLabel}</span>
                 ) : null}
-                <span className="stat-pill rarity" style={{ backgroundColor: getRarityColor(opponent.rarity) }}>
+                <span
+                    className="stat-pill rarity"
+                    style={{ backgroundColor: getRarityColor(opponent.rarity) }}
+                >
                     {getRarityName(opponent.rarity)}
                 </span>
                 <span className="stat-pill">

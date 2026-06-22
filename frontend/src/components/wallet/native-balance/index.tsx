@@ -21,7 +21,11 @@ const NativeBalance: React.FC<NativeBalanceProps> = ({ type, className }) => {
     const { connection } = useConnection();
 
     // Ethereum balance
-    const { data: ethereumBalance, isLoading: isEthereumLoading, error: ethereumError } = useBalance({
+    const {
+        data: ethereumBalance,
+        isLoading: isEthereumLoading,
+        error: ethereumError,
+    } = useBalance({
         address,
     });
 
@@ -86,7 +90,10 @@ const NativeBalance: React.FC<NativeBalanceProps> = ({ type, className }) => {
         return (
             <div className={`native-balance ${className || ''}`}>
                 <div className="balance-error">
-                    <span><Icon as={WarningIcon} tone={Tones.Amber} />Error loading balance</span>
+                    <span>
+                        <Icon as={WarningIcon} tone={Tones.Amber} />
+                        Error loading balance
+                    </span>
                 </div>
             </div>
         );
@@ -122,9 +129,7 @@ const NativeBalance: React.FC<NativeBalanceProps> = ({ type, className }) => {
     return (
         <div className={`native-balance ${className || ''}`}>
             <div className="balance-info">
-                <span className="balance-amount">
-                    {parseFloat(formattedBalance).toFixed(4)}
-                </span>
+                <span className="balance-amount">{parseFloat(formattedBalance).toFixed(4)}</span>
                 <span className="balance-symbol">{symbol}</span>
             </div>
         </div>

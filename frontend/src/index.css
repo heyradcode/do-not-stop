@@ -2,70 +2,75 @@
 @import './styles/messages.css';
 
 :root {
-  font-family: var(--content-font);
-  line-height: 1.5;
-  font-weight: 400;
+    font-family: var(--content-font);
+    line-height: 1.5;
+    font-weight: 400;
 
-  color-scheme: dark;
-  color: var(--cp-body-text-dark);
-  background-color: var(--cp-body-bg-dark);
+    color-scheme: dark;
+    color: var(--cp-body-text-dark);
+    background-color: var(--cp-body-bg-dark);
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--title-font);
-  letter-spacing: 0.5px;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--title-font);
+    letter-spacing: 0.5px;
 }
 
 a {
-  font-weight: 500;
-  color: var(--cp-link);
-  text-decoration: inherit;
-  transition: color 0.2s ease, text-shadow 0.2s ease;
+    font-weight: 500;
+    color: var(--cp-link);
+    text-decoration: inherit;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
 
-  &:hover {
-    color: var(--cp-link-hover);
-    text-shadow: 0 0 8px var(--neon-text-glow);
-  }
+    &:hover {
+        color: var(--cp-link-hover);
+        text-shadow: 0 0 8px var(--neon-text-glow);
+    }
 }
 
 body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  background: inherit;
-  color: inherit;
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: inherit;
+    color: inherit;
 }
 
 h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+    font-size: 3.2em;
+    line-height: 1.1;
 }
 
 button {
-  border-radius: 2px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 600;
-  font-family: inherit;
-  letter-spacing: 0.4px;
-  background-color: rgb(5 13 30 / 92%);
-  color: var(--cp-text-body-dark);
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 2px;
+    border: 1px solid transparent;
+    padding: 0.6em 1.2em;
+    font-size: 1em;
+    font-weight: 600;
+    font-family: inherit;
+    letter-spacing: 0.4px;
+    background-color: rgb(5 13 30 / 92%);
+    color: var(--cp-text-body-dark);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
-  &:hover {
-    border-color: var(--cp-link);
-    box-shadow: 0 0 12px rgb(125 214 255 / 24%);
-  }
+    &:hover {
+        border-color: var(--cp-link);
+        box-shadow: 0 0 12px rgb(125 214 255 / 24%);
+    }
 
-  &:focus,
-  &:focus-visible {
-    outline: none;
-  }
+    &:focus,
+    &:focus-visible {
+        outline: none;
+    }
 }

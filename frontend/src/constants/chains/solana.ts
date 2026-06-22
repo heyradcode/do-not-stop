@@ -19,7 +19,7 @@ export const SOLANA_NETWORKS: SolanaNetworkConfig[] = [
 ];
 
 /** Maps the `VITE_SOLANA_CLUSTER` env value to a `SOLANA_NETWORKS` entry name. */
-export const solanaNetworkNameFromCluster = (cluster: string | undefined): string  => {
+export const solanaNetworkNameFromCluster = (cluster: string | undefined): string => {
     switch ((cluster ?? '').trim().toLowerCase()) {
         case 'devnet':
             return 'Solana Devnet';
@@ -36,4 +36,4 @@ export const solanaNetworkNameFromCluster = (cluster: string | undefined): strin
         default:
             return 'Solana Local';
     }
-}
+};

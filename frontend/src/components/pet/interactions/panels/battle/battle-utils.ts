@@ -20,7 +20,8 @@ export const shortAddress = (addr: string) =>
 export const VALIDATION_MESSAGE = 'Please select your pet and an opponent';
 export const BATTLE_FAIL_MESSAGE = 'Failed to start battle. Please try again.';
 export const REMATCH_COOLDOWN_MESSAGE = 'Your fighter is on cooldown. Pick another pet or wait.';
-export const REMATCH_OPPONENT_GONE_MESSAGE = 'That opponent is no longer available. Choose another challenger.';
+export const REMATCH_OPPONENT_GONE_MESSAGE =
+    'That opponent is no longer available. Choose another challenger.';
 
 /** Personas captured at battle start, reused for the settle dialogue read. */
 export type BattlePersonas = { attacker: DialoguePetInput; defender: DialoguePetInput };

@@ -11,9 +11,17 @@ type AcceptTabProps = {
 };
 
 /** Pending proposals from other players to marry one of the user's pets. */
-const AcceptTab: React.FC<AcceptTabProps> = ({ proposals, isLoading, busy, targetPetName, onAccept }) => (
+const AcceptTab: React.FC<AcceptTabProps> = ({
+    proposals,
+    isLoading,
+    busy,
+    targetPetName,
+    onAccept,
+}) => (
     <div className="marriage-tab-panel">
-        <p className="marriage-tab-hint">Pending proposals from other players to marry one of your pets.</p>
+        <p className="marriage-tab-hint">
+            Pending proposals from other players to marry one of your pets.
+        </p>
 
         {isLoading ? (
             <div className="proposals-empty">Checking for proposals…</div>

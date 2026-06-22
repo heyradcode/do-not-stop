@@ -1,0 +1,297 @@
+# Frontend Code-Quality Refactor — Plan & Progress
+
+A step-by-step refactor of `frontend/src` to fix architectural-consistency issues
+surfaced in the code-quality review. Work is done **one step per commit**; the user
+commits manually after each step. This file is the single source of truth so any
+session can resume without re-deriving context.
+
+## How to use this doc
+1. Pick the first step whose status is `TODO`.
+2. Do **only** that step. Keep the diff focused.
+3. Verify with the step's acceptance criteria (typecheck + lint + tests as noted).
+4. Fill in the step's **Outcome** and **Commit message**, flip status to `DONE`.
+5. Hand the commit message to the user; they commit manually.
+
+## Project conventions (apply to every step)
+- **Indentation:** 4 spaces (the app majority; see Step 1).
+- **Components:** `kebab-case/index.tsx`, `React.FC`, `type XxxProps`, default export.
+- **Parts pattern:** complex panels = slim orchestrator + `parts/` presentational
+  components (see `panels/battle` and the refactored `panels/marriage` as templates).
+- **Hooks:** `useXxx.ts`, camelCase.
+- **Verify commands** (run from `frontend/`):
+  - Typecheck: `node ../node_modules/typescript/bin/tsc -b`
+  - Lint: `node ../node_modules/eslint/bin/eslint.js <paths>`
+  - Tests: `node ../node_modules/vitest/vitest.mjs run <path>`
+- **Commit style:** Conventional Commits; trailer
+  `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
+
+## Reference templates already in the codebase
+- Headless controller: `src/hooks/battle/useBattlePanel.ts`
+- Parts decomposition: `src/components/pet/interactions/panels/battle/parts/`
+- Recently refactored example: `src/components/pet/interactions/panels/marriage/`
+
+---
+
+## Status overview
+| # | Step | Status |
+|---|------|--------|
+| 1 | Tooling: Prettier + `.editorconfig` + reformat | DONE |
+| 2 | Colocate panel CSS (split `overview/index.css`) | TODO |
+| 3 | Extract shared `useSpousePet` hook | TODO |
+| 4 | Decompose `breed` panel into orchestrator + parts | TODO |
+| 5 | Extract `pet-gallery` cooldown logic into a hook | TODO |
+| 6 | Design-system decision + button consolidation | TODO |
+| 7 | Shared accessible modal + migrate bespoke modals | TODO |
+| 8 | Minor cleanups (eslint `any`→warn, hex→CSS vars) | TODO |
+
+Statuses: `TODO` → `IN PROGRESS` → `DONE` (or `SKIPPED` with reason).
+
+---
+
+## Step 1 — Tooling: Prettier + `.editorconfig` + reformat
+**Status:** DONE
+
+**Goal:** Eliminate the 2-space (`ui/neon-*`) vs 4-space (rest) inconsistency and
+prevent future drift.
+
+**Why:** `eslint.config.js` has no Prettier and no `indent` rule; no `.editorconfig`
+exists. Nothing enforces style today.
+
+**Plan:**
+- Add Prettier config (4-space, single quotes, trailing commas — match existing majority).
+- Add `.editorconfig` (4-space, LF, final newline).
+- Wire a `format`/`format:check` script in `frontend/package.json`.
+- Run a one-shot reformat across `src/`. This is a **large, whitespace-only diff** —
+  keep it isolated in its own commit so later steps stay reviewable.
+
+**Acceptance:**
+- `format:check` passes clean.
+- Typecheck + lint pass.
+- Diff is whitespace/formatting only (no logic changes).
+
+**Outcome (done):**
+- Settings chosen: `tabWidth: 4`, `singleQuote: true`, `semi: true`,
+  `trailingComma: 'all'`, `printWidth: 100`.
+- Added `frontend/.prettierrc.json`, `frontend/.prettierignore`, `frontend/.editorconfig`.
+- Added `format` / `format:check` scripts; pinned `prettier` to `2.8.8` in devDependencies
+  (the version already present in the monorepo store — avoids a fresh download).
+- Reformatted all of `src/**/*.{ts,tsx,css}`. The `ui/neon-*` 2-space files are now 4-space;
+  some long lines rewrapped at width 100.
+- **Verified:** `format:check` clean, `tsc -b` 0 errors, `eslint .` 0, **272/272 tests pass**.
+- **Lockfile note:** `pnpm add` hit the known Windows EBUSY lock-rename issue
+  ([[windows-file-lock-renames]]); applied the copy-temp-over workaround so the root
+  `pnpm-lock.yaml` now records `prettier` as a frontend devDep. The same install also
+  normalized an unrelated `isomorphic-ws` peer-dep notation (pnpm re-resolution; harmless,
+  would appear on anyone's next install).
+- **Prettier version caveat:** pinned to 2.8.8 (old, 2023) because installing 3.x failed on
+  the EBUSY lock. Upgrading to Prettier 3.x is a good future follow-up once installs work.
+
+**Commit message:**
+```
+chore(frontend): add prettier + editorconfig and reformat src
+
+Standardize formatting (4-space, single quotes, semicolons, trailing
+commas, printWidth 100) to remove the 2-space/4-space inconsistency between
+the neon-* UI components and the rest of the app. Add .prettierrc.json,
+.prettierignore, .editorconfig, and format/format:check scripts; pin
+prettier to the version already in the monorepo store.
+
+Whitespace/formatting only — no logic changes. Typecheck, lint, and all
+272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
+
+---
+
+## Step 2 — Colocate panel CSS (split `overview/index.css`)
+**Status:** TODO
+
+**Goal:** Each panel owns and imports its own stylesheet; remove cross-component
+CSS coupling.
+
+**Why:** `overview/index.css` is ~1281 lines holding styles for marriage, rename,
+train, level-up **and** the hub. `standalone/index.tsx:10` imports a sibling's CSS
+(`overview/index.css`) just to style those panels — fragile. `battle/` and `breed/`
+already colocate correctly; bring the rest in line.
+
+**Plan:**
+- Identify selectors per panel (`.marriage-*`, `.proposal-*`, `.rename-*`, `.train-*`,
+  `.level-up-*`, plus shared `.interface`, `.action-controls`, `.picker`, `.field`,
+  `.success-message`).
+- Move panel-specific blocks into colocated `index.css` files imported by each panel.
+- Keep genuinely shared/hub styles in `overview/index.css` (or promote shared ones to
+  `styles/`). Decide: shared form primitives (`.interface`, `.field`, `.picker`) likely
+  belong in `styles/` so all panels + standalone get them without importing a sibling.
+- Remove the `overview/index.css` import from `standalone/index.tsx` once styles resolve
+  via each panel + shared styles.
+
+**Acceptance:**
+- Each panel route (dashboard hub **and** standalone `/marriage`, `/breed`, etc.) renders
+  visually unchanged. Verify in-app (the `run`/`verify` skills).
+- No component imports another component's `index.css`.
+- Typecheck + lint + tests pass.
+
+**Risk:** CSS regressions are visual; verify each standalone page and the hub.
+
+**Outcome:** _(fill after completion)_
+
+**Commit message:** _(fill after completion)_
+
+---
+
+## Step 3 — Extract shared `useSpousePet` hook
+**Status:** TODO
+
+**Goal:** One spouse-name-by-id lookup hook, reused by marriage and breed.
+
+**Why:** Duplicated GraphQL lookups:
+- `panels/marriage/parts/marriage-card.tsx:13` — `useSpousePet` + `SPOUSE_GQL`
+- `panels/breed/index.tsx:38` — `SpouseLabel` + `SPOUSE_NAME_GQL`
+Both run `useQuery(['pet', baseURL, chain, id])`.
+
+**Plan:**
+- Add a shared `useSpousePet(chain, id, opts?)` returning `{ name, level }` in
+  `@shared/core` (next to other pet hooks) — it's now wanted by 2 features, so the
+  shared package is the right home. Confirm the existing query key shape so caches
+  dedupe across both call sites.
+- Update `marriage-card.tsx` to consume it; drop the local copy + `SPOUSE_GQL`.
+- (`breed` itself is migrated in Step 4; this step just lands the hook + marriage swap.)
+
+**Acceptance:**
+- Marriage cards still resolve spouse name/level.
+- No behavior change; typecheck + lint + marriage tests pass.
+
+**Outcome:** _(fill after completion)_
+
+**Commit message:** _(fill after completion)_
+
+---
+
+## Step 4 — Decompose `breed` panel into orchestrator + parts
+**Status:** TODO
+
+**Goal:** Reduce `panels/breed/index.tsx` (~403 lines) to a slim orchestrator plus
+`parts/`, mirroring the marriage refactor.
+
+**Why:** Same monolith pattern just fixed in marriage: two tabs of state, contract
+relative-detection logic, pending-breed logic, and all JSX in one file.
+
+**Plan:**
+- `types.ts`: `BreedTab`, `BreedPanelProps`.
+- Consider a headless `useBreedPanel` hook (battle-style) for the contract/relative/
+  pending logic if it stays heavy after splitting JSX.
+- `parts/`: `breed-tab-bar`, `own-pets-tab`, `with-spouse-tab`, `offspring-name-input`,
+  `breed-submit` (reuse existing `pending-breed-notice`, `stud-fee-balance`).
+- Replace the local `SpouseLabel` with the shared `useSpousePet` from Step 3.
+- Move tab-local state into the relevant tab components where it isn't shared.
+
+**Acceptance:**
+- Both tabs (own / with-spouse), relative warning, pending-breed notices, stud fee,
+  and submit all behave identically. Verify in-app.
+- Typecheck + lint + any breed tests pass.
+
+**Outcome:** _(fill after completion)_
+
+**Commit message:** _(fill after completion)_
+
+---
+
+## Step 5 — Extract `pet-gallery` cooldown logic into a hook
+**Status:** TODO
+
+**Goal:** Move readiness/cooldown computation out of the view.
+
+**Why:** `pet-gallery/index.tsx:51` runs a manual 1s `setInterval` re-render tick and
+inlines readiness math (`!isPetReady(BigInt(p.readyAt)) || ...`) duplicated at lines
+~53–55 and ~206–208.
+
+**Plan:**
+- Add `usePetCooldowns(pets)` (or similar) returning per-pet readiness flags + labels
+  and owning the tick interval. Place in `src/hooks/` (or `@shared/core` if reused).
+- View consumes the hook and just renders.
+
+**Acceptance:**
+- Cooldown countdowns still tick live; ready/on-cooldown states unchanged.
+- Typecheck + lint pass.
+
+**Outcome:** _(fill after completion)_
+
+**Commit message:** _(fill after completion)_
+
+---
+
+## Step 6 — Design-system decision + button consolidation
+**Status:** TODO
+
+**Goal:** One button story across the app.
+
+**Why:** `ui/neon-*` exists but is used **only in `wallet/`**. Elsewhere: raw
+`<button className="action-button|marriage-row-action|breed-tab">` + `AuthActionButton`.
+Two+ parallel button systems.
+
+**Decision needed (ask user):** Adopt `neon-*` app-wide, or retire it?
+- If **adopt:** fold auth-gating into/around `NeonButton` (compose `AuthActionButton`
+  over `NeonButton`), migrate raw buttons to the component, keep class hooks for layout.
+- If **retire:** delete `ui/neon-button` (+ card/modal as relevant) and standardize on
+  `AuthActionButton` + documented class conventions.
+
+**Plan:** Resolve the decision first (one `AskUserQuestion`), then migrate incrementally.
+May be split into sub-commits per area (panels, wallet) to keep diffs reviewable.
+
+**Acceptance:** Consistent button component usage; no visual regressions; typecheck +
+lint + tests pass.
+
+**Outcome:** _(fill after completion)_
+
+**Commit message:** _(fill after completion)_
+
+---
+
+## Step 7 — Shared accessible modal + migrate bespoke modals
+**Status:** TODO
+
+**Goal:** All modals use one accessible primitive.
+
+**Why:** `panels/marriage/parts/accept-confirm-dialog.tsx`, `create-pet-modal`,
+`send-pet-modal` hand-roll modal markup with **no `role="dialog"`, no Escape-to-close,
+no focus trap**. `ui/neon-modal` exists but is underused.
+
+**Plan:**
+- Ensure `NeonModal` (or a chosen modal primitive) provides `role="dialog"`,
+  `aria-modal`, Escape-to-close, focus trap, and overlay-click close.
+- Migrate the three bespoke modals onto it.
+- Depends on Step 6's design-system decision.
+
+**Acceptance:** Keyboard (Esc, tab-trap) + screen-reader semantics work; existing
+behavior preserved; typecheck + lint + tests pass.
+
+**Outcome:** _(fill after completion)_
+
+**Commit message:** _(fill after completion)_
+
+---
+
+## Step 8 — Minor cleanups
+**Status:** TODO
+
+**Goal:** Tighten remaining low-priority items.
+
+**Plan (each can be its own small commit if preferred):**
+- Set `@typescript-eslint/no-explicit-any` to `warn` (codebase currently uses no `any`;
+  keep it that way). Verify lint stays clean.
+- Replace hard-coded hex colors in `.tsx` (~15) and reduce `!important` (~13) in CSS by
+  using `styles/variables.css` tokens where practical.
+- Optional: normalize a few camelCase non-hook filenames (`constants/interactionRoutes.ts`,
+  `petsContractParams.ts`) only if it doesn't churn imports excessively.
+
+**Acceptance:** Lint clean; no visual/behavior change.
+
+**Outcome:** _(fill after completion)_
+
+**Commit message:** _(fill after completion)_
+
+---
+
+## Change log
+- 2026-06-22 — Step 1 — chore(frontend): add prettier + editorconfig and reformat src

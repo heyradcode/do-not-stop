@@ -17,7 +17,7 @@ const SolanaNetworkSwitcher: React.FC<SolanaNetworkSwitcherProps> = ({ className
 
     if (!connected) return null;
 
-    const currentNetworkConfig = SOLANA_NETWORKS.find(n => n.name === currentNetwork);
+    const currentNetworkConfig = SOLANA_NETWORKS.find((n) => n.name === currentNetwork);
 
     const handleNetworkSelect = (networkName: string) => {
         setCurrentNetwork(networkName);
@@ -26,14 +26,9 @@ const SolanaNetworkSwitcher: React.FC<SolanaNetworkSwitcherProps> = ({ className
 
     return (
         <div className={`network-switcher ${className || ''}`}>
-            <button
-                className="trigger"
-                onClick={() => setIsOpen(true)}
-            >
+            <button className="trigger" onClick={() => setIsOpen(true)}>
                 <div className="info">
-                    <span className="name">
-                        {currentNetworkConfig?.name || 'Select Network'}
-                    </span>
+                    <span className="name">{currentNetworkConfig?.name || 'Select Network'}</span>
                 </div>
                 <div className="arrow">▼</div>
             </button>
@@ -51,7 +46,9 @@ const SolanaNetworkSwitcher: React.FC<SolanaNetworkSwitcherProps> = ({ className
                         return (
                             <button
                                 key={network.name}
-                                className={`option ${isActive ? 'active' : ''} ${network.isTestnet ? 'testnet' : ''}`}
+                                className={`option ${isActive ? 'active' : ''} ${
+                                    network.isTestnet ? 'testnet' : ''
+                                }`}
                                 onClick={() => handleNetworkSelect(network.name)}
                             >
                                 <div className="option-info">
@@ -59,7 +56,12 @@ const SolanaNetworkSwitcher: React.FC<SolanaNetworkSwitcherProps> = ({ className
                                 </div>
                                 {isActive && (
                                     <div className="option-check">
-                                        <Icon as={CheckIcon} tone={Tones.Emerald} glow="soft" className="no-gap" />
+                                        <Icon
+                                            as={CheckIcon}
+                                            tone={Tones.Emerald}
+                                            glow="soft"
+                                            className="no-gap"
+                                        />
                                     </div>
                                 )}
                             </button>

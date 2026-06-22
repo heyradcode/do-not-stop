@@ -15,7 +15,10 @@ import {
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { formatTxHashHint } from '@hooks/usePetError';
 import { usePetErrorToast } from '@hooks/usePetErrorToast';
-import { pickRandomOpponent, sortOpponentsByMatch } from '@components/pet/interactions/panels/battle/battle-matchmaking';
+import {
+    pickRandomOpponent,
+    sortOpponentsByMatch,
+} from '@components/pet/interactions/panels/battle/battle-matchmaking';
 import { useBattleOutcome } from './useBattleOutcome';
 import { useResultDialogue } from './useResultDialogue';
 import {
@@ -54,7 +57,7 @@ export interface UseBattlePanel {
  * detection and dialogue — live in their own hooks (`useBattleOutcome`,
  * `useResultDialogue`) and are composed below.
  */
-export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBattlePanel  => {
+export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBattlePanel => {
     const navigate = useNavigate();
     const capabilities = useChainCapabilities();
     const { pets, refetch, isLoading: petsLoading } = usePetList();
@@ -92,16 +95,19 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Outcome detection (snapshot diff against refreshed on-chain stats).
     const outcome = useBattleOutcome({ pets, selectedPet1, petsLoading });
 
-    const handleSuccess = useCallback((result: BattleResolvedResult | null) => {
-        setShowResult(true);
-        setValidationError(null);
-        outcome.markPendingOutcome();
-        // EVM: BattleResolved is authoritative — petId1 is the player's pet, so
-        // firstWins is the player's verdict. Solana resolves via the stat diff.
-        if (result) outcome.applyResolvedOutcome(result.firstWins);
-        void refetch();
-        void refetchOpponents();
-    }, [outcome, refetch, refetchOpponents]);
+    const handleSuccess = useCallback(
+        (result: BattleResolvedResult | null) => {
+            setShowResult(true);
+            setValidationError(null);
+            outcome.markPendingOutcome();
+            // EVM: BattleResolved is authoritative — petId1 is the player's pet, so
+            // firstWins is the player's verdict. Solana resolves via the stat diff.
+            if (result) outcome.applyResolvedOutcome(result.firstWins);
+            void refetch();
+            void refetchOpponents();
+        },
+        [outcome, refetch, refetchOpponents],
+    );
 
     const battle = useBattlePets({ onSuccess: handleSuccess });
     // AI pre-fight taunts — generated on Start Battle, in parallel with the wallet.
@@ -130,11 +136,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         [opponents, fighterLevel],
     );
 
-    const winEstimate = useWinEstimate(
-        activeChainKind,
-        selectedPet1 || null,
-        opponent?.id ?? null,
-    );
+    const winEstimate = useWinEstimate(activeChainKind, selectedPet1 || null, opponent?.id ?? null);
 
     const isArenaReady = Boolean(selectedFighter && opponent && !battle.isPending && !showResult);
     const isArenaFighting = battle.isPending;
@@ -161,7 +163,9 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Starting Battle...';
     // Fall back to the retained battle id: the lifecycle auto-resets (hash
     // cleared) once the battle settles, but the hint should keep showing.
-    const hashHint = usesSwitchboardVrf ? formatTxHashHint(battle.hash ?? settledBattleId ?? undefined) : null;
+    const hashHint = usesSwitchboardVrf
+        ? formatTxHashHint(battle.hash ?? settledBattleId ?? undefined)
+        : null;
 
     const startBattle = useCallback(() => {
         if (!selectedPet1 || !opponent) {
@@ -404,27 +408,33 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const preResultStatus = rematchPending
         ? 'Preparing rematch…'
         : battle.phase === 'awaiting-vrf'
-            ? 'Awaiting randomness…'
-            : battle.phase === 'settling'
-                ? 'Settling the battle…'
-                : battle.phase === 'resolving'
-                    ? 'Resolving the outcome…'
-                    : battle.isConfirming
-                        ? 'Confirming on-chain…'
-                        : battle.isPending
-                            ? 'Awaiting your wallet…'
-                            : null;
+        ? 'Awaiting randomness…'
+        : battle.phase === 'settling'
+        ? 'Settling the battle…'
+        : battle.phase === 'resolving'
+        ? 'Resolving the outcome…'
+        : battle.isConfirming
+        ? 'Confirming on-chain…'
+        : battle.isPending
+        ? 'Awaiting your wallet…'
+        : null;
 
     const battleButtonLabel = taunts.isLoading
         ? 'Facing off…'
         : battle.isPending
-            ? pendingLabel
-            : battle.isConfirming
-                ? 'Confirming...'
-                : 'Start Battle';
+        ? pendingLabel
+        : battle.isConfirming
+        ? 'Confirming...'
+        : 'Start Battle';
     const battleDisabled =
-        battle.isPending || battle.isConfirming || rematchPending || overlayOpen ||
-        !selectedPet1 || !selectedOpponent || showResult || hasPendingBattle;
+        battle.isPending ||
+        battle.isConfirming ||
+        rematchPending ||
+        overlayOpen ||
+        !selectedPet1 ||
+        !selectedOpponent ||
+        showResult ||
+        hasPendingBattle;
     const randomMatchDisabled = !canRandomMatch || battle.isPending || showResult;
 
     const overlay: BattleOverlayProps = {
@@ -486,4 +496,4 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         hashHint,
         receipt: battle.lifecycle,
     };
-}
+};

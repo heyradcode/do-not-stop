@@ -11,14 +11,9 @@ export const usePetErrorToast = (
     receiptError: Error | null | undefined,
     validationError: string | null,
     fallbackMessage: string,
-): void  => {
+): void => {
     const toast = useToast();
-    const display = usePetError(
-        mutationError,
-        receiptError,
-        validationError,
-        fallbackMessage,
-    );
+    const display = usePetError(mutationError, receiptError, validationError, fallbackMessage);
     const lastKeyRef = useRef<string | null>(null);
 
     useEffect(() => {
@@ -59,4 +54,4 @@ export const usePetErrorToast = (
         validationError,
         toast,
     ]);
-}
+};

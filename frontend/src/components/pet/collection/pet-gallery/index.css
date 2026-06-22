@@ -55,16 +55,12 @@
     cursor: pointer;
     margin-block-start: var(--spacing-sm);
     transition: var(--transition);
-    box-shadow:
-        inset 0 0 12px rgb(255 110 196 / 14%),
-        0 0 12px rgb(255 110 196 / 18%);
+    box-shadow: inset 0 0 12px rgb(255 110 196 / 14%), 0 0 12px rgb(255 110 196 / 18%);
 
     &:hover {
         transform: translateY(-1px);
         border-color: var(--neon-magenta);
-        box-shadow:
-            inset 0 0 16px rgb(255 110 196 / 22%),
-            0 0 18px rgb(255 110 196 / 32%);
+        box-shadow: inset 0 0 16px rgb(255 110 196 / 22%), 0 0 18px rgb(255 110 196 / 32%);
     }
 }
 
@@ -101,18 +97,14 @@
     & .ring-outer {
         inset: 0;
         border: 1px dashed rgb(125 214 255 / 28%);
-        box-shadow:
-            inset 0 0 30px rgb(125 214 255 / 8%),
-            0 0 22px rgb(125 214 255 / 14%);
+        box-shadow: inset 0 0 30px rgb(125 214 255 / 8%), 0 0 22px rgb(125 214 255 / 14%);
         animation: altar-spin 22s linear infinite;
     }
 
     & .ring-mid {
         inset: 18%;
         border: 1px solid rgb(181 140 255 / 32%);
-        box-shadow:
-            inset 0 0 24px rgb(181 140 255 / 12%),
-            0 0 20px rgb(181 140 255 / 20%);
+        box-shadow: inset 0 0 24px rgb(181 140 255 / 12%), 0 0 20px rgb(181 140 255 / 20%);
         animation: altar-spin 16s linear infinite reverse;
     }
 
@@ -120,9 +112,7 @@
         inset: 32%;
         border: 1px solid rgb(255 110 196 / 30%);
         background: radial-gradient(circle, rgb(181 140 255 / 22%), transparent 70%);
-        box-shadow:
-            inset 0 0 22px rgb(255 110 196 / 14%),
-            0 0 26px rgb(181 140 255 / 28%);
+        box-shadow: inset 0 0 22px rgb(255 110 196 / 14%), 0 0 26px rgb(181 140 255 / 28%);
         animation: altar-pulse 3.6s ease-in-out infinite;
     }
 
@@ -143,10 +133,26 @@
         animation: altar-float 5s ease-in-out infinite;
     }
 
-    & .orb-tl { top: 6%; left: 8%; animation-delay: -0.2s; }
-    & .orb-tr { top: 8%; right: 6%; animation-delay: -1.1s; }
-    & .orb-bl { bottom: 10%; left: 10%; animation-delay: -2.4s; }
-    & .orb-br { bottom: 8%; right: 8%; animation-delay: -3.3s; }
+    & .orb-tl {
+        top: 6%;
+        left: 8%;
+        animation-delay: -0.2s;
+    }
+    & .orb-tr {
+        top: 8%;
+        right: 6%;
+        animation-delay: -1.1s;
+    }
+    & .orb-bl {
+        bottom: 10%;
+        left: 10%;
+        animation-delay: -2.4s;
+    }
+    & .orb-br {
+        bottom: 8%;
+        right: 8%;
+        animation-delay: -3.3s;
+    }
 
     & .empty-copy {
         display: flex;
@@ -184,17 +190,31 @@
 }
 
 @keyframes altar-spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes altar-pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.06); opacity: 0.85; }
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.06);
+        opacity: 0.85;
+    }
 }
 
 @keyframes altar-float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -217,18 +237,14 @@
     transition: var(--transition);
     text-transform: uppercase;
     letter-spacing: 0.95px;
-    box-shadow:
-        inset 0 0 12px rgb(125 214 255 / 16%),
-        0 0 12px rgb(125 214 255 / 20%);
+    box-shadow: inset 0 0 12px rgb(125 214 255 / 16%), 0 0 12px rgb(125 214 255 / 20%);
     flex-shrink: 0;
 
     &:hover {
         transform: translateY(-2px);
         color: var(--neon-violet);
         border-color: rgb(181 140 255 / 60%);
-        box-shadow:
-            inset 0 0 22px rgb(181 140 255 / 22%),
-            0 0 28px rgb(181 140 255 / 38%);
+        box-shadow: inset 0 0 22px rgb(181 140 255 / 22%), 0 0 28px rgb(181 140 255 / 38%);
     }
 
     &:active {
@@ -331,10 +347,8 @@
 
 .pet-visual {
     position: relative;
-    background:
-        radial-gradient(circle at 30% 30%, rgb(125 214 255 / 24%), transparent 60%),
-        radial-gradient(circle at 80% 80%, rgb(181 140 255 / 22%), transparent 60%),
-        #0a0f1c;
+    background: radial-gradient(circle at 30% 30%, rgb(125 214 255 / 24%), transparent 60%),
+        radial-gradient(circle at 80% 80%, rgb(181 140 255 / 22%), transparent 60%), #0a0f1c;
     border-block-end: 1px solid var(--neon-border-soft);
     border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;
     height: 140px;
@@ -394,9 +408,7 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    box-shadow:
-        inset 0 0 12px rgb(255 255 255 / 14%),
-        0 0 14px rgb(255 255 255 / 22%);
+    box-shadow: inset 0 0 12px rgb(255 255 255 / 14%), 0 0 14px rgb(255 255 255 / 22%);
     backdrop-filter: blur(4px);
 
     @media (max-width: 480px) {
@@ -417,9 +429,7 @@
     font-size: var(--font-size-xs);
     font-weight: 700;
     letter-spacing: 0.4px;
-    box-shadow:
-        inset 0 0 10px rgb(125 214 255 / 14%),
-        0 0 10px rgb(125 214 255 / 22%);
+    box-shadow: inset 0 0 10px rgb(125 214 255 / 14%), 0 0 10px rgb(125 214 255 / 22%);
 }
 
 .element-tag {
@@ -433,9 +443,7 @@
     border-radius: 999px;
     font-size: var(--font-size-xs);
     font-weight: 700;
-    box-shadow:
-        inset 0 0 10px rgb(255 110 196 / 12%),
-        0 0 10px rgb(255 110 196 / 18%);
+    box-shadow: inset 0 0 10px rgb(255 110 196 / 12%), 0 0 10px rgb(255 110 196 / 18%);
 }
 
 .skill-badge {
@@ -450,9 +458,7 @@
     font-size: var(--font-size-xs);
     font-weight: 700;
     letter-spacing: 0.4px;
-    box-shadow:
-        inset 0 0 10px rgb(255 207 112 / 12%),
-        0 0 10px rgb(255 207 112 / 18%);
+    box-shadow: inset 0 0 10px rgb(255 207 112 / 12%), 0 0 10px rgb(255 207 112 / 18%);
 }
 
 .pet-main-info {
@@ -486,10 +492,22 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.3px;
 
-    .record-wins  { color: rgb(125 214 255 / 75%); font-weight: 700; }
-    .record-sep   { color: rgb(195 210 255 / 30%); }
-    .record-losses { color: rgb(195 210 255 / 45%); font-weight: 600; }
-    .record-breeds { color: rgb(195 210 255 / 35%); font-style: italic; margin-left: 4px; }
+    .record-wins {
+        color: rgb(125 214 255 / 75%);
+        font-weight: 700;
+    }
+    .record-sep {
+        color: rgb(195 210 255 / 30%);
+    }
+    .record-losses {
+        color: rgb(195 210 255 / 45%);
+        font-weight: 600;
+    }
+    .record-breeds {
+        color: rgb(195 210 255 / 35%);
+        font-style: italic;
+        margin-left: 4px;
+    }
 }
 
 .xp-value {
@@ -552,7 +570,6 @@
     text-shadow: 0 0 6px rgb(181 140 255 / 28%);
 }
 
-
 .pet-status {
     padding: 0 12px;
     margin-block-start: var(--spacing-xs);
@@ -579,9 +596,7 @@
         border-radius: 2px;
         text-transform: uppercase;
         letter-spacing: 0.6px;
-        box-shadow:
-            inset 0 0 12px rgb(255 181 67 / 12%),
-            0 0 12px rgb(255 181 67 / 18%);
+        box-shadow: inset 0 0 12px rgb(255 181 67 / 12%), 0 0 12px rgb(255 181 67 / 18%);
         text-shadow: 0 0 10px rgb(255 181 67 / 32%);
     }
 
@@ -617,17 +632,13 @@
     /* Default (ready) — emerald: pet is ready for action. */
     color: #9effd4;
     border: 1px solid rgb(0 255 157 / 42%);
-    box-shadow:
-        inset 0 0 12px rgb(0 255 157 / 12%),
-        0 0 12px rgb(0 255 157 / 18%);
+    box-shadow: inset 0 0 12px rgb(0 255 157 / 12%), 0 0 12px rgb(0 255 157 / 18%);
 
     &.is-ready:hover,
     &:hover {
         transform: translateY(-1px);
         border-color: rgb(0 255 157 / 64%);
-        box-shadow:
-            inset 0 0 18px rgb(0 255 157 / 20%),
-            0 0 18px rgb(0 255 157 / 32%);
+        box-shadow: inset 0 0 18px rgb(0 255 157 / 20%), 0 0 18px rgb(0 255 157 / 32%);
     }
 
     &:active {
@@ -638,15 +649,11 @@
     &.on-cooldown {
         color: #ffd07b;
         border-color: rgb(255 181 67 / 44%);
-        box-shadow:
-            inset 0 0 12px rgb(255 181 67 / 12%),
-            0 0 12px rgb(255 181 67 / 20%);
+        box-shadow: inset 0 0 12px rgb(255 181 67 / 12%), 0 0 12px rgb(255 181 67 / 20%);
 
         &:hover {
             border-color: rgb(255 181 67 / 70%);
-            box-shadow:
-                inset 0 0 18px rgb(255 181 67 / 22%),
-                0 0 18px rgb(255 181 67 / 32%);
+            box-shadow: inset 0 0 18px rgb(255 181 67 / 22%), 0 0 18px rgb(255 181 67 / 32%);
         }
     }
 

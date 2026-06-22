@@ -12,9 +12,7 @@
     border-radius: 2px;
     border: 1px solid var(--neon-border-soft);
     background: linear-gradient(180deg, rgb(10 16 32 / 96%), rgb(6 10 22 / 98%));
-    box-shadow:
-        inset 0 0 18px rgb(125 214 255 / 8%),
-        0 0 20px rgb(125 214 255 / 20%),
+    box-shadow: inset 0 0 18px rgb(125 214 255 / 8%), 0 0 20px rgb(125 214 255 / 20%),
         0 16px 40px rgb(0 0 0 / 45%);
     backdrop-filter: blur(8px);
     animation: tx-slide-in var(--tx-slide-duration) ease-out;

@@ -23,10 +23,9 @@ const useSpousePet = (
         queryKey: ['pet', baseURL, chain, spouseId],
         enabled: !skip && Boolean(chain && spouseId && spouseId !== '0'),
         queryFn: async () => {
-            const res = await apiClient.post<{ data?: { pet: { id: string; name: string; level: number } | null } }>(
-                '/graphql',
-                { query: SPOUSE_GQL, variables: { chain, id: spouseId } },
-            );
+            const res = await apiClient.post<{
+                data?: { pet: { id: string; name: string; level: number } | null };
+            }>('/graphql', { query: SPOUSE_GQL, variables: { chain, id: spouseId } });
             return res.data.data?.pet ?? null;
         },
         staleTime: 60_000,
@@ -64,12 +63,19 @@ const MarriageCard: React.FC<MarriageCardProps> = ({ pet, chain, petById, onDivo
             <div className="marriage-pair">
                 <div className="marriage-partner">
                     <span className="partner-name">{pet.name}</span>
-                    <span className="partner-meta">#{pet.id} · Lv {pet.level}</span>
+                    <span className="partner-meta">
+                        #{pet.id} · Lv {pet.level}
+                    </span>
                 </div>
-                <span className="marriage-heart" aria-hidden>❤</span>
+                <span className="marriage-heart" aria-hidden>
+                    ❤
+                </span>
                 <div className="marriage-partner">
                     <span className="partner-name">{spouseName}</span>
-                    <span className="partner-meta">#{spouseId}{spouseLevel != null ? ` · Lv ${spouseLevel}` : ''}</span>
+                    <span className="partner-meta">
+                        #{spouseId}
+                        {spouseLevel != null ? ` · Lv ${spouseLevel}` : ''}
+                    </span>
                 </div>
             </div>
             <AuthActionButton

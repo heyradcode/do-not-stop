@@ -18,11 +18,7 @@ const BattlePanel: React.FC<BattlePanelProps> = ({ isStandaloneView = true }) =>
             <BattleOverlay {...overlay} />
             <BattleSetup {...setup} />
 
-            {hashHint && (
-                <p className="pending-hint">
-                    Transaction: {hashHint}
-                </p>
-            )}
+            {hashHint && <p className="pending-hint">Transaction: {hashHint}</p>}
 
             <TransactionStatus lifecycle={receipt} />
         </>

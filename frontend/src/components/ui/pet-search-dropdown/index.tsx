@@ -150,40 +150,48 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
 
     const isSelected = selected !== null;
 
-    const dropdownPortal = open && dropdownStyle
-        ? createPortal(
-            <div
-                ref={dropdownRef}
-                className="psd-dropdown"
-                role="listbox"
-                style={dropdownStyle}
-            >
-                {isLoading && <div className="psd-state-row">Searching…</div>}
-                {!isLoading && filtered.length === 0 && inputText.trim() && (
-                    <div className="psd-state-row">No pets found</div>
-                )}
-                {filtered.map((pet, i) => (
-                    <button
-                        key={pet.id}
-                        type="button"
-                        role="option"
-                        aria-selected={i === activeIdx}
-                        className={`psd-row${i === activeIdx ? ' active' : ''}`}
-                        onMouseDown={(e) => { e.preventDefault(); handleSelect(pet); }}
-                    >
-                        <span className="psd-row-name">{pet.name}</span>
-                        <span className="psd-row-id">#{pet.id}</span>
-                        <span className="psd-row-level">Lv {pet.level}</span>
-                    </button>
-                ))}
-            </div>,
-            document.body,
-        )
-        : null;
+    const dropdownPortal =
+        open && dropdownStyle
+            ? createPortal(
+                  <div
+                      ref={dropdownRef}
+                      className="psd-dropdown"
+                      role="listbox"
+                      style={dropdownStyle}
+                  >
+                      {isLoading && <div className="psd-state-row">Searching…</div>}
+                      {!isLoading && filtered.length === 0 && inputText.trim() && (
+                          <div className="psd-state-row">No pets found</div>
+                      )}
+                      {filtered.map((pet, i) => (
+                          <button
+                              key={pet.id}
+                              type="button"
+                              role="option"
+                              aria-selected={i === activeIdx}
+                              className={`psd-row${i === activeIdx ? ' active' : ''}`}
+                              onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleSelect(pet);
+                              }}
+                          >
+                              <span className="psd-row-name">{pet.name}</span>
+                              <span className="psd-row-id">#{pet.id}</span>
+                              <span className="psd-row-level">Lv {pet.level}</span>
+                          </button>
+                      ))}
+                  </div>,
+                  document.body,
+              )
+            : null;
 
     return (
         <div ref={wrapperRef} className={`pet-search-dropdown${disabled ? ' disabled' : ''}`}>
-            <div className={`psd-input-wrap${isSelected ? ' is-selected' : ''}${open ? ' is-open' : ''}`}>
+            <div
+                className={`psd-input-wrap${isSelected ? ' is-selected' : ''}${
+                    open ? ' is-open' : ''
+                }`}
+            >
                 <input
                     ref={inputRef}
                     type="text"
@@ -198,14 +206,23 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
                     spellCheck={false}
                 />
                 {isSelected && (
-                    <span className="psd-selected-badge">#{selected.id} · Lv {selected.level}</span>
+                    <span className="psd-selected-badge">
+                        #{selected.id} · Lv {selected.level}
+                    </span>
                 )}
                 {isSelected ? (
-                    <button type="button" className="psd-clear" onClick={handleClear} aria-label="Clear selection">
+                    <button
+                        type="button"
+                        className="psd-clear"
+                        onClick={handleClear}
+                        aria-label="Clear selection"
+                    >
                         ✕
                     </button>
                 ) : (
-                    <span className={`psd-chevron${open ? ' up' : ''}`} aria-hidden>▾</span>
+                    <span className={`psd-chevron${open ? ' up' : ''}`} aria-hidden>
+                        ▾
+                    </span>
                 )}
             </div>
 

@@ -21,7 +21,11 @@ type PendingBattleNoticeProps = {
  * new battle. EVM: Settle once VRF has fulfilled, or Cancel beforehand.
  * Solana: recovery is automatic on the next battle attempt.
  */
-const PendingBattleNotice: React.FC<PendingBattleNoticeProps> = ({ petId, label, checkSolana = false }) => {
+const PendingBattleNotice: React.FC<PendingBattleNoticeProps> = ({
+    petId,
+    label,
+    checkSolana = false,
+}) => {
     const pending = usePendingBattle(petId);
     const solanaPending = usePendingSolanaBattle(checkSolana);
     useTxErrorToast(pending.settle.error ?? pending.cancel.error ?? solanaPending.cancel.error);
@@ -42,7 +46,11 @@ const PendingBattleNotice: React.FC<PendingBattleNoticeProps> = ({ petId, label,
                 </p>
                 {solanaPending.canCancel && (
                     <div className="pending-battle-actions">
-                        <button type="button" onClick={() => void solanaPending.cancel.run()} disabled={busy}>
+                        <button
+                            type="button"
+                            onClick={() => void solanaPending.cancel.run()}
+                            disabled={busy}
+                        >
                             {busy ? 'Cancelling…' : 'Cancel'}
                         </button>
                     </div>

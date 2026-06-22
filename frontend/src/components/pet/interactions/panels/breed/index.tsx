@@ -35,7 +35,10 @@ type BreedTab = 'own' | 'spouse';
 const SPOUSE_NAME_GQL = `query($chain:String!,$id:String!){pet(chain:$chain,id:$id){name}}`;
 
 /** Fetches spouse pet name immediately (no debounce) — shows ID as fallback. */
-const SpouseLabel: React.FC<{ chain: PetChain | null; spouseId: string }> = ({ chain, spouseId }) => {
+const SpouseLabel: React.FC<{ chain: PetChain | null; spouseId: string }> = ({
+    chain,
+    spouseId,
+}) => {
     const apiClient = useApiClient();
     const baseURL = apiClient.defaults.baseURL ?? '';
     const { data } = useQuery({
@@ -89,7 +92,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     //    lazily via useMarriageInfo after selection).
     useEffect(() => {
         if (tab === 'spouse' && !spousePetId) {
-            const marriedPet = pets.find(p => p.spouseId != null && p.spouseId !== 0);
+            const marriedPet = pets.find((p) => p.spouseId != null && p.spouseId !== 0);
             if (marriedPet) {
                 setSpousePetId(marriedPet.id);
             } else if (pets.length === 1) {
@@ -116,14 +119,26 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const petCoreAddress = evm?.petCore.address as `0x${string}` | undefined;
     const petCoreAbi = useMemo(() => evm?.petCore.abi ?? [], [evm?.petCore.abi]);
     const relPetA = tab === 'own' ? ownPet1 : spousePetId;
-    const relPetB = tab === 'own' ? ownPet2 : (spouseId ?? '');
+    const relPetB = tab === 'own' ? ownPet2 : spouseId ?? '';
     const relEnabled = isEvm && Boolean(petCoreAddress && relPetA && relPetB);
 
     const { data: breedInfoData } = useReadContracts({
         contracts: relEnabled
             ? [
-                  { address: petCoreAddress!, abi: petCoreAbi, functionName: 'getBreedInfo' as const, args: [BigInt(relPetA)] as const, chainId: evm?.chainId },
-                  { address: petCoreAddress!, abi: petCoreAbi, functionName: 'getBreedInfo' as const, args: [BigInt(relPetB)] as const, chainId: evm?.chainId },
+                  {
+                      address: petCoreAddress!,
+                      abi: petCoreAbi,
+                      functionName: 'getBreedInfo' as const,
+                      args: [BigInt(relPetA)] as const,
+                      chainId: evm?.chainId,
+                  },
+                  {
+                      address: petCoreAddress!,
+                      abi: petCoreAbi,
+                      functionName: 'getBreedInfo' as const,
+                      args: [BigInt(relPetB)] as const,
+                      chainId: evm?.chainId,
+                  },
               ]
             : [],
         allowFailure: true,
@@ -164,8 +179,11 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const handleSuccess = useCallback(
         ({ name }: { name: string }) => {
             setSuccess(`"${name}" created!`);
-            setOwnPet1(''); setOwnPet2(''); setOwnChildName('');
-            setSpousePetId(''); setSpouseChildName('');
+            setOwnPet1('');
+            setOwnPet2('');
+            setOwnChildName('');
+            setSpousePetId('');
+            setSpouseChildName('');
             void refetch();
         },
         [refetch],
@@ -182,8 +200,10 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
     const buttonLabel = breed.isPending
         ? pendingLabel
         : breed.isAwaitingFulfillment
-          ? 'Creating…'
-          : tab === 'own' ? 'Breed Pets' : 'Breed with Spouse';
+        ? 'Creating…'
+        : tab === 'own'
+        ? 'Breed Pets'
+        : 'Breed with Spouse';
 
     const canSubmit =
         tab === 'own'
@@ -196,9 +216,18 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         if (!canSubmit) return;
 
         if (tab === 'own') {
-            void breed.mutate({ parentId1: ownPet1, parentId2: ownPet2, name: ownChildName.trim() });
+            void breed.mutate({
+                parentId1: ownPet1,
+                parentId2: ownPet2,
+                name: ownChildName.trim(),
+            });
         } else if (spouseId) {
-            void breed.mutate({ parentId1: spousePetId, parentId2: spouseId, name: spouseChildName.trim(), crossOwner: true });
+            void breed.mutate({
+                parentId1: spousePetId,
+                parentId2: spouseId,
+                name: spouseChildName.trim(),
+                crossOwner: true,
+            });
         }
     };
 
@@ -206,7 +235,10 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         <>
             <div className="interface">
                 {!isStandaloneView && (
-                    <h4><Icon as={DnaIcon} tone={Tones.Emerald} />Breed Pets</h4>
+                    <h4>
+                        <Icon as={DnaIcon} tone={Tones.Emerald} />
+                        Breed Pets
+                    </h4>
                 )}
 
                 {/* Tab bar */}
@@ -233,15 +265,22 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                         {pets.length < 2 ? (
                             <div className="breed-no-married">
                                 <p>You need at least 2 pets to breed here.</p>
-                                <p>Use the <strong>With Spouse</strong> tab if your pet is married.</p>
+                                <p>
+                                    Use the <strong>With Spouse</strong> tab if your pet is married.
+                                </p>
                             </div>
                         ) : (
                             <>
-                                <p className="breed-tab-hint">Select two of your pets to breed together.</p>
+                                <p className="breed-tab-hint">
+                                    Select two of your pets to breed together.
+                                </p>
                                 <div className="picker">
                                     <div className="field">
                                         <label>First Parent</label>
-                                        <select value={ownPet1} onChange={(e) => setOwnPet1(e.target.value)}>
+                                        <select
+                                            value={ownPet1}
+                                            onChange={(e) => setOwnPet1(e.target.value)}
+                                        >
                                             <option value="">Select pet…</option>
                                             {allPets.map(({ id, pet }) => (
                                                 <option key={id} value={id}>
@@ -252,13 +291,18 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                     </div>
                                     <div className="field">
                                         <label>Second Parent</label>
-                                        <select value={ownPet2} onChange={(e) => setOwnPet2(e.target.value)}>
+                                        <select
+                                            value={ownPet2}
+                                            onChange={(e) => setOwnPet2(e.target.value)}
+                                        >
                                             <option value="">Select pet…</option>
-                                            {allPets.filter(({ id }) => id !== ownPet1).map(({ id, pet }) => (
-                                                <option key={id} value={id}>
-                                                    {pet.name} (Lv {pet.level})
-                                                </option>
-                                            ))}
+                                            {allPets
+                                                .filter(({ id }) => id !== ownPet1)
+                                                .map(({ id, pet }) => (
+                                                    <option key={id} value={id}>
+                                                        {pet.name} (Lv {pet.level})
+                                                    </option>
+                                                ))}
                                         </select>
                                     </div>
                                 </div>
@@ -269,8 +313,15 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                 )}
                                 {!breed.isAwaitingFulfillment && (
                                     <>
-                                        <PendingBreedNotice petId={ownPet1 || undefined} label={`#${ownPet1}`} checkSolana />
-                                        <PendingBreedNotice petId={ownPet2 || undefined} label={`#${ownPet2}`} />
+                                        <PendingBreedNotice
+                                            petId={ownPet1 || undefined}
+                                            label={`#${ownPet1}`}
+                                            checkSolana
+                                        />
+                                        <PendingBreedNotice
+                                            petId={ownPet2 || undefined}
+                                            label={`#${ownPet2}`}
+                                        />
                                     </>
                                 )}
                                 <div className="name-input">
@@ -291,15 +342,21 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 {/* ── With Spouse tab ──────────────────────────────────────────── */}
                 {tab === 'spouse' && (
                     <div className="breed-tab-panel">
-                        <p className="breed-tab-hint">Select one of your pets to breed with their spouse.</p>
+                        <p className="breed-tab-hint">
+                            Select one of your pets to breed with their spouse.
+                        </p>
                         <div className="picker">
                             <div className="field">
                                 <label>Your pet</label>
-                                <select value={spousePetId} onChange={(e) => setSpousePetId(e.target.value)}>
+                                <select
+                                    value={spousePetId}
+                                    onChange={(e) => setSpousePetId(e.target.value)}
+                                >
                                     <option value="">Select pet…</option>
                                     {allPets.map(({ id, pet }) => (
                                         <option key={id} value={id}>
-                                            {pet.name} (Lv {pet.level}){pet.spouseId ? ` ↔ #${pet.spouseId}` : ''}
+                                            {pet.name} (Lv {pet.level})
+                                            {pet.spouseId ? ` ↔ #${pet.spouseId}` : ''}
                                         </option>
                                     ))}
                                 </select>
@@ -308,7 +365,9 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                 <label>Partner&apos;s pet</label>
                                 <div className="spouse-value">
                                     {!spousePetId ? (
-                                        <span className="spouse-placeholder">— select your pet first —</span>
+                                        <span className="spouse-placeholder">
+                                            — select your pet first —
+                                        </span>
                                     ) : marriageInfo.isLoading ? (
                                         <span className="spouse-placeholder">Checking…</span>
                                     ) : spouseId ? (
@@ -324,7 +383,9 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                         {spousePetId && !marriageInfo.isLoading && !marriageInfo.isMarried && (
                             <div className="breed-no-married">
                                 <p>This pet is not married yet.</p>
-                                <p>Go to the <strong>Marriage</strong> page to propose first.</p>
+                                <p>
+                                    Go to the <strong>Marriage</strong> page to propose first.
+                                </p>
                             </div>
                         )}
 
@@ -333,12 +394,14 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                             <>
                                 {studFeeLabel && (
                                     <div className="stud-fee-notice">
-                                        Stud fee: <strong>{studFeeLabel}</strong> — paid to the spouse owner.
+                                        Stud fee: <strong>{studFeeLabel}</strong> — paid to the
+                                        spouse owner.
                                     </div>
                                 )}
                                 {areRelated && (
                                     <p className="breed-relative-warning">
-                                        Your pet and their spouse are relatives and cannot breed together.
+                                        Your pet and their spouse are relatives and cannot breed
+                                        together.
                                     </p>
                                 )}
                                 {/* Only show recovery notice for the user's own pet.
@@ -346,7 +409,10 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                                     is in-flight, but the user can't settle/cancel it and
                                     showing those buttons there is confusing. */}
                                 {!breed.isAwaitingFulfillment && (
-                                    <PendingBreedNotice petId={spousePetId || undefined} label={`#${spousePetId}`} />
+                                    <PendingBreedNotice
+                                        petId={spousePetId || undefined}
+                                        label={`#${spousePetId}`}
+                                    />
                                 )}
                                 <div className="name-input">
                                     <label>Offspring Name</label>
@@ -379,9 +445,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                     </AuthActionButton>
                 </div>
 
-                {breed.isAwaitingFulfillment && (
-                    <p className="pending-hint">{AWAITING_HINT}</p>
-                )}
+                {breed.isAwaitingFulfillment && <p className="pending-hint">{AWAITING_HINT}</p>}
             </div>
 
             {success && (
@@ -391,9 +455,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                 </div>
             )}
 
-            {hashHint && (
-                <p className="pending-hint">Transaction: {hashHint}</p>
-            )}
+            {hashHint && <p className="pending-hint">Transaction: {hashHint}</p>}
 
             <TransactionStatus lifecycle={breed.lifecycle} />
         </>

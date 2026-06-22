@@ -5,9 +5,7 @@
     --modal-max-height: min(90vh, calc(100dvh - var(--main-header-offset) - 2 * var(--spacing-lg)));
     --close-size: 32px;
     --backdrop: rgb(3 8 18 / 72%);
-    --elevated-shadow:
-        inset 0 0 24px rgb(125 214 255 / 8%),
-        0 0 24px rgb(181 140 255 / 22%),
+    --elevated-shadow: inset 0 0 24px rgb(125 214 255 / 8%), 0 0 24px rgb(181 140 255 / 22%),
         0 20px 56px rgb(0 0 0 / 50%);
     --focus-ring: 0 0 0 2px var(--neon-cyan), 0 0 12px rgb(125 214 255 / 32%);
 
@@ -140,9 +138,7 @@
             caret-color: var(--neon-cyan);
             transition: border-color 0.2s ease, box-shadow 0.2s ease;
             outline: none;
-            box-shadow:
-                inset 0 0 20px rgb(125 214 255 / 4%),
-                inset 0 1px 0 rgb(125 214 255 / 8%);
+            box-shadow: inset 0 0 20px rgb(125 214 255 / 4%), inset 0 1px 0 rgb(125 214 255 / 8%);
 
             &:hover {
                 border-color: rgb(125 214 255 / 55%);
@@ -177,17 +173,13 @@
         transition: var(--transition);
         text-transform: uppercase;
         letter-spacing: 0.95px;
-        box-shadow:
-            inset 0 0 16px rgb(125 214 255 / 18%),
-            0 0 16px rgb(125 214 255 / 24%);
+        box-shadow: inset 0 0 16px rgb(125 214 255 / 18%), 0 0 16px rgb(125 214 255 / 24%);
 
         &:hover:not(:disabled) {
             transform: translateY(-2px);
             color: var(--neon-violet);
             border-color: rgb(181 140 255 / 60%);
-            box-shadow:
-                inset 0 0 22px rgb(181 140 255 / 22%),
-                0 0 28px rgb(181 140 255 / 38%);
+            box-shadow: inset 0 0 22px rgb(181 140 255 / 22%), 0 0 28px rgb(181 140 255 / 38%);
         }
 
         &:active:not(:disabled) {
