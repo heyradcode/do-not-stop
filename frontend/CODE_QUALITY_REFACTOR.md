@@ -37,7 +37,7 @@ session can resume without re-deriving context.
 |---|------|--------|
 | 1 | Tooling: Prettier + `.editorconfig` + reformat | DONE |
 | 2 | Colocate panel CSS (split `overview/index.css`) | DONE |
-| 3 | Extract shared `useSpousePet` hook | TODO |
+| 3 | Extract shared `useSpousePet` hook | DONE |
 | 4 | Decompose `breed` panel into orchestrator + parts | TODO |
 | 5 | Extract `pet-gallery` cooldown logic into a hook | TODO |
 | 6 | Design-system decision + button consolidation | TODO |
@@ -181,7 +181,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ---
 
 ## Step 3 — Extract shared `useSpousePet` hook
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** One spouse-name-by-id lookup hook, reused by marriage and breed.
 
@@ -202,9 +202,37 @@ Both run `useQuery(['pet', baseURL, chain, id])`.
 - Marriage cards still resolve spouse name/level.
 - No behavior change; typecheck + lint + marriage tests pass.
 
-**Outcome:** _(fill after completion)_
+**Outcome (done):**
+- **NEW** `shared/src/hooks/useSpousePet.ts` — `useSpousePet(chain, id, { skip? })` returning
+  `{ name?, level? }`. Superset of both old copies (selects `id name level`); keeps the
+  `['pet', baseURL, chain, id]` query key so marriage + breed dedupe. Throws on GraphQL errors
+  (the marriage copy silently swallowed them — minor improvement). Exported via
+  `shared/src/hooks/index.ts` → `@shared/core`.
+- `marriage/parts/marriage-card.tsx` now imports `useSpousePet` from `@shared/core`; removed the
+  local hook + `SPOUSE_GQL` + the now-unused `useQuery`/`useApiClient` imports. Call site updated
+  to the options form: `useSpousePet(chain, spouseId, { skip: Boolean(fromMap) })`.
+- Test: added `useSpousePet` to the `@shared/core` mock in `marriage.test.tsx` (the hook is
+  called unconditionally in `MarriageCard` before its married-check early return).
+- **Breed still has its own `SpouseLabel`** — it gets swapped to this hook in Step 4 (kept here
+  to keep the diff focused on landing the hook + marriage swap).
+- **Verified:** `format:check` clean; `tsc -b` (builds shared + frontend) 0; `eslint .` 0;
+  **272/272 tests pass**.
+- **Scope note:** this commit spans both `shared/` and `frontend/`.
 
-**Commit message:** _(fill after completion)_
+**Commit message:**
+```
+refactor: extract shared useSpousePet hook
+
+Move the spouse-name-by-id GraphQL lookup duplicated in the marriage and
+breed panels into a single useSpousePet hook in @shared/core. It returns
+{ name, level }, shares the ['pet', baseURL, chain, id] query key so callers
+dedupe, and surfaces GraphQL errors. Marriage now consumes the shared hook;
+breed is migrated in a follow-up.
+
+Typecheck, lint, and all 272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
 
 ---
 
@@ -338,3 +366,4 @@ behavior preserved; typecheck + lint + tests pass.
 ## Change log
 - 2026-06-22 — Step 1 — chore(frontend): add prettier + editorconfig and reformat src
 - 2026-06-22 — Step 2 — refactor(frontend): colocate interaction panel CSS
+- 2026-06-22 — Step 3 — refactor: extract shared useSpousePet hook

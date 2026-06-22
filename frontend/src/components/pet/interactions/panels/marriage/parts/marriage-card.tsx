@@ -1,37 +1,12 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
-    useApiClient,
     useMarriageInfo,
+    useSpousePet,
     type OpponentPet,
     type Pet,
     type PetChain,
 } from '@shared/core';
 import { AuthActionButton } from '@components/common';
-
-const SPOUSE_GQL = `query SpousePet($chain:String!,$id:String!){pet(chain:$chain,id:$id){id name level}}`;
-
-/** Direct no-debounce pet lookup by ID — fires immediately on mount. */
-const useSpousePet = (
-    chain: PetChain | null,
-    spouseId: string,
-    skip: boolean,
-): { name?: string; level?: number } => {
-    const apiClient = useApiClient();
-    const baseURL = apiClient.defaults.baseURL ?? '';
-    const { data } = useQuery({
-        queryKey: ['pet', baseURL, chain, spouseId],
-        enabled: !skip && Boolean(chain && spouseId && spouseId !== '0'),
-        queryFn: async () => {
-            const res = await apiClient.post<{
-                data?: { pet: { id: string; name: string; level: number } | null };
-            }>('/graphql', { query: SPOUSE_GQL, variables: { chain, id: spouseId } });
-            return res.data.data?.pet ?? null;
-        },
-        staleTime: 60_000,
-    });
-    return { name: data?.name, level: data?.level };
-};
 
 type MarriageCardProps = {
     pet: Pet;
@@ -51,7 +26,7 @@ const MarriageCard: React.FC<MarriageCardProps> = ({ pet, chain, petById, onDivo
 
     // Direct no-debounce fallback: single pet(chain, id) query fires immediately
     // when the bulk allPets map doesn't have this pet yet.
-    const fetched = useSpousePet(chain, spouseId, Boolean(fromMap));
+    const fetched = useSpousePet(chain, spouseId, { skip: Boolean(fromMap) });
 
     if (!info.isMarried || !spouseId) return null;
 

@@ -60,6 +60,7 @@ vi.mock('@shared/core', () => ({
     useMarriage: () => marriage,
     useMarriageInfo: () => marriageInfo,
     useApiClient: () => ({ defaults: { baseURL: '' }, post: vi.fn() }),
+    useSpousePet: () => ({ name: undefined, level: undefined }),
 }));
 
 import MarriagePanel from '@components/pet/interactions/panels/marriage';
