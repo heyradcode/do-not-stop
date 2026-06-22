@@ -39,7 +39,7 @@ session can resume without re-deriving context.
 | 2 | Colocate panel CSS (split `overview/index.css`) | DONE |
 | 3 | Extract shared `useSpousePet` hook | DONE |
 | 4 | Decompose `breed` panel into orchestrator + parts | DONE |
-| 5 | Extract `pet-gallery` cooldown logic into a hook | TODO |
+| 5 | Extract `pet-gallery` cooldown logic into a hook | DONE |
 | 6 | Design-system decision + button consolidation | TODO |
 | 7 | Shared accessible modal + migrate bespoke modals | TODO |
 | 8 | Minor cleanups (eslint `any`→warn, hex→CSS vars) | TODO |
@@ -299,7 +299,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ---
 
 ## Step 5 — Extract `pet-gallery` cooldown logic into a hook
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** Move readiness/cooldown computation out of the view.
 
@@ -316,9 +316,34 @@ inlines readiness math (`!isPetReady(BigInt(p.readyAt)) || ...`) duplicated at l
 - Cooldown countdowns still tick live; ready/on-cooldown states unchanged.
 - Typecheck + lint pass.
 
-**Outcome:** _(fill after completion)_
+**Outcome (done):**
+- **NEW** `src/hooks/usePetCooldowns.ts` — `usePetCooldowns(pets)` returns `{ anyCooldown,
+  statusFor }`. Owns the 1s `setInterval` tick (only while `anyCooldown`) and a `statusFor(pet)`
+  helper returning `{ onCooldown, battleReady, battleOnCooldown, breedOnCooldown, trainOnCooldown,
+  battleLabel, breedLabel, trainLabel }`. The readiness math (previously inlined 3×) lives here once.
+- `pet-gallery/index.tsx`: removed the inline `anyCooldown`/tick effect and the
+  `isPetReady`/`getTimeUntilReady` imports; now calls `usePetCooldowns(pets)` and reads
+  `cd = statusFor(pet)` once per card. The status block and Send button consume `cd.*` instead of
+  recomputing `isPetReady(BigInt(...))` inline.
+- **Verified:** `format:check` clean; `tsc -b` 0; `eslint .` 0; **272/272 tests pass** (incl.
+  `pet-gallery.test.tsx` — its `@shared/core` mock already provides `isPetReady`/`getTimeUntilReady`,
+  now reached via the hook).
+- **Note:** kept the hook frontend-local in `src/hooks/` since pet-gallery is its only consumer;
+  promote to `@shared/core` if another surface needs it.
 
-**Commit message:** _(fill after completion)_
+**Commit message:**
+```
+refactor(frontend): extract usePetCooldowns hook from pet-gallery
+
+Move the per-pet readiness math (duplicated three times in the gallery view)
+and the 1s countdown tick into a usePetCooldowns hook that returns a
+statusFor(pet) helper. The view now reads cd.* flags/labels instead of
+recomputing isPetReady(BigInt(...)) inline, and the tick lives in the hook.
+
+Behavior unchanged. Typecheck, lint, and all 272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
 
 ---
 
@@ -401,3 +426,4 @@ behavior preserved; typecheck + lint + tests pass.
 - 2026-06-22 — Step 2 — refactor(frontend): colocate interaction panel CSS
 - 2026-06-22 — Step 3 — refactor: extract shared useSpousePet hook
 - 2026-06-22 — Step 4 — refactor(frontend): decompose breed panel into parts
+- 2026-06-22 — Step 5 — refactor(frontend): extract usePetCooldowns hook from pet-gallery

@@ -11,8 +11,6 @@ import {
     getPetSkill,
     getRarityColor,
     getRarityName,
-    getTimeUntilReady,
-    isPetReady,
     useChainCapabilities,
     usePetList,
     type Pet,
@@ -32,6 +30,7 @@ import CreatePetModal from '@components/pet/creation/create-pet-modal';
 import PetCollectionLayout from '@components/pet/collection/pet-collection-layout';
 import SendPetModal from '@components/pet/transfer/send-pet-modal';
 import { useNotifyError } from '@hooks/useNotifyError';
+import { usePetCooldowns } from '@hooks/usePetCooldowns';
 import './index.css';
 
 const PetGallery: React.FC = () => {
@@ -40,26 +39,15 @@ const PetGallery: React.FC = () => {
     const notifyError = useNotifyError();
     const [loading, setLoading] = useState(false);
     const [sendModalOpen, setSendModalOpen] = useState(false);
-    const [, setTick] = useState(0);
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [sendSelection, setSendSelection] = useState<{ pet: Pet; petId: bigint } | null>(null);
+
+    // Owns the 1s tick and the per-pet readiness math so the view stays declarative.
+    const { statusFor } = usePetCooldowns(pets);
 
     useEffect(() => {
         setLoading(isLoading);
     }, [isLoading]);
-
-    // Tick every second while any pet is on cooldown so the countdown stays live.
-    const anyCooldown = pets.some(
-        (p) =>
-            !isPetReady(BigInt(p.readyAt)) ||
-            (p.breedReadyAt != null && !isPetReady(BigInt(p.breedReadyAt))) ||
-            (p.trainReadyAt != null && !isPetReady(BigInt(p.trainReadyAt))),
-    );
-    useEffect(() => {
-        if (!anyCooldown) return;
-        const id = setInterval(() => setTick((t) => t + 1), 1000);
-        return () => clearInterval(id);
-    }, [anyCooldown]);
 
     useEffect(() => {
         if (!error) return;
@@ -195,127 +183,120 @@ const PetGallery: React.FC = () => {
 
                 {!loading && !error && pets.length > 0 && (
                     <div className="pet-grid">
-                        {pets.map((pet) => (
-                            <div key={`${pet.chain}-${pet.id}`} className="pet-card">
-                                <div className="pet-visual">
-                                    <div
-                                        className="rarity-badge"
-                                        style={{ backgroundColor: getRarityColor(pet.rarity) }}
-                                    >
-                                        {getRarityName(pet.rarity)}
-                                    </div>
-                                    <div className="element-tag">{getPetElement(pet.dna)}</div>
-                                    {getPetSkill(pet.speciesId) ? (
+                        {pets.map((pet) => {
+                            const cd = statusFor(pet);
+                            return (
+                                <div key={`${pet.chain}-${pet.id}`} className="pet-card">
+                                    <div className="pet-visual">
                                         <div
-                                            className="skill-badge"
-                                            title={getPetSkill(pet.speciesId)?.description}
+                                            className="rarity-badge"
+                                            style={{ backgroundColor: getRarityColor(pet.rarity) }}
                                         >
-                                            {getPetSkill(pet.speciesId)?.name}
+                                            {getRarityName(pet.rarity)}
                                         </div>
-                                    ) : null}
-                                    <div className="pet-avatar">{getPetAvatar(pet.dna)}</div>
-                                    <div className="level-badge">Lv. {pet.level}</div>
-                                </div>
+                                        <div className="element-tag">{getPetElement(pet.dna)}</div>
+                                        {getPetSkill(pet.speciesId) ? (
+                                            <div
+                                                className="skill-badge"
+                                                title={getPetSkill(pet.speciesId)?.description}
+                                            >
+                                                {getPetSkill(pet.speciesId)?.name}
+                                            </div>
+                                        ) : null}
+                                        <div className="pet-avatar">{getPetAvatar(pet.dna)}</div>
+                                        <div className="level-badge">Lv. {pet.level}</div>
+                                    </div>
 
-                                <div className="pet-main-info">
-                                    <div className="pet-header">
-                                        <h3>{pet.name}</h3>
-                                        <span className="pet-dna">
-                                            {getPetClass(pet.dna)} · Gen{' '}
-                                            {pet.generation ?? getGeneration(pet.dna)}
-                                        </span>
-                                    </div>
-                                    <div className="xp-row">
-                                        <span className="xp-label">XP</span>
-                                        <span className="xp-value">
-                                            {getXpNumbers(pet).xpCurrent}/{getXpNumbers(pet).xpMax}
-                                        </span>
-                                    </div>
-                                    <div className="xp-bar">
-                                        <div
-                                            className="xp-fill"
-                                            style={{ width: `${getXpPercent(pet)}%` }}
-                                        />
-                                    </div>
-                                    {(pet.winCount > 0 ||
-                                        pet.lossCount > 0 ||
-                                        (pet.breedCount != null && pet.breedCount > 0)) && (
-                                        <div className="pet-record">
-                                            <span className="record-wins">{pet.winCount}W</span>
-                                            <span className="record-sep">/</span>
-                                            <span className="record-losses">{pet.lossCount}L</span>
-                                            {pet.breedCount != null && pet.breedCount > 0 && (
-                                                <span className="record-breeds">
-                                                    · {pet.breedCount} bred
+                                    <div className="pet-main-info">
+                                        <div className="pet-header">
+                                            <h3>{pet.name}</h3>
+                                            <span className="pet-dna">
+                                                {getPetClass(pet.dna)} · Gen{' '}
+                                                {pet.generation ?? getGeneration(pet.dna)}
+                                            </span>
+                                        </div>
+                                        <div className="xp-row">
+                                            <span className="xp-label">XP</span>
+                                            <span className="xp-value">
+                                                {getXpNumbers(pet).xpCurrent}/
+                                                {getXpNumbers(pet).xpMax}
+                                            </span>
+                                        </div>
+                                        <div className="xp-bar">
+                                            <div
+                                                className="xp-fill"
+                                                style={{ width: `${getXpPercent(pet)}%` }}
+                                            />
+                                        </div>
+                                        {(pet.winCount > 0 ||
+                                            pet.lossCount > 0 ||
+                                            (pet.breedCount != null && pet.breedCount > 0)) && (
+                                            <div className="pet-record">
+                                                <span className="record-wins">{pet.winCount}W</span>
+                                                <span className="record-sep">/</span>
+                                                <span className="record-losses">
+                                                    {pet.lossCount}L
                                                 </span>
+                                                {pet.breedCount != null && pet.breedCount > 0 && (
+                                                    <span className="record-breeds">
+                                                        · {pet.breedCount} bred
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="pet-properties">
+                                        {Object.entries(getPetProperties(pet)).map(
+                                            ([key, value]) => (
+                                                <div className="property-item" key={key}>
+                                                    <span className="property-name" title={key}>
+                                                        {getPropertyEmoji(key)}
+                                                    </span>
+                                                    <span className="property-value">{value}</span>
+                                                </div>
+                                            ),
+                                        )}
+                                    </div>
+
+                                    {cd.onCooldown && (
+                                        <div className="pet-status">
+                                            {cd.battleOnCooldown && (
+                                                <div className="status cooldown">
+                                                    ⚔️ Battle ready in {cd.battleLabel}
+                                                </div>
+                                            )}
+                                            {cd.breedOnCooldown && (
+                                                <div className="status cooldown">
+                                                    🥚 Breed ready in {cd.breedLabel}
+                                                </div>
+                                            )}
+                                            {cd.trainOnCooldown && (
+                                                <div className="status cooldown">
+                                                    💪 Train ready in {cd.trainLabel}
+                                                </div>
                                             )}
                                         </div>
                                     )}
-                                </div>
 
-                                <div className="pet-properties">
-                                    {Object.entries(getPetProperties(pet)).map(([key, value]) => (
-                                        <div className="property-item" key={key}>
-                                            <span className="property-name" title={key}>
-                                                {getPropertyEmoji(key)}
-                                            </span>
-                                            <span className="property-value">{value}</span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {(!isPetReady(BigInt(pet.readyAt)) ||
-                                    (pet.breedReadyAt != null &&
-                                        !isPetReady(BigInt(pet.breedReadyAt))) ||
-                                    (pet.trainReadyAt != null &&
-                                        !isPetReady(BigInt(pet.trainReadyAt)))) && (
-                                    <div className="pet-status">
-                                        {!isPetReady(BigInt(pet.readyAt)) && (
-                                            <div className="status cooldown">
-                                                ⚔️ Battle ready in{' '}
-                                                {getTimeUntilReady(BigInt(pet.readyAt))}
-                                            </div>
-                                        )}
-                                        {pet.breedReadyAt != null &&
-                                            !isPetReady(BigInt(pet.breedReadyAt)) && (
-                                                <div className="status cooldown">
-                                                    🥚 Breed ready in{' '}
-                                                    {getTimeUntilReady(BigInt(pet.breedReadyAt))}
-                                                </div>
-                                            )}
-                                        {pet.trainReadyAt != null &&
-                                            !isPetReady(BigInt(pet.trainReadyAt)) && (
-                                                <div className="status cooldown">
-                                                    💪 Train ready in{' '}
-                                                    {getTimeUntilReady(BigInt(pet.trainReadyAt))}
-                                                </div>
-                                            )}
+                                    <div className="pet-actions">
+                                        <button
+                                            type="button"
+                                            className={`send-button${
+                                                cd.battleReady ? ' is-ready' : ' on-cooldown'
+                                            }`}
+                                            onClick={() => handleSendClick(pet)}
+                                        >
+                                            <Icon
+                                                as={SendIcon}
+                                                tone={cd.battleReady ? Tones.Emerald : Tones.Amber}
+                                            />
+                                            Send
+                                        </button>
                                     </div>
-                                )}
-
-                                <div className="pet-actions">
-                                    <button
-                                        type="button"
-                                        className={`send-button${
-                                            isPetReady(BigInt(pet.readyAt))
-                                                ? ' is-ready'
-                                                : ' on-cooldown'
-                                        }`}
-                                        onClick={() => handleSendClick(pet)}
-                                    >
-                                        <Icon
-                                            as={SendIcon}
-                                            tone={
-                                                isPetReady(BigInt(pet.readyAt))
-                                                    ? Tones.Emerald
-                                                    : Tones.Amber
-                                            }
-                                        />
-                                        Send
-                                    </button>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </PetCollectionLayout>
