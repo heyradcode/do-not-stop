@@ -41,7 +41,7 @@ const AccountDropdown: React.FC = () => {
     const { publicKey: solanaPublicKey, connected: solanaConnected, disconnect: solanaDisconnect } = useWallet();
     const { setShowAuthFlow, handleLogOut, user, primaryWallet } = useDynamicContext();
     const [isOpen, setIsOpen] = useState(false);
-    const [isCopied, setIsCopied] = useState(false);
+    const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
     const [tokenStatus, setTokenStatus] = useState<Record<string, { fetched: boolean; balance?: bigint | number }>>({});
     const [isTokensLoading, setIsTokensLoading] = useState(false);
@@ -70,8 +70,8 @@ const AccountDropdown: React.FC = () => {
             document.execCommand('copy');
             document.body.removeChild(textArea);
         }
-        setIsCopied(true);
-        globalThis.setTimeout(() => setIsCopied(false), 2000);
+        setCopiedAddress(text);
+        globalThis.setTimeout(() => setCopiedAddress(null), 2000);
     }, []);
 
     useEffect(() => {
@@ -217,14 +217,14 @@ const AccountDropdown: React.FC = () => {
                                 {address && (
                                     <CopyableAddress
                                         address={address}
-                                        isCopied={isCopied}
+                                        isCopied={copiedAddress === address}
                                         onCopy={() => void handleCopyAny(address)}
                                     />
                                 )}
                                 {solanaPublicKey && (
                                     <CopyableAddress
                                         address={solanaPublicKey.toString()}
-                                        isCopied={isCopied}
+                                        isCopied={copiedAddress === solanaPublicKey.toString()}
                                         onCopy={() => void handleCopyAny(solanaPublicKey.toString())}
                                     />
                                 )}
@@ -233,7 +233,7 @@ const AccountDropdown: React.FC = () => {
                                     dynamicWalletAddress !== solanaPublicKey?.toString() && (
                                         <CopyableAddress
                                             address={dynamicWalletAddress}
-                                            isCopied={isCopied}
+                                            isCopied={copiedAddress === dynamicWalletAddress}
                                             onCopy={() => void handleCopyAny(dynamicWalletAddress)}
                                         />
                                     )}

@@ -96,6 +96,14 @@ const MarriageCard: React.FC<{
     );
 };
 
+const formatExpiry = (expirySec: number) => {
+    const diff = expirySec - Math.floor(Date.now() / 1000);
+    if (diff <= 0) return 'Expired';
+    if (diff < 3600) return `${Math.ceil(diff / 60)}m`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
+    return `${Math.floor(diff / 86400)}d`;
+};
+
 /** Shows a single outgoing proposal row in the Propose tab. */
 const OutgoingProposalRow: React.FC<{
     pet: Pet;
@@ -110,12 +118,7 @@ const OutgoingProposalRow: React.FC<{
     if (!isOwn) return null;
 
     const expirySec = info.proposalExpiry ? Number(info.proposalExpiry) : 0;
-    const diff = expirySec - Math.floor(Date.now() / 1000);
-    const expiryLabel =
-        diff <= 0 ? 'Expired'
-        : diff < 3600 ? `${Math.ceil(diff / 60)}m`
-        : diff < 86400 ? `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`
-        : `${Math.floor(diff / 86400)}d`;
+    const expiryLabel = formatExpiry(expirySec);
 
     return (
         <li className="proposal-card outgoing-proposal">
@@ -136,14 +139,6 @@ const OutgoingProposalRow: React.FC<{
             </div>
         </li>
     );
-};
-
-const formatExpiry = (expirySec: number) => {
-    const diff = expirySec - Math.floor(Date.now() / 1000);
-    if (diff <= 0) return 'Expired';
-    if (diff < 3600) return `${Math.ceil(diff / 60)}m`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
-    return `${Math.floor(diff / 86400)}d`;
 };
 
 type PendingAccept = {
