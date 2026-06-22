@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+    formatExpiry,
     useApiClient,
     useChainCapabilities,
     useMarriage,
@@ -94,14 +95,6 @@ const MarriageCard: React.FC<{
             </AuthActionButton>
         </li>
     );
-};
-
-const formatExpiry = (expirySec: number) => {
-    const diff = expirySec - Math.floor(Date.now() / 1000);
-    if (diff <= 0) return 'Expired';
-    if (diff < 3600) return `${Math.ceil(diff / 60)}m`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
-    return `${Math.floor(diff / 86400)}d`;
 };
 
 /** Shows a single outgoing proposal row in the Propose tab. */
