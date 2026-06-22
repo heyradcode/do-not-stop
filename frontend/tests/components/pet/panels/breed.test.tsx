@@ -8,7 +8,15 @@ vi.mock('wagmi', () => ({ useReadContracts: () => ({ data: undefined }) }));
 vi.mock('@constants/interactionRoutes', () => ({ DASHBOARD_HOME: '/dashboard' }));
 vi.mock('@hooks/usePetErrorToast', () => ({ usePetErrorToast: vi.fn() }));
 vi.mock('@components/common', () => ({
-    AuthActionButton: ({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) => (
+    AuthActionButton: ({
+        onClick,
+        disabled,
+        children,
+    }: {
+        onClick: () => void;
+        disabled?: boolean;
+        children: React.ReactNode;
+    }) => (
         <button onClick={onClick} disabled={disabled}>
             {children}
         </button>
@@ -32,13 +40,19 @@ const DEFAULT_PETS = [
     { id: '2', name: 'Beta', level: 5 },
 ];
 const petList = {
-    pets: [...DEFAULT_PETS] as Array<{ id: string; name: string; level: number; spouseId?: number }>,
+    pets: [...DEFAULT_PETS] as Array<{
+        id: string;
+        name: string;
+        level: number;
+        spouseId?: number;
+    }>,
     refetch: vi.fn(),
 };
 const capabilities = { randomness: { provider: 'vrf' }, kind: 'solana' };
 
 vi.mock('@shared/core', () => ({
-    getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
+    getReadyPetsUnified: (pets: { id: string; level: number }[]) =>
+        pets.map((p) => ({ id: p.id, pet: p })),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
     useFees: () => ({
@@ -48,10 +62,23 @@ vi.mock('@shared/core', () => ({
         formatAmountOnly: (v: bigint) => String(v),
     }),
     useApiClient: () => ({ defaults: { baseURL: '' }, post: vi.fn() }),
+    useSpousePet: () => ({ name: undefined, level: undefined }),
     useMarriageInfo: (pet?: { spouseId?: number }) =>
         pet?.spouseId
-            ? { isMarried: true, spouseId: BigInt(pet.spouseId), isLoading: false, hasProposal: false, refetch: vi.fn() }
-            : { isMarried: false, spouseId: undefined, isLoading: false, hasProposal: false, refetch: vi.fn() },
+            ? {
+                  isMarried: true,
+                  spouseId: BigInt(pet.spouseId),
+                  isLoading: false,
+                  hasProposal: false,
+                  refetch: vi.fn(),
+              }
+            : {
+                  isMarried: false,
+                  spouseId: undefined,
+                  isLoading: false,
+                  hasProposal: false,
+                  refetch: vi.fn(),
+              },
     usePendingBreed: () => ({ isPending: false }),
     usePetsConfig: () => ({ evm: undefined }),
     useBreedPets: (opts: { onSuccess?: (arg: { name: string }) => void }) => {
@@ -64,10 +91,10 @@ vi.mock('@tanstack/react-query', () => ({
     useQuery: () => ({ data: undefined, isLoading: false, error: null }),
     useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
-vi.mock('@components/pet/interactions/panels/breed/pending-breed-notice', () => ({
+vi.mock('@components/pet/interactions/panels/breed/parts/pending-breed-notice', () => ({
     default: () => null,
 }));
-vi.mock('@components/pet/interactions/panels/breed/stud-fee-balance', () => ({
+vi.mock('@components/pet/interactions/panels/breed/parts/stud-fee-balance', () => ({
     default: () => null,
 }));
 
@@ -96,7 +123,9 @@ describe('BreedPanel — My Pets tab', () => {
 
         await userEvent.selectOptions(first, '1');
 
-        expect(within(second).queryByRole('option', { name: 'Alpha (Lv 2)' })).not.toBeInTheDocument();
+        expect(
+            within(second).queryByRole('option', { name: 'Alpha (Lv 2)' }),
+        ).not.toBeInTheDocument();
         expect(within(second).getByRole('option', { name: 'Beta (Lv 5)' })).toBeInTheDocument();
     });
 
@@ -130,7 +159,9 @@ describe('BreedPanel — My Pets tab', () => {
         render(<BreedPanel />);
 
         expect(screen.getByRole('button', { name: 'Creating…' })).toBeInTheDocument();
-        expect(screen.getByText('Hang tight—your new pet will show up in a moment.')).toBeInTheDocument();
+        expect(
+            screen.getByText('Hang tight—your new pet will show up in a moment.'),
+        ).toBeInTheDocument();
     });
 
     it('uses Switchboard VRF labels and shows a tx hash hint', () => {
@@ -145,7 +176,9 @@ describe('BreedPanel — My Pets tab', () => {
 
     it('resets when breed.reset is called', () => {
         render(<BreedPanel />);
-        act(() => { breed.reset(); });
+        act(() => {
+            breed.reset();
+        });
         expect(breed.reset).toBeDefined();
     });
 });
@@ -161,7 +194,9 @@ describe('BreedPanel — With Spouse tab', () => {
         await userEvent.click(screen.getByRole('button', { name: /With Spouse/ }));
 
         const select = screen.getByRole('combobox');
-        expect(within(select).getByRole('option', { name: 'Alpha (Lv 2) ↔ #5' })).toBeInTheDocument();
+        expect(
+            within(select).getByRole('option', { name: 'Alpha (Lv 2) ↔ #5' }),
+        ).toBeInTheDocument();
         expect(within(select).getByRole('option', { name: 'Beta (Lv 3)' })).toBeInTheDocument();
     });
 

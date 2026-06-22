@@ -38,7 +38,7 @@ session can resume without re-deriving context.
 | 1 | Tooling: Prettier + `.editorconfig` + reformat | DONE |
 | 2 | Colocate panel CSS (split `overview/index.css`) | DONE |
 | 3 | Extract shared `useSpousePet` hook | DONE |
-| 4 | Decompose `breed` panel into orchestrator + parts | TODO |
+| 4 | Decompose `breed` panel into orchestrator + parts | DONE |
 | 5 | Extract `pet-gallery` cooldown logic into a hook | TODO |
 | 6 | Design-system decision + button consolidation | TODO |
 | 7 | Shared accessible modal + migrate bespoke modals | TODO |
@@ -237,7 +237,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ---
 
 ## Step 4 — Decompose `breed` panel into orchestrator + parts
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** Reduce `panels/breed/index.tsx` (~403 lines) to a slim orchestrator plus
 `parts/`, mirroring the marriage refactor.
@@ -259,9 +259,42 @@ relative-detection logic, pending-breed logic, and all JSX in one file.
   and submit all behave identically. Verify in-app.
 - Typecheck + lint + any breed tests pass.
 
-**Outcome:** _(fill after completion)_
+**Outcome (done):**
+- `breed/index.tsx`: **466 → 280 lines**. Now a slim orchestrator owning state, effects,
+  contract reads (relative detection), pending-breed checks, and the mutation; delegates all
+  rendering.
+- `types.ts`: `BreedTab`, `BreedPanelProps`.
+- New `parts/`: `breed-tab-bar.tsx`, `own-pets-tab.tsx`, `with-spouse-tab.tsx`,
+  `spouse-label.tsx` (now uses the shared `useSpousePet` from Step 3 — the old local
+  `SpouseLabel` + `SPOUSE_NAME_GQL` are gone).
+- Moved the two existing flat sub-files into `parts/` (git mv): `pending-breed-notice.tsx`,
+  `stud-fee-balance.tsx` — breed now matches the battle/marriage `parts/` convention.
+- Tab-local state stays in the orchestrator (it feeds the relative-check contract reads,
+  `canSubmit`, and the success reset), so the tabs are controlled via props — same as the
+  marriage tabs.
+- Tests: updated `breed.test.tsx` mock paths to `parts/...` and added `useSpousePet` to the
+  `@shared/core` mock (returns no name so `SpouseLabel` falls back to `#id`).
+- **Verified:** `format:check` clean; `tsc -b` 0; `eslint .` 0; breed tests 11/11;
+  **272/272 tests pass**.
+- **Optional future refinement:** index.tsx is still ~280 lines because all logic lives there
+  (intentional, matches marriage). If a thinner view is wanted later, extract a headless
+  `useBreedPanel` hook (battle-style) — deliberately deferred to keep this diff focused/low-risk.
 
-**Commit message:** _(fill after completion)_
+**Commit message:**
+```
+refactor(frontend): decompose breed panel into parts
+
+Split the 466-line breed/index.tsx into a slim orchestrator plus parts
+(tab bar, own-pets tab, with-spouse tab, spouse label) and move the existing
+pending-breed-notice / stud-fee-balance into parts/, matching the
+battle/marriage convention. The spouse label now uses the shared useSpousePet
+hook, removing the last duplicated spouse-name GraphQL lookup.
+
+Behavior preserved; breed tests updated for the new module paths. Typecheck,
+lint, and all 272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
 
 ---
 
@@ -367,3 +400,4 @@ behavior preserved; typecheck + lint + tests pass.
 - 2026-06-22 — Step 1 — chore(frontend): add prettier + editorconfig and reformat src
 - 2026-06-22 — Step 2 — refactor(frontend): colocate interaction panel CSS
 - 2026-06-22 — Step 3 — refactor: extract shared useSpousePet hook
+- 2026-06-22 — Step 4 — refactor(frontend): decompose breed panel into parts
