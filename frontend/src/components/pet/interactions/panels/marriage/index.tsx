@@ -1,143 +1,23 @@
 import React, { useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import {
-    formatExpiry,
-    useApiClient,
     useChainCapabilities,
     useMarriage,
-    useMarriageInfo,
     useAllPets,
     usePetList,
     useIncomingProposals,
     type IncomingProposal,
     type OpponentPet,
-    type Pet,
-    type PetChain,
 } from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
-import { AuthActionButton } from '@components/common';
 import Icon, { CheckIcon } from '@components/ui/icon';
-import PetSearchDropdown from '@components/ui/pet-search-dropdown';
 import { Tones } from '@constants/tones';
-
-const SPOUSE_GQL = `query SpousePet($chain:String!,$id:String!){pet(chain:$chain,id:$id){id name level}}`;
-
-/** Direct no-debounce pet lookup by ID — fires immediately on mount. */
-const useSpousePet = (
-    chain: PetChain | null,
-    spouseId: string,
-    skip: boolean,
-): { name?: string; level?: number } => {
-    const apiClient = useApiClient();
-    const baseURL = apiClient.defaults.baseURL ?? '';
-    const { data } = useQuery({
-        queryKey: ['pet', baseURL, chain, spouseId],
-        enabled: !skip && Boolean(chain && spouseId && spouseId !== '0'),
-        queryFn: async () => {
-            const res = await apiClient.post<{ data?: { pet: { id: string; name: string; level: number } | null } }>(
-                '/graphql',
-                { query: SPOUSE_GQL, variables: { chain, id: spouseId } },
-            );
-            return res.data.data?.pet ?? null;
-        },
-        staleTime: 60_000,
-    });
-    return { name: data?.name, level: data?.level };
-};
-
-type MarriageTab = 'propose' | 'accept';
-
-export type MarriagePanelProps = {
-    isStandaloneView?: boolean;
-};
-
-/** Romantic marriage card — shows both pets connected by a heart. */
-const MarriageCard: React.FC<{
-    pet: Pet;
-    chain: PetChain | null;
-    petById: Map<string, OpponentPet>;
-    onDivorce: (petId: string) => void;
-    busy: boolean;
-}> = ({ pet, chain, petById, onDivorce, busy }) => {
-    const info = useMarriageInfo(pet);
-
-    const spouseId = info.isMarried && info.spouseId ? info.spouseId.toString() : '';
-    const fromMap = spouseId ? petById.get(spouseId) : undefined;
-
-    // Direct no-debounce fallback: single pet(chain, id) query fires immediately
-    // when the bulk allPets map doesn't have this pet yet.
-    const fetched = useSpousePet(chain, spouseId, Boolean(fromMap));
-
-    if (!info.isMarried || !spouseId) return null;
-
-    const spouseName = fromMap?.name ?? fetched.name ?? `#${spouseId}`;
-    const spouseLevel = fromMap?.level ?? fetched.level;
-
-    return (
-        <li className="marriage-card">
-            <div className="marriage-pair">
-                <div className="marriage-partner">
-                    <span className="partner-name">{pet.name}</span>
-                    <span className="partner-meta">#{pet.id} · Lv {pet.level}</span>
-                </div>
-                <span className="marriage-heart" aria-hidden>❤</span>
-                <div className="marriage-partner">
-                    <span className="partner-name">{spouseName}</span>
-                    <span className="partner-meta">#{spouseId}{spouseLevel != null ? ` · Lv ${spouseLevel}` : ''}</span>
-                </div>
-            </div>
-            <AuthActionButton
-                className="marriage-row-action divorce"
-                onClick={() => onDivorce(pet.id)}
-                disabled={busy}
-            >
-                Divorce
-            </AuthActionButton>
-        </li>
-    );
-};
-
-/** Shows a single outgoing proposal row in the Propose tab. */
-const OutgoingProposalRow: React.FC<{
-    pet: Pet;
-    walletAddress: string | null;
-    onCancel: (petId: string) => void;
-    busy: boolean;
-}> = ({ pet, walletAddress, onCancel, busy }) => {
-    const info = useMarriageInfo(pet);
-    const isOwn =
-        info.hasProposal && walletAddress != null &&
-        info.proposer?.toLowerCase() === walletAddress.toLowerCase();
-    if (!isOwn) return null;
-
-    const expirySec = info.proposalExpiry ? Number(info.proposalExpiry) : 0;
-    const expiryLabel = formatExpiry(expirySec);
-
-    return (
-        <li className="proposal-card outgoing-proposal">
-            <div className="proposal-pets">
-                <span className="proposal-proposer">{pet.name} <span className="proposal-id">#{pet.id}</span></span>
-                <span className="proposal-arrow">→</span>
-                <span className="proposal-target">#{info.proposalPetIdB?.toString()}</span>
-            </div>
-            <div className="proposal-meta">
-                <span className="proposal-expiry">Expires {expiryLabel}</span>
-                <AuthActionButton
-                    className="marriage-row-action cancel"
-                    onClick={() => onCancel(pet.id)}
-                    disabled={busy}
-                >
-                    Cancel
-                </AuthActionButton>
-            </div>
-        </li>
-    );
-};
-
-type PendingAccept = {
-    proposal: IncomingProposal;
-    myPetId: string;
-};
+import MarriageTabBar from './parts/marriage-tab-bar';
+import ProposeTab from './parts/propose-tab';
+import AcceptTab from './parts/accept-tab';
+import ActiveMarriages from './parts/active-marriages';
+import AcceptConfirmDialog from './parts/accept-confirm-dialog';
+import type { MarriagePanelProps, MarriageTab, PendingAccept } from './types';
 
 const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }) => {
     const { kind, activeKind, walletAddress } = useChainCapabilities();
@@ -147,8 +27,6 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
     const queryClient = useQueryClient();
 
     const [tab, setTab] = useState<MarriageTab>('propose');
-    const [myPet, setMyPet] = useState('');
-    const [partnerId, setPartnerId] = useState('');
     const [pendingAccept, setPendingAccept] = useState<PendingAccept | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
@@ -173,7 +51,9 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
     const busy = marriage.propose.isPending || marriage.accept.isPending
         || marriage.cancel.isPending || marriage.divorce.isPending;
 
-    const run = async (fn: () => Promise<void>, message: string, onSuccess?: () => void) => {
+    /** Run a marriage write, surface success/error, and refresh on-chain reads.
+     *  Resolves true on success so callers can reset their own UI. */
+    const run = async (fn: () => Promise<void>, message: string): Promise<boolean> => {
         setSuccess(null);
         try {
             await fn();
@@ -185,21 +65,12 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
             void queryClient.invalidateQueries({ queryKey: ['readContract'] });
             void queryClient.invalidateQueries({ queryKey: ['readContracts'] });
             void queryClient.invalidateQueries({ queryKey: ['incomingProposals'] });
-            onSuccess?.();
+            return true;
         } catch (err) {
             console.error('[marriage]', err);
             notifyError('Marriage action failed', err, 'marriage');
+            return false;
         }
-    };
-
-    const handleConfirmAccept = () => {
-        if (!pendingAccept) return;
-        const { proposal, myPetId } = pendingAccept;
-        void run(
-            () => marriage.accept.mutateAsync({ petIdA: proposal.proposerPetId, petIdB: myPetId }),
-            'Marriage accepted!',
-            () => setPendingAccept(null),
-        );
     };
 
     if (kind === 'none') {
@@ -208,8 +79,26 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
 
     const targetPetName = (id: string) => chainPets.find((p) => p.id === id)?.name ?? `#${id}`;
 
+    const handlePropose = (petIdA: string, petIdB: string) =>
+        run(() => marriage.propose.mutateAsync({ petIdA, petIdB }), 'Proposal sent!');
+
     const handleCancel = (id: string) =>
         void run(() => marriage.cancel.mutateAsync({ petIdA: id }), 'Proposal cancelled.');
+
+    const handleDivorce = (id: string) =>
+        void run(() => marriage.divorce.mutateAsync({ petId: id }), 'Divorced.');
+
+    const handleConfirmAccept = () => {
+        if (!pendingAccept) return;
+        const { proposal, myPetId } = pendingAccept;
+        void run(
+            () => marriage.accept.mutateAsync({ petIdA: proposal.proposerPetId, petIdB: myPetId }),
+            'Marriage accepted!',
+        ).then((ok) => { if (ok) setPendingAccept(null); });
+    };
+
+    const openAccept = (proposal: IncomingProposal) =>
+        setPendingAccept({ proposal, myPetId: proposal.targetPetId });
 
     return (
         <>
@@ -221,169 +110,50 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                     </>
                 )}
 
-                {/* Tab bar */}
-                <div className="marriage-tabs">
-                    <button
-                        type="button"
-                        className={`marriage-tab${tab === 'propose' ? ' active' : ''}`}
-                        onClick={() => setTab('propose')}
-                    >
-                        💍 Propose
-                    </button>
-                    <button
-                        type="button"
-                        className={`marriage-tab${tab === 'accept' ? ' active' : ''}`}
-                        onClick={() => setTab('accept')}
-                    >
-                        💒 Accept
-                        {incomingProposals.length > 0 && (
-                            <span className="marriage-tab-badge">{incomingProposals.length}</span>
-                        )}
-                    </button>
-                </div>
+                <MarriageTabBar tab={tab} onChange={setTab} proposalCount={incomingProposals.length} />
 
-                {/* Propose tab */}
                 {tab === 'propose' && (
-                    <div className="marriage-tab-panel">
-                        <p className="marriage-tab-hint">Select one of your pets, then search for your partner&apos;s pet to send a marriage proposal.</p>
-                        <div className="picker">
-                            <div className="field">
-                                <label>Your pet</label>
-                                <select value={myPet} onChange={(e) => setMyPet(e.target.value)}>
-                                    <option value="">Select your pet...</option>
-                                    {chainPets.map((p) => (
-                                        <option key={p.id} value={p.id}>{p.name} (#{p.id})</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="field">
-                                <label>Partner&apos;s pet</label>
-                                <PetSearchDropdown
-                                    chain={activeKind}
-                                    value={partnerId}
-                                    onChange={setPartnerId}
-                                    placeholder="Search by name or ID…"
-                                    disabled={busy}
-                                    excludeIds={myPet ? [myPet] : []}
-                                />
-                            </div>
-                            <AuthActionButton
-                                className="action-button propose-button"
-                                disabled={busy || !myPet || !partnerId}
-                                onClick={() => void run(
-                                    () => marriage.propose.mutateAsync({ petIdA: myPet, petIdB: partnerId }),
-                                    'Proposal sent!',
-                                    () => { setMyPet(''); setPartnerId(''); },
-                                )}
-                            >
-                                {marriage.propose.isPending ? 'Proposing...' : '💍 Send Proposal'}
-                            </AuthActionButton>
-                        </div>
-
-                        {/* Sent proposals list */}
-                        {chainPets.length > 0 && (
-                            <div className="sent-proposals-section">
-                                <span className="sent-proposals-label">Sent proposals</span>
-                                <ul className="proposals-list">
-                                    {chainPets.map((p) => (
-                                        <OutgoingProposalRow
-                                            key={p.id}
-                                            pet={p}
-                                            walletAddress={walletAddress}
-                                            busy={busy}
-                                            onCancel={handleCancel}
-                                        />
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
+                    <ProposeTab
+                        chainPets={chainPets}
+                        chain={activeKind}
+                        walletAddress={walletAddress}
+                        busy={busy}
+                        isProposing={marriage.propose.isPending}
+                        onPropose={handlePropose}
+                        onCancelProposal={handleCancel}
+                    />
                 )}
 
-                {/* Accept tab */}
                 {tab === 'accept' && (
-                    <div className="marriage-tab-panel">
-                        <p className="marriage-tab-hint">Pending proposals from other players to marry one of your pets.</p>
-
-                        {incomingLoading ? (
-                            <div className="proposals-empty">Checking for proposals…</div>
-                        ) : incomingProposals.length === 0 ? (
-                            <div className="proposals-empty">No pending proposals for your pets.</div>
-                        ) : (
-                            <ul className="proposals-list">
-                                {incomingProposals.map((p) => (
-                                    <li key={`${p.proposerPetId}-${p.targetPetId}`} className="proposal-card">
-                                        <div className="proposal-pets">
-                                            <span className="proposal-proposer">{p.proposerPetName} <span className="proposal-id">#{p.proposerPetId}</span></span>
-                                            <span className="proposal-arrow">→</span>
-                                            <span className="proposal-target">your {targetPetName(p.targetPetId)} <span className="proposal-id">#{p.targetPetId}</span></span>
-                                        </div>
-                                        <div className="proposal-meta">
-                                            <span className="proposal-expiry">Expires {formatExpiry(p.expiry)}</span>
-                                            <button
-                                                type="button"
-                                                className="marriage-row-action accept-inline"
-                                                disabled={busy}
-                                                onClick={() => setPendingAccept({ proposal: p, myPetId: p.targetPetId })}
-                                            >
-                                                Accept
-                                            </button>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
+                    <AcceptTab
+                        proposals={incomingProposals}
+                        isLoading={incomingLoading}
+                        busy={busy}
+                        targetPetName={targetPetName}
+                        onAccept={openAccept}
+                    />
                 )}
 
-                {/* Active marriages — always visible */}
                 {chainPets.length > 0 && (
-                    <div className="marriage-status-section">
-                        <span className="marriage-status-label">❤ Your marriages</span>
-                        <ul className="marriage-list">
-                            {chainPets.map((p) => (
-                                <MarriageCard
-                                    key={p.id}
-                                    pet={p}
-                                    chain={activeKind}
-                                    petById={petById}
-                                    busy={busy}
-                                    onDivorce={(id) => void run(() => marriage.divorce.mutateAsync({ petId: id }), 'Divorced.')}
-                                />
-                            ))}
-                        </ul>
-                    </div>
+                    <ActiveMarriages
+                        chainPets={chainPets}
+                        chain={activeKind}
+                        petById={petById}
+                        busy={busy}
+                        onDivorce={handleDivorce}
+                    />
                 )}
             </div>
 
-            {/* Confirm accept modal */}
             {pendingAccept && (
-                <div className="marriage-confirm-overlay" onClick={() => setPendingAccept(null)}>
-                    <div className="marriage-confirm-dialog" onClick={(e) => e.stopPropagation()}>
-                        <h5 className="confirm-title">💒 Accept Proposal?</h5>
-                        <p className="confirm-body">
-                            <strong>{pendingAccept.proposal.proposerPetName}</strong> (#{pendingAccept.proposal.proposerPetId}) will marry your <strong>{targetPetName(pendingAccept.myPetId)}</strong> (#{pendingAccept.myPetId}).
-                        </p>
-                        <div className="confirm-actions">
-                            <button
-                                type="button"
-                                className="confirm-cancel"
-                                onClick={() => setPendingAccept(null)}
-                                disabled={busy}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                className="action-button accept-button confirm-accept"
-                                onClick={handleConfirmAccept}
-                                disabled={busy}
-                            >
-                                {marriage.accept.isPending ? 'Accepting...' : '💒 Confirm'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <AcceptConfirmDialog
+                    pending={pendingAccept}
+                    targetPetName={targetPetName}
+                    busy={busy}
+                    isAccepting={marriage.accept.isPending}
+                    onCancel={() => setPendingAccept(null)}
+                    onConfirm={handleConfirmAccept}
+                />
             )}
 
             {success && (
