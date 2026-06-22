@@ -18,6 +18,7 @@ import AcceptTab from './parts/accept-tab';
 import ActiveMarriages from './parts/active-marriages';
 import AcceptConfirmDialog from './parts/accept-confirm-dialog';
 import type { MarriagePanelProps, MarriageTab, PendingAccept } from './types';
+import './index.css';
 
 const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }) => {
     const { kind, activeKind, walletAddress } = useChainCapabilities();

@@ -35,6 +35,7 @@ import TrainPanel from '@components/pet/interactions/panels/train';
 import MarriagePanel from '@components/pet/interactions/panels/marriage';
 import RenamePanel from '@components/pet/interactions/panels/rename';
 import StateCard from '@components/pet/interactions/state-card';
+import '../interactions.css';
 import './index.css';
 
 /** Map `interactions/:action` segment (e.g. `rename`) to internal action id. */

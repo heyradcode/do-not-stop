@@ -36,7 +36,7 @@ session can resume without re-deriving context.
 | # | Step | Status |
 |---|------|--------|
 | 1 | Tooling: Prettier + `.editorconfig` + reformat | DONE |
-| 2 | Colocate panel CSS (split `overview/index.css`) | TODO |
+| 2 | Colocate panel CSS (split `overview/index.css`) | DONE |
 | 3 | Extract shared `useSpousePet` hook | TODO |
 | 4 | Decompose `breed` panel into orchestrator + parts | TODO |
 | 5 | Extract `pet-gallery` cooldown logic into a hook | TODO |
@@ -105,7 +105,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ---
 
 ## Step 2 — Colocate panel CSS (split `overview/index.css`)
-**Status:** TODO
+**Status:** DONE
 
 **Goal:** Each panel owns and imports its own stylesheet; remove cross-component
 CSS coupling.
@@ -134,9 +134,49 @@ already colocate correctly; bring the rest in line.
 
 **Risk:** CSS regressions are visual; verify each standalone page and the hub.
 
-**Outcome:** _(fill after completion)_
+**Outcome (done):**
+- Split the 1241-line `overview/index.css` into three files (pure move, no rule edits):
+  - **NEW** `interactions/interactions.css` (403 lines) — shared tokens
+    (`.dashboard-panel.pet-interactions` `--zi-*`), `.interface`, `.picker`/`.field`,
+    `.name-input`, `.action-button`, `.action-controls`, `.cancel-button`, `.win-estimate`,
+    `.transaction-info`, `.interaction-standalone-header`, `.help-text`, messages.
+  - **NEW** `panels/marriage/index.css` (470 lines) — all `.marriage-*`, `.proposal-*`,
+    `.sent-proposals-*`, `.accept-*`, `.propose-button`, `.confirm-*`, modal styles.
+  - `overview/index.css` (368 lines) — now hub-card styles only (`.action-buttons`,
+    `.breeding-lab-card`, `.battle-arena-card`, `.feature-action-card`, hub buttons).
+- Import wiring:
+  - `overview/index.tsx` now imports `../interactions.css` + `./index.css`.
+  - `standalone/index.tsx` now imports `interactions.css` (was importing `overview/index.css`
+    — the fragile sibling coupling is gone).
+  - `marriage/index.tsx` now imports its own `./index.css`.
+  - `battle`/`breed` unchanged: they already colocate CSS and get shared primitives from the
+    wrapper (same load order as before — verified no regression).
+- **Verified:** no component imports another's `index.css`; `format:check` clean; `tsc -b` 0;
+  `eslint .` 0; **272/272 tests pass**; `vite build` succeeds and the built CSS contains the
+  shared (`action-button`, `win-estimate`), hub (`feature-action-card`), and marriage
+  (`marriage-card`, `marriage-heartbeat`) selectors.
+- **Note:** styles were moved byte-for-byte (then Prettier-normalized), so visual-regression
+  risk is minimal, but a quick in-app look at the hub + each standalone page is still wise.
+- **Dead CSS deferred to Step 8:** `.breed-button`, `.battle-button`, `.transaction-info` are
+  unused (only `lab-breed-button` is real); kept in `interactions.css` for now to keep this
+  step a pure move. Added a reminder under Step 8.
 
-**Commit message:** _(fill after completion)_
+**Commit message:**
+```
+refactor(frontend): colocate interaction panel CSS
+
+Split the 1281-line overview/index.css into three concerns: shared tokens
+and form primitives (interactions.css), hub-card styles (overview/index.css),
+and marriage-specific styles (panels/marriage/index.css). Wire each surface
+to import what it needs; standalone pages no longer import the overview
+component's stylesheet.
+
+Pure move (Prettier-normalized) — no rule changes. Typecheck, lint, all 272
+tests, and a production build pass; built CSS contains the shared, hub, and
+marriage selectors.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
 
 ---
 
@@ -284,6 +324,8 @@ behavior preserved; typecheck + lint + tests pass.
   using `styles/variables.css` tokens where practical.
 - Optional: normalize a few camelCase non-hook filenames (`constants/interactionRoutes.ts`,
   `petsContractParams.ts`) only if it doesn't churn imports excessively.
+- **Remove dead CSS** carried over from Step 2: `.breed-button`, `.battle-button`,
+  `.transaction-info` in `interactions/interactions.css` (verified unused in Step 2).
 
 **Acceptance:** Lint clean; no visual/behavior change.
 
@@ -295,3 +337,4 @@ behavior preserved; typecheck + lint + tests pass.
 
 ## Change log
 - 2026-06-22 — Step 1 — chore(frontend): add prettier + editorconfig and reformat src
+- 2026-06-22 — Step 2 — refactor(frontend): colocate interaction panel CSS

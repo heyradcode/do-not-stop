@@ -7,7 +7,7 @@ import { Tones } from '@constants/tones';
 import Icon, { BattleIcon } from '@components/ui/icon';
 import DashboardPanel from '@components/common/dashboard-panel';
 import StateCard from '@components/pet/interactions/state-card';
-import '@components/pet/interactions/overview/index.css';
+import '@components/pet/interactions/interactions.css';
 
 export type InteractionStandaloneProps = {
     action: InteractionAction;
