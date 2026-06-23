@@ -94,7 +94,7 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
             { address: evm.gameLogic.address, abi: evm.gameLogic.abi, functionName: 'settleMint', args: [id], gas: 500000n, chainId: evm.chainId },
             { onError: (e) => console.error('[settleMint]', e) },
         );
-    }, [evm?.gameLogic.address, evm?.gameLogic.abi, settle]);
+    }, [evm?.gameLogic.address, evm?.gameLogic.abi, evm?.chainId, settle]);
 
     // 2. Watch Pyth Entropy `Revealed` (caller = gameLogic, sequenceNumber = requestId).
     useWatchEntropyFulfillment({

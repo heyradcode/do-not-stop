@@ -100,7 +100,7 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
             gas: 800000n,
             chainId: evm.chainId,
         });
-    }, [evm?.gameLogic.address, evm?.gameLogic.abi, settle]);
+    }, [evm?.gameLogic.address, evm?.gameLogic.abi, evm?.chainId, settle]);
 
     useWatchEntropyFulfillment({
         entropyAddress: isEvm ? (entropyAddress as `0x${string}` | undefined) : undefined,

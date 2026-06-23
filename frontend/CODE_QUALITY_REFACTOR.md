@@ -537,3 +537,4 @@ behavior preserved; typecheck + lint + tests pass.
 - 2026-06-22 — Step 6a — feat(frontend): extend NeonButton palette for app-wide adoption
 - 2026-06-22 — Step 6b — refactor(frontend): render auth action buttons via NeonButton
 - 2026-06-22 — Step 6c — refactor(frontend): migrate dashboard hub buttons to NeonButton
+- 2026-06-22 — fix(shared): resolve 3 pre-existing exhaustive-deps lint warnings
