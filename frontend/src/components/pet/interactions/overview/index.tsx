@@ -28,6 +28,7 @@ import Icon, {
     TrainIcon,
 } from '@components/ui/icon';
 import DashboardPanel from '@components/common/dashboard-panel';
+import NeonButton from '@components/ui/neon-button';
 import BattlePanel from '@components/pet/interactions/panels/battle';
 import BreedPanel from '@components/pet/interactions/panels/breed';
 import LevelUpPanel from '@components/pet/interactions/panels/level-up';
@@ -195,14 +196,15 @@ const PetInteractions: React.FC = () => {
                                 </span>
                             </div>
                         </div>
-                        <button
-                            type="button"
+                        <NeonButton
+                            tone="emerald"
+                            fullWidth
+                            className="hub-action"
                             onClick={() => navigate(BREED_PATH)}
-                            className="lab-breed-button"
                             disabled={pets.length < 1}
                         >
                             Start breeding
-                        </button>
+                        </NeonButton>
                     </div>
                     <div className="battle-arena-card">
                         <div className="header">
@@ -249,15 +251,16 @@ const PetInteractions: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-                        <button
-                            type="button"
+                        <NeonButton
+                            tone="magenta"
+                            fullWidth
+                            className="hub-action"
                             onClick={() => navigate(BATTLE_PATH)}
-                            className="lab-breed-button start-button"
                             disabled={readyPets.length < 1}
                             title={battleDisabledHint}
                         >
                             Start battle
-                        </button>
+                        </NeonButton>
                     </div>
                     <div className="feature-action-card">
                         <div className="header">
@@ -272,14 +275,15 @@ const PetInteractions: React.FC = () => {
                                 ? `From ${capabilities.levelUpFee.amount} ${capabilities.levelUpFee.symbol} — cost rises with your pet's level.`
                                 : 'Costs a small SOL fee per level.'}
                         </div>
-                        <button
-                            type="button"
+                        <NeonButton
+                            tone="violet"
+                            fullWidth
+                            className="hub-action"
                             onClick={() => navigate(LEVELUP_PATH)}
-                            className="lab-breed-button levelup-button"
                             disabled={readyPets.length < 1}
                         >
                             Open level up
-                        </button>
+                        </NeonButton>
                     </div>
                     <div className="feature-action-card">
                         <div className="header">
@@ -292,14 +296,15 @@ const PetInteractions: React.FC = () => {
                             <br />
                             {trainFeeLabel}
                         </div>
-                        <button
-                            type="button"
+                        <NeonButton
+                            tone="amber"
+                            fullWidth
+                            className="hub-action"
                             onClick={() => navigate(TRAIN_PATH)}
-                            className="lab-breed-button train-button"
                             disabled={readyPets.length < 1}
                         >
                             Open training
-                        </button>
+                        </NeonButton>
                     </div>
                     <div className="feature-action-card">
                         <div className="header">
@@ -312,14 +317,15 @@ const PetInteractions: React.FC = () => {
                             <br />
                             Propose, accept, or divorce.
                         </div>
-                        <button
-                            type="button"
+                        <NeonButton
+                            tone="magenta"
+                            fullWidth
+                            className="hub-action"
                             onClick={() => navigate(MARRIAGE_PATH)}
-                            className="lab-breed-button marriage-button"
                             disabled={pets.length < 1}
                         >
                             Open marriage
-                        </button>
+                        </NeonButton>
                     </div>
                     <div className="feature-action-card">
                         <div className="header">
@@ -334,14 +340,15 @@ const PetInteractions: React.FC = () => {
                                 ? `Requires level ${capabilities.renameMinLevel} or higher.`
                                 : 'Pick a new identity for your companion.'}
                         </div>
-                        <button
-                            type="button"
+                        <NeonButton
+                            tone="cyan"
+                            fullWidth
+                            className="hub-action"
                             onClick={() => navigate(RENAME_PATH)}
-                            className="lab-breed-button changename-button"
                             disabled={readyPets.length < 1}
                         >
                             Open rename
-                        </button>
+                        </NeonButton>
                     </div>
                 </div>
             )}

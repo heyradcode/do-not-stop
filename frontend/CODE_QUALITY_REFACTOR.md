@@ -374,10 +374,14 @@ panel buttons styled via descendant selectors (`.action-controls button`).
   `size-xs`; widen `NeonButtonTone`/`NeonButtonSize`. Purely additive, no call sites changed.
 - **6b — Auth-gated action buttons (DONE):** compose `AuthActionButton` over `NeonButton` and
   migrate the 8 auth buttons + the coupled `accept-inline` raw button. See 6b outcome below.
-- **6c — Non-auth action buttons:** `accept-inline`, hub `lab-breed-button` family,
-  `create-first-pet-button`, `retry-button`, `refresh`, `sync-metadata`, battle `cancel-button` →
-  `NeonButton` with the right tone/size; remove dead CSS. Tabs + close-X stay bespoke.
-- **6d (optional) — NeonCard:** adopt for hub cards / state cards if it reduces bespoke card CSS.
+- **6c — Hub action buttons (DONE):** the 6 `lab-breed-button` family buttons in the dashboard
+  hub → `NeonButton`; remove their CSS. (`accept-inline` was already done in 6b.) See 6c outcome.
+- **6d — Remaining action buttons:** confirm-dialog accept (`action-button accept-button`),
+  pet-gallery `create-first-pet-button` + `retry-button` → `NeonButton`; then remove the
+  now-fully-dead `.action-button` base (interactions.css) + `.accept-button`/`.confirm-accept`
+  (marriage). Leave structural/icon/ghost buttons bespoke: tabs, close-X, `confirm-cancel`,
+  `refresh` (icon), battle `.cancel-button` (ghost), `sync-metadata`.
+- **6e (optional) — NeonCard:** adopt for hub cards / state cards if it reduces bespoke card CSS.
 
 **Acceptance (whole step):** consistent `NeonButton` usage for action buttons; no behavior change;
 typecheck + lint + tests pass. Visual check in-app recommended (button themes are CSS).
@@ -449,6 +453,32 @@ tests pass.
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ```
 
+### 6c outcome (done)
+- Migrated the 6 dashboard-hub card buttons in `overview/index.tsx` from
+  `<button className="lab-breed-button …">` to `<NeonButton tone=… fullWidth className="hub-action">`:
+  Breeding Lab=emerald, Battle=magenta, Level Up=violet, Training=amber, Marriage=magenta
+  (was soft rose — moved into the palette), Change Name=cyan.
+- `overview/index.css`: removed `.lab-breed-button` base and the nested `.start-button`,
+  `.levelup-button`, `.train-button`, `.marriage-button`, `.changename-button` variants;
+  added a layout-only `.hub-action { flex: 0 0 auto; }`.
+- **Verified:** no dangling class refs; `format:check` clean; `tsc -b` 0; `eslint .` 0;
+  **272/272 tests pass**.
+- **Visual review in-app:** hub buttons now use NeonButton padding (12×18 vs 10×12) and the
+  Marriage card button shifts rose→magenta. Worth an eyeball.
+
+**6c commit message:**
+```
+refactor(frontend): migrate dashboard hub buttons to NeonButton
+
+Replace the six lab-breed-button-family hub card buttons with NeonButton
+(emerald/magenta/violet/amber/magenta/cyan) and a layout-only .hub-action
+class; remove the bespoke per-button CSS from overview/index.css.
+
+No behavior change. Typecheck, lint, and all 272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
+
 ---
 
 ## Step 7 — Shared accessible modal + migrate bespoke modals
@@ -506,3 +536,4 @@ behavior preserved; typecheck + lint + tests pass.
 - 2026-06-22 — Step 5 — refactor(frontend): extract usePetCooldowns hook from pet-gallery
 - 2026-06-22 — Step 6a — feat(frontend): extend NeonButton palette for app-wide adoption
 - 2026-06-22 — Step 6b — refactor(frontend): render auth action buttons via NeonButton
+- 2026-06-22 — Step 6c — refactor(frontend): migrate dashboard hub buttons to NeonButton
