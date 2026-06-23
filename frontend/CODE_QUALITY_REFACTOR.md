@@ -534,7 +534,7 @@ tests use `screen` queries which see the portal, so they pass unchanged.
 
 **Sub-steps (one commit each):**
 - **7a — send-pet-modal (DONE):** see outcome below.
-- **7b — create-pet-modal:** same pattern; submit → `NeonButton`. Title "Create Your First Pet".
+- **7b — create-pet-modal (DONE):** same pattern; submit → `NeonButton`. See outcome below.
 - **7c — marriage accept-confirm-dialog:** Confirm already a `NeonButton` (6d); wrap in NeonModal,
   title "💒 Accept Proposal?", keep ghost Cancel; remove `.marriage-confirm-overlay`/`-dialog`/
   `.confirm-title`/`.confirm-body`/`.confirm-actions` chrome CSS as appropriate. Verify the
@@ -568,6 +568,33 @@ Behavior preserved. Typecheck, lint, and all 272 tests pass.
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ```
 
+### 7b outcome (done)
+- `create-pet-modal/index.tsx` now renders `<NeonModal title={<Icon/>Create Your First Pet}
+  contentClassName="create-pet-body">`; removed the `if (!isOpen) return null`. Submit →
+  `<NeonButton tone="cyan">`.
+- `create-pet-modal/index.css` rewritten to body-content-only under `.create-pet-body`
+  (dropped overlay/`.dialog`/`.header`/`.close`/`.body`/`.submit` chrome).
+- Test fix: the close-button test now targets `name: 'Close modal'` (NeonModal's close
+  `aria-label`) instead of the old `×`. The role dump confirmed the modal now exposes
+  `role="dialog"` + `aria-modal="true"` (the a11y win).
+- **Verified:** `src` `format:check` clean; `tsc -b` 0; `eslint .` 0; create-pet 7/7;
+  **272/272 pass**. (Note: `tests/**` predates Prettier and isn't in the `format:check` scope —
+  unrelated to this work; could be a Step 8 cleanup.)
+
+**7b commit message:**
+```
+refactor(frontend): migrate create-pet modal to NeonModal
+
+Render CreatePetModal via NeonModal for focus-trap, Escape, and role=dialog,
+replacing the hand-rolled chrome. Submit becomes a NeonButton; CSS reduced to
+body content under .create-pet-body. Update the close-button test to target
+NeonModal's "Close modal" control.
+
+Behavior preserved. Typecheck, lint, and all 272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
+
 ---
 
 ## Step 8 — Minor cleanups
@@ -582,8 +609,10 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
   using `styles/variables.css` tokens where practical.
 - Optional: normalize a few camelCase non-hook filenames (`constants/interactionRoutes.ts`,
   `petsContractParams.ts`) only if it doesn't churn imports excessively.
-- **Remove dead CSS** carried over from Step 2: `.breed-button`, `.battle-button`,
-  `.transaction-info` in `interactions/interactions.css` (verified unused in Step 2).
+- `.breed-button`/`.battle-button` dead CSS — already removed in 6d. `.transaction-info` still
+  unused; remove it (interactions.css).
+- Consider extending the `format`/`format:check` globs to include `tests/**` and reformatting
+  the ~42 unformatted test files (out of scope for the refactor steps; pure formatting).
 
 **Acceptance:** Lint clean; no visual/behavior change.
 

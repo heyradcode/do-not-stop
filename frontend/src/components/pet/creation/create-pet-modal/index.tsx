@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useChainCapabilities, useCreatePet, useFees } from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
+import NeonButton from '@components/ui/neon-button';
+import NeonModal from '@components/ui/neon-modal';
 import TransactionStatus from '@components/common/transaction-status';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
@@ -96,74 +98,65 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         onClose();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="create-pet-modal" onClick={handleClose}>
-            <div className="dialog" onClick={(e) => e.stopPropagation()}>
-                <div className="header">
-                    <h2>
-                        <Icon as={PawIcon} tone={Tones.Cyan} />
-                        Create Your First Pet
-                    </h2>
-                    <button className="close" onClick={handleClose} disabled={isInProgress}>
-                        ×
-                    </button>
+        <NeonModal
+            isOpen={isOpen}
+            onRequestClose={handleClose}
+            title={
+                <>
+                    <Icon as={PawIcon} tone={Tones.Cyan} />
+                    Create Your First Pet
+                </>
+            }
+            contentClassName="create-pet-body"
+        >
+            <p>
+                Give your pet a unique name and bring it to life! You can only create one pet
+                initially — breed to grow your collection!
+            </p>
+
+            <div className="form">
+                <div className="field">
+                    <label htmlFor="petName">Pet Name</label>
+                    <input
+                        id="petName"
+                        type="text"
+                        value={petName}
+                        onChange={(e) => setPetName(e.target.value)}
+                        placeholder="Enter pet name..."
+                        maxLength={20}
+                        disabled={isInProgress}
+                    />
                 </div>
 
-                <div className="body">
-                    <p>
-                        Give your pet a unique name and bring it to life! You can only create one
-                        pet initially — breed to grow your collection!
+                {mintCost && <p className="mint-cost">Mint cost: {mintCost}</p>}
+
+                {/* Creating a pet is fully on-chain (Switchboard VRF + program) and
+                    needs no backend session — gate on wallet connection only, not SIWS auth. */}
+                <NeonButton
+                    tone="cyan"
+                    onClick={handleCreatePet}
+                    disabled={isInProgress || feesLoading || !petName.trim() || !isConnected}
+                >
+                    {buttonLabel}
+                </NeonButton>
+
+                {isAwaitingFulfillment && (
+                    <p className="pending-hint">
+                        Hang tight — your pet will appear once randomness is revealed.
                     </p>
-
-                    <div className="form">
-                        <div className="field">
-                            <label htmlFor="petName">Pet Name</label>
-                            <input
-                                id="petName"
-                                type="text"
-                                value={petName}
-                                onChange={(e) => setPetName(e.target.value)}
-                                placeholder="Enter pet name..."
-                                maxLength={20}
-                                disabled={isInProgress}
-                            />
-                        </div>
-
-                        {mintCost && <p className="mint-cost">Mint cost: {mintCost}</p>}
-
-                        {/* Creating a pet is fully on-chain (Switchboard VRF + program) and
-                            needs no backend session — gate on wallet connection only, not SIWS auth. */}
-                        <button
-                            type="button"
-                            onClick={handleCreatePet}
-                            disabled={
-                                isInProgress || feesLoading || !petName.trim() || !isConnected
-                            }
-                            className="submit"
-                        >
-                            {buttonLabel}
-                        </button>
-
-                        {isAwaitingFulfillment && (
-                            <p className="pending-hint">
-                                Hang tight — your pet will appear once randomness is revealed.
-                            </p>
-                        )}
-                    </div>
-
-                    {success && (
-                        <div className="success-message">
-                            <Icon as={CheckIcon} tone={Tones.Emerald} />
-                            {success}
-                        </div>
-                    )}
-
-                    <TransactionStatus lifecycle={lifecycle} />
-                </div>
+                )}
             </div>
-        </div>
+
+            {success && (
+                <div className="success-message">
+                    <Icon as={CheckIcon} tone={Tones.Emerald} />
+                    {success}
+                </div>
+            )}
+
+            <TransactionStatus lifecycle={lifecycle} />
+        </NeonModal>
     );
 };
 
