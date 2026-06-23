@@ -329,37 +329,7 @@
     color: rgb(125 214 255 / 45%);
 }
 
-/* Confirm accept modal */
-.marriage-confirm-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgb(0 0 0 / 55%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 8000;
-    padding: 16px;
-}
-
-.marriage-confirm-dialog {
-    background: rgb(5 13 30 / 97%);
-    border: 1px solid rgb(0 255 157 / 36%);
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 380px;
-    width: 100%;
-    box-shadow: 0 0 40px rgb(0 255 157 / 14%);
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.confirm-title {
-    margin: 0;
-    font-size: 16px;
-    color: #9effd4;
-}
-
+/* Confirm accept modal — body content only; chrome comes from <NeonModal>. */
 .confirm-body {
     margin: 0;
     font-size: 14px;
@@ -371,6 +341,7 @@
     display: flex;
     gap: 10px;
     justify-content: flex-end;
+    margin-top: 16px;
 }
 
 .confirm-cancel {

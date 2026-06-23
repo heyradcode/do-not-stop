@@ -41,7 +41,7 @@ session can resume without re-deriving context.
 | 4 | Decompose `breed` panel into orchestrator + parts | DONE |
 | 5 | Extract `pet-gallery` cooldown logic into a hook | DONE |
 | 6 | Design-system adoption — buttons (app-wide) | DONE (6a–6d; 6e optional) |
-| 7 | Migrate bespoke modals to NeonModal | IN PROGRESS (7a done) |
+| 7 | Migrate bespoke modals to NeonModal | DONE (7a–7c) |
 | 8 | Minor cleanups (eslint `any`→warn, hex→CSS vars) | TODO |
 
 Statuses: `TODO` → `IN PROGRESS` → `DONE` (or `SKIPPED` with reason).
@@ -513,7 +513,8 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ---
 
 ## Step 7 — Migrate bespoke modals to NeonModal
-**Status:** IN PROGRESS (7a done; 7b, 7c pending)
+**Status:** DONE (7a–7c) — all three bespoke modals now use NeonModal (focus-trap, ESC,
+`role=dialog`, `aria-modal`, overlay-click).
 
 **Goal:** All modals use `NeonModal` (react-modal) for `role="dialog"`, `aria-modal`,
 Escape-to-close, focus trap, and overlay-click close.
@@ -535,10 +536,10 @@ tests use `screen` queries which see the portal, so they pass unchanged.
 **Sub-steps (one commit each):**
 - **7a — send-pet-modal (DONE):** see outcome below.
 - **7b — create-pet-modal (DONE):** same pattern; submit → `NeonButton`. See outcome below.
-- **7c — marriage accept-confirm-dialog:** Confirm already a `NeonButton` (6d); wrap in NeonModal,
-  title "💒 Accept Proposal?", keep ghost Cancel; remove `.marriage-confirm-overlay`/`-dialog`/
-  `.confirm-title`/`.confirm-body`/`.confirm-actions` chrome CSS as appropriate. Verify the
-  marriage test's confirm-flow (`Accept Proposal` text + `/Confirm/` button) still passes.
+- **7c — marriage accept-confirm-dialog (DONE):** wrapped in NeonModal (title "💒 Accept
+  Proposal?"), kept ghost Cancel; removed `.marriage-confirm-overlay`/`-dialog`/`.confirm-title`
+  chrome, kept `.confirm-body`/`.confirm-actions`/`.confirm-cancel` (added `margin-top` for
+  spacing). Marriage confirm-flow test passes 9/9 unchanged.
 
 **Acceptance (whole step):** keyboard (Esc, tab-trap) + `role=dialog` work; behavior preserved;
 typecheck + lint + tests pass.
@@ -595,6 +596,31 @@ Behavior preserved. Typecheck, lint, and all 272 tests pass.
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ```
 
+### 7c outcome (done)
+- `accept-confirm-dialog.tsx` now renders `<NeonModal isOpen onRequestClose={onCancel}
+  title="💒 Accept Proposal?" contentClassName="marriage-confirm-body">` with the body text +
+  Cancel/Confirm as children. It's mounted only when `pendingAccept` is set, so `isOpen` is
+  always true while mounted; ESC/overlay/Close all route to `onCancel`.
+- `marriage/index.css`: removed `.marriage-confirm-overlay`, `.marriage-confirm-dialog`,
+  `.confirm-title` (chrome); kept `.confirm-body`/`.confirm-actions` (added `margin-top: 16px`)
+  and the ghost `.confirm-cancel`.
+- **Verified:** no dangling refs; `src` `format:check` clean; `tsc -b` 0; `eslint .` 0;
+  marriage 9/9; **272/272 pass**.
+
+**7c commit message:**
+```
+refactor(frontend): migrate marriage confirm dialog to NeonModal
+
+Render the accept-confirm dialog via NeonModal for focus-trap, Escape, and
+role=dialog, dropping the hand-rolled overlay/dialog/title chrome. Keep the
+ghost Cancel and the NeonButton Confirm; reduce the CSS to body content.
+
+Completes the bespoke-modal migration. Behavior preserved; typecheck, lint,
+and all 272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
+
 ---
 
 ## Step 8 — Minor cleanups
@@ -634,3 +660,5 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 - 2026-06-22 — fix(shared): resolve 3 pre-existing exhaustive-deps lint warnings
 - 2026-06-22 — Step 6d — refactor(frontend): migrate remaining action buttons to NeonButton
 - 2026-06-22 — Step 7a — refactor(frontend): migrate send-pet modal to NeonModal
+- 2026-06-22 — Step 7b — refactor(frontend): migrate create-pet modal to NeonModal
+- 2026-06-22 — Step 7c — refactor(frontend): migrate marriage confirm dialog to NeonModal
