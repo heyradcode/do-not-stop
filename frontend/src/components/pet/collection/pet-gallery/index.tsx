@@ -26,6 +26,7 @@ import Icon, {
     SendIcon,
     SparklesIcon,
 } from '@components/ui/icon';
+import NeonButton from '@components/ui/neon-button';
 import CreatePetModal from '@components/pet/creation/create-pet-modal';
 import PetCollectionLayout from '@components/pet/collection/pet-collection-layout';
 import SendPetModal from '@components/pet/transfer/send-pet-modal';
@@ -113,9 +114,9 @@ const PetGallery: React.FC = () => {
                             <Icon as={CloseIcon} tone={Tones.Magenta} />
                             Failed to load pet data. Please try again.
                         </p>
-                        <button type="button" onClick={() => refetch()} className="retry-button">
+                        <NeonButton tone="magenta" size="sm" onClick={() => refetch()}>
                             Try Again
-                        </button>
+                        </NeonButton>
                     </div>
                 )}
 
@@ -170,14 +171,10 @@ const PetGallery: React.FC = () => {
                             <h3>Awaken your first companion</h3>
                             <p>Step into the altar — name a pet and bring it to life.</p>
                         </div>
-                        <button
-                            type="button"
-                            className="create-first-pet-button"
-                            onClick={() => setCreateModalOpen(true)}
-                        >
+                        <NeonButton tone="cyan" onClick={() => setCreateModalOpen(true)}>
                             <Icon as={PawIcon} tone={Tones.Cyan} />
                             Create your first pet
-                        </button>
+                        </NeonButton>
                     </div>
                 )}
 

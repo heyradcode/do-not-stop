@@ -1,4 +1,5 @@
 import React from 'react';
+import NeonButton from '@components/ui/neon-button';
 import type { PendingAccept } from '../types';
 
 type AcceptConfirmDialogProps = {
@@ -31,14 +32,9 @@ const AcceptConfirmDialog: React.FC<AcceptConfirmDialogProps> = ({
                 <button type="button" className="confirm-cancel" onClick={onCancel} disabled={busy}>
                     Cancel
                 </button>
-                <button
-                    type="button"
-                    className="action-button accept-button confirm-accept"
-                    onClick={onConfirm}
-                    disabled={busy}
-                >
+                <NeonButton tone="emerald" size="sm" onClick={onConfirm} disabled={busy}>
                     {isAccepting ? 'Accepting...' : '💒 Confirm'}
-                </button>
+                </NeonButton>
             </div>
         </div>
     </div>

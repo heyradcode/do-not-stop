@@ -40,7 +40,7 @@ session can resume without re-deriving context.
 | 3 | Extract shared `useSpousePet` hook | DONE |
 | 4 | Decompose `breed` panel into orchestrator + parts | DONE |
 | 5 | Extract `pet-gallery` cooldown logic into a hook | DONE |
-| 6 | Design-system adoption — buttons (app-wide) | IN PROGRESS |
+| 6 | Design-system adoption — buttons (app-wide) | DONE (6a–6d; 6e optional) |
 | 7 | Shared accessible modal + migrate bespoke modals | TODO |
 | 8 | Minor cleanups (eslint `any`→warn, hex→CSS vars) | TODO |
 
@@ -376,12 +376,14 @@ panel buttons styled via descendant selectors (`.action-controls button`).
   migrate the 8 auth buttons + the coupled `accept-inline` raw button. See 6b outcome below.
 - **6c — Hub action buttons (DONE):** the 6 `lab-breed-button` family buttons in the dashboard
   hub → `NeonButton`; remove their CSS. (`accept-inline` was already done in 6b.) See 6c outcome.
-- **6d — Remaining action buttons:** confirm-dialog accept (`action-button accept-button`),
-  pet-gallery `create-first-pet-button` + `retry-button` → `NeonButton`; then remove the
-  now-fully-dead `.action-button` base (interactions.css) + `.accept-button`/`.confirm-accept`
-  (marriage). Leave structural/icon/ghost buttons bespoke: tabs, close-X, `confirm-cancel`,
-  `refresh` (icon), battle `.cancel-button` (ghost), `sync-metadata`.
-- **6e (optional) — NeonCard:** adopt for hub cards / state cards if it reduces bespoke card CSS.
+- **6d — Remaining action buttons (DONE):** confirm-dialog Confirm, pet-gallery
+  `create-first-pet` + `retry` → `NeonButton`; removed dead `.action-button`/`.breed-button`/
+  `.battle-button` (interactions.css) + `.accept-button`/`.confirm-accept` (marriage) +
+  `.create-first-pet-button`/`.retry-button` (pet-gallery). See 6d outcome.
+- **6e (optional) — leftovers:** the per-pet `send-button` (stateful ready/cooldown) is the only
+  remaining themed action button left bespoke; migrate to `NeonButton tone={ready?emerald:amber}`
+  if desired. Also optional `NeonCard` for hub/state cards. Intentionally bespoke (not buttons in
+  the tone sense): tabs, close-X, `confirm-cancel`/ghost cancels, `refresh` icon.
 
 **Acceptance (whole step):** consistent `NeonButton` usage for action buttons; no behavior change;
 typecheck + lint + tests pass. Visual check in-app recommended (button themes are CSS).
@@ -479,6 +481,35 @@ No behavior change. Typecheck, lint, and all 272 tests pass.
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ```
 
+### 6d outcome (done)
+- Migrated the last action buttons to `NeonButton`:
+  - marriage confirm dialog Confirm → `tone="emerald" size="sm"` (Cancel stays a ghost button).
+  - pet-gallery `Try Again` → `tone="magenta" size="sm"`; `Create your first pet` → `tone="cyan"`.
+- Removed now-dead CSS: `.action-button` + the long-dead `.breed-button`/`.battle-button`
+  (interactions.css); `.accept-button`/`.confirm-accept` (marriage); `.create-first-pet-button`/
+  `.retry-button` (pet-gallery), and dropped the two from pet-gallery's reduced-motion rule.
+  (This also clears the dead-CSS item that was queued for Step 8.)
+- **Verified:** no dangling class refs; `format:check` clean; `tsc -b` 0; `eslint .` 0;
+  **272/272 tests pass**.
+- **Step 6 (buttons) is now effectively complete.** Remaining bespoke by design: tabs, close-X,
+  ghost cancels, `refresh` icon. Only the stateful per-pet `send-button` remains as an optional
+  migration (see 6e).
+
+**6d commit message:**
+```
+refactor(frontend): migrate remaining action buttons to NeonButton
+
+Move the marriage confirm button and the pet-gallery create/retry buttons to
+NeonButton, and delete the now-dead button CSS (.action-button, .breed-button,
+.battle-button, .accept-button, .confirm-accept, .create-first-pet-button,
+.retry-button). Completes the app-wide button adoption except the stateful
+per-pet send button.
+
+No behavior change. Typecheck, lint, and all 272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
+
 ---
 
 ## Step 7 — Shared accessible modal + migrate bespoke modals
@@ -538,3 +569,4 @@ behavior preserved; typecheck + lint + tests pass.
 - 2026-06-22 — Step 6b — refactor(frontend): render auth action buttons via NeonButton
 - 2026-06-22 — Step 6c — refactor(frontend): migrate dashboard hub buttons to NeonButton
 - 2026-06-22 — fix(shared): resolve 3 pre-existing exhaustive-deps lint warnings
+- 2026-06-22 — Step 6d — refactor(frontend): migrate remaining action buttons to NeonButton
