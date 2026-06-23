@@ -4,8 +4,11 @@ import { type Tone } from '@constants/tones';
 
 import './index.css';
 
-export type NeonButtonTone = Extract<Tone, 'emerald' | 'azure' | 'amber' | 'cyan'>;
-export type NeonButtonSize = 'md' | 'sm';
+export type NeonButtonTone = Extract<
+    Tone,
+    'emerald' | 'azure' | 'amber' | 'cyan' | 'violet' | 'magenta'
+>;
+export type NeonButtonSize = 'md' | 'sm' | 'xs';
 
 export type NeonButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
     tone?: NeonButtonTone;

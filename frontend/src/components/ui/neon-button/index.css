@@ -68,6 +68,14 @@
         font-size: 0.82rem;
     }
 
+    /* Compact inline action (e.g. marriage row Divorce/Cancel). */
+    &.size-xs {
+        padding: 4px 10px;
+        font-size: 0.75rem;
+        letter-spacing: 0.4px;
+        text-transform: none;
+    }
+
     &.full-width {
         width: 100%;
     }
@@ -91,6 +99,20 @@
         --btn-border: rgb(0 247 255 / 36%);
         --btn-glow: rgb(0 247 255 / 18%);
         --btn-inner: rgb(0 247 255 / 10%);
+    }
+
+    &.tone-violet {
+        --btn-text: #c5b3ff;
+        --btn-border: rgb(181 140 255 / 50%);
+        --btn-glow: rgb(181 140 255 / 22%);
+        --btn-inner: rgb(181 140 255 / 14%);
+    }
+
+    &.tone-magenta {
+        --btn-text: #ff9ad6;
+        --btn-border: rgb(255 110 196 / 48%);
+        --btn-glow: rgb(255 110 196 / 22%);
+        --btn-inner: rgb(255 110 196 / 14%);
     }
 
     @media (prefers-reduced-motion: reduce) {

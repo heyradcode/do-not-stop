@@ -40,7 +40,7 @@ session can resume without re-deriving context.
 | 3 | Extract shared `useSpousePet` hook | DONE |
 | 4 | Decompose `breed` panel into orchestrator + parts | DONE |
 | 5 | Extract `pet-gallery` cooldown logic into a hook | DONE |
-| 6 | Design-system decision + button consolidation | TODO |
+| 6 | Design-system adoption — buttons (app-wide) | IN PROGRESS |
 | 7 | Shared accessible modal + migrate bespoke modals | TODO |
 | 8 | Minor cleanups (eslint `any`→warn, hex→CSS vars) | TODO |
 
@@ -347,30 +347,66 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 ---
 
-## Step 6 — Design-system decision + button consolidation
-**Status:** TODO
+## Step 6 — Design-system adoption — buttons (app-wide)
+**Status:** IN PROGRESS
 
-**Goal:** One button story across the app.
+**Decision (user, 2026-06-22):** **Adopt neon-\* app-wide.** Migrate buttons to `NeonButton`
+and (Step 7) modals to `NeonModal`.
 
-**Why:** `ui/neon-*` exists but is used **only in `wallet/`**. Elsewhere: raw
-`<button className="action-button|marriage-row-action|breed-tab">` + `AuthActionButton`.
-Two+ parallel button systems.
+**Why:** `ui/neon-*` exists but was used **only in `wallet/`**. Elsewhere: raw
+`<button className="action-button|marriage-row-action|breed-tab">` + `AuthActionButton`, plus
+panel buttons styled via descendant selectors (`.action-controls button`).
 
-**Decision needed (ask user):** Adopt `neon-*` app-wide, or retire it?
-- If **adopt:** fold auth-gating into/around `NeonButton` (compose `AuthActionButton`
-  over `NeonButton`), migrate raw buttons to the component, keep class hooks for layout.
-- If **retire:** delete `ui/neon-button` (+ card/modal as relevant) and standardize on
-  `AuthActionButton` + documented class conventions.
+**Obstacles found (drive the sub-step plan):**
+- `NeonButtonTone` lacked `violet` (breed/level-up) and `magenta` (battle); sizes didn't cover
+  the tiny inline row actions. → fixed in 6a.
+- Panel buttons are styled by **descendant selectors** (`.action-controls button:first-child`,
+  `.marriage-row-action`, etc.), so each migration must replace the button AND remove/whittle the
+  CSS that targeted it, or the `.neon-btn` base will conflict.
+- **Tabs** (`.breed-tab`, `.marriage-tab`) and structural controls (close-X, confirm Cancel) have
+  active/inactive + layout states that don't map to a tone-variant button — these will keep their
+  bespoke styling rather than become `NeonButton` (noted per sub-step).
+- Destructive **Divorce** is currently red (outside the tone palette); will move to `magenta`
+  (warm/alert) under the tone system — a small intentional visual shift.
 
-**Plan:** Resolve the decision first (one `AskUserQuestion`), then migrate incrementally.
-May be split into sub-commits per area (panels, wallet) to keep diffs reviewable.
+**Sub-steps (one commit each):**
+- **6a — NeonButton foundation (DONE):** add `tone-violet`, `tone-magenta`, and a compact
+  `size-xs`; widen `NeonButtonTone`/`NeonButtonSize`. Purely additive, no call sites changed.
+- **6b — Primary action buttons:** compose `AuthActionButton` over `NeonButton` (forward
+  `tone`/`size`/`fullWidth`) and migrate the 8 auth-gated submit/row buttons (propose=amber,
+  accept=emerald, breed=violet, battle=magenta, level-up=violet, train=amber, rename=cyan,
+  divorce=magenta xs, cancel=amber xs). Remove the dead `.action-button`/`.propose-button`/
+  `.action-controls button` color CSS those relied on; keep layout-only rules.
+- **6c — Non-auth action buttons:** `accept-inline`, hub `lab-breed-button` family,
+  `create-first-pet-button`, `retry-button`, `refresh`, `sync-metadata`, battle `cancel-button` →
+  `NeonButton` with the right tone/size; remove dead CSS. Tabs + close-X stay bespoke.
+- **6d (optional) — NeonCard:** adopt for hub cards / state cards if it reduces bespoke card CSS.
 
-**Acceptance:** Consistent button component usage; no visual regressions; typecheck +
-lint + tests pass.
+**Acceptance (whole step):** consistent `NeonButton` usage for action buttons; no behavior change;
+typecheck + lint + tests pass. Visual check in-app recommended (button themes are CSS).
 
-**Outcome:** _(fill after completion)_
+### 6a outcome (done)
+- `neon-button/index.tsx`: `NeonButtonTone` now includes `violet`/`magenta`; `NeonButtonSize`
+  adds `xs`.
+- `neon-button/index.css`: added `.tone-violet`, `.tone-magenta` (colors matched to the existing
+  breed/level-up violet and battle magenta themes for visual continuity) and `.size-xs`
+  (4px 10px, no uppercase) for inline row actions.
+- Purely additive — no consumers changed yet. **Verified:** `format:check` clean; `tsc -b` 0;
+  `eslint .` 0; **272/272 tests pass**.
 
-**Commit message:** _(fill after completion)_
+**6a commit message:**
+```
+feat(frontend): extend NeonButton palette for app-wide adoption
+
+Add violet and magenta tones (matching the existing breed/level-up and
+battle button themes) and a compact xs size for inline row actions, widening
+NeonButtonTone/NeonButtonSize. Purely additive — no consumers changed yet;
+groundwork for migrating panel buttons onto NeonButton.
+
+Typecheck, lint, and all 272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
 
 ---
 
@@ -427,3 +463,4 @@ behavior preserved; typecheck + lint + tests pass.
 - 2026-06-22 — Step 3 — refactor: extract shared useSpousePet hook
 - 2026-06-22 — Step 4 — refactor(frontend): decompose breed panel into parts
 - 2026-06-22 — Step 5 — refactor(frontend): extract usePetCooldowns hook from pet-gallery
+- 2026-06-22 — Step 6a — feat(frontend): extend NeonButton palette for app-wide adoption
