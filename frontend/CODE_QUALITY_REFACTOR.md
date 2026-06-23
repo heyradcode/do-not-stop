@@ -41,7 +41,7 @@ session can resume without re-deriving context.
 | 4 | Decompose `breed` panel into orchestrator + parts | DONE |
 | 5 | Extract `pet-gallery` cooldown logic into a hook | DONE |
 | 6 | Design-system adoption — buttons (app-wide) | DONE (6a–6d; 6e optional) |
-| 7 | Shared accessible modal + migrate bespoke modals | TODO |
+| 7 | Migrate bespoke modals to NeonModal | IN PROGRESS (7a done) |
 | 8 | Minor cleanups (eslint `any`→warn, hex→CSS vars) | TODO |
 
 Statuses: `TODO` → `IN PROGRESS` → `DONE` (or `SKIPPED` with reason).
@@ -512,27 +512,61 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 
 ---
 
-## Step 7 — Shared accessible modal + migrate bespoke modals
-**Status:** TODO
+## Step 7 — Migrate bespoke modals to NeonModal
+**Status:** IN PROGRESS (7a done; 7b, 7c pending)
 
-**Goal:** All modals use one accessible primitive.
+**Goal:** All modals use `NeonModal` (react-modal) for `role="dialog"`, `aria-modal`,
+Escape-to-close, focus trap, and overlay-click close.
 
-**Why:** `panels/marriage/parts/accept-confirm-dialog.tsx`, `create-pet-modal`,
-`send-pet-modal` hand-roll modal markup with **no `role="dialog"`, no Escape-to-close,
-no focus trap**. `ui/neon-modal` exists but is underused.
+**Why:** `send-pet-modal`, `create-pet-modal`, and
+`panels/marriage/parts/accept-confirm-dialog.tsx` hand-roll modal markup with no a11y.
+`NeonModal` already wraps react-modal and provides all of it.
 
-**Plan:**
-- Ensure `NeonModal` (or a chosen modal primitive) provides `role="dialog"`,
-  `aria-modal`, Escape-to-close, focus trap, and overlay-click close.
-- Migrate the three bespoke modals onto it.
-- Depends on Step 6's design-system decision.
+**Pattern (per modal):** replace the bespoke overlay/dialog/header/close with
+`<NeonModal isOpen onRequestClose={handleClose} title=… contentClassName="X-body">`; move the
+body markup in as children; primary button → `NeonButton`, secondary stays a ghost `.cancel`;
+rewrite the modal's CSS to body-content-only (scoped under the `contentClassName`), dropping the
+chrome rules NeonModal now owns.
 
-**Acceptance:** Keyboard (Esc, tab-trap) + screen-reader semantics work; existing
-behavior preserved; typecheck + lint + tests pass.
+**Test note:** react-modal needs an app element + renders via a portal. A one-time
+`#root` element was added to `tests/setup.ts` (landed in 7a) so all modal tests work; existing
+tests use `screen` queries which see the portal, so they pass unchanged.
 
-**Outcome:** _(fill after completion)_
+**Sub-steps (one commit each):**
+- **7a — send-pet-modal (DONE):** see outcome below.
+- **7b — create-pet-modal:** same pattern; submit → `NeonButton`. Title "Create Your First Pet".
+- **7c — marriage accept-confirm-dialog:** Confirm already a `NeonButton` (6d); wrap in NeonModal,
+  title "💒 Accept Proposal?", keep ghost Cancel; remove `.marriage-confirm-overlay`/`-dialog`/
+  `.confirm-title`/`.confirm-body`/`.confirm-actions` chrome CSS as appropriate. Verify the
+  marriage test's confirm-flow (`Accept Proposal` text + `/Confirm/` button) still passes.
 
-**Commit message:** _(fill after completion)_
+**Acceptance (whole step):** keyboard (Esc, tab-trap) + `role=dialog` work; behavior preserved;
+typecheck + lint + tests pass.
+
+### 7a outcome (done)
+- `send-pet-modal/index.tsx` now renders `<NeonModal title="Send Pet" contentClassName="send-pet-body">`
+  with the preview/recipient/actions as children; removed the `if (!isOpen) return null` (NeonModal
+  handles `isOpen`). Send button → `<NeonButton tone="cyan">`; Cancel stays a ghost button.
+- `send-pet-modal/index.css` rewritten to body-content-only, scoped under `.send-pet-body`
+  (dropped the `.send-pet-modal` overlay, `.dialog`, `.header`, `.close`, `.body`, `.send` chrome;
+  `.cancel` made self-contained).
+- `tests/setup.ts`: added a `#root` element so react-modal's `setAppElement('#root')` works under jsdom.
+- **Verified:** `format:check` clean; `tsc -b` 0; `eslint .` 0; send-pet test 8/8; **272/272 pass**.
+
+**7a commit message:**
+```
+refactor(frontend): migrate send-pet modal to NeonModal
+
+Render SendPetModal via NeonModal (react-modal) for focus-trap, Escape, and
+role=dialog, replacing the hand-rolled overlay/dialog/header. The Send button
+becomes a NeonButton; the CSS is reduced to body content scoped under
+.send-pet-body. Add a #root element to the test setup so react-modal works
+under jsdom.
+
+Behavior preserved. Typecheck, lint, and all 272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
 
 ---
 
@@ -570,3 +604,4 @@ behavior preserved; typecheck + lint + tests pass.
 - 2026-06-22 — Step 6c — refactor(frontend): migrate dashboard hub buttons to NeonButton
 - 2026-06-22 — fix(shared): resolve 3 pre-existing exhaustive-deps lint warnings
 - 2026-06-22 — Step 6d — refactor(frontend): migrate remaining action buttons to NeonButton
+- 2026-06-22 — Step 7a — refactor(frontend): migrate send-pet modal to NeonModal

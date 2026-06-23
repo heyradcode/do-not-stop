@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useChainCapabilities, usePetList, useTransferPet } from '@shared/core';
 import TransactionStatus from '@components/common/transaction-status';
+import NeonButton from '@components/ui/neon-button';
+import NeonModal from '@components/ui/neon-modal';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
@@ -84,67 +86,59 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
         }
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="send-pet-modal" onClick={handleClose}>
-            <div className="dialog" onClick={(e) => e.stopPropagation()}>
-                <div className="header">
-                    <h2>Send Pet</h2>
-                    <button className="close" onClick={handleClose} disabled={isPending}>
-                        ×
-                    </button>
+        <NeonModal
+            isOpen={isOpen}
+            onRequestClose={handleClose}
+            title="Send Pet"
+            contentClassName="send-pet-body"
+        >
+            <div className="preview">
+                <h3>{pet.name}</h3>
+                <div className="details">
+                    <p>
+                        <strong>Level:</strong> {pet.level}
+                    </p>
+                    <p>
+                        <strong>DNA:</strong> {pet.dna.toString()}
+                    </p>
+                    <p>
+                        <strong>Rarity:</strong> {pet.rarity}
+                    </p>
                 </div>
-
-                <div className="body">
-                    <div className="preview">
-                        <h3>{pet.name}</h3>
-                        <div className="details">
-                            <p>
-                                <strong>Level:</strong> {pet.level}
-                            </p>
-                            <p>
-                                <strong>DNA:</strong> {pet.dna.toString()}
-                            </p>
-                            <p>
-                                <strong>Rarity:</strong> {pet.rarity}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="recipient">
-                        <label htmlFor="recipient">{addressLabel}</label>
-                        <input
-                            id="recipient"
-                            type="text"
-                            value={recipientAddress}
-                            onChange={(e) => {
-                                setRecipientAddress(e.target.value);
-                                setInputInvalid(false);
-                            }}
-                            placeholder={addressPlaceholder}
-                            disabled={isPending}
-                            className={inputInvalid ? 'invalid' : ''}
-                        />
-                    </div>
-
-                    <div className="actions">
-                        <button className="cancel" onClick={handleClose} disabled={isPending}>
-                            Cancel
-                        </button>
-                        <button
-                            className="send"
-                            onClick={handleSend}
-                            disabled={!recipientAddress || isPending}
-                        >
-                            {isPending ? 'Sending...' : 'Send Pet'}
-                        </button>
-                    </div>
-                </div>
-
-                <TransactionStatus lifecycle={lifecycle} />
             </div>
-        </div>
+
+            <div className="recipient">
+                <label htmlFor="recipient">{addressLabel}</label>
+                <input
+                    id="recipient"
+                    type="text"
+                    value={recipientAddress}
+                    onChange={(e) => {
+                        setRecipientAddress(e.target.value);
+                        setInputInvalid(false);
+                    }}
+                    placeholder={addressPlaceholder}
+                    disabled={isPending}
+                    className={inputInvalid ? 'invalid' : ''}
+                />
+            </div>
+
+            <div className="actions">
+                <button className="cancel" onClick={handleClose} disabled={isPending}>
+                    Cancel
+                </button>
+                <NeonButton
+                    tone="cyan"
+                    onClick={handleSend}
+                    disabled={!recipientAddress || isPending}
+                >
+                    {isPending ? 'Sending...' : 'Send Pet'}
+                </NeonButton>
+            </div>
+
+            <TransactionStatus lifecycle={lifecycle} />
+        </NeonModal>
     );
 };
 
