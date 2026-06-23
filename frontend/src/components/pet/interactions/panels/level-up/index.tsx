@@ -115,7 +115,11 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 </div>
 
                 <div className="action-controls">
-                    <AuthActionButton onClick={handleLevelUp} disabled={isPending || !selectedPet}>
+                    <AuthActionButton
+                        tone="emerald"
+                        onClick={handleLevelUp}
+                        disabled={isPending || !selectedPet}
+                    >
                         {buttonLabel}
                     </AuthActionButton>
                 </div>

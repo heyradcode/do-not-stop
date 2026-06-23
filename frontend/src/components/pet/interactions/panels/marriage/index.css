@@ -88,53 +88,9 @@
 
 /* ── Action buttons ───────────────────────────────────────────────────── */
 
-.marriage-row-action {
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-
-    &.divorce {
-        background: rgb(255 80 80 / 10%);
-        border: 1px solid rgb(255 80 80 / 32%);
-        color: #ff9a9a;
-
-        &:hover:not(:disabled) {
-            background: rgb(255 80 80 / 20%);
-            border-color: rgb(255 80 80 / 55%);
-        }
-    }
-
-    &.cancel {
-        background: rgb(255 181 67 / 10%);
-        border: 1px solid rgb(255 181 67 / 36%);
-        color: #ffd07b;
-
-        &:hover:not(:disabled) {
-            background: rgb(255 181 67 / 20%);
-            border-color: rgb(255 181 67 / 60%);
-        }
-    }
-
-    &:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
-    }
-}
-
+/* Layout only — colour/glow come from <NeonButton tone="amber">. */
 .propose-button {
-    color: #ffd07b;
-    border-color: rgb(255 181 67 / 50%);
-    box-shadow: inset 0 0 14px rgb(255 181 67 / 16%), 0 0 14px rgb(255 181 67 / 22%);
     grid-column: 1 / -1;
-
-    &:hover:not(:disabled) {
-        transform: translateY(-2px);
-        border-color: rgb(255 181 67 / 70%);
-        box-shadow: inset 0 0 20px rgb(255 181 67 / 24%), 0 0 22px rgb(255 181 67 / 38%);
-    }
 }
 
 .accept-button {
@@ -384,19 +340,6 @@
 .proposal-expiry {
     font-size: 11px;
     color: rgb(125 214 255 / 45%);
-}
-
-.accept-inline {
-    background: rgb(0 255 157 / 10%);
-    border: 1px solid rgb(0 255 157 / 36%);
-    color: #9effd4;
-    padding: 4px 12px;
-    font-size: 12px;
-
-    &:hover:not(:disabled) {
-        background: rgb(0 255 157 / 20%);
-        border-color: rgb(0 255 157 / 60%);
-    }
 }
 
 /* Confirm accept modal */

@@ -322,42 +322,13 @@
     }
 }
 
+/* Layout only — children (NeonButton / .cancel-button) style themselves. */
 .action-controls {
     display: flex;
     gap: 12px;
     justify-content: center;
 
     & button {
-        padding: 12px 24px;
-        border: none;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-
-        &:first-child {
-            background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
-            color: #9effd4;
-            border: 1px solid rgb(0 255 157 / 48%);
-            border-radius: 2px;
-            box-shadow: inset 0 0 14px rgb(0 255 157 / 14%), 0 0 14px rgb(0 255 157 / 22%);
-
-            &:hover:not(:disabled) {
-                transform: translateY(-2px);
-                border-color: rgb(0 255 157 / 64%);
-                box-shadow: inset 0 0 20px rgb(0 255 157 / 22%), 0 0 22px rgb(0 255 157 / 36%);
-            }
-
-            &:disabled {
-                opacity: 0.55;
-                cursor: not-allowed;
-                transform: none;
-            }
-        }
-
         @media (max-width: 768px) {
             width: 100%;
             max-width: 200px;
@@ -370,11 +341,19 @@
     }
 }
 
+/* Secondary / ghost action (e.g. battle Cancel) — not a NeonButton tone. */
 .cancel-button {
-    background: rgb(5 13 30 / 92%);
-    color: rgb(195 210 255 / 78%);
+    padding: 12px 24px;
     border: 1px solid var(--neon-border-soft);
     border-radius: 2px;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgb(5 13 30 / 92%);
+    color: rgb(195 210 255 / 78%);
 
     &:hover {
         color: #f6f3ff;

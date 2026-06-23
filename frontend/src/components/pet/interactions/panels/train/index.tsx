@@ -93,7 +93,11 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                 </div>
 
                 <div className="action-controls">
-                    <AuthActionButton onClick={handleTrain} disabled={isPending || !selectedPet}>
+                    <AuthActionButton
+                        tone="emerald"
+                        onClick={handleTrain}
+                        disabled={isPending || !selectedPet}
+                    >
                         {buttonLabel}
                     </AuthActionButton>
                 </div>

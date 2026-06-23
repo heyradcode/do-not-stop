@@ -112,6 +112,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
 
                 <div className="action-controls">
                     <AuthActionButton
+                        tone="emerald"
                         onClick={handleChangeName}
                         disabled={isPending || !selectedPet || !newName.trim()}
                     >

@@ -66,7 +66,8 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
                     />
                 </div>
                 <AuthActionButton
-                    className="action-button propose-button"
+                    className="propose-button"
+                    tone="amber"
                     disabled={busy || !myPet || !partnerId}
                     onClick={() => void handlePropose()}
                 >

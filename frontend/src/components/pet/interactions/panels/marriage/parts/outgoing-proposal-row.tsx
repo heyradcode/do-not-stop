@@ -38,7 +38,8 @@ const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({
             <div className="proposal-meta">
                 <span className="proposal-expiry">Expires {formatExpiry(expirySec)}</span>
                 <AuthActionButton
-                    className="marriage-row-action cancel"
+                    tone="amber"
+                    size="xs"
                     onClick={() => onCancel(pet.id)}
                     disabled={busy}
                 >

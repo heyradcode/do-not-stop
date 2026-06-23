@@ -1,5 +1,6 @@
 import React from 'react';
 import { formatExpiry, type IncomingProposal } from '@shared/core';
+import NeonButton from '@components/ui/neon-button';
 
 type IncomingProposalRowProps = {
     proposal: IncomingProposal;
@@ -29,14 +30,9 @@ const IncomingProposalRow: React.FC<IncomingProposalRowProps> = ({
         </div>
         <div className="proposal-meta">
             <span className="proposal-expiry">Expires {formatExpiry(proposal.expiry)}</span>
-            <button
-                type="button"
-                className="marriage-row-action accept-inline"
-                disabled={busy}
-                onClick={() => onAccept(proposal)}
-            >
+            <NeonButton tone="emerald" size="xs" disabled={busy} onClick={() => onAccept(proposal)}>
                 Accept
-            </button>
+            </NeonButton>
         </div>
     </li>
 );

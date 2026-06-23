@@ -206,7 +206,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 )}
 
                 <div className="action-controls">
-                    <AuthActionButton onClick={onBattle} disabled={battleDisabled}>
+                    <AuthActionButton tone="emerald" onClick={onBattle} disabled={battleDisabled}>
                         {battleButtonLabel}
                     </AuthActionButton>
                     <button type="button" onClick={onCancel} className="cancel-button">

@@ -248,6 +248,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
 
                 <div className="action-controls">
                     <AuthActionButton
+                        tone="emerald"
                         onClick={handleBreed}
                         disabled={
                             breed.isPending ||

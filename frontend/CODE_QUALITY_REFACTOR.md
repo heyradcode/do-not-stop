@@ -372,11 +372,8 @@ panel buttons styled via descendant selectors (`.action-controls button`).
 **Sub-steps (one commit each):**
 - **6a — NeonButton foundation (DONE):** add `tone-violet`, `tone-magenta`, and a compact
   `size-xs`; widen `NeonButtonTone`/`NeonButtonSize`. Purely additive, no call sites changed.
-- **6b — Primary action buttons:** compose `AuthActionButton` over `NeonButton` (forward
-  `tone`/`size`/`fullWidth`) and migrate the 8 auth-gated submit/row buttons (propose=amber,
-  accept=emerald, breed=violet, battle=magenta, level-up=violet, train=amber, rename=cyan,
-  divorce=magenta xs, cancel=amber xs). Remove the dead `.action-button`/`.propose-button`/
-  `.action-controls button` color CSS those relied on; keep layout-only rules.
+- **6b — Auth-gated action buttons (DONE):** compose `AuthActionButton` over `NeonButton` and
+  migrate the 8 auth buttons + the coupled `accept-inline` raw button. See 6b outcome below.
 - **6c — Non-auth action buttons:** `accept-inline`, hub `lab-breed-button` family,
   `create-first-pet-button`, `retry-button`, `refresh`, `sync-metadata`, battle `cancel-button` →
   `NeonButton` with the right tone/size; remove dead CSS. Tabs + close-X stay bespoke.
@@ -404,6 +401,50 @@ NeonButtonTone/NeonButtonSize. Purely additive — no consumers changed yet;
 groundwork for migrating panel buttons onto NeonButton.
 
 Typecheck, lint, and all 272 tests pass.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+```
+
+### 6b outcome (done)
+- `AuthActionButton` now **composes `NeonButton`** (props type = `NeonButtonProps`, forwards
+  `tone`/`size`/`fullWidth`/`className`). Both the signed-out "Sign in to Play" state and the
+  signed-in action render as `NeonButton`.
+- Migrated all 8 `AuthActionButton` call sites to tones:
+  - 5 panel submits (breed, battle, level-up, train, rename) → `tone="emerald"` — **preserves the
+    current look**: they were *all* rendered green by `.action-controls button:first-child`
+    (the per-panel `.breed-button`/`.battle-button` themes were dead CSS).
+  - marriage propose → `tone="amber"` (kept `className="propose-button"` for `grid-column` layout).
+  - marriage divorce → `tone="magenta" size="xs"` (was red `#ff9a9a`; **intentional shift** into the
+    tone palette).
+  - marriage cancel → `tone="amber" size="xs"`.
+- Also migrated the coupled raw **accept-inline** button (`incoming-proposal-row.tsx`) →
+  `<NeonButton tone="emerald" size="xs">` — it shared the now-removed `.marriage-row-action` base,
+  so it had to move in the same commit.
+- CSS removed/reduced: `interactions.css` `.action-controls` → layout-only (dropped the cosmetic
+  `& button` + `:first-child` neon block); `.cancel-button` made self-contained (it had relied on
+  `.action-controls button` for padding/font). `marriage/index.css`: removed `.marriage-row-action`
+  (+ `.divorce`/`.cancel`) and `.accept-inline`; reduced `.propose-button` to `grid-column` only.
+- **Still raw (by design / for 6c):** tabs (`.breed-tab`, `.marriage-tab`), confirm-dialog buttons
+  (`.action-button accept-button confirm-accept`, `.confirm-cancel`), hub `lab-breed-button` family,
+  `create-first-pet`, `retry`, `refresh`, `sync-metadata`, battle `.cancel-button` (ghost).
+- **Verified:** no dangling class refs; `format:check` clean; `tsc -b` 0; `eslint .` 0;
+  **272/272 tests pass** (accessible button names preserved through the `NeonButton` `<span class="label">`).
+- **Visual review worth doing in-app:** divorce colour (red→magenta) and the row/cancel/accept
+  buttons now use NeonButton padding/hover (slightly different from before).
+
+**6b commit message:**
+```
+refactor(frontend): render auth action buttons via NeonButton
+
+Compose AuthActionButton over NeonButton and migrate the eight auth-gated
+buttons (plus the coupled accept-inline button) to tone/size props: panel
+submits keep their current emerald look, marriage propose=amber,
+divorce=magenta(xs), cancel=amber(xs), accept=emerald(xs). Remove the dead
+descendant-selector button CSS (.action-controls button, .marriage-row-action,
+.accept-inline) and make .cancel-button self-contained.
+
+No behavior change; accessible names preserved. Typecheck, lint, and all 272
+tests pass.
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ```
@@ -464,3 +505,4 @@ behavior preserved; typecheck + lint + tests pass.
 - 2026-06-22 — Step 4 — refactor(frontend): decompose breed panel into parts
 - 2026-06-22 — Step 5 — refactor(frontend): extract usePetCooldowns hook from pet-gallery
 - 2026-06-22 — Step 6a — feat(frontend): extend NeonButton palette for app-wide adoption
+- 2026-06-22 — Step 6b — refactor(frontend): render auth action buttons via NeonButton

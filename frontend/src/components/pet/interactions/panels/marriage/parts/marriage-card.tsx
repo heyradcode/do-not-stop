@@ -54,7 +54,8 @@ const MarriageCard: React.FC<MarriageCardProps> = ({ pet, chain, petById, onDivo
                 </div>
             </div>
             <AuthActionButton
-                className="marriage-row-action divorce"
+                tone="magenta"
+                size="xs"
                 onClick={() => onDivorce(pet.id)}
                 disabled={busy}
             >
