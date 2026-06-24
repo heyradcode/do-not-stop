@@ -12,9 +12,9 @@ const NONE_CAPABILITIES: ChainCapabilities = {
     parseError: (_err, fallback) => ({ message: fallback, isUserRejection: false, isContractError: false }),
 };
 
-const disconnectedMutation = <TArgs,>(action: PetAction): AdapterMutation<TArgs> => {
+const disconnectedMutation = <TArgs, TResult = void>(action: PetAction): AdapterMutation<TArgs, TResult> => {
     return {
-        mutateAsync: async () => { throw new NoActiveChainError(action); },
+        mutateAsync: async (): Promise<TResult> => { throw new NoActiveChainError(action); },
         lifecycle: { phase: 'idle', error: null, reset: () => undefined },
         isPending: false,
     };

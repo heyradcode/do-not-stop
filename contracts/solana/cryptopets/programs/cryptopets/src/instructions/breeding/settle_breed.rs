@@ -123,13 +123,11 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     // `invoke_signed` (it does not sign the outer transaction). See `settle_mint`'s CPI
     // for the same pattern.
     //
-    // UNVERIFIED: `CreateV1CpiBuilder`'s method names/shapes (`asset`/`collection`/
-    // `authority`/`payer`/`owner`/`update_authority`/`system_program`/`name`/`uri`/
-    // `plugins`/`invoke_signed`), plus `PluginAuthorityPair`/`Plugin::Attributes`/
-    // `Attributes`'s field shapes, follow the usual mpl-core ~0.10 CPI convention but have
-    // not been checked against the real crate (no cargo registry cache or Rust toolchain
-    // in this environment). Fix up against `mpl_core::instructions::CreateV1CpiBuilder`
-    // and `mpl_core::types` when building.
+    // NOTE: do NOT set `update_authority` here. When an asset is created into a
+    // `collection`, mpl-core inherits the asset's update authority from the collection;
+    // passing both a collection and an explicit `update_authority` fails with
+    // `MplCoreError::ConflictingAuthority` (0x1d). `authority` (GlobalState) is the
+    // collection's update authority signing the add-to-collection — that is sufficient.
     let global_state_seeds: &[&[u8]] = &[GlobalState::SEED, &[global_state.bump]];
     CreateV1CpiBuilder::new(&ctx.accounts.mpl_core_program.to_account_info())
         .asset(&ctx.accounts.asset.to_account_info())
@@ -137,7 +135,6 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
         .authority(Some(&global_state.to_account_info()))
         .payer(&ctx.accounts.owner.to_account_info())
         .owner(Some(&ctx.accounts.owner.to_account_info()))
-        .update_authority(Some(&global_state.to_account_info()))
         .system_program(&ctx.accounts.system_program.to_account_info())
         .name(child.name())
         .uri(String::new())

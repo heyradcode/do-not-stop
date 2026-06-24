@@ -38,6 +38,8 @@ export interface Pet {
     spouseId?: number;
     /** Unix seconds until this pet may remarry after a divorce. Solana only. */
     marriageCooldownUntil?: number;
+    /** Whether this pet can be targeted as a defender. Solana only; EVM has no defender consent. */
+    openToChallenges?: boolean;
 }
 
 /**

@@ -10,6 +10,15 @@ export { useSolanaFees, type SolanaFees } from './chains/solana/useSolanaFees';
 // Manual recovery for an interrupted async battle (settle / cancel a pending request).
 export { usePendingBattle, type PendingBattle } from './chains/ethereum/usePendingBattle';
 export { usePendingBreed, type PendingBreed } from './chains/ethereum/usePendingBreed';
+// Solana pending VRF requests — auto-resumes on next action; cancel available after randomness expiry.
+export { usePendingSolanaBattle, type PendingSolanaBattle } from './chains/solana/usePendingSolanaBattle';
+export { usePendingSolanaBreed, type PendingSolanaBreed } from './chains/solana/usePendingSolanaBreed';
+// Solana defender-consent toggle (openToChallenges). No-op on EVM.
+export { useSetOpenToChallenges, type UseSetOpenToChallengesResult } from './useSetOpenToChallenges';
+// Solana NFT metadata sync — re-publishes on-chain state to Metaplex Core attributes. No-op on EVM.
+export { useSyncMetadata, type UseSyncMetadataResult } from './useSyncMetadata';
+// Solana stud fee earnings: balance query + withdraw_stud_fees action.
+export { useStudFees, type UseStudFeesResult } from './useStudFees';
 // v2.1 marriage: write actions + per-pet marriage state (EVM + Solana).
 export { useMarriage, type MarriageAction } from './useMarriage';
 export { useMarriageInfo, type MarriageInfo } from './useMarriageInfo';
@@ -41,6 +50,11 @@ export { useTransferPet, type TransferPetArgs } from './useTransferPet';
 export { useOpponents, type UseOpponentsOptions } from './useOpponents';
 export { useSearchPets, type UseSearchPetsOptions, type SearchPetsResult } from './useSearchPets';
 export { useAllPets, type UseAllPetsOptions } from './useAllPets';
+export {
+    useSpousePet,
+    type UseSpousePetOptions,
+    type SpousePetResult,
+} from './useSpousePet';
 export { useIncomingProposals, type IncomingProposal } from './useIncomingProposals';
 export { useWinEstimate, type WinEstimateResult } from './useWinEstimate';
 export {

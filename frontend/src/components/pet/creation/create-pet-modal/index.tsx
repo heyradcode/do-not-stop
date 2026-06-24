@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-    useChainCapabilities,
-    useCreatePet,
-    useFees,
-} from '@shared/core';
+import { useChainCapabilities, useCreatePet, useFees } from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
+import NeonButton from '@components/ui/neon-button';
+import NeonModal from '@components/ui/neon-modal';
 import TransactionStatus from '@components/common/transaction-status';
-import { AuthActionButton } from '@components/common';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import './index.css';
@@ -42,7 +39,15 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         onClose();
     };
 
-    const { mutate, isPending, isAwaitingFulfillment, isSettling, error: hookError, reset, lifecycle } = useCreatePet({
+    const {
+        mutate,
+        isPending,
+        isAwaitingFulfillment,
+        isSettling,
+        error: hookError,
+        reset,
+        lifecycle,
+    } = useCreatePet({
         onSuccess: handleCreateComplete,
     });
 
@@ -57,12 +62,12 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const buttonLabel = isPending
         ? 'Submitting...'
         : isAwaitingFulfillment
-          ? 'Awaiting randomness...'
-          : isSettling
-            ? 'Settling mint...'
-            : feesLoading
-              ? 'Loading fees...'
-              : `Create Pet (${mintCost})`;
+        ? 'Awaiting randomness...'
+        : isSettling
+        ? 'Settling mint...'
+        : feesLoading
+        ? 'Loading fees...'
+        : `Create Pet (${mintCost})`;
 
     const handleCreatePet = async () => {
         if (!isConnected) {
@@ -93,65 +98,65 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         onClose();
     };
 
-    if (!isOpen) return null;
-
     return (
-        <div className="create-pet-modal" onClick={handleClose}>
-            <div className="dialog" onClick={(e) => e.stopPropagation()}>
-                <div className="header">
-                    <h2><Icon as={PawIcon} tone={Tones.Cyan} />Create Your First Pet</h2>
-                    <button className="close" onClick={handleClose} disabled={isInProgress}>
-                        ×
-                    </button>
+        <NeonModal
+            isOpen={isOpen}
+            onRequestClose={handleClose}
+            title={
+                <>
+                    <Icon as={PawIcon} tone={Tones.Cyan} />
+                    Create Your First Pet
+                </>
+            }
+            contentClassName="create-pet-body"
+        >
+            <p>
+                Give your pet a unique name and bring it to life! You can only create one pet
+                initially — breed to grow your collection!
+            </p>
+
+            <div className="form">
+                <div className="field">
+                    <label htmlFor="petName">Pet Name</label>
+                    <input
+                        id="petName"
+                        type="text"
+                        value={petName}
+                        onChange={(e) => setPetName(e.target.value)}
+                        placeholder="Enter pet name..."
+                        maxLength={20}
+                        disabled={isInProgress}
+                    />
                 </div>
 
-                <div className="body">
-                    <p>Give your pet a unique name and bring it to life! You can only create one pet initially — breed to grow your collection!</p>
+                {mintCost && <p className="mint-cost">Mint cost: {mintCost}</p>}
 
-                    <div className="form">
-                        <div className="field">
-                            <label htmlFor="petName">Pet Name</label>
-                            <input
-                                id="petName"
-                                type="text"
-                                value={petName}
-                                onChange={(e) => setPetName(e.target.value)}
-                                placeholder="Enter pet name..."
-                                maxLength={20}
-                                disabled={isInProgress}
-                            />
-                        </div>
+                {/* Creating a pet is fully on-chain (Switchboard VRF + program) and
+                    needs no backend session — gate on wallet connection only, not SIWS auth. */}
+                <NeonButton
+                    tone="cyan"
+                    onClick={handleCreatePet}
+                    disabled={isInProgress || feesLoading || !petName.trim() || !isConnected}
+                >
+                    {buttonLabel}
+                </NeonButton>
 
-                        {mintCost && (
-                            <p className="mint-cost">Mint cost: {mintCost}</p>
-                        )}
-
-                        <AuthActionButton
-                            onClick={handleCreatePet}
-                            disabled={isInProgress || feesLoading || !petName.trim() || !isConnected}
-                            className="submit"
-                        >
-                            {buttonLabel}
-                        </AuthActionButton>
-
-                        {isAwaitingFulfillment && (
-                            <p className="pending-hint">
-                                Hang tight — your pet will appear once randomness is revealed.
-                            </p>
-                        )}
-                    </div>
-
-                    {success && (
-                        <div className="success-message">
-                            <Icon as={CheckIcon} tone={Tones.Emerald} />
-                            {success}
-                        </div>
-                    )}
-
-                    <TransactionStatus lifecycle={lifecycle} />
-                </div>
+                {isAwaitingFulfillment && (
+                    <p className="pending-hint">
+                        Hang tight — your pet will appear once randomness is revealed.
+                    </p>
+                )}
             </div>
-        </div>
+
+            {success && (
+                <div className="success-message">
+                    <Icon as={CheckIcon} tone={Tones.Emerald} />
+                    {success}
+                </div>
+            )}
+
+            <TransactionStatus lifecycle={lifecycle} />
+        </NeonModal>
     );
 };
 

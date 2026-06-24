@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PublicKey, SystemProgram } from '@solana/web3.js';
 import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
@@ -5,16 +6,22 @@ import {
     feeVaultPda,
     globalStatePda,
     petPdaByAsset,
+    studFeeAccountPda,
 } from '../../../utils/solana/pdas';
-import { battleWithSwitchboardVrf } from '../../../utils/solana/battleWithSwitchboardVrf';
+import { battleWithSwitchboardVrf, type BattleVrfResult } from '../../../utils/solana/battleWithSwitchboardVrf';
 import { breedWithSwitchboardVrf } from '../../../utils/solana/breedWithSwitchboardVrf';
 import { mintWithSwitchboardVrf } from '../../../utils/solana/mintWithSwitchboardVrf';
+import { getAccountClient } from '../../../utils/solana/accountClient';
+import { MPL_CORE_PROGRAM_ID } from '../../../utils/solana/constants';
 import { useProgram } from './useProgram';
 
 export const usePetActions = () => {
     const queryClient = useQueryClient();
     const { signingWallet } = useSolanaAnchor();
     const { program, programId, provider } = useProgram();
+
+    const [battleSubPhase, setBattleSubPhase] = useState<'idle' | 'awaiting-vrf'>('idle');
+    const [breedSubPhase, setBreedSubPhase] = useState<'idle' | 'awaiting-vrf'>('idle');
 
     const invalidateProgramQueries = () => queryClient.invalidateQueries({ queryKey: ['cryptopets'] });
 
@@ -107,32 +114,115 @@ export const usePetActions = () => {
         onSuccess: invalidateProgramQueries,
     });
 
+    const transferPet = useMutation({
+        mutationFn: async (args: { assetKey: string; to: string }) => {
+            const { program, programId, owner } = requireReady();
+            const petAsset = new PublicKey(args.assetKey);
+            const [pet] = petPdaByAsset(programId, args.assetKey);
+            const [globalState] = globalStatePda(programId);
+            const gs = (await getAccountClient(program, 'globalState').fetch(globalState)) as { collection: unknown };
+            const collection = gs.collection instanceof PublicKey
+                ? gs.collection
+                : new PublicKey(String((gs.collection as { toBase58(): string }).toBase58?.() ?? gs.collection));
+            return program.methods
+                .transferPet()
+                .accounts({
+                    globalState,
+                    petAsset,
+                    pet,
+                    collection,
+                    newOwner: new PublicKey(args.to),
+                    owner,
+                    mplCoreProgram: new PublicKey(MPL_CORE_PROGRAM_ID),
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc();
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
+    const withdrawStudFees = useMutation({
+        mutationFn: async () => {
+            const { program, programId, owner } = requireReady();
+            const [studFeeAccount] = studFeeAccountPda(programId, owner);
+            return program.methods
+                .withdrawStudFees()
+                .accounts({ owner, studFeeAccount })
+                .rpc();
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
+    const syncMetadata = useMutation({
+        mutationFn: async (args: { assetKey: string }) => {
+            const { program, programId, owner } = requireReady();
+            const petAsset = new PublicKey(args.assetKey);
+            const [pet] = petPdaByAsset(programId, args.assetKey);
+            const [globalState] = globalStatePda(programId);
+            const gs = (await getAccountClient(program, 'globalState').fetch(globalState)) as { collection: unknown };
+            const collection = gs.collection instanceof PublicKey
+                ? gs.collection
+                : new PublicKey(String((gs.collection as { toBase58(): string }).toBase58?.() ?? gs.collection));
+            return program.methods
+                .syncMetadata()
+                .accounts({
+                    globalState,
+                    asset: petAsset,
+                    pet,
+                    mplCoreProgram: new PublicKey(MPL_CORE_PROGRAM_ID),
+                    collection,
+                    payer: owner,
+                    systemProgram: SystemProgram.programId,
+                })
+                .rpc();
+        },
+    });
+
+    const setOpenToChallenges = useMutation({
+        mutationFn: async (args: { petId: number; assetKey: string; value: boolean }) => {
+            const { program, programId, owner } = requireReady();
+            const petAsset = new PublicKey(args.assetKey);
+            const [pet] = petPdaByAsset(programId, args.assetKey);
+            return program.methods
+                .setOpenToChallenges(args.value)
+                .accounts({ petAsset, pet, owner })
+                .rpc();
+        },
+        onSuccess: invalidateProgramQueries,
+    });
+
     /**
      * Battle the signer's pet (attacker) against any pet. When `defenderOwner` is
      * omitted it defaults to the signer (same-wallet battle); pass a foreign owner
      * pubkey for PvP against another player's pet.
      */
-    const battlePets = useMutation({
-        mutationFn: async (args: {
-            attackerPetId: number;
-            defenderPetId: number;
-            attackerAssetKey: string;
-            defenderOwner?: string;
-        }) => {
+    const battlePets = useMutation<BattleVrfResult, Error, {
+        attackerPetId: number;
+        defenderPetId: number;
+        attackerAssetKey: string;
+        defenderOwner?: string;
+    }>({
+        mutationFn: async (args) => {
             const { program, programId, owner } = requireReady();
             if (!provider) throw new Error('Solana provider is not ready');
-            return battleWithSwitchboardVrf({
-                program,
-                provider,
-                programId,
-                owner,
-                attackerPetId: args.attackerPetId,
-                defenderPetId: args.defenderPetId,
-                attackerAssetKey: args.attackerAssetKey,
-                ...(args.defenderOwner
-                    ? { defenderOwner: new PublicKey(args.defenderOwner) }
-                    : {}),
-            });
+            setBattleSubPhase('idle');
+            try {
+                return await battleWithSwitchboardVrf({
+                    program,
+                    provider,
+                    programId,
+                    owner,
+                    attackerPetId: args.attackerPetId,
+                    defenderPetId: args.defenderPetId,
+                    attackerAssetKey: args.attackerAssetKey,
+                    ...(args.defenderOwner
+                        ? { defenderOwner: new PublicKey(args.defenderOwner) }
+                        : {}),
+                    onCommitted: () => setBattleSubPhase('awaiting-vrf'),
+                });
+            } finally {
+                setBattleSubPhase('idle');
+            }
         },
         onSuccess: invalidateProgramQueries,
     });
@@ -153,20 +243,26 @@ export const usePetActions = () => {
         }) => {
             const { program, programId, owner } = requireReady();
             if (!provider) throw new Error('Solana provider is not ready');
-            return breedWithSwitchboardVrf({
-                program,
-                provider,
-                programId,
-                owner,
-                parent1Id: args.parent1Id,
-                parent2Id: args.parent2Id,
-                name: args.name,
-                parent1AssetKey: args.parent1AssetKey,
-                parent2AssetKey: args.parent2AssetKey,
-                ...(args.parent2Owner
-                    ? { parent2Owner: new PublicKey(args.parent2Owner) }
-                    : {}),
-            });
+            setBreedSubPhase('idle');
+            try {
+                return await breedWithSwitchboardVrf({
+                    program,
+                    provider,
+                    programId,
+                    owner,
+                    parent1Id: args.parent1Id,
+                    parent2Id: args.parent2Id,
+                    name: args.name,
+                    parent1AssetKey: args.parent1AssetKey,
+                    parent2AssetKey: args.parent2AssetKey,
+                    ...(args.parent2Owner
+                        ? { parent2Owner: new PublicKey(args.parent2Owner) }
+                        : {}),
+                    onCommitted: () => setBreedSubPhase('awaiting-vrf'),
+                });
+            } finally {
+                setBreedSubPhase('idle');
+            }
         },
         onSuccess: invalidateProgramQueries,
     });
@@ -176,8 +272,14 @@ export const usePetActions = () => {
         levelUpPet,
         trainPet,
         renamePet,
+        transferPet,
+        withdrawStudFees,
+        syncMetadata,
+        setOpenToChallenges,
         battlePets,
+        battleSubPhase,
         breedPets,
+        breedSubPhase,
         walletPublicKey: signingWallet?.publicKey ?? null,
         walletConnected: Boolean(signingWallet?.publicKey),
     };

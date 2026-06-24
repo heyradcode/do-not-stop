@@ -82,7 +82,7 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
                 onError: (e) => { setError(e as Error); setPhase('error'); },
             },
         );
-    }, [gameLogic, gameLogicAbi, settle]);
+    }, [gameLogic, gameLogicAbi, chainId, settle]);
 
     // 2. Wait for Pyth Entropy Revealed, then settle.
     useWatchEntropyFulfillment({

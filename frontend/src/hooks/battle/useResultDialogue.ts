@@ -8,7 +8,10 @@ import {
     type PetChain,
 } from '@shared/core';
 import type { BattleOutcome } from '@components/pet/interactions/panels/battle/types';
-import { toDialoguePet, type BattlePersonas } from '@components/pet/interactions/panels/battle/battle-utils';
+import {
+    toDialoguePet,
+    type BattlePersonas,
+} from '@components/pet/interactions/panels/battle/battle-utils';
 
 interface UseResultDialogueArgs {
     activeChainKind: PetChain | null;
@@ -50,14 +53,21 @@ export const useResultDialogue = ({
     personasRef,
     battleOutcome,
     showResult,
-}: UseResultDialogueArgs): UseResultDialogue  => {
+}: UseResultDialogueArgs): UseResultDialogue => {
     const [resultDialogueDone, setResultDialogueDone] = useState(false);
 
     const dialogueWinner =
-        battleOutcome === null ? null : battleOutcome.result === 'victory' ? 'attacker' : 'defender';
+        battleOutcome === null
+            ? null
+            : battleOutcome.result === 'victory'
+            ? 'attacker'
+            : 'defender';
 
     const attackerDialogueInput = useMemo(
-        () => (selectedFighter ? toDialoguePet(selectedFighter) : personasRef.current?.attacker ?? null),
+        () =>
+            selectedFighter
+                ? toDialoguePet(selectedFighter)
+                : personasRef.current?.attacker ?? null,
         [selectedFighter, personasRef],
     );
     const defenderDialogueInput = useMemo(
@@ -91,7 +101,8 @@ export const useResultDialogue = ({
     // brief pre-fetch window. markResultDialogueDone handles the case where it plays.
     useEffect(() => {
         if (battleOutcome === null) return;
-        const nothingToPlay = resultTurns.length === 0 && (dialogueFetched || settledBattleId === null);
+        const nothingToPlay =
+            resultTurns.length === 0 && (dialogueFetched || settledBattleId === null);
         if (nothingToPlay) setResultDialogueDone(true);
     }, [battleOutcome, dialogueFetched, resultTurns.length, settledBattleId]);
 
@@ -107,4 +118,4 @@ export const useResultDialogue = ({
         attackerName: attackerDialogueInput?.name ?? 'Your pet',
         defenderName: defenderDialogueInput?.name ?? 'Opponent',
     };
-}
+};

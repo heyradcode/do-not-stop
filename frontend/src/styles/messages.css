@@ -18,9 +18,7 @@
     background: rgb(255 110 196 / 8%);
     border: 1px solid rgb(255 110 196 / 38%);
     color: #ff9ad6;
-    box-shadow:
-        inset 0 0 12px rgb(255 110 196 / 12%),
-        0 0 10px rgb(255 110 196 / 18%);
+    box-shadow: inset 0 0 12px rgb(255 110 196 / 12%), 0 0 10px rgb(255 110 196 / 18%);
     text-shadow: 0 0 10px rgb(255 110 196 / 32%);
 
     &.user-rejection {
@@ -37,9 +35,7 @@
         background: rgb(255 181 67 / 8%);
         border-color: rgb(255 181 67 / 38%);
         color: #ffd07b;
-        box-shadow:
-            inset 0 0 12px rgb(255 181 67 / 12%),
-            0 0 10px rgb(255 181 67 / 18%);
+        box-shadow: inset 0 0 12px rgb(255 181 67 / 12%), 0 0 10px rgb(255 181 67 / 18%);
         text-shadow: 0 0 10px rgb(255 181 67 / 32%);
     }
 }
@@ -48,9 +44,7 @@
     background: rgb(0 255 157 / 8%);
     border: 1px solid rgb(0 255 157 / 38%);
     color: #9effd4;
-    box-shadow:
-        inset 0 0 12px rgb(0 255 157 / 14%),
-        0 0 10px rgb(0 255 157 / 22%);
+    box-shadow: inset 0 0 12px rgb(0 255 157 / 14%), 0 0 10px rgb(0 255 157 / 22%);
     text-shadow: 0 0 10px rgb(0 255 157 / 32%);
 }
 

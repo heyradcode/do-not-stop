@@ -3,6 +3,8 @@
 interface ImportMetaEnv {
     readonly VITE_DYNAMIC_ENVIRONMENT_ID: string;
     readonly VITE_SOLANA_LOCAL_RPC_URL?: string;
+    /** Override the devnet RPC endpoint (e.g. a dedicated Helius/QuickNode URL). Falls back to the public clusterApiUrl('devnet') when unset. */
+    readonly VITE_SOLANA_DEVNET_RPC_URL?: string;
     readonly VITE_API_URL?: string;
     /** v2 PetCore UUPS proxy address (ERC-721 storage, mint, level/XP, marriage). */
     readonly VITE_PETCORE_ADDRESS?: string;

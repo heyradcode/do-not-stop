@@ -40,7 +40,12 @@ const DashboardPanel: React.FC<DashboardPanelProps> = ({
             <div className="surface">
                 <header className="title-bar">
                     {back != null ? (
-                        <button type="button" className="panel-back" onClick={back} aria-label="Back">
+                        <button
+                            type="button"
+                            className="panel-back"
+                            onClick={back}
+                            aria-label="Back"
+                        >
                             ← Back
                         </button>
                     ) : null}

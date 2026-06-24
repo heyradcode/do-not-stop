@@ -11,9 +11,7 @@ import {
 import { fetchAssetByPetId, getAccountClient } from './accountClient';
 import { toU32 } from './numbers';
 import {
-    COMMIT_REVEAL_WAIT_MS,
-    REVEAL_BACKOFF_MS,
-    REVEAL_RETRIES,
+    vrfTimingForEndpoint,
     sendSignedTx,
     waitForRevealIx,
 } from './switchboardVrfTx';
@@ -54,11 +52,13 @@ export type BreedWithVrfArgs = {
      * Required for cross-owner breeding.
      */
     parent2Owner?: PublicKey;
+    /** Fires after commit tx confirms, while the oracle is fulfilling randomness. */
+    onCommitted?: () => void;
 };
 
 /** Completes a breed whose commit phase succeeded but settle was never submitted. */
 const trySettlePendingBreed = async (args: BreedWithVrfArgs): Promise<string | null> => {
-    const { program, provider, programId, owner } = args;
+    const { program, provider, programId, owner, onCommitted } = args;
     const connection = provider.connection;
     const [breedRequestKey] = breedRequestPda(programId, owner);
     const pending = await getAccountClient(program, 'breedRequest').fetchNullable(breedRequestKey);
@@ -88,9 +88,11 @@ const trySettlePendingBreed = async (args: BreedWithVrfArgs): Promise<string | n
 
     const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
     const randomness = new sb.Randomness(queue.program, randomnessPk);
+    const { commitRevealWaitMs, revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
 
-    await sleep(COMMIT_REVEAL_WAIT_MS);
-    const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
+    onCommitted?.();
+    await sleep(commitRevealWaitMs);
+    const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
     const assetKp = Keypair.generate();
     const [child] = petPdaByAsset(programId, assetKp.publicKey.toBase58());
@@ -144,6 +146,7 @@ export const breedWithSwitchboardVrf = async (args: BreedWithVrfArgs): Promise<s
         parent1AssetKey,
         parent2AssetKey,
         parent2Owner = owner,
+        onCommitted,
     } = args;
     const connection = provider.connection;
 
@@ -203,9 +206,11 @@ export const breedWithSwitchboardVrf = async (args: BreedWithVrfArgs): Promise<s
         computeUnitLimitMultiple: 1.3,
     });
     await sendSignedTx(provider, commitTx, [rngKp]);
+    onCommitted?.();
 
-    await sleep(COMMIT_REVEAL_WAIT_MS);
-    const revealIx = await waitForRevealIx(randomness, owner, REVEAL_RETRIES, REVEAL_BACKOFF_MS);
+    const { commitRevealWaitMs, revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
+    await sleep(commitRevealWaitMs);
+    const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
     const assetKp = Keypair.generate();
     const [child] = petPdaByAsset(programId, assetKp.publicKey.toBase58());

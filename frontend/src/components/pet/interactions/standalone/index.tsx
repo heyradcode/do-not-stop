@@ -7,7 +7,7 @@ import { Tones } from '@constants/tones';
 import Icon, { BattleIcon } from '@components/ui/icon';
 import DashboardPanel from '@components/common/dashboard-panel';
 import StateCard from '@components/pet/interactions/state-card';
-import '@components/pet/interactions/overview/index.css';
+import '@components/pet/interactions/interactions.css';
 
 export type InteractionStandaloneProps = {
     action: InteractionAction;
@@ -15,7 +15,11 @@ export type InteractionStandaloneProps = {
     children: React.ReactNode;
 };
 
-const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, minPets, children }) => {
+const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({
+    action,
+    minPets,
+    children,
+}) => {
     const navigate = useNavigate();
     const { isConnected } = useChainCapabilities();
     const { pets, isLoading } = usePetList();
@@ -26,7 +30,12 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
         return (
             <StateCard
                 containerClassName="interaction-standalone wallet-disconnected"
-                title={<><Icon as={BattleIcon} tone={Tones.Violet} />Pet Interactions</>}
+                title={
+                    <>
+                        <Icon as={BattleIcon} tone={Tones.Violet} />
+                        Pet Interactions
+                    </>
+                }
                 description="Connect your wallet to interact with your pets"
                 back={goBack}
             />
@@ -37,7 +46,12 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
         return (
             <DashboardPanel
                 className="pet-interactions interaction-standalone"
-                title={<><Icon as={header.Icon} tone={Tones.Violet} />{header.label}</>}
+                title={
+                    <>
+                        <Icon as={header.Icon} tone={Tones.Violet} />
+                        {header.label}
+                    </>
+                }
                 back={goBack}
             >
                 <div className="loading-container">
@@ -52,7 +66,12 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
         return (
             <StateCard
                 containerClassName="interaction-standalone"
-                title={<><Icon as={header.Icon} tone={Tones.Violet} />{header.label}</>}
+                title={
+                    <>
+                        <Icon as={header.Icon} tone={Tones.Violet} />
+                        {header.label}
+                    </>
+                }
                 description="You don't have any pets yet."
                 helpText="Go to the dashboard and create your first pet."
                 back={goBack}
@@ -64,7 +83,12 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
         return (
             <StateCard
                 containerClassName="interaction-standalone"
-                title={<><Icon as={header.Icon} tone={Tones.Violet} />{header.label}</>}
+                title={
+                    <>
+                        <Icon as={header.Icon} tone={Tones.Violet} />
+                        {header.label}
+                    </>
+                }
                 sub={header.sub}
                 description="You need at least two pets to breed or battle."
                 helpText="Create another pet from the dashboard, then come back here."
@@ -76,7 +100,12 @@ const InteractionStandalone: React.FC<InteractionStandaloneProps> = ({ action, m
     return (
         <StateCard
             containerClassName="interaction-standalone"
-            title={<><Icon as={header.Icon} tone={Tones.Violet} />{header.label}</>}
+            title={
+                <>
+                    <Icon as={header.Icon} tone={Tones.Violet} />
+                    {header.label}
+                </>
+            }
             sub={header.sub}
             back={goBack}
         >

@@ -2,10 +2,13 @@ import { useMemo } from 'react';
 import { PublicKey } from '@solana/web3.js';
 import { usePetActions } from '../chains/solana/usePetActions';
 import { usePets as useSolanaPets } from '../chains/solana/usePets';
+import { useProgram } from '../chains/solana/useProgram';
 import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
 import { mapSolanaPet, type SolanaPetAccountRow } from '../../utils/pets/mapSolanaPet';
 import { formatSolanaActionError } from '../../utils/solana';
+import { fetchAssetByPetId, fetchMarriageOwnerSnapshot } from '../../utils/solana/accountClient';
 import type { Pet } from '../../types/pet';
+import type { BattleResolvedResult } from '../../types/battle';
 import type { ChainAdapter, AdapterMutation, TxLifecycle, TxPhase, ChainCapabilities } from './types';
 
 export const SOLANA_CAPABILITIES: ChainCapabilities = {
@@ -34,6 +37,14 @@ type SolanaMutation<TData = string> = {
     reset: () => void;
 };
 
+const resolveHash = (data: unknown): string | undefined => {
+    if (typeof data === 'string') return data;
+    if (data && typeof data === 'object' && 'sig' in data && typeof (data as { sig: unknown }).sig === 'string') {
+        return (data as { sig: string }).sig;
+    }
+    return undefined;
+}
+
 const toLc = <TData = string,>(m: SolanaMutation<TData>): TxLifecycle => {
     let phase: TxPhase = 'idle';
     if (m.isError) phase = 'error';
@@ -41,17 +52,26 @@ const toLc = <TData = string,>(m: SolanaMutation<TData>): TxLifecycle => {
     else if (m.isPending) phase = 'awaiting-wallet';
     return {
         phase,
-        hash: typeof m.data === 'string' ? m.data : undefined,
+        hash: resolveHash(m.data),
         error: m.error,
         reset: m.reset,
     };
 }
 
+/** Infer Solana Explorer cluster param from an RPC endpoint URL. */
+const clusterParam = (rpcEndpoint: string): string => {
+    if (rpcEndpoint.includes('devnet')) return 'devnet';
+    if (rpcEndpoint.includes('mainnet')) return 'mainnet-beta';
+    if (rpcEndpoint.includes('testnet')) return 'testnet';
+    return `custom&customUrl=${encodeURIComponent(rpcEndpoint)}`;
+};
+
 export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  => {
-    const { signingWallet } = useSolanaAnchor();
+    const { signingWallet, connection } = useSolanaAnchor();
     const owner = enabled && signingWallet?.publicKey ? signingWallet.publicKey : null;
 
     const actions = usePetActions();
+    const { program, programId } = useProgram();
     const petsQuery = useSolanaPets(owner);
 
     const solanaPets = useMemo<Pet[]>(() => {
@@ -97,49 +117,92 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         isPending: actions.renamePet.isPending,
     };
 
-    // Transfers happen via Metaplex Core (NFT transfer) — no program-level instruction in v2.1.
+    // `transfer_pet` CPIs mpl-core TransferV1 to move the Core asset and syncs the
+    // denormalized `PetAccount.owner` so the gallery's owner-memcmp query follows the pet.
     const transferPet: AdapterMutation<{ petId: string; to: string }> = {
-        async mutateAsync() {
-            throw new Error('Solana pet transfers use Metaplex Core — use the NFT wallet interface');
+        async mutateAsync({ petId, to }) {
+            await actions.transferPet.mutateAsync({ assetKey: requireAssetKey(petId), to });
         },
-        lifecycle: { phase: 'idle', error: null, reset: () => undefined },
-        isPending: false,
+        lifecycle: toLc(actions.transferPet),
+        isPending: actions.transferPet.isPending,
     };
 
-    const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }> = {
+    const battleLc = useMemo<TxLifecycle>(() => {
+        const lc = toLc(actions.battlePets);
+        if (actions.battleSubPhase === 'awaiting-vrf' && lc.phase === 'awaiting-wallet') {
+            return { ...lc, phase: 'awaiting-vrf' as TxPhase };
+        }
+        return lc;
+    }, [actions.battlePets, actions.battleSubPhase]);
+
+    const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, BattleResolvedResult | null> = {
         async mutateAsync({ petId1, petId2, defenderOwner }) {
-            await actions.battlePets.mutateAsync({
+            const { sig, firstWins } = await actions.battlePets.mutateAsync({
                 attackerPetId: Number(petId1),
                 defenderPetId: Number(petId2),
                 attackerAssetKey: requireAssetKey(petId1),
                 ...(defenderOwner ? { defenderOwner } : {}),
             });
+            if (firstWins === null) return null;
+            return { firstWins, sig, requestId: 0n, winnerId: 0n, loserId: 0n, vrfSeed: 0n, rounds: 0, winnerHpRemaining: 0, xpWin: 0, xpLoss: 0 };
         },
-        lifecycle: toLc(actions.battlePets),
+        lifecycle: battleLc,
         isPending: actions.battlePets.isPending,
     };
 
-    const breedPets: AdapterMutation<{ parentId1: string; parentId2: string; name: string }> = {
-        async mutateAsync({ parentId1, parentId2, name }) {
+    const breedPets: AdapterMutation<{ parentId1: string; parentId2: string; name: string; crossOwner?: boolean }> = {
+        async mutateAsync({ parentId1, parentId2, name, crossOwner }) {
             const parent1AssetKey = requireAssetKey(parentId1);
             const parent2Pet = solanaPets.find(p => p.id === parentId2);
+
+            let parent2AssetKey = parent2Pet?.assetKey;
+            let parent2Owner: string | undefined;
+
+            if (crossOwner) {
+                if (!program || !programId) throw new Error('Solana program not ready — cannot resolve spouse owner for cross-owner breed');
+                // Spouse pet belongs to another wallet — look up their asset + owner on-chain.
+                if (!parent2AssetKey) {
+                    const assetPk = await fetchAssetByPetId(program, Number(parentId2));
+                    if (!assetPk) throw new Error(`Spouse pet #${parentId2} not found on-chain`);
+                    parent2AssetKey = assetPk.toBase58();
+                }
+                // marriageOwnerSnapshot = spouse wallet captured at accept_marriage time.
+                const snapshot = await fetchMarriageOwnerSnapshot(
+                    program,
+                    programId,
+                    new PublicKey(parent2AssetKey),
+                );
+                if (!snapshot) throw new Error(`Pet #${parentId2} is not married or marriage owner not found`);
+                parent2Owner = snapshot.toBase58();
+            }
+
             await actions.breedPets.mutateAsync({
                 parent1Id: Number(parentId1),
                 parent2Id: Number(parentId2),
                 name,
                 parent1AssetKey,
-                parent2AssetKey: parent2Pet?.assetKey,
+                parent2AssetKey,
+                parent2Owner,
             });
         },
-        lifecycle: toLc(actions.breedPets),
+        lifecycle: (() => {
+            const lc = toLc(actions.breedPets);
+            if (actions.breedSubPhase === 'awaiting-vrf' && lc.phase === 'awaiting-wallet') {
+                return { ...lc, phase: 'awaiting-vrf' as TxPhase };
+            }
+            return lc;
+        })(),
         isPending: actions.breedPets.isPending,
     };
+
+    const explorerTxUrl = (hash: string) =>
+        `https://explorer.solana.com/tx/${hash}?cluster=${clusterParam(connection.rpcEndpoint)}`;
 
     return {
         kind: 'solana',
         address: signingWallet?.publicKey?.toBase58() ?? null,
         isConnected: enabled && Boolean(signingWallet?.publicKey),
-        capabilities: SOLANA_CAPABILITIES,
+        capabilities: { ...SOLANA_CAPABILITIES, explorerTxUrl },
         pets: {
             data: solanaPets,
             isLoading: petsQuery.isLoading || petsQuery.isFetching,

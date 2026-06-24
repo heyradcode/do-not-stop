@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { setSolanaAuthSigner, type SolanaAuthSigner as SharedSolanaAuthSigner } from '@shared/core';
-import { useDynamicSolanaWallet, type DynamicSolanaWalletLike } from '@chains/solana/useDynamicSolanaWallet';
+import {
+    useDynamicSolanaWallet,
+    type DynamicSolanaWalletLike,
+} from '@chains/solana/useDynamicSolanaWallet';
 
 /**
  * Dynamic's `SolanaWallet.signMessage(string)` is the generic Dynamic API — it expects a string
@@ -9,7 +12,9 @@ import { useDynamicSolanaWallet, type DynamicSolanaWalletLike } from '@chains/so
  * `getSigner()` to reach the canonical `ISolana.signMessage(Uint8Array)` which returns
  * `{ signature: Uint8Array }`. Coercion to base58 is handled downstream by `signatureAuthCodec`.
  */
-const signerFromDynamicWallet = async (wallet: DynamicSolanaWalletLike): Promise<SharedSolanaAuthSigner | null> => {
+const signerFromDynamicWallet = async (
+    wallet: DynamicSolanaWalletLike,
+): Promise<SharedSolanaAuthSigner | null> => {
     if (typeof wallet.getSigner !== 'function') {
         return null;
     }
@@ -34,7 +39,7 @@ const signerFromDynamicWallet = async (wallet: DynamicSolanaWalletLike): Promise
             throw new Error('Dynamic Solana signer returned an unexpected signature shape');
         },
     };
-}
+};
 
 /**
  * Registers Solana signing for {@link AuthProvider} / `signAndLogin`:
@@ -76,6 +81,6 @@ export const SolanaAuthSigner = () => {
     }, [publicKey, signMessage, dynamicSolanaWallet]);
 
     return null;
-}
+};
 
 export default SolanaAuthSigner;

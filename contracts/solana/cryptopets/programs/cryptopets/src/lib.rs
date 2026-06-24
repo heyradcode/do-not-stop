@@ -7,7 +7,7 @@ pub mod utils;
 use anchor_lang::{prelude::*, solana_program::system_program};
 use instructions::*;
 
-declare_id!("78AXV46ks5oFoJHkukvbsfZTJixdj2MeStzuC6thiUry");
+declare_id!("88HGagCw4i3BTMHEpdQy3YLeHrkTSKgXmvq66HJXKM7k");
 
 #[program]
 pub mod cryptopets {
@@ -27,6 +27,10 @@ pub mod cryptopets {
 
     pub fn rename_pet(ctx: Context<RenamePet>, name: String) -> Result<()> {
         rename_pet::handler(ctx, name)
+    }
+
+    pub fn transfer_pet(ctx: Context<TransferPet>) -> Result<()> {
+        transfer_pet::handler(ctx)
     }
 
     pub fn set_open_to_challenges(ctx: Context<SetOpenToChallenges>, value: bool) -> Result<()> {

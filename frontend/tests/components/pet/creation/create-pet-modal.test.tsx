@@ -20,7 +20,13 @@ const petList = { refetch: vi.fn() };
 const capabilities = { isConnected: true, kind: 'solana' };
 
 vi.mock('@shared/core', () => ({
-    useAuth: () => ({ isAuthenticated: true, isSigning: false, isVerifying: false, isNonceLoading: false, signAndLogin: vi.fn() }),
+    useAuth: () => ({
+        isAuthenticated: true,
+        isSigning: false,
+        isVerifying: false,
+        isNonceLoading: false,
+        signAndLogin: vi.fn(),
+    }),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
     useFees: () => ({
@@ -95,7 +101,7 @@ describe('CreatePetModal', () => {
 
     it('closes and resets via the close button', async () => {
         const onClose = renderModal();
-        await userEvent.click(screen.getByRole('button', { name: '×' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Close modal' }));
 
         expect(createPet.reset).toHaveBeenCalled();
         expect(onClose).toHaveBeenCalledOnce();

@@ -3,13 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { Keypair } from '@solana/web3.js';
 
-const makeMutation = () => ({
-    mutateAsync: vi.fn().mockResolvedValue(undefined),
+const makeMutation = (resolvedValue: unknown = undefined) => ({
+    mutateAsync: vi.fn().mockResolvedValue(resolvedValue),
     isPending: false,
     isSuccess: false,
     isError: false,
     error: null as Error | null,
-    data: undefined as string | undefined,
+    data: undefined as unknown,
     reset: vi.fn(),
 });
 
@@ -28,15 +28,26 @@ const actions = {
     levelUpPet: makeMutation(),
     trainPet: makeMutation(),
     renamePet: makeMutation(),
-    battlePets: makeMutation(),
+    battlePets: makeMutation({ sig: 'settle-sig', firstWins: true }),
     breedPets: makeMutation(),
+    transferPet: makeMutation(),
+    setOpenToChallenges: makeMutation(),
+    syncMetadata: makeMutation(),
+    withdrawStudFees: makeMutation(),
+    battleSubPhase: 'idle' as 'idle' | 'awaiting-vrf',
+    breedSubPhase: 'idle' as 'idle' | 'awaiting-vrf',
 };
 const petsQuery = { data: testPets, isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
 const anchor = { signingWallet: { publicKey: Keypair.generate().publicKey } as { publicKey: unknown } | null };
 
 vi.mock('../../src/hooks/chains/solana/usePetActions', () => ({ usePetActions: () => actions }));
 vi.mock('../../src/hooks/chains/solana/usePets', () => ({ usePets: () => petsQuery }));
-vi.mock('../../src/contexts/SolanaAnchorContext', () => ({ useSolanaAnchor: () => anchor }));
+vi.mock('../../src/contexts/SolanaAnchorContext', () => ({
+    useSolanaAnchor: () => ({ ...anchor, connection: { rpcEndpoint: 'https://api.devnet.solana.com' }, idlAddress: null }),
+}));
+vi.mock('../../src/hooks/chains/solana/useProgram', () => ({
+    useProgram: () => ({ program: null, programId: null, provider: null, isConfigured: false, isLoading: false, isFetching: false, error: null, refetch: vi.fn(), isReady: false }),
+}));
 // Avoid loading Switchboard builders; expose only the real error formatter.
 vi.mock('../../src/utils/solana', async () => {
     const mod = await import('../../src/utils/solana/parseSolanaTransactionError');
@@ -53,9 +64,20 @@ const validAddress = Keypair.generate().publicKey.toBase58();
 
 beforeEach(() => {
     vi.clearAllMocks();
-    Object.values(actions).forEach((m) =>
-        Object.assign(m, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined }),
-    );
+    Object.assign(actions.mintPet,   { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.levelUpPet, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.trainPet,   { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.renamePet,  { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.battlePets, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.breedPets,  { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.transferPet, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.setOpenToChallenges, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.syncMetadata, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    Object.assign(actions.withdrawStudFees, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
+    actions.battlePets.mutateAsync.mockResolvedValue({ sig: 'settle-sig', firstWins: true });
+    actions.breedPets.mutateAsync.mockResolvedValue(undefined);
+    actions.battleSubPhase = 'idle';
+    actions.breedSubPhase = 'idle';
     anchor.signingWallet = { publicKey: Keypair.generate().publicKey };
 });
 
@@ -65,6 +87,10 @@ describe('SOLANA_CAPABILITIES', () => {
         expect(SOLANA_CAPABILITIES.renameMinLevel).toBe(1);
         expect(SOLANA_CAPABILITIES.levelUpFee).toBeNull();
         expect(SOLANA_CAPABILITIES.randomness.provider).toBe('switchboard');
+    });
+
+    it('base explorerTxUrl returns null (cluster resolved at runtime)', () => {
+        expect(SOLANA_CAPABILITIES.explorerTxUrl('abc')).toBeNull();
     });
 
     it('validates base58 addresses', () => {
@@ -85,7 +111,14 @@ describe('useSolanaAdapter', () => {
         expect(result.current.kind).toBe('solana');
         expect(result.current.isConnected).toBe(true);
         expect(result.current.address).toBe(anchor.signingWallet!.publicKey.toString());
-        expect(result.current.capabilities).toBe(SOLANA_CAPABILITIES);
+        expect(result.current.capabilities.chainLabel).toBe('Solana');
+    });
+
+    it('explorerTxUrl includes devnet cluster from rpcEndpoint', () => {
+        const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
+        const url = result.current.capabilities.explorerTxUrl('mysig123');
+        expect(url).toContain('explorer.solana.com/tx/mysig123');
+        expect(url).toContain('cluster=devnet');
     });
 
     it('is disconnected without a signing wallet', () => {
@@ -117,7 +150,17 @@ describe('useSolanaAdapter', () => {
             name: 'Baby',
             parent1AssetKey: ASSET_1,
             parent2AssetKey: ASSET_2,
+            parent2Owner: undefined,
         });
+    });
+
+    it('cross-owner breed: errors when program not ready (null programId)', async () => {
+        // With programId=null the adapter can't look up the spouse on-chain.
+        // crossOwner=true should throw rather than silently send the wrong owner.
+        const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
+        await expect(
+            result.current.breedPets.mutateAsync({ parentId1: '1', parentId2: '99', name: 'Baby', crossOwner: true }),
+        ).rejects.toThrow(/not found on-chain|program.*not ready|programId/i);
     });
 
     it('includes defenderOwner and attackerAssetKey in battle', async () => {
@@ -157,9 +200,9 @@ describe('useSolanaAdapter', () => {
         expect(hook.result.current.createPet.lifecycle.phase).toBe('error');
     });
 
-    it('transferPet throws with an explanatory message', async () => {
+    it('transferPet forwards the pet asset key and recipient', async () => {
         const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
-        await expect(result.current.transferPet.mutateAsync({ petId: '1', to: validAddress }))
-            .rejects.toThrow(/Metaplex Core/);
+        await result.current.transferPet.mutateAsync({ petId: '1', to: validAddress });
+        expect(actions.transferPet.mutateAsync).toHaveBeenCalledWith({ assetKey: ASSET_1, to: validAddress });
     });
 });

@@ -7,7 +7,10 @@ import { getPopularTokens } from '@constants/tokens';
 import { Tones } from '@constants/tones';
 import { NeonButton, NeonCard } from '@components/ui';
 import Icon, { CheckIcon, CopyIcon } from '@components/ui/icon';
-import { EthereumNetworkSwitcher, SolanaNetworkSwitcher } from '@components/wallet/network-switcher';
+import {
+    EthereumNetworkSwitcher,
+    SolanaNetworkSwitcher,
+} from '@components/wallet/network-switcher';
 import TokenBalance from '@components/wallet/token-balance';
 import NativeBalance from '@components/wallet/native-balance';
 import './index.css';
@@ -38,23 +41,23 @@ const CopyableAddress: React.FC<CopyableAddressProps> = ({ address, isCopied, on
 
 const AccountDropdown: React.FC = () => {
     const { address, isConnected, chain } = useAccount();
-    const { publicKey: solanaPublicKey, connected: solanaConnected, disconnect: solanaDisconnect } = useWallet();
+    const {
+        publicKey: solanaPublicKey,
+        connected: solanaConnected,
+        disconnect: solanaDisconnect,
+    } = useWallet();
     const { setShowAuthFlow, handleLogOut, user, primaryWallet } = useDynamicContext();
     const [isOpen, setIsOpen] = useState(false);
-    const [isCopied, setIsCopied] = useState(false);
+    const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
-    const [tokenStatus, setTokenStatus] = useState<Record<string, { fetched: boolean; balance?: bigint | number }>>({});
+    const [tokenStatus, setTokenStatus] = useState<
+        Record<string, { fetched: boolean; balance?: bigint | number }>
+    >({});
     const [isTokensLoading, setIsTokensLoading] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const {
-        isAuthenticated,
-        logout,
-        signAndLogin,
-        isSigning,
-        isVerifying,
-        isNonceLoading
-    } = useAuth();
+    const { isAuthenticated, logout, signAndLogin, isSigning, isVerifying, isNonceLoading } =
+        useAuth();
     const popularTokens = useMemo(() => getPopularTokens(chain?.id), [chain?.id]);
 
     const publicClient = usePublicClient();
@@ -70,8 +73,8 @@ const AccountDropdown: React.FC = () => {
             document.execCommand('copy');
             document.body.removeChild(textArea);
         }
-        setIsCopied(true);
-        globalThis.setTimeout(() => setIsCopied(false), 2000);
+        setCopiedAddress(text);
+        globalThis.setTimeout(() => setCopiedAddress(null), 2000);
     }, []);
 
     useEffect(() => {
@@ -81,41 +84,52 @@ const AccountDropdown: React.FC = () => {
             setIsTokensLoading(true);
 
             try {
-                const calls = popularTokens.map(token => ({
+                const calls = popularTokens.map((token) => ({
                     address: token.address as `0x${string}`,
-                    abi: [{
-                        type: 'function',
-                        name: 'balanceOf',
-                        stateMutability: 'view',
-                        inputs: [{ name: 'owner', type: 'address' }],
-                        outputs: [{ name: '', type: 'uint256' }]
-                    }],
+                    abi: [
+                        {
+                            type: 'function',
+                            name: 'balanceOf',
+                            stateMutability: 'view',
+                            inputs: [{ name: 'owner', type: 'address' }],
+                            outputs: [{ name: '', type: 'uint256' }],
+                        },
+                    ],
                     functionName: 'balanceOf',
-                    args: [address as `0x${string}`]
+                    args: [address as `0x${string}`],
                 }));
 
-                let results: Array<{ address: string; balance?: bigint | number; error?: unknown }> = [];
+                let results: Array<{
+                    address: string;
+                    balance?: bigint | number;
+                    error?: unknown;
+                }> = [];
 
                 if ((publicClient as { multicall?: unknown })?.multicall) {
-                    const multicallRes = await (publicClient as { multicall: (params: unknown) => Promise<unknown> }).multicall({
+                    const multicallRes = await (
+                        publicClient as { multicall: (params: unknown) => Promise<unknown> }
+                    ).multicall({
                         contracts: calls,
-                        allowFailure: true
+                        allowFailure: true,
                     });
 
-                    results = (multicallRes as Array<{ status: string; result?: unknown; error?: unknown }>).map((r, idx: number) => ({
+                    results = (
+                        multicallRes as Array<{ status: string; result?: unknown; error?: unknown }>
+                    ).map((r, idx: number) => ({
                         address: calls[idx].address,
                         balance: r.status === 'success' ? (r.result as bigint) : undefined,
-                        error: r.status === 'failure' ? r.error : undefined
+                        error: r.status === 'failure' ? r.error : undefined,
                     }));
                 } else {
                     throw new Error('Multicall not available');
                 }
 
-                const newStatus: Record<string, { fetched: boolean; balance?: bigint | number }> = {};
+                const newStatus: Record<string, { fetched: boolean; balance?: bigint | number }> =
+                    {};
                 for (const r of results) {
                     newStatus[r.address.toLowerCase()] = {
                         fetched: true,
-                        balance: r.balance !== undefined ? r.balance : 0n
+                        balance: r.balance !== undefined ? r.balance : 0n,
                     };
                 }
 
@@ -133,15 +147,18 @@ const AccountDropdown: React.FC = () => {
         }
     }, [isOpen, address, publicClient, popularTokens]);
 
-    const fetchedCount = Object.values(tokenStatus).filter(s => s.fetched).length;
-    const withBalanceCount = Object.values(tokenStatus).filter(s => {
+    const fetchedCount = Object.values(tokenStatus).filter((s) => s.fetched).length;
+    const withBalanceCount = Object.values(tokenStatus).filter((s) => {
         if (!s.balance) return false;
         return typeof s.balance === 'bigint' ? s.balance > 0n : Number(s.balance) > 0;
     }).length;
 
     useEffect(() => {
         const handleClickOutside = (event: globalThis.MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as globalThis.Node)) {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target as globalThis.Node)
+            ) {
                 setIsOpen(false);
             }
         };
@@ -188,7 +205,11 @@ const AccountDropdown: React.FC = () => {
     if (!hasAnyWallet) {
         return (
             <div className="account-dropdown">
-                <NeonButton tone={Tones.Azure} className="connect-btn" onClick={() => setShowAuthFlow(true)}>
+                <NeonButton
+                    tone={Tones.Azure}
+                    className="connect-btn"
+                    onClick={() => setShowAuthFlow(true)}
+                >
                     Connect Wallet
                 </NeonButton>
             </div>
@@ -206,8 +227,7 @@ const AccountDropdown: React.FC = () => {
                     tone={Tones.Azure}
                     size="sm"
                 >
-                    {headerTriggerLabel}{' '}
-                    {isOpen ? '▲' : '▼'}
+                    {headerTriggerLabel} {isOpen ? '▲' : '▼'}
                 </NeonButton>
 
                 {isOpen && (
@@ -217,15 +237,17 @@ const AccountDropdown: React.FC = () => {
                                 {address && (
                                     <CopyableAddress
                                         address={address}
-                                        isCopied={isCopied}
+                                        isCopied={copiedAddress === address}
                                         onCopy={() => void handleCopyAny(address)}
                                     />
                                 )}
                                 {solanaPublicKey && (
                                     <CopyableAddress
                                         address={solanaPublicKey.toString()}
-                                        isCopied={isCopied}
-                                        onCopy={() => void handleCopyAny(solanaPublicKey.toString())}
+                                        isCopied={copiedAddress === solanaPublicKey.toString()}
+                                        onCopy={() =>
+                                            void handleCopyAny(solanaPublicKey.toString())
+                                        }
                                     />
                                 )}
                                 {dynamicWalletAddress &&
@@ -233,7 +255,7 @@ const AccountDropdown: React.FC = () => {
                                     dynamicWalletAddress !== solanaPublicKey?.toString() && (
                                         <CopyableAddress
                                             address={dynamicWalletAddress}
-                                            isCopied={isCopied}
+                                            isCopied={copiedAddress === dynamicWalletAddress}
                                             onCopy={() => void handleCopyAny(dynamicWalletAddress)}
                                         />
                                     )}
@@ -265,15 +287,16 @@ const AccountDropdown: React.FC = () => {
                                                 symbol={token.symbol}
                                                 decimals={token.decimals}
                                                 name={token.name}
-                                                balance={tokenStatus[token.address.toLowerCase()]?.balance}
+                                                balance={
+                                                    tokenStatus[token.address.toLowerCase()]
+                                                        ?.balance
+                                                }
                                             />
                                         ))}
                                         {!isTokensLoading &&
                                             fetchedCount === popularTokens.length &&
                                             withBalanceCount === 0 && (
-                                                <div className="empty">
-                                                    No ERC-20 tokens
-                                                </div>
+                                                <div className="empty">No ERC-20 tokens</div>
                                             )}
                                     </div>
                                 </NeonCard>
@@ -289,9 +312,13 @@ const AccountDropdown: React.FC = () => {
                                         size="sm"
                                         fullWidth
                                     >
-                                        {isNonceLoading ? 'Getting nonce...' :
-                                            isSigning ? 'Please approve the signature in your wallet...' :
-                                                isVerifying ? 'Verifying...' : 'Sign Message & Login'}
+                                        {isNonceLoading
+                                            ? 'Getting nonce...'
+                                            : isSigning
+                                            ? 'Please approve the signature in your wallet...'
+                                            : isVerifying
+                                            ? 'Verifying...'
+                                            : 'Sign Message & Login'}
                                     </NeonButton>
                                 ) : (
                                     <NeonButton

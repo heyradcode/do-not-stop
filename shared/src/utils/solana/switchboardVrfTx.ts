@@ -13,6 +13,24 @@ export const COMMIT_REVEAL_WAIT_MS = 3_000;
 export const REVEAL_RETRIES = 5;
 export const REVEAL_BACKOFF_MS = 2_000;
 
+export interface VrfTiming {
+    commitRevealWaitMs: number;
+    revealRetries: number;
+    revealBackoffMs: number;
+}
+
+/**
+ * Returns VRF timing parameters tuned for the active cluster.
+ * Mainnet Switchboard oracles are reliable but can be slower under load;
+ * we give them more time with extra retries and a longer inter-retry backoff.
+ */
+export const vrfTimingForEndpoint = (rpcEndpoint: string): VrfTiming => {
+    if (rpcEndpoint.includes('mainnet')) {
+        return { commitRevealWaitMs: 5_000, revealRetries: 10, revealBackoffMs: 3_000 };
+    }
+    return { commitRevealWaitMs: COMMIT_REVEAL_WAIT_MS, revealRetries: REVEAL_RETRIES, revealBackoffMs: REVEAL_BACKOFF_MS };
+};
+
 /** Switchboard VRF needs commit → (wait) → reveal; two wallet signatures is the minimum. */
 
 const recentBlockhashFromTx = (tx: Transaction | VersionedTransaction): string | undefined  => {

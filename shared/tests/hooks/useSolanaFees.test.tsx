@@ -46,8 +46,8 @@ const fetchPP = vi.fn().mockResolvedValue(playerProfileData);
 
 vi.mock('../../src/utils/solana/accountClient', () => ({
     getAccountClient: (_prog: unknown, name: string) => ({
-        fetch:         name === 'globalState'   ? fetchGS : vi.fn(),
-        fetchNullable: name === 'playerProfile' ? fetchPP : vi.fn().mockResolvedValue(null),
+        fetch:         vi.fn(),
+        fetchNullable: name === 'globalState' ? fetchGS : name === 'playerProfile' ? fetchPP : vi.fn().mockResolvedValue(null),
     }),
 }));
 

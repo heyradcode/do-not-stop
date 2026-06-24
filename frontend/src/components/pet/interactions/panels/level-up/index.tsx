@@ -12,6 +12,7 @@ import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
+import SyncMetadataButton from './sync-metadata-button';
 
 export type LevelUpPanelProps = {
     isStandaloneView?: boolean;
@@ -24,15 +25,23 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
     const [selectedPet, setSelectedPet] = useState<string>('');
     const [success, setSuccess] = useState<string | null>(null);
+    const [leveledUpPetId, setLeveledUpPetId] = useState<string | null>(null);
 
     // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
     const handleLevelUpComplete = () => {
+        setLeveledUpPetId(selectedPet);
         setSuccess('Pet leveled up successfully!');
         setSelectedPet('');
         refetch();
     };
 
-    const { mutate, isPending, error: hookError, reset, lifecycle } = useLevelUpPet({
+    const {
+        mutate,
+        isPending,
+        error: hookError,
+        reset,
+        lifecycle,
+    } = useLevelUpPet({
         onSuccess: handleLevelUpComplete,
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
@@ -68,10 +77,10 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     const buttonLabel = isPending
         ? 'Leveling Up...'
         : levelUpCost
-            ? `Level Up (${levelUpCost})`
-            : levelUpFee
-                ? `Level Up (from ${levelUpFee.amount} ${levelUpFee.symbol})`
-                : 'Level Up';
+        ? `Level Up (${levelUpCost})`
+        : levelUpFee
+        ? `Level Up (from ${levelUpFee.amount} ${levelUpFee.symbol})`
+        : 'Level Up';
 
     return (
         <>
@@ -106,7 +115,11 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 </div>
 
                 <div className="action-controls">
-                    <AuthActionButton onClick={handleLevelUp} disabled={isPending || !selectedPet}>
+                    <AuthActionButton
+                        tone="emerald"
+                        onClick={handleLevelUp}
+                        disabled={isPending || !selectedPet}
+                    >
                         {buttonLabel}
                     </AuthActionButton>
                 </div>
@@ -116,6 +129,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 <div className="success-message">
                     <Icon as={CheckIcon} tone={Tones.Emerald} />
                     {success}
+                    <SyncMetadataButton petId={leveledUpPetId ?? undefined} />
                 </div>
             )}
 

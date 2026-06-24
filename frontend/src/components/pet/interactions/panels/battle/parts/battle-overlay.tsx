@@ -65,7 +65,9 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
     const resultCardClass = [
         'battle-result-card',
         battleOutcome === null ? 'is-pending' : isVictory ? '' : 'is-defeat',
-    ].filter(Boolean).join(' ');
+    ]
+        .filter(Boolean)
+        .join(' ');
 
     return (
         <div className="battle-result-overlay" role="status" aria-live="polite">
@@ -76,16 +78,20 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                             <BattleResultArt outcome={battleOutcome} />
                         </div>
                         <p className="title">
-                            {battleOutcome === null ? 'Resolving…' : isVictory ? 'Victory!' : 'Defeated'}
+                            {battleOutcome === null
+                                ? 'Resolving…'
+                                : isVictory
+                                ? 'Victory!'
+                                : 'Defeated'}
                         </p>
                         <p className="message">
                             {battleOutcome === null
                                 ? 'Checking battle outcome…'
                                 : isVictory
-                                    ? battleOutcome.leveledUp
-                                        ? 'Your pet won and leveled up!'
-                                        : 'Your pet won the battle!'
-                                    : 'Your pet was defeated. Train harder and try again!'}
+                                ? battleOutcome.leveledUp
+                                    ? 'Your pet won and leveled up!'
+                                    : 'Your pet won the battle!'
+                                : 'Your pet was defeated. Train harder and try again!'}
                         </p>
                         {opponent && battleOutcome !== null ? (
                             <p className="opponent">
@@ -107,9 +113,13 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                             <div className="actions">
                                 <button
                                     type="button"
-                                    className={`battle-result-rematch${isDefeat ? ' is-defeat' : ''}`}
+                                    className={`battle-result-rematch${
+                                        isDefeat ? ' is-defeat' : ''
+                                    }`}
                                     onClick={onRematch}
-                                    disabled={battlePending || rematchPending || !resultDialogueDone}
+                                    disabled={
+                                        battlePending || rematchPending || !resultDialogueDone
+                                    }
                                 >
                                     {rematchPending ? 'Preparing…' : 'Rematch'}
                                 </button>

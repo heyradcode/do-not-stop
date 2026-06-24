@@ -1,102 +1,5 @@
-.send-pet-modal {
-    --modal-max-height: min(90vh, calc(100dvh - var(--main-header-offset) - 2 * var(--spacing-lg)));
-
-    position: fixed;
-    inset: 0;
-    background: rgb(3 8 18 / 72%);
-    backdrop-filter: blur(4px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 1.5rem;
-    box-sizing: border-box;
-
-    @media (max-width: 768px) {
-        padding: 0.5rem;
-    }
-
-    .dialog {
-        background: linear-gradient(180deg, rgb(10 16 32 / 96%), rgb(6 10 22 / 98%));
-        border: 1px solid var(--neon-border-soft);
-        border-radius: 16px;
-        box-shadow:
-            inset 0 0 24px rgb(125 214 255 / 8%),
-            0 0 24px rgb(181 140 255 / 22%),
-            0 20px 56px rgb(0 0 0 / 50%);
-        max-height: var(--modal-max-height);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        box-sizing: border-box;
-    }
-
-    .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: var(--spacing-xl);
-        border-block-end: 1px solid var(--neon-border-soft);
-        background: linear-gradient(180deg, rgb(10 24 52 / 56%), rgb(8 18 40 / 35%));
-        color: #f6f3ff;
-        border-radius: 16px 16px 0 0;
-        width: 100%;
-        box-sizing: border-box;
-
-        & h2 {
-            margin: 0;
-            font-family: var(--title-font);
-            font-size: 1.5rem;
-            font-weight: 700;
-            letter-spacing: 0.6px;
-            text-transform: uppercase;
-            color: inherit;
-            text-shadow: 0 0 12px var(--neon-text-glow);
-            word-break: break-word;
-
-            @media (max-width: 768px) {
-                font-size: 1.25rem;
-            }
-        }
-
-        @media (max-width: 768px) {
-            padding: 1.5rem 1.5rem 1rem 1.5rem;
-        }
-    }
-
-    .close {
-        background: none;
-        border: 1px solid transparent;
-        font-size: 1.75rem;
-        color: rgb(195 210 255 / 70%);
-        cursor: pointer;
-        padding: 0;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 2px;
-        transition: all 0.2s;
-
-        &:hover {
-            color: var(--neon-cyan);
-            border-color: rgb(125 214 255 / 42%);
-            box-shadow: 0 0 12px rgb(125 214 255 / 28%);
-        }
-    }
-
-    .body {
-        padding: var(--spacing-xl);
-        overflow-y: auto;
-        box-sizing: border-box;
-
-        @media (max-width: 768px) {
-            padding: 1.25rem;
-        }
-    }
-
+/* Body content only — the overlay/dialog/header/close chrome comes from <NeonModal>. */
+.send-pet-body {
     .preview {
         background: rgb(5 13 30 / 78%);
         border: 1px solid var(--neon-border-soft);
@@ -187,30 +90,22 @@
         display: flex;
         gap: 12px;
         justify-content: flex-end;
+        align-items: center;
         padding-top: 8px;
         width: 100%;
         box-sizing: border-box;
     }
 
-    .cancel,
-    .send {
+    /* Secondary / ghost cancel — not a NeonButton tone. */
+    .cancel {
         padding: 0.75rem 2rem;
         border-radius: 2px;
         font-size: 1rem;
         font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s;
         letter-spacing: 0.7px;
         text-transform: uppercase;
-
-        &:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-            transform: none;
-        }
-    }
-
-    .cancel {
+        cursor: pointer;
+        transition: all 0.2s;
         background: rgb(5 13 30 / 92%);
         color: rgb(195 210 255 / 78%);
         border: 1px solid var(--neon-border-soft);
@@ -220,28 +115,10 @@
             border-color: var(--neon-border-strong);
             box-shadow: 0 0 12px rgb(125 214 255 / 22%);
         }
-    }
 
-    .send {
-        background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
-        color: var(--neon-cyan);
-        border: 1px solid rgb(125 214 255 / 50%);
-        box-shadow:
-            inset 0 0 16px rgb(125 214 255 / 18%),
-            0 0 16px rgb(125 214 255 / 24%);
-
-        &:hover:not(:disabled) {
-            transform: translateY(-2px);
-            color: var(--neon-violet);
-            border-color: rgb(181 140 255 / 60%);
-            box-shadow:
-                inset 0 0 22px rgb(181 140 255 / 22%),
-                0 0 28px rgb(181 140 255 / 38%);
-        }
-
-        @media (max-width: 768px) {
-            padding: 0.5rem 1.5rem;
-            font-size: 0.9rem;
+        &:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
         }
     }
 }

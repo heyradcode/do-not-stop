@@ -1,12 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
 import { AuthActionButton } from '@components/common';
-import {
-    getReadyPetsUnified,
-    useFees,
-    useTrainPet,
-    usePetList,
-} from '@shared/core';
+import { getReadyPetsUnified, useFees, useTrainPet, usePetList } from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
@@ -29,7 +24,13 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
         refetch();
     };
 
-    const { mutate, isPending, error: hookError, reset, lifecycle } = useTrainPet({
+    const {
+        mutate,
+        isPending,
+        error: hookError,
+        reset,
+        lifecycle,
+    } = useTrainPet({
         onSuccess: handleTrainComplete,
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
@@ -61,9 +62,7 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
         }
     };
 
-    const buttonLabel = isPending
-        ? 'Training...'
-        : trainCost ? `Train (${trainCost})` : 'Train';
+    const buttonLabel = isPending ? 'Training...' : trainCost ? `Train (${trainCost})` : 'Train';
 
     return (
         <>
@@ -94,7 +93,11 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                 </div>
 
                 <div className="action-controls">
-                    <AuthActionButton onClick={handleTrain} disabled={isPending || !selectedPet}>
+                    <AuthActionButton
+                        tone="emerald"
+                        onClick={handleTrain}
+                        disabled={isPending || !selectedPet}
+                    >
                         {buttonLabel}
                     </AuthActionButton>
                 </div>

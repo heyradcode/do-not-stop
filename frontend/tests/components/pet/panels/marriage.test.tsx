@@ -45,6 +45,13 @@ const marriageInfo = { isMarried: false, hasProposal: false, spouseId: undefined
 let incomingProposals: { proposerPetId: string; proposerPetName: string; proposerOwner: string; targetPetId: string; expiry: number }[] = [];
 
 vi.mock('@shared/core', () => ({
+    formatExpiry: (expirySec: number) => {
+        const diff = expirySec - Math.floor(Date.now() / 1000);
+        if (diff <= 0) return 'Expired';
+        if (diff < 3600) return `${Math.ceil(diff / 60)}m`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}m`;
+        return `${Math.floor(diff / 86400)}d`;
+    },
     useAuth: () => ({ isAuthenticated: true, isSigning: false, isVerifying: false, isNonceLoading: false, signAndLogin: vi.fn() }),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
@@ -53,6 +60,7 @@ vi.mock('@shared/core', () => ({
     useMarriage: () => marriage,
     useMarriageInfo: () => marriageInfo,
     useApiClient: () => ({ defaults: { baseURL: '' }, post: vi.fn() }),
+    useSpousePet: () => ({ name: undefined, level: undefined }),
 }));
 
 import MarriagePanel from '@components/pet/interactions/panels/marriage';

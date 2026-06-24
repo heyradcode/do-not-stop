@@ -27,7 +27,7 @@ describe('mapSolanaPet', () => {
                 readyTime: 1_700_000_000,
             }),
         );
-        expect(pet).toEqual({
+        expect(pet).toMatchObject({
             id: '12',
             chain: 'solana',
             name: 'Luna',
@@ -76,6 +76,38 @@ describe('mapSolanaPet', () => {
         expect(pet.readyAt).toBe(1234);
     });
 
+    it('maps v2 fields: xp, generation, speciesId, breedCount, breedReadyAt, trainReadyAt', () => {
+        const pet = mapSolanaPet(
+            row({
+                xp: 42,
+                generation: 2,
+                speciesId: 5,
+                breedCount: 3,
+                breedReadyTime: 1_700_001_000,
+                trainReadyTime: 1_700_002_000,
+            }),
+        );
+        expect(pet.xp).toBe(42);
+        expect(pet.generation).toBe(2);
+        expect(pet.speciesId).toBe(5);
+        expect(pet.breedCount).toBe(3);
+        expect(pet.breedReadyAt).toBe(1_700_001_000);
+        expect(pet.trainReadyAt).toBe(1_700_002_000);
+    });
+
+    it('omits xp, speciesId, breedReadyAt, trainReadyAt when zero/missing', () => {
+        const pet = mapSolanaPet(row({ xp: 0, speciesId: 0, breedReadyTime: 0, trainReadyTime: 0 }));
+        expect(pet.xp).toBeUndefined();
+        expect(pet.speciesId).toBeUndefined();
+        expect(pet.breedReadyAt).toBeUndefined();
+        expect(pet.trainReadyAt).toBeUndefined();
+    });
+
+    it('maps generation=0 (gen-0 starter)', () => {
+        const pet = mapSolanaPet(row({ generation: 0 }));
+        expect(pet.generation).toBe(0);
+    });
+
     it('defaults missing numeric fields to 0 / 0n', () => {
         const pet = mapSolanaPet(row({}));
         expect(pet.id).toBe('0');
@@ -84,5 +116,14 @@ describe('mapSolanaPet', () => {
         expect(pet.winCount).toBe(0);
         expect(pet.readyAt).toBe(0);
         expect(pet.name).toBe('');
+    });
+
+    it('maps openToChallenges boolean', () => {
+        expect(mapSolanaPet(row({ openToChallenges: true })).openToChallenges).toBe(true);
+        expect(mapSolanaPet(row({ openToChallenges: false })).openToChallenges).toBe(false);
+    });
+
+    it('omits openToChallenges when absent from account', () => {
+        expect(mapSolanaPet(row({})).openToChallenges).toBeUndefined();
     });
 });

@@ -118,5 +118,7 @@ pub enum ErrorCode {
     MintRequestNotFound,
     #[msg("Asset account does not match this pet's Metaplex Core asset")]
     InvalidPetAsset,
+    #[msg("Cannot transfer a married pet; divorce first")]
+    CannotTransferMarriedPet,
 }
 

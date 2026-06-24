@@ -44,7 +44,7 @@ export const useSolanaFees = (enabled: boolean): SolanaFees => {
         enabled: canQuery,
         queryFn: async () => {
             const [pda] = globalStatePda(programId!);
-            return getAccountClient(program!, 'globalState').fetch(pda) as Promise<Record<string, unknown>>;
+            return getAccountClient(program!, 'globalState').fetchNullable(pda) as Promise<Record<string, unknown> | null>;
         },
         staleTime: 60_000,
     });
