@@ -339,8 +339,8 @@
     gap: 2px;
     padding: 8px 6px;
     border-radius: 10px;
-    border: 1px solid rgb(255 207 112 / 32%);
-    background: rgb(10 16 32 / 92%);
+    border: 1px solid rgb(255 207 112 / 18%);
+    background: rgb(10 16 32 / 85%);
 }
 
 .breed-dna__egg-emoji {
@@ -366,12 +366,12 @@
     min-width: 0;
     border-radius: 12px;
     overflow: hidden;
-    border: 1px solid rgb(255 207 112 / 28%);
-    background: linear-gradient(180deg, rgb(10 16 32 / 97%), rgb(6 10 22 / 99%));
+    border: 1px solid rgb(120 150 255 / 12%);
+    background: linear-gradient(180deg, rgb(10 16 32 / 85%), rgb(6 10 22 / 90%));
 }
 
 .breed-parent--b {
-    border-color: rgb(181 140 255 / 28%);
+    border-color: rgb(120 150 255 / 12%);
 }
 
 .breed-parent.is-empty {
@@ -398,13 +398,11 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border-bottom: 1px solid rgb(255 207 112 / 12%);
-    background: radial-gradient(circle at 50% 50%, rgb(255 207 112 / 18%), transparent 65%), #070e1e;
+    background: radial-gradient(circle at 50% 45%, rgb(255 207 112 / 12%), transparent 62%);
 }
 
 .breed-parent--b .breed-parent__visual {
-    border-bottom-color: rgb(181 140 255 / 12%);
-    background: radial-gradient(circle at 50% 50%, rgb(181 140 255 / 18%), transparent 65%), #070e1e;
+    background: radial-gradient(circle at 50% 45%, rgb(181 140 255 / 12%), transparent 62%);
 }
 
 .breed-parent__rarity {
