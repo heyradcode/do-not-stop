@@ -20,7 +20,8 @@ export type InteractionAction =
 export type StandaloneInteractionHeader = {
     Icon: ComponentType<{ size?: number | string }>;
     label: string;
-    sub: string;
+    /** Optional subtitle under the panel title; omit to hide it. */
+    sub?: string;
 };
 
 /** Standalone page titles for `/breed` … `/rename` (dashboard hub uses its own header). */
@@ -28,7 +29,7 @@ export const STANDALONE_INTERACTION_HEADERS: Record<
     InteractionAction,
     StandaloneInteractionHeader
 > = {
-    breed: { Icon: EggIcon, label: 'Breeding Lab', sub: 'Breed two pets to create a new one' },
+    breed: { Icon: EggIcon, label: 'Breeding Lab' },
     battle: { Icon: BattleIcon, label: 'Battle Arena', sub: 'Pick two pets to fight' },
     levelup: { Icon: LevelUpIcon, label: 'Level Up', sub: 'Pay a small fee to level up your pet' },
     train: {

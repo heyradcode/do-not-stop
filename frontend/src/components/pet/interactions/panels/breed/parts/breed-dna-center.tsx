@@ -55,8 +55,8 @@ const estimateOutcome = (petA: Pet, petB: Pet) => {
 const DnaHelix: React.FC<{ animated: boolean }> = ({ animated }) => (
     <svg
         className="breed-dna__helix"
-        width="56"
-        height="126"
+        width="46"
+        height="104"
         viewBox="0 0 80 180"
         aria-hidden
         focusable="false"

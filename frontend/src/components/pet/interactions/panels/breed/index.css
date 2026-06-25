@@ -1,3 +1,13 @@
+/* Breed is a tall panel — drop the redundant inner card so it's shorter: the
+   breed content sits directly in the panel surface (no extra padding/border). */
+.interaction-standalone--breed .interface {
+    margin-top: 0;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+}
+
 .breed-tabs {
     display: flex;
     gap: 4px;
@@ -145,14 +155,14 @@
     grid-template-columns: 1fr auto 1fr;
     align-items: start;
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
 }
 
 /* Parent column = card + Prev/Next cycle row (mock-style selection) */
 .breed-parent-col {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     min-width: 0;
 }
 
@@ -383,7 +393,7 @@
 /* Avatar panel with rarity / level / bred badges */
 .breed-parent__visual {
     position: relative;
-    height: 120px;
+    height: 92px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -449,7 +459,7 @@
 }
 
 .breed-parent__avatar {
-    font-size: 3.25rem;
+    font-size: 2.5rem;
     line-height: 1;
     flex-shrink: 0;
     animation: cp-float 3.5s ease-in-out infinite;
@@ -462,10 +472,10 @@
 }
 
 .breed-parent__body {
-    padding: 12px 14px;
+    padding: 9px 12px 11px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
 }
 
 .breed-parent__name {
@@ -615,8 +625,8 @@
 
 /* ── Offspring trait prediction ─────────────────────────────────────────────── */
 .breed-traits {
-    margin-bottom: 16px;
-    padding: 12px 14px;
+    margin-bottom: 10px;
+    padding: 10px 14px;
     border-radius: 10px;
     border: 1px solid rgb(255 207 112 / 12%);
     background: rgb(4 9 20 / 70%);
