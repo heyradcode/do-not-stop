@@ -217,57 +217,55 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
 
     return (
         <>
-            <div className="interface">
-                {!isStandaloneView && (
-                    <h4>
-                        <Icon as={DnaIcon} tone={Tones.Emerald} />
-                        Breed Pets
-                    </h4>
-                )}
+            {!isStandaloneView && (
+                <h4>
+                    <Icon as={DnaIcon} tone={Tones.Emerald} />
+                    Breed Pets
+                </h4>
+            )}
 
-                <BreedTabBar tab={tab} onChange={setTab} />
+            <BreedTabBar tab={tab} onChange={setTab} />
 
-                {tab === 'own' && (
-                    <OwnPetsTab
-                        petCount={pets.length}
-                        allPets={allPets}
-                        pet1={ownPet1}
-                        pet2={ownPet2}
-                        childName={ownChildName}
-                        onPet1Change={setOwnPet1}
-                        onPet2Change={setOwnPet2}
-                        onChildNameChange={setOwnChildName}
-                        areRelated={areRelated}
-                        showPendingNotices={!breed.isAwaitingFulfillment}
-                        breedAction={breedButton}
-                    />
-                )}
+            {tab === 'own' && (
+                <OwnPetsTab
+                    petCount={pets.length}
+                    allPets={allPets}
+                    pet1={ownPet1}
+                    pet2={ownPet2}
+                    childName={ownChildName}
+                    onPet1Change={setOwnPet1}
+                    onPet2Change={setOwnPet2}
+                    onChildNameChange={setOwnChildName}
+                    areRelated={areRelated}
+                    showPendingNotices={!breed.isAwaitingFulfillment}
+                    breedAction={breedButton}
+                />
+            )}
 
-                {tab === 'spouse' && (
-                    <WithSpouseTab
-                        allPets={allPets}
-                        chain={activeKind}
-                        spousePetId={spousePetId}
-                        onSpousePetChange={setSpousePetId}
-                        childName={spouseChildName}
-                        onChildNameChange={setSpouseChildName}
-                        marriageLoading={marriageInfo.isLoading}
-                        isMarried={marriageInfo.isMarried}
-                        spouseId={spouseId}
-                        studFeeLabel={studFeeLabel}
-                        areRelated={areRelated}
-                        showPendingNotices={!breed.isAwaitingFulfillment}
-                    />
-                )}
+            {tab === 'spouse' && (
+                <WithSpouseTab
+                    allPets={allPets}
+                    chain={activeKind}
+                    spousePetId={spousePetId}
+                    onSpousePetChange={setSpousePetId}
+                    childName={spouseChildName}
+                    onChildNameChange={setSpouseChildName}
+                    marriageLoading={marriageInfo.isLoading}
+                    isMarried={marriageInfo.isMarried}
+                    spouseId={spouseId}
+                    studFeeLabel={studFeeLabel}
+                    areRelated={areRelated}
+                    showPendingNotices={!breed.isAwaitingFulfillment}
+                />
+            )}
 
-                <StudFeeBalance />
+            <StudFeeBalance />
 
-                {/* Own-pets breeding renders the action in the DNA centre (between the
-                    two pets); the spouse tab has no centre preview, so keep it here. */}
-                {tab === 'spouse' && <div className="action-controls">{breedButton}</div>}
+            {/* Own-pets breeding renders the action in the DNA centre (between the
+                two pets); the spouse tab has no centre preview, so keep it here. */}
+            {tab === 'spouse' && <div className="action-controls">{breedButton}</div>}
 
-                {breed.isAwaitingFulfillment && <p className="pending-hint">{AWAITING_HINT}</p>}
-            </div>
+            {breed.isAwaitingFulfillment && <p className="pending-hint">{AWAITING_HINT}</p>}
 
             {success && (
                 <div className="success-message">
