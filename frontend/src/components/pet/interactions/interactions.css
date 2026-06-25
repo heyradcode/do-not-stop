@@ -14,9 +14,20 @@
 
     /* All standalone interaction panels fill the padded content slot (same policy
        as the battle showdown), so every panel shares the uniform slot padding
-       rather than a narrow centered cap. */
+       rather than a narrow centered cap. `max-height: 100%` bounds the panel to
+       the slot so its body scrolls internally instead of the whole panel growing
+       past the header. */
     &.interaction-standalone {
         max-width: 100%;
+        max-height: 100%;
+    }
+
+    /* Tall panels (breed) scroll their body under a fixed title bar. */
+    &.interaction-standalone .panel-body {
+        overflow-x: clip;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--neon-cyan) transparent;
     }
 
     .description {
