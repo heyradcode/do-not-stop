@@ -1,12 +1,11 @@
 {
     "name": "@shared/core",
     "version": "0.0.1",
-    "description": "Shared authentication hooks for frontend and mobile",
+    "description": "Shared cross-chain (EVM + Solana) game-data, auth, and wallet hooks for the frontend and mobile apps. Consumed as raw TypeScript source — no build step.",
     "type": "module",
     "main": "src/index.ts",
     "types": "src/index.ts",
     "scripts": {
-        "build": "echo 'Build scripts can be added here'",
         "lint": "pnpm exec eslint .",
         "lint:fix": "pnpm exec eslint . --fix",
         "test": "vitest run",
