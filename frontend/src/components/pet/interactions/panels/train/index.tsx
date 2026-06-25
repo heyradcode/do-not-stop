@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
-import { AuthActionButton } from '@components/common';
-import { getReadyPetsUnified, useFees, useTrainPet, usePetList } from '@shared/core';
+import NeonButton from '@components/ui/neon-button';
+import { getReadyPetsUnified, useChainCapabilities, useFees, useTrainPet, usePetList } from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
@@ -12,6 +12,7 @@ export type TrainPanelProps = {
 };
 
 const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
+    const { isConnected } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
 
@@ -47,6 +48,10 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
     useTxErrorToast(hookError);
 
     const handleTrain = async () => {
+        if (!isConnected) {
+            notifyError('Please connect your wallet first', undefined, 'train-validation');
+            return;
+        }
         if (!selectedPet) {
             notifyError('Please select a pet to train', undefined, 'train-validation');
             return;
@@ -94,13 +99,13 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                 </div>
 
                 <div className="action-controls">
-                    <AuthActionButton
+                    <NeonButton
                         tone="emerald"
                         onClick={handleTrain}
-                        disabled={isPending || !selectedPet}
+                        disabled={isPending || !selectedPet || !isConnected}
                     >
                         {buttonLabel}
-                    </AuthActionButton>
+                    </NeonButton>
                 </div>
             </div>
 
