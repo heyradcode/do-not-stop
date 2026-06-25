@@ -135,22 +135,24 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
     //      it still calls lifecycle.reset() which is fine (we've already parsed requestId).
     useTxSuccess(createPet.lifecycle, !isEvm ? options?.onSuccess : undefined);
 
-    const reset = useCallback(() => {
+    // Clear this hook's local request/settle bookkeeping. reset() also resets the
+    // adapter lifecycle; mutate() doesn't (it's about to drive a fresh one).
+    const clearLocalState = useCallback(() => {
         setPendingRequestId(null);
         setPreWriteError(null);
         settleSentRef.current = false;
         successFiredRef.current = false;
         settle.reset();
+    }, [settle]);
+
+    const reset = useCallback(() => {
+        clearLocalState();
         createPet.lifecycle.reset();
-    }, [settle, createPet.lifecycle]);
+    }, [clearLocalState, createPet.lifecycle]);
 
     return {
         mutate: async (args) => {
-            setPendingRequestId(null);
-            setPreWriteError(null);
-            settleSentRef.current = false;
-            successFiredRef.current = false;
-            settle.reset();
+            clearLocalState();
             try {
                 await createPet.mutateAsync({ name: args.name });
             } catch (e) {
