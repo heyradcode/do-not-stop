@@ -18,20 +18,16 @@ export type PetShowcaseProps = {
 };
 
 /**
- * Ring-avatar hero shared by the level-up and rename panels: concentric
- * power rings around a floating avatar, tinted by `accent`. Panel-specific
- * details (level transition, live name preview, requirements) are passed as
- * children and rendered beneath the hero.
+ * Avatar hero shared by the level-up and rename panels: a floating avatar
+ * tinted by `accent`. Panel-specific details (level transition, live name
+ * preview, requirements) are passed as children and rendered beneath the hero.
  */
 const PetShowcase: React.FC<PetShowcaseProps> = ({ avatar, accent, children }) => (
     <div
         className="pet-showcase"
         style={{ '--sc-accent': ACCENT_RGB[accent] } as React.CSSProperties}
     >
-        <div className="pet-showcase__rings">
-            <span className="pet-showcase__ring" />
-            <span className="pet-showcase__ring" />
-            <span className="pet-showcase__ring" />
+        <div className="pet-showcase__hero">
             <span className="pet-showcase__avatar">{avatar}</span>
         </div>
         {children}
