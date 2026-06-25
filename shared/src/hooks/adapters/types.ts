@@ -34,7 +34,8 @@ export interface ChainCapabilities {
     /** Minimum pet level before rename is allowed. */
     renameMinLevel: number;
     randomness: {
-        provider: 'chainlink' | 'switchboard';
+        /** null when no chain is active (disconnected). */
+        provider: 'chainlink' | 'switchboard' | null;
         appliesTo: ('battle' | 'breed')[];
     };
     explorerTxUrl(hash: string): string | null;

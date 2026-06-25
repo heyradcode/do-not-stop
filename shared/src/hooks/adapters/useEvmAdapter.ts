@@ -6,6 +6,7 @@ import { useEvmFees } from '../chains/ethereum/useEvmFees';
 import { usePetsConfig } from '../../contexts/PetsConfigContext';
 import { mapEvmPet, type EvmRawPet } from '../../utils/pets/mapEvmPet';
 import { parseContractError } from '../../utils/ethereum';
+import { EVM_GAS_LIMITS } from '../chains/ethereum/gasLimits';
 import type { Pet } from '../../types/pet';
 import type { ChainAdapter, AdapterMutation, TxLifecycle, TxPhase, ChainCapabilities } from './types';
 
@@ -104,7 +105,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
             if (fees.entropyFee == null) throw new Error('Entropy fee not loaded yet');
             await createW.writeContractAsync({
                 address: gameLogic, abi: gameLogicAbi, functionName: 'requestMintStarter',
-                args: [name], value: fees.nextMintFee + fees.entropyFee, gas: 500000n,
+                args: [name], value: fees.nextMintFee + fees.entropyFee, gas: EVM_GAS_LIMITS.requestMintStarter,
                 chainId: evm?.chainId,
             } as unknown as Parameters<typeof createW.writeContractAsync>[0]);
         },
@@ -123,7 +124,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
             const value = (fees.levelUpFee * (100n + diff * diff)) / 100n;
             await levelUpW.writeContractAsync({
                 address: petCore, abi: petCoreAbi, functionName: 'levelUp',
-                args: [BigInt(petId)], value, gas: 200000n,
+                args: [BigInt(petId)], value, gas: EVM_GAS_LIMITS.levelUp,
                 chainId: evm?.chainId,
             } as unknown as Parameters<typeof levelUpW.writeContractAsync>[0]);
         },
@@ -141,7 +142,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
             const value = (fees.trainFee * BigInt(100 + 2 * level)) / 100n;
             await trainW.writeContractAsync({
                 address: gameLogic, abi: gameLogicAbi, functionName: 'train',
-                args: [BigInt(petId)], value, gas: 250000n,
+                args: [BigInt(petId)], value, gas: EVM_GAS_LIMITS.train,
                 chainId: evm?.chainId,
             } as unknown as Parameters<typeof trainW.writeContractAsync>[0]);
         },
@@ -152,7 +153,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
     const renamePet: AdapterMutation<{ petId: string; name: string }> = {
         async mutateAsync({ petId, name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
-            await renameW.writeContractAsync({ address: petCore, abi: petCoreAbi, functionName: 'changeName', args: [BigInt(petId), name], gas: 100000n, chainId: evm?.chainId });
+            await renameW.writeContractAsync({ address: petCore, abi: petCoreAbi, functionName: 'changeName', args: [BigInt(petId), name], gas: EVM_GAS_LIMITS.changeName, chainId: evm?.chainId });
         },
         lifecycle: toLc(renameW, renameR),
         isPending: isInFlight(renameW, renameR),
@@ -163,7 +164,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
             if (!canWrite || !reads.address) throw new Error('EVM contract not configured or wallet not connected');
             await transferW.writeContractAsync({
                 address: petCore, abi: petCoreAbi, functionName: 'transferFrom',
-                args: [reads.address, to as `0x${string}`, BigInt(petId)], gas: 200000n, chainId: evm?.chainId,
+                args: [reads.address, to as `0x${string}`, BigInt(petId)], gas: EVM_GAS_LIMITS.transferFrom, chainId: evm?.chainId,
             });
         },
         lifecycle: toLc(transferW, transferR),
@@ -178,7 +179,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
         async mutateAsync({ petId1, petId2 }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             if (fees.entropyFee == null) throw new Error('Entropy fee not loaded yet');
-            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], value: fees.entropyFee, gas: 800000n, chainId: evm?.chainId } as unknown as Parameters<typeof battleW.writeContractAsync>[0]);
+            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], value: fees.entropyFee, gas: EVM_GAS_LIMITS.requestBattle, chainId: evm?.chainId } as unknown as Parameters<typeof battleW.writeContractAsync>[0]);
             return null;
         },
         lifecycle: toLc(battleW, battleR),
@@ -197,7 +198,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
             const value = fees.breedFee + fees.entropyFee + (crossOwner ? (fees.studFee ?? 0n) : 0n);
             await breedW.writeContractAsync({
                 address: gameLogic, abi: gameLogicAbi, functionName: 'requestCreateFromDNA',
-                args: [BigInt(parentId1), BigInt(parentId2), name], value, gas: 800000n,
+                args: [BigInt(parentId1), BigInt(parentId2), name], value, gas: EVM_GAS_LIMITS.requestBreed,
                 chainId: evm?.chainId,
             } as unknown as Parameters<typeof breedW.writeContractAsync>[0]);
         },

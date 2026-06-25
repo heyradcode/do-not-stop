@@ -3,6 +3,7 @@ import { useAccount, useReadContract, useWatchContractEvent, useWaitForTransacti
 import { parseEventLogs } from 'viem';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
 import { useWatchEntropyFulfillment } from './useWatchEntropyFulfillment';
+import { EVM_GAS_LIMITS } from './gasLimits';
 import type { BattleResolvedResult, EvmBattlePhase } from '../../../types/battle';
 
 type UseEvmBattleFlowParams = {
@@ -76,7 +77,7 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         settle.writeContract(
             // settle runs the full combat sim + auto-leveling + writes; give it a
             // generous explicit limit (consistent with the request/breed paths).
-            { address: gameLogic, abi: gameLogicAbi, functionName: 'settleBattle', args: [id], gas: 800000n, chainId },
+            { address: gameLogic, abi: gameLogicAbi, functionName: 'settleBattle', args: [id], gas: EVM_GAS_LIMITS.settleBattle, chainId },
             {
                 onSuccess: () => setPhase('resolving'),
                 onError: (e) => { setError(e as Error); setPhase('error'); },

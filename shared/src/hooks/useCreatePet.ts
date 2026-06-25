@@ -5,6 +5,7 @@ import { useChainAdapter } from './adapters/useChainAdapter';
 import { useTxSuccess } from './useTxSuccess';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useWatchEntropyFulfillment } from './chains/ethereum/useWatchEntropyFulfillment';
+import { EVM_GAS_LIMITS } from './chains/ethereum/gasLimits';
 import type { TxLifecycle } from './adapters/types';
 
 export interface CreatePetArgs {
@@ -87,7 +88,7 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
         if (settleSentRef.current || !evm?.gameLogic.address) return;
         settleSentRef.current = true;
         settle.writeContract(
-            { address: evm.gameLogic.address, abi: evm.gameLogic.abi, functionName: 'settleMint', args: [id], gas: 500000n, chainId: evm.chainId },
+            { address: evm.gameLogic.address, abi: evm.gameLogic.abi, functionName: 'settleMint', args: [id], gas: EVM_GAS_LIMITS.settleMint, chainId: evm.chainId },
             { onError: (e) => console.error('[settleMint]', e) },
         );
     }, [evm?.gameLogic.address, evm?.gameLogic.abi, evm?.chainId, settle]);
