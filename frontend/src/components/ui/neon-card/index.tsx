@@ -1,7 +1,7 @@
 import React from 'react';
 import clsx from 'clsx';
 
-import './index.css';
+import s from './index.module.css';
 
 type NeonCardProps = React.HTMLAttributes<HTMLElement> & {
     as?: 'article' | 'div' | 'section';
@@ -9,7 +9,7 @@ type NeonCardProps = React.HTMLAttributes<HTMLElement> & {
 
 const NeonCard = ({ as = 'article', className, children, ...props }: NeonCardProps) => {
     const Tag = as;
-    const classes = clsx('neon-card', className);
+    const classes = clsx(s.card, className);
 
     return (
         <Tag className={classes} {...props}>
