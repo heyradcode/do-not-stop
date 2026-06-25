@@ -76,8 +76,9 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
 
                 <div className="picker">
                     <div className="field">
-                        <label>Select Pet</label>
+                        <label htmlFor="train-pet">Select Pet</label>
                         <select
+                            id="train-pet"
                             value={selectedPet}
                             onChange={(e) => setSelectedPet(e.target.value)}
                         >

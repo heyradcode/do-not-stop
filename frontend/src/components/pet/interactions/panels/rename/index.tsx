@@ -84,8 +84,9 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
 
                 <div className="picker">
                     <div className="field">
-                        <label>Select Pet</label>
+                        <label htmlFor="rename-pet">Select Pet</label>
                         <select
+                            id="rename-pet"
                             value={selectedPet}
                             onChange={(e) => setSelectedPet(e.target.value)}
                         >
@@ -99,8 +100,9 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                     </div>
 
                     <div className="field">
-                        <label>New Name</label>
+                        <label htmlFor="rename-new-name">New Name</label>
                         <input
+                            id="rename-new-name"
                             type="text"
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}

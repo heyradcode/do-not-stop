@@ -34,7 +34,15 @@ interface CopyableAddressProps {
 const CopyableAddress: React.FC<CopyableAddressProps> = ({ address, isCopied, onCopy }) => (
     <div
         className={`address ${isCopied ? 'copied' : ''}`}
+        role="button"
+        tabIndex={0}
         onClick={onCopy}
+        onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onCopy();
+            }
+        }}
         title={isCopied ? 'Address copied!' : 'Click to copy address'}
     >
         <span className="address-text">{address}</span>

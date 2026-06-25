@@ -98,8 +98,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
                 <div className="picker">
                     <div className="field">
-                        <label>Select Pet</label>
+                        <label htmlFor="levelup-pet">Select Pet</label>
                         <select
+                            id="levelup-pet"
                             value={selectedPet}
                             onChange={(e) => setSelectedPet(e.target.value)}
                         >

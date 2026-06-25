@@ -44,8 +44,8 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
             </p>
             <div className="picker">
                 <div className="field">
-                    <label>Your pet</label>
-                    <select value={myPet} onChange={(e) => setMyPet(e.target.value)}>
+                    <label htmlFor="propose-my-pet">Your pet</label>
+                    <select id="propose-my-pet" value={myPet} onChange={(e) => setMyPet(e.target.value)}>
                         <option value="">Select your pet...</option>
                         {chainPets.map((p) => (
                             <option key={p.id} value={p.id}>
@@ -55,8 +55,9 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
                     </select>
                 </div>
                 <div className="field">
-                    <label>Partner&apos;s pet</label>
+                    <label htmlFor="propose-partner-pet">Partner&apos;s pet</label>
                     <PetSearchDropdown
+                        id="propose-partner-pet"
                         chain={chain}
                         value={partnerId}
                         onChange={setPartnerId}
