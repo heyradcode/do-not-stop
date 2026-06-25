@@ -12,15 +12,10 @@
     --zi-glow-soft: 0 0 0 1px rgb(125 214 255 / 14%), inset 0 0 18px rgb(125 214 255 / 6%);
     --zi-focus: 0 0 0 2px var(--neon-cyan), 0 0 12px rgb(125 214 255 / 32%);
 
+    /* All standalone interaction panels fill the padded content slot (same policy
+       as the battle showdown), so every panel shares the uniform slot padding
+       rather than a narrow centered cap. */
     &.interaction-standalone {
-        max-width: 640px;
-        margin-inline: auto;
-    }
-
-    /* The battle setup is a full-width showdown (fighter · VS · rival); let it fill
-       the padded content slot instead of the narrow single-panel cap, so the two
-       combatant cards spread to the edges like the design. */
-    &.interaction-standalone:has(.battle-setup) {
         max-width: 100%;
     }
 
