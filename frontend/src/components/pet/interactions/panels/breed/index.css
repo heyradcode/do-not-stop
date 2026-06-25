@@ -1,5 +1,14 @@
-/* Breed is a tall panel — drop the redundant inner card so it's shorter: the
-   breed content sits directly in the panel surface (no extra padding/border). */
+/* Breed content is already card-based (parent cards, egg, etc.), so drop the
+   redundant panel-card frame: the surface keeps its background wash but loses
+   the border / rounding / shadow / padding, and the inner .interface card is
+   flattened too. Content sits directly on the page background under the header. */
+.interaction-standalone--breed .surface {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+}
+
 .interaction-standalone--breed .interface {
     margin-top: 0;
     padding: 0;
