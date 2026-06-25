@@ -22,7 +22,7 @@ const auth = {
 
 vi.mock('wagmi', () => ({
     useAccount: () => account,
-    usePublicClient: () => null,
+    useReadContracts: () => ({ data: undefined, isLoading: false }),
 }));
 vi.mock('@solana/wallet-adapter-react', () => ({ useWallet: () => solana }));
 vi.mock('@dynamic-labs/sdk-react-core', () => ({ useDynamicContext: () => dynamic }));
