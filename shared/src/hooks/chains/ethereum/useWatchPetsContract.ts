@@ -27,7 +27,7 @@ export const useWatchPetsContract = ({
     address,
     pendingRequestId,
     onBreedSuccess,
-}: UseWatchPetsContractParams): void  => {
+}: UseWatchPetsContractParams): void => {
     const pendingRef = useRef(pendingRequestId);
     const handleSuccessRef = useRef(onBreedSuccess);
 
@@ -76,4 +76,4 @@ export const useWatchPetsContract = ({
             }
         },
     });
-}
+};

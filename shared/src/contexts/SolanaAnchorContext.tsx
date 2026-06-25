@@ -18,13 +18,13 @@ export type SolanaAnchorContextValue = {
 
 const SolanaAnchorContext = createContext<SolanaAnchorContextValue | null>(null);
 
-export const useSolanaAnchor = (): SolanaAnchorContextValue  => {
+export const useSolanaAnchor = (): SolanaAnchorContextValue => {
     const ctx = useContext(SolanaAnchorContext);
     if (!ctx) {
         throw new Error('useSolanaAnchor must be used within SolanaAnchorProvider');
     }
     return ctx;
-}
+};
 
 export type SolanaAnchorProviderProps = {
     children: ReactNode;
@@ -52,4 +52,4 @@ export const SolanaAnchorProvider = ({
     );
 
     return <SolanaAnchorContext.Provider value={value}>{children}</SolanaAnchorContext.Provider>;
-}
+};

@@ -34,23 +34,23 @@ const parseFirstWins = async (
         // Non-fatal — caller gets null and UI falls back to stat-diff.
     }
     return null;
-}
+};
 
 export type BattleVrfResult = { sig: string; firstWins: boolean | null };
 
-const toPublicKey = (value: unknown): PublicKey  => {
+const toPublicKey = (value: unknown): PublicKey => {
     if (value instanceof PublicKey) return value;
     if (value && typeof value === 'object' && 'toBase58' in value) {
         return new PublicKey((value as { toBase58: () => string }).toBase58());
     }
     return new PublicKey(String(value));
-}
+};
 
-const requireAsset = async (program: Program<Idl>, petId: number): Promise<PublicKey>  => {
+const requireAsset = async (program: Program<Idl>, petId: number): Promise<PublicKey> => {
     const asset = await fetchAssetByPetId(program, petId);
     if (!asset) throw new Error(`Pet ${petId} not found on-chain`);
     return asset;
-}
+};
 
 export type BattleWithVrfArgs = {
     program: Program<Idl>;
@@ -122,7 +122,7 @@ const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<BattleVr
     const sig = await sendSignedTx(provider, settleTx);
     const firstWins = await parseFirstWins(program, connection, sig);
     return { sig, firstWins };
-}
+};
 
 /**
  * Two-phase battle using Switchboard On-Demand VRF (commit → reveal).
@@ -221,4 +221,4 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
     const sig = await sendSignedTx(provider, settleTx);
     const firstWins = await parseFirstWins(program, connection, sig);
     return { sig, firstWins };
-}
+};

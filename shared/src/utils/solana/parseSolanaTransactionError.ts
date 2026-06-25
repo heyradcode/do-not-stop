@@ -1,14 +1,14 @@
-const readErrorMessage = (error: unknown): string  => {
+const readErrorMessage = (error: unknown): string => {
     if (error instanceof Error) return error.message;
     if (typeof error === 'string') return error;
     if (error && typeof error === 'object' && 'message' in error) {
         return String((error as { message: unknown }).message);
     }
     return String(error);
-}
+};
 
 /** Maps Solana / Anchor / wallet errors to user-facing breed/action messages. */
-export const formatSolanaActionError = (error: unknown, fallback = 'Transaction failed. Please try again.'): string  => {
+export const formatSolanaActionError = (error: unknown, fallback = 'Transaction failed. Please try again.'): string => {
     const message = readErrorMessage(error);
     const lower = message.toLowerCase();
 
@@ -62,4 +62,4 @@ export const formatSolanaActionError = (error: unknown, fallback = 'Transaction 
     }
 
     return fallback;
-}
+};

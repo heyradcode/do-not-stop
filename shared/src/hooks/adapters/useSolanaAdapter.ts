@@ -43,7 +43,7 @@ const resolveHash = (data: unknown): string | undefined => {
         return (data as { sig: string }).sig;
     }
     return undefined;
-}
+};
 
 const toLc = <TData = string,>(m: SolanaMutation<TData>): TxLifecycle => {
     let phase: TxPhase = 'idle';
@@ -56,7 +56,7 @@ const toLc = <TData = string,>(m: SolanaMutation<TData>): TxLifecycle => {
         error: m.error,
         reset: m.reset,
     };
-}
+};
 
 // toLc for the two-phase VRF flows (battle/breed): once the commit tx lands and
 // we're waiting on randomness, promote 'awaiting-wallet' to 'awaiting-vrf'.
@@ -69,7 +69,7 @@ const toVrfLc = <TData = string,>(
         return { ...lc, phase: 'awaiting-vrf' as TxPhase };
     }
     return lc;
-}
+};
 
 /** Infer Solana Explorer cluster param from an RPC endpoint URL. */
 const clusterParam = (rpcEndpoint: string): string => {
@@ -79,7 +79,7 @@ const clusterParam = (rpcEndpoint: string): string => {
     return `custom&customUrl=${encodeURIComponent(rpcEndpoint)}`;
 };
 
-export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  => {
+export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter => {
     const { signingWallet, connection } = useSolanaAnchor();
     const owner = enabled && signingWallet?.publicKey ? signingWallet.publicKey : null;
 
@@ -226,4 +226,4 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         battlePets,
         breedPets,
     };
-}
+};

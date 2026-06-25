@@ -6,7 +6,7 @@ export interface LevelUpPetArgs {
     petId: string;
 }
 
-export const useLevelUpPet = (options?: PetMutationOptions): PetMutationResult<LevelUpPetArgs>  => {
+export const useLevelUpPet = (options?: PetMutationOptions): PetMutationResult<LevelUpPetArgs> => {
     const { levelUpPet } = useChainAdapter();
     useTxSuccess(levelUpPet.lifecycle, options?.onSuccess);
     return {
@@ -17,4 +17,4 @@ export const useLevelUpPet = (options?: PetMutationOptions): PetMutationResult<L
         reset: levelUpPet.lifecycle.reset,
         lifecycle: levelUpPet.lifecycle,
     };
-}
+};

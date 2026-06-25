@@ -7,7 +7,7 @@ export interface TrainPetArgs {
 }
 
 /** v2 train: pay a level-scaled fee for a flat XP grant. Settlement is lifecycle-driven. */
-export const useTrainPet = (options?: PetMutationOptions): PetMutationResult<TrainPetArgs>  => {
+export const useTrainPet = (options?: PetMutationOptions): PetMutationResult<TrainPetArgs> => {
     const { trainPet } = useChainAdapter();
     useTxSuccess(trainPet.lifecycle, options?.onSuccess);
     return {
@@ -18,4 +18,4 @@ export const useTrainPet = (options?: PetMutationOptions): PetMutationResult<Tra
         reset: trainPet.lifecycle.reset,
         lifecycle: trainPet.lifecycle,
     };
-}
+};

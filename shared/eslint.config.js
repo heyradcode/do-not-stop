@@ -36,6 +36,11 @@ export default tseslint.config(
             '@typescript-eslint/no-explicit-any': 'off',
             '@typescript-eslint/no-empty-object-type': 'off',
             'prefer-const': 'error',
+            // Trailing semicolons on statements (incl. arrow-const declarations),
+            // and exactly one space around => (catches the `): T  =>` double-space).
+            // Both auto-fixable; neither touches intentional colon alignment.
+            'semi': ['error', 'always'],
+            'arrow-spacing': ['error', { before: true, after: true }],
         },
         settings: {
             react: { version: 'detect' },

@@ -117,4 +117,4 @@ export const useBattleTaunts = () => {
     const generate = useCallback((vars: GenerateTauntsVars) => void run(vars), [run]);
 
     return { generate, reset, turns, isLoading };
-}
+};

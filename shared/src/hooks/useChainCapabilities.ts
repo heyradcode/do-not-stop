@@ -46,4 +46,4 @@ export const useChainCapabilities = (): ChainContext => {
         isConnected: chain.kind !== 'none',
         walletAddress: chain.kind !== 'none' ? chain.address : null,
     };
-}
+};

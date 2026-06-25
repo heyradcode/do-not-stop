@@ -78,4 +78,4 @@ export const useBattleDialogue = (options: UseBattleDialogueOptions) => {
         ...query,
         turns: query.data ?? [],
     };
-}
+};

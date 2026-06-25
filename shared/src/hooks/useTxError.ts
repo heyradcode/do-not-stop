@@ -9,7 +9,7 @@ export type TxError = {
 export const useTxError = (
     writeError: unknown,
     fallback = 'Transaction failed. Please try again.',
-): TxError | null  => {
+): TxError | null => {
     const { parseError } = useChainCapabilities();
 
     return useMemo(() => {
@@ -17,4 +17,4 @@ export const useTxError = (
         const { message, isUserRejection } = parseError(writeError, fallback);
         return { message, isUserRejection };
     }, [writeError, parseError, fallback]);
-}
+};

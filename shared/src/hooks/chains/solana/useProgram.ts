@@ -70,4 +70,4 @@ export const useProgram = () => {
         refetch: idlQuery.refetch,
         isReady: Boolean(programId && program),
     };
-}
+};

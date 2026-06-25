@@ -39,7 +39,7 @@ export interface PetMutationResult<TArgs> {
  * Pyth Entropy reveals. onSuccess fires after MintSettled.
  * Solana: single-tx, success is lifecycle-driven.
  */
-export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<CreatePetArgs>  => {
+export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<CreatePetArgs> => {
     const adapter = useChainAdapter();
     const { createPet } = adapter;
     const isEvm = adapter.kind === 'evm';
@@ -169,4 +169,4 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
         isAwaitingFulfillment: isEvm && pendingRequestId != null,
         isSettling: isEvm && settle.isPending,
     };
-}
+};

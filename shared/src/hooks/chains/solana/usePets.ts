@@ -27,4 +27,4 @@ export const usePets = (owner: PublicKey | null) => {
             return rows as PetRow[];
         },
     });
-}
+};

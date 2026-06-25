@@ -20,7 +20,7 @@ export interface EvmRawPet {
 const num = (v: number | bigint | undefined): number | undefined =>
     v != null ? Number(v) : undefined;
 
-export const mapEvmPet = (raw: EvmRawPet, tokenId: bigint): Pet  => {
+export const mapEvmPet = (raw: EvmRawPet, tokenId: bigint): Pet => {
     return {
         id: tokenId.toString(),
         chain: 'evm',
@@ -38,4 +38,4 @@ export const mapEvmPet = (raw: EvmRawPet, tokenId: bigint): Pet  => {
         breedReadyAt: num(raw.breedReadyAt),
         trainReadyAt: num(raw.trainReadyAt),
     };
-}
+};

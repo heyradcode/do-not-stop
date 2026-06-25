@@ -86,4 +86,4 @@ export const useBattlePets = (options?: UseBattlePetsOptions) => {
         error: battlePets.lifecycle.error ?? battleFlow.error,
         lifecycle: battlePets.lifecycle,
     };
-}
+};

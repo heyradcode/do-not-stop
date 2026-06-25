@@ -102,4 +102,4 @@ export const useOpponents = ({ chain, minLevel, page = 0, enabled = true }: UseO
         opponents,
         total: query.data?.total ?? 0,
     };
-}
+};

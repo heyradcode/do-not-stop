@@ -15,7 +15,7 @@ export type AnchorAccountClient = {
  * Resolve an Anchor account-namespace client by IDL account name. Anchor 0.31+ exposes
  * camelCase keys (`globalState`); older IDLs used PascalCase (`GlobalState`) — we try both.
  */
-export const getAccountClient = (program: Program<Idl>, name: string): AnchorAccountClient  => {
+export const getAccountClient = (program: Program<Idl>, name: string): AnchorAccountClient => {
     const acc = program.account as Record<string, Partial<AnchorAccountClient> | undefined>;
     const pascal = name.charAt(0).toUpperCase() + name.slice(1);
     const client = acc[name] ?? acc[pascal];
@@ -23,7 +23,7 @@ export const getAccountClient = (program: Program<Idl>, name: string): AnchorAcc
         throw new Error(`IDL has no account client for "${name}"`);
     }
     return client as AnchorAccountClient;
-}
+};
 
 /**
  * Fetch the `marriage_owner_snapshot` field from a `PetAccount` keyed by its Core asset
@@ -43,7 +43,7 @@ export const fetchMarriageOwnerSnapshot = async (
     if (!snap || typeof snap !== 'object') return null;
     const pk = snap as PublicKey;
     return pk.equals(PublicKey.default) ? null : pk;
-}
+};
 
 /**
  * Look up any `PetAccount` by its numeric ID using a memcmp filter on the `id` field
@@ -52,7 +52,7 @@ export const fetchMarriageOwnerSnapshot = async (
 export const fetchAssetByPetId = async (
     program: Program<Idl>,
     petId: number,
-): Promise<PublicKey | null>  => {
+): Promise<PublicKey | null> => {
     const idBuf = Buffer.alloc(4);
     idBuf.writeUInt32LE(petId >>> 0, 0);
     const rows = await getAccountClient(program, 'petAccount').all([{
@@ -62,4 +62,4 @@ export const fetchAssetByPetId = async (
     const asset = (rows[0].account as { asset?: unknown }).asset;
     if (!asset || typeof asset !== 'object') return null;
     return asset as PublicKey;
-}
+};

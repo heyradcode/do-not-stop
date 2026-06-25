@@ -31,7 +31,7 @@ type WriteState = {
 };
 type ReceiptState = { isSuccess: boolean; isError: boolean; error: unknown };
 
-const toLc = (w: WriteState, r: ReceiptState): TxLifecycle  => {
+const toLc = (w: WriteState, r: ReceiptState): TxLifecycle => {
     const writeError = w.error as Error | null;
     const receiptError = r.isError ? (r.error as Error | null) : null;
     const error = writeError ?? receiptError;
@@ -41,15 +41,15 @@ const toLc = (w: WriteState, r: ReceiptState): TxLifecycle  => {
     else if (w.data) phase = 'confirming';
     else if (w.isPending) phase = 'awaiting-wallet';
     return { phase, hash: w.data, error, reset: w.reset };
-}
+};
 
-const isInFlight = (w: WriteState, r: ReceiptState): boolean  => {
+const isInFlight = (w: WriteState, r: ReceiptState): boolean => {
     return w.isPending || (!!w.data && !r.isSuccess && !r.isError);
-}
+};
 
 const ZERO = '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
-export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  => {
+export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter => {
     const { evm } = usePetsConfig();
 
     // v2 splits writes across two proxies: PetCore (ERC-721 storage, mint,
@@ -224,4 +224,4 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
         battlePets,
         breedPets,
     };
-}
+};

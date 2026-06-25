@@ -175,4 +175,4 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         error: breedPets.lifecycle.error ?? (settle.error as Error | null),
         lifecycle: breedPets.lifecycle,
     };
-}
+};

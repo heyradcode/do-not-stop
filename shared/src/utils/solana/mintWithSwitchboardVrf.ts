@@ -17,13 +17,13 @@ import {
 import { MPL_CORE_PROGRAM_ID } from './constants';
 import { sleep } from '../common';
 
-const toPublicKey = (value: unknown): PublicKey  => {
+const toPublicKey = (value: unknown): PublicKey => {
     if (value instanceof PublicKey) return value;
     if (value && typeof value === 'object' && 'toBase58' in value) {
         return new PublicKey((value as { toBase58: () => string }).toBase58());
     }
     return new PublicKey(String(value));
-}
+};
 
 export type MintWithVrfArgs = {
     program: Program<Idl>;
@@ -85,7 +85,7 @@ const trySettlePendingMint = async (args: MintWithVrfArgs): Promise<string | nul
         computeUnitLimitMultiple: 1.3,
     });
     return sendSignedTx(provider, settleTx, [assetKp]);
-}
+};
 
 /**
  * Two-phase gacha mint using Switchboard On-Demand VRF (commit → reveal).
@@ -175,4 +175,4 @@ export const mintWithSwitchboardVrf = async (args: MintWithVrfArgs): Promise<str
     });
     // Reveal + settle after oracle fulfills randomness (wallet prompt 2 of 2).
     return sendSignedTx(provider, settleTx, [assetKp]);
-}
+};

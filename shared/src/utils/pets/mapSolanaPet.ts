@@ -2,7 +2,7 @@ import type { Pet } from '../../types/pet';
 
 type BNLike = { toString(): string };
 
-const toBigInt = (value: unknown): bigint  => {
+const toBigInt = (value: unknown): bigint => {
     if (typeof value === 'bigint') return value;
     if (typeof value === 'number') return BigInt(value);
     if (typeof value === 'string') return BigInt(value);
@@ -10,9 +10,9 @@ const toBigInt = (value: unknown): bigint  => {
         return BigInt((value as BNLike).toString());
     }
     return 0n;
-}
+};
 
-const toNumber = (value: unknown): number  => {
+const toNumber = (value: unknown): number => {
     if (typeof value === 'number') return value;
     if (typeof value === 'bigint') return Number(value);
     if (typeof value === 'string') return Number(value);
@@ -20,9 +20,9 @@ const toNumber = (value: unknown): number  => {
         return Number((value as BNLike).toString());
     }
     return 0;
-}
+};
 
-const decodePetName = (nameField: unknown, nameLen: unknown): string  => {
+const decodePetName = (nameField: unknown, nameLen: unknown): string => {
     const len = toNumber(nameLen);
     if (!len || len <= 0) return '';
 
@@ -38,7 +38,7 @@ const decodePetName = (nameField: unknown, nameLen: unknown): string  => {
 
     const slice = bytes.subarray(0, Math.min(len, bytes.length));
     return new TextDecoder().decode(slice);
-}
+};
 
 export interface SolanaPetAccountRow {
     publicKey: { toBase58: () => string } | unknown;
@@ -50,9 +50,9 @@ const toBase58Key = (value: unknown): string | undefined => {
     const obj = value as Record<string, unknown>;
     if (typeof obj['toBase58'] === 'function') return (obj as { toBase58(): string }).toBase58();
     return undefined;
-}
+};
 
-export const mapSolanaPet = (row: SolanaPetAccountRow): Pet  => {
+export const mapSolanaPet = (row: SolanaPetAccountRow): Pet => {
     const a = row.account;
     const spouseId = toNumber(a.spouseId);
     return {
@@ -76,4 +76,4 @@ export const mapSolanaPet = (row: SolanaPetAccountRow): Pet  => {
         marriageCooldownUntil: toNumber(a.marriageCooldownUntil) || undefined,
         openToChallenges: typeof a.openToChallenges === 'boolean' ? a.openToChallenges : undefined,
     };
-}
+};
