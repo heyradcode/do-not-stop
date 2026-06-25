@@ -97,7 +97,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  
     // so rarity can't be ground out by retrying. Fee = mintFee + entropyFee.
     // The pet is minted by settleMint (frontend-driven, via useCreatePet) once
     // entropy reveals randomness.
-    const createPet: AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }> = {
+    const createPet: AdapterMutation<{ name: string }> = {
         async mutateAsync({ name }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             if (fees.nextMintFee == null) throw new Error('Mint fee not loaded yet');

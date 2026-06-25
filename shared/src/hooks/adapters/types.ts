@@ -55,8 +55,9 @@ export interface ChainAdapter {
     };
 
     // petId is always string; adapters convert to bigint/number internally.
-    // dna/rarity are Solana-only; EVM adapters ignore them.
-    createPet:   AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }>;
+    // DNA/rarity are derived from VRF randomness at settle time on both chains,
+    // so mint takes only a name.
+    createPet:   AdapterMutation<{ name: string }>;
     levelUpPet:  AdapterMutation<{ petId: string }>;
     /** v2 train: pay a level-scaled fee for flat XP. */
     trainPet:    AdapterMutation<{ petId: string }>;

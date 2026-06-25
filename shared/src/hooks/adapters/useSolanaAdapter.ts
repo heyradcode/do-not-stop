@@ -85,7 +85,7 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         return pet.assetKey;
     };
 
-    const createPet: AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }> = {
+    const createPet: AdapterMutation<{ name: string }> = {
         async mutateAsync({ name }) {
             await actions.mintPet.mutateAsync({ name });
         },
