@@ -626,89 +626,6 @@
     color: rgb(181 140 255 / 70%);
 }
 
-/* ── Offspring trait prediction ─────────────────────────────────────────────── */
-.breed-traits {
-    margin-bottom: 10px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    border: 1px solid rgb(255 207 112 / 12%);
-    background: rgb(4 9 20 / 70%);
-}
-
-.breed-traits__title {
-    font-family: var(--title-font);
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: rgb(195 210 255 / 35%);
-    margin-bottom: 10px;
-}
-
-.breed-traits__grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-}
-
-.breed-trait {
-    min-width: 0;
-    background: rgb(10 16 32 / 90%);
-    border: 1px solid rgb(101 131 255 / 18%);
-    border-radius: 8px;
-    padding: 10px 12px;
-}
-
-.breed-trait__label {
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 6px;
-}
-
-.breed-trait__vs {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    margin-bottom: 6px;
-}
-
-.breed-trait__val {
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 11px;
-    font-weight: 700;
-}
-
-.breed-trait__val--a {
-    background: rgb(125 214 255 / 10%);
-    border: 1px solid rgb(125 214 255 / 25%);
-    color: var(--neon-cyan);
-}
-
-.breed-trait__val--b {
-    background: rgb(255 123 203 / 10%);
-    border: 1px solid rgb(255 123 203 / 25%);
-    color: var(--neon-magenta);
-}
-
-.breed-trait__sep {
-    font-size: 9px;
-    color: rgb(195 210 255 / 30%);
-}
-
-.breed-trait__range {
-    font-size: 10px;
-    font-weight: 700;
-    margin-bottom: 2px;
-}
-
-.breed-trait__dom {
-    font-size: 9px;
-    color: rgb(195 210 255 / 35%);
-}
-
 @media (max-width: 560px) {
     .breed-parents {
         grid-template-columns: 1fr;
@@ -717,9 +634,6 @@
         justify-self: center;
         width: 100%;
         max-width: 200px;
-    }
-    .breed-traits__grid {
-        grid-template-columns: repeat(2, 1fr);
     }
 }
 
