@@ -8,7 +8,7 @@
     flex-direction: column;
     background: var(--cp-base-bg);
     color: var(--cp-text-body-dark);
-    font-family: var(--content-font);
+    font-family: var(--cp-content-font);
 }
 
 /* Frame sits above the ambient background layer. */
@@ -37,13 +37,13 @@
     overflow: auto;
     position: relative;
     box-sizing: border-box;
-    padding: var(--spacing-md) var(--spacing-lg);
+    padding: var(--cp-spacing-md) var(--cp-spacing-lg);
     scrollbar-width: thin;
     scrollbar-color: rgb(125 214 255 / 35%) transparent;
 }
 
 @media (max-width: 640px) {
     .cp-shell__content {
-        padding: var(--spacing-sm) var(--spacing-md);
+        padding: var(--cp-spacing-sm) var(--cp-spacing-md);
     }
 }

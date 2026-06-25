@@ -1,6 +1,6 @@
 /* Level-up details below the shared ring-avatar hero (level transition + XP). */
 .lvl-name {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 20px;
     font-weight: 800;
     color: #f4f2ff;
@@ -20,7 +20,7 @@
 }
 
 .lvl-badge {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 12px;
     font-weight: 700;
     border-radius: 999px;

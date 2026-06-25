@@ -1,6 +1,6 @@
 .neon-card {
     position: relative;
-    border-radius: var(--border-radius, 12px);
+    border-radius: var(--cp-border-radius, 12px);
     overflow: hidden;
     transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease,
         filter 180ms ease;

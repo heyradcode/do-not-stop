@@ -54,7 +54,7 @@
 }
 
 .train-status__name {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 15px;
     font-weight: 700;
     color: #f4f2ff;

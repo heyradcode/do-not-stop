@@ -23,8 +23,8 @@
 
     & h2 {
         margin: 0;
-        font-family: var(--title-font);
-        font-size: var(--font-size-lg);
+        font-family: var(--cp-title-font);
+        font-size: var(--cp-font-size-lg);
         letter-spacing: 0.6px;
         color: #f6f3ff;
         text-shadow: 0 0 12px var(--cp-text-glow);
@@ -32,7 +32,7 @@
 
     & p {
         margin: 0;
-        font-size: var(--font-size-sm);
+        font-size: var(--cp-font-size-sm);
         color: rgb(195 210 255 / 60%);
     }
 }
@@ -68,7 +68,7 @@
 }
 
 .cp-stat__value {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 22px;
     font-weight: 800;
     line-height: 1;
@@ -116,7 +116,7 @@
 }
 
 .cp-leaderboard__title {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 8px;
     font-weight: 700;
     letter-spacing: 1.8px;
@@ -312,7 +312,7 @@
 }
 
 .cp-pet-card__name {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.4px;
@@ -559,8 +559,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--spacing-2xl);
-    color: var(--color-text-muted);
+    padding: var(--cp-spacing-2xl);
+    color: var(--cp-color-text-muted);
 }
 
 .loading-spinner {
@@ -570,13 +570,13 @@
     border-block-start: 3px solid var(--cp-cyan);
     border-radius: 50%;
     animation: cp-spin-slow 1s linear infinite;
-    margin-block-end: var(--spacing-sm);
+    margin-block-end: var(--cp-spacing-sm);
     box-shadow: 0 0 16px rgb(125 214 255 / 30%);
 }
 
 .error-container {
     text-align: center;
-    padding: var(--spacing-2xl);
+    padding: var(--cp-spacing-2xl);
     color: #ff9aa9;
 }
 

@@ -320,7 +320,7 @@
 
 .breed-dna__compat-pct {
     display: block;
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 14px;
     font-weight: 900;
     color: var(--cp-cyan);
@@ -356,7 +356,7 @@
 }
 
 .breed-dna__egg-rarity {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.3px;
@@ -482,7 +482,7 @@
 }
 
 .breed-parent__name {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 13px;
     font-weight: 700;
     color: #f4f2ff;

@@ -10,7 +10,7 @@
 
         & h3 {
             margin: 0 0 12px 0;
-            font-family: var(--title-font);
+            font-family: var(--cp-title-font);
             color: #f6f3ff;
             font-size: 1.25rem;
             font-weight: 700;

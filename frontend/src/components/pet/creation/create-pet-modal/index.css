@@ -5,16 +5,16 @@
     --focus-ring: 0 0 0 2px var(--cp-cyan), 0 0 12px rgb(125 214 255 / 32%);
 
     & > p {
-        margin: 0 0 var(--spacing-xl);
+        margin: 0 0 var(--cp-spacing-xl);
         color: rgb(195 210 255 / 70%);
-        font-size: var(--font-size-base);
+        font-size: var(--cp-font-size-base);
         line-height: 1.55;
     }
 
     .form {
         display: flex;
         flex-direction: column;
-        gap: var(--spacing-lg);
+        gap: var(--cp-spacing-lg);
     }
 
     .field {
@@ -60,7 +60,7 @@
 
             @media (max-width: 768px) {
                 padding: 10px 12px;
-                font-size: var(--font-size-sm);
+                font-size: var(--cp-font-size-sm);
             }
         }
     }

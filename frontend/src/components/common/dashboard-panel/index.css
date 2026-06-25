@@ -57,7 +57,7 @@
         }
 
         @media (prefers-contrast: more) {
-            border: 2px solid var(--color-text);
+            border: 2px solid var(--cp-color-text);
         }
     }
 
@@ -80,7 +80,7 @@
 
         .heading {
             margin: 0;
-            font-family: var(--title-font);
+            font-family: var(--cp-title-font);
             font-size: var(--pc-font-title);
             font-weight: 700;
             letter-spacing: 0.5px;

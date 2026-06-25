@@ -3,9 +3,9 @@
 .error-message,
 .success-message {
     border-radius: 2px;
-    padding: var(--spacing-sm);
-    margin-block-start: var(--spacing-md);
-    font-size: var(--font-size-sm);
+    padding: var(--cp-spacing-sm);
+    margin-block-start: var(--cp-spacing-md);
+    font-size: var(--cp-font-size-sm);
     font-weight: 600;
     letter-spacing: 0.4px;
     max-width: 100%;

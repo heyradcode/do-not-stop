@@ -1,6 +1,6 @@
 /* Rename details below the shared ring-avatar hero (live preview + requirements). */
 .rename-preview {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 18px;
     font-weight: 800;
     letter-spacing: 1.5px;
@@ -83,7 +83,7 @@
 }
 
 .rename-theme__example {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 9px;
     color: rgb(195 210 255 / 50%);
     word-break: break-all;

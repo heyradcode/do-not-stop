@@ -60,7 +60,7 @@
     border-radius: 6px;
     padding: 8px 12px;
     font-size: 12px;
-    font-family: var(--content-font);
+    font-family: var(--cp-content-font);
     color: var(--cp-text-body-dark);
     cursor: pointer;
 }
@@ -163,7 +163,7 @@
 }
 
 .combatant-card__name {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 16px;
     font-weight: 700;
     color: #f4f2ff;
@@ -208,7 +208,7 @@
 }
 
 .combatant-stat__val {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 16px;
     font-weight: 800;
     color: var(--cp-cyan);
@@ -277,7 +277,7 @@
 }
 
 .battle-vs__mark {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 38px;
     font-weight: 900;
     line-height: 1;
@@ -310,7 +310,7 @@
 }
 
 .battle-vs__winrate-val {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 24px;
     font-weight: 900;
     color: var(--cp-cyan);
@@ -376,7 +376,7 @@
     flex-shrink: 0;
     text-align: center;
     padding: 18px 24px 10px;
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 3px;
@@ -407,7 +407,7 @@
 }
 
 .battle-scene__hp-name {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -462,7 +462,7 @@
 
 .battle-scene__hp-vs {
     flex-shrink: 0;
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 13px;
     font-weight: 900;
     color: rgb(255 123 203 / 65%);
@@ -525,7 +525,7 @@
 }
 
 .battle-scene__label {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -575,7 +575,7 @@
 }
 
 .battle-log__title {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 8px;
     font-weight: 700;
     letter-spacing: 2.2px;
@@ -640,7 +640,7 @@
 }
 
 .battle-scene__result-title {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 48px;
     font-weight: 900;
     line-height: 1.1;
@@ -756,7 +756,7 @@
     border-radius: 8px;
     background: rgb(40 28 5 / 45%);
     color: var(--cp-amber, #ffcf70);
-    font-size: var(--font-size-sm);
+    font-size: var(--cp-font-size-sm);
 }
 
 .pending-battle-notice p {

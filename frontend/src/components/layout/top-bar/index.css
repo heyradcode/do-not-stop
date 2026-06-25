@@ -1,6 +1,6 @@
 /* Shell header — wordmark, status badges, wallet control. */
 .cp-topbar {
-    height: var(--shell-header-height);
+    height: var(--cp-shell-header-height);
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -17,7 +17,7 @@
 }
 
 .cp-topbar__title {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 18px;
     font-weight: 900;
     letter-spacing: 2.5px;
@@ -51,7 +51,7 @@
 }
 
 .cp-badge__strong {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     font-size: 10px;
     letter-spacing: 1px;
 }

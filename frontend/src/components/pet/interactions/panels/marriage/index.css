@@ -205,7 +205,7 @@
 .marriage-row .marriage-status {
     margin-left: auto;
     opacity: 0.85;
-    font-size: var(--font-size-xs);
+    font-size: var(--cp-font-size-xs);
 }
 
 /* Propose tab — sent proposals section */
