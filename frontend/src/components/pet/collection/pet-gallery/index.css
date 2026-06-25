@@ -3,8 +3,6 @@
 .cp-idle {
     height: 100%;
     min-height: 0;
-    box-sizing: border-box;
-    padding: var(--spacing-md) var(--spacing-lg);
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -593,9 +591,6 @@
 }
 
 @media (max-width: 640px) {
-    .cp-idle {
-        padding: var(--spacing-sm) var(--spacing-md);
-    }
     .cp-idle__stats {
         grid-template-columns: 1fr;
     }

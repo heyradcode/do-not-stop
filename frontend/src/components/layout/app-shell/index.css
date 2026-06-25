@@ -36,6 +36,14 @@
     min-height: 0;
     overflow: auto;
     position: relative;
+    box-sizing: border-box;
+    padding: var(--spacing-md) var(--spacing-lg);
     scrollbar-width: thin;
     scrollbar-color: rgb(125 214 255 / 35%) transparent;
+}
+
+@media (max-width: 640px) {
+    .cp-shell__content {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
 }
