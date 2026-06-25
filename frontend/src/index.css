@@ -35,7 +35,7 @@ a {
 
     &:hover {
         color: var(--cp-link-hover);
-        text-shadow: 0 0 8px var(--neon-text-glow);
+        text-shadow: 0 0 8px var(--cp-text-glow);
     }
 }
 

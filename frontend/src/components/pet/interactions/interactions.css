@@ -7,10 +7,10 @@
     --zi-surface-bg: rgb(5 13 30 / 78%);
     --zi-text: #f6f3ff;
     --zi-text-muted: rgb(195 210 255 / 70%);
-    --zi-border: var(--neon-border-soft);
-    --zi-border-strong: var(--neon-border-strong);
+    --zi-border: var(--cp-border-soft);
+    --zi-border-strong: var(--cp-border-strong);
     --zi-glow-soft: 0 0 0 1px rgb(125 214 255 / 14%), inset 0 0 18px rgb(125 214 255 / 6%);
-    --zi-focus: 0 0 0 2px var(--neon-cyan), 0 0 12px rgb(125 214 255 / 32%);
+    --zi-focus: 0 0 0 2px var(--cp-cyan), 0 0 12px rgb(125 214 255 / 32%);
 
     /* All standalone interaction panels fill the padded content slot (same policy
        as the battle showdown), so every panel shares the uniform slot padding
@@ -27,7 +27,7 @@
         overflow-x: clip;
         overflow-y: auto;
         scrollbar-width: thin;
-        scrollbar-color: var(--neon-cyan) transparent;
+        scrollbar-color: var(--cp-cyan) transparent;
     }
 
     .description {
@@ -88,7 +88,7 @@
 
                 &:focus {
                     outline: none;
-                    border-color: var(--neon-cyan);
+                    border-color: var(--cp-cyan);
                     box-shadow: var(--zi-focus);
                 }
 
@@ -107,7 +107,7 @@
                 letter-spacing: 0.25px;
                 background: rgb(4 10 26 / 96%);
                 color: var(--zi-text);
-                caret-color: var(--neon-cyan);
+                caret-color: var(--cp-cyan);
                 transition: border-color 0.2s ease, box-shadow 0.2s ease;
                 box-shadow: inset 0 0 20px rgb(125 214 255 / 4%),
                     inset 0 1px 0 rgb(125 214 255 / 8%);
@@ -123,7 +123,7 @@
 
                 &:focus {
                     outline: none;
-                    border-color: var(--neon-cyan);
+                    border-color: var(--cp-cyan);
                     box-shadow: var(--zi-focus);
                 }
             }
@@ -152,7 +152,7 @@
             text-transform: uppercase;
             color: var(--zi-text);
             text-align: center;
-            text-shadow: 0 0 10px var(--neon-text-glow);
+            text-shadow: 0 0 10px var(--cp-text-glow);
 
             @media (max-width: 480px) {
                 font-size: 18px;
@@ -309,7 +309,7 @@
         letter-spacing: 0.25px;
         background: rgb(4 10 26 / 96%);
         color: var(--zi-text, #f6f3ff);
-        caret-color: var(--neon-cyan);
+        caret-color: var(--cp-cyan);
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
         box-shadow: inset 0 0 20px rgb(125 214 255 / 4%), inset 0 1px 0 rgb(125 214 255 / 8%);
 
@@ -324,8 +324,8 @@
 
         &:focus {
             outline: none;
-            border-color: var(--neon-cyan);
-            box-shadow: var(--zi-focus, 0 0 0 2px var(--neon-cyan));
+            border-color: var(--cp-cyan);
+            box-shadow: var(--zi-focus, 0 0 0 2px var(--cp-cyan));
         }
     }
 }
@@ -398,7 +398,7 @@
 /* Secondary / ghost action (e.g. battle Cancel) — not a NeonButton tone. */
 .cancel-button {
     padding: 12px 24px;
-    border: 1px solid var(--neon-border-soft);
+    border: 1px solid var(--cp-border-soft);
     border-radius: 2px;
     font-size: 14px;
     font-weight: 600;
@@ -411,7 +411,7 @@
 
     &:hover {
         color: #f6f3ff;
-        border-color: var(--neon-border-strong);
+        border-color: var(--cp-border-strong);
         transform: translateY(-1px);
         box-shadow: 0 0 12px rgb(125 214 255 / 22%);
     }

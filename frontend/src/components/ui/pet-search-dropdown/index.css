@@ -30,8 +30,8 @@
     }
 
     &.is-open {
-        border-color: var(--neon-cyan);
-        box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 12px rgb(125 214 255 / 32%);
+        border-color: var(--cp-cyan);
+        box-shadow: 0 0 0 2px var(--cp-cyan), 0 0 12px rgb(125 214 255 / 32%);
     }
 
     &.is-selected {
@@ -50,7 +50,7 @@
     font-size: 13px;
     font-weight: 500;
     letter-spacing: 0.25px;
-    caret-color: var(--neon-cyan);
+    caret-color: var(--cp-cyan);
     padding: 11px 0;
 
     &::placeholder {
@@ -70,7 +70,7 @@
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.4px;
-    color: var(--neon-cyan);
+    color: var(--cp-cyan);
     opacity: 0.75;
     white-space: nowrap;
 }
@@ -88,7 +88,7 @@
 
     &.up {
         transform: translateY(-50%) rotate(180deg);
-        color: var(--neon-cyan);
+        color: var(--cp-cyan);
     }
 }
 
@@ -124,7 +124,7 @@
     max-height: 240px;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: var(--neon-cyan) transparent;
+    scrollbar-color: var(--cp-cyan) transparent;
 }
 
 .psd-state-row {
@@ -160,7 +160,7 @@
     }
 
     &.active {
-        box-shadow: inset 2px 0 0 var(--neon-cyan);
+        box-shadow: inset 2px 0 0 var(--cp-cyan);
     }
 }
 

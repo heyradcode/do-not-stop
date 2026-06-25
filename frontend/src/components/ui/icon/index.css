@@ -14,13 +14,13 @@
     }
 
     &.tone-cyan {
-        color: var(--neon-cyan);
+        color: var(--cp-cyan);
     }
     &.tone-violet {
-        color: var(--neon-violet);
+        color: var(--cp-violet);
     }
     &.tone-magenta {
-        color: var(--neon-magenta);
+        color: var(--cp-magenta);
     }
     &.tone-emerald {
         color: #9effd4;

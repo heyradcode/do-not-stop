@@ -6,7 +6,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    background: var(--neon-base-bg);
+    background: var(--cp-base-bg);
     color: var(--cp-text-body-dark);
     font-family: var(--content-font);
 }

@@ -2,7 +2,7 @@
 .send-pet-body {
     .preview {
         background: rgb(5 13 30 / 78%);
-        border: 1px solid var(--neon-border-soft);
+        border: 1px solid var(--cp-border-soft);
         border-radius: 2px;
         padding: 16px;
         margin-bottom: 20px;
@@ -16,7 +16,7 @@
             font-weight: 700;
             letter-spacing: 0.5px;
             text-transform: uppercase;
-            text-shadow: 0 0 10px var(--neon-text-glow);
+            text-shadow: 0 0 10px var(--cp-text-glow);
         }
     }
 
@@ -65,12 +65,12 @@
 
             &:focus {
                 outline: none;
-                border-color: var(--neon-cyan);
-                box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 12px rgb(125 214 255 / 32%);
+                border-color: var(--cp-cyan);
+                box-shadow: 0 0 0 2px var(--cp-cyan), 0 0 12px rgb(125 214 255 / 32%);
             }
 
             &.invalid {
-                border-color: var(--neon-magenta);
+                border-color: var(--cp-magenta);
                 box-shadow: 0 0 12px rgb(255 110 196 / 28%);
             }
 
@@ -108,11 +108,11 @@
         transition: all 0.2s;
         background: rgb(5 13 30 / 92%);
         color: rgb(195 210 255 / 78%);
-        border: 1px solid var(--neon-border-soft);
+        border: 1px solid var(--cp-border-soft);
 
         &:hover:not(:disabled) {
             color: #f6f3ff;
-            border-color: var(--neon-border-strong);
+            border-color: var(--cp-border-strong);
             box-shadow: 0 0 12px rgb(125 214 255 / 22%);
         }
 

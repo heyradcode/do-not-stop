@@ -28,13 +28,13 @@
 }
 
 .lvl-badge--cur {
-    color: var(--neon-violet);
+    color: var(--cp-violet);
     background: rgb(181 140 255 / 12%);
     border: 1px solid rgb(181 140 255 / 35%);
 }
 
 .lvl-badge--next {
-    color: var(--neon-gold);
+    color: var(--cp-gold);
     background: rgb(255 215 0 / 12%);
     border: 1px solid rgb(255 215 0 / 40%);
     box-shadow: 0 0 12px rgb(255 215 0 / 20%);
@@ -63,7 +63,7 @@
 
 .lvl-xp-track {
     height: 8px;
-    background: var(--neon-inset);
+    background: var(--cp-inset);
     border-radius: 999px;
     overflow: hidden;
     border: 1px solid rgb(125 214 255 / 12%);
@@ -71,7 +71,7 @@
 
 .lvl-xp-fill {
     height: 100%;
-    background: var(--neon-gradient-line);
+    background: var(--cp-gradient-line);
     border-radius: 999px;
     box-shadow: 0 0 10px rgb(181 140 255 / 50%);
 }

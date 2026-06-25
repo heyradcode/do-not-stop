@@ -4,7 +4,7 @@
     font-size: 18px;
     font-weight: 800;
     letter-spacing: 1.5px;
-    color: var(--neon-cyan);
+    color: var(--cp-cyan);
     text-shadow: 0 0 18px rgb(125 214 255 / 60%), 0 0 36px rgb(125 214 255 / 30%);
     line-height: 1.2;
     word-break: break-all;

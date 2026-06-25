@@ -23,7 +23,7 @@
         border: 1px solid rgb(125 214 255 / 32%);
         border-radius: 2px;
         background: rgb(5 13 30 / 92%);
-        color: var(--neon-cyan);
+        color: var(--cp-cyan);
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
@@ -44,8 +44,8 @@
 
         &:focus {
             outline: none;
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 0 2px var(--neon-cyan), 0 0 12px rgb(125 214 255 / 32%);
+            border-color: var(--cp-cyan);
+            box-shadow: 0 0 0 2px var(--cp-cyan), 0 0 12px rgb(125 214 255 / 32%);
         }
 
         &:disabled {
@@ -73,7 +73,7 @@
 
     .arrow {
         font-size: 10px;
-        color: var(--neon-cyan);
+        color: var(--cp-cyan);
         transition: transform 0.2s ease;
     }
 

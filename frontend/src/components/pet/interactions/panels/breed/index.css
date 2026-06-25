@@ -190,7 +190,7 @@
 
 .breed-cycle__btn--a:hover:not(:disabled) {
     border-color: rgb(255 207 112 / 50%);
-    color: var(--neon-amber);
+    color: var(--cp-amber);
 }
 
 .breed-cycle__btn--b {
@@ -200,7 +200,7 @@
 
 .breed-cycle__btn--b:hover:not(:disabled) {
     border-color: rgb(181 140 255 / 50%);
-    color: var(--neon-violet);
+    color: var(--cp-violet);
 }
 
 /* With-Spouse tab: ◀ current pet ▶ cycle selector (replaces the dropdown) */
@@ -218,8 +218,8 @@
 }
 
 .breed-cycle-select .breed-cycle__btn:hover:not(:disabled) {
-    border-color: var(--neon-cyan);
-    color: var(--neon-cyan);
+    border-color: var(--cp-cyan);
+    color: var(--cp-cyan);
 }
 
 .breed-cycle-select__current {
@@ -323,7 +323,7 @@
     font-family: var(--title-font);
     font-size: 14px;
     font-weight: 900;
-    color: var(--neon-cyan);
+    color: var(--cp-cyan);
 }
 
 .breed-dna__compat-cap {
@@ -429,7 +429,7 @@
     top: 8px;
     left: 8px;
     background: rgb(5 13 30 / 88%);
-    color: var(--neon-cyan);
+    color: var(--cp-cyan);
     border: 1px solid rgb(125 214 255 / 32%);
     border-radius: 999px;
     padding: 2px 8px;
@@ -438,7 +438,7 @@
 }
 
 .breed-parent--b .breed-parent__level {
-    color: var(--neon-violet);
+    color: var(--cp-violet);
     border-color: rgb(181 140 255 / 32%);
 }
 
@@ -447,7 +447,7 @@
     bottom: 6px;
     right: 8px;
     background: rgb(255 207 112 / 12%);
-    color: var(--neon-amber);
+    color: var(--cp-amber);
     border: 1px solid rgb(255 207 112 / 30%);
     border-radius: 999px;
     padding: 2px 8px;
@@ -457,7 +457,7 @@
 
 .breed-parent--b .breed-parent__bred {
     background: rgb(181 140 255 / 12%);
-    color: var(--neon-violet);
+    color: var(--cp-violet);
     border-color: rgb(181 140 255 / 30%);
 }
 
@@ -530,7 +530,7 @@
 .breed-parent__stat-track {
     flex: 1;
     height: 5px;
-    background: var(--neon-inset);
+    background: var(--cp-inset);
     border-radius: 999px;
     overflow: hidden;
 }
@@ -573,7 +573,7 @@
 .breed-parent__meter-track {
     flex: 1;
     height: 4px;
-    background: var(--neon-inset);
+    background: var(--cp-inset);
     border-radius: 999px;
     overflow: hidden;
 }

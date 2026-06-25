@@ -248,7 +248,7 @@
 
 .cp-quest__fill {
     height: 100%;
-    background: var(--neon-gradient-line);
+    background: var(--cp-gradient-line);
     border-radius: 2px;
     box-shadow: 0 0 5px rgb(125 214 255 / 40%);
 }
@@ -273,7 +273,7 @@
 .cp-sidebar__rank-title {
     font-size: 10px;
     font-weight: 700;
-    color: var(--neon-gold);
+    color: var(--cp-gold);
     letter-spacing: 0.6px;
 }
 

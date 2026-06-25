@@ -6,7 +6,7 @@
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
-    background: var(--neon-base-bg);
+    background: var(--cp-base-bg);
 }
 
 .cp-ambient__canvas {
@@ -22,8 +22,8 @@
     inset: 0;
     background: repeating-linear-gradient(
             0deg,
-            var(--neon-grid-line) 0 1px,
+            var(--cp-grid-line) 0 1px,
             transparent 1px 48px
         ),
-        repeating-linear-gradient(90deg, var(--neon-grid-line) 0 1px, transparent 1px 48px);
+        repeating-linear-gradient(90deg, var(--cp-grid-line) 0 1px, transparent 1px 48px);
 }

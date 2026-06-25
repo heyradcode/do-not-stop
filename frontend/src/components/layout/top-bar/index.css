@@ -70,7 +70,7 @@
 .cp-badge--gold {
     background: rgb(255 215 0 / 8%);
     border: 1px solid rgb(255 215 0 / 35%);
-    color: var(--neon-gold);
+    color: var(--cp-gold);
     animation: cp-glow-pulse 3s ease-in-out infinite;
 }
 
@@ -81,7 +81,7 @@
 .cp-badge--streak {
     background: rgb(255 207 112 / 7%);
     border: 1px solid rgb(255 207 112 / 28%);
-    color: var(--neon-amber);
+    color: var(--cp-amber);
     animation: cp-streak-fire 2.2s ease-in-out infinite;
 }
 

@@ -67,11 +67,11 @@
 
 .combatant-select select:focus-visible {
     outline: none;
-    border-color: var(--neon-cyan);
+    border-color: var(--cp-cyan);
 }
 
 .combatant-col--rival .combatant-select select:focus-visible {
-    border-color: var(--neon-magenta);
+    border-color: var(--cp-magenta);
 }
 
 .combatant-select__btn {
@@ -89,7 +89,7 @@
 
 .combatant-select__btn:hover:not(:disabled) {
     border-color: rgb(255 123 203 / 55%);
-    color: var(--neon-magenta);
+    color: var(--cp-magenta);
 }
 
 .combatant-select__btn:disabled {
@@ -211,12 +211,12 @@
     font-family: var(--title-font);
     font-size: 16px;
     font-weight: 800;
-    color: var(--neon-cyan);
+    color: var(--cp-cyan);
     margin-top: 1px;
 }
 
 .combatant-card--rival .combatant-stat__val {
-    color: var(--neon-magenta);
+    color: var(--cp-magenta);
 }
 
 .combatant-card__hp {
@@ -239,7 +239,7 @@
 }
 
 .combatant-card__hp-val {
-    color: var(--neon-emerald);
+    color: var(--cp-emerald);
 }
 
 .combatant-card__hp-track {
@@ -281,7 +281,7 @@
     font-size: 38px;
     font-weight: 900;
     line-height: 1;
-    color: var(--neon-magenta);
+    color: var(--cp-magenta);
     text-shadow: 0 0 30px rgb(255 123 203 / 80%);
     animation: cp-vs-pulse 2s ease-in-out infinite;
 }
@@ -313,7 +313,7 @@
     font-family: var(--title-font);
     font-size: 24px;
     font-weight: 900;
-    color: var(--neon-cyan);
+    color: var(--cp-cyan);
     text-shadow: 0 0 14px rgb(125 214 255 / 60%);
 }
 
@@ -417,17 +417,17 @@
 }
 
 .battle-scene__hp-name.is-fighter {
-    color: var(--neon-cyan);
+    color: var(--cp-cyan);
 }
 
 .battle-scene__hp-name.is-enemy {
-    color: var(--neon-magenta);
+    color: var(--cp-magenta);
 }
 
 .battle-scene__hp-val {
     font-size: 12px;
     font-weight: 700;
-    color: var(--neon-emerald);
+    color: var(--cp-emerald);
     flex-shrink: 0;
 }
 
@@ -536,11 +536,11 @@
 }
 
 .battle-scene__label.is-fighter {
-    color: var(--neon-cyan);
+    color: var(--cp-cyan);
 }
 
 .battle-scene__label.is-enemy {
-    color: var(--neon-magenta);
+    color: var(--cp-magenta);
 }
 
 .battle-scene__clash {
@@ -644,18 +644,18 @@
     font-size: 48px;
     font-weight: 900;
     line-height: 1.1;
-    color: var(--neon-emerald);
+    color: var(--cp-emerald);
     text-shadow: 0 0 40px rgb(15 255 174 / 55%);
 }
 
 .battle-scene__result.is-defeat .battle-scene__result-title {
-    color: var(--neon-magenta);
+    color: var(--cp-magenta);
     text-shadow: 0 0 40px rgb(255 123 203 / 55%);
 }
 
 .battle-scene__result.is-pending .battle-scene__result-title {
     font-size: 32px;
-    color: var(--neon-cyan);
+    color: var(--cp-cyan);
     text-shadow: 0 0 30px rgb(125 214 255 / 50%);
 }
 
@@ -715,10 +715,10 @@
 .battle-result-done {
     background: transparent;
     border: 1px solid rgb(125 214 255 / 28%);
-    color: var(--neon-cyan);
+    color: var(--cp-cyan);
 
     &:hover:not(:disabled) {
-        border-color: var(--neon-cyan);
+        border-color: var(--cp-cyan);
         box-shadow: 0 0 10px rgb(125 214 255 / 22%);
     }
 
@@ -755,7 +755,7 @@
     border: 1px solid rgb(255 207 112 / 35%);
     border-radius: 8px;
     background: rgb(40 28 5 / 45%);
-    color: var(--neon-amber, #ffcf70);
+    color: var(--cp-amber, #ffcf70);
     font-size: var(--font-size-sm);
 }
 
