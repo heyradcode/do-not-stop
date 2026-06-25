@@ -41,7 +41,7 @@
         @media (max-width: 768px) {
             width: 1.75rem;
             height: 1.75rem;
-            font-size: var(--font-sm);
+            font-size: var(--font-size-sm);
         }
     }
 
@@ -68,7 +68,7 @@
     .title {
         margin-block-end: 0.25rem;
         font-weight: 700;
-        font-size: var(--font-sm);
+        font-size: var(--font-size-sm);
         color: #f6f3ff;
         letter-spacing: 0.4px;
 
@@ -79,7 +79,7 @@
 
     .hash {
         font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace;
-        font-size: var(--font-xs);
+        font-size: 0.75rem;
         color: var(--neon-cyan);
         word-break: break-all;
 
@@ -95,11 +95,11 @@
         justify-content: center;
         width: 1.5rem;
         height: 1.5rem;
-        padding: var(--radius-sm);
+        padding: 0.25rem;
         border: 1px solid transparent;
         border-radius: 2px;
         background: transparent;
-        font-size: var(--font-xl);
+        font-size: var(--font-size-xl);
         line-height: 1;
         color: rgb(195 210 255 / 60%);
         cursor: pointer;
