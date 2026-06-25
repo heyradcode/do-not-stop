@@ -148,6 +148,97 @@
     margin-bottom: 16px;
 }
 
+/* Parent column = card + Prev/Next cycle row (mock-style selection) */
+.breed-parent-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.breed-cycle {
+    display: flex;
+    gap: 8px;
+}
+
+.breed-cycle__btn {
+    flex: 1;
+    background: rgb(5 13 30 / 70%);
+    border: 1px solid rgb(101 131 255 / 22%);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgb(195 210 255 / 65%);
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.breed-cycle__btn:hover:not(:disabled) {
+    color: #f6f3ff;
+}
+
+.breed-cycle__btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.breed-cycle__btn--a {
+    border-color: rgb(255 207 112 / 20%);
+    color: rgb(255 207 112 / 65%);
+}
+
+.breed-cycle__btn--a:hover:not(:disabled) {
+    border-color: rgb(255 207 112 / 50%);
+    color: var(--neon-amber);
+}
+
+.breed-cycle__btn--b {
+    border-color: rgb(181 140 255 / 20%);
+    color: rgb(181 140 255 / 65%);
+}
+
+.breed-cycle__btn--b:hover:not(:disabled) {
+    border-color: rgb(181 140 255 / 50%);
+    color: var(--neon-violet);
+}
+
+/* With-Spouse tab: ◀ current pet ▶ cycle selector (replaces the dropdown) */
+.breed-cycle-select {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.breed-cycle-select .breed-cycle__btn {
+    flex: 0 0 auto;
+    min-width: 42px;
+    color: rgb(125 214 255 / 70%);
+    border-color: rgb(125 214 255 / 28%);
+}
+
+.breed-cycle-select .breed-cycle__btn:hover:not(:disabled) {
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+
+.breed-cycle-select__current {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgb(125 214 255 / 28%);
+    background: rgb(4 10 26 / 96%);
+    font-size: 13px;
+    color: var(--zi-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* ── DNA helix + compatibility + egg centre ─────────────────────────────────── */
 .breed-dna {
     display: flex;

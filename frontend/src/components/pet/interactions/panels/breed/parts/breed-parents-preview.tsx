@@ -15,6 +15,38 @@ import BreedDnaCenter from './breed-dna-center';
 type BreedParentsPreviewProps = {
     petA: Pet | null;
     petB: Pet | null;
+    /** Cycle controls under each parent card (Prev / Next). */
+    onPrevA?: () => void;
+    onNextA?: () => void;
+    onPrevB?: () => void;
+    onNextB?: () => void;
+};
+
+/** ◀ Prev / Next ▶ cycle row under a parent card. */
+const CycleRow: React.FC<{ side: 'a' | 'b'; onPrev?: () => void; onNext?: () => void }> = ({
+    side,
+    onPrev,
+    onNext,
+}) => {
+    if (!onPrev && !onNext) return null;
+    return (
+        <div className="breed-cycle">
+            <button
+                type="button"
+                className={`breed-cycle__btn breed-cycle__btn--${side}`}
+                onClick={onPrev}
+            >
+                ◀ Prev
+            </button>
+            <button
+                type="button"
+                className={`breed-cycle__btn breed-cycle__btn--${side}`}
+                onClick={onNext}
+            >
+                Next ▶
+            </button>
+        </div>
+    );
 };
 
 /** Four real DNA-backed stats. AGI has no backing in the data model, so we keep
@@ -177,12 +209,25 @@ const TraitPrediction: React.FC<{ petA: Pet; petB: Pet }> = ({ petA, petB }) => 
 
 /** Parent A · 🥚 · Parent B preview for the breed panel, plus the offspring
  *  trait prediction once both parents are chosen — all from real pet stats. */
-const BreedParentsPreview: React.FC<BreedParentsPreviewProps> = ({ petA, petB }) => (
+const BreedParentsPreview: React.FC<BreedParentsPreviewProps> = ({
+    petA,
+    petB,
+    onPrevA,
+    onNextA,
+    onPrevB,
+    onNextB,
+}) => (
     <>
         <div className="breed-parents">
-            <ParentCard pet={petA} side="a" />
+            <div className="breed-parent-col">
+                <ParentCard pet={petA} side="a" />
+                <CycleRow side="a" onPrev={onPrevA} onNext={onNextA} />
+            </div>
             <BreedDnaCenter petA={petA} petB={petB} />
-            <ParentCard pet={petB} side="b" />
+            <div className="breed-parent-col">
+                <ParentCard pet={petB} side="b" />
+                <CycleRow side="b" onPrev={onPrevB} onNext={onNextB} />
+            </div>
         </div>
         {petA && petB && <TraitPrediction petA={petA} petB={petB} />}
     </>
