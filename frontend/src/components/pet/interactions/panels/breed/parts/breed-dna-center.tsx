@@ -10,6 +10,8 @@ import {
 type BreedDnaCenterProps = {
     petA: Pet | null;
     petB: Pet | null;
+    /** Breed action button, rendered under the egg between the two pets. */
+    action?: React.ReactNode;
 };
 
 const CIRCUMFERENCE = 2 * Math.PI * 36; // r=36 → ≈226.19
@@ -114,7 +116,7 @@ const DnaHelix: React.FC<{ animated: boolean }> = ({ animated }) => (
  * compatibility ring, and an egg with the estimated offspring rarity + gen.
  * Falls back to a muted placeholder until both parents are selected.
  */
-const BreedDnaCenter: React.FC<BreedDnaCenterProps> = ({ petA, petB }) => {
+const BreedDnaCenter: React.FC<BreedDnaCenterProps> = ({ petA, petB, action }) => {
     const outcome = useMemo(
         () => (petA && petB ? estimateOutcome(petA, petB) : null),
         [petA, petB],
@@ -125,12 +127,14 @@ const BreedDnaCenter: React.FC<BreedDnaCenterProps> = ({ petA, petB }) => {
     const rarityName = outcome ? getRarityName(outcome.rarity) : '—';
 
     return (
-        <div className="breed-dna" aria-hidden>
-            <div className="breed-dna__label">DNA Strand</div>
+        <div className="breed-dna">
+            <div className="breed-dna__label" aria-hidden>
+                DNA Strand
+            </div>
 
             <DnaHelix animated={Boolean(outcome)} />
 
-            <div className="breed-dna__compat">
+            <div className="breed-dna__compat" aria-hidden>
                 <svg width="64" height="64" viewBox="0 0 88 88" className="breed-dna__compat-svg">
                     <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(125,214,255,.08)" strokeWidth="8" />
                     <circle
@@ -151,13 +155,15 @@ const BreedDnaCenter: React.FC<BreedDnaCenterProps> = ({ petA, petB }) => {
                 </div>
             </div>
 
-            <div className="breed-dna__egg">
+            <div className="breed-dna__egg" aria-hidden>
                 <span className="breed-dna__egg-emoji">🥚</span>
                 <span className="breed-dna__egg-rarity" style={{ color: rarityColor, textShadow: `0 0 8px ${rarityColor}` }}>
                     {rarityName}
                 </span>
                 <span className="breed-dna__egg-gen">{outcome ? `Gen ${outcome.gen}` : 'Select parents'}</span>
             </div>
+
+            {action ? <div className="breed-dna__action">{action}</div> : null}
         </div>
     );
 };

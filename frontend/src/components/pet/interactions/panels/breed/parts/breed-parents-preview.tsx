@@ -15,6 +15,8 @@ import BreedDnaCenter from './breed-dna-center';
 type BreedParentsPreviewProps = {
     petA: Pet | null;
     petB: Pet | null;
+    /** Breed action button, rendered in the DNA centre between the two pets. */
+    action?: React.ReactNode;
     /** Cycle controls under each parent card (Prev / Next). */
     onPrevA?: () => void;
     onNextA?: () => void;
@@ -164,73 +166,28 @@ const ParentCard: React.FC<{ pet: Pet | null; side: 'a' | 'b' }> = ({ pet, side 
     );
 };
 
-/** Offspring trait prediction — for each stat, shows both parents' values, the
- *  estimated inherited range (offspring falls between the parents), and which
- *  parent is dominant. Estimate only; the contract decides the true result. */
-const TraitPrediction: React.FC<{ petA: Pet; petB: Pet }> = ({ petA, petB }) => {
-    const a = getPetProperties(petA);
-    const b = getPetProperties(petB);
-    return (
-        <div className="breed-traits">
-            <div className="breed-traits__title">🧬 Offspring Trait Prediction</div>
-            <div className="breed-traits__grid">
-                {STAT_ROWS.map((row) => {
-                    const valA = a[row.key];
-                    const valB = b[row.key];
-                    const lo = Math.min(valA, valB);
-                    const hi = Math.max(valA, valB);
-                    const aDominant = valA >= valB;
-                    return (
-                        <div className="breed-trait" key={row.label}>
-                            <div className="breed-trait__label" style={{ color: row.color }}>
-                                {row.label}
-                            </div>
-                            <div className="breed-trait__vs">
-                                <span className="breed-trait__val breed-trait__val--a">{valA}</span>
-                                <span className="breed-trait__sep">vs</span>
-                                <span className="breed-trait__val breed-trait__val--b">{valB}</span>
-                            </div>
-                            <div
-                                className="breed-trait__range"
-                                style={{ color: aDominant ? '#7dd6ff' : '#ff7bcb' }}
-                            >
-                                → {lo}–{hi}
-                            </div>
-                            <div className="breed-trait__dom">
-                                {aDominant ? 'Parent A' : 'Parent B'} dominant
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-};
-
-/** Parent A · 🥚 · Parent B preview for the breed panel, plus the offspring
- *  trait prediction once both parents are chosen — all from real pet stats. */
+/** Parent A · 🥚 · Parent B preview for the breed panel — all from real pet
+ *  stats. The breed action button sits in the DNA centre between the two pets. */
 const BreedParentsPreview: React.FC<BreedParentsPreviewProps> = ({
     petA,
     petB,
+    action,
     onPrevA,
     onNextA,
     onPrevB,
     onNextB,
 }) => (
-    <>
-        <div className="breed-parents">
-            <div className="breed-parent-col">
-                <ParentCard pet={petA} side="a" />
-                <CycleRow side="a" onPrev={onPrevA} onNext={onNextA} />
-            </div>
-            <BreedDnaCenter petA={petA} petB={petB} />
-            <div className="breed-parent-col">
-                <ParentCard pet={petB} side="b" />
-                <CycleRow side="b" onPrev={onPrevB} onNext={onNextB} />
-            </div>
+    <div className="breed-parents">
+        <div className="breed-parent-col">
+            <ParentCard pet={petA} side="a" />
+            <CycleRow side="a" onPrev={onPrevA} onNext={onNextA} />
         </div>
-        {petA && petB && <TraitPrediction petA={petA} petB={petB} />}
-    </>
+        <BreedDnaCenter petA={petA} petB={petB} action={action} />
+        <div className="breed-parent-col">
+            <ParentCard pet={petB} side="b" />
+            <CycleRow side="b" onPrev={onPrevB} onNext={onNextB} />
+        </div>
+    </div>
 );
 
 export default BreedParentsPreview;

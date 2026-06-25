@@ -255,8 +255,23 @@
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    width: 116px;
+    width: 140px;
     padding: 4px 0;
+}
+
+/* Breed action button, sitting between the two pets under the egg. */
+.breed-dna__action {
+    width: 100%;
+    margin-top: 2px;
+}
+
+.breed-dna__action .neon-btn {
+    width: 100%;
+    min-width: 0;
+    padding: 11px 8px;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
 }
 
 .breed-dna__label {

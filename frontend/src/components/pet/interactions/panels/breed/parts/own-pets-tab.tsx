@@ -15,6 +15,8 @@ type OwnPetsTabProps = {
     areRelated: boolean;
     /** Hide the pending-breed recovery notices while a breed is settling. */
     showPendingNotices: boolean;
+    /** Breed action button, rendered in the DNA centre between the two pets. */
+    breedAction?: React.ReactNode;
 };
 
 /** Breed two of the user's own pets together. */
@@ -29,6 +31,7 @@ const OwnPetsTab: React.FC<OwnPetsTabProps> = ({
     onChildNameChange,
     areRelated,
     showPendingNotices,
+    breedAction,
 }) => {
     // Show a matchup immediately: default to the first two pets when nothing is
     // chosen (mirrors the mock, where two parents are always on the table).
@@ -76,6 +79,7 @@ const OwnPetsTab: React.FC<OwnPetsTabProps> = ({
             <BreedParentsPreview
                 petA={parentA}
                 petB={parentB}
+                action={breedAction}
                 onPrevA={() => cycle(pet1, pet2, -1, onPet1Change)}
                 onNextA={() => cycle(pet1, pet2, 1, onPet1Change)}
                 onPrevB={() => cycle(pet2, pet1, -1, onPet2Change)}

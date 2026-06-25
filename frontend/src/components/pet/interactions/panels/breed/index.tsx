@@ -200,6 +200,21 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
         }
     };
 
+    const breedButton = (
+        <AuthActionButton
+            tone="amber"
+            onClick={handleBreed}
+            disabled={
+                breed.isPending ||
+                breed.isAwaitingFulfillment ||
+                hasPendingBreed ||
+                !canSubmit
+            }
+        >
+            {buttonLabel}
+        </AuthActionButton>
+    );
+
     return (
         <>
             <div className="interface">
@@ -224,6 +239,7 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
                         onChildNameChange={setOwnChildName}
                         areRelated={areRelated}
                         showPendingNotices={!breed.isAwaitingFulfillment}
+                        breedAction={breedButton}
                     />
                 )}
 
@@ -246,20 +262,9 @@ const BreedPanel: React.FC<BreedPanelProps> = ({ isStandaloneView = true }) => {
 
                 <StudFeeBalance />
 
-                <div className="action-controls">
-                    <AuthActionButton
-                        tone="emerald"
-                        onClick={handleBreed}
-                        disabled={
-                            breed.isPending ||
-                            breed.isAwaitingFulfillment ||
-                            hasPendingBreed ||
-                            !canSubmit
-                        }
-                    >
-                        {buttonLabel}
-                    </AuthActionButton>
-                </div>
+                {/* Own-pets breeding renders the action in the DNA centre (between the
+                    two pets); the spouse tab has no centre preview, so keep it here. */}
+                {tab === 'spouse' && <div className="action-controls">{breedButton}</div>}
 
                 {breed.isAwaitingFulfillment && <p className="pending-hint">{AWAITING_HINT}</p>}
             </div>
