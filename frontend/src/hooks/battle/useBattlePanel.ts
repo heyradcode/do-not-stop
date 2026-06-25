@@ -65,7 +65,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const [selectedOpponent, setSelectedOpponent] = useState('');
     const [showResult, setShowResult] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
-    const [opponentSlotFlash, setOpponentSlotFlash] = useState(false);
     const [rematchPending, setRematchPending] = useState(false);
     // The battle overlay stays open continuously: taunts → battling → result.
     const [overlayOpen, setOverlayOpen] = useState(false);
@@ -74,7 +73,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // keep a stable battleId for the result dialogue after the battle settles.
     const [settledBattleId, setSettledBattleId] = useState<string | null>(null);
 
-    const selectedOpponentCardRef = useRef<HTMLButtonElement>(null);
     const rematchSnapshotRef = useRef<{ petId1: string; opponentKey: string } | null>(null);
     // Personas captured at battle start. The backend pre-generates the result
     // dialogue when the taunts are requested (keyed by matchup), so nothing
@@ -137,9 +135,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     );
 
     const winEstimate = useWinEstimate(activeChainKind, selectedPet1 || null, opponent?.id ?? null);
-
-    const isArenaReady = Boolean(selectedFighter && opponent && !battle.isPending && !showResult);
-    const isArenaFighting = battle.isPending;
 
     // Settled-battle dialogue read + result-action gating.
     const dialogue = useResultDialogue({
@@ -259,18 +254,9 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         void refetchOpponents();
     };
 
-    const flashOpponentSlot = useCallback(() => {
-        setOpponentSlotFlash(true);
-        window.setTimeout(() => setOpponentSlotFlash(false), 520);
+    const handleSelectOpponent = useCallback((key: string) => {
+        setSelectedOpponent(key);
     }, []);
-
-    const handleSelectOpponent = useCallback(
-        (key: string) => {
-            setSelectedOpponent(key);
-            flashOpponentSlot();
-        },
-        [flashOpponentSlot],
-    );
 
     const handleRandomMatch = () => {
         if (!selectedFighter) {
@@ -314,15 +300,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         refetch();
         void refetchOpponents();
     };
-
-    useEffect(() => {
-        if (!selectedOpponent) return;
-        selectedOpponentCardRef.current?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-            inline: 'nearest',
-        });
-    }, [selectedOpponent]);
 
     // Close the overlay if the battle fails before a result (e.g. wallet rejected),
     // so the user isn't stranded on the taunt/underway screen. The error toast still shows.
@@ -390,15 +367,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         setSettledBattleId(hash);
     }, [battle.hash, activeChainKind]);
 
-    const arenaClassName = [
-        'battle-arena-card',
-        'battle-setup-arena',
-        isArenaReady ? 'is-ready' : '',
-        isArenaFighting ? 'is-fighting' : '',
-        showResult ? 'is-result' : '',
-    ]
-        .filter(Boolean)
-        .join(' ');
 
     // Pre-result phase (overlay stays open through taunts → battling).
     const isBattling = battle.isPending || battle.isConfirming || rematchPending;
@@ -465,23 +433,16 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const setup: BattleSetupProps = {
         isStandaloneView,
         subtitle,
-        arenaClassName,
-        isArenaFighting,
-        isArenaReady,
-        showResult,
         selectedFighter,
         opponent,
-        opponentSlotFlash,
         randomMatchDisabled,
         onRandomMatch: handleRandomMatch,
         readyPets,
         selectedPet1,
         onSelectFighter: setSelectedPet1,
         sortedOpponents,
-        fighterLevel,
         selectedOpponentKey: selectedOpponent,
         onSelectOpponent: handleSelectOpponent,
-        selectedOpponentCardRef,
         opponentsLoading,
         onRefreshOpponents: handleRefreshOpponents,
         onBattle: handleBattle,
