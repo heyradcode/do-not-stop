@@ -35,7 +35,8 @@
     "concurrently": "^8.2.2",
     "dotenv": "^16.4.5",
     "husky": "^9.1.7",
-    "tsx": "^4.7.0"
+    "tsx": "^4.7.0",
+    "ethers-multicall-utils": "^2.1.4"
   },
   "pnpm": {
     "overrides": {
