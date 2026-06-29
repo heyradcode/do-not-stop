@@ -28,7 +28,7 @@ const Sidebar: React.FC = () => {
                 aria-label="Crypto Pets home"
             >
                 <span className="cp-sidebar__logo" aria-hidden>
-                    <Icon as={DragonIcon} tone="violet" glow="strong" className="no-gap" />
+                    <Icon as={DragonIcon} tone="violet" glow="strong" noGap />
                 </span>
                 <span className="cp-sidebar__wordmark">CRYPTOPETS</span>
             </button>

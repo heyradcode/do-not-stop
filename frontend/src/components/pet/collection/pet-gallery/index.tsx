@@ -86,7 +86,7 @@ const PetGallery: React.FC = () => {
         return (
             <div className="cp-idle cp-idle--message">
                 <div className="cp-idle__prompt">
-                    <Icon as={PawIcon} tone={Tones.Cyan} glow="strong" className="no-gap" />
+                    <Icon as={PawIcon} tone={Tones.Cyan} glow="strong" noGap />
                     <h2>Your Pet Collection</h2>
                     <p>Connect your wallet to view your pets.</p>
                 </div>
@@ -279,7 +279,7 @@ const PetGallery: React.FC = () => {
                                             as={BattleIcon}
                                             tone={Tones.Magenta}
                                             glow="none"
-                                            className="no-gap"
+                                            noGap
                                         />
                                         Battle
                                     </button>
@@ -296,7 +296,7 @@ const PetGallery: React.FC = () => {
                                             as={SendIcon}
                                             tone={cd.battleReady ? Tones.Emerald : Tones.Amber}
                                             glow="none"
-                                            className="no-gap"
+                                            noGap
                                         />
                                     </button>
                                 </div>

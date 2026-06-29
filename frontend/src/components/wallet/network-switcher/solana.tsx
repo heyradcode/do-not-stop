@@ -60,7 +60,7 @@ const SolanaNetworkSwitcher: React.FC<SolanaNetworkSwitcherProps> = ({ className
                                             as={CheckIcon}
                                             tone={Tones.Emerald}
                                             glow="soft"
-                                            className="no-gap"
+                                            noGap
                                         />
                                     </div>
                                 )}

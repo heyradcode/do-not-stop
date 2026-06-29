@@ -89,7 +89,7 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                                         as={CheckIcon}
                                         tone={Tones.Emerald}
                                         glow="soft"
-                                        className="no-gap"
+                                        noGap
                                     />
                                 </span>
                             )}

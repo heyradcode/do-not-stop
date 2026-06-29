@@ -51,7 +51,7 @@ const CopyableAddress: React.FC<CopyableAddressProps> = ({ address, isCopied, on
                 as={isCopied ? CheckIcon : CopyIcon}
                 tone={isCopied ? Tones.Emerald : Tones.Cyan}
                 glow="none"
-                className="no-gap"
+                noGap
             />
         </span>
     </div>

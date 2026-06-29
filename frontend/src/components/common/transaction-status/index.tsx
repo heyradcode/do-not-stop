@@ -64,7 +64,7 @@ const TransactionStatus: React.FC<TransactionStatusProps> = ({ lifecycle }) => {
                     {isConfirming ? (
                         <div className={s.spinner}></div>
                     ) : (
-                        <Icon as={CheckIcon} tone={Tones.Emerald} glow="soft" className="no-gap" />
+                        <Icon as={CheckIcon} tone={Tones.Emerald} glow="soft" noGap />
                     )}
                 </div>
                 <div className={s.text}>

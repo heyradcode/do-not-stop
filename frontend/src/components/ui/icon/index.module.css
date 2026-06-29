@@ -1,4 +1,5 @@
-.neon-icon {
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`. */
+.icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -8,31 +9,31 @@
     margin-inline-end: 0.4em;
     flex-shrink: 0;
 
-    &.no-gap {
+    &.noGap {
         margin-inline-end: 0;
         vertical-align: middle;
     }
 
-    &.tone-cyan {
+    &.cyan {
         color: var(--cp-cyan);
     }
-    &.tone-violet {
+    &.violet {
         color: var(--cp-violet);
     }
-    &.tone-magenta {
+    &.magenta {
         color: var(--cp-magenta);
     }
-    &.tone-emerald {
+    &.emerald {
         color: #9effd4;
     }
-    &.tone-amber {
+    &.amber {
         color: #ffd07b;
     }
 
-    &.glow-soft {
+    &.soft {
         filter: drop-shadow(0 0 6px currentColor);
     }
-    &.glow-strong {
+    &.strong {
         filter: drop-shadow(0 0 10px currentColor) drop-shadow(0 0 18px currentColor);
     }
 
