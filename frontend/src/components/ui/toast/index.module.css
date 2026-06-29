@@ -1,4 +1,5 @@
-.toast-viewport {
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`. */
+.viewport {
     position: fixed;
     top: 16px;
     right: 16px;
@@ -23,16 +24,16 @@
     box-shadow: 0 10px 28px rgb(0 0 0 / 42%), inset 0 0 16px rgb(125 214 255 / 6%);
     animation: toast-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 
-    &.toast-error {
+    &.error {
         border-color: rgb(255 110 196 / 42%);
         box-shadow: 0 10px 28px rgb(0 0 0 / 42%), inset 0 0 16px rgb(255 110 196 / 10%);
     }
 
-    &.toast-info {
+    &.info {
         border-color: rgb(125 214 255 / 32%);
     }
 
-    &.toast-success {
+    &.success {
         border-color: rgb(0 255 157 / 42%);
         box-shadow: 0 10px 28px rgb(0 0 0 / 42%), inset 0 0 16px rgb(0 255 157 / 10%);
     }
@@ -85,7 +86,7 @@
 }
 
 @media (max-width: 480px) {
-    .toast-viewport {
+    .viewport {
         left: 16px;
         right: 16px;
         width: auto;
