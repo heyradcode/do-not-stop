@@ -1,5 +1,7 @@
-/* Shell header — wordmark, status badges, wallet control. */
-.cp-topbar {
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+   The gold/streak badge keyframes live here (only used by this component); CSS
+   Modules scopes both the @keyframes and the animation reference consistently. */
+.topbar {
     height: var(--cp-shell-header-height);
     flex-shrink: 0;
     display: flex;
@@ -16,7 +18,7 @@
     z-index: 10;
 }
 
-.cp-topbar__title {
+.title {
     font-family: var(--cp-title-font);
     font-size: 18px;
     font-weight: 900;
@@ -28,18 +30,18 @@
     flex-shrink: 0;
 }
 
-.cp-topbar__spacer {
+.spacer {
     flex: 1;
 }
 
-.cp-topbar__badges {
+.badges {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
 }
 
-.cp-badge {
+.badge {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -50,48 +52,48 @@
     white-space: nowrap;
 }
 
-.cp-badge__strong {
+.strong {
     font-family: var(--cp-title-font);
     font-size: 10px;
     letter-spacing: 1px;
 }
 
-.cp-badge__muted {
+.muted {
     font-size: 10px;
     font-weight: 600;
 }
 
-.cp-badge__sep {
+.sep {
     width: 1px;
     height: 11px;
     background: rgb(255 215 0 / 28%);
 }
 
-.cp-badge--gold {
+.gold {
     background: rgb(255 215 0 / 8%);
     border: 1px solid rgb(255 215 0 / 35%);
     color: var(--cp-gold);
     animation: cp-glow-pulse 3s ease-in-out infinite;
 }
 
-.cp-badge--gold .cp-badge__muted {
+.gold .muted {
     color: rgb(255 215 0 / 65%);
 }
 
-.cp-badge--streak {
+.streak {
     background: rgb(255 207 112 / 7%);
     border: 1px solid rgb(255 207 112 / 28%);
     color: var(--cp-amber);
     animation: cp-streak-fire 2.2s ease-in-out infinite;
 }
 
-.cp-badge--wins {
+.wins {
     background: rgb(125 214 255 / 6%);
     border: 1px solid rgb(125 214 255 / 18%);
     color: rgb(125 214 255 / 82%);
 }
 
-.cp-topbar__wallet {
+.wallet {
     flex-shrink: 0;
 }
 
@@ -99,14 +101,34 @@
    header it must flow inline with the badges — position:static neutralizes the
    fixed top/right offsets so the wallet + network switcher don't float over
    (and overlap) the rest of the header. */
-.cp-topbar__wallet .account-dropdown {
+.wallet :global(.account-dropdown) {
     position: static;
     gap: 8px;
 }
 
 @media (max-width: 720px) {
-    .cp-badge--gold,
-    .cp-badge--streak {
+    .gold,
+    .streak {
         display: none;
+    }
+}
+
+@keyframes cp-glow-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 14px rgb(255 215 0 / 25%);
+    }
+    50% {
+        box-shadow: 0 0 32px rgb(255 215 0 / 55%);
+    }
+}
+
+@keyframes cp-streak-fire {
+    0%,
+    100% {
+        box-shadow: 0 0 10px rgb(255 207 112 / 25%);
+    }
+    50% {
+        box-shadow: 0 0 22px rgb(255 123 203 / 45%);
     }
 }

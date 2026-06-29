@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
+import clsx from 'clsx';
 import { useChainCapabilities, usePetList } from '@shared/core';
 
 import AccountDropdown from '@components/wallet/account-dropdown';
-import './index.css';
+import s from './index.module.css';
 
 const TITLE = 'Crypto Pets';
 
@@ -23,33 +24,33 @@ const TopBar: React.FC = () => {
     );
 
     return (
-        <header className="cp-topbar">
-            <div className="cp-topbar__title">{TITLE}</div>
-            <div className="cp-topbar__spacer" />
+        <header className={s.topbar}>
+            <div className={s.title}>{TITLE}</div>
+            <div className={s.spacer} />
 
             {isConnected && (
-                <div className="cp-topbar__badges">
+                <div className={s.badges}>
                     {/* Placeholder — player tier/level (no progression data yet) */}
-                    <div className="cp-badge cp-badge--gold">
+                    <div className={clsx(s.badge, s.gold)}>
                         <span aria-hidden>🥇</span>
-                        <span className="cp-badge__strong">GOLD</span>
-                        <span className="cp-badge__sep" />
-                        <span className="cp-badge__muted">Lv 24</span>
+                        <span className={s.strong}>GOLD</span>
+                        <span className={s.sep} />
+                        <span className={s.muted}>Lv 24</span>
                     </div>
                     {/* Placeholder — win streak */}
-                    <div className="cp-badge cp-badge--streak">
+                    <div className={clsx(s.badge, s.streak)}>
                         <span aria-hidden>🔥</span>
-                        <span className="cp-badge__strong">7 STREAK</span>
+                        <span className={s.strong}>7 STREAK</span>
                     </div>
                     {/* Real — total wins across owned pets */}
-                    <div className="cp-badge cp-badge--wins">
+                    <div className={clsx(s.badge, s.wins)}>
                         <span aria-hidden>⚔</span>
                         <span>{totalWins} Wins</span>
                     </div>
                 </div>
             )}
 
-            <div className="cp-topbar__wallet">
+            <div className={s.wallet}>
                 <AccountDropdown />
             </div>
         </header>

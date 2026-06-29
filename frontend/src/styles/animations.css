@@ -25,26 +25,6 @@
     }
 }
 
-/* Badges / glows */
-@keyframes cp-glow-pulse {
-    0%,
-    100% {
-        box-shadow: 0 0 14px rgb(255 215 0 / 25%);
-    }
-    50% {
-        box-shadow: 0 0 32px rgb(255 215 0 / 55%);
-    }
-}
-@keyframes cp-streak-fire {
-    0%,
-    100% {
-        box-shadow: 0 0 10px rgb(255 207 112 / 25%);
-    }
-    50% {
-        box-shadow: 0 0 22px rgb(255 123 203 / 45%);
-    }
-}
-
 /* Cards / entrances */
 @keyframes cp-card-enter {
     from {

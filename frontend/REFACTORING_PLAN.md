@@ -184,3 +184,69 @@ do it once the pattern is settled.
 | legacy alias block in `variables.css` | delete |
 
 _(Fill in exact old→new class names per component as Phase 3 progresses.)_
+
+## Appendix C — progress log
+
+**Phase 1 — dead-code purge: DONE**
+- Deleted orphaned `layout/index.css`; unused battle parts (`arena-slot`,
+  `fighter-picker-card`, `opponent-picker-card`); unused keyframes; removed
+  breed trait-prediction CSS; removed dead battle-setup CSS (~640 lines) and
+  the 8 orphaned battle keyframes; pruned unused `BattleSetupProps` + dead hook
+  internals.
+
+**Phase 2 — token consolidation: DONE**
+- Deleted the legacy alias block.
+- Merged `--neon-*` → `--cp-*` (141 refs, collision-checked).
+- Prefixed all remaining global tokens under `--cp-` (`--color-*`,
+  `--spacing-*`, `--font-size-*`, `--border-radius*`, `--transition*`,
+  `--z-*`, `--wash-*`, `--shell-*`, `--rarity-*`, fonts, etc.).
+- Global token layer is now a single `--cp-*` namespace. Component-local
+  theming vars (`--btn-`, `--zi-`, `--view-`, `--tone-`, `--sc-`, `--pc-`,
+  `--tx-`) intentionally left scoped.
+
+**Phase 3 — CSS Modules: IN PROGRESS (approach: Option A)**
+
+Convention: `index.css` → `index.module.css`, `import s from './index.module.css'`,
+local `camelCase` prefix-free class names (`.root`, `.card`, dynamic via
+`clsx(s.root, s[variant])`), no `cp-`/`__`. Keyframes stay in the module
+(auto-scoped). `tsc` resolves `.module.css` via the existing `vite/client` ref.
+
+Migrated (clean leaves + Icon + first feature component):
+- ✅ `ui/neon-card` — `.card`
+- ✅ `common/transaction-status` — `.root` + children + state classes
+- ✅ `ui/toast` — `.viewport`/`.toast` + tone classes
+- ✅ `ui/icon` — `.icon` + tone/glow; replaced global `className="no-gap"` API
+  with a `noGap` boolean prop (8 call sites updated)
+- ✅ `layout/top-bar` — `.topbar`/`.badge`/`.gold`/… (self-contained feature
+  component; child AccountDropdown via `:global(.account-dropdown)`)
+
+**GOTCHA — keyframes in modules:** Vite scopes `animation-name` references
+even when the `@keyframes` is defined globally (`animations.css`), so a module
+referencing a global keyframe silently breaks (name hashes to `_cp-x`, def
+stays `cp-x`, no match — no error, animation just doesn't run). Fix: any
+component-specific keyframe a module uses must be DEFINED IN THAT MODULE
+(top-bar's `cp-glow-pulse`/`cp-streak-fire` were moved out of animations.css).
+Verify per conversion: `grep '@keyframes _'/'animation:_' dist/assets/*.css`
+— the two hashed names must match. Watch this for `ambient`/`sidebar`/`gallery`
+(they use `cp-float`, `cp-orb-float`, `cp-spin-slow`, etc.); if a shared
+keyframe is used by BOTH modules and non-modules, it can't simply move —
+duplicate it into the module, or reference via `:global()` if supported.
+
+**Remaining (harder — externally-referenced classes; each needs the external
+selectors migrated in the same commit + per-screen visual verification):**
+- `ui/neon-button` — `.neon-btn`/`.tone-*`/`.size-*` styled from
+  `interactions.css`, `breed/index.css`, `account-dropdown/index.css`.
+- `common/dashboard-panel` — `.surface`/`.panel-body`/`.title-bar`/… styled by
+  every interaction panel + gallery; the shared panel shell. Large.
+- `ui/pet-search-dropdown` — `.psd-input` referenced by `interactions.css`.
+- `ui/neon-modal` — `.neon-modal .dialog` styled by `network-switcher`.
+- Then feature components (`layout/*`, `pet/*`, `wallet/*`) — many still use the
+  `cp-`/BEM global convention (sidebar `.cp-sidebar__*`, gallery `.cp-*`, etc.).
+
+**Recommended next-session approach for the cross-cutting ones:** convert the
+component to a module, expose the classes other files need via a small stable
+contract (either keep a `:global()` hook for the exact selector another file
+targets, or move that styling into the owning component), and migrate the
+external selectors in the same commit. Verify each screen visually (the app is
+web3-gated — headless render isn't reliable).
+
