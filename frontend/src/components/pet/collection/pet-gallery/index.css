@@ -553,32 +553,8 @@
     color: rgb(125 214 255 / 45%);
 }
 
-/* ── Loading / error ────────────────────────────────────────────────────── */
-.loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--cp-spacing-2xl);
-    color: var(--cp-color-text-muted);
-}
-
-.loading-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgb(125 214 255 / 18%);
-    border-block-start: 3px solid var(--cp-cyan);
-    border-radius: 50%;
-    animation: cp-spin-slow 1s linear infinite;
-    margin-block-end: var(--cp-spacing-sm);
-    box-shadow: 0 0 16px rgb(125 214 255 / 30%);
-}
-
-.error-container {
-    text-align: center;
-    padding: var(--cp-spacing-2xl);
-    color: #ff9aa9;
-}
+/* Loading / error states now live globally in styles/messages.css (shared with
+   the interaction panels), so this gallery stylesheet can become a CSS Module. */
 
 @media (prefers-reduced-motion: reduce) {
     .cp-pet-card,

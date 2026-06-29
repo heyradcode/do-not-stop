@@ -219,6 +219,27 @@ Migrated (clean leaves + Icon + first feature component):
   with a `noGap` boolean prop (8 call sites updated)
 - ✅ `layout/top-bar` — `.topbar`/`.badge`/`.gold`/… (self-contained feature
   component; child AccountDropdown via `:global(.account-dropdown)`)
+- ✅ `layout/sidebar` — full `cp-*__*` BEM → local classes; dynamic tone via
+  `s[item.tone]`, states via `s.isActive/isDeferred`; moved `cp-orb-float` into
+  the module
+- ✅ `layout/ambient` — `.ambient`/`.canvas`/`.grid` (trivial)
+
+**BLOCKED — `pet/collection/pet-gallery`** (main screen, 603 lines): NOT a clean
+leaf. Its CSS globally defines shared, non-`cp-` utility classes used by OTHER
+components:
+- `.loading-container` — also used by `interactions/standalone`
+- `.loading-spinner` — used by `interactions/standalone` AND `wallet/native-balance`
+  (which **also defines** it — a pre-existing duplicate to reconcile)
+- `.error-container` — gallery-only
+Converting gallery to a module would hash these and break the interaction /
+native-balance loading states. **Prereq before converting gallery:** extract
+`.loading-*`/`.error-container` into a proper GLOBAL stylesheet (e.g.
+`styles/loading.css` imported by `src/index.css`) and delete the duplicate
+`.loading-spinner` in `native-balance`. Also handle the shared keyframe
+`cp-float` (used by 5 files) — a module can't move it; duplicate it into the
+module or reference via `:global()` (verify in built CSS). Then convert the
+gallery's own `cp-*` classes. Do this with the app running for visual review —
+it's the primary screen.
 
 **GOTCHA — keyframes in modules:** Vite scopes `animation-name` references
 even when the `@keyframes` is defined globally (`animations.css`), so a module
