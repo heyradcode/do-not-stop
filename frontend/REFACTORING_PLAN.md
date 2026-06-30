@@ -296,6 +296,23 @@ rework). Per panel, only the panel's OWN local classes get modularized.
   (verified def+usage hash to one `_cp-float_*`, distinct from gallery's copy).
   Shared chrome + the dead `.train-cost` kept as global strings.
 
+- ✅ `panels/level-up` — local `.lvl-*` (incl. `--cur`/`--next` modifiers) →
+  module (`.name`/`.badge`+`.badgeCur`/`.badgeNext`/`.xpRow`/…). No keyframes.
+  Shared chrome + dead `.level-up-cost` kept as global strings.
+
+- ✅ `panels/breed` (largest — 6 files) — `index.css` (~60 `.breed-*` BEM
+  classes) → `index.module.css`, consumed by `parts/breed-tab-bar`,
+  `breed-dna-center`, `breed-parents-preview`, `own-pets-tab`, `with-spouse-tab`
+  (each `import s from '../index.module.css'`); `index.tsx` drops its side-effect
+  CSS import (it uses only global chrome). Handling: the 4 breed-only keyframes
+  (`cp-strand-glow`/`cp-node-blink`/`cp-compat-draw`/`cp-bar-grow`) MOVED out of
+  animations.css into the module; shared `cp-float` DUPLICATED in; the primary
+  CTA's `.breed-dna__action .neon-btn` → `.dnaAction :global(.neon-btn)` (reaches
+  neon-button's global class); parent-B variant overrides `.breed-parent--b
+  .breed-parent__X` → `.parentB .parentX`; the no-op `breed-parent--a` dropped.
+  Global chrome (`.picker`/`.field`/`.field-label`/`.name-input`) stays string.
+  Verified all 5 keyframe def/usage hashes match + `_dnaAction_* .neon-btn`.
+
 **Build-command note (avoid false-positive verification):** `typescript` AND
 `vite` are hoisted to the monorepo ROOT `node_modules`, not `frontend/`. Run
 `node ../node_modules/typescript/bin/tsc …` and `node ../node_modules/vite/bin/

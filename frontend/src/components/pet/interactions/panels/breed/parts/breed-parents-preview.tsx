@@ -1,4 +1,5 @@
 import React from 'react';
+import clsx from 'clsx';
 import {
     getLifePercent,
     getPetAvatar,
@@ -11,6 +12,7 @@ import {
     type Pet,
 } from '@shared/core';
 import BreedDnaCenter from './breed-dna-center';
+import s from '../index.module.css';
 
 type BreedParentsPreviewProps = {
     petA: Pet | null;
@@ -32,17 +34,17 @@ const CycleRow: React.FC<{ side: 'a' | 'b'; onPrev?: () => void; onNext?: () => 
 }) => {
     if (!onPrev && !onNext) return null;
     return (
-        <div className="breed-cycle">
+        <div className={s.cycle}>
             <button
                 type="button"
-                className={`breed-cycle__btn breed-cycle__btn--${side}`}
+                className={clsx(s.cycleBtn, side === 'a' ? s.cycleBtnA : s.cycleBtnB)}
                 onClick={onPrev}
             >
                 ◀ Prev
             </button>
             <button
                 type="button"
-                className={`breed-cycle__btn breed-cycle__btn--${side}`}
+                className={clsx(s.cycleBtn, side === 'a' ? s.cycleBtnA : s.cycleBtnB)}
                 onClick={onNext}
             >
                 Next ▶
@@ -68,8 +70,8 @@ const winRatio = (pet: Pet): number => {
 const ParentCard: React.FC<{ pet: Pet | null; side: 'a' | 'b' }> = ({ pet, side }) => {
     if (!pet) {
         return (
-            <div className={`breed-parent breed-parent--${side} is-empty`}>
-                <div className="breed-parent__placeholder">Select a parent</div>
+            <div className={clsx(s.parent, side === 'b' && s.parentB, s.isEmpty)}>
+                <div className={s.parentPlaceholder}>Select a parent</div>
             </div>
         );
     }
@@ -79,40 +81,40 @@ const ParentCard: React.FC<{ pet: Pet | null; side: 'a' | 'b' }> = ({ pet, side 
     const hp = getLifePercent(pet);
 
     return (
-        <div className={`breed-parent breed-parent--${side}`}>
-            <div className="breed-parent__visual">
+        <div className={clsx(s.parent, side === 'b' && s.parentB)}>
+            <div className={s.parentVisual}>
                 <div
-                    className="breed-parent__rarity"
+                    className={s.parentRarity}
                     style={{ color: rarityColor, borderColor: rarityColor }}
                 >
                     {getRarityName(pet.rarity)}
                 </div>
-                <div className="breed-parent__level">Lv.{pet.level}</div>
+                <div className={s.parentLevel}>Lv.{pet.level}</div>
                 {pet.breedCount != null && (
-                    <div className="breed-parent__bred">{pet.breedCount} bred</div>
+                    <div className={s.parentBred}>{pet.breedCount} bred</div>
                 )}
-                <span className="breed-parent__avatar">{getPetAvatar(pet.dna)}</span>
+                <span className={s.parentAvatar}>{getPetAvatar(pet.dna)}</span>
             </div>
 
-            <div className="breed-parent__body">
-                <div className="breed-parent__name">{pet.name}</div>
-                <div className="breed-parent__class">{getPetClass(pet.dna)}</div>
+            <div className={s.parentBody}>
+                <div className={s.parentName}>{pet.name}</div>
+                <div className={s.parentClass}>{getPetClass(pet.dna)}</div>
 
-                <div className="breed-parent__stats">
+                <div className={s.parentStats}>
                     {STAT_ROWS.map((row) => {
                         const value = props[row.key];
                         return (
-                            <div className="breed-parent__stat" key={row.label}>
+                            <div className={s.parentStat} key={row.label}>
                                 <span
-                                    className="breed-parent__stat-label"
+                                    className={s.parentStatLabel}
                                     style={{ color: row.color }}
                                 >
                                     {row.label}
                                 </span>
-                                <span className="breed-parent__stat-value">{value}</span>
-                                <div className="breed-parent__stat-track">
+                                <span className={s.parentStatValue}>{value}</span>
+                                <div className={s.parentStatTrack}>
                                     <div
-                                        className="breed-parent__stat-fill"
+                                        className={s.parentStatFill}
                                         style={{
                                             width: `${Math.min(100, value)}%`,
                                             background: row.color,
@@ -124,42 +126,42 @@ const ParentCard: React.FC<{ pet: Pet | null; side: 'a' | 'b' }> = ({ pet, side 
                     })}
                 </div>
 
-                <div className="breed-parent__meters">
-                    <div className="breed-parent__meter">
-                        <span className="breed-parent__meter-label breed-parent__meter-label--xp">
+                <div className={s.parentMeters}>
+                    <div className={s.parentMeter}>
+                        <span className={clsx(s.parentMeterLabel, s.parentMeterLabelXp)}>
                             XP
                         </span>
-                        <div className="breed-parent__meter-track">
+                        <div className={s.parentMeterTrack}>
                             <div
-                                className="breed-parent__meter-fill breed-parent__meter-fill--xp"
+                                className={clsx(s.parentMeterFill, s.parentMeterFillXp)}
                                 style={{ width: `${getXpPercent(pet)}%` }}
                             />
                         </div>
-                        <span className="breed-parent__meter-value breed-parent__meter-value--xp">
+                        <span className={clsx(s.parentMeterValue, s.parentMeterValueXp)}>
                             {xp.xpCurrent}/{xp.xpMax}
                         </span>
                     </div>
-                    <div className="breed-parent__meter">
-                        <span className="breed-parent__meter-label breed-parent__meter-label--hp">
+                    <div className={s.parentMeter}>
+                        <span className={clsx(s.parentMeterLabel, s.parentMeterLabelHp)}>
                             HP
                         </span>
-                        <div className="breed-parent__meter-track">
+                        <div className={s.parentMeterTrack}>
                             <div
-                                className="breed-parent__meter-fill breed-parent__meter-fill--hp"
+                                className={clsx(s.parentMeterFill, s.parentMeterFillHp)}
                                 style={{ width: `${hp}%` }}
                             />
                         </div>
-                        <span className="breed-parent__meter-value breed-parent__meter-value--hp">
+                        <span className={clsx(s.parentMeterValue, s.parentMeterValueHp)}>
                             {hp}%
                         </span>
                     </div>
                 </div>
 
-                <div className="breed-parent__record">
+                <div className={s.parentRecord}>
                     <span>
                         {pet.winCount}W / {pet.lossCount}L
                     </span>
-                    <span className="breed-parent__wr">{winRatio(pet)}% WR</span>
+                    <span className={s.parentWr}>{winRatio(pet)}% WR</span>
                 </div>
             </div>
         </div>
@@ -177,13 +179,13 @@ const BreedParentsPreview: React.FC<BreedParentsPreviewProps> = ({
     onPrevB,
     onNextB,
 }) => (
-    <div className="breed-parents">
-        <div className="breed-parent-col">
+    <div className={s.parents}>
+        <div className={s.parentCol}>
             <ParentCard pet={petA} side="a" />
             <CycleRow side="a" onPrev={onPrevA} onNext={onNextA} />
         </div>
         <BreedDnaCenter petA={petA} petB={petB} action={action} />
-        <div className="breed-parent-col">
+        <div className={s.parentCol}>
             <ParentCard pet={petB} side="b" />
             <CycleRow side="b" onPrev={onPrevB} onNext={onNextB} />
         </div>

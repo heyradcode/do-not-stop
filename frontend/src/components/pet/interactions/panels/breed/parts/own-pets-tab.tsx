@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import type { Pet } from '@shared/core';
 import PendingBreedNotice from './pending-breed-notice';
 import BreedParentsPreview from './breed-parents-preview';
+import s from '../index.module.css';
 
 type OwnPetsTabProps = {
     petCount: number;
@@ -44,8 +45,8 @@ const OwnPetsTab: React.FC<OwnPetsTabProps> = ({
 
     if (petCount < 2) {
         return (
-            <div className="breed-tab-panel">
-                <div className="breed-no-married">
+            <div className={s.tabPanel}>
+                <div className={s.noMarried}>
                     <p>You need at least 2 pets to breed here.</p>
                     <p>
                         Use the <strong>With Spouse</strong> tab if your pet is married.
@@ -74,8 +75,8 @@ const OwnPetsTab: React.FC<OwnPetsTabProps> = ({
     };
 
     return (
-        <div className="breed-tab-panel">
-            <p className="breed-tab-hint">Cycle each side to choose two of your pets to breed.</p>
+        <div className={s.tabPanel}>
+            <p className={s.tabHint}>Cycle each side to choose two of your pets to breed.</p>
             <BreedParentsPreview
                 petA={parentA}
                 petB={parentB}
@@ -86,7 +87,7 @@ const OwnPetsTab: React.FC<OwnPetsTabProps> = ({
                 onNextB={() => cycle(pet2, pet1, 1, onPet2Change)}
             />
             {areRelated && (
-                <p className="breed-relative-warning">
+                <p className={s.relativeWarning}>
                     These pets are relatives and cannot breed together.
                 </p>
             )}

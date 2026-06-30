@@ -2,6 +2,7 @@ import React from 'react';
 import type { Pet, PetChain } from '@shared/core';
 import PendingBreedNotice from './pending-breed-notice';
 import SpouseLabel from './spouse-label';
+import s from '../index.module.css';
 
 type WithSpouseTabProps = {
     allPets: { id: string; pet: Pet }[];
@@ -45,34 +46,34 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
     };
 
     return (
-        <div className="breed-tab-panel">
-            <p className="breed-tab-hint">Cycle to a married pet to breed with its spouse.</p>
+        <div className={s.tabPanel}>
+            <p className={s.tabHint}>Cycle to a married pet to breed with its spouse.</p>
             <div className="picker">
                 <div className="field">
                     <span className="field-label">Your pet</span>
-                    <div className="breed-cycle-select">
+                    <div className={s.cycleSelect}>
                         <button
                             type="button"
-                            className="breed-cycle__btn"
+                            className={s.cycleBtn}
                             onClick={() => cycle(-1)}
                             aria-label="Previous pet"
                             disabled={allPets.length === 0}
                         >
                             ◀
                         </button>
-                        <div className="breed-cycle-select__current">
+                        <div className={s.cycleCurrent}>
                             {selected ? (
                                 <>
                                     {selected.name} · Lv {selected.level}
                                     {selected.spouseId ? ` ↔ #${selected.spouseId}` : ''}
                                 </>
                             ) : (
-                                <span className="spouse-placeholder">Select a pet</span>
+                                <span className={s.spousePlaceholder}>Select a pet</span>
                             )}
                         </div>
                         <button
                             type="button"
-                            className="breed-cycle__btn"
+                            className={s.cycleBtn}
                             onClick={() => cycle(1)}
                             aria-label="Next pet"
                             disabled={allPets.length === 0}
@@ -83,15 +84,15 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
                 </div>
                 <div className="field">
                     <span className="field-label">Partner&apos;s pet</span>
-                    <div className="spouse-value">
+                    <div className={s.spouseValue}>
                         {!spousePetId ? (
-                            <span className="spouse-placeholder">— select your pet first —</span>
+                            <span className={s.spousePlaceholder}>— select your pet first —</span>
                         ) : marriageLoading ? (
-                            <span className="spouse-placeholder">Checking…</span>
+                            <span className={s.spousePlaceholder}>Checking…</span>
                         ) : spouseId ? (
                             <SpouseLabel chain={chain} spouseId={spouseId} />
                         ) : (
-                            <span className="spouse-placeholder">Not married</span>
+                            <span className={s.spousePlaceholder}>Not married</span>
                         )}
                     </div>
                 </div>
@@ -99,7 +100,7 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
 
             {/* Not-married hint */}
             {spousePetId && !marriageLoading && !isMarried && (
-                <div className="breed-no-married">
+                <div className={s.noMarried}>
                     <p>This pet is not married yet.</p>
                     <p>
                         Go to the <strong>Marriage</strong> page to propose first.
@@ -111,12 +112,12 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
             {spouseId && (
                 <>
                     {studFeeLabel && (
-                        <div className="stud-fee-notice">
+                        <div className={s.studFeeNotice}>
                             Stud fee: <strong>{studFeeLabel}</strong> — paid to the spouse owner.
                         </div>
                     )}
                     {areRelated && (
-                        <p className="breed-relative-warning">
+                        <p className={s.relativeWarning}>
                             Your pet and their spouse are relatives and cannot breed together.
                         </p>
                     )}

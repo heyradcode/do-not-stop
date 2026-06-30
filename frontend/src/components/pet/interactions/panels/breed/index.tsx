@@ -20,7 +20,6 @@ import OwnPetsTab from './parts/own-pets-tab';
 import WithSpouseTab from './parts/with-spouse-tab';
 import StudFeeBalance from './parts/stud-fee-balance';
 import type { BreedPanelProps, BreedTab } from './types';
-import './index.css';
 
 const BREED_FAIL_MESSAGE = 'Failed to breed pets. Please try again.';
 const AWAITING_HINT = 'Hang tight—your new pet will show up in a moment.';

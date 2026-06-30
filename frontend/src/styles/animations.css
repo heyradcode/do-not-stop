@@ -154,39 +154,6 @@
         width: 0;
     }
 }
-@keyframes cp-bar-grow {
-    from {
-        width: 0;
-    }
-}
-
-/* Breeding — DNA helix */
-@keyframes cp-strand-glow {
-    0%,
-    100% {
-        filter: drop-shadow(0 0 3px rgb(125 214 255 / 40%));
-    }
-    50% {
-        filter: drop-shadow(0 0 9px rgb(125 214 255 / 90%));
-    }
-}
-@keyframes cp-node-blink {
-    0%,
-    100% {
-        opacity: 0.65;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 1;
-        transform: scale(1.4);
-    }
-}
-@keyframes cp-compat-draw {
-    from {
-        stroke-dasharray: 0 251;
-    }
-}
-
 /* Marriage */
 @keyframes cp-heart-float {
     0%,

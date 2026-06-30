@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import clsx from 'clsx';
 import {
     getGeneration,
     getPetProperties,
@@ -6,6 +7,7 @@ import {
     getRarityName,
     type Pet,
 } from '@shared/core';
+import s from '../index.module.css';
 
 type BreedDnaCenterProps = {
     petA: Pet | null;
@@ -56,7 +58,7 @@ const estimateOutcome = (petA: Pet, petB: Pet) => {
 /** Animated DNA double-helix — mirrors the redesign mock's Breeding Lab centre. */
 const DnaHelix: React.FC<{ animated: boolean }> = ({ animated }) => (
     <svg
-        className="breed-dna__helix"
+        className={s.dnaHelix}
         width="46"
         height="104"
         viewBox="0 0 80 180"
@@ -85,7 +87,7 @@ const DnaHelix: React.FC<{ animated: boolean }> = ({ animated }) => (
         <line x1="23" y1="157" x2="57" y2="157" stroke="rgba(195,210,255,.1)" strokeWidth="1" />
         <line x1="16" y1="180" x2="64" y2="180" stroke="rgba(195,210,255,.18)" strokeWidth="1.5" />
         <path
-            className={animated ? 'breed-dna__strand' : undefined}
+            className={animated ? s.dnaStrand : undefined}
             d="M 64 0 C 64 12,53 23,40 45 C 27 67,16 78,16 90 C 16 102,27 113,40 135 C 53 157,64 168,64 180"
             stroke="url(#breed-sg1)"
             strokeWidth="2.5"
@@ -93,21 +95,21 @@ const DnaHelix: React.FC<{ animated: boolean }> = ({ animated }) => (
             strokeLinecap="round"
         />
         <path
-            className={animated ? 'breed-dna__strand breed-dna__strand--b' : undefined}
+            className={animated ? clsx(s.dnaStrand, s.dnaStrandB) : undefined}
             d="M 16 0 C 16 12,27 23,40 45 C 53 67,64 78,64 90 C 64 102,53 113,40 135 C 27 157,16 168,16 180"
             stroke="url(#breed-sg2)"
             strokeWidth="2.5"
             fill="none"
             strokeLinecap="round"
         />
-        <circle className={animated ? 'breed-dna__node' : undefined} cx="64" cy="0" r="5" fill="#7dd6ff" style={{ animationDelay: '0s' }} />
-        <circle className={animated ? 'breed-dna__node' : undefined} cx="16" cy="0" r="5" fill="#ff7bcb" style={{ animationDelay: '.5s' }} />
-        <circle className={animated ? 'breed-dna__node' : undefined} cx="40" cy="45" r="5" fill="#b58cff" style={{ animationDelay: '1s' }} />
-        <circle className={animated ? 'breed-dna__node' : undefined} cx="16" cy="90" r="5" fill="#7dd6ff" style={{ animationDelay: '1.5s' }} />
-        <circle className={animated ? 'breed-dna__node' : undefined} cx="64" cy="90" r="5" fill="#ffcf70" style={{ animationDelay: '.3s' }} />
-        <circle className={animated ? 'breed-dna__node' : undefined} cx="40" cy="135" r="5" fill="#0fffae" style={{ animationDelay: '.8s' }} />
-        <circle className={animated ? 'breed-dna__node' : undefined} cx="64" cy="180" r="5" fill="#ff7bcb" style={{ animationDelay: '1.2s' }} />
-        <circle className={animated ? 'breed-dna__node' : undefined} cx="16" cy="180" r="5" fill="#b58cff" style={{ animationDelay: '.7s' }} />
+        <circle className={animated ? s.dnaNode : undefined} cx="64" cy="0" r="5" fill="#7dd6ff" style={{ animationDelay: '0s' }} />
+        <circle className={animated ? s.dnaNode : undefined} cx="16" cy="0" r="5" fill="#ff7bcb" style={{ animationDelay: '.5s' }} />
+        <circle className={animated ? s.dnaNode : undefined} cx="40" cy="45" r="5" fill="#b58cff" style={{ animationDelay: '1s' }} />
+        <circle className={animated ? s.dnaNode : undefined} cx="16" cy="90" r="5" fill="#7dd6ff" style={{ animationDelay: '1.5s' }} />
+        <circle className={animated ? s.dnaNode : undefined} cx="64" cy="90" r="5" fill="#ffcf70" style={{ animationDelay: '.3s' }} />
+        <circle className={animated ? s.dnaNode : undefined} cx="40" cy="135" r="5" fill="#0fffae" style={{ animationDelay: '.8s' }} />
+        <circle className={animated ? s.dnaNode : undefined} cx="64" cy="180" r="5" fill="#ff7bcb" style={{ animationDelay: '1.2s' }} />
+        <circle className={animated ? s.dnaNode : undefined} cx="16" cy="180" r="5" fill="#b58cff" style={{ animationDelay: '.7s' }} />
     </svg>
 );
 
@@ -127,18 +129,18 @@ const BreedDnaCenter: React.FC<BreedDnaCenterProps> = ({ petA, petB, action }) =
     const rarityName = outcome ? getRarityName(outcome.rarity) : '—';
 
     return (
-        <div className="breed-dna">
-            <div className="breed-dna__label" aria-hidden>
+        <div className={s.dna}>
+            <div className={s.dnaLabel} aria-hidden>
                 DNA Strand
             </div>
 
             <DnaHelix animated={Boolean(outcome)} />
 
-            <div className="breed-dna__compat" aria-hidden>
-                <svg width="64" height="64" viewBox="0 0 88 88" className="breed-dna__compat-svg">
+            <div className={s.dnaCompat} aria-hidden>
+                <svg width="64" height="64" viewBox="0 0 88 88" className={s.dnaCompatSvg}>
                     <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(125,214,255,.08)" strokeWidth="8" />
                     <circle
-                        className="breed-dna__compat-arc"
+                        className={s.dnaCompatArc}
                         cx="44"
                         cy="44"
                         r="36"
@@ -149,21 +151,21 @@ const BreedDnaCenter: React.FC<BreedDnaCenterProps> = ({ petA, petB, action }) =
                         strokeDasharray={`${dash} ${CIRCUMFERENCE}`}
                     />
                 </svg>
-                <div className="breed-dna__compat-text">
-                    <span className="breed-dna__compat-pct">{outcome ? `${outcome.compat}%` : '—'}</span>
-                    <span className="breed-dna__compat-cap">Compat</span>
+                <div className={s.dnaCompatText}>
+                    <span className={s.dnaCompatPct}>{outcome ? `${outcome.compat}%` : '—'}</span>
+                    <span className={s.dnaCompatCap}>Compat</span>
                 </div>
             </div>
 
-            <div className="breed-dna__egg" aria-hidden>
-                <span className="breed-dna__egg-emoji">🥚</span>
-                <span className="breed-dna__egg-rarity" style={{ color: rarityColor, textShadow: `0 0 8px ${rarityColor}` }}>
+            <div className={s.dnaEgg} aria-hidden>
+                <span className={s.dnaEggEmoji}>🥚</span>
+                <span className={s.dnaEggRarity} style={{ color: rarityColor, textShadow: `0 0 8px ${rarityColor}` }}>
                     {rarityName}
                 </span>
-                <span className="breed-dna__egg-gen">{outcome ? `Gen ${outcome.gen}` : 'Select parents'}</span>
+                <span className={s.dnaEggGen}>{outcome ? `Gen ${outcome.gen}` : 'Select parents'}</span>
             </div>
 
-            {action ? <div className="breed-dna__action">{action}</div> : null}
+            {action ? <div className={s.dnaAction}>{action}</div> : null}
         </div>
     );
 };
