@@ -1,5 +1,6 @@
-/* Body content only — the overlay/dialog/header/close chrome comes from <NeonModal>. */
-.send-pet-body {
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+   Body content only — the overlay/dialog/header/close chrome comes from <NeonModal>. */
+.sendPetBody {
     .preview {
         background: rgb(5 13 30 / 78%);
         border: 1px solid var(--cp-border-soft);

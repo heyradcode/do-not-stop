@@ -5,7 +5,7 @@ import NeonButton from '@components/ui/neon-button';
 import NeonModal from '@components/ui/neon-modal';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
-import './index.css';
+import s from './index.module.css';
 
 interface SendPetModalProps {
     isOpen: boolean;
@@ -91,11 +91,11 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
             isOpen={isOpen}
             onRequestClose={handleClose}
             title="Send Pet"
-            contentClassName="send-pet-body"
+            contentClassName={s.sendPetBody}
         >
-            <div className="preview">
+            <div className={s.preview}>
                 <h3>{pet.name}</h3>
-                <div className="details">
+                <div className={s.details}>
                     <p>
                         <strong>Level:</strong> {pet.level}
                     </p>
@@ -108,7 +108,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
                 </div>
             </div>
 
-            <div className="recipient">
+            <div className={s.recipient}>
                 <label htmlFor="recipient">{addressLabel}</label>
                 <input
                     id="recipient"
@@ -120,12 +120,12 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
                     }}
                     placeholder={addressPlaceholder}
                     disabled={isPending}
-                    className={inputInvalid ? 'invalid' : ''}
+                    className={inputInvalid ? s.invalid : undefined}
                 />
             </div>
 
-            <div className="actions">
-                <button className="cancel" onClick={handleClose} disabled={isPending}>
+            <div className={s.actions}>
+                <button className={s.cancel} onClick={handleClose} disabled={isPending}>
                     Cancel
                 </button>
                 <NeonButton

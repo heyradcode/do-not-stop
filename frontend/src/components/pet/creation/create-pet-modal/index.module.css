@@ -1,7 +1,8 @@
-/* Body content only — the overlay/dialog/header/close chrome comes from <NeonModal>.
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+   Body content only — the overlay/dialog/header/close chrome comes from <NeonModal>.
    Tokens: frontend/src/styles/variables.css */
 
-.create-pet-body {
+.createPetBody {
     --focus-ring: 0 0 0 2px var(--cp-cyan), 0 0 12px rgb(125 214 255 / 32%);
 
     & > p {

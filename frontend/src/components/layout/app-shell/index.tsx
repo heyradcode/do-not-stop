@@ -3,7 +3,7 @@ import React from 'react';
 import Ambient from '@components/layout/ambient';
 import Sidebar from '@components/layout/sidebar';
 import TopBar from '@components/layout/top-bar';
-import './index.css';
+import s from './index.module.css';
 
 type AppShellProps = {
     children: React.ReactNode;
@@ -15,13 +15,13 @@ type AppShellProps = {
  * the gallery) render into {children}.
  */
 const AppShell: React.FC<AppShellProps> = ({ children }) => (
-    <div className="cp-shell">
+    <div className={s.shell}>
         <Ambient />
-        <div className="cp-shell__frame">
+        <div className={s.frame}>
             <Sidebar />
-            <div className="cp-shell__main">
+            <div className={s.main}>
                 <TopBar />
-                <div className="cp-shell__content">{children}</div>
+                <div className={s.content}>{children}</div>
             </div>
         </div>
     </div>

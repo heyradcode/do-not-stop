@@ -224,22 +224,59 @@ Migrated (clean leaves + Icon + first feature component):
   the module
 - ✅ `layout/ambient` — `.ambient`/`.canvas`/`.grid` (trivial)
 
-**BLOCKED — `pet/collection/pet-gallery`** (main screen, 603 lines): NOT a clean
-leaf. Its CSS globally defines shared, non-`cp-` utility classes used by OTHER
-components:
-- `.loading-container` — also used by `interactions/standalone`
-- `.loading-spinner` — used by `interactions/standalone` AND `wallet/native-balance`
-  (which **also defines** it — a pre-existing duplicate to reconcile)
-- `.error-container` — gallery-only
-Converting gallery to a module would hash these and break the interaction /
-native-balance loading states. **Prereq before converting gallery:** extract
-`.loading-*`/`.error-container` into a proper GLOBAL stylesheet (e.g.
-`styles/loading.css` imported by `src/index.css`) and delete the duplicate
-`.loading-spinner` in `native-balance`. Also handle the shared keyframe
-`cp-float` (used by 5 files) — a module can't move it; duplicate it into the
-module or reference via `:global()` (verify in built CSS). Then convert the
-gallery's own `cp-*` classes. Do this with the app running for visual review —
-it's the primary screen.
+- ✅ **shared loading/error utilities → global** (prereq for gallery): moved
+  `.loading-container`/`.loading-spinner`/`.error-container` out of the gallery
+  stylesheet into `styles/messages.css` (the global "class names only" file), so
+  they stay global for `interactions/standalone` after gallery modularizes.
+  `native-balance` keeps its own scoped `.balance-loading .loading-spinner`
+  `!important` override (independent, left as-is). `cp-spin-slow` stays in
+  `animations.css`.
+- ✅ `pet/collection/pet-gallery` (main screen) — full `cp-*__*`/`cp-*--*` BEM →
+  local classes; dynamic tone via `clsx(s.stat, s.cyan/violet/gold)`, leaderboard
+  `is-me`→`s.isMe`, send-button cooldown `on-cooldown`→`s.onCooldown` (dropped
+  the style-less `is-ready` marker). Shared keyframe `cp-float` (used by 4 other
+  non-module stylesheets) **duplicated into the module** — verified in built CSS
+  that def+usage hash to the same `_cp-float_*` name while the global un-hashed
+  `cp-float` remains for the others. Map `(s) => …` stat-tile param renamed to
+  `tile` to free the `s` module import.
+
+- ✅ `layout/app-shell` — `.cp-shell`/`.cp-shell__frame`/`.cp-shell__main`/
+  `.cp-shell__content` → `.shell`/`.frame`/`.main`/`.content`. This was the
+  original complaint (`.cp-shell__content`). Turned out self-contained: the
+  classes are used only in its own tsx; the `--cp-shell-*` *variables* (used by
+  sidebar/top-bar) are global tokens, unrelated to the classes, and stay put.
+  No keyframes, no dynamic classes. The whole `layout/` chrome is now modules.
+
+- ✅ `wallet/token-balance` — `.token-balance` → `.tokenBalance`; nested child
+  classes (`.info/.symbol/.name/.amount/.value`) stay nested and get scoped.
+  Self-contained leaf, no external refs, no dynamic classes.
+
+- ✅ `wallet/native-balance` — `.native-balance`→`.nativeBalance` +
+  `.balance-*`→camelCase. Its small spinner override stays a `:global(.loading-
+  spinner)` under the local `.balanceLoading` ancestor, so the global base (from
+  messages.css) + this override still cascade exactly as before; verified the
+  built selector `_balanceLoading_* .loading-spinner`. `@keyframes spin` (used
+  only here) kept in the module — verified def+usage hash to one `_spin_*`. The
+  `className` prop passthrough now uses `clsx(s.nativeBalance, className)`.
+
+- ✅ `pet/creation/create-pet-modal` — `.create-pet-body`→`.createPetBody`
+  (passed to `<NeonModal contentClassName>`), `.form`/`.field` scoped locally;
+  nested `label`/`input` element selectors ride along. `.pending-hint`/
+  `.success-message` stay plain-string globals (messages.css); `.mint-cost` is a
+  dead/unstyled class kept as a plain string to preserve the DOM. No external
+  refs, no keyframes.
+
+- ✅ `pet/transfer/send-pet-modal` — `.send-pet-body`→`.sendPetBody` (NeonModal
+  `contentClassName`), `.preview`/`.details`/`.recipient`/`.actions`/`.cancel`
+  scoped; the input's `.invalid` state modifier now `inputInvalid ? s.invalid :
+  undefined`. No external refs, no keyframes.
+
+**Build-command note (avoid false-positive verification):** `typescript` AND
+`vite` are hoisted to the monorepo ROOT `node_modules`, not `frontend/`. Run
+`node ../node_modules/typescript/bin/tsc …` and `node ../node_modules/vite/bin/
+vite.js build`. A frontend-local path crashes with MODULE_NOT_FOUND; if piped to
+`tail`/chained with `&&` the crash is masked and greps read a STALE `dist`. Check
+the real `VITE_EXIT` and look for the `✓ built` line.
 
 **GOTCHA — keyframes in modules:** Vite scopes `animation-name` references
 even when the `@keyframes` is defined globally (`animations.css`), so a module

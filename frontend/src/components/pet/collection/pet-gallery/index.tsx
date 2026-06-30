@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import clsx from 'clsx';
 import {
     getGeneration,
     getLifePercent,
@@ -23,7 +24,7 @@ import CreatePetModal from '@components/pet/creation/create-pet-modal';
 import SendPetModal from '@components/pet/transfer/send-pet-modal';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { usePetCooldowns } from '@hooks/usePetCooldowns';
-import './index.css';
+import s from './index.module.css';
 
 /** Placeholder leaderboard rows — pending real ranking data (plan §8 Q3). */
 const LEADERBOARD_PLACEHOLDER = [
@@ -84,8 +85,8 @@ const PetGallery: React.FC = () => {
 
     if (!isConnected) {
         return (
-            <div className="cp-idle cp-idle--message">
-                <div className="cp-idle__prompt">
+            <div className={clsx(s.idle, s.idleMessage)}>
+                <div className={s.prompt}>
                     <Icon as={PawIcon} tone={Tones.Cyan} glow="strong" noGap />
                     <h2>Your Pet Collection</h2>
                     <p>Connect your wallet to view your pets.</p>
@@ -95,47 +96,47 @@ const PetGallery: React.FC = () => {
     }
 
     return (
-        <div className="cp-idle">
+        <div className={s.idle}>
             {/* Stat strip — Pets & Wins are real; Global rank is a placeholder */}
-            <div className="cp-idle__stats">
-                <div className="cp-stat cp-stat--cyan">
-                    <span className="cp-stat__icon" aria-hidden>
+            <div className={s.stats}>
+                <div className={clsx(s.stat, s.cyan)}>
+                    <span className={s.statIcon} aria-hidden>
                         🐾
                     </span>
-                    <div className="cp-stat__body">
-                        <div className="cp-stat__value">{pets.length}</div>
-                        <div className="cp-stat__label">Pets</div>
+                    <div className={s.statBody}>
+                        <div className={s.statValue}>{pets.length}</div>
+                        <div className={s.statLabel}>Pets</div>
                     </div>
                 </div>
-                <div className="cp-stat cp-stat--violet">
-                    <span className="cp-stat__icon" aria-hidden>
+                <div className={clsx(s.stat, s.violet)}>
+                    <span className={s.statIcon} aria-hidden>
                         ⚔
                     </span>
-                    <div className="cp-stat__body">
-                        <div className="cp-stat__value">{totalWins}</div>
-                        <div className="cp-stat__label">Wins</div>
+                    <div className={s.statBody}>
+                        <div className={s.statValue}>{totalWins}</div>
+                        <div className={s.statLabel}>Wins</div>
                     </div>
                 </div>
-                <div className="cp-stat cp-stat--gold">
-                    <span className="cp-stat__icon" aria-hidden>
+                <div className={clsx(s.stat, s.gold)}>
+                    <span className={s.statIcon} aria-hidden>
                         🏆
                     </span>
-                    <div className="cp-stat__body">
-                        <div className="cp-stat__value">#3</div>
-                        <div className="cp-stat__label">Global Rank</div>
+                    <div className={s.statBody}>
+                        <div className={s.statValue}>#3</div>
+                        <div className={s.statLabel}>Global Rank</div>
                     </div>
                 </div>
             </div>
 
             {/* Leaderboard — full-width row below the stats (placeholder ranking data) */}
-            <div className="cp-leaderboard">
-                <div className="cp-leaderboard__title">🏆 Leaderboard</div>
-                <ul className="cp-leaderboard__list">
+            <div className={s.leaderboard}>
+                <div className={s.leaderboardTitle}>🏆 Leaderboard</div>
+                <ul className={s.leaderboardList}>
                     {LEADERBOARD_PLACEHOLDER.map((row) => (
-                        <li key={row.rank} className={`cp-lb-row${row.me ? ' is-me' : ''}`}>
-                            <span className="cp-lb-row__rank">#{row.rank}</span>
-                            <span className="cp-lb-row__name">{row.name}</span>
-                            <span className="cp-lb-row__tier">{row.tier}</span>
+                        <li key={row.rank} className={clsx(s.lbRow, row.me && s.isMe)}>
+                            <span className={s.lbRank}>#{row.rank}</span>
+                            <span className={s.lbName}>{row.name}</span>
+                            <span className={s.lbTier}>{row.tier}</span>
                         </li>
                     ))}
                 </ul>
@@ -161,118 +162,111 @@ const PetGallery: React.FC = () => {
             )}
 
             {!isLoading && !error && (
-                <div className="cp-pet-grid">
+                <div className={s.petGrid}>
                     {pets.map((pet) => {
                         const cd = statusFor(pet);
                         const rarityColor = getRarityColor(pet.rarity);
                         const xp = getXpNumbers(pet);
                         const skill = getPetSkill(pet.speciesId);
                         return (
-                            <div key={`${pet.chain}-${pet.id}`} className="cp-pet-card">
+                            <div key={`${pet.chain}-${pet.id}`} className={s.petCard}>
                                 <div
-                                    className="cp-pet-card__rarity-bar"
+                                    className={s.rarityBar}
                                     style={{
                                         background: rarityColor,
                                         boxShadow: `0 0 8px ${rarityColor}`,
                                     }}
                                 />
-                                <div className="cp-pet-card__visual">
+                                <div className={s.visual}>
                                     <div
-                                        className="cp-pet-card__rarity"
+                                        className={s.rarity}
                                         style={{ color: rarityColor, borderColor: rarityColor }}
                                     >
                                         {getRarityName(pet.rarity)}
                                     </div>
-                                    <div className="cp-pet-card__level">Lv. {pet.level}</div>
+                                    <div className={s.level}>Lv. {pet.level}</div>
                                     {skill ? (
-                                        <div
-                                            className="cp-pet-card__skill"
-                                            title={skill.description}
-                                        >
+                                        <div className={s.skill} title={skill.description}>
                                             {skill.name}
                                         </div>
                                     ) : null}
-                                    <div className="cp-pet-card__avatar">
-                                        {getPetAvatar(pet.dna)}
-                                    </div>
+                                    <div className={s.avatar}>{getPetAvatar(pet.dna)}</div>
                                 </div>
 
-                                <div className="cp-pet-card__info">
-                                    <div className="cp-pet-card__head">
+                                <div className={s.info}>
+                                    <div className={s.head}>
                                         <div>
-                                            <div className="cp-pet-card__name">{pet.name}</div>
-                                            <div className="cp-pet-card__class">
+                                            <div className={s.name}>{pet.name}</div>
+                                            <div className={s.petClass}>
                                                 {getPetClass(pet.dna)} · Gen{' '}
                                                 {pet.generation ?? getGeneration(pet.dna)}
                                             </div>
                                         </div>
-                                        <div className="cp-pet-card__hp">
-                                            <span className="cp-pet-card__hp-label">HP</span>
-                                            <span className="cp-pet-card__hp-value">
+                                        <div className={s.hp}>
+                                            <span className={s.hpLabel}>HP</span>
+                                            <span className={s.hpValue}>
                                                 {getLifePercent(pet)}%
                                             </span>
                                         </div>
                                     </div>
 
-                                    <div className="cp-pet-card__xp">
-                                        <div className="cp-pet-card__xp-row">
-                                            <span className="cp-pet-card__xp-label">XP</span>
-                                            <span className="cp-pet-card__xp-value">
+                                    <div>
+                                        <div className={s.xpRow}>
+                                            <span className={s.xpLabel}>XP</span>
+                                            <span className={s.xpValue}>
                                                 {xp.xpCurrent}/{xp.xpMax}
                                             </span>
                                         </div>
-                                        <div className="cp-pet-card__xp-track">
+                                        <div className={s.xpTrack}>
                                             <div
-                                                className="cp-pet-card__xp-fill"
+                                                className={s.xpFill}
                                                 style={{ width: `${getXpPercent(pet)}%` }}
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="cp-pet-card__record">
-                                        <span className="cp-pet-card__wins">{pet.winCount}W</span>
-                                        <span className="cp-pet-card__sep">/</span>
-                                        <span className="cp-pet-card__losses">
-                                            {pet.lossCount}L
-                                        </span>
-                                        <span className="cp-pet-card__dot">·</span>
-                                        <span className="cp-pet-card__wr">{winRatio(pet)}% WR</span>
+                                    <div className={s.record}>
+                                        <span className={s.wins}>{pet.winCount}W</span>
+                                        <span className={s.sep}>/</span>
+                                        <span className={s.losses}>{pet.lossCount}L</span>
+                                        <span className={s.dot}>·</span>
+                                        <span className={s.wr}>{winRatio(pet)}% WR</span>
                                     </div>
                                 </div>
 
-                                <div className="cp-pet-card__stats">
-                                    {petStatTiles(pet).map((s) => (
-                                        <div className="cp-stat-tile" key={s.label}>
-                                            <div className="cp-stat-tile__label">{s.label}</div>
-                                            <div className="cp-stat-tile__value">{s.value}</div>
+                                <div className={s.cardStats}>
+                                    {petStatTiles(pet).map((tile) => (
+                                        <div className={s.statTile} key={tile.label}>
+                                            <div className={s.tileLabel}>{tile.label}</div>
+                                            <div className={s.tileValue}>{tile.value}</div>
                                         </div>
                                     ))}
                                 </div>
 
                                 {cd.onCooldown && (
-                                    <div className="cp-pet-card__status">
+                                    <div className={s.status}>
                                         {cd.battleOnCooldown && (
-                                            <div className="cp-cooldown">
+                                            <div className={s.cooldown}>
                                                 ⚔️ Battle ready in {cd.battleLabel}
                                             </div>
                                         )}
                                         {cd.breedOnCooldown && (
-                                            <div className="cp-cooldown">
+                                            <div className={s.cooldown}>
                                                 🥚 Breed ready in {cd.breedLabel}
                                             </div>
                                         )}
                                         {cd.trainOnCooldown && (
-                                            <div className="cp-cooldown">
+                                            <div className={s.cooldown}>
                                                 💪 Train ready in {cd.trainLabel}
                                             </div>
                                         )}
                                     </div>
                                 )}
 
-                                <div className="cp-pet-card__actions">
+                                <div className={s.actions}>
                                     <button
                                         type="button"
-                                        className="cp-pet-card__battle"
+                                        className={s.battleBtn}
                                         onClick={() => navigate(BATTLE_PATH)}
                                     >
                                         <Icon
@@ -285,9 +279,7 @@ const PetGallery: React.FC = () => {
                                     </button>
                                     <button
                                         type="button"
-                                        className={`cp-pet-card__send${
-                                            cd.battleReady ? ' is-ready' : ' on-cooldown'
-                                        }`}
+                                        className={clsx(s.sendBtn, !cd.battleReady && s.onCooldown)}
                                         onClick={() => handleSendClick(pet)}
                                         title="Send / transfer pet"
                                         aria-label={`Send ${pet.name}`}
@@ -306,11 +298,11 @@ const PetGallery: React.FC = () => {
 
                     <button
                         type="button"
-                        className="cp-summon-tile"
+                        className={s.summonTile}
                         onClick={() => setCreateModalOpen(true)}
                     >
-                        <span className="cp-summon-tile__plus">+</span>
-                        <span className="cp-summon-tile__label">Summon a Pet</span>
+                        <span className={s.summonPlus}>+</span>
+                        <span className={s.summonLabel}>Summon a Pet</span>
                     </button>
                 </div>
             )}

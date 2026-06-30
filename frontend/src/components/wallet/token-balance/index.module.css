@@ -1,4 +1,6 @@
-.token-balance {
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+   A single token row: symbol/name on the left, formatted balance on the right. */
+.tokenBalance {
     display: flex;
     justify-content: space-between;
     align-items: center;

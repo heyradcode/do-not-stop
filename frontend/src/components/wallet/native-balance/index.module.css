@@ -1,4 +1,6 @@
-.native-balance {
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+   Native (ETH/SOL) balance pill with loading and error states. */
+.nativeBalance {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -9,13 +11,13 @@
     font-size: 14px;
     min-height: 40px;
 
-    .balance-info {
+    .balanceInfo {
         display: flex;
         align-items: baseline;
         gap: 6px;
     }
 
-    .balance-amount {
+    .balanceAmount {
         font-weight: 600;
         color: #b7e4ff;
         font-family: 'Courier New', monospace;
@@ -23,7 +25,7 @@
         line-height: 1;
     }
 
-    .balance-symbol {
+    .balanceSymbol {
         font-weight: 500;
         color: #86ebff;
         font-size: 12px;
@@ -34,7 +36,7 @@
         /* Slight adjustment to align with the number */
     }
 
-    .balance-loading {
+    .balanceLoading {
         display: flex;
         align-items: center;
         gap: 6px;
@@ -43,7 +45,9 @@
         height: 20px;
         line-height: 1;
 
-        .loading-spinner {
+        /* Overrides the global .loading-spinner utility (styles/messages.css)
+           down to a small inline spinner for this pill. */
+        :global(.loading-spinner) {
             width: 6px !important;
             height: 6px !important;
             border: 1px solid rgb(30 157 255 / 36%) !important;
@@ -56,7 +60,7 @@
         }
     }
 
-    .balance-error {
+    .balanceError {
         display: flex;
         align-items: center;
         gap: 6px;
@@ -71,11 +75,11 @@
         font-size: 12px;
         min-height: 36px;
 
-        .balance-amount {
+        .balanceAmount {
             font-size: 13px;
         }
 
-        .balance-symbol {
+        .balanceSymbol {
             font-size: 11px;
         }
     }

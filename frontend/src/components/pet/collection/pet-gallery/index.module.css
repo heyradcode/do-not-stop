@@ -1,6 +1,7 @@
-/* Idle gallery — stat strip + leaderboard + pet card grid (redesign mock). */
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+   Idle gallery — stat strip + leaderboard + pet card grid (redesign mock). */
 
-.cp-idle {
+.idle {
     height: 100%;
     min-height: 0;
     display: flex;
@@ -8,13 +9,13 @@
     gap: 12px;
 }
 
-.cp-idle--message {
+.idleMessage {
     align-items: center;
     justify-content: center;
     text-align: center;
 }
 
-.cp-idle__prompt {
+.prompt {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -38,14 +39,14 @@
 }
 
 /* ── Stat strip ─────────────────────────────────────────────────────────── */
-.cp-idle__stats {
+.stats {
     flex-shrink: 0;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
 }
 
-.cp-stat {
+.stat {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -55,26 +56,26 @@
     background: var(--cp-surface);
 }
 
-.cp-stat__icon {
+.statIcon {
     font-size: 22px;
     line-height: 1;
     flex-shrink: 0;
 }
 
-.cp-stat__body {
+.statBody {
     display: flex;
     flex-direction: column;
     min-width: 0;
 }
 
-.cp-stat__value {
+.statValue {
     font-family: var(--cp-title-font);
     font-size: 22px;
     font-weight: 800;
     line-height: 1;
 }
 
-.cp-stat__label {
+.statLabel {
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -83,30 +84,30 @@
     margin-top: 3px;
 }
 
-.cp-stat--cyan {
+.cyan {
     border-color: rgb(125 214 255 / 20%);
     background: linear-gradient(135deg, rgb(125 214 255 / 9%), rgb(181 140 255 / 6%));
 }
-.cp-stat--cyan .cp-stat__value {
+.cyan .statValue {
     color: var(--cp-cyan);
 }
-.cp-stat--violet {
+.violet {
     border-color: rgb(181 140 255 / 20%);
     background: linear-gradient(135deg, rgb(181 140 255 / 9%), rgb(255 123 203 / 6%));
 }
-.cp-stat--violet .cp-stat__value {
+.violet .statValue {
     color: var(--cp-violet);
 }
-.cp-stat--gold {
+.gold {
     border-color: rgb(255 215 0 / 20%);
     background: linear-gradient(135deg, rgb(255 215 0 / 9%), rgb(255 207 112 / 6%));
 }
-.cp-stat--gold .cp-stat__value {
+.gold .statValue {
     color: var(--cp-gold);
 }
 
 /* ── Leaderboard (placeholder) — full-width row, horizontal entries ──────── */
-.cp-leaderboard {
+.leaderboard {
     flex-shrink: 0;
     overflow: hidden;
     padding: 12px 18px;
@@ -115,7 +116,7 @@
     background: linear-gradient(180deg, rgb(10 16 32 / 90%), rgb(6 10 22 / 95%));
 }
 
-.cp-leaderboard__title {
+.leaderboardTitle {
     font-family: var(--cp-title-font);
     font-size: 8px;
     font-weight: 700;
@@ -125,7 +126,7 @@
     margin-bottom: 9px;
 }
 
-.cp-leaderboard__list {
+.leaderboardList {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -133,7 +134,7 @@
     gap: 8px;
 }
 
-.cp-lb-row {
+.lbRow {
     flex: 1;
     min-width: 0;
     display: flex;
@@ -145,23 +146,23 @@
     border: 1px solid rgb(101 131 255 / 12%);
 }
 
-.cp-lb-row.is-me {
+.lbRow.isMe {
     background: rgb(255 215 0 / 8%);
     border-color: rgb(255 215 0 / 25%);
 }
 
-.cp-lb-row__rank {
+.lbRank {
     font-size: 10px;
     font-weight: 700;
     color: rgb(195 210 255 / 55%);
     flex-shrink: 0;
 }
 
-.cp-lb-row.is-me .cp-lb-row__rank {
+.lbRow.isMe .lbRank {
     color: var(--cp-gold);
 }
 
-.cp-lb-row__name {
+.lbName {
     font-size: 11px;
     font-weight: 500;
     color: rgb(195 210 255 / 78%);
@@ -172,12 +173,12 @@
     text-overflow: ellipsis;
 }
 
-.cp-lb-row.is-me .cp-lb-row__name {
+.lbRow.isMe .lbName {
     font-weight: 700;
     color: #f6f3ff;
 }
 
-.cp-lb-row__tier {
+.lbTier {
     font-size: 9px;
     font-weight: 700;
     color: rgb(195 210 255 / 55%);
@@ -185,7 +186,7 @@
 }
 
 /* ── Pet grid ───────────────────────────────────────────────────────────── */
-.cp-pet-grid {
+.petGrid {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -207,7 +208,7 @@
 }
 
 /* ── Pet card ───────────────────────────────────────────────────────────── */
-.cp-pet-card {
+.petCard {
     display: flex;
     flex-direction: column;
     min-height: 280px;
@@ -218,23 +219,23 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.cp-pet-card:hover {
+.petCard:hover {
     border-color: rgb(181 140 255 / 42%);
     box-shadow: 0 8px 32px rgb(0 0 0 / 65%), 0 0 18px rgb(181 140 255 / 10%);
 }
 
-.cp-pet-card:focus-within {
+.petCard:focus-within {
     outline: 2px solid var(--cp-violet);
     outline-offset: 2px;
 }
 
-.cp-pet-card__rarity-bar {
+.rarityBar {
     height: 3px;
     border-radius: 12px 12px 0 0;
     flex-shrink: 0;
 }
 
-.cp-pet-card__visual {
+.visual {
     position: relative;
     height: 130px;
     flex-shrink: 0;
@@ -246,14 +247,14 @@
     border-bottom: 1px solid rgb(101 131 255 / 12%);
 }
 
-.cp-pet-card__avatar {
+.avatar {
     font-size: 3.4rem;
     line-height: 1;
     animation: cp-float 3.8s ease-in-out infinite;
     filter: drop-shadow(0 0 16px rgb(181 140 255 / 50%));
 }
 
-.cp-pet-card__rarity {
+.rarity {
     position: absolute;
     top: 8px;
     right: 8px;
@@ -267,7 +268,7 @@
     background: rgb(5 13 30 / 55%);
 }
 
-.cp-pet-card__level {
+.level {
     position: absolute;
     bottom: 8px;
     left: 8px;
@@ -280,7 +281,7 @@
     font-weight: 700;
 }
 
-.cp-pet-card__skill {
+.skill {
     position: absolute;
     top: 8px;
     left: 8px;
@@ -297,21 +298,21 @@
     text-overflow: ellipsis;
 }
 
-.cp-pet-card__info {
+.info {
     padding: 12px 14px 0;
     display: flex;
     flex-direction: column;
     gap: 7px;
 }
 
-.cp-pet-card__head {
+.head {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
     gap: 8px;
 }
 
-.cp-pet-card__name {
+.name {
     font-family: var(--cp-title-font);
     font-size: 13px;
     font-weight: 700;
@@ -319,13 +320,13 @@
     color: #f6f3ff;
 }
 
-.cp-pet-card__class {
+.petClass {
     font-size: 10px;
     color: rgb(195 210 255 / 50%);
     margin-top: 2px;
 }
 
-.cp-pet-card__hp {
+.hp {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -336,24 +337,24 @@
     padding: 4px 7px;
 }
 
-.cp-pet-card__hp-label {
+.hpLabel {
     font-size: 8px;
     color: rgb(195 210 255 / 45%);
 }
 
-.cp-pet-card__hp-value {
+.hpValue {
     font-size: 11px;
     font-weight: 700;
     color: var(--cp-emerald);
 }
 
-.cp-pet-card__xp-row {
+.xpRow {
     display: flex;
     justify-content: space-between;
     margin-bottom: 4px;
 }
 
-.cp-pet-card__xp-label {
+.xpLabel {
     font-size: 8px;
     font-weight: 700;
     letter-spacing: 1px;
@@ -361,27 +362,27 @@
     color: rgb(125 214 255 / 50%);
 }
 
-.cp-pet-card__xp-value {
+.xpValue {
     font-size: 10px;
     font-weight: 700;
     color: var(--cp-cyan);
 }
 
-.cp-pet-card__xp-track {
+.xpTrack {
     height: 5px;
     background: var(--cp-inset);
     border-radius: 999px;
     overflow: hidden;
 }
 
-.cp-pet-card__xp-fill {
+.xpFill {
     height: 100%;
     background: var(--cp-gradient-line);
     border-radius: 999px;
     box-shadow: 0 0 8px rgb(181 140 255 / 50%);
 }
 
-.cp-pet-card__record {
+.record {
     display: flex;
     align-items: center;
     gap: 5px;
@@ -389,33 +390,33 @@
     font-variant-numeric: tabular-nums;
 }
 
-.cp-pet-card__wins {
+.wins {
     color: rgb(125 214 255 / 82%);
     font-weight: 700;
 }
-.cp-pet-card__sep {
+.sep {
     color: rgb(195 210 255 / 25%);
 }
-.cp-pet-card__losses {
+.losses {
     color: rgb(195 210 255 / 50%);
     font-weight: 600;
 }
-.cp-pet-card__dot {
+.dot {
     color: rgb(195 210 255 / 20%);
     margin: 0 2px;
 }
-.cp-pet-card__wr {
+.wr {
     color: rgb(195 210 255 / 38%);
 }
 
-.cp-pet-card__stats {
+.cardStats {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 4px;
     padding: 10px 14px 0;
 }
 
-.cp-stat-tile {
+.statTile {
     background: rgb(5 13 30 / 70%);
     border: 1px solid rgb(101 131 255 / 12%);
     border-radius: 4px;
@@ -423,27 +424,27 @@
     text-align: center;
 }
 
-.cp-stat-tile__label {
+.tileLabel {
     font-size: 8px;
     text-transform: uppercase;
     color: rgb(195 210 255 / 40%);
 }
 
-.cp-stat-tile__value {
+.tileValue {
     font-size: 12px;
     font-weight: 700;
     color: #f6f3ff;
     margin-top: 1px;
 }
 
-.cp-pet-card__status {
+.status {
     padding: 8px 14px 0;
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.cp-cooldown {
+.cooldown {
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 10px;
@@ -456,14 +457,14 @@
     border: 1px solid rgb(255 181 67 / 36%);
 }
 
-.cp-pet-card__actions {
+.actions {
     margin-top: auto;
     padding: 10px 14px 14px;
     display: flex;
     gap: 8px;
 }
 
-.cp-pet-card__battle {
+.battleBtn {
     flex: 1;
     display: flex;
     align-items: center;
@@ -482,13 +483,13 @@
     transition: all 0.2s ease;
 }
 
-.cp-pet-card__battle:hover {
+.battleBtn:hover {
     background: linear-gradient(135deg, rgb(255 123 203 / 20%), rgb(181 140 255 / 15%));
     box-shadow: 0 0 16px rgb(255 123 203 / 28%);
     border-color: rgb(255 123 203 / 32%);
 }
 
-.cp-pet-card__send {
+.sendBtn {
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -503,18 +504,18 @@
     border: 1px solid rgb(0 255 157 / 42%);
 }
 
-.cp-pet-card__send.on-cooldown {
+.sendBtn.onCooldown {
     color: #ffd07b;
     border-color: rgb(255 181 67 / 44%);
 }
 
-.cp-pet-card__send:hover {
+.sendBtn:hover {
     transform: translateY(-1px);
     box-shadow: 0 0 12px rgb(0 255 157 / 24%);
 }
 
 /* ── Summon tile ────────────────────────────────────────────────────────── */
-.cp-summon-tile {
+.summonTile {
     min-height: 280px;
     display: flex;
     flex-direction: column;
@@ -528,13 +529,13 @@
     transition: all 0.2s ease;
 }
 
-.cp-summon-tile:hover {
+.summonTile:hover {
     background: rgb(125 214 255 / 4%);
     border-color: rgb(125 214 255 / 38%);
     box-shadow: none;
 }
 
-.cp-summon-tile__plus {
+.summonPlus {
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -547,33 +548,43 @@
     border: 1px solid rgb(125 214 255 / 22%);
 }
 
-.cp-summon-tile__label {
+.summonLabel {
     font-size: 12px;
     font-weight: 600;
     color: rgb(125 214 255 / 45%);
 }
 
-/* Loading / error states now live globally in styles/messages.css (shared with
-   the interaction panels), so this gallery stylesheet can become a CSS Module. */
+/* Local copy of the shared float keyframe: the global cp-float in
+   styles/animations.css is still used by 4 non-module stylesheets, so a module
+   reference can't resolve to it — CSS Modules scope animation-name. */
+@keyframes cp-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-9px);
+    }
+}
 
 @media (prefers-reduced-motion: reduce) {
-    .cp-pet-card,
-    .cp-pet-card__send {
+    .petCard,
+    .sendBtn {
         transition: none;
     }
-    .cp-pet-card__avatar {
+    .avatar {
         animation: none;
     }
 }
 
 @media (max-width: 640px) {
-    .cp-idle__stats {
+    .stats {
         grid-template-columns: 1fr;
     }
-    .cp-leaderboard__list {
+    .leaderboardList {
         flex-direction: column;
     }
-    .cp-pet-grid {
+    .petGrid {
         grid-template-columns: 1fr;
     }
 }
