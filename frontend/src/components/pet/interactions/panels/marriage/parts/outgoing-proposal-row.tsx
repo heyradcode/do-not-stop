@@ -1,6 +1,8 @@
 import React from 'react';
+import clsx from 'clsx';
 import { formatExpiry, useMarriageInfo, type Pet } from '@shared/core';
 import { AuthActionButton } from '@components/common';
+import s from '../index.module.css';
 
 type OutgoingProposalRowProps = {
     pet: Pet;
@@ -27,16 +29,16 @@ const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({
     const expirySec = info.proposalExpiry ? Number(info.proposalExpiry) : 0;
 
     return (
-        <li className="proposal-card outgoing-proposal">
-            <div className="proposal-pets">
-                <span className="proposal-proposer">
-                    {pet.name} <span className="proposal-id">#{pet.id}</span>
+        <li className={clsx(s.proposalCard, s.outgoing)}>
+            <div className={s.proposalPets}>
+                <span className={s.proposalProposer}>
+                    {pet.name} <span className={s.proposalId}>#{pet.id}</span>
                 </span>
-                <span className="proposal-arrow">→</span>
-                <span className="proposal-target">#{info.proposalPetIdB?.toString()}</span>
+                <span className={s.proposalArrow}>→</span>
+                <span className={s.proposalTarget}>#{info.proposalPetIdB?.toString()}</span>
             </div>
-            <div className="proposal-meta">
-                <span className="proposal-expiry">Expires {formatExpiry(expirySec)}</span>
+            <div className={s.proposalMeta}>
+                <span className={s.proposalExpiry}>Expires {formatExpiry(expirySec)}</span>
                 <AuthActionButton
                     tone="amber"
                     size="xs"

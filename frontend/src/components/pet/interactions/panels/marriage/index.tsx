@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import clsx from 'clsx';
 import { useQueryClient } from '@tanstack/react-query';
 import {
     useChainCapabilities,
@@ -18,7 +19,7 @@ import AcceptTab from './parts/accept-tab';
 import ActiveMarriages from './parts/active-marriages';
 import AcceptConfirmDialog from './parts/accept-confirm-dialog';
 import type { MarriagePanelProps, MarriageTab, PendingAccept } from './types';
-import './index.css';
+import s from './index.module.css';
 
 const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }) => {
     const { kind, activeKind, walletAddress } = useChainCapabilities();
@@ -108,7 +109,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
 
     return (
         <>
-            <div className="interface marriage-interface">
+            <div className={clsx('interface', s.root)}>
                 {!isStandaloneView && (
                     <>
                         <h4>💍 Marriage</h4>
@@ -124,15 +125,15 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
 
                 {tab === 'propose' && (
                     <>
-                        <div className="cp-marry-benefits">
-                            <span className="cp-marry-benefits__heart" aria-hidden>
+                        <div className={s.benefits}>
+                            <span className={s.benefitsHeart} aria-hidden>
                                 💝
                             </span>
                             <div>
-                                <div className="cp-marry-benefits__title">
+                                <div className={s.benefitsTitle}>
                                     Marriage unlocks cross-owner breeding
                                 </div>
-                                <div className="cp-marry-benefits__sub">
+                                <div className={s.benefitsSub}>
                                     Bond two pets to breed across wallets — propose, accept, or
                                     divorce anytime.
                                 </div>

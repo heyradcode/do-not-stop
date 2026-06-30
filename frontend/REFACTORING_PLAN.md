@@ -313,6 +313,16 @@ rework). Per panel, only the panel's OWN local classes get modularized.
   Global chrome (`.picker`/`.field`/`.field-label`/`.name-input`) stays string.
   Verified all 5 keyframe def/usage hashes match + `_dnaAction_* .neon-btn`.
 
+- ✅ `panels/marriage` (9 files) — `index.css` (`.marriage-*`/`.proposal-*`/
+  `.partner-*`/`.confirm-*`/`.cp-marry-benefits__*` BEM) → `index.module.css`,
+  consumed by `index.tsx` + 8 `parts/`. Both keyframes are marriage-only:
+  `marriage-heartbeat` stays in the module; `cp-heart-float` MOVED out of
+  animations.css into it (verified both scope-match under one module hash).
+  `.marriage-interface` + global `.interface` chrome → `clsx('interface',
+  s.root)`. Global chrome (`.picker`/`.field`/`.success-message`) and the dead
+  `.marriage-confirm-body` contentClassName stay strings. `.outgoing-proposal`
+  variant → `clsx(s.proposalCard, s.outgoing)`.
+
 **Build-command note (avoid false-positive verification):** `typescript` AND
 `vite` are hoisted to the monorepo ROOT `node_modules`, not `frontend/`. Run
 `node ../node_modules/typescript/bin/tsc …` and `node ../node_modules/vite/bin/

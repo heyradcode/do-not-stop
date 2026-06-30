@@ -154,17 +154,6 @@
         width: 0;
     }
 }
-/* Marriage */
-@keyframes cp-heart-float {
-    0%,
-    100% {
-        transform: translateY(0) scale(1);
-    }
-    50% {
-        transform: translateY(-14px) scale(1.2);
-    }
-}
-
 /* Training */
 @keyframes cp-intensity-bg {
     0%,

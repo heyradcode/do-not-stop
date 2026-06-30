@@ -3,6 +3,7 @@ import { type Pet, type PetChain } from '@shared/core';
 import { AuthActionButton } from '@components/common';
 import PetSearchDropdown from '@components/ui/pet-search-dropdown';
 import OutgoingProposalRow from './outgoing-proposal-row';
+import s from '../index.module.css';
 
 type ProposeTabProps = {
     chainPets: Pet[];
@@ -37,8 +38,8 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
     };
 
     return (
-        <div className="marriage-tab-panel">
-            <p className="marriage-tab-hint">
+        <div className={s.tabPanel}>
+            <p className={s.tabHint}>
                 Select one of your pets, then search for your partner&apos;s pet to send a marriage
                 proposal.
             </p>
@@ -67,7 +68,7 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
                     />
                 </div>
                 <AuthActionButton
-                    className="propose-button"
+                    className={s.proposeButton}
                     tone="amber"
                     disabled={busy || !myPet || !partnerId}
                     onClick={() => void handlePropose()}
@@ -77,9 +78,9 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
             </div>
 
             {chainPets.length > 0 && (
-                <div className="sent-proposals-section">
-                    <span className="sent-proposals-label">Sent proposals</span>
-                    <ul className="proposals-list">
+                <div className={s.sentSection}>
+                    <span className={s.sentLabel}>Sent proposals</span>
+                    <ul className={s.proposalsList}>
                         {chainPets.map((p) => (
                             <OutgoingProposalRow
                                 key={p.id}
