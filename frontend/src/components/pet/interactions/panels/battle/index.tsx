@@ -3,7 +3,6 @@ import TransactionStatus from '@components/common/transaction-status';
 import BattleOverlay from './parts/battle-overlay';
 import BattleSetup from './parts/battle-setup';
 import { useBattlePanel } from '@hooks/battle/useBattlePanel';
-import './index.css';
 
 export type BattlePanelProps = {
     /** `false` when embedded under the dashboard interactions hub. */

@@ -323,6 +323,31 @@ rework). Per panel, only the panel's OWN local classes get modularized.
   `.marriage-confirm-body` contentClassName stay strings. `.outgoing-proposal`
   variant → `clsx(s.proposalCard, s.outgoing)`.
 
+- ✅ `panels/battle` (largest/most complex — 4 consuming tsx + a 2nd stylesheet)
+  — `index.css` (780 lines) → `index.module.css`, consumed by `battle-setup`,
+  `battle-overlay`, `pending-battle-notice` (+ `index.tsx` drops its import).
+  Handling: the setup container's `.dashboard-panel.pet-interactions .interface
+  .battle-setup` compound → `:global(.dashboard-panel.pet-interactions .interface)
+  .battleSetup` (verified it compiles to `… .interface._battleSetup_*`); the
+  Battle Log's `.battle-log .battle-dialogue` override → `.log :global(.battle-
+  dialogue)` (verified `_log_* .battle-dialogue`). **`battle-dialogue.css` stays
+  GLOBAL** (its `.battle-dialogue` is both rendered by `battle-dialogue.tsx` and
+  overridden from battle's module — a module-to-module ref would be worse). All 6
+  battle-only `cp-*` keyframes (`cp-battle-enter`/`cp-vs-pulse`/`cp-attack-left`/
+  `cp-attack-right`/`cp-victory-burst`/`cp-defeat-drop`) MOVED out of
+  animations.css into the module; `battle-result-pending-spin` kept; `cp-float`
+  duplicated. `is-fighter`/`is-enemy`/`is-result`/`is-defeat`/`is-pending`/
+  `is-empty` state modifiers localized via clsx; no-op `is-victory`/`combatant-
+  card--fighter` dropped. The `.map((s)=>…)` stat param renamed to `stat`.
+  Shared chrome (`.interface`/`.cancel-button`) stays global strings.
+
+**All 6 interaction panels are now CSS Modules.** `interactions.css` remains the
+global shared theme sheet (by design). Remaining Phase-3 targets: the UI-primitive
+cluster (`neon-button`/`neon-modal`/`network-switcher`/`dashboard-panel`/
+`account-dropdown`/`pet-search-dropdown`), which cross-reference each other's
+global classes and must migrate together; and `battle-dialogue.css` (small,
+intentionally left global for now).
+
 **Build-command note (avoid false-positive verification):** `typescript` AND
 `vite` are hoisted to the monorepo ROOT `node_modules`, not `frontend/`. Run
 `node ../node_modules/typescript/bin/tsc …` and `node ../node_modules/vite/bin/

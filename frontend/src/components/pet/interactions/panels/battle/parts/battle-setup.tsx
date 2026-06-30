@@ -1,4 +1,5 @@
 import React from 'react';
+import clsx from 'clsx';
 import {
     getLifePercent,
     getPetAvatar,
@@ -17,6 +18,7 @@ import Icon, { BattleIcon } from '@components/ui/icon';
 import PendingBattleNotice from './pending-battle-notice';
 import OpenToChallengesToggle from './open-to-challenges-toggle';
 import { opponentKey, shortAddress } from '../battle-utils';
+import s from '../index.module.css';
 
 export type BattleSetupProps = {
     isStandaloneView: boolean;
@@ -58,8 +60,14 @@ const CombatantCard: React.FC<{
 }> = ({ pet, side, emptyLabel, owner }) => {
     if (!pet) {
         return (
-            <div className={`combatant-card combatant-card--${side} is-empty`}>
-                <span className="combatant-card__placeholder">{emptyLabel}</span>
+            <div
+                className={clsx(
+                    s.combatantCard,
+                    side === 'rival' && s.combatantCardRival,
+                    s.isEmpty,
+                )}
+            >
+                <span className={s.combatantCardPlaceholder}>{emptyLabel}</span>
             </div>
         );
     }
@@ -67,34 +75,39 @@ const CombatantCard: React.FC<{
     const rarityColor = getRarityColor(pet.rarity);
     const hp = getLifePercent(pet);
     return (
-        <div className={`combatant-card combatant-card--${side}`}>
-            <div className="combatant-card__avatar-wrap">
-                <span className="combatant-card__avatar" aria-hidden>
+        <div className={clsx(s.combatantCard, side === 'rival' && s.combatantCardRival)}>
+            <div className={s.combatantCardAvatarWrap}>
+                <span className={s.combatantCardAvatar} aria-hidden>
                     {getPetAvatar(pet.dna)}
                 </span>
             </div>
-            <div className="combatant-card__name">{pet.name}</div>
-            <div className="combatant-card__meta">
+            <div className={s.combatantCardName}>{pet.name}</div>
+            <div className={s.combatantCardMeta}>
                 Lv.{pet.level} · {getPetClass(pet.dna)} ·{' '}
                 <span style={{ color: rarityColor }}>{getRarityName(pet.rarity).toUpperCase()}</span>
             </div>
-            {owner ? <div className="combatant-card__owner">{owner}</div> : null}
-            <div className="combatant-card__stats">
-                {STAT_KEYS.map((s) => (
-                    <div className="combatant-stat" key={s.label}>
-                        <div className="combatant-stat__label">{s.label}</div>
-                        <div className="combatant-stat__val">{props[s.key]}</div>
+            {owner ? <div className={s.combatantCardOwner}>{owner}</div> : null}
+            <div className={s.combatantCardStats}>
+                {STAT_KEYS.map((stat) => (
+                    <div className={s.combatantStat} key={stat.label}>
+                        <div className={s.combatantStatLabel}>{stat.label}</div>
+                        <div className={s.combatantStatVal}>{props[stat.key]}</div>
                     </div>
                 ))}
             </div>
-            <div className="combatant-card__hp">
-                <div className="combatant-card__hp-head">
+            <div className={s.combatantCardHp}>
+                <div className={s.combatantCardHpHead}>
                     <span>HP</span>
-                    <span className="combatant-card__hp-val">{hp}/100</span>
+                    <span className={s.combatantCardHpVal}>{hp}/100</span>
                 </div>
-                <div className="combatant-card__hp-track">
+                <div className={s.combatantCardHpTrack}>
                     <div
-                        className={`combatant-card__hp-fill combatant-card__hp-fill--${side}`}
+                        className={clsx(
+                            s.combatantCardHpFill,
+                            side === 'fighter'
+                                ? s.combatantCardHpFillFighter
+                                : s.combatantCardHpFillRival,
+                        )}
                         style={{ width: `${hp}%` }}
                     />
                 </div>
@@ -138,7 +151,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
         : 'Select an opponent';
 
     return (
-        <div className="interface battle-setup">
+        <div className={clsx('interface', s.battleSetup)}>
             {!isStandaloneView && (
                 <>
                     <h4>
@@ -149,11 +162,11 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 </>
             )}
 
-            <div className="battle-showdown">
+            <div className={s.showdown}>
                 {/* Your fighter */}
-                <div className="combatant-col combatant-col--fighter">
-                    <div className="combatant-col__label">Your Fighter</div>
-                    <div className="combatant-select">
+                <div className={clsx(s.combatantCol, s.combatantColFighter)}>
+                    <div className={s.combatantColLabel}>Your Fighter</div>
+                    <div className={s.combatantSelect}>
                         <select
                             aria-label="Choose your fighter"
                             value={selectedPet1}
@@ -177,20 +190,20 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 </div>
 
                 {/* VS + win rate */}
-                <div className="battle-vs">
-                    <div className="battle-vs__mark">VS</div>
-                    <div className="battle-vs__divider" />
-                    <div className="battle-vs__winrate">
-                        <div className="battle-vs__winrate-label">Win Rate</div>
-                        <div className="battle-vs__winrate-val">{winRate}</div>
+                <div className={s.vs}>
+                    <div className={s.vsMark}>VS</div>
+                    <div className={s.vsDivider} />
+                    <div className={s.vsWinrate}>
+                        <div className={s.vsWinrateLabel}>Win Rate</div>
+                        <div className={s.vsWinrateVal}>{winRate}</div>
                     </div>
-                    <div className="battle-vs__divider" />
+                    <div className={s.vsDivider} />
                 </div>
 
                 {/* On-chain rival */}
-                <div className="combatant-col combatant-col--rival">
-                    <div className="combatant-col__label">On-Chain Rival</div>
-                    <div className="combatant-select">
+                <div className={clsx(s.combatantCol, s.combatantColRival)}>
+                    <div className={s.combatantColLabel}>On-Chain Rival</div>
+                    <div className={s.combatantSelect}>
                         <select
                             aria-label="Select an opponent"
                             value={selectedOpponentKey}
@@ -209,7 +222,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                         </select>
                         <button
                             type="button"
-                            className="combatant-select__btn"
+                            className={s.combatantSelectBtn}
                             onClick={onRandomMatch}
                             disabled={randomMatchDisabled}
                             title={
@@ -222,7 +235,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                         </button>
                         <button
                             type="button"
-                            className="combatant-select__btn"
+                            className={s.combatantSelectBtn}
                             onClick={onRefreshOpponents}
                             disabled={opponentsLoading}
                         >
@@ -251,7 +264,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 currentValue={selectedFighter?.openToChallenges}
             />
 
-            <div className="battle-actions">
+            <div className={s.actions}>
                 <AuthActionButton tone="magenta" onClick={onBattle} disabled={battleDisabled}>
                     ⚔ {battleButtonLabel}
                 </AuthActionButton>
