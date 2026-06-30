@@ -1,5 +1,8 @@
-/* Rename details below the shared ring-avatar hero (live preview + requirements). */
-.rename-preview {
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+   Rename details below the shared ring-avatar hero (live preview + requirements).
+   Shared chrome (.interface/.picker/.field/.action-controls) stays global in
+   interactions.css and is referenced as plain strings from the tsx. */
+.preview {
     font-family: var(--cp-title-font);
     font-size: 18px;
     font-weight: 800;
@@ -11,29 +14,29 @@
     max-width: 320px;
 }
 
-.rename-sub {
+.sub {
     font-size: 11px;
     color: rgb(195 210 255 / 45%);
 }
 
-.rename-reqs {
+.reqs {
     display: flex;
     flex-direction: column;
     gap: 5px;
     margin-top: 4px;
     font-size: 11px;
-}
 
-.rename-reqs .is-ok {
-    color: rgb(15 255 174 / 75%);
-}
+    .isOk {
+        color: rgb(15 255 174 / 75%);
+    }
 
-.rename-reqs .is-pending {
-    color: rgb(195 210 255 / 45%);
+    .isPending {
+        color: rgb(195 210 255 / 45%);
+    }
 }
 
 /* ── Name themes (naming aid) ────────────────────────────────────────────── */
-.rename-themes__title {
+.themesTitle {
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 1.5px;
@@ -42,13 +45,17 @@
     margin-bottom: 10px;
 }
 
-.rename-themes__grid {
+.themesGrid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
+
+    @media (max-width: 560px) {
+        grid-template-columns: 1fr;
+    }
 }
 
-.rename-theme {
+.theme {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -60,37 +67,31 @@
     cursor: pointer;
     text-align: left;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+
+    &:hover {
+        background: rgb(125 214 255 / 5%);
+        border-color: rgb(125 214 255 / 32%);
+    }
+
+    &.isActive {
+        background: rgb(125 214 255 / 6%);
+    }
 }
 
-.rename-theme:hover {
-    background: rgb(125 214 255 / 5%);
-    border-color: rgb(125 214 255 / 32%);
-}
-
-.rename-theme.is-active {
-    background: rgb(125 214 255 / 6%);
-}
-
-.rename-theme__icon {
+.themeIcon {
     font-size: 18px;
     line-height: 1;
 }
 
-.rename-theme__label {
+.themeLabel {
     font-size: 10px;
     font-weight: 700;
     letter-spacing: 0.6px;
 }
 
-.rename-theme__example {
+.themeExample {
     font-family: var(--cp-title-font);
     font-size: 9px;
     color: rgb(195 210 255 / 50%);
     word-break: break-all;
-}
-
-@media (max-width: 560px) {
-    .rename-themes__grid {
-        grid-template-columns: 1fr;
-    }
 }

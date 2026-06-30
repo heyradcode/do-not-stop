@@ -1,4 +1,5 @@
 ﻿import React, { useMemo, useState } from 'react';
+import clsx from 'clsx';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import {
@@ -14,7 +15,7 @@ import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon, QuillIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 import PetShowcase from '../_shared/pet-showcase';
-import './index.css';
+import s from './index.module.css';
 
 const MAX_NAME_LEN = 20;
 
@@ -114,7 +115,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 {selectedPetObj && (
                     <PetShowcase avatar={getPetAvatar(selectedPetObj.dna)} accent="cyan">
                         <div
-                            className="rename-preview"
+                            className={s.preview}
                             style={
                                 activeTheme != null
                                     ? {
@@ -126,14 +127,14 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                         >
                             {previewName}
                         </div>
-                        <div className="rename-sub">
+                        <div className={s.sub}>
                             {getPetClass(selectedPetObj.dna)} · Lv.{selectedPetObj.level}
                         </div>
-                        <div className="rename-reqs">
-                            <div className={meetsMin ? 'is-ok' : 'is-pending'}>
+                        <div className={s.reqs}>
+                            <div className={meetsMin ? s.isOk : s.isPending}>
                                 {meetsMin ? '✓' : '○'} Min 2 characters
                             </div>
-                            <div className="is-ok">
+                            <div className={s.isOk}>
                                 ✓ Max {MAX_NAME_LEN} characters ({newName.length})
                             </div>
                         </div>
@@ -174,13 +175,13 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
 
                 <div className="rename-themes">
-                    <div className="rename-themes__title">Name Theme</div>
-                    <div className="rename-themes__grid">
+                    <div className={s.themesTitle}>Name Theme</div>
+                    <div className={s.themesGrid}>
                         {RENAME_THEMES.map((theme, i) => (
                             <button
                                 type="button"
                                 key={theme.label}
-                                className={`rename-theme${activeTheme === i ? ' is-active' : ''}`}
+                                className={clsx(s.theme, activeTheme === i && s.isActive)}
                                 style={
                                     activeTheme === i
                                         ? {
@@ -195,16 +196,16 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                                 }}
                             >
                                 <span
-                                    className="rename-theme__icon"
+                                    className={s.themeIcon}
                                     style={{ filter: `drop-shadow(0 0 6px ${theme.color})` }}
                                     aria-hidden
                                 >
                                     {theme.icon}
                                 </span>
-                                <span className="rename-theme__label" style={{ color: theme.color }}>
+                                <span className={s.themeLabel} style={{ color: theme.color }}>
                                     {theme.label}
                                 </span>
-                                <span className="rename-theme__example">{theme.example}</span>
+                                <span className={s.themeExample}>{theme.example}</span>
                             </button>
                         ))}
                     </div>

@@ -1,4 +1,5 @@
 ﻿import React, { useMemo, useState } from 'react';
+import clsx from 'clsx';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import {
@@ -18,7 +19,7 @@ import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 import SyncMetadataButton from './sync-metadata-button';
 import PetShowcase from '../_shared/pet-showcase';
-import './index.css';
+import s from './index.module.css';
 
 export type LevelUpPanelProps = {
     isStandaloneView?: boolean;
@@ -110,29 +111,29 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
                 {selectedPetObj && (
                     <PetShowcase avatar={getPetAvatar(selectedPetObj.dna)} accent="violet">
-                        <div className="lvl-name">{selectedPetObj.name}</div>
-                        <div className="lvl-class">{getPetClass(selectedPetObj.dna)}</div>
-                        <div className="lvl-transition">
-                            <span className="lvl-badge lvl-badge--cur">
+                        <div className={s.name}>{selectedPetObj.name}</div>
+                        <div className={s.petClass}>{getPetClass(selectedPetObj.dna)}</div>
+                        <div className={s.transition}>
+                            <span className={clsx(s.badge, s.badgeCur)}>
                                 Lv.{selectedPetObj.level}
                             </span>
-                            <span className="lvl-arrow" aria-hidden>
+                            <span className={s.arrow} aria-hidden>
                                 →
                             </span>
-                            <span className="lvl-badge lvl-badge--next">
+                            <span className={clsx(s.badge, s.badgeNext)}>
                                 Lv.{selectedPetObj.level + 1}
                             </span>
                         </div>
-                        <div className="lvl-xp">
-                            <div className="lvl-xp-row">
+                        <div className={s.xp}>
+                            <div className={s.xpRow}>
                                 <span>XP</span>
                                 <span>
                                     {selectedXp?.xpCurrent}/{selectedXp?.xpMax}
                                 </span>
                             </div>
-                            <div className="lvl-xp-track">
+                            <div className={s.xpTrack}>
                                 <div
-                                    className="lvl-xp-fill"
+                                    className={s.xpFill}
                                     style={{ width: `${getXpPercent(selectedPetObj)}%` }}
                                 />
                             </div>

@@ -1,5 +1,7 @@
-/* Train pet-status card — avatar + name/class + XP (cyan accent). */
-.train-status {
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+   Train pet-status card — avatar + name/class + XP (cyan accent). Shared chrome
+   (.interface/.picker/.field/.action-controls) stays global in interactions.css. */
+.status {
     display: flex;
     align-items: stretch;
     gap: 14px;
@@ -11,7 +13,7 @@
     box-shadow: inset 0 0 24px rgb(125 214 255 / 5%);
 }
 
-.train-status__visual {
+.visual {
     position: relative;
     flex-shrink: 0;
     width: 96px;
@@ -24,7 +26,7 @@
     border: 1px solid rgb(125 214 255 / 12%);
 }
 
-.train-status__level {
+.level {
     position: absolute;
     top: 7px;
     left: 7px;
@@ -37,14 +39,14 @@
     font-weight: 700;
 }
 
-.train-status__avatar {
+.avatar {
     font-size: 2.6rem;
     line-height: 1;
     animation: cp-float 3.5s ease-in-out infinite;
     filter: drop-shadow(0 0 18px rgb(125 214 255 / 60%));
 }
 
-.train-status__body {
+.body {
     flex: 1;
     min-width: 0;
     display: flex;
@@ -53,19 +55,19 @@
     gap: 6px;
 }
 
-.train-status__name {
+.name {
     font-family: var(--cp-title-font);
     font-size: 15px;
     font-weight: 700;
     color: #f4f2ff;
 }
 
-.train-status__class {
+.petClass {
     font-size: 11px;
     color: rgb(195 210 255 / 50%);
 }
 
-.train-status__xp-track {
+.xpTrack {
     height: 5px;
     background: var(--cp-inset);
     border-radius: 999px;
@@ -73,21 +75,34 @@
     margin-top: 2px;
 }
 
-.train-status__xp-fill {
+.xpFill {
     height: 100%;
     background: var(--cp-gradient-line);
     border-radius: 999px;
     box-shadow: 0 0 8px rgb(181 140 255 / 45%);
 }
 
-.train-status__xp {
+.xp {
     font-size: 9px;
     color: rgb(125 214 255 / 55%);
     text-align: right;
 }
 
+/* Local copy of the shared float keyframe — the global cp-float in
+   animations.css is still used by other (non-module) panel stylesheets, so a
+   module reference must resolve to its own scoped copy. */
+@keyframes cp-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-9px);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .train-status__avatar {
+    .avatar {
         animation: none;
     }
 }

@@ -1,5 +1,7 @@
-/* Level-up details below the shared ring-avatar hero (level transition + XP). */
-.lvl-name {
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+   Level-up details below the shared ring-avatar hero (level transition + XP).
+   Shared chrome (.interface/.picker/.field/.action-controls) stays global. */
+.name {
     font-family: var(--cp-title-font);
     font-size: 20px;
     font-weight: 800;
@@ -7,19 +9,19 @@
     text-shadow: 0 0 14px rgb(181 140 255 / 50%);
 }
 
-.lvl-class {
+.petClass {
     font-size: 12px;
     color: rgb(195 210 255 / 50%);
     margin-top: -6px;
 }
 
-.lvl-transition {
+.transition {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.lvl-badge {
+.badge {
     font-family: var(--cp-title-font);
     font-size: 12px;
     font-weight: 700;
@@ -27,30 +29,30 @@
     padding: 5px 14px;
 }
 
-.lvl-badge--cur {
+.badgeCur {
     color: var(--cp-violet);
     background: rgb(181 140 255 / 12%);
     border: 1px solid rgb(181 140 255 / 35%);
 }
 
-.lvl-badge--next {
+.badgeNext {
     color: var(--cp-gold);
     background: rgb(255 215 0 / 12%);
     border: 1px solid rgb(255 215 0 / 40%);
     box-shadow: 0 0 12px rgb(255 215 0 / 20%);
 }
 
-.lvl-arrow {
+.arrow {
     font-size: 20px;
     color: rgb(255 215 0 / 65%);
 }
 
-.lvl-xp {
+.xp {
     width: 100%;
     max-width: 240px;
 }
 
-.lvl-xp-row {
+.xpRow {
     display: flex;
     justify-content: space-between;
     margin-bottom: 5px;
@@ -61,7 +63,7 @@
     color: rgb(125 214 255 / 55%);
 }
 
-.lvl-xp-track {
+.xpTrack {
     height: 8px;
     background: var(--cp-inset);
     border-radius: 999px;
@@ -69,7 +71,7 @@
     border: 1px solid rgb(125 214 255 / 12%);
 }
 
-.lvl-xp-fill {
+.xpFill {
     height: 100%;
     background: var(--cp-gradient-line);
     border-radius: 999px;

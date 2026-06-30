@@ -16,7 +16,7 @@ import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
-import './index.css';
+import s from './index.module.css';
 
 export type TrainPanelProps = {
     isStandaloneView?: boolean;
@@ -93,25 +93,25 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                 )}
 
                 {selectedPetObj && (
-                    <div className="train-status">
-                        <div className="train-status__visual">
-                            <span className="train-status__level">Lv.{selectedPetObj.level}</span>
-                            <span className="train-status__avatar">
+                    <div className={s.status}>
+                        <div className={s.visual}>
+                            <span className={s.level}>Lv.{selectedPetObj.level}</span>
+                            <span className={s.avatar}>
                                 {getPetAvatar(selectedPetObj.dna)}
                             </span>
                         </div>
-                        <div className="train-status__body">
-                            <div className="train-status__name">{selectedPetObj.name}</div>
-                            <div className="train-status__class">
+                        <div className={s.body}>
+                            <div className={s.name}>{selectedPetObj.name}</div>
+                            <div className={s.petClass}>
                                 {getPetClass(selectedPetObj.dna)}
                             </div>
-                            <div className="train-status__xp-track">
+                            <div className={s.xpTrack}>
                                 <div
-                                    className="train-status__xp-fill"
+                                    className={s.xpFill}
                                     style={{ width: `${getXpPercent(selectedPetObj)}%` }}
                                 />
                             </div>
-                            <div className="train-status__xp">
+                            <div className={s.xp}>
                                 {selectedXp?.xpCurrent}/{selectedXp?.xpMax} XP
                             </div>
                         </div>

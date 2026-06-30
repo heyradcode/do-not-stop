@@ -271,6 +271,31 @@ Migrated (clean leaves + Icon + first feature component):
   scoped; the input's `.invalid` state modifier now `inputInvalid ? s.invalid :
   undefined`. No external refs, no keyframes.
 
+### Panel-chrome migration strategy (decided)
+
+`interactions.css` **stays a global shared stylesheet** (like `messages.css`/
+`animations.css`) — it is NOT a modularization target. Its selectors reach into
+classes OWNED by other components (`.dashboard-panel`, `.surface`, `.title-bar`,
+`.panel-body`, `.neon-btn`, `.psd-input`) and theme them via compound selectors
+(`.dashboard-panel.pet-interactions.interaction-standalone .action-controls
+.neon-btn`), which cannot be scoped into a per-panel module. The shared chrome it
+defines — `.interface`/`.picker`/`.field`/`.action-controls`/`.name-input`/
+`.win-estimate`/`.cancel-button`/`.description`/`.help-text` — is referenced from
+panels as **plain global strings**, and that is the intended END STATE (not
+rework). Per panel, only the panel's OWN local classes get modularized.
+
+- ✅ `panels/rename` — local `.rename-*` (`__`/`--` BEM) → module (`.preview`/
+  `.reqs`/`.theme`/`.themesGrid`/…); state modifiers `.is-ok`/`.is-pending`/
+  `.is-active` (only styled within rename's scoped selectors) → `s.isOk`/
+  `s.isPending`/`s.isActive`. Shared chrome (`.interface`/`.picker`/`.field`/
+  `.action-controls`/`.success-message`) + the unstyled `.rename-themes` wrapper
+  kept as global strings. Verified shared chrome stays un-hashed in dist.
+
+- ✅ `panels/train` — local `.train-status__*` BEM → module (`.status`/`.visual`/
+  `.avatar`/`.xpTrack`/…). Shared `cp-float` keyframe duplicated into the module
+  (verified def+usage hash to one `_cp-float_*`, distinct from gallery's copy).
+  Shared chrome + the dead `.train-cost` kept as global strings.
+
 **Build-command note (avoid false-positive verification):** `typescript` AND
 `vite` are hoisted to the monorepo ROOT `node_modules`, not `frontend/`. Run
 `node ../node_modules/typescript/bin/tsc …` and `node ../node_modules/vite/bin/
