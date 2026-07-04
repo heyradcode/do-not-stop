@@ -37,7 +37,7 @@ describe('ToastProvider / useToast', () => {
         await userEvent.click(screen.getByText('error'));
 
         const toast = screen.getByRole('status');
-        expect(toast).toHaveClass('toast', 'toast-error');
+        expect(toast).toHaveClass('toast', 'error');
         expect(toast).toHaveTextContent('err msg');
     });
 
@@ -47,8 +47,8 @@ describe('ToastProvider / useToast', () => {
         await userEvent.click(screen.getByText('info'));
         await userEvent.click(screen.getByText('success'));
 
-        expect(screen.getByText('info msg').closest('.toast')).toHaveClass('toast-info');
-        expect(screen.getByText('ok msg').closest('.toast')).toHaveClass('toast-success');
+        expect(screen.getByText('info msg').closest('.toast')).toHaveClass('info');
+        expect(screen.getByText('ok msg').closest('.toast')).toHaveClass('success');
     });
 
     it('defaults show() to the error tone', async () => {
@@ -56,7 +56,7 @@ describe('ToastProvider / useToast', () => {
 
         await userEvent.click(screen.getByText('show'));
 
-        expect(screen.getByText('shown').closest('.toast')).toHaveClass('toast-error');
+        expect(screen.getByText('shown').closest('.toast')).toHaveClass('error');
     });
 
     it('dismisses a toast when its close button is clicked', async () => {

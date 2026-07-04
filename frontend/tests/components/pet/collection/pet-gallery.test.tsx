@@ -91,7 +91,7 @@ describe('PetGallery', () => {
         const { container } = renderGallery();
 
         expect(screen.getByText('Connect your wallet to view your pets.')).toBeInTheDocument();
-        expect(container.querySelector('.cp-idle--message')).not.toBeNull();
+        expect(container.querySelector('.idleMessage')).not.toBeNull();
     });
 
     it('shows a loading state', () => {

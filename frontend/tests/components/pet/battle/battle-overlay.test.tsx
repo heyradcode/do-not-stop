@@ -13,7 +13,7 @@ import BattleOverlay, {
     type BattleOverlayProps,
 } from '@components/pet/interactions/panels/battle/parts/battle-overlay';
 
-const opponent = { name: 'Rival', level: 5 } as unknown as OpponentPet;
+const opponent = { name: 'Rival', level: 5, dna: 1n } as unknown as OpponentPet;
 
 const baseProps = (over: Partial<BattleOverlayProps> = {}): BattleOverlayProps => ({
     open: true,
@@ -57,7 +57,7 @@ describe('BattleOverlay', () => {
             />,
         );
 
-        expect(screen.getByText('Battle Starting')).toBeInTheDocument();
+        expect(screen.getByText(/Battle Starting/)).toBeInTheDocument();
         expect(screen.getByText('Awaiting signature')).toBeInTheDocument();
         expect(screen.getByTestId('dialogue')).toHaveTextContent('1');
     });
@@ -73,7 +73,7 @@ describe('BattleOverlay', () => {
     it('renders a victory with the opponent line', () => {
         render(<BattleOverlay {...baseProps()} />);
 
-        expect(screen.getByText('Victory!')).toBeInTheDocument();
+        expect(screen.getByText('VICTORY!')).toBeInTheDocument();
         expect(screen.getByText('Your pet won the battle!')).toBeInTheDocument();
         expect(screen.getByText('vs Rival (Lv.5)')).toBeInTheDocument();
     });
@@ -86,16 +86,16 @@ describe('BattleOverlay', () => {
     it('renders a defeat with a defeat-styled rematch button', () => {
         render(<BattleOverlay {...baseProps({ battleOutcome: { result: 'defeat', leveledUp: false } })} />);
 
-        expect(screen.getByText('Defeated')).toBeInTheDocument();
+        expect(screen.getByText('DEFEATED')).toBeInTheDocument();
         expect(screen.getByText('Lost to Rival (Lv.5)')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Rematch' })).toHaveClass('is-defeat');
+        expect(screen.getByRole('button', { name: /Rematch/ })).toHaveClass('isDefeat');
     });
 
     it('gates the result actions until the dialogue is done', () => {
         render(<BattleOverlay {...baseProps({ resultDialogueDone: false })} />);
 
-        expect(screen.getByRole('button', { name: 'Rematch' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Leave' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Rematch/ })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /Leave/ })).toBeDisabled();
     });
 
     it('shows a preparing label and wires the action callbacks', async () => {
@@ -103,8 +103,8 @@ describe('BattleOverlay', () => {
         const onDone = vi.fn();
         const { rerender } = render(<BattleOverlay {...baseProps({ onRematch, onDone })} />);
 
-        await userEvent.click(screen.getByRole('button', { name: 'Rematch' }));
-        await userEvent.click(screen.getByRole('button', { name: 'Leave' }));
+        await userEvent.click(screen.getByRole('button', { name: /Rematch/ }));
+        await userEvent.click(screen.getByRole('button', { name: /Leave/ }));
         expect(onRematch).toHaveBeenCalledOnce();
         expect(onDone).toHaveBeenCalledOnce();
 

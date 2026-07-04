@@ -74,7 +74,7 @@ describe('EthereumNetworkSwitcher', () => {
         expect(screen.getByText('Select Network')).toBeInTheDocument();
 
         // Current chain's option is marked active.
-        const option = screen.getByText('Mainnet', { selector: '.option-name' }).closest('button');
+        const option = screen.getByText('Mainnet', { selector: '.optionName' }).closest('button');
         expect(option).toHaveClass('option', 'active');
 
         await userEvent.click(option as Element);

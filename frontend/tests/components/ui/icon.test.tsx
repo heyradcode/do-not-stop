@@ -13,7 +13,7 @@ describe('Icon', () => {
         const { container, getByTestId } = render(<Icon as={Glyph} />);
 
         const span = container.querySelector('span');
-        expect(span).toHaveClass('neon-icon', 'tone-inherit', 'glow-soft');
+        expect(span).toHaveClass('icon', 'soft');
         expect(span).toHaveAttribute('aria-hidden', 'true');
         expect(span).not.toHaveAttribute('role');
         expect(getByTestId('glyph')).toHaveAttribute('data-size', '1em');
@@ -33,19 +33,15 @@ describe('Icon', () => {
             <Icon as={Glyph} tone="emerald" glow="strong" className="no-gap" />,
         );
 
-        expect(container.querySelector('span')).toHaveClass(
-            'tone-emerald',
-            'glow-strong',
-            'no-gap',
-        );
+        expect(container.querySelector('span')).toHaveClass('emerald', 'strong', 'no-gap');
     });
 
     it('omits the glow class when glow is none', () => {
         const { container } = render(<Icon as={Glyph} glow="none" />);
 
         const span = container.querySelector('span');
-        expect(span).toHaveClass('neon-icon', 'tone-inherit');
-        expect(span?.className).not.toMatch(/glow-/);
+        expect(span).toHaveClass('icon');
+        expect(span?.className).not.toMatch(/soft|strong/);
     });
 
     it('passes through a custom size', () => {

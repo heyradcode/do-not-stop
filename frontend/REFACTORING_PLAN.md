@@ -453,8 +453,16 @@ shared global sheets `interactions.css` / `battle-dialogue.css`.
 **Verification:** `grep -rnE '\.[a-z][a-z0-9-]*__[a-z]' --include=*.css src` →
 **zero matches**. The original ask (kill the `__` BEM naming) is fully met.
 
-**Not done (deliberately deferred):** Phase 0 tooling — stylelint + a naming/order
-config to _enforce_ the convention going forward. Worth adding so the cleanup
-doesn't regress, but it introduces a dev dependency and CI wiring, so it's left as
-a follow-up decision rather than bundled into this behavior-preserving pass.
+**Phase 0 — naming enforcement: DONE (lightweight, dependency-free)**
+- Added `frontend/scripts/check-css-naming.mjs` + `pnpm lint:css`: a zero-dep guard
+  that fails if any `*.css` reintroduces a BEM `__` element class name (the exact
+  thing this refactor removed). Wired into `lint:check` (`eslint … && lint:css`) so
+  the existing lint gate enforces it in CI — no separate wiring needed.
+- Chose this over full `stylelint`: `stylelint-config-standard` would flag many
+  unrelated pre-existing style issues (making the gate fail on clean code) and
+  needs CSS-Modules-aware config (`:global()`, nesting); the guard enforces the one
+  convention we agreed on with no false positives and no dev dependency. A fuller
+  stylelint setup remains an optional future upgrade if broader CSS linting is
+  wanted. (`--` view-modifiers on the intentionally-global theming classes are
+  allowed by the guard — they're not a target.)
 

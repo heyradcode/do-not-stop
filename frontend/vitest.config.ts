@@ -13,6 +13,9 @@ export default mergeConfig(
             environment: 'jsdom',
             include: ['tests/**/*.{test,spec}.{ts,tsx}'],
             setupFiles: ['./tests/setup.ts'],
+            // CSS Modules resolve `s.foo` to the plain local name `foo` (not a
+            // hashed `_foo_ab12`) so tests can assert on readable class names.
+            css: { modules: { classNameStrategy: 'non-scoped' } },
             coverage: {
                 provider: 'v8',
                 reportsDirectory: './coverage',
