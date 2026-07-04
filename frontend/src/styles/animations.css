@@ -5,22 +5,12 @@
    genuinely shared ones remain here.
    ============================================================================= */
 
-/* Loading spinner (styles/messages.css .loading-spinner). */
+/* Loading spinner (styles/messages.css .loading-spinner) — the last globally
+   shared keyframe. All component-specific keyframes (including the pet float,
+   `cp-float`) now live inside their owning CSS Module. */
 @keyframes cp-spin-slow {
     to {
         transform: rotate(360deg);
-    }
-}
-
-/* Pets / avatars — floating idle bob. Shared by several panel modules (each
-   keeps its own scoped copy) and the global battle-dialogue / pet-showcase. */
-@keyframes cp-float {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-9px);
     }
 }
 

@@ -1,6 +1,14 @@
 # Frontend Refactoring Plan
 
-_Status: proposal · Scope: `frontend/src` styling + structure · Goal: behavior- and visual-preserving cleanup_
+_Status: **Phases 1–4 complete** (Phase 0 stylelint tooling not adopted) · Scope: `frontend/src` styling + structure · Goal: behavior- and visual-preserving cleanup_
+
+> **Outcome:** ~24 components migrated to CSS Modules; **zero `__`/`--` BEM class
+> names remain**; design tokens consolidated to one `--cp-*` namespace;
+> `animations.css` reduced to a single shared keyframe (`cp-spin-slow`) with every
+> component keyframe now scoped in its module; dead global CSS purged. The only
+> intentional global stylesheets left are the design-system core (`variables`/
+> `animations`/`messages`/`interactions`/`battle-dialogue`) and the public-API
+> primitives (`neon-button`/`neon-modal`/`dashboard-panel`). See Appendix C.
 
 ## 1. Why now
 
@@ -204,7 +212,7 @@ _(Fill in exact old→new class names per component as Phase 3 progresses.)_
   theming vars (`--btn-`, `--zi-`, `--view-`, `--tone-`, `--sc-`, `--pc-`,
   `--tx-`) intentionally left scoped.
 
-**Phase 3 — CSS Modules: IN PROGRESS (approach: Option A)**
+**Phase 3 — CSS Modules: DONE (approach: Option A)**
 
 Convention: `index.css` → `index.module.css`, `import s from './index.module.css'`,
 local `camelCase` prefix-free class names (`.root`, `.card`, dynamic via
@@ -373,6 +381,12 @@ intentionally left global for now).
   classes passed to `<NeonModal className/contentClassName>` are now local.
   (Pre-existing dead `.option-symbol`/`.option-status` mismatch left as-is.)
 
+- ✅ `pet/interactions/panels/_shared/pet-showcase` — the shared ring-avatar hero
+  (level-up + rename). `pet-showcase.css` → `pet-showcase.module.css`; last
+  stylesheet carrying `__` BEM (`.pet-showcase__hero`/`__avatar` → `.root`/`.hero`/
+  `.avatar`). `cp-float` duplicated in; `--sc-accent` inline var untouched. This
+  made pet-showcase the last global `cp-float` consumer.
+
 ### Migration boundary — the irreducible global design-system core (3 stay global)
 
 These 3 are NOT converted to modules, and shouldn't be — every one of their
@@ -415,21 +429,32 @@ Verify per conversion: `grep '@keyframes _'/'animation:_' dist/assets/*.css`
 keyframe is used by BOTH modules and non-modules, it can't simply move —
 duplicate it into the module, or reference via `:global()` if supported.
 
-**Remaining (harder — externally-referenced classes; each needs the external
-selectors migrated in the same commit + per-screen visual verification):**
-- `ui/neon-button` — `.neon-btn`/`.tone-*`/`.size-*` styled from
-  `interactions.css`, `breed/index.css`, `account-dropdown/index.css`.
-- `common/dashboard-panel` — `.surface`/`.panel-body`/`.title-bar`/… styled by
-  every interaction panel + gallery; the shared panel shell. Large.
-- `ui/pet-search-dropdown` — `.psd-input` referenced by `interactions.css`.
-- `ui/neon-modal` — `.neon-modal .dialog` styled by `network-switcher`.
-- Then feature components (`layout/*`, `pet/*`, `wallet/*`) — many still use the
-  `cp-`/BEM global convention (sidebar `.cp-sidebar__*`, gallery `.cp-*`, etc.).
+**Phase 3 — CSS Modules: COMPLETE.** Every component with real encapsulation value
+is a module (~24 total). The only non-module component CSS left is the deliberate
+global design-system core (see the Migration-boundary section above):
+`neon-button`, `neon-modal`, `dashboard-panel` (public-API primitives) plus the
+shared global sheets `interactions.css` / `battle-dialogue.css`.
 
-**Recommended next-session approach for the cross-cutting ones:** convert the
-component to a module, expose the classes other files need via a small stable
-contract (either keep a `:global()` hook for the exact selector another file
-targets, or move that styling into the owning component), and migrate the
-external selectors in the same commit. Verify each screen visually (the app is
-web3-gated — headless render isn't reliable).
+**Phase 4 — sweep: DONE**
+- `animations.css`: removed 12 unreferenced keyframes (`cp-ray-spin`,
+  `cp-card-enter`, `cp-fade-up`, `cp-modal-in`, `cp-shake`, `cp-xp-fill`,
+  `cp-intensity-bg`, `cp-ach-pop`/`-dismiss`, `cp-chest-shake`/`-burst`,
+  `cp-reward-rise`); after `pet-showcase` modularized, the last global `cp-float`
+  consumer was gone, so `cp-float` was removed too. animations.css is now just
+  `cp-spin-slow` + the reduced-motion guard — every other keyframe lives in its
+  owning module.
+- `interactions.css`: removed the dead `.interaction-standalone-header` and the
+  whole `.win-estimate*` block (superseded by battle's `.vsWinrate`).
+- `messages.css`: removed the dead `.error-message` (+ `.user-rejection`/
+  `.contract-error`) — inline errors are shown via the toast system now.
+- All removals were verified 0-reference across `*.css`/`*.tsx`/`*.ts` first;
+  full-frontend `tsc -b` / `eslint` / `vite build` green after.
+
+**Verification:** `grep -rnE '\.[a-z][a-z0-9-]*__[a-z]' --include=*.css src` →
+**zero matches**. The original ask (kill the `__` BEM naming) is fully met.
+
+**Not done (deliberately deferred):** Phase 0 tooling — stylelint + a naming/order
+config to _enforce_ the convention going forward. Worth adding so the cleanup
+doesn't regress, but it introduces a dev dependency and CI wiring, so it's left as
+a follow-up decision rather than bundled into this behavior-preserving pass.
 

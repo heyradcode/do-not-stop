@@ -1,6 +1,6 @@
 import React from 'react';
 
-import './pet-showcase.css';
+import s from './pet-showcase.module.css';
 
 export type ShowcaseAccent = 'violet' | 'cyan';
 
@@ -24,11 +24,11 @@ export type PetShowcaseProps = {
  */
 const PetShowcase: React.FC<PetShowcaseProps> = ({ avatar, accent, children }) => (
     <div
-        className="pet-showcase"
+        className={s.root}
         style={{ '--sc-accent': ACCENT_RGB[accent] } as React.CSSProperties}
     >
-        <div className="pet-showcase__hero">
-            <span className="pet-showcase__avatar">{avatar}</span>
+        <div className={s.hero}>
+            <span className={s.avatar}>{avatar}</span>
         </div>
         {children}
     </div>
