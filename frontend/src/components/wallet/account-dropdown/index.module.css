@@ -1,4 +1,9 @@
-.account-dropdown {
+/* CSS Module — child class names are local; reference via `import s from './index.module.css'`.
+   NOTE: the ROOT `.account-dropdown` stays a GLOBAL class (top-bar positions it via
+   `.wallet :global(.account-dropdown)`), and the button compounds reach the global
+   neon-button API via `:global(.neon-btn)`. Only the generic internal classes
+   (.menu/.dropdown/.address/.balance/.tokens/.list/…) are localized. */
+:global(.account-dropdown) {
     position: fixed;
     top: 20px;
     right: 20px;
@@ -7,11 +12,11 @@
     align-items: center;
     gap: 12px;
 
-    .connect-btn {
+    .connectBtn {
         min-width: 140px;
         white-space: nowrap;
 
-        &.neon-btn {
+        &:global(.neon-btn) {
             min-width: 140px;
             justify-content: center;
         }
@@ -23,7 +28,7 @@
         align-items: center;
     }
 
-    .trigger.neon-btn {
+    .trigger:global(.neon-btn) {
         min-width: 140px;
         justify-content: center;
     }
@@ -43,7 +48,7 @@
         animation: dropdown-slide-in 0.2s ease-out;
     }
 
-    .menu-header {
+    .menuHeader {
         padding: 16px 20px;
         border-bottom: 1px solid rgb(30 157 255 / 30%);
         background: linear-gradient(180deg, rgb(10 24 52 / 56%), rgb(8 18 40 / 35%));
@@ -74,12 +79,12 @@
             background-color: rgb(30 157 255 / 12%);
             color: #b7e4ff;
 
-            .copy-icon {
+            .copyIcon {
                 opacity: 1;
             }
         }
 
-        &.copied .copy-icon {
+        &.copied .copyIcon {
             color: #9effd4;
             font-weight: bold;
             opacity: 1;
@@ -91,19 +96,19 @@
         }
     }
 
-    .address-text {
+    .addressText {
         flex: 1;
         min-width: 0;
     }
 
-    .copy-icon {
+    .copyIcon {
         font-size: 12px;
         opacity: 0.72;
         transition: all 0.2s ease;
         flex-shrink: 0;
     }
 
-    .menu-body {
+    .menuBody {
         padding: 16px 20px;
     }
 
@@ -177,7 +182,7 @@
         flex-direction: column;
         gap: 8px;
 
-        .action.neon-btn {
+        .action:global(.neon-btn) {
             justify-content: center;
         }
     }
@@ -187,7 +192,7 @@
         right: 10px;
         gap: 8px;
 
-        .trigger.neon-btn {
+        .trigger:global(.neon-btn) {
             min-width: 120px;
         }
 
@@ -195,12 +200,12 @@
             min-width: 260px;
         }
 
-        .menu-header,
-        .menu-body {
+        .menuHeader,
+        .menuBody {
             padding: 12px 16px;
         }
 
-        .action.neon-btn {
+        .action:global(.neon-btn) {
             font-size: 13px;
         }
     }
@@ -222,12 +227,12 @@
             flex-shrink: 0;
         }
 
-        .connect-btn {
+        .connectBtn {
             width: auto;
             min-width: 140px;
         }
 
-        .trigger.neon-btn {
+        .trigger:global(.neon-btn) {
             width: auto;
             min-width: 120px;
             justify-content: center;

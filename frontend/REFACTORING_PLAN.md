@@ -355,7 +355,15 @@ intentionally left global for now).
   verified in dist that `.psd-input` stays unhashed and the `:not()` is intact.
   No keyframes.
 
-### Migration boundary — the global design-system core stays global (by design)
+- ✅ `wallet/account-dropdown` — root `.account-dropdown` kept GLOBAL via
+  `:global(.account-dropdown)` (top-bar positions it via `.wallet :global(.account-
+  dropdown)` — verified `_wallet_* .account-dropdown` still resolves); the 3
+  NeonButton compounds via `.trigger:global(.neon-btn)` etc.; the ~15 generic
+  internal classes (`.menu`/`.dropdown`/`.address`/`.balance`/`.tokens`/`.list`/
+  `.label`/`.actions`/`.action`/`.empty`/…) localized. Own keyframes `dropdown-
+  slide-in`/`-up` kept in module (verified match). `:has(.menu)` retained.
+
+### Migration boundary — the irreducible global design-system core (3 stay global)
 
 These 5 are NOT converted to modules, and shouldn't be — they are the
 interconnected design-system layer whose class names are a **public API** other
