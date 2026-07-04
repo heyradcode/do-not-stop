@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import clsx from 'clsx';
 import { useSearchPets } from '@shared/core';
 import type { OpponentPet, PetChain } from '@shared/core';
-import './index.css';
+import s from './index.module.css';
 
 export type PetSearchDropdownProps = {
     chain: PetChain | null;
@@ -158,13 +159,13 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
             ? createPortal(
                   <div
                       ref={dropdownRef}
-                      className="psd-dropdown"
+                      className={s.psdDropdown}
                       role="listbox"
                       style={dropdownStyle}
                   >
-                      {isLoading && <div className="psd-state-row">Searching…</div>}
+                      {isLoading && <div className={s.psdStateRow}>Searching…</div>}
                       {!isLoading && filtered.length === 0 && inputText.trim() && (
-                          <div className="psd-state-row">No pets found</div>
+                          <div className={s.psdStateRow}>No pets found</div>
                       )}
                       {filtered.map((pet, i) => (
                           <button
@@ -172,15 +173,15 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
                               type="button"
                               role="option"
                               aria-selected={i === activeIdx}
-                              className={`psd-row${i === activeIdx ? ' active' : ''}`}
+                              className={clsx(s.psdRow, i === activeIdx && s.active)}
                               onMouseDown={(e) => {
                                   e.preventDefault();
                                   handleSelect(pet);
                               }}
                           >
-                              <span className="psd-row-name">{pet.name}</span>
-                              <span className="psd-row-id">#{pet.id}</span>
-                              <span className="psd-row-level">Lv {pet.level}</span>
+                              <span className={s.psdRowName}>{pet.name}</span>
+                              <span className={s.psdRowId}>#{pet.id}</span>
+                              <span className={s.psdRowLevel}>Lv {pet.level}</span>
                           </button>
                       ))}
                   </div>,
@@ -189,11 +190,13 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
             : null;
 
     return (
-        <div ref={wrapperRef} className={`pet-search-dropdown${disabled ? ' disabled' : ''}`}>
+        <div ref={wrapperRef} className={clsx(s.petSearchDropdown, disabled && s.disabled)}>
             <div
-                className={`psd-input-wrap${isSelected ? ' is-selected' : ''}${
-                    open ? ' is-open' : ''
-                }`}
+                className={clsx(
+                    s.psdInputWrap,
+                    isSelected && s.isSelected,
+                    open && s.isOpen,
+                )}
             >
                 <input
                     ref={inputRef}
@@ -210,21 +213,21 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
                     spellCheck={false}
                 />
                 {isSelected && (
-                    <span className="psd-selected-badge">
+                    <span className={s.psdSelectedBadge}>
                         #{selected.id} · Lv {selected.level}
                     </span>
                 )}
                 {isSelected ? (
                     <button
                         type="button"
-                        className="psd-clear"
+                        className={s.psdClear}
                         onClick={handleClear}
                         aria-label="Clear selection"
                     >
                         ✕
                     </button>
                 ) : (
-                    <span className={`psd-chevron${open ? ' up' : ''}`} aria-hidden>
+                    <span className={clsx(s.psdChevron, open && s.up)} aria-hidden>
                         ▾
                     </span>
                 )}

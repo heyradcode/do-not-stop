@@ -1,4 +1,8 @@
-.pet-search-dropdown {
+/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+   Pet search + select dropdown. NOTE: `.psd-input` stays a GLOBAL class because
+   interactions.css targets it via `input:not(.psd-input)` to exclude this search
+   field from the generic field-input styling. */
+.petSearchDropdown {
     position: relative;
     width: 100%;
 
@@ -10,7 +14,7 @@
 
 /* ── Input wrapper ─────────────────────────────────────────────────────────── */
 
-.psd-input-wrap {
+.psdInputWrap {
     position: relative;
     display: flex;
     align-items: center;
@@ -24,23 +28,23 @@
     min-height: 42px;
     cursor: text;
 
-    &:hover:not(.is-selected) {
+    &:hover:not(.isSelected) {
         border-color: rgb(125 214 255 / 55%);
         box-shadow: inset 0 0 20px rgb(125 214 255 / 7%), 0 0 10px rgb(125 214 255 / 14%);
     }
 
-    &.is-open {
+    &.isOpen {
         border-color: var(--cp-cyan);
         box-shadow: 0 0 0 2px var(--cp-cyan), 0 0 12px rgb(125 214 255 / 32%);
     }
 
-    &.is-selected {
+    &.isSelected {
         border-color: rgb(125 214 255 / 55%);
         box-shadow: inset 0 0 20px rgb(125 214 255 / 7%), 0 0 8px rgb(125 214 255 / 16%);
     }
 }
 
-.psd-input {
+:global(.psd-input) {
     flex: 1;
     min-width: 0;
     background: transparent;
@@ -57,15 +61,15 @@
         color: rgb(125 214 255 / 28%);
         font-style: italic;
     }
-
-    /* when a pet is selected, dim the name slightly to signal "read mode" */
-    .is-selected & {
-        color: #f6f3ff;
-        font-weight: 600;
-    }
 }
 
-.psd-selected-badge {
+/* when a pet is selected, dim the name slightly to signal "read mode" */
+.isSelected :global(.psd-input) {
+    color: #f6f3ff;
+    font-weight: 600;
+}
+
+.psdSelectedBadge {
     flex-shrink: 0;
     font-size: 11px;
     font-weight: 600;
@@ -75,7 +79,7 @@
     white-space: nowrap;
 }
 
-.psd-chevron {
+.psdChevron {
     position: absolute;
     inset-inline-end: 13px;
     inset-block-start: 50%;
@@ -92,7 +96,7 @@
     }
 }
 
-.psd-clear {
+.psdClear {
     position: absolute;
     inset-inline-end: 10px;
     inset-block-start: 50%;
@@ -113,7 +117,7 @@
 
 /* ── Dropdown list ─────────────────────────────────────────────────────────── */
 
-.psd-dropdown {
+.psdDropdown {
     /* position/top/left/width/z-index are applied inline by the portal — only visual styles here */
     background: rgb(4 10 26 / 98%);
     border: 1px solid rgb(125 214 255 / 30%);
@@ -127,7 +131,7 @@
     scrollbar-color: var(--cp-cyan) transparent;
 }
 
-.psd-state-row {
+.psdStateRow {
     padding: 12px 14px;
     font-size: 12px;
     color: rgb(125 214 255 / 45%);
@@ -137,7 +141,7 @@
 
 /* ── Result rows ───────────────────────────────────────────────────────────── */
 
-.psd-row {
+.psdRow {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -164,7 +168,7 @@
     }
 }
 
-.psd-row-name {
+.psdRowName {
     flex: 1;
     min-width: 0;
     font-size: 13px;
@@ -176,7 +180,7 @@
     letter-spacing: 0.2px;
 }
 
-.psd-row-id {
+.psdRowId {
     flex-shrink: 0;
     font-size: 11px;
     font-weight: 600;
@@ -185,7 +189,7 @@
     font-variant-numeric: tabular-nums;
 }
 
-.psd-row-level {
+.psdRowLevel {
     flex-shrink: 0;
     font-size: 11px;
     font-weight: 700;
