@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import clsx from 'clsx';
 import { useAccount, useSwitchChain } from 'wagmi';
 import {
     CHAINS,
@@ -9,7 +10,7 @@ import {
 import { Tones } from '@constants/tones';
 import { NeonButton, NeonModal } from '@components/ui';
 import Icon, { CheckIcon } from '@components/ui/icon';
-import './index.css';
+import s from './index.module.css';
 
 interface EthereumNetworkSwitcherProps {
     className?: string;
@@ -35,11 +36,11 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
     };
 
     return (
-        <div className={`network-switcher ${className || ''}`}>
-            {switchError && <div className="error">Error: {switchError.message}</div>}
+        <div className={clsx(s.networkSwitcher, className)}>
+            {switchError && <div className={s.error}>Error: {switchError.message}</div>}
 
             <NeonButton
-                className="trigger"
+                className={s.trigger}
                 onClick={() => setIsOpen(true)}
                 disabled={isPending}
                 tone={Tones.Azure}
@@ -52,10 +53,10 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                 isOpen={isOpen}
                 onRequestClose={() => setIsOpen(false)}
                 title="Select Network"
-                className="network-neon-modal"
-                contentClassName="network-neon-modal-content"
+                className={s.networkNeonModal}
+                contentClassName={s.networkNeonModalContent}
                 headerActions={
-                    <label className="testnet-toggle">
+                    <label className={s.testnetToggle}>
                         <input
                             type="checkbox"
                             checked={showTestnets}
@@ -66,25 +67,27 @@ const EthereumNetworkSwitcher: React.FC<EthereumNetworkSwitcherProps> = ({ class
                     </label>
                 }
             >
-                <div className="network-list">
+                <div className={s.networkList}>
                     {visibleChains.map(({ chain: chainConfig, name, symbol, isTestnet }) => (
                         <NeonButton
                             key={chainConfig.id}
-                            className={`option ${chain.id === chainConfig.id ? 'active' : ''} ${
-                                isTestnet ? 'testnet' : ''
-                            }`}
+                            className={clsx(
+                                s.option,
+                                chain.id === chainConfig.id && s.active,
+                                isTestnet && s.testnet,
+                            )}
                             onClick={() => handleNetworkSelect(chainConfig.id)}
                             disabled={isPending}
                             tone={Tones.Azure}
                             size="sm"
                             fullWidth
                         >
-                            <span className="option-info">
-                                <span className="option-name">{name}</span>
+                            <span className={s.optionInfo}>
+                                <span className={s.optionName}>{name}</span>
                                 <span className="option-symbol">{symbol}</span>
                             </span>
                             {chain.id === chainConfig.id && (
-                                <span className="option-check">
+                                <span className={s.optionCheck}>
                                     <Icon
                                         as={CheckIcon}
                                         tone={Tones.Emerald}
