@@ -363,30 +363,33 @@ intentionally left global for now).
   `.label`/`.actions`/`.action`/`.empty`/…) localized. Own keyframes `dropdown-
   slide-in`/`-up` kept in module (verified match). `:has(.menu)` retained.
 
+- ✅ `wallet/network-switcher` (ethereum.tsx + solana.tsx) — root + all internals
+  localized (root isn't referenced externally). Button compounds via
+  `.trigger:global(.neon-btn)` / `.trigger:not(:global(.neon-btn))` (the Solana
+  raw-button case — verified `_trigger_*:not(.neon-btn)` compiles); the modal
+  overrides via `:global(.neon-modal .dialog).networkNeonModal` /
+  `:global(.neon-modal .dialog .body).networkNeonModalContent` (verified). Own
+  `error-shake` keyframe kept in module. The `.network-neon-modal[-content]`
+  classes passed to `<NeonModal className/contentClassName>` are now local.
+  (Pre-existing dead `.option-symbol`/`.option-status` mismatch left as-is.)
+
 ### Migration boundary — the irreducible global design-system core (3 stay global)
 
-These 5 are NOT converted to modules, and shouldn't be — they are the
-interconnected design-system layer whose class names are a **public API** other
-files (and the global `interactions.css`) style directly:
+These 3 are NOT converted to modules, and shouldn't be — every one of their
+classes is a **public API** that other files (and the global `interactions.css`)
+style directly, so hashing them gains no encapsulation and only adds fragility:
 
-- `ui/neon-button` — `.neon-btn` is THE public button class: styled/compounded by
-  `interactions.css` (`.action-controls .neon-btn`), `account-dropdown`,
-  `neon-modal`, `network-switcher`, and referenced via `:global(.neon-btn)` from
-  the breed module. It can only be a stable GLOBAL class; hashing it would break
-  all of those.
+- `ui/neon-button` — `.neon-btn`/`.size-*`/tones are THE public button API:
+  styled/compounded by `interactions.css` (`.action-controls .neon-btn.size-md`),
+  and reached via `:global(.neon-btn)` from breed / account-dropdown /
+  network-switcher modules. Every class is external-facing.
 - `common/dashboard-panel` — `.dashboard-panel`/`.surface`/`.title-bar`/
-  `.panel-body` are global chrome themed by `interactions.css` and reached via
-  `:global(.dashboard-panel.pet-interactions .interface)` from the battle module.
+  `.panel-body`/`.heading`/`.intro`/`.panel-back` are global chrome themed
+  entirely by `interactions.css` and reached via `:global(.dashboard-panel…)`
+  from the battle module. Every class is external-facing.
 - `ui/neon-modal` — `.neon-modal`/`.dialog`/`.body` are a modal structural
-  contract overridden externally by `network-switcher`.
-- `wallet/network-switcher` — compounds with `.neon-btn` AND overrides
-  `.neon-modal .dialog` — coupled to two primitives at once.
-- `wallet/account-dropdown` — root `.account-dropdown` is a global positioning
-  anchor for `top-bar` (`:global(.account-dropdown)`), body compounds `.neon-btn`
-  throughout.
+  contract overridden externally by `network-switcher`'s `:global()` reaches.
 
-Forcing these into modules would require pervasive `:global()` escapes that just
-re-export the same global names — no encapsulation gained, real fragility added.
 They stay global alongside `variables.css`/`animations.css`/`messages.css`/
 `interactions.css`. `battle-dialogue.css` likewise stays global (see battle).
 
