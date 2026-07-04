@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const navigate = vi.fn();
@@ -15,7 +16,7 @@ vi.mock('@components/common', () => ({
     }: {
         onClick: () => void;
         disabled?: boolean;
-        children: React.ReactNode;
+        children: ReactNode;
     }) => (
         <button onClick={onClick} disabled={disabled}>
             {children}
@@ -51,9 +52,16 @@ const petList = {
 const capabilities = { randomness: { provider: 'vrf' }, kind: 'solana' };
 
 vi.mock('@shared/core', () => ({
+    // DNA-derived helpers stubbed so the parent/DNA cards render without real DNA.
     getPetAvatar: () => '🐉',
     getPetClass: () => 'Warrior',
     getPetProperties: () => ({ life: 70, attack: 50, defense: 40, intelligence: 60 }),
+    getRarityColor: () => '#8aa0ff',
+    getRarityName: () => 'Common',
+    getGeneration: () => 1,
+    getLifePercent: () => 80,
+    getXpNumbers: () => ({ xpCurrent: 10, xpMax: 100 }),
+    getXpPercent: () => 10,
     getReadyPetsUnified: (pets: { id: string; level: number }[]) =>
         pets.map((p) => ({ id: p.id, pet: p })),
     useChainCapabilities: () => capabilities,
@@ -103,13 +111,6 @@ vi.mock('@components/pet/interactions/panels/breed/parts/stud-fee-balance', () =
 
 import BreedPanel from '@components/pet/interactions/panels/breed';
 
-const fillForm = async () => {
-    const [first, second] = screen.getAllByRole('combobox');
-    await userEvent.selectOptions(first, '1');
-    await userEvent.selectOptions(second, '2');
-    await userEvent.type(screen.getByPlaceholderText('Name for the new pet…'), 'Gamma');
-};
-
 beforeEach(() => {
     vi.clearAllMocks();
     capabilities.randomness.provider = 'vrf';
@@ -117,25 +118,15 @@ beforeEach(() => {
     petList.pets = [...DEFAULT_PETS];
 });
 
-describe('BreedPanel — My Pets tab', () => {
-    it('lists parents and excludes the first parent from the second select', async () => {
+describe('BreedPanel — My Pets tab (cycle selectors)', () => {
+    it('auto-selects the first two pets and breeds them with a trimmed name', async () => {
         render(<BreedPanel />);
 
-        const [first, second] = screen.getAllByRole('combobox');
-        expect(within(first).getByRole('option', { name: 'Alpha (Lv 2)' })).toBeInTheDocument();
+        // Both parents are pre-filled from the roster (Alpha + Beta shown on the cards).
+        expect(screen.getByText('Alpha')).toBeInTheDocument();
+        expect(screen.getByText('Beta')).toBeInTheDocument();
 
-        await userEvent.selectOptions(first, '1');
-
-        expect(
-            within(second).queryByRole('option', { name: 'Alpha (Lv 2)' }),
-        ).not.toBeInTheDocument();
-        expect(within(second).getByRole('option', { name: 'Beta (Lv 5)' })).toBeInTheDocument();
-    });
-
-    it('breeds the two selected parents with a trimmed name', async () => {
-        render(<BreedPanel />);
-        await fillForm();
-
+        await userEvent.type(screen.getByPlaceholderText('Name for the new pet…'), '  Gamma  ');
         await userEvent.click(screen.getByRole('button', { name: 'Breed Pets' }));
 
         expect(breed.clearErrors).toHaveBeenCalled();
@@ -143,6 +134,26 @@ describe('BreedPanel — My Pets tab', () => {
             parentId1: '1',
             parentId2: '2',
             name: 'Gamma',
+        });
+    });
+
+    it('cycles a parent to a different pet with the Next control', async () => {
+        petList.pets = [
+            { id: '1', name: 'Alpha', level: 2 },
+            { id: '2', name: 'Beta', level: 5 },
+            { id: '3', name: 'Gamma', level: 4 },
+        ];
+        render(<BreedPanel />);
+
+        // Parent A defaults to pet 1; cycling Next (pool excludes parent B) lands on pet 3.
+        await userEvent.click(screen.getAllByRole('button', { name: /Next/ })[0]);
+        await userEvent.type(screen.getByPlaceholderText('Name for the new pet…'), 'Delta');
+        await userEvent.click(screen.getByRole('button', { name: 'Breed Pets' }));
+
+        expect(breed.mutate).toHaveBeenCalledWith({
+            parentId1: '3',
+            parentId2: '2',
+            name: 'Delta',
         });
     });
 
@@ -176,18 +187,10 @@ describe('BreedPanel — My Pets tab', () => {
         expect(screen.getByRole('button', { name: 'Generating randomness…' })).toBeInTheDocument();
         expect(screen.getByText('Transaction: 0x123456…')).toBeInTheDocument();
     });
-
-    it('resets when breed.reset is called', () => {
-        render(<BreedPanel />);
-        act(() => {
-            breed.reset();
-        });
-        expect(breed.reset).toBeDefined();
-    });
 });
 
 describe('BreedPanel — With Spouse tab', () => {
-    it('shows ↔ spouse indicator in the dropdown for married Solana pets', async () => {
+    it('shows the married pet and its partner id after switching tabs', async () => {
         petList.pets = [
             { id: '1', name: 'Alpha', level: 2, spouseId: 5 },
             { id: '2', name: 'Beta', level: 3 },
@@ -196,48 +199,23 @@ describe('BreedPanel — With Spouse tab', () => {
 
         await userEvent.click(screen.getByRole('button', { name: /With Spouse/ }));
 
-        const select = screen.getByRole('combobox');
-        expect(
-            within(select).getByRole('option', { name: 'Alpha (Lv 2) ↔ #5' }),
-        ).toBeInTheDocument();
-        expect(within(select).getByRole('option', { name: 'Beta (Lv 3)' })).toBeInTheDocument();
+        // The cycle-select shows the auto-selected married pet, and the partner id resolves.
+        expect(screen.getByText(/Alpha/)).toBeInTheDocument();
+        expect(screen.getAllByText(/#5/).length).toBeGreaterThan(0);
     });
 
-    it('auto-selects the first married pet when switching to With Spouse tab', async () => {
-        petList.pets = [
-            { id: '1', name: 'Alpha', level: 2, spouseId: 5 },
-            { id: '2', name: 'Beta', level: 3 },
-        ];
+    it('warns when the selected pet is not married', () => {
+        // A single unmarried pet auto-switches to the spouse tab and auto-selects it.
+        petList.pets = [{ id: '1', name: 'Alpha', level: 2 }];
         render(<BreedPanel />);
-
-        await userEvent.click(screen.getByRole('button', { name: /With Spouse/ }));
-
-        expect(screen.getByRole('combobox')).toHaveValue('1');
-    });
-
-    it('shows the partner pet id once a married pet is selected', async () => {
-        // Single married pet → auto-switches to spouse tab and auto-selects the pet
-        petList.pets = [{ id: '1', name: 'Alpha', level: 2, spouseId: 7 }];
-        render(<BreedPanel />);
-
-        // SpouseLabel falls back to "#7" when the GraphQL name fetch has no data yet
-        expect(screen.getByText('#7')).toBeInTheDocument();
-    });
-
-    it('shows Not married hint when an unmarried pet is selected', async () => {
-        render(<BreedPanel />);
-
-        await userEvent.click(screen.getByRole('button', { name: /With Spouse/ }));
-        await userEvent.selectOptions(screen.getByRole('combobox'), '1');
 
         expect(screen.getByText('This pet is not married yet.')).toBeInTheDocument();
     });
 
-    it('submits a cross-owner breed with the spouse as second parent', async () => {
+    it('submits a cross-owner breed with the spouse as the second parent', async () => {
         petList.pets = [{ id: '1', name: 'Alpha', level: 2, spouseId: 9 }];
         render(<BreedPanel />);
 
-        // Alpha is auto-selected; partner #9 resolved via useMarriageInfo
         await userEvent.type(screen.getByPlaceholderText('Name for the new pet…'), 'Cub');
         await userEvent.click(screen.getByRole('button', { name: 'Breed with Spouse' }));
 

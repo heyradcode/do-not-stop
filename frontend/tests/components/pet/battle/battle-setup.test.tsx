@@ -1,25 +1,20 @@
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { OpponentPet, Pet, ReadyPet } from '@shared/core';
 
-vi.mock('@components/pet/interactions/panels/battle/parts/arena-slot', () => ({
-    default: ({ side, pet }: { side: string; pet?: { name?: string } | null }) => (
-        <div data-testid={`arena-${side}`}>{pet?.name ?? 'empty'}</div>
-    ),
-}));
-vi.mock('@components/pet/interactions/panels/battle/parts/fighter-picker-card', () => ({
-    default: ({ petId, onSelect }: { petId: string; onSelect: (id: string) => void }) => (
-        <button onClick={() => onSelect(petId)}>fighter-{petId}</button>
-    ),
-}));
-vi.mock('@components/pet/interactions/panels/battle/parts/opponent-picker-card', () => ({
-    default: ({ opponent, onSelect }: { opponent: { id: string }; onSelect: (k: string) => void }) => (
-        <button onClick={() => onSelect(opponent.id)}>opp-{opponent.id}</button>
-    ),
-}));
+// AuthActionButton reaches into auth/session context — stub to a plain button.
 vi.mock('@components/common', () => ({
-    AuthActionButton: ({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) => (
+    AuthActionButton: ({
+        onClick,
+        disabled,
+        children,
+    }: {
+        onClick: () => void;
+        disabled?: boolean;
+        children: ReactNode;
+    }) => (
         <button onClick={onClick} disabled={disabled}>
             {children}
         </button>
@@ -36,32 +31,28 @@ vi.mock('@components/pet/interactions/panels/battle/parts/open-to-challenges-tog
 import BattleSetup, {
     type BattleSetupProps,
 } from '@components/pet/interactions/panels/battle/parts/battle-setup';
+import { opponentKey } from '@components/pet/interactions/panels/battle/battle-utils';
 
+// Pets carry a real DNA + rarity so the shared DNA-derived helpers (stats, avatar,
+// class, rarity) render the CombatantCard without stubbing @shared/core.
 const readyPet = (id: string, name: string): ReadyPet =>
-    ({ id, pet: { id, name, level: 3 } as Pet }) as ReadyPet;
+    ({ id, pet: { id, name, level: 3, dna: 1n, rarity: 0 } as unknown as Pet }) as ReadyPet;
 const opp = (id: string): OpponentPet =>
-    ({ id, owner: '0xowner', name: `Foe ${id}`, level: 5 }) as unknown as OpponentPet;
+    ({ id, owner: '0xF00d', name: `Foe ${id}`, level: 5, dna: 2n, rarity: 1 }) as unknown as OpponentPet;
 
 const baseProps = (over: Partial<BattleSetupProps> = {}): BattleSetupProps => ({
     isStandaloneView: true,
     subtitle: 'Pick a fight',
-    arenaClassName: 'arena',
-    isArenaFighting: false,
-    isArenaReady: false,
-    showResult: false,
     selectedFighter: null,
     opponent: undefined,
-    opponentSlotFlash: false,
     randomMatchDisabled: false,
     onRandomMatch: vi.fn(),
     readyPets: [readyPet('1', 'Alpha')],
     selectedPet1: '',
     onSelectFighter: vi.fn(),
     sortedOpponents: [opp('o1')],
-    fighterLevel: null,
     selectedOpponentKey: '',
     onSelectOpponent: vi.fn(),
-    selectedOpponentCardRef: null,
     opponentsLoading: false,
     onRefreshOpponents: vi.fn(),
     onBattle: vi.fn(),
@@ -72,80 +63,120 @@ const baseProps = (over: Partial<BattleSetupProps> = {}): BattleSetupProps => ({
     ...over,
 });
 
-describe('BattleSetup', () => {
-    it('shows the subtitle only in the embedded (non-standalone) view', () => {
+describe('BattleSetup (fighter-vs-rival showdown)', () => {
+    it('shows the heading + subtitle only in the embedded (non-standalone) view', () => {
         const { rerender } = render(<BattleSetup {...baseProps()} />);
         expect(screen.queryByText('Pick a fight')).not.toBeInTheDocument();
+        expect(screen.queryByText('Battle Pets')).not.toBeInTheDocument();
 
         rerender(<BattleSetup {...baseProps({ isStandaloneView: false })} />);
         expect(screen.getByText('Pick a fight')).toBeInTheDocument();
+        expect(screen.getByText('Battle Pets')).toBeInTheDocument();
     });
 
-    it.each([
-        [{ isArenaFighting: true }, 'Fighting'],
-        [{ showResult: true }, 'Complete'],
-        [{ isArenaReady: true }, 'Ready'],
-        [{}, 'Setup'],
-    ] as const)('shows the arena badge %o as %s', (over, badge) => {
-        render(<BattleSetup {...baseProps(over)} />);
-        expect(screen.getByText(badge)).toBeInTheDocument();
+    it('labels the fighter, rival and VS columns', () => {
+        render(<BattleSetup {...baseProps()} />);
+        expect(screen.getByText('Your Fighter')).toBeInTheDocument();
+        expect(screen.getByText('On-Chain Rival')).toBeInTheDocument();
+        expect(screen.getByText('VS')).toBeInTheDocument();
     });
 
-    it('renders the selected fighter and opponent in the arena slots', () => {
+    it('lists ready fighters in the fighter select and reports a selection', async () => {
+        const onSelectFighter = vi.fn();
         render(
             <BattleSetup
                 {...baseProps({
-                    selectedFighter: { name: 'Alpha' } as Pet,
+                    readyPets: [readyPet('1', 'Alpha'), readyPet('2', 'Beta')],
+                    onSelectFighter,
+                })}
+            />,
+        );
+
+        const select = screen.getByRole('combobox', { name: 'Choose your fighter' });
+        expect(screen.getByRole('option', { name: 'Alpha (Lv 3)' })).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: 'Beta (Lv 3)' })).toBeInTheDocument();
+
+        await userEvent.selectOptions(select, '2');
+        expect(onSelectFighter).toHaveBeenCalledWith('2');
+    });
+
+    it('prompts for a fighter when none are ready', () => {
+        render(<BattleSetup {...baseProps({ readyPets: [] })} />);
+        // Appears both as the select's placeholder option and the empty card label.
+        expect(screen.getAllByText('No ready fighters').length).toBeGreaterThan(0);
+    });
+
+    it('renders the selected fighter and opponent cards', () => {
+        render(
+            <BattleSetup
+                {...baseProps({
+                    selectedFighter: readyPet('1', 'Alpha').pet,
                     opponent: opp('o1'),
                 })}
             />,
         );
-        expect(screen.getByTestId('arena-fighter')).toHaveTextContent('Alpha');
-        expect(screen.getByTestId('arena-opponent')).toHaveTextContent('Foe o1');
+        expect(screen.getByText('Alpha')).toBeInTheDocument();
+        expect(screen.getByText('Foe o1')).toBeInTheDocument();
     });
 
-    it('shows an empty message when there are no ready fighters', () => {
-        render(<BattleSetup {...baseProps({ readyPets: [] })} />);
-        expect(
-            screen.getByText('No ready pets. Wait for cooldowns to finish before battling.'),
-        ).toBeInTheDocument();
-    });
-
-    it('selects a fighter from the strip', async () => {
-        const onSelectFighter = vi.fn();
-        render(<BattleSetup {...baseProps({ onSelectFighter })} />);
-
-        await userEvent.click(screen.getByRole('button', { name: 'fighter-1' }));
-        expect(onSelectFighter).toHaveBeenCalledWith('1');
-    });
-
-    it('shows the level-match hint when a fighter level is known', () => {
-        const { rerender } = render(<BattleSetup {...baseProps()} />);
-        expect(screen.queryByText(/sorted by level match/)).not.toBeInTheDocument();
-
-        rerender(<BattleSetup {...baseProps({ fighterLevel: 4 })} />);
-        expect(screen.getByText(/sorted by level match/)).toBeInTheDocument();
-    });
-
-    it('shows a finding state while opponents load with none yet', () => {
-        render(<BattleSetup {...baseProps({ opponentsLoading: true, sortedOpponents: [] })} />);
-        expect(screen.getByText('Finding challengers in the arena…')).toBeInTheDocument();
-    });
-
-    it('shows a no-opponents message when the roster is empty', () => {
-        render(<BattleSetup {...baseProps({ sortedOpponents: [] })} />);
-        expect(screen.getByText(/No opponents available right now/)).toBeInTheDocument();
-    });
-
-    it('refreshes opponents, with a loading label while pending', async () => {
+    it('wires the Random and Refresh opponent controls', async () => {
+        const onRandomMatch = vi.fn();
         const onRefreshOpponents = vi.fn();
-        const { rerender } = render(<BattleSetup {...baseProps({ onRefreshOpponents })} />);
+        const { rerender } = render(
+            <BattleSetup {...baseProps({ onRandomMatch, onRefreshOpponents })} />,
+        );
+
+        await userEvent.click(screen.getByRole('button', { name: /Random/ }));
+        expect(onRandomMatch).toHaveBeenCalledOnce();
 
         await userEvent.click(screen.getByRole('button', { name: 'Refresh' }));
         expect(onRefreshOpponents).toHaveBeenCalledOnce();
 
         rerender(<BattleSetup {...baseProps({ opponentsLoading: true })} />);
-        expect(screen.getByRole('button', { name: 'Loading…' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: '…' })).toBeDisabled();
+    });
+
+    it('reports the chosen opponent by its composite key', async () => {
+        const onSelectOpponent = vi.fn();
+        render(<BattleSetup {...baseProps({ onSelectOpponent })} />);
+
+        const select = screen.getByRole('combobox', { name: 'Select an opponent' });
+        await userEvent.selectOptions(
+            select,
+            screen.getByRole('option', { name: 'Foe o1 (Lv 5)' }),
+        );
+        expect(onSelectOpponent).toHaveBeenCalledWith(opponentKey('0xF00d', 'o1'));
+    });
+
+    it('shows finding / empty states for the opponent roster', () => {
+        const { rerender } = render(
+            <BattleSetup {...baseProps({ opponentsLoading: true, sortedOpponents: [] })} />,
+        );
+        expect(screen.getAllByText('Finding challengers…').length).toBeGreaterThan(0);
+
+        rerender(<BattleSetup {...baseProps({ sortedOpponents: [] })} />);
+        expect(screen.getAllByText('No opponents available').length).toBeGreaterThan(0);
+    });
+
+    it('renders the win rate from the estimate', () => {
+        const { rerender } = render(<BattleSetup {...baseProps()} />);
+        expect(screen.getByText('—')).toBeInTheDocument();
+
+        rerender(
+            <BattleSetup
+                {...baseProps({
+                    winEstimate: { isLoading: false, winProbability: 0.5, samples: 10 },
+                })}
+            />,
+        );
+        expect(screen.getByText('50%')).toBeInTheDocument();
+
+        rerender(
+            <BattleSetup
+                {...baseProps({ winEstimate: { isLoading: true, winProbability: null, samples: null } })}
+            />,
+        );
+        expect(screen.getByText('…')).toBeInTheDocument();
     });
 
     it('wires the battle and cancel controls', async () => {
@@ -153,7 +184,7 @@ describe('BattleSetup', () => {
         const onCancel = vi.fn();
         render(<BattleSetup {...baseProps({ onBattle, onCancel })} />);
 
-        await userEvent.click(screen.getByRole('button', { name: 'Battle!' }));
+        await userEvent.click(screen.getByRole('button', { name: /Battle!/ }));
         await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
         expect(onBattle).toHaveBeenCalledOnce();
         expect(onCancel).toHaveBeenCalledOnce();

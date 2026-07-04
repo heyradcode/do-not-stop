@@ -410,6 +410,24 @@ They stay global alongside `variables.css`/`animations.css`/`messages.css`/
 The original complaint — `.cp-shell__content` `__`-BEM naming — is fully
 resolved: `app-shell` is a module and every panel's `__`/`--` BEM is gone.
 
+**Phase 3.5 — test suite remediation: DONE**
+- Running `pnpm test` (which the CSS pass hadn't) surfaced 43 failures. Two
+  causes and fixes:
+  1. *CSS-migration-caused:* tests asserted on class names that CSS Modules now
+     hash. Added `css.modules.classNameStrategy: 'non-scoped'` to `vitest.config
+     .ts` so `s.foo` resolves to the plain `foo` in tests, and updated the
+     assertions to the new local names (`neon-card`→`card`, `neon-icon`→`icon`,
+     `toast-error`→`error`, `.cp-idle--message`→`.idleMessage`, `is-defeat`→
+     `isDefeat`, `.option-name`→`.optionName`, …). Deleted 3 test files for
+     components removed in Phase 1 (`arena-slot`/`fighter`/`opponent-picker-card`).
+  2. *Pre-existing (redesign-stale, NOT the CSS pass):* `battle-setup` + `breed`
+     tests targeted the OLD pre-redesign UI (arena slots/badges; dropdown selects)
+     and mocked a deleted component. Rewrote both from scratch against the current
+     showdown / cycle-selector components (+ completed the `@shared/core` mock and
+     an incomplete `battle-overlay` opponent mock). Suite: 43 failing → **0**
+     (40 files, 243 tests). NOTE: wire `pnpm test` into CI — it was not catching
+     these.
+
 **Build-command note (avoid false-positive verification):** `typescript` AND
 `vite` are hoisted to the monorepo ROOT `node_modules`, not `frontend/`. Run
 `node ../node_modules/typescript/bin/tsc …` and `node ../node_modules/vite/bin/
