@@ -1,50 +1,19 @@
 /* =============================================================================
    Keyframes — ported from the Crypto Pets redesign mock.
-   Shared vocabulary for the shell, gallery, and interaction views.
-   Names are kept 1:1 with the design so per-view styles can reference them.
+   Shared vocabulary referenced by multiple stylesheets. Component-specific
+   keyframes live inside their own module (see REFACTORING_PLAN.md); only
+   genuinely shared ones remain here.
    ============================================================================= */
 
-/* Ambient / shell */
+/* Loading spinner (styles/messages.css .loading-spinner). */
 @keyframes cp-spin-slow {
     to {
         transform: rotate(360deg);
     }
 }
-@keyframes cp-ray-spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
 
-/* Cards / entrances */
-@keyframes cp-card-enter {
-    from {
-        transform: translateY(14px) scale(0.97);
-    }
-    to {
-        transform: none;
-    }
-}
-@keyframes cp-fade-up {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: none;
-    }
-}
-@keyframes cp-modal-in {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-/* Pets / avatars */
+/* Pets / avatars — floating idle bob. Shared by several panel modules (each
+   keeps its own scoped copy) and the global battle-dialogue / pet-showcase. */
 @keyframes cp-float {
     0%,
     100% {
@@ -52,117 +21,6 @@
     }
     50% {
         transform: translateY(-9px);
-    }
-}
-
-@keyframes cp-shake {
-    0%,
-    100% {
-        transform: translateX(0);
-    }
-    20% {
-        transform: translateX(-8px);
-    }
-    40% {
-        transform: translateX(8px);
-    }
-    60% {
-        transform: translateX(-5px);
-    }
-    80% {
-        transform: translateX(5px);
-    }
-}
-/* Progress / bars */
-@keyframes cp-xp-fill {
-    from {
-        width: 0;
-    }
-}
-/* Training */
-@keyframes cp-intensity-bg {
-    0%,
-    100% {
-        background-position: 0% 50%;
-    }
-    50% {
-        background-position: 100% 50%;
-    }
-}
-
-/* Achievements */
-@keyframes cp-ach-pop {
-    0% {
-        transform: translateX(140px);
-        opacity: 0;
-    }
-    60% {
-        transform: translateX(-6px);
-        opacity: 1;
-    }
-    100% {
-        transform: none;
-        opacity: 1;
-    }
-}
-@keyframes cp-ach-dismiss {
-    0% {
-        transform: none;
-        opacity: 1;
-    }
-    100% {
-        transform: translateX(140px);
-        opacity: 0;
-    }
-}
-
-/* Gacha chest */
-@keyframes cp-chest-shake {
-    0%,
-    100% {
-        transform: rotate(0) scale(1);
-    }
-    15% {
-        transform: rotate(-6deg) scale(1.04);
-    }
-    30% {
-        transform: rotate(6deg) scale(1.04);
-    }
-    45% {
-        transform: rotate(-5deg) scale(1.05);
-    }
-    60% {
-        transform: rotate(5deg) scale(1.05);
-    }
-    75% {
-        transform: rotate(-3deg) scale(1.06);
-    }
-}
-@keyframes cp-chest-burst {
-    0% {
-        transform: scale(0.3);
-        opacity: 0;
-    }
-    50% {
-        opacity: 1;
-    }
-    100% {
-        transform: scale(2.6);
-        opacity: 0;
-    }
-}
-@keyframes cp-reward-rise {
-    0% {
-        transform: translateY(30px) scale(0.5);
-        opacity: 0;
-    }
-    60% {
-        transform: translateY(-6px) scale(1.12);
-        opacity: 1;
-    }
-    100% {
-        transform: translateY(0) scale(1);
-        opacity: 1;
     }
 }
 
