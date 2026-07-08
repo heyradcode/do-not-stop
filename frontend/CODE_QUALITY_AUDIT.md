@@ -143,6 +143,23 @@ smaller diff; the alternative (mirroring `interactions/panels/` in full) is more
 correct long-term but touches more paths. Either is fine — consistency is the
 actual goal, not which one.
 
+> **✅ Done — went with the full mirror**, not the smaller diff. Reason found
+> while executing: `tests/components/pet/interactions/standalone.test.tsx`
+> *already* kept the `interactions` segment while `tests/components/pet/
+> state-card.test.tsx` (for the sibling source dir `interactions/state-card/`)
+> dropped it — a second, un-caught inconsistency between two files this table
+> didn't list. The "drop `interactions`, keep `panels`" partial rule wouldn't
+> have fixed that; only mirroring `src` exactly removes every exception. Moved
+> (via `git mv`, no content changes — confirmed zero relative imports first):
+> `tests/components/pet/battle/*` → `tests/components/pet/interactions/panels/
+> battle/*`, `tests/components/pet/panels/{breed,level-up,marriage,rename,
+> train}.test.tsx` → `tests/components/pet/interactions/panels/*.test.tsx`,
+> `tests/components/pet/state-card.test.tsx` → `tests/components/pet/
+> interactions/state-card.test.tsx`. `standalone.test.tsx` didn't move (it was
+> already correct). Verified: `tsc -b`, full `eslint --max-warnings 0`, and the
+> suite all green (40 files / 243 tests — vitest's glob discovered every file at
+> its new path with no config change needed).
+
 ### 3.3 A couple of "god" files worth splitting (Medium impact, medium effort)
 
 Two files mix multiple unrelated concerns in one place, where the codebase's own
@@ -170,10 +187,10 @@ will be noticeably harder to land than it needs to be.
 
 ### 3.4 Small inconsistencies (Low impact, cheap to fix)
 
-- **Dead path alias**: `tsconfig.app.json` declares `"@utils/*": ["./src/utils/*"]`
-  but `src/utils/` doesn't exist anywhere in the project. Either delete the alias
-  or create the directory if utils are coming — right now it's a trap for
-  someone reaching for it and getting a confusing resolve error.
+- ~~**Dead path alias**~~ **✅ Done** — `@utils/*` was declared in both
+  `tsconfig.app.json` and `vite.config.ts` (kept in sync per the file's own
+  comment) with no `src/utils/` directory backing it in either. Confirmed zero
+  usages anywhere in `src`/`tests` first, then removed from both files.
 - **Ambiguous filename**: `components/layout/index.tsx` is real, used code (the
   route-level `<Layout>` wrapping `<AppShell>`) — not a barrel file — but sitting
   directly in `layout/` next to `layout/app-shell/`, `layout/sidebar/`,
