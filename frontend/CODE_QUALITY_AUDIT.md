@@ -165,13 +165,39 @@ actual goal, not which one.
 Two files mix multiple unrelated concerns in one place, where the codebase's own
 precedent (§2, `battle-utils.ts`/`battle-matchmaking.ts`) suggests extraction:
 
-- **`hooks/battle/useBattlePanel.ts` — 461 lines, single exported hook.**
-  One `useBattlePanel()` call currently owns fighter selection, opponent
-  selection + matchmaking wiring, taunts, the battle mutation itself, and result-
-  dialogue orchestration. Candidate split (matching the existing sibling hooks
-  `useBattleOutcome.ts` / `useResultDialogue.ts` already in the same folder):
-  a `useFighterSelection` + delegate matchmaking to the existing
-  `battle-matchmaking.ts`, leaving `useBattlePanel` as a thin composer.
+- ~~**`hooks/battle/useBattlePanel.ts` — 461 lines, single exported hook.**~~
+  **✅ Partially done — scope narrowed on purpose, see below.**
+
+  The hook's own docstring (present before this audit) already explains why
+  selection/validation/rematch are kept in one controller: *"they're tightly
+  coupled (rematch drives the selection; both random-match and battle-start
+  touch validation), so a single controller is the honest seam."* Reading the
+  actual code confirmed that reasoning — `rematchSnapshotRef`,
+  `battlePersonasRef`, and `validationError` are read/written across
+  `startBattle`, `handleBattle`, `handleTauntsComplete`, the taunts-fallback
+  effect, `handleRematch`, and the rematch effect. Forcibly splitting that into
+  a `useFighterSelection` (as originally floated in this audit) would fight a
+  documented, evidence-backed design decision and risks introducing state bugs
+  in a live wallet-transaction flow for a cosmetic line-count win — so **I did
+  not do that split**.
+
+  What *was* safely extractable: ~90 lines of **pure, stateless label/status/
+  flag derivation** (`subtitle`, `hashHint`, `preResultTitle`, `preResultStatus`,
+  `battleButtonLabel`, `battleDisabled`, `randomMatchDisabled` — ternary chains
+  with no side effects, computed from primitives already in scope). Extracted
+  into a new `battle-view.ts` (110 lines incl. types/docs, sibling to the
+  existing `battle-utils.ts`/`battle-matchmaking.ts` — matching that file's own
+  established pattern of one pure-logic file per concern) exporting a single
+  `deriveBattleView()`. `useBattlePanel.ts` now calls it once instead of
+  containing the ternary chains inline; all stateful orchestration is untouched.
+  Verified `useBattlePanel.test.ts` (10 tests covering selection, validation,
+  rematch, and the success/error effects) passes unchanged, plus the full suite
+  (40 files / 243 tests) and tsc/eslint/`lint:css`.
+
+  **If you want the deeper split anyway** (accepting the state-coupling risk the
+  docstring warns about), that's a separate, larger, higher-risk change I'd want
+  to scope and test more deliberately — say so and I'll take it on as its own
+  step rather than folding it into this one.
 - ~~**`components/wallet/account-dropdown/index.tsx` — 337 lines.**~~ **✅ Done**
   — extracted the ERC-20 multicall (`ERC20_BALANCE_OF_ABI` + `tokenContracts` +
   `useReadContracts` + the `tokenBalances`/`allFetched`/`withBalanceCount`
