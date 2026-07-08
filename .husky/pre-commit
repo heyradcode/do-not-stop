@@ -1,1 +1,1 @@
-pnpm lint:fix && git add -u
+pnpm lint:fix && git add -u && pnpm --filter frontend lint:css

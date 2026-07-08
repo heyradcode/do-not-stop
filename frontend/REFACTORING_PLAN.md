@@ -425,8 +425,15 @@ resolved: `app-shell` is a module and every panel's `__`/`--` BEM is gone.
      and mocked a deleted component. Rewrote both from scratch against the current
      showdown / cycle-selector components (+ completed the `@shared/core` mock and
      an incomplete `battle-overlay` opponent mock). Suite: 43 failing → **0**
-     (40 files, 243 tests). NOTE: wire `pnpm test` into CI — it was not catching
-     these.
+     (40 files, 243 tests).
+- CI gate audit: `.github/workflows/coverage.yml` already runs
+  `frontend test:coverage` on PR/push to `main` (a failing suite fails the job),
+  so this breakage WOULD have been caught at PR time — it just doesn't run on
+  feature-branch pushes. The real CI gap was **lint**: nothing ran
+  `eslint --max-warnings 0` or the CSS `__` guard (the husky pre-commit only does
+  `lint:fix`). Added **`.github/workflows/lint.yml`** — runs
+  `pnpm --filter frontend lint:check` (eslint + `check-css-naming.mjs`) on
+  PR/push to `main`, so the naming guard is now actually enforced.
 
 **Build-command note (avoid false-positive verification):** `typescript` AND
 `vite` are hoisted to the monorepo ROOT `node_modules`, not `frontend/`. Run
