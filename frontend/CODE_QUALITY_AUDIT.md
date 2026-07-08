@@ -172,14 +172,16 @@ precedent (§2, `battle-utils.ts`/`battle-matchmaking.ts`) suggests extraction:
   `useBattleOutcome.ts` / `useResultDialogue.ts` already in the same folder):
   a `useFighterSelection` + delegate matchmaking to the existing
   `battle-matchmaking.ts`, leaving `useBattlePanel` as a thin composer.
-- **`components/wallet/account-dropdown/index.tsx` — 337 lines.**
-  One component owns: an inline ERC-20 multicall (`ERC20_BALANCE_OF_ABI` +
-  `useReadContracts`), clipboard-copy logic (`handleCopyAny`, with a
-  `document.execCommand` fallback), EVM auth (sign-in/logout), Solana disconnect,
-  *and* the dropdown UI. The data-fetching half (token contracts + balances,
-  ~40 lines) is a clean `useAccountTokenBalances()` extraction; the UI half would
-  shrink to something closer to the other wallet components' size
-  (`native-balance` is 140 lines doing comparably more chain-branching).
+- ~~**`components/wallet/account-dropdown/index.tsx` — 337 lines.**~~ **✅ Done**
+  — extracted the ERC-20 multicall (`ERC20_BALANCE_OF_ABI` + `tokenContracts` +
+  `useReadContracts` + the `tokenBalances`/`allFetched`/`withBalanceCount`
+  derivations) into `hooks/useAccountTokenBalances.ts` (new file, 77 lines incl.
+  types/docs). `account-dropdown` drops from 337 → 299 lines and now just calls
+  `useAccountTokenBalances(chain?.id, address, isOpen)`; the JSX and all other
+  behavior (clipboard copy, EVM/Solana auth) are untouched. Verified
+  `account-dropdown.test.tsx` (which mocks wagmi's `useReadContracts`) still
+  passes unchanged — the mock resolves correctly through the new indirection —
+  plus the full suite (40 files / 243 tests) and tsc/eslint/`lint:css`.
 
 Neither is urgent — both work and are tested — but both are the kind of file
 where the next feature request ("add a 3rd chain", "add a new battle phase")

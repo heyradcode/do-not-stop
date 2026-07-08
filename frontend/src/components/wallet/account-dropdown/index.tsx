@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useAccount, useReadContracts } from 'wagmi';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useAccount } from 'wagmi';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { useAuth } from '@shared/core';
-import { getPopularTokens } from '@constants/tokens';
+import { useAccountTokenBalances } from '@hooks/useAccountTokenBalances';
 import { Tones } from '@constants/tones';
 import { NeonButton, NeonCard } from '@components/ui';
 import Icon, { CheckIcon, CopyIcon } from '@components/ui/icon';
@@ -15,16 +15,6 @@ import TokenBalance from '@components/wallet/token-balance';
 import NativeBalance from '@components/wallet/native-balance';
 import clsx from 'clsx';
 import s from './index.module.css';
-
-const ERC20_BALANCE_OF_ABI = [
-    {
-        type: 'function',
-        name: 'balanceOf',
-        stateMutability: 'view',
-        inputs: [{ name: 'owner', type: 'address' }],
-        outputs: [{ name: '', type: 'uint256' }],
-    },
-] as const;
 
 interface CopyableAddressProps {
     address: string;
@@ -73,27 +63,14 @@ const AccountDropdown: React.FC = () => {
 
     const { isAuthenticated, logout, signAndLogin, isSigning, isVerifying, isNonceLoading } =
         useAuth();
-    const popularTokens = useMemo(() => getPopularTokens(chain?.id), [chain?.id]);
 
-    // ERC-20 balances via a single typed multicall (react-query cached), fetched
-    // only while the dropdown is open and an EVM wallet is connected.
-    const tokenContracts = useMemo(
-        () =>
-            address
-                ? popularTokens.map((token) => ({
-                      address: token.address as `0x${string}`,
-                      abi: ERC20_BALANCE_OF_ABI,
-                      functionName: 'balanceOf' as const,
-                      args: [address] as const,
-                  }))
-                : [],
-        [address, popularTokens],
+    // ERC-20 balances (single typed multicall, react-query cached), fetched only
+    // while the dropdown is open and an EVM wallet is connected.
+    const { popularTokens, tokenBalances, allFetched, withBalanceCount } = useAccountTokenBalances(
+        chain?.id,
+        address,
+        isOpen,
     );
-    const { data: tokenResults, isLoading: isTokensLoading } = useReadContracts({
-        contracts: tokenContracts,
-        allowFailure: true,
-        query: { enabled: isOpen && Boolean(address) && popularTokens.length > 0 },
-    });
 
     const handleCopyAny = useCallback(async (text: string) => {
         try {
@@ -109,21 +86,6 @@ const AccountDropdown: React.FC = () => {
         setCopiedAddress(text);
         globalThis.setTimeout(() => setCopiedAddress(null), 2000);
     }, []);
-
-    const tokenBalances = useMemo(
-        () =>
-            popularTokens.map((token, idx) => {
-                const res = tokenResults?.[idx];
-                const balance = res?.status === 'success' ? res.result : undefined;
-                return { token, balance };
-            }),
-        [popularTokens, tokenResults],
-    );
-    const allFetched =
-        !isTokensLoading && tokenResults != null && tokenResults.length === popularTokens.length;
-    const withBalanceCount = tokenBalances.filter(
-        (t) => typeof t.balance === 'bigint' && t.balance > 0n,
-    ).length;
 
     useEffect(() => {
         const handleClickOutside = (event: globalThis.MouseEvent) => {
