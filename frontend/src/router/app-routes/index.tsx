@@ -1,30 +1,43 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import Layout from '@components/layout';
-import HomePage from '@pages/home';
-import BreedPage from '@pages/breed';
-import BattlePage from '@pages/battle';
-import LevelUpPage from '@pages/level-up';
-import TrainPage from '@pages/train';
-import MarriagePage from '@pages/marriage';
-import RenamePage from '@pages/rename';
+
+// Each page is a thin wrapper around one interaction panel with no shared state,
+// so route-level splitting keeps a page's panel code (SVG art, DNA helix, …) out
+// of everyone else's first-load bundle.
+const HomePage = lazy(() => import('@pages/home'));
+const BreedPage = lazy(() => import('@pages/breed'));
+const BattlePage = lazy(() => import('@pages/battle'));
+const LevelUpPage = lazy(() => import('@pages/level-up'));
+const TrainPage = lazy(() => import('@pages/train'));
+const MarriagePage = lazy(() => import('@pages/marriage'));
+const RenamePage = lazy(() => import('@pages/rename'));
+
+/** Matches the loading state used elsewhere (pet-gallery, interaction standalone). */
+const RouteFallback: React.FC = () => (
+    <div className="loading-container">
+        <div className="loading-spinner" />
+    </div>
+);
 
 /** App route tree — pages render regardless of wallet state; features gate themselves internally. */
 const AppRoutes: React.FC = () => {
     return (
-        <Routes>
-            <Route element={<Layout />}>
-                <Route path="/main" element={<HomePage />} />
-                <Route path="/breed" element={<BreedPage />} />
-                <Route path="/battle" element={<BattlePage />} />
-                <Route path="/levelup" element={<LevelUpPage />} />
-                <Route path="/train" element={<TrainPage />} />
-                <Route path="/marriage" element={<MarriagePage />} />
-                <Route path="/rename" element={<RenamePage />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/main" replace />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+            <Routes>
+                <Route element={<Layout />}>
+                    <Route path="/main" element={<HomePage />} />
+                    <Route path="/breed" element={<BreedPage />} />
+                    <Route path="/battle" element={<BattlePage />} />
+                    <Route path="/levelup" element={<LevelUpPage />} />
+                    <Route path="/train" element={<TrainPage />} />
+                    <Route path="/marriage" element={<MarriagePage />} />
+                    <Route path="/rename" element={<RenamePage />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/main" replace />} />
+            </Routes>
+        </Suspense>
     );
 };
 
