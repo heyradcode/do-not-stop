@@ -7,7 +7,7 @@ const NONE_CAPABILITIES: ChainCapabilities = {
     address: { label: 'Recipient Address:', placeholder: '', isValid: () => false },
     levelUpFee: null,
     renameMinLevel: 1,
-    randomness: { provider: 'chainlink', appliesTo: [] },
+    randomness: { provider: null, appliesTo: [] },
     explorerTxUrl: () => null,
     parseError: (_err, fallback) => ({ message: fallback, isUserRejection: false, isContractError: false }),
 };

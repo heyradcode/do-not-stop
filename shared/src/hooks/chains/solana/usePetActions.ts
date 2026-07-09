@@ -283,4 +283,4 @@ export const usePetActions = () => {
         walletPublicKey: signingWallet?.publicKey ?? null,
         walletConnected: Boolean(signingWallet?.publicKey),
     };
-}
+};

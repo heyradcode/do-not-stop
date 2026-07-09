@@ -67,12 +67,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // we just check the expiry; the token is re-validated by the backend on the
     // next protected API call).
     useEffect(() => {
+        // getToken may be sync or async (e.g. mobile AsyncStorage) — await both so
+        // an async adapter doesn't feed a Promise into isJwtValid (which would
+        // always fail and silently log the user out on refresh).
+        let cancelled = false;
         const adapter = getStorageAdapter();
-        const token = adapter ? (adapter.getToken() as string | null) : null;
-        if (token && isJwtValid(token)) {
-            setAuthenticated(true);
-        }
-        setRestoring(false);
+        Promise.resolve(adapter ? adapter.getToken() : null)
+            .then((token) => {
+                if (cancelled) return;
+                if (token && isJwtValid(token)) setAuthenticated(true);
+            })
+            .finally(() => {
+                if (!cancelled) setRestoring(false);
+            });
+        return () => { cancelled = true; };
     }, []);
 
     // When any API response returns 401 (expired / revoked token), clear auth state.

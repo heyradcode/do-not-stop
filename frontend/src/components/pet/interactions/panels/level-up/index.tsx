@@ -1,6 +1,6 @@
 ﻿import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
-import { AuthActionButton } from '@components/common';
+import NeonButton from '@components/ui/neon-button';
 import {
     getReadyPetsUnified,
     useChainCapabilities,
@@ -19,7 +19,7 @@ export type LevelUpPanelProps = {
 };
 
 const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) => {
-    const { levelUpFee } = useChainCapabilities();
+    const { levelUpFee, isConnected } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
 
@@ -59,6 +59,10 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     useTxErrorToast(hookError);
 
     const handleLevelUp = async () => {
+        if (!isConnected) {
+            notifyError('Please connect your wallet first', undefined, 'level-up-validation');
+            return;
+        }
         if (!selectedPet) {
             notifyError('Please select a pet to level up', undefined, 'level-up-validation');
             return;
@@ -98,8 +102,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
                 <div className="picker">
                     <div className="field">
-                        <label>Select Pet</label>
+                        <label htmlFor="levelup-pet">Select Pet</label>
                         <select
+                            id="levelup-pet"
                             value={selectedPet}
                             onChange={(e) => setSelectedPet(e.target.value)}
                         >
@@ -115,13 +120,13 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 </div>
 
                 <div className="action-controls">
-                    <AuthActionButton
+                    <NeonButton
                         tone="emerald"
                         onClick={handleLevelUp}
-                        disabled={isPending || !selectedPet}
+                        disabled={isPending || !selectedPet || !isConnected}
                     >
                         {buttonLabel}
-                    </AuthActionButton>
+                    </NeonButton>
                 </div>
             </div>
 

@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
+import { EVM_GAS_LIMITS } from './gasLimits';
 
 export interface MarriageAction<TArgs> {
     mutateAsync(args: TArgs): Promise<void>;
@@ -23,7 +24,7 @@ const useAction = <TArgs,>(
 ): MarriageAction<TArgs> => ({
     async mutateAsync(args) {
         if (!canWrite || !petCore) throw new Error('Marriage is only available on EVM with a connected wallet');
-        await w.writeContractAsync({ address: petCore, abi, functionName, args: toArgs(args), gas: 200000n } as unknown as Parameters<typeof w.writeContractAsync>[0]);
+        await w.writeContractAsync({ address: petCore, abi, functionName, args: toArgs(args), gas: EVM_GAS_LIMITS.marriageAction } as unknown as Parameters<typeof w.writeContractAsync>[0]);
     },
     isPending: w.isPending || receiptPending,
     error: (w.error as Error | null),

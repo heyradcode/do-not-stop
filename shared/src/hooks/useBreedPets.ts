@@ -5,6 +5,7 @@ import { useWatchPetsContract } from './chains/ethereum/useWatchPetsContract';
 import { useWatchEntropyFulfillment } from './chains/ethereum/useWatchEntropyFulfillment';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useChainAdapter } from './adapters/useChainAdapter';
+import { EVM_GAS_LIMITS } from './chains/ethereum/gasLimits';
 
 export interface BreedPetsArgs {
     parentId1: string;
@@ -97,7 +98,7 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
             abi: evm.gameLogic.abi,
             functionName: 'settleBreed',
             args: [id],
-            gas: 800000n,
+            gas: EVM_GAS_LIMITS.settleBreed,
             chainId: evm.chainId,
         });
     }, [evm?.gameLogic.address, evm?.gameLogic.abi, evm?.chainId, settle]);
@@ -175,4 +176,4 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         error: breedPets.lifecycle.error ?? (settle.error as Error | null),
         lifecycle: breedPets.lifecycle,
     };
-}
+};

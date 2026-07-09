@@ -8,7 +8,7 @@ export interface PetListResult {
     refetch: () => void;
 }
 
-export const usePetList = (): PetListResult  => {
+export const usePetList = (): PetListResult => {
     const { pets } = useChainAdapter();
     return {
         pets: pets.data,
@@ -16,4 +16,4 @@ export const usePetList = (): PetListResult  => {
         error: pets.error,
         refetch: pets.refetch,
     };
-}
+};

@@ -33,18 +33,18 @@ export const vrfTimingForEndpoint = (rpcEndpoint: string): VrfTiming => {
 
 /** Switchboard VRF needs commit → (wait) → reveal; two wallet signatures is the minimum. */
 
-const recentBlockhashFromTx = (tx: Transaction | VersionedTransaction): string | undefined  => {
+const recentBlockhashFromTx = (tx: Transaction | VersionedTransaction): string | undefined => {
     if ('version' in tx) {
         return tx.message.recentBlockhash;
     }
     return (tx as Transaction).recentBlockhash ?? undefined;
-}
+};
 
 /** Local keypairs sign before the wallet so PDAs / new accounts are valid at sign time. */
 const applyExtraSigners = (
     tx: Transaction | VersionedTransaction,
     extraSigners: Keypair[]
-): void  => {
+): void => {
     if (extraSigners.length === 0) return;
     if ('version' in tx) {
         tx.sign(extraSigners);
@@ -53,7 +53,7 @@ const applyExtraSigners = (
     for (const signer of extraSigners) {
         (tx as Transaction).partialSign(signer);
     }
-}
+};
 
 export const sendSignedTx = async (
     provider: AnchorProvider,
@@ -77,7 +77,7 @@ export const sendSignedTx = async (
 
     await connection.confirmTransaction(sig, 'confirmed');
     return sig;
-}
+};
 
 export const waitForRevealIx = async (
     randomness: Randomness,
@@ -96,4 +96,4 @@ export const waitForRevealIx = async (
         }
     }
     throw new Error('Switchboard oracle did not produce a reveal instruction');
-}
+};

@@ -43,7 +43,7 @@ const resolveHash = (data: unknown): string | undefined => {
         return (data as { sig: string }).sig;
     }
     return undefined;
-}
+};
 
 const toLc = <TData = string,>(m: SolanaMutation<TData>): TxLifecycle => {
     let phase: TxPhase = 'idle';
@@ -56,7 +56,20 @@ const toLc = <TData = string,>(m: SolanaMutation<TData>): TxLifecycle => {
         error: m.error,
         reset: m.reset,
     };
-}
+};
+
+// toLc for the two-phase VRF flows (battle/breed): once the commit tx lands and
+// we're waiting on randomness, promote 'awaiting-wallet' to 'awaiting-vrf'.
+const toVrfLc = <TData = string,>(
+    m: SolanaMutation<TData>,
+    subPhase: 'idle' | 'awaiting-vrf',
+): TxLifecycle => {
+    const lc = toLc(m);
+    if (subPhase === 'awaiting-vrf' && lc.phase === 'awaiting-wallet') {
+        return { ...lc, phase: 'awaiting-vrf' as TxPhase };
+    }
+    return lc;
+};
 
 /** Infer Solana Explorer cluster param from an RPC endpoint URL. */
 const clusterParam = (rpcEndpoint: string): string => {
@@ -66,7 +79,7 @@ const clusterParam = (rpcEndpoint: string): string => {
     return `custom&customUrl=${encodeURIComponent(rpcEndpoint)}`;
 };
 
-export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter  => {
+export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter => {
     const { signingWallet, connection } = useSolanaAnchor();
     const owner = enabled && signingWallet?.publicKey ? signingWallet.publicKey : null;
 
@@ -85,7 +98,7 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         return pet.assetKey;
     };
 
-    const createPet: AdapterMutation<{ name: string; dna?: bigint | number | string; rarity?: number }> = {
+    const createPet: AdapterMutation<{ name: string }> = {
         async mutateAsync({ name }) {
             await actions.mintPet.mutateAsync({ name });
         },
@@ -127,13 +140,10 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         isPending: actions.transferPet.isPending,
     };
 
-    const battleLc = useMemo<TxLifecycle>(() => {
-        const lc = toLc(actions.battlePets);
-        if (actions.battleSubPhase === 'awaiting-vrf' && lc.phase === 'awaiting-wallet') {
-            return { ...lc, phase: 'awaiting-vrf' as TxPhase };
-        }
-        return lc;
-    }, [actions.battlePets, actions.battleSubPhase]);
+    const battleLc = useMemo<TxLifecycle>(
+        () => toVrfLc(actions.battlePets, actions.battleSubPhase),
+        [actions.battlePets, actions.battleSubPhase],
+    );
 
     const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, BattleResolvedResult | null> = {
         async mutateAsync({ petId1, petId2, defenderOwner }) {
@@ -149,6 +159,11 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         lifecycle: battleLc,
         isPending: actions.battlePets.isPending,
     };
+
+    const breedLc = useMemo<TxLifecycle>(
+        () => toVrfLc(actions.breedPets, actions.breedSubPhase),
+        [actions.breedPets, actions.breedSubPhase],
+    );
 
     const breedPets: AdapterMutation<{ parentId1: string; parentId2: string; name: string; crossOwner?: boolean }> = {
         async mutateAsync({ parentId1, parentId2, name, crossOwner }) {
@@ -185,13 +200,7 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
                 parent2Owner,
             });
         },
-        lifecycle: (() => {
-            const lc = toLc(actions.breedPets);
-            if (actions.breedSubPhase === 'awaiting-vrf' && lc.phase === 'awaiting-wallet') {
-                return { ...lc, phase: 'awaiting-vrf' as TxPhase };
-            }
-            return lc;
-        })(),
+        lifecycle: breedLc,
         isPending: actions.breedPets.isPending,
     };
 
@@ -217,4 +226,4 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         battlePets,
         breedPets,
     };
-}
+};

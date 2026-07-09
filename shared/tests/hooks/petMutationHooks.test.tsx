@@ -56,12 +56,12 @@ beforeEach(() => {
 
 // ---------- useCreatePet ----------
 describe('useCreatePet', () => {
-    it('delegates mutate to adapter with name/dna/rarity', async () => {
+    it('delegates mutate to adapter with name', async () => {
         const { result } = renderHook(() => useCreatePet());
         await act(async () => {
-            await result.current.mutate({ name: 'Fluffy', dna: 42n, rarity: 3 });
+            await result.current.mutate({ name: 'Fluffy' });
         });
-        expect(adapter.createPet.mutateAsync).toHaveBeenCalledWith({ name: 'Fluffy', dna: 42n, rarity: 3 });
+        expect(adapter.createPet.mutateAsync).toHaveBeenCalledWith({ name: 'Fluffy' });
     });
 
     it('reflects lifecycle state', () => {

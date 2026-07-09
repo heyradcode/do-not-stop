@@ -12,7 +12,7 @@ export const usePetError = (
     receiptError: Error | null | undefined,
     validationError: string | null,
     fallbackMessage: string,
-): PetError  => {
+): PetError => {
     const { parseError } = useChainCapabilities();
 
     return useMemo(() => {
@@ -27,4 +27,4 @@ export const usePetError = (
 
         return parseError(err, fallbackMessage);
     }, [validationError, mutationError, receiptError, parseError, fallbackMessage]);
-}
+};

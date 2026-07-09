@@ -10,17 +10,17 @@ const emit = () => {
     for (const l of listeners) {
         l();
     }
-}
+};
 
 /** Called from the app shell (e.g. under `WalletProvider` + Dynamic) to expose Solana signing for {@link AuthProvider}. */
-export const setSolanaAuthSigner = (next: SolanaAuthSigner | null): void  => {
+export const setSolanaAuthSigner = (next: SolanaAuthSigner | null): void => {
     signer = next;
     emit();
-}
+};
 
-export const getSolanaAuthSigner = (): SolanaAuthSigner | null  => {
+export const getSolanaAuthSigner = (): SolanaAuthSigner | null => {
     return signer;
-}
+};
 
 export function subscribeSolanaAuth(onStoreChange: () => void): () => void {
     listeners.add(onStoreChange);
@@ -29,6 +29,6 @@ export function subscribeSolanaAuth(onStoreChange: () => void): () => void {
     };
 }
 
-export const getSolanaAuthAddress = (): string | null  => {
+export const getSolanaAuthAddress = (): string | null => {
     return signer?.getAddress() ?? null;
-}
+};

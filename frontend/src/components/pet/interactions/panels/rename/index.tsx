@@ -1,6 +1,6 @@
 ﻿import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
-import { AuthActionButton } from '@components/common';
+import NeonButton from '@components/ui/neon-button';
 import { getReadyPetsUnified, useChainCapabilities, usePetList, useRenamePet } from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
@@ -12,7 +12,7 @@ export type RenamePanelProps = {
 };
 
 const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) => {
-    const { renameMinLevel } = useChainCapabilities();
+    const { renameMinLevel, isConnected } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
 
@@ -50,6 +50,10 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
     );
 
     const handleChangeName = async () => {
+        if (!isConnected) {
+            notifyError('Please connect your wallet first', undefined, 'rename-validation');
+            return;
+        }
         if (!selectedPet || !newName.trim()) {
             notifyError('Please select a pet and enter a new name', undefined, 'rename-validation');
             return;
@@ -84,8 +88,9 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
 
                 <div className="picker">
                     <div className="field">
-                        <label>Select Pet</label>
+                        <label htmlFor="rename-pet">Select Pet</label>
                         <select
+                            id="rename-pet"
                             value={selectedPet}
                             onChange={(e) => setSelectedPet(e.target.value)}
                         >
@@ -99,8 +104,9 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                     </div>
 
                     <div className="field">
-                        <label>New Name</label>
+                        <label htmlFor="rename-new-name">New Name</label>
                         <input
+                            id="rename-new-name"
                             type="text"
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
@@ -111,13 +117,13 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
 
                 <div className="action-controls">
-                    <AuthActionButton
+                    <NeonButton
                         tone="emerald"
                         onClick={handleChangeName}
-                        disabled={isPending || !selectedPet || !newName.trim()}
+                        disabled={isPending || !selectedPet || !newName.trim() || !isConnected}
                     >
                         {isPending ? 'Changing Name...' : 'Change Name'}
-                    </AuthActionButton>
+                    </NeonButton>
                 </div>
             </div>
 

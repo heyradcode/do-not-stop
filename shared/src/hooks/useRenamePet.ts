@@ -7,7 +7,7 @@ export interface RenamePetArgs {
     name: string;
 }
 
-export const useRenamePet = (options?: PetMutationOptions): PetMutationResult<RenamePetArgs>  => {
+export const useRenamePet = (options?: PetMutationOptions): PetMutationResult<RenamePetArgs> => {
     const { renamePet } = useChainAdapter();
     useTxSuccess(renamePet.lifecycle, options?.onSuccess);
     return {
@@ -18,4 +18,4 @@ export const useRenamePet = (options?: PetMutationOptions): PetMutationResult<Re
         reset: renamePet.lifecycle.reset,
         lifecycle: renamePet.lifecycle,
     };
-}
+};

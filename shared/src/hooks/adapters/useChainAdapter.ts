@@ -9,7 +9,7 @@ import type { ChainAdapter } from './types';
  * (rules of hooks); the inactive one runs with `enabled: false` so its
  * queries stay dormant. Consumers are fully chain-blind.
  */
-export const useChainAdapter = (): ChainAdapter  => {
+export const useChainAdapter = (): ChainAdapter => {
     const chain = useActiveChain();
     const evm = useEvmAdapter({ enabled: chain.kind === 'evm' });
     const solana = useSolanaAdapter({ enabled: chain.kind === 'solana' });
@@ -17,4 +17,4 @@ export const useChainAdapter = (): ChainAdapter  => {
     if (chain.kind === 'evm') return evm;
     if (chain.kind === 'solana') return solana;
     return noneAdapter;
-}
+};

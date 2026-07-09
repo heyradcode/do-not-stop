@@ -1,7 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
 
 /** Returns true when `address` is a valid Solana base58 public key. */
-export const isValidSolanaAddress = (address: string): boolean  => {
+export const isValidSolanaAddress = (address: string): boolean => {
     const trimmed = address.trim();
     if (!trimmed) {
         return false;
@@ -12,4 +12,4 @@ export const isValidSolanaAddress = (address: string): boolean  => {
     } catch {
         return false;
     }
-}
+};

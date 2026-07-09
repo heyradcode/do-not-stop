@@ -29,13 +29,13 @@ export interface PetsConfigContextValue {
 
 const PetsConfigContext = createContext<PetsConfigContextValue | null>(null);
 
-export const usePetsConfig = (): PetsConfigContextValue  => {
+export const usePetsConfig = (): PetsConfigContextValue => {
     const ctx = useContext(PetsConfigContext);
     if (!ctx) {
         throw new Error('usePetsConfig must be used within a PetsConfigProvider');
     }
     return ctx;
-}
+};
 
 export interface PetsConfigProviderProps {
     children: ReactNode;
@@ -45,4 +45,4 @@ export interface PetsConfigProviderProps {
 export const PetsConfigProvider = ({ children, evm = null }: PetsConfigProviderProps) => {
     const value = useMemo<PetsConfigContextValue>(() => ({ evm }), [evm]);
     return <PetsConfigContext.Provider value={value}>{children}</PetsConfigContext.Provider>;
-}
+};

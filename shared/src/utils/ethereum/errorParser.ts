@@ -8,7 +8,7 @@ export interface ParsedError {
     isContractError: boolean;
 }
 
-export const parseContractError = (error: unknown): ParsedError  => {
+export const parseContractError = (error: unknown): ParsedError => {
     const errorMessage =
         (error as { message?: string })?.message || String(error ?? '') || 'Unknown error';
 
@@ -76,9 +76,9 @@ export const parseContractError = (error: unknown): ParsedError  => {
         isUserRejection: false,
         isContractError: false,
     };
-}
+};
 
-const extractRevertReason = (errorMessage: string): string  => {
+const extractRevertReason = (errorMessage: string): string => {
     const viemRevertMatch = errorMessage.match(
         /reverted with the following reason:\s*(.+?)(?:\s*Contract Call:|$)/i
     );
@@ -102,9 +102,9 @@ const extractRevertReason = (errorMessage: string): string  => {
     }
 
     return errorMessage;
-}
+};
 
-const mapRevertReasonToFriendlyMessage = (revertReason: string): string  => {
+const mapRevertReasonToFriendlyMessage = (revertReason: string): string => {
     const reason = revertReason.toLowerCase();
 
     if (
@@ -146,4 +146,4 @@ const mapRevertReasonToFriendlyMessage = (revertReason: string): string  => {
     }
 
     return 'Transaction failed. Please try again.';
-}
+};

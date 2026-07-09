@@ -12,6 +12,8 @@ export type PetSearchDropdownProps = {
     disabled?: boolean;
     /** Pet IDs to exclude from results (e.g. the user's own pets). */
     excludeIds?: string[];
+    /** Forwarded to the search input so an external <label htmlFor> can target it. */
+    id?: string;
 };
 
 const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
@@ -21,6 +23,7 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
     placeholder = 'Search by name or ID…',
     disabled = false,
     excludeIds = [],
+    id,
 }) => {
     const [inputText, setInputText] = useState('');
     const [selected, setSelected] = useState<OpponentPet | null>(null);
@@ -194,6 +197,7 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
             >
                 <input
                     ref={inputRef}
+                    id={id}
                     type="text"
                     className="psd-input"
                     value={inputText}

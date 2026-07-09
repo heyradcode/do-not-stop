@@ -38,8 +38,8 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
         <p className="breed-tab-hint">Select one of your pets to breed with their spouse.</p>
         <div className="picker">
             <div className="field">
-                <label>Your pet</label>
-                <select value={spousePetId} onChange={(e) => onSpousePetChange(e.target.value)}>
+                <label htmlFor="breed-spouse-pet">Your pet</label>
+                <select id="breed-spouse-pet" value={spousePetId} onChange={(e) => onSpousePetChange(e.target.value)}>
                     <option value="">Select pet…</option>
                     {allPets.map(({ id, pet }) => (
                         <option key={id} value={id}>
@@ -49,7 +49,7 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
                 </select>
             </div>
             <div className="field">
-                <label>Partner&apos;s pet</label>
+                <span className="field-label">Partner&apos;s pet</span>
                 <div className="spouse-value">
                     {!spousePetId ? (
                         <span className="spouse-placeholder">— select your pet first —</span>
@@ -98,8 +98,9 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
                     />
                 )}
                 <div className="name-input">
-                    <label>Offspring Name</label>
+                    <label htmlFor="breed-spouse-offspring-name">Offspring Name</label>
                     <input
+                        id="breed-spouse-offspring-name"
                         type="text"
                         value={childName}
                         onChange={(e) => onChildNameChange(e.target.value)}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
+import { EVM_GAS_LIMITS } from './gasLimits';
 
 export interface PendingBreedTx {
     run(): Promise<void>;
@@ -59,7 +60,7 @@ export const usePendingBreed = (petId?: string): PendingBreed => {
     const settle: PendingBreedTx = {
         async run() {
             if (!gameLogic || requestId == null) throw new Error('No pending breed to settle');
-            await settleW.writeContractAsync({ address: gameLogic, abi, functionName: 'settleBreed', args: [requestId], gas: 800000n, chainId });
+            await settleW.writeContractAsync({ address: gameLogic, abi, functionName: 'settleBreed', args: [requestId], gas: EVM_GAS_LIMITS.settleBreed, chainId });
         },
         isPending: settleW.isPending || (!!settleW.data && !settleR.isSuccess && !settleR.isError),
         error: (settleW.error as Error | null) ?? (settleR.isError ? (settleR.error as Error) : null),
@@ -69,7 +70,7 @@ export const usePendingBreed = (petId?: string): PendingBreed => {
     const cancel: PendingBreedTx = {
         async run() {
             if (!gameLogic || requestId == null) throw new Error('No pending breed to cancel');
-            await cancelW.writeContractAsync({ address: gameLogic, abi, functionName: 'cancelBreed', args: [requestId], gas: 200000n, chainId });
+            await cancelW.writeContractAsync({ address: gameLogic, abi, functionName: 'cancelBreed', args: [requestId], gas: EVM_GAS_LIMITS.cancelBreed, chainId });
         },
         isPending: cancelW.isPending || (!!cancelW.data && !cancelR.isSuccess && !cancelR.isError),
         error: (cancelW.error as Error | null) ?? (cancelR.isError ? (cancelR.error as Error) : null),
