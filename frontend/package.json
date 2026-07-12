@@ -2,6 +2,7 @@
     "name": "frontend",
     "private": true,
     "version": "0.0.0",
+    "license": "SEE LICENSE IN ../LICENSE",
     "type": "module",
     "scripts": {
         "vite": "node ../node_modules/vite/bin/vite.js",
