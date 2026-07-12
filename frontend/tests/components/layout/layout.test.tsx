@@ -14,7 +14,7 @@ vi.mock('@components/wallet/solana-wallet-trigger', () => ({
     default: () => <div data-testid="solana-trigger" />,
 }));
 
-import Layout from '@components/layout';
+import Layout from '@components/layout/Layout';
 
 const renderLayout = () =>
     render(

@@ -198,6 +198,11 @@ precedent (§2, `battle-utils.ts`/`battle-matchmaking.ts`) suggests extraction:
   docstring warns about), that's a separate, larger, higher-risk change I'd want
   to scope and test more deliberately — say so and I'll take it on as its own
   step rather than folding it into this one.
+
+  _Update: `useBattlePanel.ts` is currently back to its original inline form
+  (no `deriveBattleView` call) — the extraction described above isn't applied on
+  disk right now. The orphaned `battle-view.ts` left behind by that was removed
+  as dead-code cleanup. If you want this extraction (re-)applied, say so._
 - ~~**`components/wallet/account-dropdown/index.tsx` — 337 lines.**~~ **✅ Done**
   — extracted the ERC-20 multicall (`ERC20_BALANCE_OF_ABI` + `tokenContracts` +
   `useReadContracts` + the `tokenBalances`/`allFetched`/`withBalanceCount`
@@ -219,20 +224,29 @@ will be noticeably harder to land than it needs to be.
   `tsconfig.app.json` and `vite.config.ts` (kept in sync per the file's own
   comment) with no `src/utils/` directory backing it in either. Confirmed zero
   usages anywhere in `src`/`tests` first, then removed from both files.
-- **Ambiguous filename**: `components/layout/index.tsx` is real, used code (the
-  route-level `<Layout>` wrapping `<AppShell>`) — not a barrel file — but sitting
-  directly in `layout/` next to `layout/app-shell/`, `layout/sidebar/`,
-  `layout/top-bar/` (each in their own subdirectory), `layout/index.tsx` *reads*
-  like a barrel re-exporting the folder. Consider `components/layout/layout/index.tsx`
-  or renaming the component's own folder to something like `page-frame/` to
-  remove the ambiguity, or just renaming the file to `Layout.tsx` so it visually
-  stands apart from the barrel convention.
-- **Uneven barrel-file (`index.ts` re-export) coverage**: `components/common/`
-  and `components/ui/` have a barrel; `components/pet/` and most of
-  `components/wallet/` don't (only `wallet/network-switcher/index.ts` does).
-  Not wrong either way — direct deep imports are perfectly fine — but the mix
-  means there's no single rule of thumb for "do I import from the barrel or the
-  file" across the codebase.
+- ~~**Ambiguous filename**~~ **✅ Done** — `components/layout/index.tsx` (a real
+  component, the route-level `<Layout>` wrapping `<AppShell>`) read like a
+  barrel re-export of the `layout/` folder because every sibling
+  (`app-shell/`, `sidebar/`, `top-bar/`) lives in its own subdirectory with its
+  own `index.tsx`. Took the lowest-risk fix from the three offered: renamed the
+  file in place to `Layout.tsx` (kept it in `components/layout/`, did **not**
+  restructure into a nested subdirectory, which would've touched more import
+  paths for no extra clarity). Updated both consumers
+  (`router/app-routes/index.tsx`, `tests/components/layout/layout.test.tsx`)
+  from the bare `@components/layout` to `@components/layout/Layout`. Verified
+  tsc/eslint/`lint:css`/full suite (40 files / 243 tests).
+- ~~**Uneven barrel-file (`index.ts` re-export) coverage**~~ **✅ Decided
+  (documentation only, no code changed)**: `components/common/` and
+  `components/ui/` keep their barrels — they're genuinely shared, stable
+  "public API" surfaces with several named exports commonly imported together.
+  `components/pet/` and most of `components/wallet/` stay barrel-less — their
+  consumers import one specific deep path each (1:1, narrow), where a barrel
+  would add a layer of indirection for no readability gain. **Going forward**:
+  add a barrel only when a folder is reached by multiple external files
+  importing several of its exports together; otherwise import the file
+  directly. This was a documentation-only decision — reorganizing the existing
+  barrels either direction would touch many import sites for a purely stylistic
+  win, which isn't worth it.
 - **`_shared` underscore prefix**: `components/pet/interactions/panels/_shared/`
   is the only underscore-prefixed directory in `components/` (everything else is
   plain kebab-case). It's a reasonable convention (marks "not a route/panel

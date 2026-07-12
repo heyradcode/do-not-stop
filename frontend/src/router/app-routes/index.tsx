@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import Layout from '@components/layout';
+import Layout from '@components/layout/Layout';
 
 // Each page is a thin wrapper around one interaction panel with no shared state,
 // so route-level splitting keeps a page's panel code (SVG art, DNA helix, …) out
