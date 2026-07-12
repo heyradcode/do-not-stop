@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+@AGENTS.md
+
+The import above pulls in the cross-tool non-negotiables and command baseline from [AGENTS.md](./AGENTS.md), shared with other coding agents (Cursor, Codex, etc.). Everything below is Claude Code specific.
+
 ## What this is
 
 `do-not-stop` (product name **cryptopets**) is a pnpm monorepo for a Web3 pet-battling game deployed on both Ethereum (Hardhat/Sepolia) and Solana (local validator/devnet). Live demo: https://cryptopets.vercel.app.
