@@ -61,10 +61,19 @@ For detailed setup and commands, see [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ## 🤝 Contributing
 
-1. Create a feature branch
-2. Make your changes
-3. Run linting and tests
-4. Submit a pull request
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for setup, workflow, and pull request
+guidelines. Please also review our [Code of Conduct](./CODE_OF_CONDUCT.md).
+
+## 🔒 Security
+
+See [SECURITY.md](./SECURITY.md) for how to report vulnerabilities.
+
+## 📄 License
+
+This project is licensed under the [PolyForm Noncommercial License
+1.0.0](./LICENSE) — free to use, modify, and share for any noncommercial
+purpose. Commercial use requires separate permission; contact
+[code@radcrew.org](mailto:code@radcrew.org).
 
 ---
 
