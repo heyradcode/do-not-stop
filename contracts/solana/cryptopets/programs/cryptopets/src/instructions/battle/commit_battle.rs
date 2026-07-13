@@ -61,6 +61,17 @@ pub fn handler(ctx: Context<CommitBattle>, randomness_account: Pubkey) -> Result
     battle_request.randomness_account = randomness_account;
     battle_request.commit_slot = commit_slot;
     battle_request.bump = ctx.bumps.battle_request;
+    // Sim-input snapshot (plan-realtime-battle-solana.md Workstream S1): freeze both pets'
+    // stats now so settle_battle can't be rerolled by a level_up (or any other stat change)
+    // committed between here and settle.
+    battle_request.attacker_dna = ctx.accounts.attacker_pet.dna;
+    battle_request.defender_dna = ctx.accounts.defender_pet.dna;
+    battle_request.attacker_rarity = ctx.accounts.attacker_pet.rarity;
+    battle_request.defender_rarity = ctx.accounts.defender_pet.rarity;
+    battle_request.attacker_level = ctx.accounts.attacker_pet.level;
+    battle_request.defender_level = ctx.accounts.defender_pet.level;
+    battle_request.attacker_species_id = ctx.accounts.attacker_pet.species_id;
+    battle_request.defender_species_id = ctx.accounts.defender_pet.species_id;
 
     let cooldown_seconds = ctx.accounts.global_state.battle_cooldown_seconds;
     ctx.accounts.attacker_pet.trigger_cooldown(now, cooldown_seconds);

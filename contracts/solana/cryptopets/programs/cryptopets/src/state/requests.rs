@@ -71,6 +71,19 @@ pub struct BattleRequest {
     pub randomness_account: Pubkey,
     pub commit_slot: u64,
     pub bump: u8,
+    /// Sim-input snapshot (plan-realtime-battle-solana.md Workstream S1), captured in
+    /// `commit_battle` from the pets' state *at commit time*. `settle_battle` simulates
+    /// from these fields, not from the live `PetAccount`s, so a `level_up` (or any other
+    /// stat change) between commit and settle cannot change an already-committed battle's
+    /// outcome — mirrors EVM `GameLogic.sol`'s `PendingBattle` snapshot fields.
+    pub attacker_dna: u64,
+    pub defender_dna: u64,
+    pub attacker_rarity: u8,
+    pub defender_rarity: u8,
+    pub attacker_level: u16,
+    pub defender_level: u16,
+    pub attacker_species_id: u16,
+    pub defender_species_id: u16,
 }
 
 impl BattleRequest {
@@ -82,7 +95,15 @@ impl BattleRequest {
         + 4 /* defender_pet_id */
         + 32 /* randomness_account */
         + 8 /* commit_slot */
-        + 1; /* bump */
+        + 1 /* bump */
+        + 8 /* attacker_dna */
+        + 8 /* defender_dna */
+        + 1 /* attacker_rarity */
+        + 1 /* defender_rarity */
+        + 2 /* attacker_level */
+        + 2 /* defender_level */
+        + 2 /* attacker_species_id */
+        + 2; /* defender_species_id */
 }
 
 // ─── MintRequest ──────────────────────────────────────────────────────────────

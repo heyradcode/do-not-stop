@@ -1,0 +1,189 @@
+# Plan: realtime battle UX for Solana
+
+Companion to [plan-realtime-battle-ux.md](./plan-realtime-battle-ux.md) /
+[plan-realtime-battle-impl.md](./plan-realtime-battle-impl.md), which covered EVM only and
+explicitly scoped Solana out. This is that follow-up. Same target end state as EVM: one wallet
+signature per battle, a live strike-by-strike animation that starts before settle is mined, and
+the on-chain result always wins. Getting there is **not** a mechanical port of the EVM work —
+one piece reuses existing code for free, one piece is a real program change, and one piece is an
+open security bug that needs fixing regardless of whether the rest of this plan ever ships.
+
+## Current state (confirmed in code, not assumed from the EVM pattern)
+
+- **The train/level-up front-run reroll exists on Solana today, unfixed.**
+  `settle_battle.rs:60-71` reads `attacker_pet.dna/rarity/level` and `defender_pet.dna/rarity/level`
+  **live** at settle time. `BattleRequest` (`state/requests.rs:66-74`), populated in
+  `commit_battle.rs:56-63`, stores only owner pubkeys, pet ids, the randomness account, and the
+  commit slot — no stat snapshot. `level_up.rs` has no check for a pending `battle_request`
+  (confirmed by reading it end to end: pause, ownership, max-level, and fee are the only checks).
+  So: commit a battle you're about to lose, call `level_up`, settle a win. Same exploit Phase 1
+  closed on EVM, still open here.
+- **`settle_battle` is not permissionless, unlike EVM's `settleBattle`.**
+  `settle_battle.rs:176-177`: `attacker_owner: Signer<'info>`. The account also receives the
+  `battle_request`'s rent refund on close (`close = attacker_owner`, line 208). A backend keeper
+  has no wallet to sign as the attacker, so it cannot call this instruction as written.
+- **But the permissionless-account pattern is already proven, in this exact program.**
+  `cancel_battle.rs:40-56` — the *same* `attacker_owner` field, in the *same* kind of
+  `close = attacker_owner` constraint, is declared `UncheckedAccount<'info>` (not `Signer`) and
+  the instruction has no signer check on it at all (its own doc comment: "Permissionless cleanup
+  ... anyone may close the stuck BattleRequest"). This is direct, existing evidence that dropping
+  `Signer` while keeping `close =` targeting the same account is a pattern Anchor supports and
+  this codebase already uses — not a novel or risky change.
+- **`settle_breed.rs` and `settle_mint.rs` have the identical `owner: Signer<'info>` pattern**
+  (plus a separate `asset: Signer<'info>` — a fresh, throwaway Metaplex Core asset keypair the
+  caller generates for the new NFT, unrelated to the player's own wallet; the current frontend
+  already generates one of these per mint/breed, so a keeper doing the same is not new
+  capability, just relocated).
+- **Skill config is a hardcoded Rust constant, not an on-chain tunable, unlike EVM.**
+  `battle_sim.rs` takes `sc: &SkillConfig` as a parameter everywhere (mirroring EVM/Go/TS
+  exactly), but every call site in `settle_battle.rs`/tests passes `&SkillConfig::default()`.
+  `GlobalState` (`state/global.rs:90-140`) has no skill-config fields at all. This is actually
+  *simpler* for a client-side replay than EVM: there is nothing to read live — mirror the same
+  hardcoded constants client-side, and they can only drift from the contract on a program
+  upgrade that changes `SkillConfig::default()`, not silently at runtime.
+- **The combat math itself needs no new port.** `shared/src/utils/combat/` (built for EVM's
+  Phase 3) is one of the golden-vector-verified implementations of the *same* fight math
+  `battle_sim.rs` implements — `battle_sim.rs`'s own header comment says as much ("mirrors
+  `CombatSimV1.sol` move-for-move"). Reusing it for Solana needs no new simulator port, just
+  Solana-shaped inputs (see Workstream S3).
+- **The frontend already has the "two signatures" problem this plan would fix.**
+  `shared/src/utils/solana/battleWithSwitchboardVrf.ts` sends both the commit tx and the
+  reveal+settle tx from the player's own wallet (`sendSignedTx(provider, ...)` both times,
+  its own comment: "wallet prompt 1 of 2" / "wallet prompt 2 of 2" and "two wallet signatures is
+  the minimum" in `switchboardVrfTx.ts:34`). That comment describes the current design, not a
+  Switchboard protocol requirement — see Workstream S2.
+- **No test coverage exists for any of this today.** `tests/cryptopets.ts`'s own header and a
+  trailing `TODO` say the Switchboard On-Demand commit/reveal test harness
+  (`Randomness.create`/`commitIx`/`revealIx` against a local validator) was never built, so
+  `commit_battle`/`settle_battle`/breed/mint and everything downstream of them (pets exist only
+  via settle) have zero test coverage. `Anchor.toml` already loads the Switchboard and mpl-core
+  programs at genesis for this purpose; nothing exercises them yet.
+- **This working environment cannot compile or test any of this.** Verified directly: no
+  `cargo`, `anchor`, `rustc`, or `solana` CLI on PATH. Any Rust/Anchor change made here has to be
+  compiled and tested on a machine (or CI) that has the toolchain — unlike every phase of the EVM
+  plan, where I could write, compile, and test in the same session.
+
+## Threat model (mirrors the EVM plan's, same underlying issue)
+
+Identical shape to the EVM train-front-run reroll: `settle_battle` computes the outcome from
+*(current pet stats, seed)* instead of *(committed-at-commit-time stats, seed)*, and nothing
+blocks the stats from changing in between. Fixing it (Workstream S1) is valuable on its own,
+independent of whether S2/S3 ever ship.
+
+## Workstream S1 — snapshot battle inputs at commit time (security fix, do this regardless)
+
+- Extend `BattleRequest` (append fields, mirroring `PendingBattle`'s Phase 1 extension):
+  `attacker_dna: u64`, `defender_dna: u64`, `attacker_rarity: u8`, `defender_rarity: u8`,
+  `attacker_level: u16`, `defender_level: u16`, `attacker_species_id: u16`,
+  `defender_species_id: u16`. Update `BattleRequest::SPACE` to match.
+- `commit_battle.rs` populates these from `attacker_pet`/`defender_pet` at commit time (both
+  accounts are already in scope there).
+- `settle_battle.rs` reads dna/rarity/level/species from the snapshot fields instead of the live
+  `attacker_pet`/`defender_pet` accounts for the `battle_sim::simulate(...)` call and the XP
+  level-diff calc. `win_count`/`loss_count`/`add_xp`/`record_battle_opponent` still mutate the
+  *live* pet accounts — same as EVM, only the sim inputs freeze.
+- No `battle_sim.rs` math changes, no golden-vector risk. `BattleRequest` is a short-lived
+  per-commit account (not a long-reserved-space account like `PetAccount`), so growing its
+  `SPACE` is a plain breaking change to the account layout, not a migration — fine given devnet
+  data is disposable (same reasoning `plan-contract-upgrade.md` already applies elsewhere).
+- **Checked, resolved**: `settle_breed.rs` also reads `parent1.dna`/`parent2.dna`/`.rarity` live
+  (lines 39-40, 57-58) rather than from `BreedRequest`, but this is not the same bug — dna and
+  rarity are immutable post-mint on Solana (no `change_dna`-equivalent or rarity-mutating
+  instruction exists), so "live" and "snapshotted" reads return identically. S1 stays scoped to
+  battle only.
+- **Verification blocker**: proving this closes the reroll needs a working commit → reveal →
+  settle cycle in a test (mint two pets, commit a battle, `level_up` one of them, settle, assert
+  the result matches the pre-level-up snapshot) — exactly the EVM Phase 1 test's shape. That
+  needs the Switchboard test harness below to exist first.
+
+## Workstream S2 — make settle permissionless + build a Solana settle keeper
+
+- Change `SettleBattle`'s `attacker_owner` from `Signer<'info>` to `UncheckedAccount<'info>`
+  (`mut`), matching `cancel_battle.rs`'s `CancelBattle` accounts struct field-for-field. The
+  existing `require_keys_eq!` authorization checks in the handler body don't need to change —
+  they already check the account's *key*, not that it signed.
+- Whoever submits the transaction (the keeper) becomes the fee payer and the signer of record;
+  `attacker_owner` is passed purely as a pubkey reference for authorization checks and the rent-
+  close destination, same role `cancel_battle` already gives it.
+- Apply the same `owner: Signer` → `UncheckedAccount` change to `settle_breed`/`settle_mint` if
+  extending keeper coverage there too (recommended, mirrors EVM's Workstream A scope — same
+  infrastructure settles all three). Their separate `asset: Signer` (throwaway Core-asset
+  keypair) is unaffected: the keeper generates and signs with a fresh `Keypair` for it, exactly
+  like the frontend does today.
+- **New keeper module.** Solana's stack (`@solana/web3.js`, `@coral-xyz/anchor`,
+  `@switchboard-xyz/on-demand`) shares nothing with the EVM keeper's `viem`-based code — per
+  AGENTS.md's "no shared cross-chain interface" rule, this is genuinely new code, not a port.
+  Recommend a sibling module, e.g. `backend/src/features/settle-keeper-solana/`, not shoehorned
+  into the EVM keeper's files.
+- **The watch mechanism differs from EVM's event subscription.** Pyth Entropy fires a `Revealed`
+  log the keeper can subscribe to. Switchboard On-Demand's existing client code
+  (`waitForRevealIx` in `switchboardVrfTx.ts:82-99`) is already a *poll-until-ready* retry loop,
+  not an event watch — the keeper should mirror that same polling shape against each open
+  `BattleRequest`'s `randomness_account`, not invent an event-driven design that doesn't match
+  how this SDK actually signals readiness.
+- Frontend: `battleWithSwitchboardVrf.ts` stops sending the reveal+settle tx in the normal path;
+  `useBattlePanel`-equivalent Solana flow gets the same kind of fallback-timeout the EVM
+  `FALLBACK_SETTLE_DELAY_MS` pattern uses, so a keeper outage still self-heals from the player's
+  own wallet rather than stranding the battle.
+
+## Workstream S3 — live animation (cheap once S1 lands, reuses existing code)
+
+- No new combat-simulator port: `shared/src/utils/combat/` already produces bit-identical results
+  to `battle_sim.rs` (enforced by the shared golden vectors). Confirm this claim isn't stale by
+  running the golden-vector suite before relying on it — it was true as of Phase 3/4, but treat
+  "should still be true" as a thing to verify, not assume, before building on it.
+- Read the frozen snapshot from `BattleRequest` (once S1 lands) the moment commit confirms —
+  same principle as EVM's Phase 4 "read the snapshot, not the live/cached roster."
+- Skill config: hardcode the same constants `SkillConfig::default()` uses (see "Current state"
+  above) rather than trying to read something that isn't stored on-chain.
+- **Open question, not yet verified**: exactly when the raw 32-byte randomness value becomes
+  readable to the client — whether `@switchboard-xyz/on-demand`'s `Randomness` object exposes the
+  oracle's value before `revealIx` is submitted on-chain (which would let animation start even
+  earlier than EVM's reveal-event model), or only after the reveal instruction confirms and the
+  `RandomnessAccountData` account is read back. Check the SDK/Switchboard docs directly before
+  building the replay hook — don't assume either answer.
+- Reconciliation rule is unchanged: the Anchor `BattleResolved` event (already parsed client-side
+  in `parseFirstWins`) is always authoritative; the local sim only ever drives the animation.
+
+## The testing-infrastructure gap has to be closed first, not skipped
+
+Unlike every EVM phase (where Hardhat + `MockEntropy` already existed and I could write a real,
+running test the same session), Solana has **zero** test coverage today for anything that
+depends on a settled battle/breed/mint — because the Switchboard commit/reveal harness was never
+built. This blocks verifying S1 with anything more than manual devnet testing. Recommend building
+that harness (`Randomness.create`/`commitIx`/`revealIx` driven against the local validator, using
+the Switchboard program already loaded at genesis per `Anchor.toml`) as an explicit first step,
+before S1 — the same way the EVM plan leaned on `MockEntropy` for every single phase's
+verification.
+
+## Environment caveat (read before starting)
+
+This repo's current working environment (verified directly: no `cargo`/`anchor`/`rustc`/`solana`
+on PATH) cannot build or run any of S1/S2/the test harness. Any Rust/Anchor code written here
+needs a machine or CI job with the toolchain installed to compile and test it — the write-then-
+verify-in-the-same-session loop that worked for every EVM phase does not work here. Plan for a
+review/verification handoff step explicitly, rather than assuming "green tests" the way the EVM
+plan could.
+
+## Open decisions (need your input before implementation)
+
+1. **Keeper hosting**: new sibling module under `backend/src/features/` (recommended) vs. a
+   fully separate service given the completely different dependency stack.
+2. **Scope of S2**: battle only, or battle + breed + mint (recommended, mirrors EVM)?
+3. **Build the Switchboard test harness first** (recommended — nothing below is verifiable
+   without it) or accept unverified Rust changes reviewed by eye and tested manually on devnet?
+4. **Who runs `anchor build`/`anchor test`** to actually verify this, given the toolchain isn't
+   available in this environment — you, CI, or a different agent/environment?
+
+## Suggested order
+
+1. Build the Switchboard commit/reveal Anchor test harness (unblocks verifying everything below).
+2. Workstream S1 (snapshot fix) — the one piece worth doing even if S2/S3 never happen.
+3. Workstream S2 (permissionless settle + Solana keeper).
+4. Workstream S3 (live animation), once S1 and S2 are each verified independently.
+
+## Out of scope
+
+- Any change to `battle_sim.rs`'s actual math/balance.
+- Species tiers, marriage, or breeding mechanics beyond whatever S1 needs to check for breed.
+- Re-verifying or touching anything on the EVM side — that plan is already fully implemented.
