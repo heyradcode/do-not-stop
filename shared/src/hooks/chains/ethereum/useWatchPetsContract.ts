@@ -44,6 +44,10 @@ export const useWatchPetsContract = ({
         abi,
         eventName: 'BreedSettled',
         enabled: Boolean(pendingRequestId != null && address && contractAddress),
+        // See useWatchEntropyFulfillment.ts's comment: forces eth_getLogs polling instead of
+        // eth_newFilter/eth_getFilterChanges, which public RPCs like Base Sepolia's default
+        // endpoint don't reliably keep alive between requests.
+        poll: true,
         onLogs(logs) {
             if (!address) return;
             const want = pendingRef.current;

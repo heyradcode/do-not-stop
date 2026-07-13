@@ -61,6 +61,11 @@ export const useWatchEntropyFulfillment = ({
         abi: ENTROPY_REVEALED_ABI,
         eventName: 'Revealed',
         enabled: Boolean(requestId != null && entropyAddress && gameLogicAddress),
+        // Force eth_getLogs polling instead of eth_newFilter/eth_getFilterChanges: public,
+        // load-balanced RPCs (e.g. Base Sepolia's default endpoint) don't reliably keep a
+        // filter pinned to the same backend node between requests, so it silently
+        // disappears ("filter not found") and this watch would otherwise never fire.
+        poll: true,
         onLogs(logs) {
             const want = wantRef.current;
             const gl = gameLogicRef.current?.toLowerCase();

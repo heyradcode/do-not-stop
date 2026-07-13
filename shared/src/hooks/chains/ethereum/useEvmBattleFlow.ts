@@ -240,6 +240,10 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         abi: gameLogicAbi,
         eventName: 'BattleResolved',
         enabled: Boolean(enabled && gameLogic && requestId != null),
+        // See useWatchEntropyFulfillment.ts's comment: forces eth_getLogs polling instead of
+        // eth_newFilter/eth_getFilterChanges, which public RPCs like Base Sepolia's default
+        // endpoint don't reliably keep alive between requests.
+        poll: true,
         onLogs(logs) {
             if (requestId == null) return;
             const typed = logs as unknown as { args: Record<string, unknown> }[];

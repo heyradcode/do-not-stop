@@ -124,6 +124,10 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
         abi: evm?.gameLogic.abi ?? [],
         eventName: 'MintSettled',
         enabled: Boolean(isEvm && evm?.gameLogic.address && pendingRequestId != null),
+        // See useWatchEntropyFulfillment.ts's comment: forces eth_getLogs polling instead of
+        // eth_newFilter/eth_getFilterChanges, which public RPCs like Base Sepolia's default
+        // endpoint don't reliably keep alive between requests.
+        poll: true,
         onLogs(logs) {
             if (pendingRequestId == null) return;
             const typed = logs as unknown as { args: { requestId?: bigint } }[];
