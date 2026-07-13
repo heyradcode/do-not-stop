@@ -106,4 +106,22 @@ export const env = {
             process.env.KEEPER_MOCK_REVEAL?.trim().toLowerCase() === 'true' &&
             Number(process.env.KEEPER_CHAIN_ID) === 31337,
     },
+
+    /**
+     * Solana settle keeper (docs/plan-realtime-battle-solana.md Workstream S2): settles
+     * `commit_battle` requests from this wallet once Switchboard On-Demand reveals their
+     * randomness. Battle only — settle_breed/settle_mint still need the player's own
+     * signature (their Metaplex Core mint CPI requires a real payer signature; see the
+     * plan doc). Off unless KEEPER_SOLANA_ENABLED=true; all three fields below are
+     * required once it is (checked at startSolanaSettleKeeperFeature() time so a
+     * misconfigured keeper logs and no-ops rather than crashing the server on boot).
+     */
+    solanaSettleKeeper: {
+        enabled: process.env.KEEPER_SOLANA_ENABLED?.trim().toLowerCase() === 'true',
+        rpcUrl: process.env.KEEPER_SOLANA_RPC_URL?.trim() || undefined,
+        /** JSON array string (solana-keygen file format), e.g. "[12,34,...]". */
+        keypairJson: process.env.KEEPER_SOLANA_KEYPAIR?.trim() || undefined,
+        programId: process.env.KEEPER_SOLANA_PROGRAM_ID?.trim() || undefined,
+        pollIntervalMs: Number(process.env.KEEPER_SOLANA_POLL_INTERVAL_MS?.trim() || '5000'),
+    },
 } as const;

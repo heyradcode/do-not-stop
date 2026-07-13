@@ -58,8 +58,12 @@ export const fetchAssetByPetId = async (
     const rows = await getAccountClient(program, 'petAccount').all([{
         memcmp: { offset: PET_ACCOUNT_ID_MEMCMP_OFFSET, bytes: bs58.encode(idBuf) },
     }]);
-    if (rows.length === 0) return null;
-    const asset = (rows[0].account as { asset?: unknown }).asset;
+    // Destructure-and-guard rather than `rows[0]`: under `noUncheckedIndexedAccess`
+    // (enabled by backend, the first non-frontend/mobile consumer of this module),
+    // indexed access doesn't narrow away from a `.length` check the way this did before.
+    const [first] = rows;
+    if (!first) return null;
+    const asset = (first.account as { asset?: unknown }).asset;
     if (!asset || typeof asset !== 'object') return null;
     return asset as PublicKey;
 };

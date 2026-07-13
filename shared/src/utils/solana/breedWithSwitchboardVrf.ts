@@ -18,6 +18,12 @@ import {
 import { MPL_CORE_PROGRAM_ID } from './constants';
 import { sleep } from '../common';
 
+// `program.methods.<name>!(...)` below: `program: Program<Idl>` (untyped generic IDL, not
+// a generated `Program<Cryptopets>`) makes `.methods` an index signature, so consumers with
+// `noUncheckedIndexedAccess` enabled (backend, not frontend/mobile) see every property as
+// possibly undefined. The instruction genuinely exists on whichever program's IDL was
+// fetched — asserted, not defensively checked.
+
 const toPublicKey = (value: unknown): PublicKey => {
     if (value instanceof PublicKey) return value;
     if (value && typeof value === 'object' && 'toBase58' in value) {
@@ -98,7 +104,7 @@ const trySettlePendingBreed = async (args: BreedWithVrfArgs): Promise<string | n
     const [child] = petPdaByAsset(programId, assetKp.publicKey.toBase58());
 
     const settleBreedIx = await program.methods
-        .settleBreed()
+        .settleBreed!()
         .accounts({
             globalState,
             owner,
@@ -180,7 +186,7 @@ export const breedWithSwitchboardVrf = async (args: BreedWithVrfArgs): Promise<s
 
     const commitIx = await randomness.commitIx(queue.pubkey, owner);
     const commitBreedIx = await program.methods
-        .commitBreed(rngKp.publicKey, name)
+        .commitBreed!(rngKp.publicKey, name)
         .accounts({
             globalState,
             owner,
@@ -216,7 +222,7 @@ export const breedWithSwitchboardVrf = async (args: BreedWithVrfArgs): Promise<s
     const [child] = petPdaByAsset(programId, assetKp.publicKey.toBase58());
 
     const settleBreedIx = await program.methods
-        .settleBreed()
+        .settleBreed!()
         .accounts({
             globalState,
             owner,

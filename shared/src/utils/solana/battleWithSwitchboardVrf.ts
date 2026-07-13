@@ -12,6 +12,12 @@ import {
 } from './switchboardVrfTx';
 import { sleep } from '../common';
 
+// `program.methods.<name>!(...)` below: `program: Program<Idl>` (untyped generic IDL, not
+// a generated `Program<Cryptopets>`) makes `.methods` an index signature, so consumers with
+// `noUncheckedIndexedAccess` enabled (backend, not frontend/mobile) see every property as
+// possibly undefined. The instruction genuinely exists on whichever program's IDL was
+// fetched — asserted, not defensively checked.
+
 /** Parse `firstWins` from the `BattleResolved` Anchor event in settle tx logs. */
 const parseFirstWins = async (
     program: Program<Idl>,
@@ -98,7 +104,7 @@ const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<BattleVr
     const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
     const settleBattleIx = await program.methods
-        .settleBattle()
+        .settleBattle!()
         .accounts({
             globalState,
             attackerOwner: owner,
@@ -165,7 +171,7 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
 
     const commitIx = await randomness.commitIx(queue.pubkey, owner);
     const commitBattleIx = await program.methods
-        .commitBattle(rngKp.publicKey)
+        .commitBattle!(rngKp.publicKey)
         .accounts({
             globalState,
             attackerOwner: owner,
@@ -196,7 +202,7 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
     const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
     const settleBattleIx = await program.methods
-        .settleBattle()
+        .settleBattle!()
         .accounts({
             globalState,
             attackerOwner: owner,

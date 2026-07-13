@@ -4,6 +4,7 @@ import { prisma } from '@config/prisma';
 import app from './app';
 import { startBattleStream, stopBattleStream } from './grpc/battleStream';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
+import { startSolanaSettleKeeperFeature, stopSolanaSettleKeeperFeature } from '@features/settle-keeper-solana';
 
 const server = app.listen(env.port, () => {
     const { port } = env;
@@ -18,6 +19,9 @@ const server = app.listen(env.port, () => {
     // Settles GameLogic battle/breed/mint requests once entropy reveals. No-op unless
     // KEEPER_ENABLED is set.
     startSettleKeeper();
+    // Settles Solana commit_battle requests once Switchboard reveals. No-op unless
+    // KEEPER_SOLANA_ENABLED is set.
+    startSolanaSettleKeeperFeature();
 });
 
 /** Force-exit deadline: don't let a stuck connection block the orchestrator forever. */
@@ -43,6 +47,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
 
     stopBattleStream();
     stopSettleKeeper();
+    stopSolanaSettleKeeperFeature();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
 
