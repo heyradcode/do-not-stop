@@ -77,4 +77,33 @@ export const env = {
      */
     rosterReadSource:
         process.env.ROSTER_READ_SOURCE?.trim().toLowerCase() === 'grpc' ? 'grpc' : 'postgres',
+
+    /**
+     * Settle keeper (plan-realtime-battle-ux.md / plan-realtime-battle-impl.md Phase 2):
+     * settles GameLogic battle/breed/mint requests from this wallet once Pyth Entropy
+     * reveals, so the player doesn't send the settle transaction themselves. Off unless
+     * KEEPER_ENABLED=true; the four fields below are required once it is (checked at
+     * startSettleKeeper() time so a misconfigured keeper logs and no-ops rather than
+     * crashing the whole server on boot).
+     */
+    settleKeeper: {
+        enabled: process.env.KEEPER_ENABLED?.trim().toLowerCase() === 'true',
+        rpcUrl: process.env.KEEPER_RPC_URL?.trim() || undefined,
+        privateKey: (process.env.KEEPER_PRIVATE_KEY?.trim()
+            ? (process.env.KEEPER_PRIVATE_KEY.trim().startsWith('0x')
+                ? process.env.KEEPER_PRIVATE_KEY.trim()
+                : `0x${process.env.KEEPER_PRIVATE_KEY.trim()}`)
+            : undefined) as `0x${string}` | undefined,
+        chainId: process.env.KEEPER_CHAIN_ID ? Number(process.env.KEEPER_CHAIN_ID) : undefined,
+        gameLogicAddress: process.env.KEEPER_GAME_LOGIC_ADDRESS?.trim() as `0x${string}` | undefined,
+        backfillBlocks: BigInt(process.env.KEEPER_BACKFILL_BLOCKS?.trim() || '5000'),
+        /** Local dev only: also acts as the Entropy provider (MockEntropy.mockReveal),
+         *  replacing the old removed vrf-fulfill-watcher.ts for the entropy flow. Refuse
+         *  to enable unless the keeper is also targeting a low chain id typical of a
+         *  local Hardhat node, so this can't accidentally get flipped on against a real
+         *  network. */
+        mockReveal:
+            process.env.KEEPER_MOCK_REVEAL?.trim().toLowerCase() === 'true' &&
+            Number(process.env.KEEPER_CHAIN_ID) === 31337,
+    },
 } as const;

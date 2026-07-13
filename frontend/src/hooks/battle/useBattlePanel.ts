@@ -377,6 +377,8 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         ? 'Preparing rematch…'
         : battle.phase === 'awaiting-vrf'
         ? 'Awaiting randomness…'
+        : battle.phase === 'awaiting-settle'
+        ? 'Settling the battle…'
         : battle.phase === 'settling'
         ? 'Settling the battle…'
         : battle.phase === 'resolving'

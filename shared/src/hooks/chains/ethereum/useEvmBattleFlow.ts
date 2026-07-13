@@ -13,12 +13,18 @@ type UseEvmBattleFlowParams = {
     onResolved?: (result: BattleResolvedResult) => void;
 };
 
+/** How long to wait for the backend settle keeper before falling back to sending
+ *  settleBattle from the player's own wallet (plan-realtime-battle-impl.md Phase 2). */
+const FALLBACK_SETTLE_DELAY_MS = 45_000;
+
 /**
- * Frontend-driven EVM battle settlement (mirrors the Solana reveal+settle
- * pattern). Given the `requestBattle` tx hash, this:
+ * EVM battle settlement, normally hands-off after the request. Given the
+ * `requestBattle` tx hash, this:
  *   1. parses the VRF `requestId` from `BattleRandomnessRequested`,
  *   2. waits for the coordinator's `RandomWordsFulfilled`,
- *   3. sends the `settleBattle(requestId)` tx,
+ *   3. waits for the backend settle keeper to send `settleBattle(requestId)` —
+ *      only sends it from the player's own wallet if the keeper hasn't within
+ *      FALLBACK_SETTLE_DELAY_MS (keeper outage / not configured),
  *   4. decodes `BattleResolved` for the outcome + seed used by fight replay.
  */
 export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBattleFlowParams) => {
@@ -67,10 +73,20 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         }
     }, [enabled, requestReceipt, address, evm?.gameLogic.abi]);
 
-    // 3. settleBattle tx.
+    // 3. settleBattle tx — normally sent by the backend settle keeper, not the player.
+    // This hook only sends it itself as a fallback (see handleFulfilled below).
     const settle = useWriteContract();
     const settleSentRef = useRef(false);
-    const handleFulfilled = useCallback((id: bigint) => {
+    const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const clearFallbackTimer = useCallback(() => {
+        if (fallbackTimerRef.current != null) {
+            clearTimeout(fallbackTimerRef.current);
+            fallbackTimerRef.current = null;
+        }
+    }, []);
+
+    const sendSettleFallback = useCallback((id: bigint) => {
         if (settleSentRef.current || !gameLogic) return;
         settleSentRef.current = true;
         setPhase('settling');
@@ -85,6 +101,19 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         );
     }, [gameLogic, gameLogicAbi, chainId, settle]);
 
+    // Entropy has revealed: the keeper is expected to settle from here. Only fall
+    // back to the player's wallet if BattleResolved hasn't shown up in time.
+    const handleFulfilled = useCallback((id: bigint) => {
+        if (settleSentRef.current) return;
+        setPhase('awaiting-settle');
+        clearFallbackTimer();
+        fallbackTimerRef.current = setTimeout(() => sendSettleFallback(id), FALLBACK_SETTLE_DELAY_MS);
+    }, [clearFallbackTimer, sendSettleFallback]);
+
+    // Cancel any pending fallback timer on unmount so it can't fire (and send a tx)
+    // after the component watching this battle is gone.
+    useEffect(() => clearFallbackTimer, [clearFallbackTimer]);
+
     // 2. Wait for Pyth Entropy Revealed, then settle.
     useWatchEntropyFulfillment({
         entropyAddress: enabled ? (entropyAddress as `0x${string}` | undefined) : undefined,
@@ -98,6 +127,7 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
     const applyResolved = useCallback((a: Record<string, unknown>) => {
         if (resolvedFiredRef.current) return;
         resolvedFiredRef.current = true;
+        clearFallbackTimer(); // the keeper (or the fallback itself) already settled this
         const resolved: BattleResolvedResult = {
             requestId: a.requestId as bigint,
             winnerId: a.winnerId as bigint,
@@ -112,7 +142,7 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         setResult(resolved);
         setPhase('resolved');
         onResolvedRef.current?.(resolved);
-    }, []);
+    }, [clearFallbackTimer]);
 
     // Primary, reliable path: BattleResolved is in the settle tx receipt we sent.
     // Event subscriptions can lag/drop over some RPCs, so decode it from there.
@@ -149,6 +179,7 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
     });
 
     const reset = useCallback(() => {
+        clearFallbackTimer();
         setRequestId(null);
         setPhase('idle');
         setResult(null);
@@ -156,9 +187,13 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         settleSentRef.current = false;
         resolvedFiredRef.current = false;
         settle.reset();
-    }, [settle]);
+    }, [settle, clearFallbackTimer]);
 
-    const isActive = phase === 'awaiting-vrf' || phase === 'settling' || phase === 'resolving';
+    const isActive =
+        phase === 'awaiting-vrf' ||
+        phase === 'awaiting-settle' ||
+        phase === 'settling' ||
+        phase === 'resolving';
 
     return { phase, requestId, result, error: error ?? (settle.error as Error | null), isActive, reset };
 };
