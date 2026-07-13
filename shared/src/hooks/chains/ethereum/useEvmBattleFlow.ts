@@ -1,14 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
-import { useWatchEntropyFulfillment } from './useWatchEntropyFulfillment';
-import { usePolledContractEvent } from './usePolledContractEvent';
-import { useLiveBattleReplay, type LiveBattleReplayInput } from './useLiveBattleReplay';
 import { useLiveBattleSocket } from './useLiveBattleSocket';
 import { EVM_GAS_LIMITS } from './gasLimits';
+import { sleep } from '../../../utils/common';
 import type { BattleResolvedResult, EvmBattlePhase } from '../../../types/battle';
-import type { SkillConfig } from '../../../utils/combat';
 
 type UseEvmBattleFlowParams = {
     /** `requestBattle` tx hash from the adapter; drives the rest of the flow. */
@@ -17,67 +14,47 @@ type UseEvmBattleFlowParams = {
     onResolved?: (result: BattleResolvedResult) => void;
 };
 
-/** How long to wait for the backend settle keeper before falling back to sending
- *  settleBattle from the player's own wallet (plan-realtime-battle-impl.md Phase 2). */
-const FALLBACK_SETTLE_DELAY_MS = 45_000;
+/** How long to wait after the request confirms before even trying to self-settle — a
+ *  generous estimate covering typical entropy-reveal latency plus the keeper's own settle
+ *  time, so the fallback essentially never engages in the normal case. */
+const FALLBACK_START_DELAY_MS = 60_000;
+/** Once the fallback window opens, how often to re-check (via a read-only simulateContract,
+ *  no wallet prompt) whether settle would actually succeed yet. */
+const FALLBACK_SIMULATE_RETRY_MS = 5_000;
+/** ~60s of retrying (on top of FALLBACK_START_DELAY_MS) before giving up waiting for entropy
+ *  and sending the real transaction anyway, letting it revert if reveal truly never lands. */
+const FALLBACK_SIMULATE_MAX_ATTEMPTS = 12;
 
 /**
- * EVM battle settlement, normally hands-off after the request. Given the
- * `requestBattle` tx hash, this:
- *   1. parses the VRF `requestId` from `BattleRandomnessRequested`,
- *   2. waits for the coordinator's `RandomWordsFulfilled`,
- *   3. waits for the backend settle keeper to send `settleBattle(requestId)` —
- *      only sends it from the player's own wallet if the keeper hasn't within
- *      FALLBACK_SETTLE_DELAY_MS (keeper outage / not configured),
- *   4. decodes `BattleResolved` for the outcome + seed used by fight replay.
+ * EVM battle settlement, normally hands-off after the request. Given the `requestBattle`
+ * tx hash, this:
+ *   1. parses the requestId from `BattleRandomnessRequested`,
+ *   2. gets live-progress updates (sim + final result) from the backend settle keeper over
+ *      WebSocket (useLiveBattleSocket) — deliberately not from watching chain events
+ *      directly, since that RPC watching proved unreliable against public endpoints (see
+ *      settle-keeper/keeper.ts's pollContractEvents comment); a disconnected socket just
+ *      means no live updates, not a fallback to a less reliable mechanism,
+ *   3. as a safety net independent of the backend entirely, starts trying to settle from the
+ *      player's own wallet after FALLBACK_START_DELAY_MS if no result has arrived (keeper
+ *      outage / backend down) — checked via read-only simulation first so the player isn't
+ *      asked to sign (and pay gas for) a transaction that would obviously revert,
+ *   4. resolves from whichever arrives first: the socket's authoritative `resolved` message,
+ *      or (for a self-sent fallback settle) this hook's own transaction receipt.
  */
 export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBattleFlowParams) => {
     const { evm } = usePetsConfig();
     const { address } = useAccount();
     const gameLogic = evm?.gameLogic.address;
     const gameLogicAbi = useMemo(() => evm?.gameLogic.abi ?? [], [evm?.gameLogic.abi]);
-    const gameConfigAddress = evm?.gameConfig?.address;
-    const gameConfigAbi = useMemo(() => evm?.gameConfig?.abi ?? [], [evm?.gameConfig?.abi]);
     const chainId = evm?.chainId;
+    const publicClient = usePublicClient({ chainId });
 
     const [requestId, setRequestId] = useState<bigint | null>(null);
     const [phase, setPhase] = useState<EvmBattlePhase>('idle');
     const [result, setResult] = useState<BattleResolvedResult | null>(null);
     const [error, setError] = useState<Error | null>(null);
-    const [randomNumber, setRandomNumber] = useState<bigint | null>(null);
     const onResolvedRef = useRef(onResolved);
     onResolvedRef.current = onResolved;
-
-    // Pyth Entropy address — read from GameLogic.entropy() for the Revealed watcher.
-    const { data: entropyAddress } = useReadContract({
-        address: gameLogic,
-        abi: gameLogicAbi,
-        functionName: 'entropy',
-        chainId,
-        query: { enabled: enabled && Boolean(gameLogic) },
-    });
-
-    // Live-replay inputs (plan-realtime-battle-impl.md Phase 4): the request-time
-    // snapshot (frozen sim inputs, Phase 1) and the current skill balance config.
-    // Read from chain, never from the indexer/roster cache, which lags — see the
-    // plan's input-drift race note. GameConfig is optional in PetsEvmConfig, so
-    // this degrades to "no live replay" rather than breaking the battle flow when
-    // a deployment doesn't wire it up.
-    const { data: skillConfigData } = useReadContract({
-        address: gameConfigAddress,
-        abi: gameConfigAbi,
-        functionName: 'getSkillConfig',
-        chainId,
-        query: { enabled: enabled && Boolean(gameConfigAddress) },
-    });
-    const { data: battleRequestData } = useReadContract({
-        address: gameLogic,
-        abi: gameLogicAbi,
-        functionName: 'getBattleRequest',
-        args: requestId != null ? [requestId] : undefined,
-        chainId,
-        query: { enabled: enabled && Boolean(gameLogic) && requestId != null },
-    });
 
     // 1. Parse requestId from the request tx receipt.
     const { data: requestReceipt } = useWaitForTransactionReceipt({
@@ -102,11 +79,16 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         }
     }, [enabled, requestReceipt, address, evm?.gameLogic.abi]);
 
-    // 3. settleBattle tx — normally sent by the backend settle keeper, not the player.
-    // This hook only sends it itself as a fallback (see handleFulfilled below).
+    // 2. Live updates from the backend over WebSocket — the sole source of in-progress
+    // battle info (see this hook's header comment for why not chain-watching).
+    const { liveOutcome, resolvedResult } = useLiveBattleSocket(evm?.liveBattleWsUrl, chainId, requestId);
+
+    // 3. settleBattle tx — normally sent by the backend settle keeper, not the player. This
+    // hook only sends it itself as a last-resort fallback (see maybeStartFallback below).
     const settle = useWriteContract();
     const settleSentRef = useRef(false);
     const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const fallbackCancelledRef = useRef(false);
 
     const clearFallbackTimer = useCallback(() => {
         if (fallbackTimerRef.current != null) {
@@ -130,103 +112,66 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         );
     }, [gameLogic, gameLogicAbi, chainId, settle]);
 
-    // Entropy has revealed: the keeper is expected to settle from here. Only fall
-    // back to the player's wallet if BattleResolved hasn't shown up in time.
-    // `randomNumberHex` is also the exact seed the client-side sim replays from —
-    // storing it is what lets the live animation start before settleBattle lands.
-    const handleFulfilled = useCallback((id: bigint, randomNumberHex: `0x${string}`) => {
-        setRandomNumber(BigInt(randomNumberHex));
-        if (settleSentRef.current) return;
-        setPhase('awaiting-settle');
+    // Waits for settle to actually be able to succeed (read-only simulateContract, no wallet
+    // prompt) before asking the player to sign — avoids wasting their gas on a transaction
+    // that reverts because entropy genuinely hasn't revealed yet.
+    const waitThenSendFallback = useCallback(async (id: bigint) => {
+        if (!gameLogic || !publicClient) return;
+        for (let attempt = 0; attempt < FALLBACK_SIMULATE_MAX_ATTEMPTS; attempt++) {
+            if (settleSentRef.current || fallbackCancelledRef.current) return;
+            try {
+                await publicClient.simulateContract({
+                    address: gameLogic,
+                    abi: gameLogicAbi,
+                    functionName: 'settleBattle',
+                    args: [id],
+                });
+                break; // would succeed now
+            } catch {
+                await sleep(FALLBACK_SIMULATE_RETRY_MS);
+            }
+        }
+        if (!settleSentRef.current && !fallbackCancelledRef.current) sendSettleFallback(id);
+    }, [gameLogic, gameLogicAbi, publicClient, sendSettleFallback]);
+
+    // Starts the fallback window the moment the request is confirmed — independent of any
+    // reveal signal, since the whole point is this must work even if the backend (keeper and
+    // live-battle-socket both) is completely down.
+    useEffect(() => {
+        if (phase !== 'awaiting-vrf' || requestId == null) return;
+        fallbackCancelledRef.current = false;
         clearFallbackTimer();
-        fallbackTimerRef.current = setTimeout(() => sendSettleFallback(id), FALLBACK_SETTLE_DELAY_MS);
-    }, [clearFallbackTimer, sendSettleFallback]);
+        fallbackTimerRef.current = setTimeout(() => {
+            setPhase('awaiting-settle');
+            void waitThenSendFallback(requestId);
+        }, FALLBACK_START_DELAY_MS);
+        return clearFallbackTimer;
+    }, [phase, requestId, clearFallbackTimer, waitThenSendFallback]);
 
-    // Cancel any pending fallback timer on unmount so it can't fire (and send a tx)
-    // after the component watching this battle is gone.
-    useEffect(() => clearFallbackTimer, [clearFallbackTimer]);
+    // Cancel any pending fallback on unmount so it can't fire (and send a tx) after the
+    // component watching this battle is gone.
+    useEffect(() => () => { fallbackCancelledRef.current = true; clearFallbackTimer(); }, [clearFallbackTimer]);
 
-    // 2. Wait for Pyth Entropy Revealed, then settle.
-    useWatchEntropyFulfillment({
-        entropyAddress: enabled ? (entropyAddress as `0x${string}` | undefined) : undefined,
-        gameLogicAddress: enabled ? gameLogic : undefined,
-        requestId: enabled ? requestId : null,
-        onFulfilled: handleFulfilled,
-    });
-
-    // Live replay: compose the sim inputs into the exact shape useLiveBattleReplay
-    // wants, memoized so it only recomputes when a value actually changes (not on
-    // every render — simulate() re-runs a full 30-round fight otherwise).
-    const skillConfig = useMemo<SkillConfig | null>(() => {
-        if (!skillConfigData) return null;
-        const sc = skillConfigData as Record<string, unknown>;
-        return {
-            tankHpMult: Number(sc.tankHpMult),
-            shellDefMult: Number(sc.shellDefMult),
-            swiftCritBonus: Number(sc.swiftCritBonus),
-            cunningCritCap: Number(sc.cunningCritCap),
-            furyDmgMult: Number(sc.furyDmgMult),
-            furyHpThreshold: Number(sc.furyHpThreshold),
-            sageMdefMult: Number(sc.sageMdefMult),
-            bloodlustBps: Number(sc.bloodlustBps),
-        };
-    }, [skillConfigData]);
-
-    const snapshot = useMemo(() => {
-        if (!battleRequestData) return null;
-        const br = battleRequestData as Record<string, unknown>;
-        // Requests from before the Phase 1 snapshot upgrade have no frozen inputs
-        // to replay from — skip live replay for those rather than sim from zeros.
-        if (!br.snapshotted) return null;
-        return {
-            dna1: br.dna1 as bigint,
-            dna2: br.dna2 as bigint,
-            rarity1: Number(br.rarity1),
-            rarity2: Number(br.rarity2),
-            level1: Number(br.level1),
-            level2: Number(br.level2),
-            speciesId1: Number(br.speciesId1),
-            speciesId2: Number(br.speciesId2),
-        };
-    }, [battleRequestData]);
-
-    const replayInput = useMemo<LiveBattleReplayInput | null>(() => {
-        if (!snapshot || !skillConfig || randomNumber == null) return null;
-        return { ...snapshot, randomNumber, skillConfig };
-    }, [snapshot, skillConfig, randomNumber]);
-
-    const localLiveReplay = useLiveBattleReplay(replayInput);
-    // Backend-pushed sim (docs/plan-realtime-battle-ux.md's live-battle-socket feature):
-    // preferred when it arrives, since the settle keeper's reveal detection doesn't depend
-    // on this client's own RPC. Falls back to the local sim above if unset/not yet arrived —
-    // either way this is presentation only; `result` from BattleResolved is authoritative.
-    const socketLiveReplay = useLiveBattleSocket(evm?.liveBattleWsUrl, chainId, requestId);
-    const liveReplay = socketLiveReplay ?? localLiveReplay;
-
-    // 4. Resolve from BattleResolved — fire at most once per battle.
+    // 4. Resolve — fire at most once per battle, from whichever source arrives first.
     const resolvedFiredRef = useRef(false);
-    const applyResolved = useCallback((a: Record<string, unknown>) => {
+    const applyResolved = useCallback((resolved: BattleResolvedResult) => {
         if (resolvedFiredRef.current) return;
         resolvedFiredRef.current = true;
+        fallbackCancelledRef.current = true;
         clearFallbackTimer(); // the keeper (or the fallback itself) already settled this
-        const resolved: BattleResolvedResult = {
-            requestId: a.requestId as bigint,
-            winnerId: a.winnerId as bigint,
-            loserId: a.loserId as bigint,
-            vrfSeed: a.vrfSeed as bigint,
-            firstWins: a.firstWins as boolean,
-            rounds: Number(a.rounds),
-            winnerHpRemaining: Number(a.winnerHpRemaining),
-            xpWin: Number(a.xpWin),
-            xpLoss: Number(a.xpLoss),
-        };
         setResult(resolved);
         setPhase('resolved');
         onResolvedRef.current?.(resolved);
     }, [clearFallbackTimer]);
 
-    // Primary, reliable path: BattleResolved is in the settle tx receipt we sent.
-    // Event subscriptions can lag/drop over some RPCs, so decode it from there.
+    // Primary path: the backend's authoritative push, decoded from its own settle receipt.
+    useEffect(() => {
+        if (resolvedResult) applyResolved(resolvedResult);
+    }, [resolvedResult, applyResolved]);
+
+    // Fallback-only path: if *this hook* sent the settle tx, decode BattleResolved from its
+    // own receipt directly rather than waiting on the socket (belt-and-braces — the socket
+    // should also report it, but this doesn't depend on the backend at all).
     const { data: settleReceipt } = useWaitForTransactionReceipt({
         hash: settle.data,
         query: { enabled: !!settle.data },
@@ -238,35 +183,29 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
                 abi: evm.gameLogic.abi, logs: settleReceipt.logs, eventName: 'BattleResolved', strict: false,
             }) as unknown as { args: Record<string, unknown> }[];
             const mine = logs.find((l) => l.args.requestId === requestId);
-            if (mine) applyResolved(mine.args);
+            if (!mine) return;
+            const a = mine.args;
+            applyResolved({
+                requestId: a.requestId as bigint,
+                winnerId: a.winnerId as bigint,
+                loserId: a.loserId as bigint,
+                vrfSeed: a.randomness as bigint,
+                firstWins: a.firstWins as boolean,
+                rounds: Number(a.rounds),
+                winnerHpRemaining: Number(a.winnerHpRemaining),
+                xpWin: Number(a.xpWin),
+                xpLoss: Number(a.xpLoss),
+            });
         } catch { /* ignore */ }
     }, [enabled, settleReceipt, requestId, evm?.gameLogic.abi, applyResolved]);
 
-    // Secondary path: watch BattleResolved (covers a settle sent outside this hook).
-    usePolledContractEvent({
-        address: gameLogic,
-        abi: gameLogicAbi,
-        eventName: 'BattleResolved',
-        enabled: Boolean(enabled && gameLogic && requestId != null),
-        chainId,
-        onLogs(logs) {
-            if (requestId == null) return;
-            const typed = logs as unknown as { args: Record<string, unknown> }[];
-            for (const log of typed) {
-                if (log.args.requestId !== requestId) continue;
-                applyResolved(log.args);
-                return;
-            }
-        },
-    });
-
     const reset = useCallback(() => {
+        fallbackCancelledRef.current = true;
         clearFallbackTimer();
         setRequestId(null);
         setPhase('idle');
         setResult(null);
         setError(null);
-        setRandomNumber(null);
         settleSentRef.current = false;
         resolvedFiredRef.current = false;
         settle.reset();
@@ -285,12 +224,11 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         error: error ?? (settle.error as Error | null),
         isActive,
         reset,
-        /** Sim outcome (log + startHp1/startHp2 + its own result), available as soon as
-         *  entropy reveals — drives the live animation. Prefers the backend's pushed sim
-         *  (useLiveBattleSocket) when available, falls back to the local one computed here
-         *  otherwise. Presentation only either way; `result` above (from BattleResolved) is
-         *  always the authoritative outcome; see plan-realtime-battle-ux.md's reconciliation
-         *  rule. Null until a sim is available from either source. */
-        liveReplay,
+        /** Backend-pushed sim outcome (log + startHp1/startHp2 + its own result), available
+         *  as soon as entropy reveals — drives the live animation. Presentation only;
+         *  `result` above (from BattleResolved) is always the authoritative outcome; see
+         *  plan-realtime-battle-ux.md's reconciliation rule. Null until the backend pushes
+         *  one (see useLiveBattleSocket's header comment on why there's no other source). */
+        liveReplay: liveOutcome,
     };
 };

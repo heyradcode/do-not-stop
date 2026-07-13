@@ -1,5 +1,11 @@
-import type { Account, Address, Chain, PublicClient, Transport, WalletClient } from 'viem';
+import { parseEventLogs, type Account, type Address, type Chain, type PublicClient, type Transport, type WalletClient } from 'viem';
 import { GAME_LOGIC_ABI, SETTLE_GAS_LIMIT, type SettleFunctionName } from './abi';
+import { broadcastLiveBattle } from '../../ws/liveBattleSocket';
+// Deep import (not the `@shared/core` barrel): the barrel re-exports React hooks/contexts
+// (.tsx files) that pull JSX into backend's typecheck, which has no --jsx support (same
+// reasoning as settle-keeper-solana's imports).
+import { encodeBattleResolvedResult } from '@shared/core/src/types/liveBattleSocket';
+import type { BattleResolvedResult } from '@shared/core/src/types/battle';
 
 export interface Submitter {
     /** Enqueues a settle call; resolves once it has been attempted (sent + confirmed, or
@@ -22,12 +28,55 @@ export function createSubmitter(
     publicClient: PublicClient<Transport, Chain>,
     walletClient: WalletClient<Transport, Chain, Account>,
     gameLogic: Address,
+    chainId: number,
 ): Submitter {
     let queue: Promise<void> = Promise.resolve();
 
     function submit(functionName: SettleFunctionName, requestId: bigint): Promise<void> {
         queue = queue.then(() => trySettle(functionName, requestId));
         return queue;
+    }
+
+    /** Decodes `BattleResolved` from our own settle receipt and pushes it over the
+     *  live-battle-socket, so the frontend never needs to watch for this event itself
+     *  (see settle-keeper/keeper.ts's pollContractEvents comment on why that's unreliable).
+     *  Best-effort: a decode failure here doesn't affect settling, which already succeeded. */
+    function broadcastResolvedBattle(requestId: bigint, logs: readonly unknown[]): void {
+        try {
+            const decoded = parseEventLogs({
+                abi: GAME_LOGIC_ABI,
+                logs: logs as never,
+                eventName: 'BattleResolved',
+                strict: false,
+            });
+            const match = (decoded as unknown as { args: Record<string, unknown> }[]).find(
+                (log) => log.args.requestId === requestId,
+            );
+            if (!match) return;
+            const a = match.args;
+            const result: BattleResolvedResult = {
+                requestId: a.requestId as bigint,
+                winnerId: a.winnerId as bigint,
+                loserId: a.loserId as bigint,
+                vrfSeed: a.randomness as bigint,
+                firstWins: a.firstWins as boolean,
+                rounds: Number(a.rounds),
+                winnerHpRemaining: Number(a.winnerHpRemaining),
+                xpWin: Number(a.xpWin),
+                xpLoss: Number(a.xpLoss),
+            };
+            broadcastLiveBattle({
+                type: 'resolved',
+                chainId,
+                requestId: requestId.toString(),
+                result: encodeBattleResolvedResult(result),
+            });
+        } catch (err) {
+            console.error(
+                `[settle-keeper] failed to decode/broadcast BattleResolved for ${requestId}: ` +
+                    `${(err as Error).message.split('\n')[0]}`,
+            );
+        }
     }
 
     async function trySettle(functionName: SettleFunctionName, requestId: bigint): Promise<void> {
@@ -61,6 +110,9 @@ export function createSubmitter(
                 `[settle-keeper] ${functionName}(${requestId}) ` +
                     `${receipt.status === 'success' ? 'confirmed' : 'REVERTED'}`,
             );
+            if (functionName === 'settleBattle' && receipt.status === 'success') {
+                broadcastResolvedBattle(requestId, receipt.logs);
+            }
         } catch (err) {
             console.error(
                 `[settle-keeper] ${functionName}(${requestId}) failed to send/confirm: ` +

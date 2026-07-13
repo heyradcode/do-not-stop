@@ -119,7 +119,7 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
     const publicClient = createPublicClient({ chain, transport });
     const walletClient = createWalletClient({ account, chain, transport });
 
-    const submitter = createSubmitter(publicClient, walletClient, config.gameLogicAddress);
+    const submitter = createSubmitter(publicClient, walletClient, config.gameLogicAddress, config.chainId);
     const pending = new Map<bigint, TrackedRequestType>();
 
     function track(requestId: bigint, type: TrackedRequestType): void {
@@ -174,6 +174,7 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                 seed, skillConfig as never,
             );
             broadcastLiveBattle({
+                type: 'live',
                 chainId: config.chainId,
                 requestId: requestId.toString(),
                 outcome: encodeSimOutcome(outcome),
