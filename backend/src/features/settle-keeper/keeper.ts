@@ -1,7 +1,14 @@
 import { createPublicClient, createWalletClient, http, webSocket, type Address, type Chain } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { ENTROPY_ABI, GAME_LOGIC_ABI } from './abi';
-import { buildPendingMap, isSettledEvent, requestTypeForEvent, settleFunctionFor, type TrackedRequestType } from './requests';
+import {
+    buildPendingMap,
+    isSettledEvent,
+    requestTypeForEvent,
+    settleFunctionFor,
+    type DecodedGameLogicLog,
+    type TrackedRequestType,
+} from './requests';
 import { createSubmitter } from './submitter';
 
 export interface SettleKeeperConfig {
@@ -19,6 +26,10 @@ export interface SettleKeeperConfig {
 export interface SettleKeeperHandle {
     stop(): void;
 }
+
+/** Conservative eth_getLogs range cap for the backfill scan (see its call site) — well under
+ *  limits reported by common public RPCs (Base Sepolia's default enforces 2000). */
+const MAX_LOG_RANGE_BLOCKS = 2000n;
 
 /** Starts watching for entropy-fulfilled requests and settling them. Throws if the RPC/wallet
  *  can't be reached; the caller (index.ts) decides how to handle that at boot. */
@@ -54,12 +65,20 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
     // predecessor) was offline, so a restart self-heals instead of losing track.
     const latestBlock = await publicClient.getBlockNumber();
     const fromBlock = latestBlock > config.backfillBlocks ? latestBlock - config.backfillBlocks : 0n;
-    const allLogs = await publicClient.getContractEvents({
-        address: config.gameLogicAddress,
-        abi: GAME_LOGIC_ABI,
-        fromBlock,
-        toBlock: 'latest',
-    });
+    // Chunked because many public RPCs (e.g. Base Sepolia's `sepolia.base.org`) reject
+    // eth_getLogs across more than ~2000 blocks in one call, regardless of KEEPER_BACKFILL_BLOCKS.
+    const allLogs: DecodedGameLogicLog[] = [];
+    for (let start = fromBlock; start <= latestBlock; start += MAX_LOG_RANGE_BLOCKS + 1n) {
+        const end = start + MAX_LOG_RANGE_BLOCKS > latestBlock ? latestBlock : start + MAX_LOG_RANGE_BLOCKS;
+        allLogs.push(
+            ...(await publicClient.getContractEvents({
+                address: config.gameLogicAddress,
+                abi: GAME_LOGIC_ABI,
+                fromBlock: start,
+                toBlock: end,
+            })),
+        );
+    }
     const requestLogs = allLogs.filter((log) => requestTypeForEvent(log.eventName) !== undefined);
     const settledLogs = allLogs.filter((log) => isSettledEvent(log.eventName));
     const backfilled = buildPendingMap(requestLogs, settledLogs);
