@@ -105,11 +105,19 @@ independent of whether S2/S3 ever ship.
 - Whoever submits the transaction (the keeper) becomes the fee payer and the signer of record;
   `attacker_owner` is passed purely as a pubkey reference for authorization checks and the rent-
   close destination, same role `cancel_battle` already gives it.
-- Apply the same `owner: Signer` → `UncheckedAccount` change to `settle_breed`/`settle_mint` if
-  extending keeper coverage there too (recommended, mirrors EVM's Workstream A scope — same
-  infrastructure settles all three). Their separate `asset: Signer` (throwaway Core-asset
-  keypair) is unaffected: the keeper generates and signs with a fresh `Keypair` for it, exactly
-  like the frontend does today.
+- **Checked, and this is not a mechanical extension to breed/mint like it was on EVM.**
+  `settle_breed.rs:136-137` and `settle_mint.rs:89-90` both pass
+  `.payer(&ctx.accounts.owner.to_account_info())` (and `.owner(Some(&ctx.accounts.owner...))`)
+  into the Metaplex Core `CreateV1CpiBuilder` for the newly-minted asset. Metaplex Core's create
+  CPI requires the payer to actually sign, to authorize debiting their lamports for the new
+  asset's rent — dropping `owner: Signer` there the way S2 does for battle would compile but
+  fail at runtime the first time anyone actually tries to settle a breed/mint. `settle_battle`
+  has no such CPI at all, which is why it isn't affected. Extending keeper coverage to
+  breed/mint therefore needs an actual design answer to "who pays for and owns the new asset
+  when a keeper (not the player) submits settle" — e.g. the keeper fronts the rent and the
+  player is set as `.owner(...)` only (no payer signature needed from them), or some other
+  restructuring — not a copy-paste of the battle change. Scoping S2 to **battle only** until
+  that's decided.
 - **New keeper module.** Solana's stack (`@solana/web3.js`, `@coral-xyz/anchor`,
   `@switchboard-xyz/on-demand`) shares nothing with the EVM keeper's `viem`-based code — per
   AGENTS.md's "no shared cross-chain interface" rule, this is genuinely new code, not a port.
@@ -169,7 +177,10 @@ plan could.
 
 1. **Keeper hosting**: new sibling module under `backend/src/features/` (recommended) vs. a
    fully separate service given the completely different dependency stack.
-2. **Scope of S2**: battle only, or battle + breed + mint (recommended, mirrors EVM)?
+2. **Scope of S2 beyond battle**: extending to breed/mint needs a real design decision (who
+   pays for / owns the newly-minted asset when a keeper submits settle instead of the player —
+   see Workstream S2), not just the mechanical Signer-drop battle got. Deferred; battle-only
+   for now.
 3. **Build the Switchboard test harness first** (recommended — nothing below is verifiable
    without it) or accept unverified Rust changes reviewed by eye and tested manually on devnet?
 4. **Who runs `anchor build`/`anchor test`** to actually verify this, given the toolchain isn't

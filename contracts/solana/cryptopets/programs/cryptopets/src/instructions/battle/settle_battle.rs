@@ -182,8 +182,13 @@ pub struct SettleBattle<'info> {
     #[account(seeds = [GlobalState::SEED], bump = global_state.bump)]
     pub global_state: Account<'info, GlobalState>,
 
+    /// CHECK: rent-refund destination for the closed `battle_request`; validated against
+    /// `battle_request.attacker_owner` below. Permissionless (plan-realtime-battle-solana.md
+    /// Workstream S2, mirrors this program's own `cancel_battle` and EVM's `settleBattle`):
+    /// settle only recomputes a deterministic sim from already-committed state, so it needs
+    /// no signature from the attacker — a backend keeper (or anyone else) may submit it.
     #[account(mut)]
-    pub attacker_owner: Signer<'info>,
+    pub attacker_owner: UncheckedAccount<'info>,
 
     /// CHECK: attacker pet's Metaplex Core asset account; PDA seed for `attacker_pet`
     /// and source of truth for ownership (plan §2.3/v2.1 Phase A).
