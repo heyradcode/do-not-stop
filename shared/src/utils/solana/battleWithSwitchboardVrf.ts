@@ -12,6 +12,31 @@ import {
 } from './switchboardVrfTx';
 import { sleep } from '../common';
 
+/** How long to wait for the backend settle keeper (docs/plan-realtime-battle-solana.md
+ *  Workstream S2) before falling back to sending reveal+settle from the player's own
+ *  wallet — mirrors EVM's FALLBACK_SETTLE_DELAY_MS. */
+const KEEPER_SETTLE_TIMEOUT_MS = 45_000;
+const KEEPER_POLL_INTERVAL_MS = 2_000;
+
+/**
+ * Polls for the keeper having settled this battle: `settle_battle` closes `battleRequest`
+ * (`close = attacker_owner`), so its disappearance is a reliable "someone settled it"
+ * signal — no need to intercept the keeper's own transaction or its signature.
+ */
+const waitForKeeperSettle = async (
+    program: Program<Idl>,
+    battleRequestKey: PublicKey,
+    timeoutMs: number,
+): Promise<boolean> => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        const stillPending = await getAccountClient(program, 'battleRequest').fetchNullable(battleRequestKey);
+        if (!stillPending) return true;
+        await sleep(KEEPER_POLL_INTERVAL_MS);
+    }
+    return false;
+};
+
 // `program.methods.<name>!(...)` below: `program: Program<Idl>` (untyped generic IDL, not
 // a generated `Program<Cryptopets>`) makes `.methods` an index signature, so consumers with
 // `noUncheckedIndexedAccess` enabled (backend, not frontend/mobile) see every property as
@@ -97,10 +122,21 @@ const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<BattleVr
 
     const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
     const randomness = new sb.Randomness(queue.program, randomnessPk);
-    const { commitRevealWaitMs, revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
+    const { revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
 
     onCommitted?.();
-    await sleep(commitRevealWaitMs);
+
+    // Give the backend settle keeper a chance first (plan-realtime-battle-solana.md
+    // Workstream S2): it watches for the same revealed randomness and submits reveal+settle
+    // itself, so the player isn't asked to sign a second transaction in the common case. The
+    // poll already waits far longer than `commitRevealWaitMs` ever did, so there's no
+    // separate pre-reveal sleep needed on the fallback path below. `firstWins: null` here
+    // lets the caller's existing stat-diff fallback (useBattleOutcome) resolve the result
+    // exactly as it already does when `sig` isn't available.
+    if (await waitForKeeperSettle(program, battleRequest, KEEPER_SETTLE_TIMEOUT_MS)) {
+        return { sig: '', firstWins: null };
+    }
+
     const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
     const settleBattleIx = await program.methods
@@ -197,8 +233,17 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
     await sendSignedTx(provider, commitTx, [rngKp]);
     onCommitted?.();
 
-    const { commitRevealWaitMs, revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
-    await sleep(commitRevealWaitMs);
+    // Give the backend settle keeper a chance first (plan-realtime-battle-solana.md
+    // Workstream S2): it watches for the same revealed randomness and submits reveal+settle
+    // itself, so the player isn't asked to sign a second transaction (wallet prompt 2 of 2
+    // becomes the exception, not the rule). `firstWins: null` here lets the caller's
+    // existing stat-diff fallback (useBattleOutcome) resolve the result exactly as it
+    // already does when `sig` isn't available.
+    if (await waitForKeeperSettle(program, battleRequest, KEEPER_SETTLE_TIMEOUT_MS)) {
+        return { sig: '', firstWins: null };
+    }
+
+    const { revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
     const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
     const settleBattleIx = await program.methods
