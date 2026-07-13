@@ -211,7 +211,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                     </div>
                 </div>
 
-                <div className="action-controls">
+                <div className={clsx('action-controls', s.actionControls)}>
                     <NeonButton
                         tone="emerald"
                         onClick={handleChangeName}

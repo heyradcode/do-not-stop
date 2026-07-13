@@ -95,3 +95,9 @@
     color: rgb(195 210 255 / 50%);
     word-break: break-all;
 }
+
+/* Extra breathing room above the shared .action-controls, specific to this
+   panel since it sits right under the theme grid rather than a form field. */
+.actionControls {
+    margin-top: 18px;
+}
