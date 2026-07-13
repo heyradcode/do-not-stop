@@ -161,16 +161,34 @@ independent of whether S2/S3 ever ship.
 - Reconciliation rule is unchanged: the Anchor `BattleResolved` event (already parsed client-side
   in `parseFirstWins`) is always authoritative; the local sim only ever drives the animation.
 
-## The testing-infrastructure gap has to be closed first, not skipped
+## The testing-infrastructure gap: resolved as a devnet-only script, not a local-validator harness
 
 Unlike every EVM phase (where Hardhat + `MockEntropy` already existed and I could write a real,
-running test the same session), Solana has **zero** test coverage today for anything that
-depends on a settled battle/breed/mint — because the Switchboard commit/reveal harness was never
-built. This blocks verifying S1 with anything more than manual devnet testing. Recommend building
-that harness (`Randomness.create`/`commitIx`/`revealIx` driven against the local validator, using
-the Switchboard program already loaded at genesis per `Anchor.toml`) as an explicit first step,
-before S1 — the same way the EVM plan leaned on `MockEntropy` for every single phase's
-verification.
+running test the same session), Solana had **zero** test coverage for anything that depends on a
+settled battle/breed/mint. Investigating why revealed this isn't just "no mock exists yet" —
+Switchboard On-Demand has **no local-validator path at all**: `getDefaultQueue()` only resolves
+real mainnet/devnet queue accounts, and `revealIx()` calls out to a live Switchboard gateway (an
+actual internet-connected oracle operator) for a signed reveal. Neither exists on a fresh local
+validator regardless of whether the Switchboard program's bytecode is genesis-loaded per
+`Anchor.toml` — that only gets you the on-chain program, not the queue/oracle state or the
+off-chain gateway service the reveal flow depends on.
+
+`contracts/solana/cryptopets/scripts/devnet-battle-harness.ts` is the result: a manually-invoked
+script (deliberately outside `tests/` so `anchor test`'s local-validator glob never picks it up)
+that runs the real commit_mint → settle_mint (x2) → commit_battle → level_up → settle_battle
+sequence against real Solana devnet + Switchboard's real devnet queue. It proves S1 directly (reads
+`BattleRequest` before and after a level_up on the attacker's pet and asserts the frozen
+`attackerLevel` didn't move while the live `PetAccount`'s did) and S2 directly (submits
+`settle_battle` from a third keypair unrelated to either battler). It does **not** re-verify the
+combat math itself (the golden vectors already do that) or the S3 reveal-decode trick (that needs
+its own live-browser check; see `useLiveBattleReplaySolana.ts`'s header comment).
+
+**Not run in this environment**: no toolchain, and no reachable network at all here (confirmed:
+even `pnpm add` to the npm registry timed out) — written from reading the program source and
+existing test/script conventions directly, never executed. Needs a funded devnet wallet
+(`faucet.solana.com`) and `pnpm --filter solana add -D @switchboard-xyz/on-demand` run somewhere
+with registry access before `pnpm exec tsx scripts/devnet-battle-harness.ts` can work. See the
+script's own header comment for full usage and safety notes (it writes real on-chain state).
 
 ## Environment caveat (read before starting)
 
@@ -189,17 +207,25 @@ plan could.
    pays for / owns the newly-minted asset when a keeper submits settle instead of the player —
    see Workstream S2), not just the mechanical Signer-drop battle got. Deferred; battle-only
    for now.
-3. **Build the Switchboard test harness first** (recommended — nothing below is verifiable
-   without it) or accept unverified Rust changes reviewed by eye and tested manually on devnet?
-4. **Who runs `anchor build`/`anchor test`** to actually verify this, given the toolchain isn't
-   available in this environment — you, CI, or a different agent/environment?
+3. **Resolved**: the harness is a devnet-only script (`scripts/devnet-battle-harness.ts`), not a
+   local-validator test — see the section above for why a local-validator version isn't possible
+   with this SDK. S1/S2 were implemented ahead of running it, same as the rest of this plan.
+4. **Who runs `anchor build`/`anchor test`/the devnet harness** to actually verify all of this,
+   given neither the toolchain nor network access is available in this environment — you, CI, or
+   a different agent/environment?
 
 ## Suggested order
 
-1. Build the Switchboard commit/reveal Anchor test harness (unblocks verifying everything below).
-2. Workstream S1 (snapshot fix) — the one piece worth doing even if S2/S3 never happen.
-3. Workstream S2 (permissionless settle + Solana keeper).
-4. Workstream S3 (live animation), once S1 and S2 are each verified independently.
+1. ~~Build the Switchboard commit/reveal Anchor test harness~~ — done, but as a devnet-only
+   script (`scripts/devnet-battle-harness.ts`), not a local-validator test; see above.
+2. Workstream S1 (snapshot fix) — done.
+3. Workstream S2 (permissionless settle + Solana keeper) — done.
+4. Workstream S3 (live animation) — done, with its own unverified-decode caveat.
+
+All four items are implemented and committed. What remains is verification: `anchor build`/
+`anchor test` for the Rust changes, and running `devnet-battle-harness.ts` and a real Switchboard
+gateway check for the S3 reveal-decode assumption — see "Environment caveat" above for why none
+of that could happen in this session.
 
 ## Out of scope
 
