@@ -8,7 +8,7 @@ import NeonModal from '@components/ui/neon-modal';
 import TransactionStatus from '@components/common/transaction-status';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
-import './index.css';
+import styles from './index.module.css';
 
 interface CreatePetModalProps {
     isOpen: boolean;
@@ -108,15 +108,15 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                     Create Your First Pet
                 </>
             }
-            contentClassName="create-pet-body"
+            contentClassName={styles.createPetBody}
         >
             <p>
                 Give your pet a unique name and bring it to life! You can only create one pet
                 initially — breed to grow your collection!
             </p>
 
-            <div className="form">
-                <div className="field">
+            <div className={styles.form}>
+                <div className={styles.field}>
                     <label htmlFor="petName">Pet Name</label>
                     <input
                         id="petName"

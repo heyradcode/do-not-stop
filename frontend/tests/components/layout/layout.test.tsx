@@ -1,17 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-vi.mock('@components/wallet/account-dropdown', () => ({ default: () => <div data-testid="account-dropdown" /> }));
-vi.mock('@components/wallet/solana-wallet-trigger', () => ({ default: () => <div data-testid="solana-trigger" /> }));
-vi.mock('@components/pet/collection/pet-gallery', () => ({ default: () => <div data-testid="pet-gallery" /> }));
-
-const isInteractionRoute = vi.fn();
-vi.mock('@constants/interactionRoutes', () => ({
-    isInteractionRoute: (...args: unknown[]) => isInteractionRoute(...args),
+// The shell (sidebar/header/ambient/wallet) is covered by its own components;
+// here we only assert that Layout composes the shell around the routed page and
+// the Solana trigger.
+vi.mock('@components/layout/app-shell', () => ({
+    default: ({ children }: { children: React.ReactNode }) => (
+        <div data-testid="app-shell">{children}</div>
+    ),
+}));
+vi.mock('@components/wallet/solana-wallet-trigger', () => ({
+    default: () => <div data-testid="solana-trigger" />,
 }));
 
-import Layout from '@components/layout';
+import Layout from '@components/layout/Layout';
 
 const renderLayout = () =>
     render(
@@ -24,29 +27,12 @@ const renderLayout = () =>
         </MemoryRouter>,
     );
 
-beforeEach(() => {
-    vi.clearAllMocks();
-    isInteractionRoute.mockReturnValue(false);
-});
-
 describe('Layout', () => {
-    it('renders the chrome, wallet section and routed page', () => {
+    it('wraps the routed page and Solana trigger in the app shell', () => {
         renderLayout();
 
-        expect(screen.getByRole('heading', { name: 'Crypto Pets' })).toBeInTheDocument();
-        expect(screen.getByTestId('account-dropdown')).toBeInTheDocument();
-        expect(screen.getByTestId('solana-trigger')).toBeInTheDocument();
+        expect(screen.getByTestId('app-shell')).toBeInTheDocument();
         expect(screen.getByTestId('page')).toBeInTheDocument();
-    });
-
-    it('shows the pet gallery on a normal route', () => {
-        renderLayout();
-        expect(screen.getByTestId('pet-gallery')).toBeInTheDocument();
-    });
-
-    it('hides the pet gallery on a full-page interaction route', () => {
-        isInteractionRoute.mockReturnValue(true);
-        renderLayout();
-        expect(screen.queryByTestId('pet-gallery')).not.toBeInTheDocument();
+        expect(screen.getByTestId('solana-trigger')).toBeInTheDocument();
     });
 });

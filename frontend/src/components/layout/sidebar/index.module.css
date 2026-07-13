@@ -1,0 +1,309 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+   The logo float keyframe (cp-orb-float, used only here) lives in this module so
+   the animation reference and @keyframes hash consistently. */
+.sidebar {
+    --label-opacity: 0;
+    position: relative;
+    z-index: 2;
+    width: var(--cp-shell-sidebar-collapsed);
+    min-width: var(--cp-shell-sidebar-collapsed);
+    height: 100%;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgb(6 10 22 / 99%), rgb(3 6 16 / 100%));
+    border-right: 1px solid rgb(101 131 255 / 14%);
+    box-shadow: 4px 0 28px rgb(0 0 0 / 55%);
+    transition: width var(--cp-shell-transition), min-width var(--cp-shell-transition);
+}
+
+.sidebar:hover,
+.sidebar:focus-within {
+    --label-opacity: 1;
+    width: var(--cp-shell-sidebar-expanded);
+    min-width: var(--cp-shell-sidebar-expanded);
+}
+
+/* Labels fade with the rail; kept out of layout flow width so text doesn't wrap */
+.wordmark,
+.navLabel,
+.navSoon,
+.quests,
+.rankCopy {
+    opacity: var(--label-opacity);
+    transition: opacity 0.22s ease;
+    white-space: nowrap;
+}
+
+/* Brand / logo */
+.brand {
+    height: var(--cp-shell-header-height);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 18px;
+    border: none;
+    border-bottom: 1px solid rgb(101 131 255 / 10%);
+    border-radius: 0;
+    background: transparent;
+    cursor: pointer;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.brand:hover {
+    box-shadow: none;
+    border-color: transparent;
+    border-bottom-color: rgb(101 131 255 / 10%);
+}
+
+.logo {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+    animation: cp-orb-float 4s ease-in-out infinite;
+}
+
+.wordmark {
+    font-family: var(--cp-title-font);
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 2.5px;
+    color: rgb(181 140 255 / 75%);
+    text-transform: uppercase;
+}
+
+/* Nav list */
+.nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+    gap: 2px;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.navItem {
+    --tone-rgb: 125 214 255;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: var(--cp-shell-nav-item-height);
+    padding: 0 18px;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    cursor: pointer;
+    overflow: hidden;
+    text-align: left;
+    transition: background 0.18s ease;
+}
+
+.navItem.cyan {
+    --tone-rgb: 125 214 255;
+}
+.navItem.violet {
+    --tone-rgb: 181 140 255;
+}
+.navItem.magenta {
+    --tone-rgb: 255 123 203;
+}
+.navItem.amber {
+    --tone-rgb: 255 207 112;
+}
+.navItem.emerald {
+    --tone-rgb: 15 255 174;
+}
+
+.navItem:hover:not(:disabled) {
+    background: rgb(125 214 255 / 5%);
+    box-shadow: none;
+    border-color: transparent;
+    border-left-color: rgb(var(--tone-rgb) / 45%);
+}
+
+.navItem.isActive {
+    background: rgb(var(--tone-rgb) / 8%);
+    border-left-color: rgb(var(--tone-rgb) / 100%);
+}
+
+.navItem.isDeferred {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.navIcon {
+    display: flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.navIcon img {
+    display: block;
+    width: 24px;
+    height: 24px;
+    opacity: 0.72;
+    transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.navItem:hover:not(:disabled) .navIcon img,
+.navItem.isActive .navIcon img {
+    opacity: 1;
+}
+
+.navItem.isActive .navIcon img {
+    filter: drop-shadow(0 0 5px rgb(var(--tone-rgb) / 55%));
+}
+
+.navLabel {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: rgb(195 210 255 / 78%);
+}
+
+.navItem.isActive .navLabel {
+    color: rgb(var(--tone-rgb) / 100%);
+}
+
+.navSoon {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: rgb(195 210 255 / 45%);
+    border: 1px solid rgb(101 131 255 / 22%);
+    border-radius: 999px;
+    padding: 2px 7px;
+    flex-shrink: 0;
+}
+
+/* Divider */
+.divider {
+    height: 1px;
+    flex-shrink: 0;
+    background: linear-gradient(90deg, transparent, rgb(101 131 255 / 18%), transparent);
+}
+
+/* Quests (placeholder) */
+.quests {
+    flex-shrink: 0;
+    padding: 14px;
+    overflow: hidden;
+}
+
+.sectionTitle {
+    font-family: var(--cp-title-font);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgb(125 214 255 / 50%);
+    margin-bottom: 12px;
+}
+
+.questList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.questRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.questLabel {
+    font-size: 11px;
+    color: rgb(195 210 255 / 70%);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 140px;
+}
+
+.questReward {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgb(15 255 174 / 90%);
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.questTrack {
+    height: 3px;
+    background: rgb(255 255 255 / 6%);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.questFill {
+    height: 100%;
+    background: var(--cp-gradient-line);
+    border-radius: 2px;
+    box-shadow: 0 0 5px rgb(125 214 255 / 40%);
+}
+
+/* Rank footer (placeholder) */
+.rank {
+    flex-shrink: 0;
+    border-top: 1px solid rgb(101 131 255 / 10%);
+    padding: 12px 18px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow: hidden;
+}
+
+.rankIcon {
+    font-size: 18px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 6px rgb(255 215 0 / 60%));
+}
+
+.rankTitle {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--cp-gold);
+    letter-spacing: 0.6px;
+}
+
+.rankSub {
+    font-size: 10px;
+    color: rgb(195 210 255 / 45%);
+    margin-top: 2px;
+}
+
+@media (max-width: 720px) {
+    .sidebar,
+    .sidebar:hover,
+    .sidebar:focus-within {
+        width: var(--cp-shell-sidebar-collapsed);
+        min-width: var(--cp-shell-sidebar-collapsed);
+        --label-opacity: 0;
+    }
+    .quests {
+        display: none;
+    }
+}
+
+@keyframes cp-orb-float {
+    0%,
+    100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-12px) rotate(4deg);
+    }
+}

@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useAccount, useReadContracts } from 'wagmi';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useAccount } from 'wagmi';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { useAuth } from '@shared/core';
-import { getPopularTokens } from '@constants/tokens';
+import { useAccountTokenBalances } from '@hooks/useAccountTokenBalances';
 import { Tones } from '@constants/tones';
 import { NeonButton, NeonCard } from '@components/ui';
 import Icon, { CheckIcon, CopyIcon } from '@components/ui/icon';
@@ -13,17 +13,8 @@ import {
 } from '@components/wallet/network-switcher';
 import TokenBalance from '@components/wallet/token-balance';
 import NativeBalance from '@components/wallet/native-balance';
-import './index.css';
-
-const ERC20_BALANCE_OF_ABI = [
-    {
-        type: 'function',
-        name: 'balanceOf',
-        stateMutability: 'view',
-        inputs: [{ name: 'owner', type: 'address' }],
-        outputs: [{ name: '', type: 'uint256' }],
-    },
-] as const;
+import clsx from 'clsx';
+import styles from './index.module.css';
 
 interface CopyableAddressProps {
     address: string;
@@ -33,7 +24,7 @@ interface CopyableAddressProps {
 
 const CopyableAddress: React.FC<CopyableAddressProps> = ({ address, isCopied, onCopy }) => (
     <div
-        className={`address ${isCopied ? 'copied' : ''}`}
+        className={clsx(styles.address, isCopied && styles.copied)}
         role="button"
         tabIndex={0}
         onClick={onCopy}
@@ -45,13 +36,13 @@ const CopyableAddress: React.FC<CopyableAddressProps> = ({ address, isCopied, on
         }}
         title={isCopied ? 'Address copied!' : 'Click to copy address'}
     >
-        <span className="address-text">{address}</span>
-        <span className="copy-icon">
+        <span className={styles.addressText}>{address}</span>
+        <span className={styles.copyIcon}>
             <Icon
                 as={isCopied ? CheckIcon : CopyIcon}
                 tone={isCopied ? Tones.Emerald : Tones.Cyan}
                 glow="none"
-                className="no-gap"
+                noGap
             />
         </span>
     </div>
@@ -72,27 +63,14 @@ const AccountDropdown: React.FC = () => {
 
     const { isAuthenticated, logout, signAndLogin, isSigning, isVerifying, isNonceLoading } =
         useAuth();
-    const popularTokens = useMemo(() => getPopularTokens(chain?.id), [chain?.id]);
 
-    // ERC-20 balances via a single typed multicall (react-query cached), fetched
-    // only while the dropdown is open and an EVM wallet is connected.
-    const tokenContracts = useMemo(
-        () =>
-            address
-                ? popularTokens.map((token) => ({
-                      address: token.address as `0x${string}`,
-                      abi: ERC20_BALANCE_OF_ABI,
-                      functionName: 'balanceOf' as const,
-                      args: [address] as const,
-                  }))
-                : [],
-        [address, popularTokens],
+    // ERC-20 balances (single typed multicall, react-query cached), fetched only
+    // while the dropdown is open and an EVM wallet is connected.
+    const { popularTokens, tokenBalances, allFetched, withBalanceCount } = useAccountTokenBalances(
+        chain?.id,
+        address,
+        isOpen,
     );
-    const { data: tokenResults, isLoading: isTokensLoading } = useReadContracts({
-        contracts: tokenContracts,
-        allowFailure: true,
-        query: { enabled: isOpen && Boolean(address) && popularTokens.length > 0 },
-    });
 
     const handleCopyAny = useCallback(async (text: string) => {
         try {
@@ -108,21 +86,6 @@ const AccountDropdown: React.FC = () => {
         setCopiedAddress(text);
         globalThis.setTimeout(() => setCopiedAddress(null), 2000);
     }, []);
-
-    const tokenBalances = useMemo(
-        () =>
-            popularTokens.map((token, idx) => {
-                const res = tokenResults?.[idx];
-                const balance = res?.status === 'success' ? res.result : undefined;
-                return { token, balance };
-            }),
-        [popularTokens, tokenResults],
-    );
-    const allFetched =
-        !isTokensLoading && tokenResults != null && tokenResults.length === popularTokens.length;
-    const withBalanceCount = tokenBalances.filter(
-        (t) => typeof t.balance === 'bigint' && t.balance > 0n,
-    ).length;
 
     useEffect(() => {
         const handleClickOutside = (event: globalThis.MouseEvent) => {
@@ -178,7 +141,7 @@ const AccountDropdown: React.FC = () => {
             <div className="account-dropdown">
                 <NeonButton
                     tone={Tones.Azure}
-                    className="connect-btn"
+                    className={styles.connectBtn}
                     onClick={() => setShowAuthFlow(true)}
                 >
                     Connect Wallet
@@ -191,9 +154,9 @@ const AccountDropdown: React.FC = () => {
         <div className="account-dropdown">
             {isConnected && <EthereumNetworkSwitcher />}
             {solanaConnected && <SolanaNetworkSwitcher />}
-            <div className="dropdown" ref={dropdownRef}>
+            <div className={styles.dropdown} ref={dropdownRef}>
                 <NeonButton
-                    className="trigger"
+                    className={styles.trigger}
                     onClick={() => setIsOpen(!isOpen)}
                     tone={Tones.Azure}
                     size="sm"
@@ -202,9 +165,9 @@ const AccountDropdown: React.FC = () => {
                 </NeonButton>
 
                 {isOpen && (
-                    <NeonCard as="section" className="menu">
-                        <div className="menu-header">
-                            <div className="addresses">
+                    <NeonCard as="section" className={styles.menu}>
+                        <div className={styles.menuHeader}>
+                            <div className={styles.addresses}>
                                 {address && (
                                     <CopyableAddress
                                         address={address}
@@ -233,25 +196,25 @@ const AccountDropdown: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="menu-body">
+                        <div className={styles.menuBody}>
                             {isConnected && address && (
-                                <NeonCard as="div" className="balance">
-                                    <div className="label">Ethereum Balance</div>
+                                <NeonCard as="div" className={styles.balance}>
+                                    <div className={styles.label}>Ethereum Balance</div>
                                     <NativeBalance type="ethereum" />
                                 </NeonCard>
                             )}
 
                             {solanaConnected && solanaPublicKey && (
-                                <NeonCard as="div" className="balance">
-                                    <div className="label">Solana Balance</div>
+                                <NeonCard as="div" className={styles.balance}>
+                                    <div className={styles.label}>Solana Balance</div>
                                     <NativeBalance type="solana" />
                                 </NeonCard>
                             )}
 
                             {popularTokens.length > 0 && (
-                                <NeonCard as="div" className="tokens">
-                                    <div className="label">Token Balances</div>
-                                    <div className="list">
+                                <NeonCard as="div" className={styles.tokens}>
+                                    <div className={styles.label}>Token Balances</div>
+                                    <div className={styles.list}>
                                         {tokenBalances.map(({ token, balance }) => (
                                             <TokenBalance
                                                 key={token.address}
@@ -262,16 +225,16 @@ const AccountDropdown: React.FC = () => {
                                             />
                                         ))}
                                         {allFetched && withBalanceCount === 0 && (
-                                            <div className="empty">No ERC-20 tokens</div>
+                                            <div className={styles.empty}>No ERC-20 tokens</div>
                                         )}
                                     </div>
                                 </NeonCard>
                             )}
 
-                            <div className="actions">
+                            <div className={styles.actions}>
                                 {!isAuthenticated ? (
                                     <NeonButton
-                                        className="action"
+                                        className={styles.action}
                                         onClick={handleSignAndLogin}
                                         disabled={isNonceLoading || isSigning || isVerifying}
                                         tone={Tones.Azure}
@@ -288,7 +251,7 @@ const AccountDropdown: React.FC = () => {
                                     </NeonButton>
                                 ) : (
                                     <NeonButton
-                                        className="action"
+                                        className={styles.action}
                                         onClick={handleLogout}
                                         tone={Tones.Cyan}
                                         size="sm"
@@ -300,7 +263,7 @@ const AccountDropdown: React.FC = () => {
 
                                 {(isConnected || user || primaryWallet) && (
                                     <NeonButton
-                                        className="action"
+                                        className={styles.action}
                                         onClick={handleDisconnect}
                                         tone={Tones.Amber}
                                         size="sm"
@@ -312,7 +275,7 @@ const AccountDropdown: React.FC = () => {
 
                                 {solanaConnected && (
                                     <NeonButton
-                                        className="action"
+                                        className={styles.action}
                                         onClick={() => {
                                             solanaDisconnect();
                                             setIsOpen(false);

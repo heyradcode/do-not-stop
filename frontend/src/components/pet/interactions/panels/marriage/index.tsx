@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import clsx from 'clsx';
 import { useQueryClient } from '@tanstack/react-query';
 import {
     useChainCapabilities,
@@ -18,7 +19,7 @@ import AcceptTab from './parts/accept-tab';
 import ActiveMarriages from './parts/active-marriages';
 import AcceptConfirmDialog from './parts/accept-confirm-dialog';
 import type { MarriagePanelProps, MarriageTab, PendingAccept } from './types';
-import './index.css';
+import styles from './index.module.css';
 
 const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }) => {
     const { kind, activeKind, walletAddress } = useChainCapabilities();
@@ -108,7 +109,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
 
     return (
         <>
-            <div className="interface marriage-interface">
+            <div className={clsx('interface', styles.root)}>
                 {!isStandaloneView && (
                     <>
                         <h4>💍 Marriage</h4>
@@ -123,15 +124,31 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
                 />
 
                 {tab === 'propose' && (
-                    <ProposeTab
-                        chainPets={chainPets}
-                        chain={activeKind}
-                        walletAddress={walletAddress}
-                        busy={busy}
-                        isProposing={marriage.propose.isPending}
-                        onPropose={handlePropose}
-                        onCancelProposal={handleCancel}
-                    />
+                    <>
+                        <div className={styles.benefits}>
+                            <span className={styles.benefitsHeart} aria-hidden>
+                                💝
+                            </span>
+                            <div>
+                                <div className={styles.benefitsTitle}>
+                                    Marriage unlocks cross-owner breeding
+                                </div>
+                                <div className={styles.benefitsSub}>
+                                    Bond two pets to breed across wallets — propose, accept, or
+                                    divorce anytime.
+                                </div>
+                            </div>
+                        </div>
+                        <ProposeTab
+                            chainPets={chainPets}
+                            chain={activeKind}
+                            walletAddress={walletAddress}
+                            busy={busy}
+                            isProposing={marriage.propose.isPending}
+                            onPropose={handlePropose}
+                            onCancelProposal={handleCancel}
+                        />
+                    </>
                 )}
 
                 {tab === 'accept' && (

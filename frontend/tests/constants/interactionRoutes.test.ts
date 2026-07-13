@@ -1,42 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-    isInteractionRoute,
-    INTERACTION_ROUTES,
     DASHBOARD_HOME,
     BREED_PATH,
     BATTLE_PATH,
 } from '@constants/interactionRoutes';
 
-describe('isInteractionRoute', () => {
-    it('returns true for a top-level interaction path', () => {
-        expect(isInteractionRoute('/breed')).toBe(true);
-        expect(isInteractionRoute('/battle')).toBe(true);
-        expect(isInteractionRoute('/train')).toBe(true);
-    });
-
-    it('strips a trailing slash before checking', () => {
-        expect(isInteractionRoute('/breed/')).toBe(true);
-    });
-
-    it('returns false for the dashboard home', () => {
-        expect(isInteractionRoute('/dashboard')).toBe(false);
-    });
-
-    it('returns false for an unrelated path', () => {
-        expect(isInteractionRoute('/profile')).toBe(false);
-    });
-
-    it('returns false for an empty string (treated as root /)', () => {
-        expect(isInteractionRoute('')).toBe(false);
-    });
-});
-
-describe('constants', () => {
-    it('INTERACTION_ROUTES contains all six interaction paths', () => {
-        expect(INTERACTION_ROUTES).toHaveLength(6);
-        expect(INTERACTION_ROUTES).toContain('/breed');
-    });
-
+describe('interaction route constants', () => {
     it('DASHBOARD_HOME is /main', () => {
         expect(DASHBOARD_HOME).toBe('/main');
     });

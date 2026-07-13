@@ -2,6 +2,7 @@ import React from 'react';
 import type { Pet, PetChain } from '@shared/core';
 import PendingBreedNotice from './pending-breed-notice';
 import SpouseLabel from './spouse-label';
+import styles from '../index.module.css';
 
 type WithSpouseTabProps = {
     allPets: { id: string; pet: Pet }[];
@@ -33,84 +34,118 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
     studFeeLabel,
     areRelated,
     showPendingNotices,
-}) => (
-    <div className="breed-tab-panel">
-        <p className="breed-tab-hint">Select one of your pets to breed with their spouse.</p>
-        <div className="picker">
-            <div className="field">
-                <label htmlFor="breed-spouse-pet">Your pet</label>
-                <select id="breed-spouse-pet" value={spousePetId} onChange={(e) => onSpousePetChange(e.target.value)}>
-                    <option value="">Select pet…</option>
-                    {allPets.map(({ id, pet }) => (
-                        <option key={id} value={id}>
-                            {pet.name} (Lv {pet.level}){pet.spouseId ? ` ↔ #${pet.spouseId}` : ''}
-                        </option>
-                    ))}
-                </select>
-            </div>
-            <div className="field">
-                <span className="field-label">Partner&apos;s pet</span>
-                <div className="spouse-value">
-                    {!spousePetId ? (
-                        <span className="spouse-placeholder">— select your pet first —</span>
-                    ) : marriageLoading ? (
-                        <span className="spouse-placeholder">Checking…</span>
-                    ) : spouseId ? (
-                        <SpouseLabel chain={chain} spouseId={spouseId} />
-                    ) : (
-                        <span className="spouse-placeholder">Not married</span>
-                    )}
-                </div>
-            </div>
-        </div>
+}) => {
+    const selected = allPets.find(({ id }) => id === spousePetId)?.pet ?? null;
 
-        {/* Not-married hint */}
-        {spousePetId && !marriageLoading && !isMarried && (
-            <div className="breed-no-married">
-                <p>This pet is not married yet.</p>
-                <p>
-                    Go to the <strong>Marriage</strong> page to propose first.
-                </p>
-            </div>
-        )}
+    const cycle = (dir: 1 | -1) => {
+        if (allPets.length === 0) return;
+        const idx = allPets.findIndex(({ id }) => id === spousePetId);
+        const base = idx < 0 ? 0 : idx;
+        const next = allPets[(base + dir + allPets.length) % allPets.length];
+        onSpousePetChange(next.id);
+    };
 
-        {/* Married — show stud fee + breed inputs */}
-        {spouseId && (
-            <>
-                {studFeeLabel && (
-                    <div className="stud-fee-notice">
-                        Stud fee: <strong>{studFeeLabel}</strong> — paid to the spouse owner.
+    return (
+        <div className={styles.tabPanel}>
+            <p className={styles.tabHint}>Cycle to a married pet to breed with its spouse.</p>
+            <div className="picker">
+                <div className="field">
+                    <span className="field-label">Your pet</span>
+                    <div className={styles.cycleSelect}>
+                        <button
+                            type="button"
+                            className={styles.cycleBtn}
+                            onClick={() => cycle(-1)}
+                            aria-label="Previous pet"
+                            disabled={allPets.length === 0}
+                        >
+                            ◀
+                        </button>
+                        <div className={styles.cycleCurrent}>
+                            {selected ? (
+                                <>
+                                    {selected.name} · Lv {selected.level}
+                                    {selected.spouseId ? ` ↔ #${selected.spouseId}` : ''}
+                                </>
+                            ) : (
+                                <span className={styles.spousePlaceholder}>Select a pet</span>
+                            )}
+                        </div>
+                        <button
+                            type="button"
+                            className={styles.cycleBtn}
+                            onClick={() => cycle(1)}
+                            aria-label="Next pet"
+                            disabled={allPets.length === 0}
+                        >
+                            ▶
+                        </button>
                     </div>
-                )}
-                {areRelated && (
-                    <p className="breed-relative-warning">
-                        Your pet and their spouse are relatives and cannot breed together.
-                    </p>
-                )}
-                {/* Only show recovery notice for the user's own pet.
-                    The spouse's pet also has a pending flag while the breed
-                    is in-flight, but the user can't settle/cancel it and
-                    showing those buttons there is confusing. */}
-                {showPendingNotices && (
-                    <PendingBreedNotice
-                        petId={spousePetId || undefined}
-                        label={`#${spousePetId}`}
-                    />
-                )}
-                <div className="name-input">
-                    <label htmlFor="breed-spouse-offspring-name">Offspring Name</label>
-                    <input
-                        id="breed-spouse-offspring-name"
-                        type="text"
-                        value={childName}
-                        onChange={(e) => onChildNameChange(e.target.value)}
-                        placeholder="Name for the new pet…"
-                        maxLength={20}
-                    />
                 </div>
-            </>
-        )}
-    </div>
-);
+                <div className="field">
+                    <span className="field-label">Partner&apos;s pet</span>
+                    <div className={styles.spouseValue}>
+                        {!spousePetId ? (
+                            <span className={styles.spousePlaceholder}>— select your pet first —</span>
+                        ) : marriageLoading ? (
+                            <span className={styles.spousePlaceholder}>Checking…</span>
+                        ) : spouseId ? (
+                            <SpouseLabel chain={chain} spouseId={spouseId} />
+                        ) : (
+                            <span className={styles.spousePlaceholder}>Not married</span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Not-married hint */}
+            {spousePetId && !marriageLoading && !isMarried && (
+                <div className={styles.noMarried}>
+                    <p>This pet is not married yet.</p>
+                    <p>
+                        Go to the <strong>Marriage</strong> page to propose first.
+                    </p>
+                </div>
+            )}
+
+            {/* Married — show stud fee + breed inputs */}
+            {spouseId && (
+                <>
+                    {studFeeLabel && (
+                        <div className={styles.studFeeNotice}>
+                            Stud fee: <strong>{studFeeLabel}</strong> — paid to the spouse owner.
+                        </div>
+                    )}
+                    {areRelated && (
+                        <p className={styles.relativeWarning}>
+                            Your pet and their spouse are relatives and cannot breed together.
+                        </p>
+                    )}
+                    {/* Only show recovery notice for the user's own pet.
+                        The spouse's pet also has a pending flag while the breed
+                        is in-flight, but the user can't settle/cancel it and
+                        showing those buttons there is confusing. */}
+                    {showPendingNotices && (
+                        <PendingBreedNotice
+                            petId={spousePetId || undefined}
+                            label={`#${spousePetId}`}
+                        />
+                    )}
+                    <div className="name-input">
+                        <label htmlFor="breed-spouse-offspring-name">Offspring Name</label>
+                        <input
+                            id="breed-spouse-offspring-name"
+                            type="text"
+                            value={childName}
+                            onChange={(e) => onChildNameChange(e.target.value)}
+                            placeholder="Name for the new pet…"
+                            maxLength={20}
+                        />
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
 
 export default WithSpouseTab;

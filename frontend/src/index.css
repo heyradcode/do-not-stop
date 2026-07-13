@@ -1,8 +1,9 @@
 @import './styles/variables.css';
+@import './styles/animations.css';
 @import './styles/messages.css';
 
 :root {
-    font-family: var(--content-font);
+    font-family: var(--cp-content-font);
     line-height: 1.5;
     font-weight: 400;
 
@@ -22,7 +23,7 @@ h3,
 h4,
 h5,
 h6 {
-    font-family: var(--title-font);
+    font-family: var(--cp-title-font);
     letter-spacing: 0.5px;
 }
 
@@ -34,7 +35,7 @@ a {
 
     &:hover {
         color: var(--cp-link-hover);
-        text-shadow: 0 0 8px var(--neon-text-glow);
+        text-shadow: 0 0 8px var(--cp-text-glow);
     }
 }
 

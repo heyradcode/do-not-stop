@@ -7,6 +7,7 @@ import {
     type PetChain,
 } from '@shared/core';
 import { AuthActionButton } from '@components/common';
+import styles from '../index.module.css';
 
 type MarriageCardProps = {
     pet: Pet;
@@ -34,20 +35,20 @@ const MarriageCard: React.FC<MarriageCardProps> = ({ pet, chain, petById, onDivo
     const spouseLevel = fromMap?.level ?? fetched.level;
 
     return (
-        <li className="marriage-card">
-            <div className="marriage-pair">
-                <div className="marriage-partner">
-                    <span className="partner-name">{pet.name}</span>
-                    <span className="partner-meta">
+        <li className={styles.card}>
+            <div className={styles.pair}>
+                <div className={styles.partner}>
+                    <span className={styles.partnerName}>{pet.name}</span>
+                    <span className={styles.partnerMeta}>
                         #{pet.id} · Lv {pet.level}
                     </span>
                 </div>
-                <span className="marriage-heart" aria-hidden>
+                <span className={styles.heart} aria-hidden>
                     ❤
                 </span>
-                <div className="marriage-partner">
-                    <span className="partner-name">{spouseName}</span>
-                    <span className="partner-meta">
+                <div className={styles.partner}>
+                    <span className={styles.partnerName}>{spouseName}</span>
+                    <span className={styles.partnerMeta}>
                         #{spouseId}
                         {spouseLevel != null ? ` · Lv ${spouseLevel}` : ''}
                     </span>

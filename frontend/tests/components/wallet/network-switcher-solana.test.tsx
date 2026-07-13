@@ -42,7 +42,7 @@ describe('SolanaNetworkSwitcher', () => {
         await userEvent.click(screen.getByRole('button', { name: /Solana Local/ }));
 
         expect(screen.getByText('Select Solana Network')).toBeInTheDocument();
-        const active = screen.getByText('Solana Local', { selector: '.option-name' }).closest('button');
+        const active = screen.getByText('Solana Local', { selector: '.optionName' }).closest('button');
         expect(active).toHaveClass('option', 'active');
     });
 
@@ -51,7 +51,7 @@ describe('SolanaNetworkSwitcher', () => {
         render(<SolanaNetworkSwitcher />);
         await userEvent.click(screen.getByRole('button', { name: /Solana Local/ }));
 
-        await userEvent.click(screen.getByText('Devnet', { selector: '.option-name' }));
+        await userEvent.click(screen.getByText('Devnet', { selector: '.optionName' }));
 
         // Modal closed; trigger now reflects the new network.
         expect(screen.queryByText('Select Solana Network')).not.toBeInTheDocument();

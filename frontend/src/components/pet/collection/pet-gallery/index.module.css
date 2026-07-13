@@ -1,0 +1,590 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+   Idle gallery — stat strip + leaderboard + pet card grid (redesign mock). */
+
+.idle {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.idleMessage {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: rgb(195 210 255 / 75%);
+
+    & h2 {
+        margin: 0;
+        font-family: var(--cp-title-font);
+        font-size: var(--cp-font-size-lg);
+        letter-spacing: 0.6px;
+        color: #f6f3ff;
+        text-shadow: 0 0 12px var(--cp-text-glow);
+    }
+
+    & p {
+        margin: 0;
+        font-size: var(--cp-font-size-sm);
+        color: rgb(195 210 255 / 60%);
+    }
+}
+
+/* ── Stat strip ─────────────────────────────────────────────────────────── */
+.stats {
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    border: 1px solid rgb(101 131 255 / 20%);
+    background: var(--cp-surface);
+}
+
+.statIcon {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.statBody {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.statValue {
+    font-family: var(--cp-title-font);
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.statLabel {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgb(195 210 255 / 50%);
+    margin-top: 3px;
+}
+
+.cyan {
+    border-color: rgb(125 214 255 / 20%);
+    background: linear-gradient(135deg, rgb(125 214 255 / 9%), rgb(181 140 255 / 6%));
+}
+.cyan .statValue {
+    color: var(--cp-cyan);
+}
+.violet {
+    border-color: rgb(181 140 255 / 20%);
+    background: linear-gradient(135deg, rgb(181 140 255 / 9%), rgb(255 123 203 / 6%));
+}
+.violet .statValue {
+    color: var(--cp-violet);
+}
+.gold {
+    border-color: rgb(255 215 0 / 20%);
+    background: linear-gradient(135deg, rgb(255 215 0 / 9%), rgb(255 207 112 / 6%));
+}
+.gold .statValue {
+    color: var(--cp-gold);
+}
+
+/* ── Leaderboard (placeholder) — full-width row, horizontal entries ──────── */
+.leaderboard {
+    flex-shrink: 0;
+    overflow: hidden;
+    padding: 12px 18px;
+    border-radius: 10px;
+    border: 1px solid rgb(101 131 255 / 16%);
+    background: linear-gradient(180deg, rgb(10 16 32 / 90%), rgb(6 10 22 / 95%));
+}
+
+.leaderboardTitle {
+    font-family: var(--cp-title-font);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: rgb(125 214 255 / 50%);
+    margin-bottom: 9px;
+}
+
+.leaderboardList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 8px;
+}
+
+.lbRow {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: rgb(5 13 30 / 55%);
+    border: 1px solid rgb(101 131 255 / 12%);
+}
+
+.lbRow.isMe {
+    background: rgb(255 215 0 / 8%);
+    border-color: rgb(255 215 0 / 25%);
+}
+
+.lbRank {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgb(195 210 255 / 55%);
+    flex-shrink: 0;
+}
+
+.lbRow.isMe .lbRank {
+    color: var(--cp-gold);
+}
+
+.lbName {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgb(195 210 255 / 78%);
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lbRow.isMe .lbName {
+    font-weight: 700;
+    color: #f6f3ff;
+}
+
+.lbTier {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgb(195 210 255 / 55%);
+    flex-shrink: 0;
+}
+
+/* ── Pet grid ───────────────────────────────────────────────────────────── */
+.petGrid {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 14px;
+    align-content: start;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(125 214 255 / 35%) transparent;
+
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, var(--cp-cyan), var(--cp-violet));
+        border-radius: 3px;
+    }
+}
+
+/* ── Pet card ───────────────────────────────────────────────────────────── */
+.petCard {
+    display: flex;
+    flex-direction: column;
+    min-height: 280px;
+    border-radius: 12px;
+    border: 1px solid rgb(101 131 255 / 22%);
+    background: var(--cp-surface);
+    box-shadow: 0 4px 20px rgb(0 0 0 / 45%);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.petCard:hover {
+    border-color: rgb(181 140 255 / 42%);
+    box-shadow: 0 8px 32px rgb(0 0 0 / 65%), 0 0 18px rgb(181 140 255 / 10%);
+}
+
+.petCard:focus-within {
+    outline: 2px solid var(--cp-violet);
+    outline-offset: 2px;
+}
+
+.rarityBar {
+    height: 3px;
+    border-radius: 12px 12px 0 0;
+    flex-shrink: 0;
+}
+
+.visual {
+    position: relative;
+    height: 130px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: radial-gradient(circle at 30% 30%, rgb(181 140 255 / 20%), transparent 60%), #070e1e;
+    border-bottom: 1px solid rgb(101 131 255 / 12%);
+}
+
+.avatar {
+    font-size: 3.4rem;
+    line-height: 1;
+    animation: cp-float 3.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 16px rgb(181 140 255 / 50%));
+}
+
+.rarity {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    border: 1px solid;
+    border-radius: 3px;
+    padding: 2px 7px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+    background: rgb(5 13 30 / 55%);
+}
+
+.level {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgb(5 13 30 / 88%);
+    color: var(--cp-cyan);
+    border: 1px solid rgb(125 214 255 / 32%);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.skill {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgb(255 207 112 / 10%);
+    color: var(--cp-amber);
+    border: 1px solid rgb(255 207 112 / 28%);
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: 9px;
+    font-weight: 700;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.info {
+    padding: 12px 14px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.name {
+    font-family: var(--cp-title-font);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: #f6f3ff;
+}
+
+.petClass {
+    font-size: 10px;
+    color: rgb(195 210 255 / 50%);
+    margin-top: 2px;
+}
+
+.hp {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    background: rgb(15 255 174 / 7%);
+    border: 1px solid rgb(15 255 174 / 22%);
+    border-radius: 5px;
+    padding: 4px 7px;
+}
+
+.hpLabel {
+    font-size: 8px;
+    color: rgb(195 210 255 / 45%);
+}
+
+.hpValue {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--cp-emerald);
+}
+
+.xpRow {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.xpLabel {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgb(125 214 255 / 50%);
+}
+
+.xpValue {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--cp-cyan);
+}
+
+.xpTrack {
+    height: 5px;
+    background: var(--cp-inset);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.xpFill {
+    height: 100%;
+    background: var(--cp-gradient-line);
+    border-radius: 999px;
+    box-shadow: 0 0 8px rgb(181 140 255 / 50%);
+}
+
+.record {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+
+.wins {
+    color: rgb(125 214 255 / 82%);
+    font-weight: 700;
+}
+.sep {
+    color: rgb(195 210 255 / 25%);
+}
+.losses {
+    color: rgb(195 210 255 / 50%);
+    font-weight: 600;
+}
+.dot {
+    color: rgb(195 210 255 / 20%);
+    margin: 0 2px;
+}
+.wr {
+    color: rgb(195 210 255 / 38%);
+}
+
+.cardStats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 10px 14px 0;
+}
+
+.statTile {
+    background: rgb(5 13 30 / 70%);
+    border: 1px solid rgb(101 131 255 / 12%);
+    border-radius: 4px;
+    padding: 5px 4px;
+    text-align: center;
+}
+
+.tileLabel {
+    font-size: 8px;
+    text-transform: uppercase;
+    color: rgb(195 210 255 / 40%);
+}
+
+.tileValue {
+    font-size: 12px;
+    font-weight: 700;
+    color: #f6f3ff;
+    margin-top: 1px;
+}
+
+.status {
+    padding: 8px 14px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cooldown {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgb(255 181 67 / 8%);
+    color: #ffd07b;
+    border: 1px solid rgb(255 181 67 / 36%);
+}
+
+.actions {
+    margin-top: auto;
+    padding: 10px 14px 14px;
+    display: flex;
+    gap: 8px;
+}
+
+.battleBtn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--cp-magenta);
+    border: 1px solid rgb(255 123 203 / 32%);
+    background: linear-gradient(135deg, rgb(255 123 203 / 10%), rgb(181 140 255 / 10%));
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.battleBtn:hover {
+    background: linear-gradient(135deg, rgb(255 123 203 / 20%), rgb(181 140 255 / 15%));
+    box-shadow: 0 0 16px rgb(255 123 203 / 28%);
+    border-color: rgb(255 123 203 / 32%);
+}
+
+.sendBtn {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    padding: 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
+    color: #9effd4;
+    border: 1px solid rgb(0 255 157 / 42%);
+}
+
+.sendBtn.onCooldown {
+    color: #ffd07b;
+    border-color: rgb(255 181 67 / 44%);
+}
+
+.sendBtn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 12px rgb(0 255 157 / 24%);
+}
+
+/* ── Summon tile ────────────────────────────────────────────────────────── */
+.summonTile {
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border-radius: 12px;
+    border: 1px dashed rgb(125 214 255 / 18%);
+    background: rgb(5 13 30 / 40%);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.summonTile:hover {
+    background: rgb(125 214 255 / 4%);
+    border-color: rgb(125 214 255 / 38%);
+    box-shadow: none;
+}
+
+.summonPlus {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: rgb(125 214 255 / 45%);
+    background: rgb(125 214 255 / 9%);
+    border: 1px solid rgb(125 214 255 / 22%);
+}
+
+.summonLabel {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgb(125 214 255 / 45%);
+}
+
+/* Local copy of the shared float keyframe: the global cp-float in
+   styles/animations.css is still used by 4 non-module stylesheets, so a module
+   reference can't resolve to it — CSS Modules scope animation-name. */
+@keyframes cp-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-9px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .petCard,
+    .sendBtn {
+        transition: none;
+    }
+    .avatar {
+        animation: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .stats {
+        grid-template-columns: 1fr;
+    }
+    .leaderboardList {
+        flex-direction: column;
+    }
+    .petGrid {
+        grid-template-columns: 1fr;
+    }
+}

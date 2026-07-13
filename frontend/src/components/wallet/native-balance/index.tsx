@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import clsx from 'clsx';
 import { useAccount, useBalance } from 'wagmi';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { formatEther } from 'viem';
@@ -6,7 +7,7 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { getNativeTokenSymbol } from '@constants/chains/ethereum';
 import { Tones } from '@constants/tones';
 import Icon, { WarningIcon } from '@components/ui/icon';
-import './index.css';
+import styles from './index.module.css';
 
 export type BalanceType = 'ethereum' | 'solana';
 
@@ -77,8 +78,8 @@ const NativeBalance: React.FC<NativeBalanceProps> = ({ type, className }) => {
 
     if (isLoading) {
         return (
-            <div className={`native-balance ${className || ''}`}>
-                <div className="balance-loading">
+            <div className={clsx(styles.nativeBalance, className)}>
+                <div className={styles.balanceLoading}>
                     <div className="loading-spinner"></div>
                     <span>Loading balance...</span>
                 </div>
@@ -88,8 +89,8 @@ const NativeBalance: React.FC<NativeBalanceProps> = ({ type, className }) => {
 
     if (error) {
         return (
-            <div className={`native-balance ${className || ''}`}>
-                <div className="balance-error">
+            <div className={clsx(styles.nativeBalance, className)}>
+                <div className={styles.balanceError}>
                     <span>
                         <Icon as={WarningIcon} tone={Tones.Amber} />
                         Error loading balance
@@ -106,10 +107,10 @@ const NativeBalance: React.FC<NativeBalanceProps> = ({ type, className }) => {
     // Show balance even if it's 0
     if (type === 'solana' && balance === 0) {
         return (
-            <div className={`native-balance ${className || ''}`}>
-                <div className="balance-info">
-                    <span className="balance-amount">0.0000</span>
-                    <span className="balance-symbol">SOL</span>
+            <div className={clsx(styles.nativeBalance, className)}>
+                <div className={styles.balanceInfo}>
+                    <span className={styles.balanceAmount}>0.0000</span>
+                    <span className={styles.balanceSymbol}>SOL</span>
                 </div>
             </div>
         );
@@ -127,10 +128,10 @@ const NativeBalance: React.FC<NativeBalanceProps> = ({ type, className }) => {
     }
 
     return (
-        <div className={`native-balance ${className || ''}`}>
-            <div className="balance-info">
-                <span className="balance-amount">{parseFloat(formattedBalance).toFixed(4)}</span>
-                <span className="balance-symbol">{symbol}</span>
+        <div className={clsx(styles.nativeBalance, className)}>
+            <div className={styles.balanceInfo}>
+                <span className={styles.balanceAmount}>{parseFloat(formattedBalance).toFixed(4)}</span>
+                <span className={styles.balanceSymbol}>{symbol}</span>
             </div>
         </div>
     );

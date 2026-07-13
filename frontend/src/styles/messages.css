@@ -1,46 +1,16 @@
 /* Global form/flow alerts — use class names only; no per-component copy. */
 
-.error-message,
 .success-message {
     border-radius: 2px;
-    padding: var(--spacing-sm);
-    margin-block-start: var(--spacing-md);
-    font-size: var(--font-size-sm);
+    padding: var(--cp-spacing-sm);
+    margin-block-start: var(--cp-spacing-md);
+    font-size: var(--cp-font-size-sm);
     font-weight: 600;
     letter-spacing: 0.4px;
     max-width: 100%;
     overflow-wrap: break-word;
     text-align: start;
     box-sizing: border-box;
-}
-
-.error-message {
-    background: rgb(255 110 196 / 8%);
-    border: 1px solid rgb(255 110 196 / 38%);
-    color: #ff9ad6;
-    box-shadow: inset 0 0 12px rgb(255 110 196 / 12%), 0 0 10px rgb(255 110 196 / 18%);
-    text-shadow: 0 0 10px rgb(255 110 196 / 32%);
-
-    &.user-rejection {
-        background: rgb(125 214 255 / 6%);
-        border-color: rgb(125 214 255 / 28%);
-        color: rgb(195 210 255 / 78%);
-        box-shadow: none;
-        text-shadow: none;
-        font-style: italic;
-        font-weight: 500;
-    }
-
-    &.contract-error {
-        background: rgb(255 181 67 / 8%);
-        border-color: rgb(255 181 67 / 38%);
-        color: #ffd07b;
-        box-shadow: inset 0 0 12px rgb(255 181 67 / 12%), 0 0 10px rgb(255 181 67 / 18%);
-        text-shadow: 0 0 10px rgb(255 181 67 / 32%);
-    }
-}
-
-.success-message {
     background: rgb(0 255 157 / 8%);
     border: 1px solid rgb(0 255 157 / 38%);
     color: #9effd4;
@@ -52,4 +22,31 @@
     margin-top: 0.75rem;
     font-size: 0.9rem;
     opacity: 0.85;
+}
+
+/* Loading / error states — shared across views (gallery, interaction panels). */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--cp-spacing-2xl);
+    color: var(--cp-color-text-muted);
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgb(125 214 255 / 18%);
+    border-block-start: 3px solid var(--cp-cyan);
+    border-radius: 50%;
+    animation: cp-spin-slow 1s linear infinite;
+    margin-block-end: var(--cp-spacing-sm);
+    box-shadow: 0 0 16px rgb(125 214 255 / 30%);
+}
+
+.error-container {
+    text-align: center;
+    padding: var(--cp-spacing-2xl);
+    color: #ff9aa9;
 }

@@ -31,7 +31,7 @@
         max-width: 85%;
         padding: 8px 10px;
         border-radius: 10px;
-        border: 1px solid var(--neon-border-soft);
+        border: 1px solid var(--cp-border-soft);
         background: rgb(5 13 30 / 78%);
         animation: battle-dialogue-in 0.25s ease;
 

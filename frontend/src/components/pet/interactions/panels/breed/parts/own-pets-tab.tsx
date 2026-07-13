@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import type { Pet } from '@shared/core';
 import PendingBreedNotice from './pending-breed-notice';
+import BreedParentsPreview from './breed-parents-preview';
+import styles from '../index.module.css';
 
 type OwnPetsTabProps = {
     petCount: number;
@@ -14,6 +16,8 @@ type OwnPetsTabProps = {
     areRelated: boolean;
     /** Hide the pending-breed recovery notices while a breed is settling. */
     showPendingNotices: boolean;
+    /** Breed action button, rendered in the DNA centre between the two pets. */
+    breedAction?: React.ReactNode;
 };
 
 /** Breed two of the user's own pets together. */
@@ -28,11 +32,21 @@ const OwnPetsTab: React.FC<OwnPetsTabProps> = ({
     onChildNameChange,
     areRelated,
     showPendingNotices,
+    breedAction,
 }) => {
+    // Show a matchup immediately: default to the first two pets when nothing is
+    // chosen (mirrors the mock, where two parents are always on the table).
+    useEffect(() => {
+        if (petCount >= 2 && allPets.length >= 2 && !pet1 && !pet2) {
+            onPet1Change(allPets[0].id);
+            onPet2Change(allPets[1].id);
+        }
+    }, [petCount, allPets, pet1, pet2, onPet1Change, onPet2Change]);
+
     if (petCount < 2) {
         return (
-            <div className="breed-tab-panel">
-                <div className="breed-no-married">
+            <div className={styles.tabPanel}>
+                <div className={styles.noMarried}>
                     <p>You need at least 2 pets to breed here.</p>
                     <p>
                         Use the <strong>With Spouse</strong> tab if your pet is married.
@@ -42,37 +56,38 @@ const OwnPetsTab: React.FC<OwnPetsTabProps> = ({
         );
     }
 
+    const parentA = allPets.find(({ id }) => id === pet1)?.pet ?? null;
+    const parentB = allPets.find(({ id }) => id === pet2)?.pet ?? null;
+
+    /** Cycle `current` through the pets not held by the other parent. */
+    const cycle = (
+        current: string,
+        other: string,
+        dir: 1 | -1,
+        setter: (id: string) => void,
+    ) => {
+        const pool = allPets.filter(({ id }) => id !== other);
+        if (pool.length === 0) return;
+        const idx = pool.findIndex(({ id }) => id === current);
+        const base = idx < 0 ? 0 : idx;
+        const next = pool[(base + dir + pool.length) % pool.length];
+        setter(next.id);
+    };
+
     return (
-        <div className="breed-tab-panel">
-            <p className="breed-tab-hint">Select two of your pets to breed together.</p>
-            <div className="picker">
-                <div className="field">
-                    <label htmlFor="breed-parent1">First Parent</label>
-                    <select id="breed-parent1" value={pet1} onChange={(e) => onPet1Change(e.target.value)}>
-                        <option value="">Select pet…</option>
-                        {allPets.map(({ id, pet }) => (
-                            <option key={id} value={id}>
-                                {pet.name} (Lv {pet.level})
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="field">
-                    <label htmlFor="breed-parent2">Second Parent</label>
-                    <select id="breed-parent2" value={pet2} onChange={(e) => onPet2Change(e.target.value)}>
-                        <option value="">Select pet…</option>
-                        {allPets
-                            .filter(({ id }) => id !== pet1)
-                            .map(({ id, pet }) => (
-                                <option key={id} value={id}>
-                                    {pet.name} (Lv {pet.level})
-                                </option>
-                            ))}
-                    </select>
-                </div>
-            </div>
+        <div className={styles.tabPanel}>
+            <p className={styles.tabHint}>Cycle each side to choose two of your pets to breed.</p>
+            <BreedParentsPreview
+                petA={parentA}
+                petB={parentB}
+                action={breedAction}
+                onPrevA={() => cycle(pet1, pet2, -1, onPet1Change)}
+                onNextA={() => cycle(pet1, pet2, 1, onPet1Change)}
+                onPrevB={() => cycle(pet2, pet1, -1, onPet2Change)}
+                onNextB={() => cycle(pet2, pet1, 1, onPet2Change)}
+            />
             {areRelated && (
-                <p className="breed-relative-warning">
+                <p className={styles.relativeWarning}>
                     These pets are relatives and cannot breed together.
                 </p>
             )}

@@ -17,8 +17,9 @@ import {
     GiUpgrade,
 } from 'react-icons/gi';
 import { IoCheckmarkSharp, IoClose, IoCopy, IoPauseSharp, IoWarning } from 'react-icons/io5';
+import clsx from 'clsx';
 import { type Tone } from '@constants/tones';
-import './index.css';
+import styles from './index.module.css';
 
 export type IconTone = Exclude<Tone, 'azure'>;
 export type IconGlow = 'none' | 'soft' | 'strong';
@@ -33,23 +34,25 @@ export type IconProps = {
     size?: IconSize;
     tone?: IconTone;
     glow?: IconGlow;
+    /** Drop the trailing inline gap (icon sits flush against following content). */
+    noGap?: boolean;
     className?: string;
     title?: string;
 };
 
 const TONE_CLASS: Record<IconTone, string> = {
-    cyan: 'tone-cyan',
-    violet: 'tone-violet',
-    magenta: 'tone-magenta',
-    emerald: 'tone-emerald',
-    amber: 'tone-amber',
-    inherit: 'tone-inherit',
+    cyan: styles.cyan,
+    violet: styles.violet,
+    magenta: styles.magenta,
+    emerald: styles.emerald,
+    amber: styles.amber,
+    inherit: '',
 };
 
 const GLOW_CLASS: Record<IconGlow, string> = {
     none: '',
-    soft: 'glow-soft',
-    strong: 'glow-strong',
+    soft: styles.soft,
+    strong: styles.strong,
 };
 
 const Icon: React.FC<IconProps> = ({
@@ -57,12 +60,11 @@ const Icon: React.FC<IconProps> = ({
     size = '1em',
     tone = 'inherit',
     glow = 'soft',
+    noGap = false,
     className,
     title,
 }) => {
-    const cls = ['neon-icon', TONE_CLASS[tone], GLOW_CLASS[glow], className]
-        .filter(Boolean)
-        .join(' ');
+    const cls = clsx(styles.icon, TONE_CLASS[tone], GLOW_CLASS[glow], noGap && styles.noGap, className);
     return (
         <span
             className={cls}

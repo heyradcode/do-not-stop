@@ -1,6 +1,7 @@
 import React from 'react';
 import { type IncomingProposal } from '@shared/core';
 import IncomingProposalRow from './incoming-proposal-row';
+import styles from '../index.module.css';
 
 type AcceptTabProps = {
     proposals: IncomingProposal[];
@@ -18,17 +19,17 @@ const AcceptTab: React.FC<AcceptTabProps> = ({
     targetPetName,
     onAccept,
 }) => (
-    <div className="marriage-tab-panel">
-        <p className="marriage-tab-hint">
+    <div className={styles.tabPanel}>
+        <p className={styles.tabHint}>
             Pending proposals from other players to marry one of your pets.
         </p>
 
         {isLoading ? (
-            <div className="proposals-empty">Checking for proposals…</div>
+            <div className={styles.proposalsEmpty}>Checking for proposals…</div>
         ) : proposals.length === 0 ? (
-            <div className="proposals-empty">No pending proposals for your pets.</div>
+            <div className={styles.proposalsEmpty}>No pending proposals for your pets.</div>
         ) : (
-            <ul className="proposals-list">
+            <ul className={styles.proposalsList}>
                 {proposals.map((p) => (
                     <IncomingProposalRow
                         key={`${p.proposerPetId}-${p.targetPetId}`}

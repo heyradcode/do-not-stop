@@ -1,8 +1,13 @@
 ﻿import React, { useMemo, useState } from 'react';
+import clsx from 'clsx';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import {
+    getPetAvatar,
+    getPetClass,
     getReadyPetsUnified,
+    getXpNumbers,
+    getXpPercent,
     useChainCapabilities,
     useFees,
     useLevelUpPet,
@@ -13,6 +18,8 @@ import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 import SyncMetadataButton from './sync-metadata-button';
+import PetShowcase from '../_shared/pet-showcase';
+import styles from './index.module.css';
 
 export type LevelUpPanelProps = {
     isStandaloneView?: boolean;
@@ -46,7 +53,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     });
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const fees = useFees();
-    const selectedLevel = readyPets.find(({ id }) => id === selectedPet)?.pet.level;
+    const selectedPetObj = readyPets.find(({ id }) => id === selectedPet)?.pet ?? null;
+    const selectedLevel = selectedPetObj?.level;
+    const selectedXp = selectedPetObj ? getXpNumbers(selectedPetObj) : null;
 
     // Level-up fee is level-scaled: baseFee × (100 + (level-1)²) / 100.
     const levelUpCost = useMemo(() => {
@@ -91,13 +100,45 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
             <div className="interface">
                 {!isStandaloneView && (
                     <>
-                        <h4>â¬†ï¸ Level Up Pet</h4>
+                        <h4>⬆️ Level Up Pet</h4>
                         <p>
                             {levelUpFee
                                 ? `Pay from ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet — cost rises with level`
                                 : 'Pay a small SOL fee to level up your pet'}
                         </p>
                     </>
+                )}
+
+                {selectedPetObj && (
+                    <PetShowcase avatar={getPetAvatar(selectedPetObj.dna)} accent="violet">
+                        <div className={styles.name}>{selectedPetObj.name}</div>
+                        <div className={styles.petClass}>{getPetClass(selectedPetObj.dna)}</div>
+                        <div className={styles.transition}>
+                            <span className={clsx(styles.badge, styles.badgeCur)}>
+                                Lv.{selectedPetObj.level}
+                            </span>
+                            <span className={styles.arrow} aria-hidden>
+                                →
+                            </span>
+                            <span className={clsx(styles.badge, styles.badgeNext)}>
+                                Lv.{selectedPetObj.level + 1}
+                            </span>
+                        </div>
+                        <div className={styles.xp}>
+                            <div className={styles.xpRow}>
+                                <span>XP</span>
+                                <span>
+                                    {selectedXp?.xpCurrent}/{selectedXp?.xpMax}
+                                </span>
+                            </div>
+                            <div className={styles.xpTrack}>
+                                <div
+                                    className={styles.xpFill}
+                                    style={{ width: `${getXpPercent(selectedPetObj)}%` }}
+                                />
+                            </div>
+                        </div>
+                    </PetShowcase>
                 )}
 
                 <div className="picker">

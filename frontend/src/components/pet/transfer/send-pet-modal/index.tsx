@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useChainCapabilities, usePetList, useTransferPet } from '@shared/core';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import NeonModal from '@components/ui/neon-modal';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
-import './index.css';
+import styles from './index.module.css';
 
 interface SendPetModalProps {
     isOpen: boolean;
@@ -91,11 +91,11 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
             isOpen={isOpen}
             onRequestClose={handleClose}
             title="Send Pet"
-            contentClassName="send-pet-body"
+            contentClassName={styles.sendPetBody}
         >
-            <div className="preview">
+            <div className={styles.preview}>
                 <h3>{pet.name}</h3>
-                <div className="details">
+                <div className={styles.details}>
                     <p>
                         <strong>Level:</strong> {pet.level}
                     </p>
@@ -108,7 +108,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
                 </div>
             </div>
 
-            <div className="recipient">
+            <div className={styles.recipient}>
                 <label htmlFor="recipient">{addressLabel}</label>
                 <input
                     id="recipient"
@@ -120,12 +120,12 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
                     }}
                     placeholder={addressPlaceholder}
                     disabled={isPending}
-                    className={inputInvalid ? 'invalid' : ''}
+                    className={inputInvalid ? styles.invalid : undefined}
                 />
             </div>
 
-            <div className="actions">
-                <button className="cancel" onClick={handleClose} disabled={isPending}>
+            <div className={styles.actions}>
+                <button className={styles.cancel} onClick={handleClose} disabled={isPending}>
                     Cancel
                 </button>
                 <NeonButton
@@ -143,3 +143,4 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
 };
 
 export default SendPetModal;
+

@@ -1,0 +1,96 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+   Native (ETH/SOL) balance pill with loading and error states. */
+.nativeBalance {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    background: linear-gradient(180deg, rgb(8 20 46 / 86%), rgb(6 14 30 / 90%));
+    border: 1px solid rgb(30 157 255 / 34%);
+    border-radius: 6px;
+    font-size: 14px;
+    min-height: 40px;
+
+    .balanceInfo {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+    }
+
+    .balanceAmount {
+        font-weight: 600;
+        color: #b7e4ff;
+        font-family: 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1;
+    }
+
+    .balanceSymbol {
+        font-weight: 500;
+        color: #86ebff;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        line-height: 1;
+        margin-top: 1px;
+        /* Slight adjustment to align with the number */
+    }
+
+    .balanceLoading {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #8ed1ff;
+        font-size: 12px;
+        height: 20px;
+        line-height: 1;
+
+        /* Overrides the global .loading-spinner utility (styles/messages.css)
+           down to a small inline spinner for this pill. */
+        :global(.loading-spinner) {
+            width: 6px !important;
+            height: 6px !important;
+            border: 1px solid rgb(30 157 255 / 36%) !important;
+            border-top: 1px solid #8ed1ff !important;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            flex-shrink: 0;
+            align-self: center;
+            margin: 0;
+        }
+    }
+
+    .balanceError {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #ffd07b;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-height: 36px;
+
+        .balanceAmount {
+            font-size: 13px;
+        }
+
+        .balanceSymbol {
+            font-size: 11px;
+        }
+    }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}

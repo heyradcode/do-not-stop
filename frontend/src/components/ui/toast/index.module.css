@@ -1,0 +1,94 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`. */
+.viewport {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(360px, calc(100vw - 32px));
+    pointer-events: none;
+}
+
+.toast {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: 10px;
+    padding: 12px 12px 12px 14px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgb(10 16 32 / 96%), rgb(6 10 22 / 98%));
+    border: 1px solid rgb(125 214 255 / 28%);
+    box-shadow: 0 10px 28px rgb(0 0 0 / 42%), inset 0 0 16px rgb(125 214 255 / 6%);
+    animation: toast-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+
+    &.error {
+        border-color: rgb(255 110 196 / 42%);
+        box-shadow: 0 10px 28px rgb(0 0 0 / 42%), inset 0 0 16px rgb(255 110 196 / 10%);
+    }
+
+    &.info {
+        border-color: rgb(125 214 255 / 32%);
+    }
+
+    &.success {
+        border-color: rgb(0 255 157 / 42%);
+        box-shadow: 0 10px 28px rgb(0 0 0 / 42%), inset 0 0 16px rgb(0 255 157 / 10%);
+    }
+
+    .icon {
+        display: inline-flex;
+        margin-top: 1px;
+    }
+
+    .message {
+        margin: 0;
+        font-size: 13px;
+        line-height: 1.45;
+        font-weight: 600;
+        color: #f6f3ff;
+    }
+
+    .dismiss {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: rgb(195 210 255 / 72%);
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0 2px;
+
+        &:hover {
+            color: #fff;
+        }
+    }
+}
+
+@keyframes toast-enter {
+    from {
+        opacity: 0;
+        transform: translateX(16px) translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast {
+        animation: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .viewport {
+        left: 16px;
+        right: 16px;
+        width: auto;
+    }
+}

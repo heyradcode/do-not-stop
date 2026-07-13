@@ -18,7 +18,7 @@
     --pc-font-title: clamp(1.25rem, 1.5rem, 1.75rem);
     --pc-text: #f6f3ff;
     --pc-text-muted: rgb(195 210 255 / 70%);
-    --pc-border: var(--neon-border-soft);
+    --pc-border: var(--cp-border-soft);
     --pc-surface-bg: linear-gradient(180deg, rgb(10 16 32 / 92%), rgb(6 10 22 / 94%));
     --pc-refresh-size: 36px;
     --pc-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -57,7 +57,7 @@
         }
 
         @media (prefers-contrast: more) {
-            border: 2px solid var(--color-text);
+            border: 2px solid var(--cp-color-text);
         }
     }
 
@@ -80,13 +80,13 @@
 
         .heading {
             margin: 0;
-            font-family: var(--title-font);
+            font-family: var(--cp-title-font);
             font-size: var(--pc-font-title);
             font-weight: 700;
             letter-spacing: 0.5px;
             text-transform: uppercase;
             color: var(--pc-text);
-            text-shadow: 0 0 12px var(--neon-text-glow);
+            text-shadow: 0 0 12px var(--cp-text-glow);
 
             @media (max-width: 480px) {
                 font-size: 20px;
@@ -156,7 +156,7 @@
        panel that opts into a `.refresh` action gets the same look). */
     .refresh {
         background: rgb(5 13 30 / 92%);
-        color: var(--neon-cyan);
+        color: var(--cp-cyan);
         border: 1px solid rgb(125 214 255 / 32%);
         border-radius: 2px;
         padding: var(--pc-spacing-sm);
@@ -171,7 +171,7 @@
         box-shadow: inset 0 0 12px rgb(125 214 255 / 14%), 0 0 10px rgb(125 214 255 / 18%);
 
         &:hover:not(:disabled) {
-            color: var(--neon-violet);
+            color: var(--cp-violet);
             border-color: rgb(181 140 255 / 42%);
             transform: translateY(-1px);
             box-shadow: inset 0 0 16px rgb(181 140 255 / 18%), 0 0 16px rgb(181 140 255 / 28%);

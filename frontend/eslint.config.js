@@ -37,7 +37,7 @@ export default tseslint.config(
             'import/no-duplicates': 'error',
             'no-unused-vars': 'off',
             '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-            '@typescript-eslint/no-explicit-any': 'warn',
+            '@typescript-eslint/no-explicit-any': 'error',
             '@typescript-eslint/no-empty-object-type': 'off',
             'react-refresh/only-export-components': 'off',
             'prefer-const': 'error',

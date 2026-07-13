@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 
 const notifyError = vi.fn();
@@ -12,7 +13,21 @@ vi.mock('@components/pet/creation/create-pet-modal', () => ({
     default: ({ isOpen }: { isOpen: boolean }) => (isOpen ? <div data-testid="create-modal" /> : null),
 }));
 
-const isPetReady = vi.fn(() => true);
+// Per-pet readiness comes from usePetCooldowns; statusFor returns a cooldown VM.
+const cooldownStatus = {
+    onCooldown: false,
+    battleReady: true,
+    battleOnCooldown: false,
+    battleLabel: '',
+    breedOnCooldown: false,
+    breedLabel: '',
+    trainOnCooldown: false,
+    trainLabel: '',
+};
+vi.mock('@hooks/usePetCooldowns', () => ({
+    usePetCooldowns: () => ({ statusFor: () => cooldownStatus }),
+}));
+
 const petList = {
     pets: [] as Array<Record<string, unknown>>,
     isLoading: false,
@@ -23,23 +38,27 @@ const capabilities = { isConnected: true };
 
 vi.mock('@shared/core', () => ({
     getGeneration: () => 0,
-    getPropertyEmoji: () => '🔥',
+    getLifePercent: () => 80,
     getXpNumbers: () => ({ xpCurrent: 10, xpMax: 100 }),
     getXpPercent: () => 10,
     getPetAvatar: () => 'avatar',
     getPetClass: () => 'Warrior',
-    getPetElement: () => 'Fire',
-    getPetProperties: () => ({ strength: 5 }),
+    getPetProperties: () => ({ life: 5, attack: 6, defense: 7, intelligence: 8 }),
+    getPetSkill: () => null,
     getRarityColor: () => 'rgb(1, 2, 3)',
     getRarityName: () => 'Rare',
-    getTimeUntilReady: () => '5m',
-    getPetSkill: () => null,
-    isPetReady: (...a: unknown[]) => isPetReady(...a),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
 }));
 
 import PetGallery from '@components/pet/collection/pet-gallery';
+
+const renderGallery = () =>
+    render(
+        <MemoryRouter>
+            <PetGallery />
+        </MemoryRouter>,
+    );
 
 const aPet = (over: Record<string, unknown> = {}) => ({
     id: '1',
@@ -48,6 +67,8 @@ const aPet = (over: Record<string, unknown> = {}) => ({
     level: 3,
     dna: 7,
     rarity: 2,
+    winCount: 4,
+    lossCount: 1,
     readyAt: '0',
     ...over,
 });
@@ -56,27 +77,32 @@ beforeEach(() => {
     vi.clearAllMocks();
     capabilities.isConnected = true;
     Object.assign(petList, { pets: [], isLoading: false, error: null });
-    isPetReady.mockReturnValue(true);
+    Object.assign(cooldownStatus, {
+        onCooldown: false,
+        battleReady: true,
+        battleOnCooldown: false,
+        battleLabel: '',
+    });
 });
 
 describe('PetGallery', () => {
     it('asks to connect when the wallet is disconnected', () => {
         capabilities.isConnected = false;
-        const { container } = render(<PetGallery />);
+        const { container } = renderGallery();
 
-        expect(screen.getByText('Connect your wallet to view your pets')).toBeInTheDocument();
-        expect(container.querySelector('.wallet-disconnected')).not.toBeNull();
+        expect(screen.getByText('Connect your wallet to view your pets.')).toBeInTheDocument();
+        expect(container.querySelector('.idleMessage')).not.toBeNull();
     });
 
     it('shows a loading state', () => {
         petList.isLoading = true;
-        render(<PetGallery />);
+        renderGallery();
         expect(screen.getByText('Loading your pets...')).toBeInTheDocument();
     });
 
     it('shows an error state and notifies', () => {
         petList.error = new Error('boom');
-        render(<PetGallery />);
+        renderGallery();
 
         expect(screen.getByText('Failed to load pet data. Please try again.')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Try Again' })).toBeInTheDocument();
@@ -87,39 +113,36 @@ describe('PetGallery', () => {
         );
     });
 
-    it('shows the empty altar and opens the create modal', async () => {
-        render(<PetGallery />);
-        expect(screen.getByText('Awaken your first companion')).toBeInTheDocument();
+    it('shows the summon tile and opens the create modal', async () => {
+        renderGallery();
+        expect(screen.getByRole('button', { name: /Summon a Pet/ })).toBeInTheDocument();
 
-        await userEvent.click(screen.getByRole('button', { name: /Create your first pet/ }));
+        await userEvent.click(screen.getByRole('button', { name: /Summon a Pet/ }));
         expect(screen.getByTestId('create-modal')).toBeInTheDocument();
     });
 
     it('renders a pet card and opens the send modal', async () => {
         petList.pets = [aPet()];
-        render(<PetGallery />);
+        renderGallery();
 
-        expect(screen.getByRole('heading', { name: 'Sparky' })).toBeInTheDocument();
+        expect(screen.getByText('Sparky')).toBeInTheDocument();
         expect(screen.getByText('Lv. 3')).toBeInTheDocument();
         expect(screen.getByText('Rare')).toBeInTheDocument();
 
-        await userEvent.click(screen.getByRole('button', { name: /Send/ }));
+        await userEvent.click(screen.getByRole('button', { name: /Send Sparky/ }));
         expect(screen.getByTestId('send-modal')).toBeInTheDocument();
     });
 
     it('shows a cooldown status when the pet is not ready', () => {
-        isPetReady.mockReturnValue(false);
+        Object.assign(cooldownStatus, {
+            onCooldown: true,
+            battleReady: false,
+            battleOnCooldown: true,
+            battleLabel: '5m',
+        });
         petList.pets = [aPet()];
-        render(<PetGallery />);
+        renderGallery();
 
         expect(screen.getByText(/ready in 5m/i)).toBeInTheDocument();
-    });
-
-    it('refetches when the refresh button is clicked', async () => {
-        petList.pets = [aPet()];
-        render(<PetGallery />);
-
-        await userEvent.click(screen.getByTitle('Refresh'));
-        expect(petList.refetch).toHaveBeenCalled();
     });
 });
