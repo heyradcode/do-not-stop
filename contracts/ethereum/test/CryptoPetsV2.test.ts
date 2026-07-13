@@ -327,6 +327,118 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(loser.xp, 25);
     });
 
+    it("Should snapshot battle sim inputs at requestBattle so leveling a pet before settle can't change the outcome", async function () {
+        // Threat model (plan-realtime-battle-ux.md / plan-realtime-battle-impl.md Phase 1):
+        // settleBattle used to read pet stats live, and nothing blocks a pet's level from
+        // changing while a battle is pending, so a player who saw they'd lose could
+        // front-run settle with a level-up to flip the result. requestBattle now snapshots
+        // sim inputs; settleBattle must sim from that frozen snapshot regardless of what
+        // happens to the pets afterward.
+        const { petCore, gameLogic, entropy, config } = await deployV2();
+        const publicClient = await viem.getPublicClient();
+        const testClient   = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs");
+
+        const levelUpFee = await config.read.levelUpFee();
+        async function levelUpTo(petId: bigint, account: any, targetLevel: number) {
+            for (let level = 1; level < targetLevel; level++) {
+                const diff = BigInt(level - 1);
+                const fee = levelUpFee * (100n + diff * diff) / 100n;
+                await petCore.write.levelUp([petId], { account, value: fee });
+            }
+        }
+
+        // Pet 2 is clearly stronger before the battle is even requested — dna is identical
+        // between the two starters here (same mocked reveal), so this is a pure level gap.
+        await levelUpTo(2n, addr2.account, 15);
+
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
+        await testClient.mine({ blocks: 1 });
+
+        // Step 1: request — the snapshot is captured here (pet1 level 1, pet2 level 15).
+        const reqHash = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
+        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
+        const requestId = parseEventLogs({
+            abi: gameLogic.abi, logs: reqReceipt.logs, eventName: "BattleRandomnessRequested", strict: false
+        })[0].args.requestId;
+        assert(requestId != null, "No BattleRandomnessRequested event emitted");
+
+        const snapshotAtRequest = await gameLogic.read.getBattleRequest([requestId]);
+        assert.equal(snapshotAtRequest.snapshotted, true);
+        assert.equal(snapshotAtRequest.level1, 1);
+        assert.equal(snapshotAtRequest.level2, 15);
+
+        // Step 2: front-run — level pet 1 up well past pet 2 *after* requesting, *before*
+        // settling. Nothing in GameLogic blocks this while a battle is pending; that gap is
+        // exactly what the snapshot neutralizes.
+        await levelUpTo(1n, addr1.account, 30);
+        const pet1AfterLevelUp = await petCore.read.getPet([1n]);
+        assert.equal(pet1AfterLevelUp.level, 30, "pet1 should have leveled up well past pet2 before settle");
+
+        // Step 3: entropy fulfills. Snapshot fields must still read the pre-level-up values.
+        await revealEntropy(entropy, requestId, addr1.account);
+        const snapshotAtSettle = await gameLogic.read.getBattleRequest([requestId]);
+        assert.equal(snapshotAtSettle.level1, 1, "snapshot level must stay frozen at 1 despite the level-up");
+        assert.equal(snapshotAtSettle.fulfilled, true);
+
+        // Independently compute what settleBattle must produce from the frozen snapshot,
+        // and — as a sanity check that this test actually exercises the race — what it
+        // would have produced had it (wrongly) read pet 1's post-level-up live state instead.
+        const combatSim = await viem.getContractAt("CombatSim", await config.read.combatSim());
+        const sc = await config.read.getSkillConfig();
+        const skill1 = Number(snapshotAtSettle.speciesId1) % 8;
+        const skill2 = Number(snapshotAtSettle.speciesId2) % 8;
+
+        const expectedFromSnapshot = await combatSim.read.simulate([
+            snapshotAtSettle.dna1, Number(snapshotAtSettle.rarity1), Number(snapshotAtSettle.level1), skill1,
+            snapshotAtSettle.dna2, Number(snapshotAtSettle.rarity2), Number(snapshotAtSettle.level2), skill2,
+            snapshotAtSettle.randomness, sc,
+        ]);
+        const expectedFromLiveState = await combatSim.read.simulate([
+            snapshotAtSettle.dna1, Number(snapshotAtSettle.rarity1), Number(pet1AfterLevelUp.level), skill1,
+            snapshotAtSettle.dna2, Number(snapshotAtSettle.rarity2), Number(snapshotAtSettle.level2), skill2,
+            snapshotAtSettle.randomness, sc,
+        ]);
+        assert.equal(
+            expectedFromSnapshot.firstWins, false,
+            "test setup sanity check: pet2 should win at the snapshot's levels (1 vs 15)"
+        );
+        assert.equal(
+            expectedFromLiveState.firstWins, true,
+            "test setup sanity check: pet1 should win if settle wrongly used live state (30 vs 15)"
+        );
+
+        // Step 4: settle. The on-chain result must match the frozen snapshot (pet2 wins),
+        // not the post-level-up live state (which would have pet1 win instead).
+        const settleHash = await gameLogic.write.settleBattle([requestId], { account: addr1.account });
+        const settleReceipt = await publicClient.waitForTransactionReceipt({ hash: settleHash });
+        const resolved = parseEventLogs({
+            abi: gameLogic.abi, logs: settleReceipt.logs, eventName: "BattleResolved", strict: false
+        })[0].args;
+
+        assert.equal(resolved.firstWins, false, "on-chain result must honor the frozen snapshot, not the live-leveled pet1");
+        assert.equal(resolved.winnerId, 2n);
+        assert.equal(resolved.loserId, 1n);
+        assert.equal(resolved.rounds, expectedFromSnapshot.rounds);
+        assert.equal(resolved.winnerHpRemaining, expectedFromSnapshot.winnerHpRemaining);
+        // XP uses the snapshot levels too (winner=15, loser=1): xpMult clamps the winner's
+        // share to 0 (beating a foe 14 levels below is worth nothing, anti-seal-clubbing),
+        // while the loser's share doubles to its 200%-clamp for "punching up" (plan §3.4).
+        // First-ever meeting between these two pets, so same-opponent decay is 0 either way.
+        assert.equal(resolved.xpWin, 0, "winner (level-15 snapshot) beating a level-1 foe earns 0 xp");
+        assert.equal(resolved.xpLoss, 50, "loser (level-1 snapshot) punching up 14 levels earns the 200%-clamped 50 xp");
+    });
+
+    it("Should return a zeroed record from getBattleRequest for an unknown/settled requestId", async function () {
+        const { gameLogic } = await deployV2();
+        const empty = await gameLogic.read.getBattleRequest([999999n]);
+        assert.equal(empty.requester, "0x0000000000000000000000000000000000000000");
+        assert.equal(empty.snapshotted, false);
+    });
+
     it("Should reject battle between pets owned by the same address", async function () {
         const { petCore, gameLogic } = await deployV2();
         const testClient = await viem.getTestClient();
