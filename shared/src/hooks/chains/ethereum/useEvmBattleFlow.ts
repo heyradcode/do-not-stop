@@ -3,8 +3,10 @@ import { useAccount, useReadContract, useWatchContractEvent, useWaitForTransacti
 import { parseEventLogs } from 'viem';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
 import { useWatchEntropyFulfillment } from './useWatchEntropyFulfillment';
+import { useLiveBattleReplay, type LiveBattleReplayInput } from './useLiveBattleReplay';
 import { EVM_GAS_LIMITS } from './gasLimits';
 import type { BattleResolvedResult, EvmBattlePhase } from '../../../types/battle';
+import type { SkillConfig } from '../../../utils/combat';
 
 type UseEvmBattleFlowParams = {
     /** `requestBattle` tx hash from the adapter; drives the rest of the flow. */
@@ -32,12 +34,15 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
     const { address } = useAccount();
     const gameLogic = evm?.gameLogic.address;
     const gameLogicAbi = useMemo(() => evm?.gameLogic.abi ?? [], [evm?.gameLogic.abi]);
+    const gameConfigAddress = evm?.gameConfig?.address;
+    const gameConfigAbi = useMemo(() => evm?.gameConfig?.abi ?? [], [evm?.gameConfig?.abi]);
     const chainId = evm?.chainId;
 
     const [requestId, setRequestId] = useState<bigint | null>(null);
     const [phase, setPhase] = useState<EvmBattlePhase>('idle');
     const [result, setResult] = useState<BattleResolvedResult | null>(null);
     const [error, setError] = useState<Error | null>(null);
+    const [randomNumber, setRandomNumber] = useState<bigint | null>(null);
     const onResolvedRef = useRef(onResolved);
     onResolvedRef.current = onResolved;
 
@@ -48,6 +53,28 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         functionName: 'entropy',
         chainId,
         query: { enabled: enabled && Boolean(gameLogic) },
+    });
+
+    // Live-replay inputs (plan-realtime-battle-impl.md Phase 4): the request-time
+    // snapshot (frozen sim inputs, Phase 1) and the current skill balance config.
+    // Read from chain, never from the indexer/roster cache, which lags — see the
+    // plan's input-drift race note. GameConfig is optional in PetsEvmConfig, so
+    // this degrades to "no live replay" rather than breaking the battle flow when
+    // a deployment doesn't wire it up.
+    const { data: skillConfigData } = useReadContract({
+        address: gameConfigAddress,
+        abi: gameConfigAbi,
+        functionName: 'getSkillConfig',
+        chainId,
+        query: { enabled: enabled && Boolean(gameConfigAddress) },
+    });
+    const { data: battleRequestData } = useReadContract({
+        address: gameLogic,
+        abi: gameLogicAbi,
+        functionName: 'getBattleRequest',
+        args: requestId != null ? [requestId] : undefined,
+        chainId,
+        query: { enabled: enabled && Boolean(gameLogic) && requestId != null },
     });
 
     // 1. Parse requestId from the request tx receipt.
@@ -103,7 +130,10 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
 
     // Entropy has revealed: the keeper is expected to settle from here. Only fall
     // back to the player's wallet if BattleResolved hasn't shown up in time.
-    const handleFulfilled = useCallback((id: bigint) => {
+    // `randomNumberHex` is also the exact seed the client-side sim replays from —
+    // storing it is what lets the live animation start before settleBattle lands.
+    const handleFulfilled = useCallback((id: bigint, randomNumberHex: `0x${string}`) => {
+        setRandomNumber(BigInt(randomNumberHex));
         if (settleSentRef.current) return;
         setPhase('awaiting-settle');
         clearFallbackTimer();
@@ -121,6 +151,49 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         requestId: enabled ? requestId : null,
         onFulfilled: handleFulfilled,
     });
+
+    // Live replay: compose the sim inputs into the exact shape useLiveBattleReplay
+    // wants, memoized so it only recomputes when a value actually changes (not on
+    // every render — simulate() re-runs a full 30-round fight otherwise).
+    const skillConfig = useMemo<SkillConfig | null>(() => {
+        if (!skillConfigData) return null;
+        const sc = skillConfigData as Record<string, unknown>;
+        return {
+            tankHpMult: Number(sc.tankHpMult),
+            shellDefMult: Number(sc.shellDefMult),
+            swiftCritBonus: Number(sc.swiftCritBonus),
+            cunningCritCap: Number(sc.cunningCritCap),
+            furyDmgMult: Number(sc.furyDmgMult),
+            furyHpThreshold: Number(sc.furyHpThreshold),
+            sageMdefMult: Number(sc.sageMdefMult),
+            bloodlustBps: Number(sc.bloodlustBps),
+        };
+    }, [skillConfigData]);
+
+    const snapshot = useMemo(() => {
+        if (!battleRequestData) return null;
+        const br = battleRequestData as Record<string, unknown>;
+        // Requests from before the Phase 1 snapshot upgrade have no frozen inputs
+        // to replay from — skip live replay for those rather than sim from zeros.
+        if (!br.snapshotted) return null;
+        return {
+            dna1: br.dna1 as bigint,
+            dna2: br.dna2 as bigint,
+            rarity1: Number(br.rarity1),
+            rarity2: Number(br.rarity2),
+            level1: Number(br.level1),
+            level2: Number(br.level2),
+            speciesId1: Number(br.speciesId1),
+            speciesId2: Number(br.speciesId2),
+        };
+    }, [battleRequestData]);
+
+    const replayInput = useMemo<LiveBattleReplayInput | null>(() => {
+        if (!snapshot || !skillConfig || randomNumber == null) return null;
+        return { ...snapshot, randomNumber, skillConfig };
+    }, [snapshot, skillConfig, randomNumber]);
+
+    const liveReplay = useLiveBattleReplay(replayInput);
 
     // 4. Resolve from BattleResolved — fire at most once per battle.
     const resolvedFiredRef = useRef(false);
@@ -184,6 +257,7 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         setPhase('idle');
         setResult(null);
         setError(null);
+        setRandomNumber(null);
         settleSentRef.current = false;
         resolvedFiredRef.current = false;
         settle.reset();
@@ -195,5 +269,19 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         phase === 'settling' ||
         phase === 'resolving';
 
-    return { phase, requestId, result, error: error ?? (settle.error as Error | null), isActive, reset };
+    return {
+        phase,
+        requestId,
+        result,
+        error: error ?? (settle.error as Error | null),
+        isActive,
+        reset,
+        /** Client-side sim outcome (log + startHp1/startHp2 + its own result),
+         *  available as soon as entropy reveals — drives the live animation.
+         *  Presentation only; `result` above (from BattleResolved) is always the
+         *  authoritative outcome; see plan-realtime-battle-ux.md's
+         *  reconciliation rule. Null until the snapshot/skillConfig/randomNumber
+         *  are all known, or if this deployment has no GameConfig wired up. */
+        liveReplay,
+    };
 };

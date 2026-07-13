@@ -1,0 +1,72 @@
+import { useEffect, useState } from 'react';
+import type { StrikeLogEntry } from '@shared/core';
+
+/** Time each strike stays on screen before the next one plays. */
+const STRIKE_INTERVAL_MS = 700;
+
+export interface LiveBattleAnimationState {
+    /** Fighter (pet1) HP as a 0-100 percentage; 100 until the first strike plays. */
+    hp1Percent: number;
+    hp2Percent: number;
+    /** One-line flavor text for the most recent strike, or null before anything has played. */
+    flourish: string | null;
+    /** True once every log entry has played, or immediately true when there's nothing to
+     *  animate (Solana, or an EVM deployment with no GameConfig wired up). */
+    done: boolean;
+}
+
+/**
+ * Plays a combat-sim log (shared/src/utils/combat, via useEvmBattleFlow's
+ * `liveReplay`) one strike at a time, exposing HP percentages and a flavor
+ * line for the fighting scene. Presentation only — see useBattlePanel.ts for
+ * the gate that keeps the result card off this animation and the
+ * reconciliation check against the authoritative on-chain result.
+ */
+export function useLiveBattleAnimation(
+    log: StrikeLogEntry[] | null,
+    startHp1: bigint | null,
+    startHp2: bigint | null,
+    active: boolean,
+): LiveBattleAnimationState {
+    const [index, setIndex] = useState(0);
+
+    // A new battle's log arrives as a new array reference — restart from the top.
+    useEffect(() => {
+        setIndex(0);
+    }, [log]);
+
+    useEffect(() => {
+        if (!active || !log || index >= log.length) return;
+        const timer = setTimeout(() => setIndex((i) => i + 1), STRIKE_INTERVAL_MS);
+        return () => clearTimeout(timer);
+    }, [active, log, index]);
+
+    if (!log || log.length === 0 || startHp1 == null || startHp2 == null) {
+        return { hp1Percent: 100, hp2Percent: 100, flourish: null, done: true };
+    }
+
+    const current = index > 0 ? log[index - 1] : null;
+    return {
+        hp1Percent: current ? percentOf(current.hp1After, startHp1) : 100,
+        hp2Percent: current ? percentOf(current.hp2After, startHp2) : 100,
+        flourish: current ? describeStrike(current) : null,
+        done: index >= log.length,
+    };
+}
+
+function percentOf(hp: bigint, startHp: bigint): number {
+    if (startHp <= 0n) return 0;
+    const pct = (hp * 100n) / startHp;
+    return Number(pct > 100n ? 100n : pct);
+}
+
+function describeStrike(entry: StrikeLogEntry): string {
+    const who = entry.attacker === 1 ? 'Your pet' : 'The opponent';
+    const parts = [`${who} lands ${entry.isMagic ? 'a magic strike' : 'a physical strike'}`];
+    if (entry.crit) parts.push('— critical hit!');
+    if (entry.elementMult === 115) parts.push('(element advantage)');
+    if (entry.elementMult === 85) parts.push('(element disadvantage)');
+    if (entry.furyTriggered) parts.push('(Fury!)');
+    if (entry.rebirthTriggered) parts.push('— Rebirth saved a killing blow!');
+    return parts.join(' ');
+}

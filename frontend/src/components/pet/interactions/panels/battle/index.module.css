@@ -564,6 +564,16 @@
     color: rgb(125 214 255 / 70%);
 }
 
+/* Live combat-sim strike flourish (plan-realtime-battle-impl.md Phase 4) */
+.sceneFlourish {
+    flex-shrink: 0;
+    margin: 0 20px 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgb(255 214 125 / 85%);
+}
+
 /* Battle Log panel (the chatting) */
 .log {
     flex-shrink: 0;

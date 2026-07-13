@@ -43,6 +43,11 @@ export interface StrikeLogEntry {
 export interface SimOutcome {
     result: SimResult;
     log: StrikeLogEntry[];
+    /** Both pets' max HP for this fight (post pre-battle skill modifiers, e.g.
+     *  Tank's +HP), so a consumer can render HP-bar percentages from `log`
+     *  entries' `hp1After`/`hp2After` without re-deriving attrs itself. */
+    startHp1: bigint;
+    startHp2: bigint;
 }
 
 /**
@@ -189,5 +194,7 @@ export function simulate(
     return {
         result: { firstWins, rounds: r, winnerHpRemaining: Number(winnerHpCapped) },
         log,
+        startHp1: startHpA,
+        startHp2: startHpB,
     };
 }

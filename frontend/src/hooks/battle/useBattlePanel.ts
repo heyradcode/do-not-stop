@@ -11,6 +11,7 @@ import {
     useWinEstimate,
     type TxLifecycle,
     type BattleResolvedResult,
+    type SimOutcome,
 } from '@shared/core';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { formatTxHashHint } from '@hooks/usePetError';
@@ -21,8 +22,10 @@ import {
 } from '@components/pet/interactions/panels/battle/battle-matchmaking';
 import { useBattleOutcome } from './useBattleOutcome';
 import { useResultDialogue } from './useResultDialogue';
+import { useLiveBattleAnimation } from './useLiveBattleAnimation';
 import {
     BATTLE_FAIL_MESSAGE,
+    MISMATCH_NOTICE_MESSAGE,
     REMATCH_COOLDOWN_MESSAGE,
     REMATCH_OPPONENT_GONE_MESSAGE,
     VALIDATION_MESSAGE,
@@ -36,6 +39,10 @@ import type { BattleSetupProps } from '@components/pet/interactions/panels/battl
 interface UseBattlePanelArgs {
     isStandaloneView: boolean;
 }
+
+/** How long the mismatch interstitial stays up before revealing the (corrected)
+ *  result card — see MISMATCH_NOTICE_MESSAGE / the reconciliation rule below. */
+const MISMATCH_NOTICE_DURATION_MS = 2_000;
 
 export interface UseBattlePanel {
     overlay: BattleOverlayProps;
@@ -72,6 +79,14 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // (resetWrite) on receipt completion, so we capture it during confirming to
     // keep a stable battleId for the result dialogue after the battle settles.
     const [settledBattleId, setSettledBattleId] = useState<string | null>(null);
+    // The authoritative BattleResolved (or Solana confirm) has arrived — result
+    // display still waits on the live animation finishing (see the gating effect
+    // below), unless a mismatch was found, in which case it waits on the notice.
+    const [hasResolvedEvent, setHasResolvedEvent] = useState(false);
+    // Client-side live-replay disagreed with the on-chain result (should be ~never
+    // — see plan-realtime-battle-ux.md's reconciliation rule). Shows a brief
+    // honest notice instead of silently correcting or showing the wrong winner.
+    const [mismatchNotice, setMismatchNotice] = useState(false);
 
     const rematchSnapshotRef = useRef<{ petId1: string; opponentKey: string } | null>(null);
     // Personas captured at battle start. The backend pre-generates the result
@@ -81,6 +96,10 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Set when Start Battle is pressed: the wallet prompt is held until the
     // pre-fight taunts finish playing (so it doesn't pop while they're typing).
     const pendingBattleStartRef = useRef(false);
+    // Latest live-replay outcome, read by handleSuccess (defined before `battle`
+    // exists) for the mismatch check. Assigned during render each time `battle`
+    // updates, mirroring the onResolvedRef pattern in useEvmBattleFlow.
+    const liveReplayRef = useRef<SimOutcome | null>(null);
 
     const activeChainKind = capabilities.activeKind;
     const {
@@ -95,12 +114,24 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
 
     const handleSuccess = useCallback(
         (result: BattleResolvedResult | null) => {
-            setShowResult(true);
             setValidationError(null);
             outcome.markPendingOutcome();
             // EVM: BattleResolved is authoritative — petId1 is the player's pet, so
             // firstWins is the player's verdict. Solana resolves via the stat diff.
-            if (result) outcome.applyResolvedOutcome(result.firstWins);
+            if (result) {
+                outcome.applyResolvedOutcome(result.firstWins);
+                const local = liveReplayRef.current?.result;
+                if (local && local.firstWins !== result.firstWins) {
+                    console.error('[battle] live-replay mismatch — on-chain result is authoritative', {
+                        onChain: result,
+                        local,
+                    });
+                    setMismatchNotice(true);
+                }
+            }
+            // Result display gates on the live animation finishing too (or the
+            // mismatch notice, if one fired) — see the effect below.
+            setHasResolvedEvent(true);
             void refetch();
             void refetchOpponents();
         },
@@ -108,6 +139,29 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     );
 
     const battle = useBattlePets({ onSuccess: handleSuccess });
+    liveReplayRef.current = battle.liveReplay;
+
+    const animation = useLiveBattleAnimation(
+        battle.liveReplay?.log ?? null,
+        battle.liveReplay?.startHp1 ?? null,
+        battle.liveReplay?.startHp2 ?? null,
+        overlayOpen && !showResult,
+    );
+
+    // Reveal the result card once the authoritative event has arrived AND either
+    // the live animation has finished or a mismatch cut it short (interstitial
+    // instead). Never earlier — the verdict is never shown from the local sim.
+    useEffect(() => {
+        if (!hasResolvedEvent) return;
+        if (mismatchNotice) {
+            const timer = setTimeout(() => {
+                setMismatchNotice(false);
+                setShowResult(true);
+            }, MISMATCH_NOTICE_DURATION_MS);
+            return () => clearTimeout(timer);
+        }
+        if (animation.done) setShowResult(true);
+    }, [hasResolvedEvent, mismatchNotice, animation.done]);
     // AI pre-fight taunts — generated on Start Battle, in parallel with the wallet.
     // Requesting taunts also kicks off result pregen on the backend.
     const taunts = useBattleTaunts();
@@ -193,6 +247,8 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         taunts.reset();
         pendingBattleStartRef.current = false;
         setShowResult(false);
+        setHasResolvedEvent(false);
+        setMismatchNotice(false);
         outcome.resetOutcome();
         dialogue.resetResultDialogue();
         setSettledBattleId(null);
@@ -231,6 +287,8 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
 
     const handleCancel = () => {
         setShowResult(false);
+        setHasResolvedEvent(false);
+        setMismatchNotice(false);
         setOverlayOpen(false);
         pendingBattleStartRef.current = false;
         taunts.reset();
@@ -240,6 +298,8 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
 
     const handleDone = () => {
         setShowResult(false);
+        setHasResolvedEvent(false);
+        setMismatchNotice(false);
         setOverlayOpen(false);
         taunts.reset();
         setValidationError(null);
@@ -275,6 +335,8 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         battle.clearErrors();
         taunts.reset();
         setShowResult(false);
+        setHasResolvedEvent(false);
+        setMismatchNotice(false);
         setOverlayOpen(true);
         setValidationError(null);
         outcome.resetOutcome();
@@ -372,9 +434,18 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const isBattling = battle.isPending || battle.isConfirming || rematchPending;
     const preResultTitle = isBattling ? 'The battle is underway…' : 'Face-off!';
     // EVM v2 battle is async: request → VRF → settle. Label each phase so the
-    // long VRF wait doesn't keep showing "Awaiting your wallet".
+    // long VRF wait doesn't keep showing "Awaiting your wallet". The live-replay
+    // states take priority once entropy has revealed (see the gating effect
+    // above): the result card itself never appears until hasResolvedEvent AND
+    // (animation.done OR the mismatch notice has run its course).
     const preResultStatus = rematchPending
         ? 'Preparing rematch…'
+        : mismatchNotice
+        ? MISMATCH_NOTICE_MESSAGE
+        : hasResolvedEvent && !animation.done
+        ? 'Result in — playing out the fight…'
+        : !hasResolvedEvent && animation.done && battle.liveReplay
+        ? 'Finalizing on-chain…'
         : battle.phase === 'awaiting-vrf'
         ? 'Awaiting randomness…'
         : battle.phase === 'awaiting-settle'
@@ -430,6 +501,13 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         onTauntsComplete: handleTauntsComplete,
         fighterName: selectedFighter?.name ?? 'Your pet',
         opponentName: opponent?.name ?? 'Opponent',
+        // Live-replay animation (plan-realtime-battle-impl.md Phase 4): only
+        // populated once entropy has revealed and the sim inputs are known;
+        // battle-overlay falls back to its existing static HP display otherwise
+        // (Solana, or an EVM deployment with no GameConfig wired up).
+        liveHp1Percent: battle.liveReplay ? animation.hp1Percent : null,
+        liveHp2Percent: battle.liveReplay ? animation.hp2Percent : null,
+        liveFlourish: animation.flourish,
     };
 
     const setup: BattleSetupProps = {

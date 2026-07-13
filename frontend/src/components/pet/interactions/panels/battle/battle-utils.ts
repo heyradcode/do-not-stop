@@ -22,6 +22,10 @@ export const BATTLE_FAIL_MESSAGE = 'Failed to start battle. Please try again.';
 export const REMATCH_COOLDOWN_MESSAGE = 'Your fighter is on cooldown. Pick another pet or wait.';
 export const REMATCH_OPPONENT_GONE_MESSAGE =
     'That opponent is no longer available. Choose another challenger.';
+/** Shown briefly when the client-side live-replay disagrees with the on-chain
+ *  BattleResolved result (plan-realtime-battle-ux.md's reconciliation rule —
+ *  the on-chain result always wins; this is presentational, not a real error). */
+export const MISMATCH_NOTICE_MESSAGE = 'The on-chain referee ruled differently — syncing the true result…';
 
 /** Personas captured at battle start, reused for the settle dialogue read. */
 export type BattlePersonas = { attacker: DialoguePetInput; defender: DialoguePetInput };

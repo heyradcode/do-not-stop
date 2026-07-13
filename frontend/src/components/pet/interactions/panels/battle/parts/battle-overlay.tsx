@@ -38,6 +38,13 @@ export type BattleOverlayProps = {
     onTauntsComplete: () => void;
     fighterName: string;
     opponentName: string;
+    // Live-replay animation (plan-realtime-battle-impl.md Phase 4) — null falls
+    // back to the static getLifePercent bars below (Solana, or an EVM deployment
+    // with no GameConfig wired up). Presentation only; never the source of the
+    // result banner, which always comes from battleOutcome (on-chain).
+    liveHp1Percent?: number | null;
+    liveHp2Percent?: number | null;
+    liveFlourish?: string | null;
 };
 
 /** Battle Log panel (the chatting) — shared by the fighting and result scenes. */
@@ -94,14 +101,17 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
     onTauntsComplete,
     fighterName,
     opponentName,
+    liveHp1Percent,
+    liveHp2Percent,
+    liveFlourish,
 }) => {
     if (!open) return null;
 
     const isVictory = battleOutcome?.result === 'victory';
     const isDefeat = battleOutcome?.result === 'defeat';
 
-    const fighterHp = fighter ? getLifePercent(fighter) : 100;
-    const enemyHp = opponent ? getLifePercent(opponent) : 100;
+    const fighterHp = liveHp1Percent ?? (fighter ? getLifePercent(fighter) : 100);
+    const enemyHp = liveHp2Percent ?? (opponent ? getLifePercent(opponent) : 100);
     const fighterAvatar = fighter ? getPetAvatar(fighter.dna) : '❓';
     const enemyAvatar = opponent ? getPetAvatar(opponent.dna) : '❓';
 
@@ -162,6 +172,8 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                         <span className={clsx(styles.sceneLabel, styles.isEnemy)}>{opponentName}</span>
                     </div>
                 </div>
+
+                {liveFlourish ? <p className={styles.sceneFlourish}>{liveFlourish}</p> : null}
 
                 <BattleLog
                     turns={tauntsTurns}

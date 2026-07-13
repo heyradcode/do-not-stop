@@ -80,6 +80,9 @@ export const useBattlePets = (options?: UseBattlePetsOptions) => {
         isAwaitingVrf: isEvm ? battleFlow.phase === 'awaiting-vrf' : battlePets.lifecycle.phase === 'awaiting-vrf',
         phase: isEvm ? battleFlow.phase : (battlePets.lifecycle.phase === 'awaiting-vrf' ? 'awaiting-vrf' : undefined),
         result: battleFlow.result,
+        /** Client-side live-replay outcome (EVM only; null on Solana). See
+         *  useEvmBattleFlow's liveReplay doc — presentation only. */
+        liveReplay: isEvm ? battleFlow.liveReplay : null,
         reset,
         clearErrors: reset,
         hash: battlePets.lifecycle.hash,

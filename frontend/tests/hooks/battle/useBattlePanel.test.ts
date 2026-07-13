@@ -15,6 +15,7 @@ vi.mock('@components/pet/interactions/panels/battle/battle-matchmaking', () => (
 }));
 vi.mock('@components/pet/interactions/panels/battle/battle-utils', () => ({
     BATTLE_FAIL_MESSAGE: 'Battle failed',
+    MISMATCH_NOTICE_MESSAGE: 'Mismatch notice',
     REMATCH_COOLDOWN_MESSAGE: 'Cooldown',
     REMATCH_OPPONENT_GONE_MESSAGE: 'Opponent gone',
     VALIDATION_MESSAGE: 'Select a fighter and opponent',
@@ -28,7 +29,7 @@ vi.mock('@hooks/battle/useBattleOutcome', () => ({ useBattleOutcome: () => battl
 const resultDialogue = { resultTurns: [], dialogueLoading: false, attackerName: '', defenderName: '', markResultDialogueDone: vi.fn(), resultDialogueDone: false, resetResultDialogue: vi.fn() };
 vi.mock('@hooks/battle/useResultDialogue', () => ({ useResultDialogue: () => resultDialogue }));
 
-const battle = { mutate: vi.fn(), clearErrors: vi.fn(), isPending: false, isConfirming: false, error: null, hash: undefined as string | undefined, phase: null, lifecycle: { phase: 'idle' } };
+const battle = { mutate: vi.fn(), clearErrors: vi.fn(), isPending: false, isConfirming: false, error: null, hash: undefined as string | undefined, phase: null, liveReplay: null as null | { result: { firstWins: boolean }; log: unknown[]; startHp1: bigint; startHp2: bigint }, lifecycle: { phase: 'idle' } };
 const taunts = { generate: vi.fn(), reset: vi.fn(), isLoading: false, turns: [] as unknown[] };
 let capturedOnSuccess: ((r: unknown) => void) | undefined;
 
@@ -53,7 +54,7 @@ import { useBattlePanel } from '@hooks/battle/useBattlePanel';
 
 beforeEach(() => {
     vi.clearAllMocks();
-    Object.assign(battle, { isPending: false, isConfirming: false, error: null, hash: undefined, phase: null });
+    Object.assign(battle, { isPending: false, isConfirming: false, error: null, hash: undefined, phase: null, liveReplay: null });
     Object.assign(taunts, { isLoading: false, turns: [] });
     capturedOnSuccess = undefined;
 });
@@ -129,5 +130,64 @@ describe('useBattlePanel', () => {
     it('hashHint is null when provider is not switchboard', () => {
         const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         expect(result.current.hashHint).toBeNull();
+    });
+
+    it('holds the result card until the live animation finishes, even after the resolved event arrives', () => {
+        vi.useFakeTimers();
+        try {
+            battle.liveReplay = {
+                result: { firstWins: true },
+                log: [
+                    { attacker: 1, hp1After: 100n, hp2After: 80n },
+                    { attacker: 2, hp1After: 90n, hp2After: 80n },
+                ],
+                startHp1: 100n,
+                startHp2: 100n,
+            };
+            const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+            // Open the overlay first — the animation only ticks while overlayOpen && !showResult.
+            act(() => { result.current.setup.onSelectFighter('p1'); });
+            act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+            act(() => { result.current.setup.onBattle(); });
+            act(() => { capturedOnSuccess?.({ firstWins: true }); });
+            // Animation hasn't played any strikes yet — result must stay hidden.
+            expect(result.current.overlay.showResult).toBe(false);
+
+            act(() => { vi.advanceTimersByTime(700); });
+            expect(result.current.overlay.showResult).toBe(false);
+
+            act(() => { vi.advanceTimersByTime(700); });
+            expect(result.current.overlay.showResult).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('logs and shows a mismatch notice when the live replay disagrees with the on-chain result, then reveals the corrected result', () => {
+        vi.useFakeTimers();
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        try {
+            battle.liveReplay = { result: { firstWins: true }, log: [], startHp1: 100n, startHp2: 100n };
+            const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+            act(() => { result.current.setup.onSelectFighter('p1'); });
+            act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+            act(() => { result.current.setup.onBattle(); });
+            act(() => { capturedOnSuccess?.({ firstWins: false }); });
+
+            expect(errorSpy).toHaveBeenCalledWith(
+                expect.stringContaining('mismatch'),
+                expect.objectContaining({ onChain: { firstWins: false }, local: { firstWins: true } }),
+            );
+            // The on-chain result must still be applied as authoritative despite the mismatch.
+            expect(battleOutcome.applyResolvedOutcome).toHaveBeenCalledWith(false);
+            // Result card doesn't appear immediately — the notice holds it briefly.
+            expect(result.current.overlay.showResult).toBe(false);
+
+            act(() => { vi.advanceTimersByTime(2000); });
+            expect(result.current.overlay.showResult).toBe(true);
+        } finally {
+            errorSpy.mockRestore();
+            vi.useRealTimers();
+        }
     });
 });
