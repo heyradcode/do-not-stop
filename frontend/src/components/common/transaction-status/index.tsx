@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import type { TxLifecycle } from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon } from '@components/ui/icon';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 interface TransactionStatusProps {
     /** Mutation lifecycle from a `@shared/core` pet hook (e.g. `useTransferPet`). */
@@ -58,25 +58,25 @@ const TransactionStatus: React.FC<TransactionStatusProps> = ({ lifecycle }) => {
     const status = isConfirming ? 'confirming' : 'confirmed';
 
     return (
-        <div className={clsx(s.root, s[status])}>
-            <div className={s.content}>
-                <div className={s.icon}>
+        <div className={clsx(styles.root, styles[status])}>
+            <div className={styles.content}>
+                <div className={styles.icon}>
                     {isConfirming ? (
-                        <div className={s.spinner}></div>
+                        <div className={styles.spinner}></div>
                     ) : (
                         <Icon as={CheckIcon} tone={Tones.Emerald} glow="soft" noGap />
                     )}
                 </div>
-                <div className={s.text}>
-                    <div className={s.title}>
+                <div className={styles.text}>
+                    <div className={styles.title}>
                         {isConfirming ? 'Confirming transaction...' : 'Transaction confirmed!'}
                     </div>
-                    <div className={s.hash}>
+                    <div className={styles.hash}>
                         {displayHash.slice(0, 10)}...{displayHash.slice(-8)}
                     </div>
                 </div>
                 <button
-                    className={s.close}
+                    className={styles.close}
                     onClick={() => {
                         setDismissed(true);
                         setConfirmedHash(null);

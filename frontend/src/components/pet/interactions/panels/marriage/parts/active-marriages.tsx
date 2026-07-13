@@ -1,7 +1,7 @@
 import React from 'react';
 import { type OpponentPet, type Pet, type PetChain } from '@shared/core';
 import MarriageCard from './marriage-card';
-import s from '../index.module.css';
+import styles from '../index.module.css';
 
 type ActiveMarriagesProps = {
     chainPets: Pet[];
@@ -19,9 +19,9 @@ const ActiveMarriages: React.FC<ActiveMarriagesProps> = ({
     busy,
     onDivorce,
 }) => (
-    <div className={s.statusSection}>
-        <span className={s.statusLabel}>❤ Your marriages</span>
-        <ul className={s.list}>
+    <div className={styles.statusSection}>
+        <span className={styles.statusLabel}>❤ Your marriages</span>
+        <ul className={styles.list}>
             {chainPets.map((p) => (
                 <MarriageCard
                     key={p.id}

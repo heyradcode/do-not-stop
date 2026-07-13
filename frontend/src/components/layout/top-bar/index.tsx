@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import { useChainCapabilities, usePetList } from '@shared/core';
 
 import AccountDropdown from '@components/wallet/account-dropdown';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 const TITLE = 'Crypto Pets';
 
@@ -24,33 +24,33 @@ const TopBar: React.FC = () => {
     );
 
     return (
-        <header className={s.topbar}>
-            <div className={s.title}>{TITLE}</div>
-            <div className={s.spacer} />
+        <header className={styles.topbar}>
+            <div className={styles.title}>{TITLE}</div>
+            <div className={styles.spacer} />
 
             {isConnected && (
-                <div className={s.badges}>
+                <div className={styles.badges}>
                     {/* Placeholder — player tier/level (no progression data yet) */}
-                    <div className={clsx(s.badge, s.gold)}>
+                    <div className={clsx(styles.badge, styles.gold)}>
                         <span aria-hidden>🥇</span>
-                        <span className={s.strong}>GOLD</span>
-                        <span className={s.sep} />
-                        <span className={s.muted}>Lv 24</span>
+                        <span className={styles.strong}>GOLD</span>
+                        <span className={styles.sep} />
+                        <span className={styles.muted}>Lv 24</span>
                     </div>
                     {/* Placeholder — win streak */}
-                    <div className={clsx(s.badge, s.streak)}>
+                    <div className={clsx(styles.badge, styles.streak)}>
                         <span aria-hidden>🔥</span>
-                        <span className={s.strong}>7 STREAK</span>
+                        <span className={styles.strong}>7 STREAK</span>
                     </div>
                     {/* Real — total wins across owned pets */}
-                    <div className={clsx(s.badge, s.wins)}>
+                    <div className={clsx(styles.badge, styles.wins)}>
                         <span aria-hidden>⚔</span>
                         <span>{totalWins} Wins</span>
                     </div>
                 </div>
             )}
 
-            <div className={s.wallet}>
+            <div className={styles.wallet}>
                 <AccountDropdown />
             </div>
         </header>

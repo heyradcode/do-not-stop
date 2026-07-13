@@ -1,4 +1,4 @@
-/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
    Pet search + select dropdown. NOTE: `.psd-input` stays a GLOBAL class because
    interactions.css targets it via `input:not(.psd-input)` to exclude this search
    field from the generic field-input styling. */

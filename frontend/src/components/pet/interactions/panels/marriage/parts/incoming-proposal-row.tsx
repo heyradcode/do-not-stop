@@ -1,7 +1,7 @@
-import React from 'react';
+﻿import React from 'react';
 import { formatExpiry, type IncomingProposal } from '@shared/core';
 import NeonButton from '@components/ui/neon-button';
-import s from '../index.module.css';
+import styles from '../index.module.css';
 
 type IncomingProposalRowProps = {
     proposal: IncomingProposal;
@@ -17,20 +17,20 @@ const IncomingProposalRow: React.FC<IncomingProposalRowProps> = ({
     busy,
     onAccept,
 }) => (
-    <li className={s.proposalCard}>
-        <div className={s.proposalPets}>
-            <span className={s.proposalProposer}>
+    <li className={styles.proposalCard}>
+        <div className={styles.proposalPets}>
+            <span className={styles.proposalProposer}>
                 {proposal.proposerPetName}{' '}
-                <span className={s.proposalId}>#{proposal.proposerPetId}</span>
+                <span className={styles.proposalId}>#{proposal.proposerPetId}</span>
             </span>
-            <span className={s.proposalArrow}>→</span>
-            <span className={s.proposalTarget}>
+            <span className={styles.proposalArrow}>â†’</span>
+            <span className={styles.proposalTarget}>
                 your {targetPetName(proposal.targetPetId)}{' '}
-                <span className={s.proposalId}>#{proposal.targetPetId}</span>
+                <span className={styles.proposalId}>#{proposal.targetPetId}</span>
             </span>
         </div>
-        <div className={s.proposalMeta}>
-            <span className={s.proposalExpiry}>Expires {formatExpiry(proposal.expiry)}</span>
+        <div className={styles.proposalMeta}>
+            <span className={styles.proposalExpiry}>Expires {formatExpiry(proposal.expiry)}</span>
             <NeonButton tone="emerald" size="xs" disabled={busy} onClick={() => onAccept(proposal)}>
                 Accept
             </NeonButton>
@@ -39,3 +39,4 @@ const IncomingProposalRow: React.FC<IncomingProposalRowProps> = ({
 );
 
 export default IncomingProposalRow;
+

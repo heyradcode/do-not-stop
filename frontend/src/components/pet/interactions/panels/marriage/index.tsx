@@ -19,7 +19,7 @@ import AcceptTab from './parts/accept-tab';
 import ActiveMarriages from './parts/active-marriages';
 import AcceptConfirmDialog from './parts/accept-confirm-dialog';
 import type { MarriagePanelProps, MarriageTab, PendingAccept } from './types';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }) => {
     const { kind, activeKind, walletAddress } = useChainCapabilities();
@@ -109,7 +109,7 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
 
     return (
         <>
-            <div className={clsx('interface', s.root)}>
+            <div className={clsx('interface', styles.root)}>
                 {!isStandaloneView && (
                     <>
                         <h4>💍 Marriage</h4>
@@ -125,15 +125,15 @@ const MarriagePanel: React.FC<MarriagePanelProps> = ({ isStandaloneView = true }
 
                 {tab === 'propose' && (
                     <>
-                        <div className={s.benefits}>
-                            <span className={s.benefitsHeart} aria-hidden>
+                        <div className={styles.benefits}>
+                            <span className={styles.benefitsHeart} aria-hidden>
                                 💝
                             </span>
                             <div>
-                                <div className={s.benefitsTitle}>
+                                <div className={styles.benefitsTitle}>
                                     Marriage unlocks cross-owner breeding
                                 </div>
-                                <div className={s.benefitsSub}>
+                                <div className={styles.benefitsSub}>
                                     Bond two pets to breed across wallets — propose, accept, or
                                     divorce anytime.
                                 </div>

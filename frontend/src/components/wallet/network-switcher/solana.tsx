@@ -5,7 +5,7 @@ import { SOLANA_NETWORKS } from '@constants/chains/solana';
 import { Tones } from '@constants/tones';
 import { NeonModal } from '@components/ui';
 import Icon, { CheckIcon } from '@components/ui/icon';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 interface SolanaNetworkSwitcherProps {
     className?: string;
@@ -26,39 +26,39 @@ const SolanaNetworkSwitcher: React.FC<SolanaNetworkSwitcherProps> = ({ className
     };
 
     return (
-        <div className={clsx(s.networkSwitcher, className)}>
-            <button className={s.trigger} onClick={() => setIsOpen(true)}>
-                <div className={s.info}>
-                    <span className={s.name}>{currentNetworkConfig?.name || 'Select Network'}</span>
+        <div className={clsx(styles.networkSwitcher, className)}>
+            <button className={styles.trigger} onClick={() => setIsOpen(true)}>
+                <div className={styles.info}>
+                    <span className={styles.name}>{currentNetworkConfig?.name || 'Select Network'}</span>
                 </div>
-                <div className={s.arrow}>▼</div>
+                <div className={styles.arrow}>▼</div>
             </button>
 
             <NeonModal
                 isOpen={isOpen}
                 onRequestClose={() => setIsOpen(false)}
                 title="Select Solana Network"
-                className={s.networkNeonModal}
-                contentClassName={s.networkNeonModalContent}
+                className={styles.networkNeonModal}
+                contentClassName={styles.networkNeonModalContent}
             >
-                <div className={s.networkList}>
+                <div className={styles.networkList}>
                     {SOLANA_NETWORKS.map((network) => {
                         const isActive = currentNetwork === network.name;
                         return (
                             <button
                                 key={network.name}
                                 className={clsx(
-                                    s.option,
-                                    isActive && s.active,
-                                    network.isTestnet && s.testnet,
+                                    styles.option,
+                                    isActive && styles.active,
+                                    network.isTestnet && styles.testnet,
                                 )}
                                 onClick={() => handleNetworkSelect(network.name)}
                             >
-                                <div className={s.optionInfo}>
-                                    <span className={s.optionName}>{network.name}</span>
+                                <div className={styles.optionInfo}>
+                                    <span className={styles.optionName}>{network.name}</span>
                                 </div>
                                 {isActive && (
-                                    <div className={s.optionCheck}>
+                                    <div className={styles.optionCheck}>
                                         <Icon
                                             as={CheckIcon}
                                             tone={Tones.Emerald}

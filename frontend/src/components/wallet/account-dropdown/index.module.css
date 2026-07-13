@@ -1,4 +1,4 @@
-/* CSS Module — child class names are local; reference via `import s from './index.module.css'`.
+/* CSS Module — child class names are local; reference via `import styles from './index.module.css'`.
    NOTE: the ROOT `.account-dropdown` stays a GLOBAL class (top-bar positions it via
    `.wallet :global(.account-dropdown)`), and the button compounds reach the global
    neon-button API via `:global(.neon-btn)`. Only the generic internal classes

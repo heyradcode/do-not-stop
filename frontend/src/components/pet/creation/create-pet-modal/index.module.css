@@ -1,4 +1,4 @@
-/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
    Body content only — the overlay/dialog/header/close chrome comes from <NeonModal>.
    Tokens: frontend/src/styles/variables.css */
 

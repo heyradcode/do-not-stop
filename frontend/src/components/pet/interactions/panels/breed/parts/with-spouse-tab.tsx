@@ -2,7 +2,7 @@ import React from 'react';
 import type { Pet, PetChain } from '@shared/core';
 import PendingBreedNotice from './pending-breed-notice';
 import SpouseLabel from './spouse-label';
-import s from '../index.module.css';
+import styles from '../index.module.css';
 
 type WithSpouseTabProps = {
     allPets: { id: string; pet: Pet }[];
@@ -46,34 +46,34 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
     };
 
     return (
-        <div className={s.tabPanel}>
-            <p className={s.tabHint}>Cycle to a married pet to breed with its spouse.</p>
+        <div className={styles.tabPanel}>
+            <p className={styles.tabHint}>Cycle to a married pet to breed with its spouse.</p>
             <div className="picker">
                 <div className="field">
                     <span className="field-label">Your pet</span>
-                    <div className={s.cycleSelect}>
+                    <div className={styles.cycleSelect}>
                         <button
                             type="button"
-                            className={s.cycleBtn}
+                            className={styles.cycleBtn}
                             onClick={() => cycle(-1)}
                             aria-label="Previous pet"
                             disabled={allPets.length === 0}
                         >
                             ◀
                         </button>
-                        <div className={s.cycleCurrent}>
+                        <div className={styles.cycleCurrent}>
                             {selected ? (
                                 <>
                                     {selected.name} · Lv {selected.level}
                                     {selected.spouseId ? ` ↔ #${selected.spouseId}` : ''}
                                 </>
                             ) : (
-                                <span className={s.spousePlaceholder}>Select a pet</span>
+                                <span className={styles.spousePlaceholder}>Select a pet</span>
                             )}
                         </div>
                         <button
                             type="button"
-                            className={s.cycleBtn}
+                            className={styles.cycleBtn}
                             onClick={() => cycle(1)}
                             aria-label="Next pet"
                             disabled={allPets.length === 0}
@@ -84,15 +84,15 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
                 </div>
                 <div className="field">
                     <span className="field-label">Partner&apos;s pet</span>
-                    <div className={s.spouseValue}>
+                    <div className={styles.spouseValue}>
                         {!spousePetId ? (
-                            <span className={s.spousePlaceholder}>— select your pet first —</span>
+                            <span className={styles.spousePlaceholder}>— select your pet first —</span>
                         ) : marriageLoading ? (
-                            <span className={s.spousePlaceholder}>Checking…</span>
+                            <span className={styles.spousePlaceholder}>Checking…</span>
                         ) : spouseId ? (
                             <SpouseLabel chain={chain} spouseId={spouseId} />
                         ) : (
-                            <span className={s.spousePlaceholder}>Not married</span>
+                            <span className={styles.spousePlaceholder}>Not married</span>
                         )}
                     </div>
                 </div>
@@ -100,7 +100,7 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
 
             {/* Not-married hint */}
             {spousePetId && !marriageLoading && !isMarried && (
-                <div className={s.noMarried}>
+                <div className={styles.noMarried}>
                     <p>This pet is not married yet.</p>
                     <p>
                         Go to the <strong>Marriage</strong> page to propose first.
@@ -112,12 +112,12 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
             {spouseId && (
                 <>
                     {studFeeLabel && (
-                        <div className={s.studFeeNotice}>
+                        <div className={styles.studFeeNotice}>
                             Stud fee: <strong>{studFeeLabel}</strong> — paid to the spouse owner.
                         </div>
                     )}
                     {areRelated && (
-                        <p className={s.relativeWarning}>
+                        <p className={styles.relativeWarning}>
                             Your pet and their spouse are relatives and cannot breed together.
                         </p>
                     )}

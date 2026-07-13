@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 import clsx from 'clsx';
 import Icon, { CheckIcon, CloseIcon, PauseIcon, WarningIcon } from '@components/ui/icon';
 import { Tones, type Tone } from '@constants/tones';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 export type ToastTone = 'error' | 'info' | 'success';
 
@@ -67,19 +67,19 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (
         <ToastContext.Provider value={value}>
             {children}
-            <div className={s.viewport} aria-live="polite" aria-relevant="additions">
+            <div className={styles.viewport} aria-live="polite" aria-relevant="additions">
                 {toasts.map((toast) => {
                     const tone = toast.tone ?? 'error';
                     const IconComponent = toneIcon(tone);
                     return (
-                        <div key={toast.id} className={clsx(s.toast, s[tone])} role="status">
-                            <span className={s.icon} aria-hidden>
+                        <div key={toast.id} className={clsx(styles.toast, styles[tone])} role="status">
+                            <span className={styles.icon} aria-hidden>
                                 <Icon as={IconComponent} tone={toneColor(tone)} />
                             </span>
-                            <p className={s.message}>{toast.message}</p>
+                            <p className={styles.message}>{toast.message}</p>
                             <button
                                 type="button"
-                                className={s.dismiss}
+                                className={styles.dismiss}
                                 aria-label="Dismiss notification"
                                 onClick={() => dismiss(toast.id)}
                             >

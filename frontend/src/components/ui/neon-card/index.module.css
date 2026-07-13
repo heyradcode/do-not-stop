@@ -1,4 +1,4 @@
-/* CSS Module — class names are local; reference via `import s from './index.module.css'`. */
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`. */
 .card {
     position: relative;
     border-radius: var(--cp-border-radius, 12px);

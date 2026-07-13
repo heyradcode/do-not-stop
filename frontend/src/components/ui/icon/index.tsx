@@ -19,7 +19,7 @@ import {
 import { IoCheckmarkSharp, IoClose, IoCopy, IoPauseSharp, IoWarning } from 'react-icons/io5';
 import clsx from 'clsx';
 import { type Tone } from '@constants/tones';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 export type IconTone = Exclude<Tone, 'azure'>;
 export type IconGlow = 'none' | 'soft' | 'strong';
@@ -41,18 +41,18 @@ export type IconProps = {
 };
 
 const TONE_CLASS: Record<IconTone, string> = {
-    cyan: s.cyan,
-    violet: s.violet,
-    magenta: s.magenta,
-    emerald: s.emerald,
-    amber: s.amber,
+    cyan: styles.cyan,
+    violet: styles.violet,
+    magenta: styles.magenta,
+    emerald: styles.emerald,
+    amber: styles.amber,
     inherit: '',
 };
 
 const GLOW_CLASS: Record<IconGlow, string> = {
     none: '',
-    soft: s.soft,
-    strong: s.strong,
+    soft: styles.soft,
+    strong: styles.strong,
 };
 
 const Icon: React.FC<IconProps> = ({
@@ -64,7 +64,7 @@ const Icon: React.FC<IconProps> = ({
     className,
     title,
 }) => {
-    const cls = clsx(s.icon, TONE_CLASS[tone], GLOW_CLASS[glow], noGap && s.noGap, className);
+    const cls = clsx(styles.icon, TONE_CLASS[tone], GLOW_CLASS[glow], noGap && styles.noGap, className);
     return (
         <span
             className={cls}

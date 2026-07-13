@@ -19,7 +19,7 @@ import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 import SyncMetadataButton from './sync-metadata-button';
 import PetShowcase from '../_shared/pet-showcase';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 export type LevelUpPanelProps = {
     isStandaloneView?: boolean;
@@ -111,29 +111,29 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
                 {selectedPetObj && (
                     <PetShowcase avatar={getPetAvatar(selectedPetObj.dna)} accent="violet">
-                        <div className={s.name}>{selectedPetObj.name}</div>
-                        <div className={s.petClass}>{getPetClass(selectedPetObj.dna)}</div>
-                        <div className={s.transition}>
-                            <span className={clsx(s.badge, s.badgeCur)}>
+                        <div className={styles.name}>{selectedPetObj.name}</div>
+                        <div className={styles.petClass}>{getPetClass(selectedPetObj.dna)}</div>
+                        <div className={styles.transition}>
+                            <span className={clsx(styles.badge, styles.badgeCur)}>
                                 Lv.{selectedPetObj.level}
                             </span>
-                            <span className={s.arrow} aria-hidden>
+                            <span className={styles.arrow} aria-hidden>
                                 →
                             </span>
-                            <span className={clsx(s.badge, s.badgeNext)}>
+                            <span className={clsx(styles.badge, styles.badgeNext)}>
                                 Lv.{selectedPetObj.level + 1}
                             </span>
                         </div>
-                        <div className={s.xp}>
-                            <div className={s.xpRow}>
+                        <div className={styles.xp}>
+                            <div className={styles.xpRow}>
                                 <span>XP</span>
                                 <span>
                                     {selectedXp?.xpCurrent}/{selectedXp?.xpMax}
                                 </span>
                             </div>
-                            <div className={s.xpTrack}>
+                            <div className={styles.xpTrack}>
                                 <div
-                                    className={s.xpFill}
+                                    className={styles.xpFill}
                                     style={{ width: `${getXpPercent(selectedPetObj)}%` }}
                                 />
                             </div>

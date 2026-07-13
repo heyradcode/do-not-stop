@@ -24,7 +24,7 @@ import CreatePetModal from '@components/pet/creation/create-pet-modal';
 import SendPetModal from '@components/pet/transfer/send-pet-modal';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { usePetCooldowns } from '@hooks/usePetCooldowns';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 /** Placeholder leaderboard rows — pending real ranking data (plan §8 Q3). */
 const LEADERBOARD_PLACEHOLDER = [
@@ -85,8 +85,8 @@ const PetGallery: React.FC = () => {
 
     if (!isConnected) {
         return (
-            <div className={clsx(s.idle, s.idleMessage)}>
-                <div className={s.prompt}>
+            <div className={clsx(styles.idle, styles.idleMessage)}>
+                <div className={styles.prompt}>
                     <Icon as={PawIcon} tone={Tones.Cyan} glow="strong" noGap />
                     <h2>Your Pet Collection</h2>
                     <p>Connect your wallet to view your pets.</p>
@@ -96,47 +96,47 @@ const PetGallery: React.FC = () => {
     }
 
     return (
-        <div className={s.idle}>
+        <div className={styles.idle}>
             {/* Stat strip — Pets & Wins are real; Global rank is a placeholder */}
-            <div className={s.stats}>
-                <div className={clsx(s.stat, s.cyan)}>
-                    <span className={s.statIcon} aria-hidden>
+            <div className={styles.stats}>
+                <div className={clsx(styles.stat, styles.cyan)}>
+                    <span className={styles.statIcon} aria-hidden>
                         🐾
                     </span>
-                    <div className={s.statBody}>
-                        <div className={s.statValue}>{pets.length}</div>
-                        <div className={s.statLabel}>Pets</div>
+                    <div className={styles.statBody}>
+                        <div className={styles.statValue}>{pets.length}</div>
+                        <div className={styles.statLabel}>Pets</div>
                     </div>
                 </div>
-                <div className={clsx(s.stat, s.violet)}>
-                    <span className={s.statIcon} aria-hidden>
+                <div className={clsx(styles.stat, styles.violet)}>
+                    <span className={styles.statIcon} aria-hidden>
                         ⚔
                     </span>
-                    <div className={s.statBody}>
-                        <div className={s.statValue}>{totalWins}</div>
-                        <div className={s.statLabel}>Wins</div>
+                    <div className={styles.statBody}>
+                        <div className={styles.statValue}>{totalWins}</div>
+                        <div className={styles.statLabel}>Wins</div>
                     </div>
                 </div>
-                <div className={clsx(s.stat, s.gold)}>
-                    <span className={s.statIcon} aria-hidden>
+                <div className={clsx(styles.stat, styles.gold)}>
+                    <span className={styles.statIcon} aria-hidden>
                         🏆
                     </span>
-                    <div className={s.statBody}>
-                        <div className={s.statValue}>#3</div>
-                        <div className={s.statLabel}>Global Rank</div>
+                    <div className={styles.statBody}>
+                        <div className={styles.statValue}>#3</div>
+                        <div className={styles.statLabel}>Global Rank</div>
                     </div>
                 </div>
             </div>
 
             {/* Leaderboard — full-width row below the stats (placeholder ranking data) */}
-            <div className={s.leaderboard}>
-                <div className={s.leaderboardTitle}>🏆 Leaderboard</div>
-                <ul className={s.leaderboardList}>
+            <div className={styles.leaderboard}>
+                <div className={styles.leaderboardTitle}>🏆 Leaderboard</div>
+                <ul className={styles.leaderboardList}>
                     {LEADERBOARD_PLACEHOLDER.map((row) => (
-                        <li key={row.rank} className={clsx(s.lbRow, row.me && s.isMe)}>
-                            <span className={s.lbRank}>#{row.rank}</span>
-                            <span className={s.lbName}>{row.name}</span>
-                            <span className={s.lbTier}>{row.tier}</span>
+                        <li key={row.rank} className={clsx(styles.lbRow, row.me && styles.isMe)}>
+                            <span className={styles.lbRank}>#{row.rank}</span>
+                            <span className={styles.lbName}>{row.name}</span>
+                            <span className={styles.lbTier}>{row.tier}</span>
                         </li>
                     ))}
                 </ul>
@@ -162,111 +162,111 @@ const PetGallery: React.FC = () => {
             )}
 
             {!isLoading && !error && (
-                <div className={s.petGrid}>
+                <div className={styles.petGrid}>
                     {pets.map((pet) => {
                         const cd = statusFor(pet);
                         const rarityColor = getRarityColor(pet.rarity);
                         const xp = getXpNumbers(pet);
                         const skill = getPetSkill(pet.speciesId);
                         return (
-                            <div key={`${pet.chain}-${pet.id}`} className={s.petCard}>
+                            <div key={`${pet.chain}-${pet.id}`} className={styles.petCard}>
                                 <div
-                                    className={s.rarityBar}
+                                    className={styles.rarityBar}
                                     style={{
                                         background: rarityColor,
                                         boxShadow: `0 0 8px ${rarityColor}`,
                                     }}
                                 />
-                                <div className={s.visual}>
+                                <div className={styles.visual}>
                                     <div
-                                        className={s.rarity}
+                                        className={styles.rarity}
                                         style={{ color: rarityColor, borderColor: rarityColor }}
                                     >
                                         {getRarityName(pet.rarity)}
                                     </div>
-                                    <div className={s.level}>Lv. {pet.level}</div>
+                                    <div className={styles.level}>Lv. {pet.level}</div>
                                     {skill ? (
-                                        <div className={s.skill} title={skill.description}>
+                                        <div className={styles.skill} title={skill.description}>
                                             {skill.name}
                                         </div>
                                     ) : null}
-                                    <div className={s.avatar}>{getPetAvatar(pet.dna)}</div>
+                                    <div className={styles.avatar}>{getPetAvatar(pet.dna)}</div>
                                 </div>
 
-                                <div className={s.info}>
-                                    <div className={s.head}>
+                                <div className={styles.info}>
+                                    <div className={styles.head}>
                                         <div>
-                                            <div className={s.name}>{pet.name}</div>
-                                            <div className={s.petClass}>
+                                            <div className={styles.name}>{pet.name}</div>
+                                            <div className={styles.petClass}>
                                                 {getPetClass(pet.dna)} · Gen{' '}
                                                 {pet.generation ?? getGeneration(pet.dna)}
                                             </div>
                                         </div>
-                                        <div className={s.hp}>
-                                            <span className={s.hpLabel}>HP</span>
-                                            <span className={s.hpValue}>
+                                        <div className={styles.hp}>
+                                            <span className={styles.hpLabel}>HP</span>
+                                            <span className={styles.hpValue}>
                                                 {getLifePercent(pet)}%
                                             </span>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <div className={s.xpRow}>
-                                            <span className={s.xpLabel}>XP</span>
-                                            <span className={s.xpValue}>
+                                        <div className={styles.xpRow}>
+                                            <span className={styles.xpLabel}>XP</span>
+                                            <span className={styles.xpValue}>
                                                 {xp.xpCurrent}/{xp.xpMax}
                                             </span>
                                         </div>
-                                        <div className={s.xpTrack}>
+                                        <div className={styles.xpTrack}>
                                             <div
-                                                className={s.xpFill}
+                                                className={styles.xpFill}
                                                 style={{ width: `${getXpPercent(pet)}%` }}
                                             />
                                         </div>
                                     </div>
 
-                                    <div className={s.record}>
-                                        <span className={s.wins}>{pet.winCount}W</span>
-                                        <span className={s.sep}>/</span>
-                                        <span className={s.losses}>{pet.lossCount}L</span>
-                                        <span className={s.dot}>·</span>
-                                        <span className={s.wr}>{winRatio(pet)}% WR</span>
+                                    <div className={styles.record}>
+                                        <span className={styles.wins}>{pet.winCount}W</span>
+                                        <span className={styles.sep}>/</span>
+                                        <span className={styles.losses}>{pet.lossCount}L</span>
+                                        <span className={styles.dot}>·</span>
+                                        <span className={styles.wr}>{winRatio(pet)}% WR</span>
                                     </div>
                                 </div>
 
-                                <div className={s.cardStats}>
+                                <div className={styles.cardStats}>
                                     {petStatTiles(pet).map((tile) => (
-                                        <div className={s.statTile} key={tile.label}>
-                                            <div className={s.tileLabel}>{tile.label}</div>
-                                            <div className={s.tileValue}>{tile.value}</div>
+                                        <div className={styles.statTile} key={tile.label}>
+                                            <div className={styles.tileLabel}>{tile.label}</div>
+                                            <div className={styles.tileValue}>{tile.value}</div>
                                         </div>
                                     ))}
                                 </div>
 
                                 {cd.onCooldown && (
-                                    <div className={s.status}>
+                                    <div className={styles.status}>
                                         {cd.battleOnCooldown && (
-                                            <div className={s.cooldown}>
+                                            <div className={styles.cooldown}>
                                                 ⚔️ Battle ready in {cd.battleLabel}
                                             </div>
                                         )}
                                         {cd.breedOnCooldown && (
-                                            <div className={s.cooldown}>
+                                            <div className={styles.cooldown}>
                                                 🥚 Breed ready in {cd.breedLabel}
                                             </div>
                                         )}
                                         {cd.trainOnCooldown && (
-                                            <div className={s.cooldown}>
+                                            <div className={styles.cooldown}>
                                                 💪 Train ready in {cd.trainLabel}
                                             </div>
                                         )}
                                     </div>
                                 )}
 
-                                <div className={s.actions}>
+                                <div className={styles.actions}>
                                     <button
                                         type="button"
-                                        className={s.battleBtn}
+                                        className={styles.battleBtn}
                                         onClick={() => navigate(BATTLE_PATH)}
                                     >
                                         <Icon
@@ -279,7 +279,7 @@ const PetGallery: React.FC = () => {
                                     </button>
                                     <button
                                         type="button"
-                                        className={clsx(s.sendBtn, !cd.battleReady && s.onCooldown)}
+                                        className={clsx(styles.sendBtn, !cd.battleReady && styles.onCooldown)}
                                         onClick={() => handleSendClick(pet)}
                                         title="Send / transfer pet"
                                         aria-label={`Send ${pet.name}`}
@@ -298,11 +298,11 @@ const PetGallery: React.FC = () => {
 
                     <button
                         type="button"
-                        className={s.summonTile}
+                        className={styles.summonTile}
                         onClick={() => setCreateModalOpen(true)}
                     >
-                        <span className={s.summonPlus}>+</span>
-                        <span className={s.summonLabel}>Summon a Pet</span>
+                        <span className={styles.summonPlus}>+</span>
+                        <span className={styles.summonLabel}>Summon a Pet</span>
                     </button>
                 </div>
             )}

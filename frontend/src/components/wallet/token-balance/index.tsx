@@ -1,6 +1,6 @@
 import React from 'react';
 import { formatTokenBalance } from '@constants/tokens';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 interface TokenBalanceProps {
     symbol: string;
@@ -20,14 +20,14 @@ const TokenBalance: React.FC<TokenBalanceProps> = ({ symbol, decimals, name, bal
     const displayBalance = parseFloat(formattedBalance).toFixed(4);
 
     return (
-        <div className={s.tokenBalance}>
-            <div className={s.info}>
-                <span className={s.symbol}>{symbol}</span>
-                <span className={s.name}>{name}</span>
+        <div className={styles.tokenBalance}>
+            <div className={styles.info}>
+                <span className={styles.symbol}>{symbol}</span>
+                <span className={styles.name}>{name}</span>
             </div>
-            <div className={s.amount}>
-                <span className={s.value}>{displayBalance}</span>
-                <span className={s.symbol}>{symbol}</span>
+            <div className={styles.amount}>
+                <span className={styles.value}>{displayBalance}</span>
+                <span className={styles.symbol}>{symbol}</span>
             </div>
         </div>
     );

@@ -15,7 +15,7 @@ import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon, QuillIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 import PetShowcase from '../_shared/pet-showcase';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 const MAX_NAME_LEN = 20;
 
@@ -115,7 +115,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 {selectedPetObj && (
                     <PetShowcase avatar={getPetAvatar(selectedPetObj.dna)} accent="cyan">
                         <div
-                            className={s.preview}
+                            className={styles.preview}
                             style={
                                 activeTheme != null
                                     ? {
@@ -127,14 +127,14 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                         >
                             {previewName}
                         </div>
-                        <div className={s.sub}>
+                        <div className={styles.sub}>
                             {getPetClass(selectedPetObj.dna)} · Lv.{selectedPetObj.level}
                         </div>
-                        <div className={s.reqs}>
-                            <div className={meetsMin ? s.isOk : s.isPending}>
+                        <div className={styles.reqs}>
+                            <div className={meetsMin ? styles.isOk : styles.isPending}>
                                 {meetsMin ? '✓' : '○'} Min 2 characters
                             </div>
-                            <div className={s.isOk}>
+                            <div className={styles.isOk}>
                                 ✓ Max {MAX_NAME_LEN} characters ({newName.length})
                             </div>
                         </div>
@@ -175,13 +175,13 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 </div>
 
                 <div className="rename-themes">
-                    <div className={s.themesTitle}>Name Theme</div>
-                    <div className={s.themesGrid}>
+                    <div className={styles.themesTitle}>Name Theme</div>
+                    <div className={styles.themesGrid}>
                         {RENAME_THEMES.map((theme, i) => (
                             <button
                                 type="button"
                                 key={theme.label}
-                                className={clsx(s.theme, activeTheme === i && s.isActive)}
+                                className={clsx(styles.theme, activeTheme === i && styles.isActive)}
                                 style={
                                     activeTheme === i
                                         ? {
@@ -196,22 +196,22 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                                 }}
                             >
                                 <span
-                                    className={s.themeIcon}
+                                    className={styles.themeIcon}
                                     style={{ filter: `drop-shadow(0 0 6px ${theme.color})` }}
                                     aria-hidden
                                 >
                                     {theme.icon}
                                 </span>
-                                <span className={s.themeLabel} style={{ color: theme.color }}>
+                                <span className={styles.themeLabel} style={{ color: theme.color }}>
                                     {theme.label}
                                 </span>
-                                <span className={s.themeExample}>{theme.example}</span>
+                                <span className={styles.themeExample}>{theme.example}</span>
                             </button>
                         ))}
                     </div>
                 </div>
 
-                <div className={clsx('action-controls', s.actionControls)}>
+                <div className={clsx('action-controls', styles.actionControls)}>
                     <NeonButton
                         tone="emerald"
                         onClick={handleChangeName}

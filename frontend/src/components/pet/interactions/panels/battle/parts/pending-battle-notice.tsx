@@ -1,7 +1,7 @@
 import React from 'react';
 import { usePendingBattle, usePendingSolanaBattle } from '@shared/core';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
-import s from '../index.module.css';
+import styles from '../index.module.css';
 
 type PendingBattleNoticeProps = {
     /** Pet to check for an unresolved battle; null/empty renders nothing. */
@@ -38,7 +38,7 @@ const PendingBattleNotice: React.FC<PendingBattleNoticeProps> = ({
     if (solanaPending.isPending && !pending.isPending) {
         const busy = solanaPending.cancel.isPending;
         return (
-            <div className={s.pendingNotice}>
+            <div className={styles.pendingNotice}>
                 <p>
                     You have an unresolved battle on Solana.
                     {solanaPending.canCancel
@@ -46,7 +46,7 @@ const PendingBattleNotice: React.FC<PendingBattleNoticeProps> = ({
                         : ' Starting a new battle will resume it automatically.'}
                 </p>
                 {solanaPending.canCancel && (
-                    <div className={s.pendingActions}>
+                    <div className={styles.pendingActions}>
                         <button
                             type="button"
                             onClick={() => void solanaPending.cancel.run()}
@@ -62,14 +62,14 @@ const PendingBattleNotice: React.FC<PendingBattleNoticeProps> = ({
 
     const busy = pending.settle.isPending || pending.cancel.isPending;
     return (
-        <div className={s.pendingNotice}>
+        <div className={styles.pendingNotice}>
             <p>
                 <strong>{who}</strong> has an unresolved battle.
                 {pending.canCancel
                     ? ' Settle it once randomness is ready, or cancel it now.'
                     : ' Randomness has arrived — settle to complete the battle.'}
             </p>
-            <div className={s.pendingActions}>
+            <div className={styles.pendingActions}>
                 <button type="button" onClick={() => void pending.settle.run()} disabled={busy}>
                     {pending.settle.isPending ? 'Settling…' : 'Settle'}
                 </button>

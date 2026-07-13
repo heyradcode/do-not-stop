@@ -18,7 +18,7 @@ import Icon, { BattleIcon } from '@components/ui/icon';
 import PendingBattleNotice from './pending-battle-notice';
 import OpenToChallengesToggle from './open-to-challenges-toggle';
 import { opponentKey, shortAddress } from '../battle-utils';
-import s from '../index.module.css';
+import styles from '../index.module.css';
 
 export type BattleSetupProps = {
     isStandaloneView: boolean;
@@ -62,12 +62,12 @@ const CombatantCard: React.FC<{
         return (
             <div
                 className={clsx(
-                    s.combatantCard,
-                    side === 'rival' && s.combatantCardRival,
-                    s.isEmpty,
+                    styles.combatantCard,
+                    side === 'rival' && styles.combatantCardRival,
+                    styles.isEmpty,
                 )}
             >
-                <span className={s.combatantCardPlaceholder}>{emptyLabel}</span>
+                <span className={styles.combatantCardPlaceholder}>{emptyLabel}</span>
             </div>
         );
     }
@@ -75,38 +75,38 @@ const CombatantCard: React.FC<{
     const rarityColor = getRarityColor(pet.rarity);
     const hp = getLifePercent(pet);
     return (
-        <div className={clsx(s.combatantCard, side === 'rival' && s.combatantCardRival)}>
-            <div className={s.combatantCardAvatarWrap}>
-                <span className={s.combatantCardAvatar} aria-hidden>
+        <div className={clsx(styles.combatantCard, side === 'rival' && styles.combatantCardRival)}>
+            <div className={styles.combatantCardAvatarWrap}>
+                <span className={styles.combatantCardAvatar} aria-hidden>
                     {getPetAvatar(pet.dna)}
                 </span>
             </div>
-            <div className={s.combatantCardName}>{pet.name}</div>
-            <div className={s.combatantCardMeta}>
+            <div className={styles.combatantCardName}>{pet.name}</div>
+            <div className={styles.combatantCardMeta}>
                 Lv.{pet.level} · {getPetClass(pet.dna)} ·{' '}
                 <span style={{ color: rarityColor }}>{getRarityName(pet.rarity).toUpperCase()}</span>
             </div>
-            {owner ? <div className={s.combatantCardOwner}>{owner}</div> : null}
-            <div className={s.combatantCardStats}>
+            {owner ? <div className={styles.combatantCardOwner}>{owner}</div> : null}
+            <div className={styles.combatantCardStats}>
                 {STAT_KEYS.map((stat) => (
-                    <div className={s.combatantStat} key={stat.label}>
-                        <div className={s.combatantStatLabel}>{stat.label}</div>
-                        <div className={s.combatantStatVal}>{props[stat.key]}</div>
+                    <div className={styles.combatantStat} key={stat.label}>
+                        <div className={styles.combatantStatLabel}>{stat.label}</div>
+                        <div className={styles.combatantStatVal}>{props[stat.key]}</div>
                     </div>
                 ))}
             </div>
-            <div className={s.combatantCardHp}>
-                <div className={s.combatantCardHpHead}>
+            <div className={styles.combatantCardHp}>
+                <div className={styles.combatantCardHpHead}>
                     <span>HP</span>
-                    <span className={s.combatantCardHpVal}>{hp}/100</span>
+                    <span className={styles.combatantCardHpVal}>{hp}/100</span>
                 </div>
-                <div className={s.combatantCardHpTrack}>
+                <div className={styles.combatantCardHpTrack}>
                     <div
                         className={clsx(
-                            s.combatantCardHpFill,
+                            styles.combatantCardHpFill,
                             side === 'fighter'
-                                ? s.combatantCardHpFillFighter
-                                : s.combatantCardHpFillRival,
+                                ? styles.combatantCardHpFillFighter
+                                : styles.combatantCardHpFillRival,
                         )}
                         style={{ width: `${hp}%` }}
                     />
@@ -151,7 +151,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
         : 'Select an opponent';
 
     return (
-        <div className={clsx('interface', s.battleSetup)}>
+        <div className={clsx('interface', styles.battleSetup)}>
             {!isStandaloneView && (
                 <>
                     <h4>
@@ -162,11 +162,11 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 </>
             )}
 
-            <div className={s.showdown}>
+            <div className={styles.showdown}>
                 {/* Your fighter */}
-                <div className={clsx(s.combatantCol, s.combatantColFighter)}>
-                    <div className={s.combatantColLabel}>Your Fighter</div>
-                    <div className={s.combatantSelect}>
+                <div className={clsx(styles.combatantCol, styles.combatantColFighter)}>
+                    <div className={styles.combatantColLabel}>Your Fighter</div>
+                    <div className={styles.combatantSelect}>
                         <select
                             aria-label="Choose your fighter"
                             value={selectedPet1}
@@ -190,20 +190,20 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 </div>
 
                 {/* VS + win rate */}
-                <div className={s.vs}>
-                    <div className={s.vsMark}>VS</div>
-                    <div className={s.vsDivider} />
-                    <div className={s.vsWinrate}>
-                        <div className={s.vsWinrateLabel}>Win Rate</div>
-                        <div className={s.vsWinrateVal}>{winRate}</div>
+                <div className={styles.vs}>
+                    <div className={styles.vsMark}>VS</div>
+                    <div className={styles.vsDivider} />
+                    <div className={styles.vsWinrate}>
+                        <div className={styles.vsWinrateLabel}>Win Rate</div>
+                        <div className={styles.vsWinrateVal}>{winRate}</div>
                     </div>
-                    <div className={s.vsDivider} />
+                    <div className={styles.vsDivider} />
                 </div>
 
                 {/* On-chain rival */}
-                <div className={clsx(s.combatantCol, s.combatantColRival)}>
-                    <div className={s.combatantColLabel}>On-Chain Rival</div>
-                    <div className={s.combatantSelect}>
+                <div className={clsx(styles.combatantCol, styles.combatantColRival)}>
+                    <div className={styles.combatantColLabel}>On-Chain Rival</div>
+                    <div className={styles.combatantSelect}>
                         <select
                             aria-label="Select an opponent"
                             value={selectedOpponentKey}
@@ -222,7 +222,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                         </select>
                         <button
                             type="button"
-                            className={s.combatantSelectBtn}
+                            className={styles.combatantSelectBtn}
                             onClick={onRandomMatch}
                             disabled={randomMatchDisabled}
                             title={
@@ -235,7 +235,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                         </button>
                         <button
                             type="button"
-                            className={s.combatantSelectBtn}
+                            className={styles.combatantSelectBtn}
                             onClick={onRefreshOpponents}
                             disabled={opponentsLoading}
                         >
@@ -264,7 +264,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 currentValue={selectedFighter?.openToChallenges}
             />
 
-            <div className={s.actions}>
+            <div className={styles.actions}>
                 <AuthActionButton tone="magenta" onClick={onBattle} disabled={battleDisabled}>
                     ⚔ {battleButtonLabel}
                 </AuthActionButton>

@@ -1,4 +1,4 @@
-/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
    Level-up details below the shared ring-avatar hero (level transition + XP).
    Shared chrome (.interface/.picker/.field/.action-controls) stays global. */
 .name {

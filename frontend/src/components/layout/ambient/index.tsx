@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-import s from './index.module.css';
+import styles from './index.module.css';
 
 /** Tri-color neon particles rising through the shell background. */
 const PARTICLE_COLORS = ['#7dd6ff', '#b58cff', '#ff7bcb'] as const;
@@ -110,9 +110,9 @@ const Ambient: React.FC = () => {
     }, []);
 
     return (
-        <div className={s.ambient} aria-hidden="true">
-            <canvas ref={canvasRef} className={s.canvas} />
-            <div className={s.grid} />
+        <div className={styles.ambient} aria-hidden="true">
+            <canvas ref={canvasRef} className={styles.canvas} />
+            <div className={styles.grid} />
         </div>
     );
 };

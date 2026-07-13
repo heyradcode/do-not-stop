@@ -1,4 +1,4 @@
-/* CSS Module — class names are local; reference via `import s from './index.module.css'`.
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
    Rename details below the shared ring-avatar hero (live preview + requirements).
    Shared chrome (.interface/.picker/.field/.action-controls) stays global in
    interactions.css and is referenced as plain strings from the tsx. */

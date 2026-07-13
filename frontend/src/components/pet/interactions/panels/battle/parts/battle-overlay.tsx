@@ -10,7 +10,7 @@ import {
 import BattleResultArt from '../battle-result-art';
 import BattleDialogue from '../battle-dialogue';
 import type { BattleOutcome } from '../types';
-import s from '../index.module.css';
+import styles from '../index.module.css';
 
 export type BattleOverlayProps = {
     open: boolean;
@@ -49,8 +49,8 @@ const BattleLog: React.FC<{
     onComplete?: () => void;
     waiting: string;
 }> = ({ turns, isLoading, attackerName, defenderName, onComplete, waiting }) => (
-    <div className={s.log}>
-        <div className={s.logTitle}>⚔ Battle Log</div>
+    <div className={styles.log}>
+        <div className={styles.logTitle}>⚔ Battle Log</div>
         {isLoading || turns.length > 0 ? (
             <BattleDialogue
                 turns={turns}
@@ -60,7 +60,7 @@ const BattleLog: React.FC<{
                 onComplete={onComplete}
             />
         ) : (
-            <p className={s.logWaiting}>{waiting}</p>
+            <p className={styles.logWaiting}>{waiting}</p>
         )}
     </div>
 );
@@ -108,58 +108,58 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
     // ── Fighting scene (taunts / battle underway) ──────────────────────────────
     if (!showResult) {
         return (
-            <div className={s.scene} role="status" aria-live="polite">
-                <div className={s.sceneBanner}>⚔ {preResultTitle} ⚔</div>
+            <div className={styles.scene} role="status" aria-live="polite">
+                <div className={styles.sceneBanner}>⚔ {preResultTitle} ⚔</div>
 
-                <div className={s.sceneHp}>
-                    <div className={s.sceneHpSide}>
-                        <div className={s.sceneHpHead}>
-                            <span className={clsx(s.sceneHpName, s.isFighter)}>{fighterName}</span>
-                            <span className={s.sceneHpVal}>{fighterHp} HP</span>
+                <div className={styles.sceneHp}>
+                    <div className={styles.sceneHpSide}>
+                        <div className={styles.sceneHpHead}>
+                            <span className={clsx(styles.sceneHpName, styles.isFighter)}>{fighterName}</span>
+                            <span className={styles.sceneHpVal}>{fighterHp} HP</span>
                         </div>
-                        <div className={s.sceneHpTrack}>
+                        <div className={styles.sceneHpTrack}>
                             <div
-                                className={clsx(s.sceneHpFill, s.isFighter)}
+                                className={clsx(styles.sceneHpFill, styles.isFighter)}
                                 style={{ width: `${fighterHp}%` }}
                             />
                         </div>
                     </div>
-                    <div className={s.sceneHpVs}>VS</div>
-                    <div className={s.sceneHpSide}>
-                        <div className={s.sceneHpHead}>
-                            <span className={s.sceneHpVal}>{enemyHp} HP</span>
-                            <span className={clsx(s.sceneHpName, s.isEnemy)}>{opponentName}</span>
+                    <div className={styles.sceneHpVs}>VS</div>
+                    <div className={styles.sceneHpSide}>
+                        <div className={styles.sceneHpHead}>
+                            <span className={styles.sceneHpVal}>{enemyHp} HP</span>
+                            <span className={clsx(styles.sceneHpName, styles.isEnemy)}>{opponentName}</span>
                         </div>
-                        <div className={clsx(s.sceneHpTrack, s.isEnemy)}>
+                        <div className={clsx(styles.sceneHpTrack, styles.isEnemy)}>
                             <div
-                                className={clsx(s.sceneHpFill, s.isEnemy)}
+                                className={clsx(styles.sceneHpFill, styles.isEnemy)}
                                 style={{ width: `${enemyHp}%` }}
                             />
                         </div>
                     </div>
                 </div>
 
-                <div className={s.sceneArena}>
-                    <div className={s.sceneFighter}>
-                        <span className={clsx(s.sceneHit, s.sceneHitIn)} aria-hidden>
+                <div className={styles.sceneArena}>
+                    <div className={styles.sceneFighter}>
+                        <span className={clsx(styles.sceneHit, styles.sceneHitIn)} aria-hidden>
                             ⚡
                         </span>
-                        <span className={clsx(s.sceneAvatar, s.isFighter)} aria-hidden>
+                        <span className={clsx(styles.sceneAvatar, styles.isFighter)} aria-hidden>
                             {fighterAvatar}
                         </span>
-                        <span className={clsx(s.sceneLabel, s.isFighter)}>{fighterName}</span>
+                        <span className={clsx(styles.sceneLabel, styles.isFighter)}>{fighterName}</span>
                     </div>
-                    <span className={s.sceneClash} aria-hidden>
+                    <span className={styles.sceneClash} aria-hidden>
                         ⚔
                     </span>
-                    <div className={s.sceneFighter}>
-                        <span className={clsx(s.sceneHit, s.sceneHitOut)} aria-hidden>
+                    <div className={styles.sceneFighter}>
+                        <span className={clsx(styles.sceneHit, styles.sceneHitOut)} aria-hidden>
                             💥
                         </span>
-                        <span className={clsx(s.sceneAvatar, s.isEnemy)} aria-hidden>
+                        <span className={clsx(styles.sceneAvatar, styles.isEnemy)} aria-hidden>
                             {enemyAvatar}
                         </span>
-                        <span className={clsx(s.sceneLabel, s.isEnemy)}>{opponentName}</span>
+                        <span className={clsx(styles.sceneLabel, styles.isEnemy)}>{opponentName}</span>
                     </div>
                 </div>
 
@@ -172,7 +172,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                     waiting="Waiting for the first taunt…"
                 />
                 {preResultStatus ? (
-                    <p className={s.sceneStatus}>{preResultStatus}</p>
+                    <p className={styles.sceneStatus}>{preResultStatus}</p>
                 ) : null}
             </div>
         );
@@ -180,21 +180,21 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
 
     // ── Result scene ───────────────────────────────────────────────────────────
     const bannerClass = clsx(
-        s.sceneResult,
-        battleOutcome === null && s.isPending,
-        isDefeat && s.isDefeat,
+        styles.sceneResult,
+        battleOutcome === null && styles.isPending,
+        isDefeat && styles.isDefeat,
     );
 
     return (
-        <div className={clsx(s.scene, s.isResult)} role="status" aria-live="polite">
+        <div className={clsx(styles.scene, styles.isResult)} role="status" aria-live="polite">
             <div className={bannerClass}>
-                <div className={s.sceneArt} aria-hidden>
+                <div className={styles.sceneArt} aria-hidden>
                     <BattleResultArt outcome={battleOutcome} />
                 </div>
-                <div className={s.sceneResultTitle}>
+                <div className={styles.sceneResultTitle}>
                     {battleOutcome === null ? 'Resolving…' : isVictory ? 'VICTORY!' : 'DEFEATED'}
                 </div>
-                <div className={s.sceneResultSub}>
+                <div className={styles.sceneResultSub}>
                     {battleOutcome === null
                         ? 'Checking battle outcome…'
                         : isVictory
@@ -204,7 +204,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                         : 'Your pet was defeated. Train harder and try again!'}
                 </div>
                 {opponent && battleOutcome !== null ? (
-                    <div className={s.sceneResultVs}>
+                    <div className={styles.sceneResultVs}>
                         {isVictory
                             ? `vs ${opponent.name} (Lv.${opponent.level})`
                             : `Lost to ${opponent.name} (Lv.${opponent.level})`}
@@ -224,10 +224,10 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
             ) : null}
 
             {battleOutcome !== null && (
-                <div className={s.sceneActions}>
+                <div className={styles.sceneActions}>
                     <button
                         type="button"
-                        className={s.resultDone}
+                        className={styles.resultDone}
                         onClick={onDone}
                         disabled={!resultDialogueDone}
                     >
@@ -235,7 +235,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                     </button>
                     <button
                         type="button"
-                        className={clsx(s.resultRematch, isDefeat && s.isDefeat)}
+                        className={clsx(styles.resultRematch, isDefeat && styles.isDefeat)}
                         onClick={onRematch}
                         disabled={battlePending || rematchPending || !resultDialogueDone}
                     >

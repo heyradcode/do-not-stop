@@ -1,4 +1,4 @@
-/* CSS Module — class names are local; reference via `import s from './pet-showcase.module.css'`.
+/* CSS Module — class names are local; reference via `import styles from './pet-showcase.module.css'`.
    Shared ring-avatar hero (level-up, rename). Accent via --sc-accent (rgb triple),
    set inline on the root element. */
 .root {

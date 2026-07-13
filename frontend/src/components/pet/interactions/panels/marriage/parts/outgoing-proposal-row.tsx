@@ -1,8 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import clsx from 'clsx';
 import { formatExpiry, useMarriageInfo, type Pet } from '@shared/core';
 import { AuthActionButton } from '@components/common';
-import s from '../index.module.css';
+import styles from '../index.module.css';
 
 type OutgoingProposalRowProps = {
     pet: Pet;
@@ -29,16 +29,16 @@ const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({
     const expirySec = info.proposalExpiry ? Number(info.proposalExpiry) : 0;
 
     return (
-        <li className={clsx(s.proposalCard, s.outgoing)}>
-            <div className={s.proposalPets}>
-                <span className={s.proposalProposer}>
-                    {pet.name} <span className={s.proposalId}>#{pet.id}</span>
+        <li className={clsx(styles.proposalCard, styles.outgoing)}>
+            <div className={styles.proposalPets}>
+                <span className={styles.proposalProposer}>
+                    {pet.name} <span className={styles.proposalId}>#{pet.id}</span>
                 </span>
-                <span className={s.proposalArrow}>→</span>
-                <span className={s.proposalTarget}>#{info.proposalPetIdB?.toString()}</span>
+                <span className={styles.proposalArrow}>â†’</span>
+                <span className={styles.proposalTarget}>#{info.proposalPetIdB?.toString()}</span>
             </div>
-            <div className={s.proposalMeta}>
-                <span className={s.proposalExpiry}>Expires {formatExpiry(expirySec)}</span>
+            <div className={styles.proposalMeta}>
+                <span className={styles.proposalExpiry}>Expires {formatExpiry(expirySec)}</span>
                 <AuthActionButton
                     tone="amber"
                     size="xs"
@@ -53,3 +53,4 @@ const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({
 };
 
 export default OutgoingProposalRow;
+

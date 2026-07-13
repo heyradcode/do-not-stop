@@ -1,4 +1,4 @@
-/* CSS Module — class names are local; reference via `import s from '.../index.module.css'`.
+/* CSS Module — class names are local; reference via `import styles from '.../index.module.css'`.
    Breed panel: tabs + parent previews + DNA helix/egg centre. Shared chrome
    (.interface/.picker/.field/.action-controls) stays global in interactions.css;
    the primary CTA reaches neon-button's global .neon-btn via :global(). */

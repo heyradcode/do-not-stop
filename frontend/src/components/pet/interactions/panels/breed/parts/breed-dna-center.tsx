@@ -7,7 +7,7 @@ import {
     getRarityName,
     type Pet,
 } from '@shared/core';
-import s from '../index.module.css';
+import styles from '../index.module.css';
 
 type BreedDnaCenterProps = {
     petA: Pet | null;
@@ -58,7 +58,7 @@ const estimateOutcome = (petA: Pet, petB: Pet) => {
 /** Animated DNA double-helix — mirrors the redesign mock's Breeding Lab centre. */
 const DnaHelix: React.FC<{ animated: boolean }> = ({ animated }) => (
     <svg
-        className={s.dnaHelix}
+        className={styles.dnaHelix}
         width="46"
         height="104"
         viewBox="0 0 80 180"
@@ -87,7 +87,7 @@ const DnaHelix: React.FC<{ animated: boolean }> = ({ animated }) => (
         <line x1="23" y1="157" x2="57" y2="157" stroke="rgba(195,210,255,.1)" strokeWidth="1" />
         <line x1="16" y1="180" x2="64" y2="180" stroke="rgba(195,210,255,.18)" strokeWidth="1.5" />
         <path
-            className={animated ? s.dnaStrand : undefined}
+            className={animated ? styles.dnaStrand : undefined}
             d="M 64 0 C 64 12,53 23,40 45 C 27 67,16 78,16 90 C 16 102,27 113,40 135 C 53 157,64 168,64 180"
             stroke="url(#breed-sg1)"
             strokeWidth="2.5"
@@ -95,21 +95,21 @@ const DnaHelix: React.FC<{ animated: boolean }> = ({ animated }) => (
             strokeLinecap="round"
         />
         <path
-            className={animated ? clsx(s.dnaStrand, s.dnaStrandB) : undefined}
+            className={animated ? clsx(styles.dnaStrand, styles.dnaStrandB) : undefined}
             d="M 16 0 C 16 12,27 23,40 45 C 53 67,64 78,64 90 C 64 102,53 113,40 135 C 27 157,16 168,16 180"
             stroke="url(#breed-sg2)"
             strokeWidth="2.5"
             fill="none"
             strokeLinecap="round"
         />
-        <circle className={animated ? s.dnaNode : undefined} cx="64" cy="0" r="5" fill="#7dd6ff" style={{ animationDelay: '0s' }} />
-        <circle className={animated ? s.dnaNode : undefined} cx="16" cy="0" r="5" fill="#ff7bcb" style={{ animationDelay: '.5s' }} />
-        <circle className={animated ? s.dnaNode : undefined} cx="40" cy="45" r="5" fill="#b58cff" style={{ animationDelay: '1s' }} />
-        <circle className={animated ? s.dnaNode : undefined} cx="16" cy="90" r="5" fill="#7dd6ff" style={{ animationDelay: '1.5s' }} />
-        <circle className={animated ? s.dnaNode : undefined} cx="64" cy="90" r="5" fill="#ffcf70" style={{ animationDelay: '.3s' }} />
-        <circle className={animated ? s.dnaNode : undefined} cx="40" cy="135" r="5" fill="#0fffae" style={{ animationDelay: '.8s' }} />
-        <circle className={animated ? s.dnaNode : undefined} cx="64" cy="180" r="5" fill="#ff7bcb" style={{ animationDelay: '1.2s' }} />
-        <circle className={animated ? s.dnaNode : undefined} cx="16" cy="180" r="5" fill="#b58cff" style={{ animationDelay: '.7s' }} />
+        <circle className={animated ? styles.dnaNode : undefined} cx="64" cy="0" r="5" fill="#7dd6ff" style={{ animationDelay: '0s' }} />
+        <circle className={animated ? styles.dnaNode : undefined} cx="16" cy="0" r="5" fill="#ff7bcb" style={{ animationDelay: '.5s' }} />
+        <circle className={animated ? styles.dnaNode : undefined} cx="40" cy="45" r="5" fill="#b58cff" style={{ animationDelay: '1s' }} />
+        <circle className={animated ? styles.dnaNode : undefined} cx="16" cy="90" r="5" fill="#7dd6ff" style={{ animationDelay: '1.5s' }} />
+        <circle className={animated ? styles.dnaNode : undefined} cx="64" cy="90" r="5" fill="#ffcf70" style={{ animationDelay: '.3s' }} />
+        <circle className={animated ? styles.dnaNode : undefined} cx="40" cy="135" r="5" fill="#0fffae" style={{ animationDelay: '.8s' }} />
+        <circle className={animated ? styles.dnaNode : undefined} cx="64" cy="180" r="5" fill="#ff7bcb" style={{ animationDelay: '1.2s' }} />
+        <circle className={animated ? styles.dnaNode : undefined} cx="16" cy="180" r="5" fill="#b58cff" style={{ animationDelay: '.7s' }} />
     </svg>
 );
 
@@ -129,18 +129,18 @@ const BreedDnaCenter: React.FC<BreedDnaCenterProps> = ({ petA, petB, action }) =
     const rarityName = outcome ? getRarityName(outcome.rarity) : '—';
 
     return (
-        <div className={s.dna}>
-            <div className={s.dnaLabel} aria-hidden>
+        <div className={styles.dna}>
+            <div className={styles.dnaLabel} aria-hidden>
                 DNA Strand
             </div>
 
             <DnaHelix animated={Boolean(outcome)} />
 
-            <div className={s.dnaCompat} aria-hidden>
-                <svg width="64" height="64" viewBox="0 0 88 88" className={s.dnaCompatSvg}>
+            <div className={styles.dnaCompat} aria-hidden>
+                <svg width="64" height="64" viewBox="0 0 88 88" className={styles.dnaCompatSvg}>
                     <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(125,214,255,.08)" strokeWidth="8" />
                     <circle
-                        className={s.dnaCompatArc}
+                        className={styles.dnaCompatArc}
                         cx="44"
                         cy="44"
                         r="36"
@@ -151,21 +151,21 @@ const BreedDnaCenter: React.FC<BreedDnaCenterProps> = ({ petA, petB, action }) =
                         strokeDasharray={`${dash} ${CIRCUMFERENCE}`}
                     />
                 </svg>
-                <div className={s.dnaCompatText}>
-                    <span className={s.dnaCompatPct}>{outcome ? `${outcome.compat}%` : '—'}</span>
-                    <span className={s.dnaCompatCap}>Compat</span>
+                <div className={styles.dnaCompatText}>
+                    <span className={styles.dnaCompatPct}>{outcome ? `${outcome.compat}%` : '—'}</span>
+                    <span className={styles.dnaCompatCap}>Compat</span>
                 </div>
             </div>
 
-            <div className={s.dnaEgg} aria-hidden>
-                <span className={s.dnaEggEmoji}>🥚</span>
-                <span className={s.dnaEggRarity} style={{ color: rarityColor, textShadow: `0 0 8px ${rarityColor}` }}>
+            <div className={styles.dnaEgg} aria-hidden>
+                <span className={styles.dnaEggEmoji}>🥚</span>
+                <span className={styles.dnaEggRarity} style={{ color: rarityColor, textShadow: `0 0 8px ${rarityColor}` }}>
                     {rarityName}
                 </span>
-                <span className={s.dnaEggGen}>{outcome ? `Gen ${outcome.gen}` : 'Select parents'}</span>
+                <span className={styles.dnaEggGen}>{outcome ? `Gen ${outcome.gen}` : 'Select parents'}</span>
             </div>
 
-            {action ? <div className={s.dnaAction}>{action}</div> : null}
+            {action ? <div className={styles.dnaAction}>{action}</div> : null}
         </div>
     );
 };

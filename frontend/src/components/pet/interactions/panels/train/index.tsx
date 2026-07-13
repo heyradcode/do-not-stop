@@ -16,7 +16,7 @@ import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
-import s from './index.module.css';
+import styles from './index.module.css';
 
 export type TrainPanelProps = {
     isStandaloneView?: boolean;
@@ -93,25 +93,25 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                 )}
 
                 {selectedPetObj && (
-                    <div className={s.status}>
-                        <div className={s.visual}>
-                            <span className={s.level}>Lv.{selectedPetObj.level}</span>
-                            <span className={s.avatar}>
+                    <div className={styles.status}>
+                        <div className={styles.visual}>
+                            <span className={styles.level}>Lv.{selectedPetObj.level}</span>
+                            <span className={styles.avatar}>
                                 {getPetAvatar(selectedPetObj.dna)}
                             </span>
                         </div>
-                        <div className={s.body}>
-                            <div className={s.name}>{selectedPetObj.name}</div>
-                            <div className={s.petClass}>
+                        <div className={styles.body}>
+                            <div className={styles.name}>{selectedPetObj.name}</div>
+                            <div className={styles.petClass}>
                                 {getPetClass(selectedPetObj.dna)}
                             </div>
-                            <div className={s.xpTrack}>
+                            <div className={styles.xpTrack}>
                                 <div
-                                    className={s.xpFill}
+                                    className={styles.xpFill}
                                     style={{ width: `${getXpPercent(selectedPetObj)}%` }}
                                 />
                             </div>
-                            <div className={s.xp}>
+                            <div className={styles.xp}>
                                 {selectedXp?.xpCurrent}/{selectedXp?.xpMax} XP
                             </div>
                         </div>

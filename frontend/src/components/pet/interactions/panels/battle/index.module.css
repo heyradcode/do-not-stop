@@ -1,4 +1,4 @@
-/* CSS Module — class names are local; reference via `import s from '.../index.module.css'`.
+/* CSS Module — class names are local; reference via `import styles from '.../index.module.css'`.
    Battle setup (fighter-vs-rival showdown) + full-scene battle overlay. Shared
    chrome (.interface/.cancel-button) stays global in interactions.css; the
    Battle Log's dialogue comes from the global battle-dialogue.css. */
