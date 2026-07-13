@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAccount, useReadContract, useWatchContractEvent, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import { usePetsConfig } from '../../../contexts/PetsConfigContext';
 import { useWatchEntropyFulfillment } from './useWatchEntropyFulfillment';
+import { usePolledContractEvent } from './usePolledContractEvent';
 import { useLiveBattleReplay, type LiveBattleReplayInput } from './useLiveBattleReplay';
 import { EVM_GAS_LIMITS } from './gasLimits';
 import type { BattleResolvedResult, EvmBattlePhase } from '../../../types/battle';
@@ -235,15 +236,12 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
     }, [enabled, settleReceipt, requestId, evm?.gameLogic.abi, applyResolved]);
 
     // Secondary path: watch BattleResolved (covers a settle sent outside this hook).
-    useWatchContractEvent({
+    usePolledContractEvent({
         address: gameLogic,
         abi: gameLogicAbi,
         eventName: 'BattleResolved',
         enabled: Boolean(enabled && gameLogic && requestId != null),
-        // See useWatchEntropyFulfillment.ts's comment: forces eth_getLogs polling instead of
-        // eth_newFilter/eth_getFilterChanges, which public RPCs like Base Sepolia's default
-        // endpoint don't reliably keep alive between requests.
-        poll: true,
+        chainId,
         onLogs(logs) {
             if (requestId == null) return;
             const typed = logs as unknown as { args: Record<string, unknown> }[];

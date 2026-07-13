@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useWatchContractEvent } from 'wagmi';
+import type { Abi } from 'viem';
+import { usePolledContractEvent } from './usePolledContractEvent';
 
 export type BreedSuccessPayload = {
     owner: `0x${string}`;
@@ -39,15 +40,11 @@ export const useWatchPetsContract = ({
         handleSuccessRef.current = onBreedSuccess;
     }, [onBreedSuccess]);
 
-    useWatchContractEvent({
+    usePolledContractEvent({
         address: contractAddress,
-        abi,
+        abi: abi as Abi,
         eventName: 'BreedSettled',
         enabled: Boolean(pendingRequestId != null && address && contractAddress),
-        // See useWatchEntropyFulfillment.ts's comment: forces eth_getLogs polling instead of
-        // eth_newFilter/eth_getFilterChanges, which public RPCs like Base Sepolia's default
-        // endpoint don't reliably keep alive between requests.
-        poll: true,
         onLogs(logs) {
             if (!address) return;
             const want = pendingRef.current;

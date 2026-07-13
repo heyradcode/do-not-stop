@@ -1,4 +1,13 @@
-import { createPublicClient, createWalletClient, http, webSocket, type Address, type Chain } from 'viem';
+import {
+    createPublicClient,
+    createWalletClient,
+    http,
+    webSocket,
+    type Abi,
+    type Address,
+    type Chain,
+    type PublicClient,
+} from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { ENTROPY_ABI, GAME_LOGIC_ABI } from './abi';
 import {
@@ -30,6 +39,63 @@ export interface SettleKeeperHandle {
 /** Conservative eth_getLogs range cap for the backfill scan (see its call site) — well under
  *  limits reported by common public RPCs (Base Sepolia's default enforces 2000). */
 const MAX_LOG_RANGE_BLOCKS = 2000n;
+
+const POLL_INTERVAL_MS = 4_000;
+
+/**
+ * Drop-in replacement for viem's `publicClient.watchContractEvent` that never touches
+ * eth_newFilter/eth_getFilterChanges. viem's own watcher tries to create a filter first and
+ * only falls back to eth_getLogs if *creating* the filter fails — but public, load-balanced
+ * RPCs (e.g. Base Sepolia's default endpoint) successfully create filters and then silently
+ * lose them on a later request (a different backend node answers), which viem treats as
+ * "recreate the filter and keep trying," not "fall back to getLogs." That produces an endless
+ * "filter not found" retry loop that only delivers logs by luck (if a freshly recreated filter
+ * happens to survive until the next poll). This sidesteps the problem entirely: it always polls
+ * plain getContractEvents (eth_getLogs under the hood) on a fixed interval, tracking the
+ * last-seen block itself. No filter is ever created.
+ */
+function pollContractEvents(
+    publicClient: PublicClient,
+    params: { address: Address; abi: Abi; eventName?: string },
+    onLogs: (logs: DecodedGameLogicLog[]) => void,
+): () => void {
+    let stopped = false;
+    let fromBlock: bigint | null = null;
+    let inFlight = false;
+
+    const tick = async () => {
+        if (inFlight || stopped) return;
+        inFlight = true;
+        try {
+            const latest = await publicClient.getBlockNumber();
+            if (fromBlock === null) {
+                fromBlock = latest + 1n; // start watching from now, backfill already covers history
+                return;
+            }
+            if (latest < fromBlock) return;
+            const logs = await publicClient.getContractEvents({
+                address: params.address,
+                abi: params.abi,
+                eventName: params.eventName as never,
+                fromBlock,
+                toBlock: latest,
+            });
+            fromBlock = latest + 1n;
+            if (!stopped && logs.length > 0) onLogs(logs);
+        } catch {
+            // Transient RPC error — try again next tick.
+        } finally {
+            inFlight = false;
+        }
+    };
+
+    void tick();
+    const timer = setInterval(() => { void tick(); }, POLL_INTERVAL_MS);
+    return () => {
+        stopped = true;
+        clearInterval(timer);
+    };
+}
 
 /** Starts watching for entropy-fulfilled requests and settling them. Throws if the RPC/wallet
  *  can't be reached; the caller (index.ts) decides how to handle that at boot. */
@@ -90,17 +156,12 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
     for (const requestId of backfilled.keys()) trySettle(requestId);
 
     // Live watch: new requests get tracked, settlements (by us or anyone else) get untracked.
-    const unwatchGameLogic = publicClient.watchContractEvent({
-        address: config.gameLogicAddress,
-        abi: GAME_LOGIC_ABI,
-        // Force eth_getLogs polling instead of eth_newFilter/eth_getFilterChanges: public,
-        // load-balanced RPCs (e.g. Base Sepolia's default endpoint) don't reliably keep a
-        // filter pinned to the same backend node between requests, so it silently
-        // disappears ("filter not found") and this watch would otherwise never fire.
-        poll: true,
-        onLogs(logs) {
+    const unwatchGameLogic = pollContractEvents(
+        publicClient,
+        { address: config.gameLogicAddress, abi: GAME_LOGIC_ABI },
+        (logs) => {
             for (const log of logs) {
-                const requestId = log.args.requestId;
+                const requestId = log.args.requestId as bigint | undefined;
                 if (requestId == null) continue;
                 if (isSettledEvent(log.eventName)) {
                     untrack(requestId);
@@ -110,7 +171,7 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                 if (type) track(requestId, type);
             }
         },
-    });
+    );
 
     const entropyAddress = (await publicClient.readContract({
         address: config.gameLogicAddress,
@@ -121,14 +182,14 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
     // Live watch: the moment entropy reveals, attempt to settle. `callbackFailed` means the
     // randomness was never stored on GameLogic's side (entropyCallback reverted) — settling
     // would revert with "Entropy not yet fulfilled", so skip it and just log.
-    const unwatchEntropy = publicClient.watchContractEvent({
-        address: entropyAddress,
-        abi: ENTROPY_ABI,
-        eventName: 'Revealed',
-        poll: true,
-        onLogs(logs) {
+    const unwatchEntropy = pollContractEvents(
+        publicClient,
+        { address: entropyAddress, abi: ENTROPY_ABI, eventName: 'Revealed' },
+        (logs) => {
             for (const log of logs) {
-                const { caller, sequenceNumber, callbackFailed } = log.args;
+                const caller = log.args.caller as string | undefined;
+                const sequenceNumber = log.args.sequenceNumber as bigint | undefined;
+                const callbackFailed = log.args.callbackFailed as boolean | undefined;
                 if (caller?.toLowerCase() !== config.gameLogicAddress.toLowerCase()) continue;
                 if (sequenceNumber == null) continue;
                 if (callbackFailed) {
@@ -141,7 +202,7 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                 trySettle(sequenceNumber);
             }
         },
-    });
+    );
 
     let unwatchMockRequests: (() => void) | undefined;
     if (config.mockReveal) {
@@ -151,13 +212,12 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
             functionName: 'getDefaultProvider',
         })) as Address;
 
-        unwatchMockRequests = publicClient.watchContractEvent({
-            address: config.gameLogicAddress,
-            abi: GAME_LOGIC_ABI,
-            poll: true,
-            onLogs(logs) {
+        unwatchMockRequests = pollContractEvents(
+            publicClient,
+            { address: config.gameLogicAddress, abi: GAME_LOGIC_ABI },
+            (logs) => {
                 for (const log of logs) {
-                    const requestId = log.args.requestId;
+                    const requestId = log.args.requestId as bigint | undefined;
                     if (requestId == null || !requestTypeForEvent(log.eventName)) continue;
                     const randomNumber = randomBytes32();
                     walletClient
@@ -175,7 +235,7 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                         );
                 }
             },
-        });
+        );
         console.log('[settle-keeper] KEEPER_MOCK_REVEAL enabled — acting as the Entropy provider (local dev only)');
     }
 
