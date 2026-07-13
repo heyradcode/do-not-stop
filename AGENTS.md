@@ -12,7 +12,7 @@ Normative language: `MUST`/`MUST NOT` are mandatory. `SHOULD`/`SHOULD NOT` are e
 ## Non-Negotiables
 
 - `MUST NOT` edit the golden test vectors in `contracts/test-vectors/{battle,xp}.json` to make a failing test pass. If a vector fails, the Go or Rust port has drifted from the Solidity contract; fix the drifted port, never the vector.
-- `MUST` update all three combat-simulator ports together (`contracts/ethereum/src/CombatSim.sol`, Solana's `combat.rs`, `indexer-go/internal/combat/`) when changing combat logic. Never patch one leg alone.
+- `MUST` update all four combat-simulator ports together (`contracts/ethereum/src/CombatSim.sol`, Solana's `combat.rs`, `indexer-go/internal/combat/`, `shared/src/utils/combat/`) when changing combat logic. Never patch one leg alone. The TS port (`shared/src/utils/combat/`) covers fight math only, not XP — see its package doc.
 - `MUST NOT` assume a shared cross-chain TypeScript interface exists in `shared/`. EVM and Solana logic are intentionally duplicated side by side in `frontend/src/chains/{ethereum,solana}/`.
 - `MUST` match the license of the package being edited when adding new files: `contracts/ethereum`, `contracts/solana`, `indexer-go`, and `proto` are MIT; everything else is PolyForm Noncommercial 1.0.0 (root `LICENSE`). See the table in `README.md`.
 - `MUST NOT` treat the v1 contract gaps documented in `contracts/plan-contract-upgrade.md` (no battle authorization, the `changeDna` cheat, client-supplied Solana starter-pet DNA) as bugs to silently patch. They are the known baseline the v2 rewrite is designed around.
@@ -45,6 +45,6 @@ Full per-package lint/test/build matrix and single-test syntax: see [CLAUDE.md](
 Mechanical checks over prose, where they exist:
 
 - ESLint per package (`frontend`, `shared`, `website`, `mobile`), plus a custom CSS-naming check in `frontend` (`lint:css`).
-- Golden test vectors (`contracts/test-vectors/{battle,xp}.json`), run by Hardhat, Anchor, and `indexer-go`'s `combat_golden_test.go`, are the cross-language enforcement for combat-simulator parity.
+- Golden test vectors (`contracts/test-vectors/{battle,xp}.json`), run by Hardhat, Anchor, `indexer-go`'s `combat_golden_test.go`, and `shared`'s `tests/utils/combat/goldenVectors.test.ts` (Vitest), are the cross-language enforcement for combat-simulator parity.
 - CI coverage workflow (`.github/workflows/coverage.yml`) runs frontend/backend/shared vitest coverage on every PR and posts a combined comment.
 - There is no repo-wide `agents:check` or module-boundary lint yet. Rely on the per-package commands above and the golden vectors until one exists.

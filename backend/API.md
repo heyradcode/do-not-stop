@@ -227,6 +227,17 @@ through the live `StreamLiveBattles` chain-truth feed (the `seed` re-runs the si
 client-side for blow-by-blow replay) and are persisted on `battle_history`; the
 AI battle dialogue uses `rounds`/HP/XP to flavor its narration.
 
+### Settle keeper
+
+`backend/src/features/settle-keeper/` settles EVM `GameLogic` battle/breed/mint
+requests (the `requestX` → Pyth Entropy reveals → `settleX` flow) from a
+backend-held wallet once entropy reveals, so the player only signs the request
+transaction — `settleX` is permissionless and needed no special authorization,
+it was just being sent from the player's wallet by default. Off unless
+`KEEPER_ENABLED=true`; the frontend falls back to sending the settle tx itself
+if the keeper hasn't within ~45s. See `docs/plan-realtime-battle-ux.md` /
+`docs/plan-realtime-battle-impl.md` for the design and threat model.
+
 ### Relevant environment variables
 
 | Var | Purpose |
@@ -234,6 +245,10 @@ AI battle dialogue uses `rounds`/HP/XP to flavor its narration.
 | `INDEXER_GRPC_ADDR` | indexer-go gRPC link (e.g. `localhost:50051`). Unset = stream + `winEstimate` off; roster falls back to Postgres. |
 | `ROSTER_READ_SOURCE` | `grpc` to read matchmaking from indexer-go's cache (Postgres fallback); `postgres` (default) for Prisma only. |
 | `INDEXER_PROTO_PATH` | Override path to `proto/cryptopets.proto` (defaults to `../proto`). |
+| `KEEPER_ENABLED` | Turns the settle keeper on. Off by default. |
+| `KEEPER_RPC_URL` / `KEEPER_PRIVATE_KEY` / `KEEPER_CHAIN_ID` / `KEEPER_GAME_LOGIC_ADDRESS` | Required once enabled; keeper logs and no-ops if any are missing rather than crashing the server. |
+| `KEEPER_BACKFILL_BLOCKS` | How far back to scan on boot for requests never settled (default 5000). |
+| `KEEPER_MOCK_REVEAL` | Local dev only: keeper also acts as the Entropy provider (`MockEntropy.mockReveal`). Only takes effect when `KEEPER_CHAIN_ID=31337`. |
 
 > **Migration prerequisite:** the v2 `pet_roster` / `battle_history` columns ship
 > in `prisma/schema.prisma`; run `pnpm prisma:migrate` then `pnpm prisma:generate`
