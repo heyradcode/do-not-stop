@@ -93,6 +93,11 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
     const unwatchGameLogic = publicClient.watchContractEvent({
         address: config.gameLogicAddress,
         abi: GAME_LOGIC_ABI,
+        // Force eth_getLogs polling instead of eth_newFilter/eth_getFilterChanges: public,
+        // load-balanced RPCs (e.g. Base Sepolia's default endpoint) don't reliably keep a
+        // filter pinned to the same backend node between requests, so it silently
+        // disappears ("filter not found") and this watch would otherwise never fire.
+        poll: true,
         onLogs(logs) {
             for (const log of logs) {
                 const requestId = log.args.requestId;
@@ -120,6 +125,7 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
         address: entropyAddress,
         abi: ENTROPY_ABI,
         eventName: 'Revealed',
+        poll: true,
         onLogs(logs) {
             for (const log of logs) {
                 const { caller, sequenceNumber, callbackFailed } = log.args;
@@ -148,6 +154,7 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
         unwatchMockRequests = publicClient.watchContractEvent({
             address: config.gameLogicAddress,
             abi: GAME_LOGIC_ABI,
+            poll: true,
             onLogs(logs) {
                 for (const log of logs) {
                     const requestId = log.args.requestId;
