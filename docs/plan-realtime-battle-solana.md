@@ -144,12 +144,20 @@ independent of whether S2/S3 ever ship.
   same principle as EVM's Phase 4 "read the snapshot, not the live/cached roster."
 - Skill config: hardcode the same constants `SkillConfig::default()` uses (see "Current state"
   above) rather than trying to read something that isn't stored on-chain.
-- **Open question, not yet verified**: exactly when the raw 32-byte randomness value becomes
-  readable to the client — whether `@switchboard-xyz/on-demand`'s `Randomness` object exposes the
-  oracle's value before `revealIx` is submitted on-chain (which would let animation start even
-  earlier than EVM's reveal-event model), or only after the reveal instruction confirms and the
-  `RandomnessAccountData` account is read back. Check the SDK/Switchboard docs directly before
-  building the replay hook — don't assume either answer.
+- **Resolved (implemented, not devnet-verified)**: there is no separate on-chain "reveal" moment
+  before settle the way Pyth's `Revealed` event gives EVM — the keeper bundles reveal+settle into
+  one transaction. `useLiveBattleReplaySolana` (`shared/src/hooks/chains/solana/`) gets the seed by
+  independently calling the same `randomness.revealIx()` the keeper will call (which round-trips to
+  the Switchboard gateway) but never broadcasting the resulting instruction — it Borsh-decodes it
+  locally to read the revealed `value` back out. The exact byte encoding of that `value` (array vs.
+  hex/base64 string) isn't verifiable without a live gateway round-trip in this environment, so the
+  decode is defensive: any unrecognized shape yields `null` (no live animation that battle, same UX
+  as before this feature existed) rather than a broken UI. **Verify against a real Switchboard queue
+  (devnet or mainnet) before trusting this in production.** Two other options were considered and
+  rejected for now: splitting the keeper's reveal+settle into two transactions and polling the
+  now-revealed `RandomnessAccountData` account (closer to EVM's model, but a bigger change to the
+  already-verified keeper and still has an unknown on-chain field name), and skipping pre-settle
+  animation entirely (lowest risk, no enhancement).
 - Reconciliation rule is unchanged: the Anchor `BattleResolved` event (already parsed client-side
   in `parseFirstWins`) is always authoritative; the local sim only ever drives the animation.
 

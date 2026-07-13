@@ -20,6 +20,11 @@ vi.mock('../../src/hooks/useTxSuccess', () => ({
 vi.mock('../../src/hooks/chains/ethereum/useEvmBattleFlow', () => ({
     useEvmBattleFlow: () => ({ reset: vi.fn() }),
 }));
+// Solana-only live replay; stub it out here to avoid pulling in the real
+// @switchboard-xyz/on-demand SDK (its own tests live alongside the hook).
+vi.mock('../../src/hooks/chains/solana/useLiveBattleReplaySolana', () => ({
+    useLiveBattleReplaySolana: () => null,
+}));
 
 import { useBattlePets } from '../../src/hooks/useBattlePets';
 
