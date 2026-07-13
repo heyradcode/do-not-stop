@@ -98,6 +98,62 @@ export const GAME_LOGIC_ABI = [
         inputs: [],
         outputs: [{ type: 'address' }],
     },
+    {
+        // Frozen sim-input snapshot (plan-realtime-battle-impl.md Phase 1), read once
+        // entropy reveals so the live-battle-socket feature can run the identical sim
+        // CombatSim.settleBattle will use. Only the fields the sim needs are declared.
+        type: 'function',
+        name: 'getBattleRequest',
+        stateMutability: 'view',
+        inputs: [{ name: 'requestId', type: 'uint256' }],
+        outputs: [
+            {
+                type: 'tuple',
+                components: [
+                    { name: 'requester', type: 'address' },
+                    { name: 'petId1', type: 'uint256' },
+                    { name: 'petId2', type: 'uint256' },
+                    { name: 'randomness', type: 'uint256' },
+                    { name: 'fulfilled', type: 'bool' },
+                    { name: 'snapshotted', type: 'bool' },
+                    { name: 'dna1', type: 'uint256' },
+                    { name: 'dna2', type: 'uint256' },
+                    { name: 'level1', type: 'uint32' },
+                    { name: 'level2', type: 'uint32' },
+                    { name: 'rarity1', type: 'uint8' },
+                    { name: 'rarity2', type: 'uint8' },
+                    { name: 'speciesId1', type: 'uint16' },
+                    { name: 'speciesId2', type: 'uint16' },
+                ],
+            },
+        ],
+    },
+] as const;
+
+/** Minimal GameConfig ABI — only `getSkillConfig`, read once per battle reveal to feed the
+ *  live-battle-socket sim (plan-realtime-battle-impl.md Phase 4's skill-balance values). */
+export const GAME_CONFIG_ABI = [
+    {
+        type: 'function',
+        name: 'getSkillConfig',
+        stateMutability: 'view',
+        inputs: [],
+        outputs: [
+            {
+                type: 'tuple',
+                components: [
+                    { name: 'tankHpMult', type: 'uint16' },
+                    { name: 'shellDefMult', type: 'uint16' },
+                    { name: 'swiftCritBonus', type: 'uint16' },
+                    { name: 'cunningCritCap', type: 'uint16' },
+                    { name: 'furyDmgMult', type: 'uint16' },
+                    { name: 'furyHpThreshold', type: 'uint16' },
+                    { name: 'sageMdefMult', type: 'uint16' },
+                    { name: 'bloodlustBps', type: 'uint16' },
+                ],
+            },
+        ],
+    },
 ] as const;
 
 /** The three request-type events GameLogic emits at requestX time. */

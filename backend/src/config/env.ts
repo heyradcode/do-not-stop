@@ -96,6 +96,10 @@ export const env = {
             : undefined) as `0x${string}` | undefined,
         chainId: process.env.KEEPER_CHAIN_ID ? Number(process.env.KEEPER_CHAIN_ID) : undefined,
         gameLogicAddress: process.env.KEEPER_GAME_LOGIC_ADDRESS?.trim() as `0x${string}` | undefined,
+        /** Optional: enables the live-battle-socket feature (push a computed sim to the
+         *  frontend over WebSocket the moment entropy reveals). Unset = feature just
+         *  doesn't broadcast; settling itself is unaffected. */
+        gameConfigAddress: process.env.KEEPER_GAME_CONFIG_ADDRESS?.trim() as `0x${string}` | undefined,
         backfillBlocks: BigInt(process.env.KEEPER_BACKFILL_BLOCKS?.trim() || '5000'),
         /** Local dev only: also acts as the Entropy provider (MockEntropy.mockReveal),
          *  replacing the old removed vrf-fulfill-watcher.ts for the entropy flow. Refuse

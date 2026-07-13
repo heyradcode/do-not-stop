@@ -17,3 +17,9 @@ export {
 export type { StrikeOutcome } from './strike';
 export { addHeal, strike } from './strike';
 export { MAX_ROUNDS, simulate, type SimOutcome, type SimResult, type StrikeLogEntry } from './sim';
+export {
+    encodeSimOutcome,
+    decodeSimOutcome,
+    type SimOutcomeWire,
+    type StrikeLogEntryWire,
+} from './wire';

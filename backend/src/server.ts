@@ -5,6 +5,7 @@ import app from './app';
 import { startBattleStream, stopBattleStream } from './grpc/battleStream';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { startSolanaSettleKeeperFeature, stopSolanaSettleKeeperFeature } from '@features/settle-keeper-solana';
+import { startLiveBattleSocket, stopLiveBattleSocket } from './ws/liveBattleSocket';
 
 const server = app.listen(env.port, () => {
     const { port } = env;
@@ -14,6 +15,10 @@ const server = app.listen(env.port, () => {
     console.log(`🛡️  Protected endpoints: http://localhost:${port}/api/protected`);
     console.log(`⚔️  GraphQL endpoint: http://localhost:${port}/graphql`);
 
+    // Pushes a computed battle sim to the frontend the moment entropy reveals (settle
+    // keeper's job). Always listening; only actually broadcasts once the keeper is enabled
+    // with KEEPER_GAME_CONFIG_ADDRESS set.
+    startLiveBattleSocket(server);
     // indexer-go battle push (chain-truth settles). No-op unless INDEXER_GRPC_ADDR is set.
     startBattleStream();
     // Settles GameLogic battle/breed/mint requests once entropy reveals. No-op unless
@@ -48,6 +53,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     stopBattleStream();
     stopSettleKeeper();
     stopSolanaSettleKeeperFeature();
+    stopLiveBattleSocket();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
 

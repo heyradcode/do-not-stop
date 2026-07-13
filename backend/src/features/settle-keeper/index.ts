@@ -20,7 +20,8 @@ export function startSettleKeeper(): void {
         return;
     }
 
-    const { rpcUrl, privateKey, chainId, gameLogicAddress, backfillBlocks, mockReveal } = env.settleKeeper;
+    const { rpcUrl, privateKey, chainId, gameLogicAddress, gameConfigAddress, backfillBlocks, mockReveal } =
+        env.settleKeeper;
     if (!rpcUrl || !privateKey || !chainId || !gameLogicAddress) {
         console.error(
             '[settle-keeper] KEEPER_ENABLED=true but KEEPER_RPC_URL / KEEPER_PRIVATE_KEY / ' +
@@ -28,8 +29,14 @@ export function startSettleKeeper(): void {
         );
         return;
     }
+    if (!gameConfigAddress) {
+        console.log(
+            '[settle-keeper] KEEPER_GAME_CONFIG_ADDRESS not set; live-battle-socket broadcast disabled ' +
+                '(settling itself is unaffected)',
+        );
+    }
 
-    startKeeper({ rpcUrl, privateKey, chainId, gameLogicAddress, backfillBlocks, mockReveal })
+    startKeeper({ rpcUrl, privateKey, chainId, gameLogicAddress, gameConfigAddress, backfillBlocks, mockReveal })
         .then((h) => { handle = h; })
         .catch((err) => console.error(`[settle-keeper] failed to start: ${(err as Error).message}`));
 }

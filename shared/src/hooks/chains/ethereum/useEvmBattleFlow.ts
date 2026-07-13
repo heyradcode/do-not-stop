@@ -5,6 +5,7 @@ import { usePetsConfig } from '../../../contexts/PetsConfigContext';
 import { useWatchEntropyFulfillment } from './useWatchEntropyFulfillment';
 import { usePolledContractEvent } from './usePolledContractEvent';
 import { useLiveBattleReplay, type LiveBattleReplayInput } from './useLiveBattleReplay';
+import { useLiveBattleSocket } from './useLiveBattleSocket';
 import { EVM_GAS_LIMITS } from './gasLimits';
 import type { BattleResolvedResult, EvmBattlePhase } from '../../../types/battle';
 import type { SkillConfig } from '../../../utils/combat';
@@ -194,7 +195,13 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         return { ...snapshot, randomNumber, skillConfig };
     }, [snapshot, skillConfig, randomNumber]);
 
-    const liveReplay = useLiveBattleReplay(replayInput);
+    const localLiveReplay = useLiveBattleReplay(replayInput);
+    // Backend-pushed sim (docs/plan-realtime-battle-ux.md's live-battle-socket feature):
+    // preferred when it arrives, since the settle keeper's reveal detection doesn't depend
+    // on this client's own RPC. Falls back to the local sim above if unset/not yet arrived —
+    // either way this is presentation only; `result` from BattleResolved is authoritative.
+    const socketLiveReplay = useLiveBattleSocket(evm?.liveBattleWsUrl, chainId, requestId);
+    const liveReplay = socketLiveReplay ?? localLiveReplay;
 
     // 4. Resolve from BattleResolved — fire at most once per battle.
     const resolvedFiredRef = useRef(false);
@@ -278,12 +285,12 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         error: error ?? (settle.error as Error | null),
         isActive,
         reset,
-        /** Client-side sim outcome (log + startHp1/startHp2 + its own result),
-         *  available as soon as entropy reveals — drives the live animation.
-         *  Presentation only; `result` above (from BattleResolved) is always the
-         *  authoritative outcome; see plan-realtime-battle-ux.md's
-         *  reconciliation rule. Null until the snapshot/skillConfig/randomNumber
-         *  are all known, or if this deployment has no GameConfig wired up. */
+        /** Sim outcome (log + startHp1/startHp2 + its own result), available as soon as
+         *  entropy reveals — drives the live animation. Prefers the backend's pushed sim
+         *  (useLiveBattleSocket) when available, falls back to the local one computed here
+         *  otherwise. Presentation only either way; `result` above (from BattleResolved) is
+         *  always the authoritative outcome; see plan-realtime-battle-ux.md's reconciliation
+         *  rule. Null until a sim is available from either source. */
         liveReplay,
     };
 };

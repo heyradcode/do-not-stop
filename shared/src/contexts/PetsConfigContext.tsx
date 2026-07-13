@@ -21,6 +21,10 @@ export interface PetsEvmConfig {
     /** EVM chain ID the contracts are deployed on. Passed to read hooks so they
      *  use the right RPC regardless of which chain the wallet is connected to. */
     chainId?: number;
+    /** Backend's live-battle-socket WS endpoint (e.g. `ws://localhost:3001/ws/live-battle`).
+     *  Optional — unset means no backend-pushed live replay; the battle still resolves
+     *  normally via the on-chain BattleResolved event, just without pre-settle animation. */
+    liveBattleWsUrl?: string;
 }
 
 export interface PetsConfigContextValue {
