@@ -17,7 +17,10 @@
         "verify:sepolia": "tsx scripts/verify.ts --network=sepolia",
         "verify:base-sepolia": "tsx scripts/verify.ts --network=base-sepolia",
         "deploy:status": "pnpm hh ignition status",
-        "deploy:visualize": "pnpm hh ignition visualize ignition/modules/CryptoPetsV2Live.ts"
+        "deploy:visualize": "pnpm hh ignition visualize ignition/modules/CryptoPetsV2Live.ts",
+        "upgrade:game-logic": "tsx scripts/upgrade-game-logic.ts",
+        "upgrade:game-logic:sepolia": "tsx scripts/upgrade-game-logic.ts --network=sepolia",
+        "upgrade:game-logic:base-sepolia": "tsx scripts/upgrade-game-logic.ts --network=base-sepolia"
     },
     "devDependencies": {
         "@nomicfoundation/hardhat-ignition": "^3.0.3",
