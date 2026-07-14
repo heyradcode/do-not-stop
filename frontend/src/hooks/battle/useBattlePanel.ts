@@ -26,8 +26,6 @@ import { useLiveBattleAnimation } from './useLiveBattleAnimation';
 import {
     BATTLE_FAIL_MESSAGE,
     MISMATCH_NOTICE_MESSAGE,
-    REMATCH_COOLDOWN_MESSAGE,
-    REMATCH_OPPONENT_GONE_MESSAGE,
     VALIDATION_MESSAGE,
     opponentKey,
     toDialoguePet,
@@ -57,12 +55,19 @@ export interface UseBattlePanel {
  * handlers, and effects, and returns a view-model wired to the presentational
  * components. The panel component is then a pure view over this hook.
  *
- * Selection, validation, and rematch are deliberately kept together here rather
- * than split into more hooks: they're tightly coupled (rematch drives the
- * selection; both random-match and battle-start touch validation), so a single
- * controller is the honest seam. The two genuinely isolated concerns — outcome
- * detection and dialogue — live in their own hooks (`useBattleOutcome`,
- * `useResultDialogue`) and are composed below.
+ * Selection and validation are deliberately kept together here rather than
+ * split into more hooks: they're tightly coupled (both random-match and
+ * battle-start touch validation), so a single controller is the honest seam.
+ * The two genuinely isolated concerns — outcome detection and dialogue — live
+ * in their own hooks (`useBattleOutcome`, `useResultDialogue`) and are
+ * composed below.
+ *
+ * No rematch action: GameLogic.sol's settleBattle puts both participants on a
+ * 900s battleCooldown (contracts/ethereum/src/GameConfig.sol) regardless of
+ * outcome, so the exact pairing that just fought can never legally re-battle
+ * immediately after a result — a same-opponent "Rematch" button would always
+ * fail with a cooldown error. Players re-battle by picking a fresh opponent
+ * from the setup screen instead.
  */
 export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBattlePanel => {
     const navigate = useNavigate();
@@ -72,7 +77,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const [selectedOpponent, setSelectedOpponent] = useState('');
     const [showResult, setShowResult] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
-    const [rematchPending, setRematchPending] = useState(false);
     // The battle overlay stays open continuously: taunts → battling → result.
     const [overlayOpen, setOverlayOpen] = useState(false);
     // The battle's tx hash, retained in our own state. EVM clears battle.hash
@@ -88,7 +92,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // honest notice instead of silently correcting or showing the wrong winner.
     const [mismatchNotice, setMismatchNotice] = useState(false);
 
-    const rematchSnapshotRef = useRef<{ petId1: string; opponentKey: string } | null>(null);
     // Personas captured at battle start. The backend pre-generates the result
     // dialogue when the taunts are requested (keyed by matchup), so nothing
     // hash-triggered is needed here — these are reused for the settle read.
@@ -105,7 +108,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const {
         opponents,
         isLoading: opponentsLoading,
-        isFetching: opponentsFetching,
         refetch: refetchOpponents,
     } = useOpponents({ chain: activeChainKind });
 
@@ -224,10 +226,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
 
         if (selectedFighter) outcome.snapshotFighterStats(selectedFighter);
 
-        rematchSnapshotRef.current = {
-            petId1: selectedPet1,
-            opponentKey: opponentKey(opponent.owner, opponent.id),
-        };
         setValidationError(null);
         void battle.mutate({
             petId1: selectedPet1,
@@ -331,38 +329,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         handleSelectOpponent(opponentKey(pick.owner, pick.id));
     };
 
-    const handleRematch = () => {
-        battle.clearErrors();
-        taunts.reset();
-        setShowResult(false);
-        setHasResolvedEvent(false);
-        setMismatchNotice(false);
-        setOverlayOpen(true);
-        setValidationError(null);
-        outcome.resetOutcome();
-        dialogue.resetResultDialogue();
-        setSettledBattleId(null);
-        setRematchPending(true);
-
-        // Generate taunts immediately (mirrors handleBattle) so the dialogue appears as soon as
-        // the overlay opens. Use `pets` instead of `readyPets` so a post-battle cooldown on the
-        // fighter doesn't prevent the taunt from starting (the cooldown check still blocks the
-        // actual battle.mutate call in the rematch useEffect).
-        const snapshot = rematchSnapshotRef.current;
-        const tauntFighter = snapshot ? pets.find((p) => p.id === snapshot.petId1) : null;
-        if (tauntFighter && opponent && activeChainKind) {
-            const personas = {
-                attacker: toDialoguePet(tauntFighter),
-                defender: toDialoguePet(opponent),
-            };
-            battlePersonasRef.current = personas;
-            taunts.generate({ chain: activeChainKind, ...personas });
-        }
-
-        refetch();
-        void refetchOpponents();
-    };
-
     // Close the overlay if the battle fails before a result (e.g. wallet rejected),
     // so the user isn't stranded on the taunt/underway screen. The error toast still shows.
     useEffect(() => {
@@ -372,52 +338,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
             taunts.reset();
         }
     }, [taunts, battle.error, showResult]);
-
-    useEffect(() => {
-        if (!rematchPending || petsLoading || opponentsLoading || opponentsFetching) return;
-
-        setRematchPending(false);
-        const snapshot = rematchSnapshotRef.current;
-        if (!snapshot) return;
-
-        const fighterReady = readyPets.some(({ id }) => id === snapshot.petId1);
-        const opponentMatch = opponents.find(
-            (o) => opponentKey(o.owner, o.id) === snapshot.opponentKey,
-        );
-
-        if (!fighterReady) {
-            setValidationError(REMATCH_COOLDOWN_MESSAGE);
-            return;
-        }
-
-        if (!opponentMatch) {
-            setSelectedOpponent('');
-            setValidationError(REMATCH_OPPONENT_GONE_MESSAGE);
-            return;
-        }
-
-        const rematchFighter = readyPets.find(({ id }) => id === snapshot.petId1)?.pet;
-        if (rematchFighter) outcome.snapshotFighterStats(rematchFighter);
-
-        setSelectedPet1(snapshot.petId1);
-        setSelectedOpponent(snapshot.opponentKey);
-        setValidationError(null);
-        void battle.mutate({
-            petId1: snapshot.petId1,
-            petId2: opponentMatch.id,
-            defenderOwner: opponentMatch.owner,
-        });
-    }, [
-        rematchPending,
-        petsLoading,
-        opponentsLoading,
-        opponentsFetching,
-        readyPets,
-        opponents,
-        battle,
-        outcome,
-        activeChainKind,
-    ]);
 
     // Once the tx hash exists, retain it as the stable battleId for the result
     // read. EVM clears battle.hash on receipt completion, so capture it here.
@@ -431,16 +351,14 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
 
 
     // Pre-result phase (overlay stays open through taunts → battling).
-    const isBattling = battle.isPending || battle.isConfirming || rematchPending;
+    const isBattling = battle.isPending || battle.isConfirming;
     const preResultTitle = isBattling ? 'The battle is underway…' : 'Face-off!';
     // EVM v2 battle is async: request → VRF → settle. Label each phase so the
     // long VRF wait doesn't keep showing "Awaiting your wallet". The live-replay
     // states take priority once entropy has revealed (see the gating effect
     // above): the result card itself never appears until hasResolvedEvent AND
     // (animation.done OR the mismatch notice has run its course).
-    const preResultStatus = rematchPending
-        ? 'Preparing rematch…'
-        : mismatchNotice
+    const preResultStatus = mismatchNotice
         ? MISMATCH_NOTICE_MESSAGE
         : hasResolvedEvent && !animation.done
         ? 'Result in — playing out the fight…'
@@ -470,7 +388,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const battleDisabled =
         battle.isPending ||
         battle.isConfirming ||
-        rematchPending ||
         overlayOpen ||
         !selectedPet1 ||
         !selectedOpponent ||
@@ -490,10 +407,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         resultDefenderName: dialogue.defenderName,
         onResultComplete: dialogue.markResultDialogueDone,
         resultDialogueDone: dialogue.resultDialogueDone,
-        onRematch: handleRematch,
         onDone: handleDone,
-        rematchPending,
-        battlePending: battle.isPending,
         preResultTitle,
         preResultStatus,
         tauntsLoading: taunts.isLoading,

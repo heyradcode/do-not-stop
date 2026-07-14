@@ -26,10 +26,7 @@ const baseProps = (over: Partial<BattleOverlayProps> = {}): BattleOverlayProps =
     resultDefenderName: 'Villain',
     onResultComplete: vi.fn(),
     resultDialogueDone: true,
-    onRematch: vi.fn(),
     onDone: vi.fn(),
-    rematchPending: false,
-    battlePending: false,
     preResultTitle: 'Battle Starting',
     preResultStatus: null,
     tauntsLoading: false,
@@ -67,7 +64,7 @@ describe('BattleOverlay', () => {
 
         expect(screen.getByText('Resolving…')).toBeInTheDocument();
         expect(screen.getByText('Checking battle outcome…')).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Rematch' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Leave/ })).not.toBeInTheDocument();
     });
 
     it('renders a victory with the opponent line', () => {
@@ -83,33 +80,25 @@ describe('BattleOverlay', () => {
         expect(screen.getByText('Your pet won and leveled up!')).toBeInTheDocument();
     });
 
-    it('renders a defeat with a defeat-styled rematch button', () => {
+    it('renders a defeat result', () => {
         render(<BattleOverlay {...baseProps({ battleOutcome: { result: 'defeat', leveledUp: false } })} />);
 
         expect(screen.getByText('DEFEATED')).toBeInTheDocument();
         expect(screen.getByText('Lost to Rival (Lv.5)')).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Rematch/ })).toHaveClass('isDefeat');
     });
 
     it('gates the result actions until the dialogue is done', () => {
         render(<BattleOverlay {...baseProps({ resultDialogueDone: false })} />);
 
-        expect(screen.getByRole('button', { name: /Rematch/ })).toBeDisabled();
         expect(screen.getByRole('button', { name: /Leave/ })).toBeDisabled();
     });
 
-    it('shows a preparing label and wires the action callbacks', async () => {
-        const onRematch = vi.fn();
+    it('wires the done action callback', async () => {
         const onDone = vi.fn();
-        const { rerender } = render(<BattleOverlay {...baseProps({ onRematch, onDone })} />);
+        render(<BattleOverlay {...baseProps({ onDone })} />);
 
-        await userEvent.click(screen.getByRole('button', { name: /Rematch/ }));
         await userEvent.click(screen.getByRole('button', { name: /Leave/ }));
-        expect(onRematch).toHaveBeenCalledOnce();
         expect(onDone).toHaveBeenCalledOnce();
-
-        rerender(<BattleOverlay {...baseProps({ rematchPending: true })} />);
-        expect(screen.getByRole('button', { name: 'Preparing…' })).toBeInTheDocument();
     });
 
     it('renders the result dialogue while it is loading', () => {

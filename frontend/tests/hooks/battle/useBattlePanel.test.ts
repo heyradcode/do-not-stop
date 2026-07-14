@@ -16,8 +16,6 @@ vi.mock('@components/pet/interactions/panels/battle/battle-matchmaking', () => (
 vi.mock('@components/pet/interactions/panels/battle/battle-utils', () => ({
     BATTLE_FAIL_MESSAGE: 'Battle failed',
     MISMATCH_NOTICE_MESSAGE: 'Mismatch notice',
-    REMATCH_COOLDOWN_MESSAGE: 'Cooldown',
-    REMATCH_OPPONENT_GONE_MESSAGE: 'Opponent gone',
     VALIDATION_MESSAGE: 'Select a fighter and opponent',
     opponentKey: (owner: string, id: string) => `${owner}:${id}`,
     toDialoguePet: (p: { id: string; name: string }) => ({ petId: p.id, name: p.name }),

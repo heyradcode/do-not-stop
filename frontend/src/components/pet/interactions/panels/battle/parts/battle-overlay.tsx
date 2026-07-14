@@ -25,10 +25,7 @@ export type BattleOverlayProps = {
     resultDefenderName: string;
     onResultComplete: () => void;
     resultDialogueDone: boolean;
-    onRematch: () => void;
     onDone: () => void;
-    rematchPending: boolean;
-    battlePending: boolean;
     // Pre-result phase
     preResultTitle: string;
     preResultStatus: string | null;
@@ -90,10 +87,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
     resultDefenderName,
     onResultComplete,
     resultDialogueDone,
-    onRematch,
     onDone,
-    rematchPending,
-    battlePending,
     preResultTitle,
     preResultStatus,
     tauntsLoading,
@@ -244,14 +238,6 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                         disabled={!resultDialogueDone}
                     >
                         🏠 Leave
-                    </button>
-                    <button
-                        type="button"
-                        className={clsx(styles.resultRematch, isDefeat && styles.isDefeat)}
-                        onClick={onRematch}
-                        disabled={battlePending || rematchPending || !resultDialogueDone}
-                    >
-                        {rematchPending ? 'Preparing…' : '⚔ Rematch'}
                     </button>
                 </div>
             )}
