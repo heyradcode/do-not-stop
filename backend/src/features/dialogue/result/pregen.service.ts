@@ -2,7 +2,7 @@ import type { Persona } from '../llm/persona';
 import { buildBanterContext } from '../llm/render';
 import { generateTurns, ensureResultCoverage } from './turns';
 import { getPregenStore } from '@repositories/pregen.repository';
-import { matchupKey } from './pregen.types';
+import { matchupKey } from '@typings/pregen';
 import type {
     DialogueSpeaker,
     DialogueTurn,

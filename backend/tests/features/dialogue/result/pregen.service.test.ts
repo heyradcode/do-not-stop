@@ -9,7 +9,7 @@ const store = vi.hoisted(() => ({
     take: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('@repositories/pregen.repository', () => ({ getPregenStore: vi.fn().mockResolvedValue(store) }));
-vi.mock('../../../../src/features/dialogue/result/pregen.types', () => ({
+vi.mock('@typings/pregen', () => ({
     matchupKey: (_chain: string, a: string, b: string) => `${a}-${b}`,
 }));
 vi.mock('../../../../src/features/dialogue/llm/render', () => ({

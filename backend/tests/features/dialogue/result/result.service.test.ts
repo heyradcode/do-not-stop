@@ -23,7 +23,7 @@ vi.mock('../../../../src/features/dialogue/recording', () => ({
 vi.mock('../../../../src/grpc/battleStream', () => ({
     getChainSettledWinner: vi.fn().mockReturnValue(null),
 }));
-vi.mock('../../../../src/features/dialogue/result/pregen.types', () => ({
+vi.mock('@typings/pregen', () => ({
     matchupKey: vi.fn((_chain: string, a: string, b: string) => `${a}-${b}`),
 }));
 

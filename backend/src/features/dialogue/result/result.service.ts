@@ -2,7 +2,7 @@ import { getDialogue, saveDialogue } from '@repositories/dialogue.repository';
 import { buildPersona } from '../llm/persona';
 import { generateTurns, ensureResultCoverage } from './turns';
 import { getPregenStore } from '@repositories/pregen.repository';
-import { matchupKey } from './pregen.types';
+import { matchupKey } from '@typings/pregen';
 import { recordBattleHistory, recordResultLines } from '../recording';
 import { getChainSettledWinner } from '../../../grpc/battleStream';
 import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from '../dialogue.types';

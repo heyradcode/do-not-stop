@@ -1,9 +1,5 @@
 import { getRedis } from '@config/redis';
-import {
-    PREGEN_TTL_MS,
-    PREGEN_TTL_SEC,
-    type PregenDialogue,
-} from '@features/dialogue/result/pregen.types';
+import { PREGEN_TTL_MS, PREGEN_TTL_SEC, type PregenDialogue } from '@typings/pregen';
 
 /**
  * Store for pre-generated battle dialogue.
