@@ -10,6 +10,8 @@ require('module-alias').addAliases({
     '@features': path.join(root, 'features'),
     '@middleware': path.join(root, 'middleware'),
     '@repositories': path.join(root, 'repositories'),
+    '@grpc-client': path.join(root, 'grpc'),
+    '@ws': path.join(root, 'ws'),
     '@utils': path.join(root, 'utils'),
     '@typings': path.join(root, 'types'),
     '@generated': path.join(root, 'generated'),

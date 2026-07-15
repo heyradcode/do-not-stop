@@ -1,6 +1,6 @@
 import { parseEventLogs, type Account, type Address, type Chain, type PublicClient, type Transport, type WalletClient } from 'viem';
 import { GAME_LOGIC_ABI, SETTLE_GAS_LIMIT, type SettleFunctionName } from './abi';
-import { broadcastLiveBattle } from '../../ws/liveBattleSocket';
+import { broadcastLiveBattle } from '@ws/liveBattleSocket';
 // Deep import (not the `@shared/core` barrel): the barrel re-exports React hooks/contexts
 // (.tsx files) that pull JSX into backend's typecheck, which has no --jsx support (same
 // reasoning as settle-keeper-solana's imports).

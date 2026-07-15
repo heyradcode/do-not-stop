@@ -2,10 +2,10 @@ import './register-path-aliases';
 import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import app from './app';
-import { startBattleStream, stopBattleStream } from './grpc/battleStream';
+import { startBattleStream, stopBattleStream } from '@grpc-client/battleStream';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { startSolanaSettleKeeperFeature, stopSolanaSettleKeeperFeature } from '@features/settle-keeper-solana';
-import { startLiveBattleSocket, stopLiveBattleSocket } from './ws/liveBattleSocket';
+import { startLiveBattleSocket, stopLiveBattleSocket } from '@ws/liveBattleSocket';
 
 const server = app.listen(env.port, () => {
     const { port } = env;

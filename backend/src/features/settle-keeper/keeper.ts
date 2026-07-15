@@ -19,7 +19,7 @@ import {
     type TrackedRequestType,
 } from './requests';
 import { createSubmitter } from './submitter';
-import { broadcastLiveBattle } from '../../ws/liveBattleSocket';
+import { broadcastLiveBattle } from '@ws/liveBattleSocket';
 // Deep import (not the `@shared/core` barrel): the barrel re-exports React hooks/contexts
 // (.tsx files) that pull JSX into backend's typecheck, which has no --jsx support (same
 // reasoning as settle-keeper-solana's imports).

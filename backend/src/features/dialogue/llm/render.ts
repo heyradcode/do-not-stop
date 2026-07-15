@@ -1,5 +1,5 @@
 import type { HeadToHead, RecentForm } from '@repositories/history.repository';
-import type { SettledBattle } from '../../../grpc/battleStream';
+import type { SettledBattle } from '@grpc-client/battleStream';
 import type { DialogueTurn } from '../dialogue.types';
 
 /** A blowout ends fast; a nail-biter drags. These bound the round-count flavor. */

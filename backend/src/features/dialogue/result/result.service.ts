@@ -4,7 +4,7 @@ import { generateTurns, ensureResultCoverage } from './turns';
 import { getPregenStore } from '@repositories/pregen.repository';
 import { matchupKey } from '@typings/pregen';
 import { recordBattleHistory, recordResultLines } from '../recording';
-import { getChainSettledWinner } from '../../../grpc/battleStream';
+import { getChainSettledWinner } from '@grpc-client/battleStream';
 import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
 /**
