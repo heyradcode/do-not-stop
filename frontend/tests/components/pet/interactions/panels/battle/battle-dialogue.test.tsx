@@ -56,6 +56,22 @@ describe('BattleDialogue', () => {
         expect(screen.getByText('Villain')).toBeInTheDocument();
     });
 
+    it('renders newest turn first (top), not chronological order', async () => {
+        const { container } = render(
+            <BattleDialogue
+                turns={[turn('attacker', 'Hi'), turn('defender', 'Yo')]}
+                isLoading={false}
+                attackerName="Hero"
+                defenderName="Villain"
+            />,
+        );
+
+        // 'Yo' (spoken second) should render above 'Hi' (spoken first) once both are done.
+        await waitFor(() => expect(screen.getByText('Yo')).toBeInTheDocument(), { timeout: 3000 });
+        const lines = Array.from(container.querySelectorAll('.text')).map((el) => el.textContent);
+        expect(lines).toEqual(['Yo', 'Hi']);
+    });
+
     it('does not fire onComplete while the stream is still loading', async () => {
         const onComplete = vi.fn();
         render(

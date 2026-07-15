@@ -24,7 +24,7 @@ The import above pulls in the cross-tool non-negotiables and command baseline fr
 
 **Text.** In commit messages, PR descriptions, and docs written for this repo: no em-dashes, no filler ("it's worth noting," "essentially"), no LLM tells ("it's not just X, it's Y," "delve"). Reread before finishing and cut anything that doesn't earn its place.
 
-**Commit messages.** After any set of file changes, automatically draft and show a Conventional Commits message (`feat:`, `fix:`, `docs:`, `chore:`, etc., matching this repo's history) in a copyable code block, without waiting to be asked. Scope it to the actual uncommitted change set (check `git status`) and call out any unrelated modified files so they can be excluded. Do not run `git commit` yourself; the user commits manually unless they explicitly ask you to.
+**Commit messages.** After *every* response in which you change one or more files — not just at the end of a multi-step task, and not just when asked — automatically draft and show a Conventional Commits message (`feat:`, `fix:`, `docs:`, `chore:`, etc., matching this repo's history) in a copyable code block. This applies even to small, incremental edits (a single CSS tweak, a one-line fix) made in response to iterative follow-up requests, not only to larger logically-complete changes. Scope it to the actual uncommitted change set (check `git status`) and call out any unrelated modified files so they can be excluded. Do not run `git commit` yourself; the user commits manually unless they explicitly ask you to.
 
 ## Commands
 

@@ -13,6 +13,9 @@ export interface LiveBattleAnimationState {
     /** True once every log entry has played, or immediately true when there's nothing to
      *  animate (Solana, or an EVM deployment with no GameConfig wired up). */
     done: boolean;
+    /** Every strike played so far, oldest first — the persistent mechanical-log feed
+     *  (as opposed to `flourish`, which is only the latest strike). */
+    history: StrikeLogEntry[];
 }
 
 /**
@@ -42,7 +45,7 @@ export function useLiveBattleAnimation(
     }, [active, log, index]);
 
     if (!log || log.length === 0 || startHp1 == null || startHp2 == null) {
-        return { hp1Percent: 100, hp2Percent: 100, flourish: null, done: true };
+        return { hp1Percent: 100, hp2Percent: 100, flourish: null, done: true, history: [] };
     }
 
     const current = index > 0 ? log[index - 1] : null;
@@ -51,6 +54,7 @@ export function useLiveBattleAnimation(
         hp2Percent: current ? percentOf(current.hp2After, startHp2) : 100,
         flourish: current ? describeStrike(current) : null,
         done: index >= log.length,
+        history: log.slice(0, index),
     };
 }
 
@@ -58,6 +62,28 @@ function percentOf(hp: bigint, startHp: bigint): number {
     if (startHp <= 0n) return 0;
     const pct = (hp * 100n) / startHp;
     return Number(pct > 100n ? 100n : pct);
+}
+
+/** Persistent mechanical-log line for one strike — round number, named attacker/defender,
+ *  and damage, as opposed to `describeStrike`'s punchier unnamed one-off flourish text. */
+export function describeMechanicalLogEntry(
+    entry: StrikeLogEntry,
+    fighterName: string,
+    opponentName: string,
+): string {
+    const attacker = entry.attacker === 1 ? fighterName : opponentName;
+    const defender = entry.attacker === 1 ? opponentName : fighterName;
+    const verb = entry.isMagic ? 'casts on' : 'strikes';
+    const damage = entry.damage > 0n ? `${entry.damage} dmg` : 'no damage';
+    const tags: string[] = [];
+    if (entry.crit) tags.push('Crit!');
+    if (entry.elementMult === 115) tags.push('Element adv.');
+    if (entry.elementMult === 85) tags.push('Element disadv.');
+    if (entry.furyTriggered) tags.push('Fury!');
+    if (entry.rebirthTriggered) tags.push('Rebirth!');
+    if (entry.heal > 0n) tags.push(`+${entry.heal} HP leeched`);
+    const base = `Round ${entry.round} — ${attacker} ${verb} ${defender} for ${damage}`;
+    return tags.length ? `${base} (${tags.join(', ')})` : base;
 }
 
 function describeStrike(entry: StrikeLogEntry): string {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import type { StrikeLogEntry } from '@shared/core';
-import { useLiveBattleAnimation } from '@hooks/battle/useLiveBattleAnimation';
+import { useLiveBattleAnimation, describeMechanicalLogEntry } from '@hooks/battle/useLiveBattleAnimation';
 
 function entry(overrides: Partial<StrikeLogEntry>): StrikeLogEntry {
     return {
@@ -30,7 +30,13 @@ afterEach(() => {
 describe('useLiveBattleAnimation', () => {
     it('reports done=true and full HP with no log to animate', () => {
         const { result } = renderHook(() => useLiveBattleAnimation(null, null, null, true));
-        expect(result.current).toEqual({ hp1Percent: 100, hp2Percent: 100, flourish: null, done: true });
+        expect(result.current).toEqual({
+            hp1Percent: 100,
+            hp2Percent: 100,
+            flourish: null,
+            done: true,
+            history: [],
+        });
     });
 
     it('starts at full HP before any strike has played', () => {
@@ -49,18 +55,22 @@ describe('useLiveBattleAnimation', () => {
         ];
         const { result } = renderHook(() => useLiveBattleAnimation(log, 100n, 100n, true));
         expect(result.current.done).toBe(false);
+        expect(result.current.history).toEqual([]);
 
         act(() => { vi.advanceTimersByTime(700); });
         expect(result.current.hp2Percent).toBe(80);
         expect(result.current.done).toBe(false);
+        expect(result.current.history).toEqual([log[0]]);
 
         act(() => { vi.advanceTimersByTime(700); });
         expect(result.current.hp1Percent).toBe(90);
         expect(result.current.done).toBe(true);
+        expect(result.current.history).toEqual(log);
 
         // No further strikes to play; advancing time further changes nothing.
         act(() => { vi.advanceTimersByTime(700); });
         expect(result.current.done).toBe(true);
+        expect(result.current.history).toEqual(log);
     });
 
     it('does not advance while inactive', () => {
@@ -110,5 +120,45 @@ describe('useLiveBattleAnimation', () => {
         rerender({ log: log2 });
         expect(result.current.hp2Percent).toBe(100); // reset to full before the new log's first strike plays
         expect(result.current.done).toBe(false);
+    });
+});
+
+describe('describeMechanicalLogEntry', () => {
+    it('names the attacker/defender and shows damage', () => {
+        const line = describeMechanicalLogEntry(entry({ round: 3, damage: 18n }), 'Rex', 'Blaze');
+        expect(line).toBe('Round 3 — Rex strikes Blaze for 18 dmg');
+    });
+
+    it('flips attacker/defender for the opponent and uses the magic verb', () => {
+        const line = describeMechanicalLogEntry(
+            entry({ round: 1, attacker: 2, isMagic: true, damage: 5n }),
+            'Rex',
+            'Blaze',
+        );
+        expect(line).toBe('Round 1 — Blaze casts on Rex for 5 dmg');
+    });
+
+    it('appends crit/element/fury/rebirth/leech tags', () => {
+        const line = describeMechanicalLogEntry(
+            entry({
+                round: 2,
+                damage: 20n,
+                crit: true,
+                elementMult: 115,
+                furyTriggered: true,
+                rebirthTriggered: true,
+                heal: 4n,
+            }),
+            'Rex',
+            'Blaze',
+        );
+        expect(line).toBe(
+            'Round 2 — Rex strikes Blaze for 20 dmg (Crit!, Element adv., Fury!, Rebirth!, +4 HP leeched)',
+        );
+    });
+
+    it('shows "no damage" when the strike dealt none', () => {
+        const line = describeMechanicalLogEntry(entry({ round: 1, damage: 0n }), 'Rex', 'Blaze');
+        expect(line).toBe('Round 1 — Rex strikes Blaze for no damage');
     });
 });

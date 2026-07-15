@@ -13,6 +13,8 @@ const LevelUpPage = lazy(() => import('@pages/level-up'));
 const TrainPage = lazy(() => import('@pages/train'));
 const MarriagePage = lazy(() => import('@pages/marriage'));
 const RenamePage = lazy(() => import('@pages/rename'));
+// SCRATCH — remove after visual verification.
+const BattleOverlayPreview = lazy(() => import('@pages/__preview/battle-overlay-preview'));
 
 /** Matches the loading state used elsewhere (pet-gallery, interaction standalone). */
 const RouteFallback: React.FC = () => (
@@ -35,6 +37,7 @@ const AppRoutes: React.FC = () => {
                     <Route path="/marriage" element={<MarriagePage />} />
                     <Route path="/rename" element={<RenamePage />} />
                 </Route>
+                <Route path="/__preview/battle-overlay" element={<BattleOverlayPreview />} />
                 <Route path="*" element={<Navigate to="/main" replace />} />
             </Routes>
         </Suspense>

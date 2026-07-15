@@ -22,7 +22,7 @@ import {
 } from '@components/pet/interactions/panels/battle/battle-matchmaking';
 import { useBattleOutcome } from './useBattleOutcome';
 import { useResultDialogue } from './useResultDialogue';
-import { useLiveBattleAnimation } from './useLiveBattleAnimation';
+import { useLiveBattleAnimation, describeMechanicalLogEntry } from './useLiveBattleAnimation';
 import {
     BATTLE_FAIL_MESSAGE,
     MISMATCH_NOTICE_MESSAGE,
@@ -33,6 +33,7 @@ import {
 } from '@components/pet/interactions/panels/battle/battle-utils';
 import type { BattleOverlayProps } from '@components/pet/interactions/panels/battle/parts/battle-overlay';
 import type { BattleSetupProps } from '@components/pet/interactions/panels/battle/parts/battle-setup';
+import type { MechanicalLogLine } from '@components/pet/interactions/panels/battle/types';
 
 interface UseBattlePanelArgs {
     isStandaloneView: boolean;
@@ -395,6 +396,22 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         hasPendingBattle;
     const randomMatchDisabled = !canRandomMatch || battle.isPending || showResult;
 
+    const fighterDisplayName = selectedFighter?.name ?? 'Your pet';
+    const opponentDisplayName = opponent?.name ?? 'Opponent';
+    // Mechanical (round-by-round) log for the bottom log panel — null (not just empty)
+    // when there's no live-replay feature this deployment (Solana, or an EVM deployment
+    // with no GameConfig wired up), same fallback rule as liveHp1Percent/liveHp2Percent below.
+    const liveLog: MechanicalLogLine[] | null = useMemo(
+        () =>
+            battle.liveReplay
+                ? animation.history.map((entry) => ({
+                      text: describeMechanicalLogEntry(entry, fighterDisplayName, opponentDisplayName),
+                      isFighter: entry.attacker === 1,
+                  }))
+                : null,
+        [battle.liveReplay, animation.history, fighterDisplayName, opponentDisplayName],
+    );
+
     const overlay: BattleOverlayProps = {
         open: overlayOpen,
         showResult,
@@ -413,14 +430,15 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         tauntsLoading: taunts.isLoading,
         tauntsTurns: taunts.turns,
         onTauntsComplete: handleTauntsComplete,
-        fighterName: selectedFighter?.name ?? 'Your pet',
-        opponentName: opponent?.name ?? 'Opponent',
+        fighterName: fighterDisplayName,
+        opponentName: opponentDisplayName,
         // Live-replay animation (plan-realtime-battle-impl.md Phase 4): only
         // populated once entropy has revealed and the sim inputs are known;
         // battle-overlay falls back to its existing static HP display otherwise
         // (Solana, or an EVM deployment with no GameConfig wired up).
         liveHp1Percent: battle.liveReplay ? animation.hp1Percent : null,
         liveHp2Percent: battle.liveReplay ? animation.hp2Percent : null,
+        liveLog,
         liveFlourish: animation.flourish,
     };
 

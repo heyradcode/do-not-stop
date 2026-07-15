@@ -1,15 +1,20 @@
 import React from 'react';
 import clsx from 'clsx';
 import {
+    extract,
     getLifePercent,
     getPetAvatar,
+    getPetSkill,
+    getRarityColor,
+    getRarityName,
+    type Attrs,
     type DialogueTurn,
     type OpponentPet,
     type Pet,
 } from '@shared/core';
 import BattleResultArt from '../battle-result-art';
 import BattleDialogue from '../battle-dialogue';
-import type { BattleOutcome } from '../types';
+import type { BattleOutcome, MechanicalLogLine } from '../types';
 import styles from '../index.module.css';
 
 export type BattleOverlayProps = {
@@ -42,10 +47,15 @@ export type BattleOverlayProps = {
     liveHp1Percent?: number | null;
     liveHp2Percent?: number | null;
     liveFlourish?: string | null;
+    /** Round-by-round mechanical log (plan-realtime-battle-impl.md Phase 4's strike
+     *  log, formatted) for the bottom log panel. Null — not just empty — when there's
+     *  no live-replay feature this deployment (Solana, or an EVM deployment with no
+     *  GameConfig wired up), same fallback rule as liveHp1Percent/liveHp2Percent. */
+    liveLog?: MechanicalLogLine[] | null;
 };
 
-/** Battle Log panel (the chatting) — shared by the fighting and result scenes. */
-const BattleLog: React.FC<{
+/** Pet banter panel — the fighters' conversation, shown in the right-hand rail. */
+const DialogueRail: React.FC<{
     turns: DialogueTurn[];
     isLoading: boolean;
     attackerName: string;
@@ -53,27 +63,135 @@ const BattleLog: React.FC<{
     onComplete?: () => void;
     waiting: string;
 }> = ({ turns, isLoading, attackerName, defenderName, onComplete, waiting }) => (
-    <div className={styles.log}>
-        <div className={styles.logTitle}>⚔ Battle Log</div>
-        {isLoading || turns.length > 0 ? (
-            <BattleDialogue
-                turns={turns}
-                isLoading={isLoading}
-                attackerName={attackerName}
-                defenderName={defenderName}
-                onComplete={onComplete}
-            />
-        ) : (
-            <p className={styles.logWaiting}>{waiting}</p>
-        )}
-    </div>
+    <aside className={styles.sceneDialogueRail} aria-label="Pet banter">
+        <div className={styles.log}>
+            <div className={styles.logTitle}>💬 Banter</div>
+            <div className={styles.logBody}>
+                {isLoading || turns.length > 0 ? (
+                    <BattleDialogue
+                        turns={turns}
+                        isLoading={isLoading}
+                        attackerName={attackerName}
+                        defenderName={defenderName}
+                        onComplete={onComplete}
+                    />
+                ) : (
+                    <p className={styles.logWaiting}>{waiting}</p>
+                )}
+            </div>
+        </div>
+    </aside>
 );
+
+/** Mechanical (round-by-round) battle log — hits, crits, and damage, shown as a
+ *  persistent strip along the bottom of the scene by default (even before there's
+ *  anything to show, e.g. no live-replay feature this deployment, or entropy
+ *  hasn't revealed yet) — a waiting placeholder fills it until entries land. */
+const MechanicalLog: React.FC<{ lines: MechanicalLogLine[] | null | undefined }> = ({ lines }) => {
+    const entries = lines ?? [];
+    return (
+        <div className={styles.sceneMechLog}>
+            <div className={styles.mechLogTitle}>⚔ Battle Log</div>
+            <div className={styles.mechLogBody}>
+                {entries.length === 0 ? (
+                    <p className={styles.mechLogWaiting}>The first blow hasn&rsquo;t landed yet…</p>
+                ) : (
+                    entries.map((line, i) => (
+                        <p
+                            key={i}
+                            className={clsx(styles.mechLogEntry, line.isFighter ? styles.isFighter : styles.isEnemy)}
+                        >
+                            {line.text}
+                        </p>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+/** Flavor icon per passive skill archetype (getPetSkill's name), shown on its pill. */
+const SKILL_EMOJI: Record<string, string> = {
+    Tank: '🐘',
+    Shell: '🐢',
+    Swift: '⚡',
+    Cunning: '🎯',
+    Fury: '🔥',
+    Sage: '🔮',
+    Rebirth: '🌀',
+    Bloodlust: '🩸',
+};
+
+/**
+ * One fighter's HUD plate: name/level, a glowing HP gauge, rarity/skill-archetype
+ * ("personality" — same terminology as the pet-gallery card)/record pills, and the
+ * DNA-derived combat stats (plan §3.1 — pure function of dna/rarity/level, same
+ * values CombatSim.simulate uses; no chain read needed). `pet` accepts an
+ * OpponentPet too since it structurally extends Pet.
+ */
+const FighterPlate: React.FC<{
+    side: 'isFighter' | 'isEnemy';
+    name: string;
+    hp: number;
+    pet?: Pet | null;
+    attrs: Attrs | null;
+}> = ({ side, name, hp, pet, attrs }) => {
+    const skill = pet ? getPetSkill(pet.speciesId) : null;
+    return (
+        <div className={clsx(styles.plate, styles[side])}>
+            <div className={styles.plateHead}>
+                {pet ? (
+                    <span
+                        className={styles.plateGem}
+                        style={{ background: getRarityColor(pet.rarity), color: getRarityColor(pet.rarity) }}
+                        title={getRarityName(pet.rarity)}
+                        aria-hidden
+                    />
+                ) : null}
+                <span className={styles.plateName}>{name}</span>
+                {pet ? <span className={styles.plateLevel}>Lv.{pet.level}</span> : null}
+            </div>
+
+            <div className={styles.plateHpRow}>
+                <span className={styles.plateHpVal}>{hp} HP</span>
+            </div>
+            <div className={styles.plateGaugeTrack}>
+                <div className={styles.plateGaugeFill} style={{ width: `${hp}%` }} />
+            </div>
+
+            {pet ? (
+                <div className={styles.plateMeta}>
+                    <span className={styles.pill} style={{ color: getRarityColor(pet.rarity) }}>
+                        {getRarityName(pet.rarity)}
+                    </span>
+                    {skill ? (
+                        <span className={styles.pill} title={skill.description}>
+                            {SKILL_EMOJI[skill.name] ?? '✨'} {skill.name}
+                        </span>
+                    ) : null}
+                    <span className={clsx(styles.pill, styles.pillGhost)}>
+                        {pet.winCount}W-{pet.lossCount}L
+                    </span>
+                </div>
+            ) : null}
+
+            {attrs ? (
+                <div className={styles.plateStats}>
+                    <span className={styles.statChip} title="Attack">⚔️ {attrs.atk.toString()}</span>
+                    <span className={styles.statChip} title="Defense">🛡️ {attrs.def.toString()}</span>
+                    <span className={styles.statChip} title="Intelligence">🧠 {attrs.int.toString()}</span>
+                    <span className={styles.statChip} title="Magic Defense">🔮 {attrs.mdef.toString()}</span>
+                </div>
+            ) : null}
+        </div>
+    );
+};
 
 /**
  * Full-scene battle overlay laid out like the redesign mock: an in-scene arena
- * (HP bars + facing-off avatars) with the fighters' conversation shown in a
- * Battle Log panel at the bottom. Stays open continuously across the phases:
- * taunts → battling (pre-result) → result reactions + actions.
+ * (HP bars + facing-off avatars) with the fighters' banter in a right-hand rail
+ * and the mechanical round-by-round log along the bottom. Stays open continuously
+ * across the phases: taunts → battling (pre-result) → result reactions + actions.
  */
 const BattleOverlay: React.FC<BattleOverlayProps> = ({
     open,
@@ -98,6 +216,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
     liveHp1Percent,
     liveHp2Percent,
     liveFlourish,
+    liveLog,
 }) => {
     if (!open) return null;
 
@@ -108,78 +227,76 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
     const enemyHp = liveHp2Percent ?? (opponent ? getLifePercent(opponent) : 100);
     const fighterAvatar = fighter ? getPetAvatar(fighter.dna) : '❓';
     const enemyAvatar = opponent ? getPetAvatar(opponent.dna) : '❓';
+    const fighterAttrs = fighter ? extract(fighter.dna, fighter.rarity, fighter.level) : null;
+    const enemyAttrs = opponent ? extract(opponent.dna, opponent.rarity, opponent.level) : null;
+    // The decorative attack flashes are ambient filler for "a fight is happening" — they
+    // shouldn't loop during the taunts/awaiting-randomness lead-up, only once the battle
+    // log has an actual strike to react to.
+    const battleStarted = Boolean(liveLog && liveLog.length > 0);
 
     // ── Fighting scene (taunts / battle underway) ──────────────────────────────
     if (!showResult) {
         return (
             <div className={styles.scene} role="status" aria-live="polite">
-                <div className={styles.sceneBanner}>⚔ {preResultTitle} ⚔</div>
+                <div className={styles.sceneLayout}>
+                    <div className={styles.sceneMain}>
+                        <div className={styles.sceneBanner}>⚔ {preResultTitle} ⚔</div>
 
-                <div className={styles.sceneHp}>
-                    <div className={styles.sceneHpSide}>
-                        <div className={styles.sceneHpHead}>
-                            <span className={clsx(styles.sceneHpName, styles.isFighter)}>{fighterName}</span>
-                            <span className={styles.sceneHpVal}>{fighterHp} HP</span>
+                        <div className={styles.hud}>
+                            <FighterPlate side="isFighter" name={fighterName} hp={fighterHp} pet={fighter} attrs={fighterAttrs} />
+                            <div className={styles.hudDivider} aria-hidden>
+                                <span className={styles.hudVsBadge}>VS</span>
+                            </div>
+                            <FighterPlate side="isEnemy" name={opponentName} hp={enemyHp} pet={opponent} attrs={enemyAttrs} />
                         </div>
-                        <div className={styles.sceneHpTrack}>
-                            <div
-                                className={clsx(styles.sceneHpFill, styles.isFighter)}
-                                style={{ width: `${fighterHp}%` }}
-                            />
+
+                        <div className={styles.sceneArena}>
+                            <div className={styles.sceneFighter}>
+                                <span
+                                    className={clsx(styles.sceneHit, styles.sceneHitIn, battleStarted && styles.isActive)}
+                                    aria-hidden
+                                >
+                                    ⚡
+                                </span>
+                                <span className={clsx(styles.sceneAvatar, styles.isFighter)} aria-hidden>
+                                    {fighterAvatar}
+                                </span>
+                                <span className={clsx(styles.sceneLabel, styles.isFighter)}>{fighterName}</span>
+                            </div>
+                            <span className={styles.sceneClash} aria-hidden>
+                                ⚔
+                            </span>
+                            <div className={styles.sceneFighter}>
+                                <span
+                                    className={clsx(styles.sceneHit, styles.sceneHitOut, battleStarted && styles.isActive)}
+                                    aria-hidden
+                                >
+                                    💥
+                                </span>
+                                <span className={clsx(styles.sceneAvatar, styles.isEnemy)} aria-hidden>
+                                    {enemyAvatar}
+                                </span>
+                                <span className={clsx(styles.sceneLabel, styles.isEnemy)}>{opponentName}</span>
+                            </div>
                         </div>
+
+                        {liveFlourish ? <p className={styles.sceneFlourish}>{liveFlourish}</p> : null}
+                        {preResultStatus ? (
+                            <p className={styles.sceneStatus}>{preResultStatus}</p>
+                        ) : null}
+
+                        <MechanicalLog lines={liveLog} />
                     </div>
-                    <div className={styles.sceneHpVs}>VS</div>
-                    <div className={styles.sceneHpSide}>
-                        <div className={styles.sceneHpHead}>
-                            <span className={styles.sceneHpVal}>{enemyHp} HP</span>
-                            <span className={clsx(styles.sceneHpName, styles.isEnemy)}>{opponentName}</span>
-                        </div>
-                        <div className={clsx(styles.sceneHpTrack, styles.isEnemy)}>
-                            <div
-                                className={clsx(styles.sceneHpFill, styles.isEnemy)}
-                                style={{ width: `${enemyHp}%` }}
-                            />
-                        </div>
-                    </div>
+
+                    <DialogueRail
+                        turns={tauntsTurns}
+                        isLoading={tauntsLoading}
+                        attackerName={fighterName}
+                        defenderName={opponentName}
+                        onComplete={onTauntsComplete}
+                        waiting="Waiting for the first taunt…"
+                    />
                 </div>
-
-                <div className={styles.sceneArena}>
-                    <div className={styles.sceneFighter}>
-                        <span className={clsx(styles.sceneHit, styles.sceneHitIn)} aria-hidden>
-                            ⚡
-                        </span>
-                        <span className={clsx(styles.sceneAvatar, styles.isFighter)} aria-hidden>
-                            {fighterAvatar}
-                        </span>
-                        <span className={clsx(styles.sceneLabel, styles.isFighter)}>{fighterName}</span>
-                    </div>
-                    <span className={styles.sceneClash} aria-hidden>
-                        ⚔
-                    </span>
-                    <div className={styles.sceneFighter}>
-                        <span className={clsx(styles.sceneHit, styles.sceneHitOut)} aria-hidden>
-                            💥
-                        </span>
-                        <span className={clsx(styles.sceneAvatar, styles.isEnemy)} aria-hidden>
-                            {enemyAvatar}
-                        </span>
-                        <span className={clsx(styles.sceneLabel, styles.isEnemy)}>{opponentName}</span>
-                    </div>
-                </div>
-
-                {liveFlourish ? <p className={styles.sceneFlourish}>{liveFlourish}</p> : null}
-
-                <BattleLog
-                    turns={tauntsTurns}
-                    isLoading={tauntsLoading}
-                    attackerName={fighterName}
-                    defenderName={opponentName}
-                    onComplete={onTauntsComplete}
-                    waiting="Waiting for the first taunt…"
-                />
-                {preResultStatus ? (
-                    <p className={styles.sceneStatus}>{preResultStatus}</p>
-                ) : null}
             </div>
         );
     }
@@ -193,54 +310,62 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
 
     return (
         <div className={clsx(styles.scene, styles.isResult)} role="status" aria-live="polite">
-            <div className={bannerClass}>
-                <div className={styles.sceneArt} aria-hidden>
-                    <BattleResultArt outcome={battleOutcome} />
-                </div>
-                <div className={styles.sceneResultTitle}>
-                    {battleOutcome === null ? 'Resolving…' : isVictory ? 'VICTORY!' : 'DEFEATED'}
-                </div>
-                <div className={styles.sceneResultSub}>
-                    {battleOutcome === null
-                        ? 'Checking battle outcome…'
-                        : isVictory
-                        ? battleOutcome.leveledUp
-                            ? 'Your pet won and leveled up!'
-                            : 'Your pet won the battle!'
-                        : 'Your pet was defeated. Train harder and try again!'}
-                </div>
-                {opponent && battleOutcome !== null ? (
-                    <div className={styles.sceneResultVs}>
-                        {isVictory
-                            ? `vs ${opponent.name} (Lv.${opponent.level})`
-                            : `Lost to ${opponent.name} (Lv.${opponent.level})`}
+            <div className={styles.sceneLayout}>
+                <div className={styles.sceneMain}>
+                    <div className={styles.sceneResultContent}>
+                        <div className={bannerClass}>
+                            <div className={styles.sceneArt} aria-hidden>
+                                <BattleResultArt outcome={battleOutcome} />
+                            </div>
+                            <div className={styles.sceneResultTitle}>
+                                {battleOutcome === null ? 'Resolving…' : isVictory ? 'VICTORY!' : 'DEFEATED'}
+                            </div>
+                            <div className={styles.sceneResultSub}>
+                                {battleOutcome === null
+                                    ? 'Checking battle outcome…'
+                                    : isVictory
+                                    ? battleOutcome.leveledUp
+                                        ? 'Your pet won and leveled up!'
+                                        : 'Your pet won the battle!'
+                                    : 'Your pet was defeated. Train harder and try again!'}
+                            </div>
+                            {opponent && battleOutcome !== null ? (
+                                <div className={styles.sceneResultVs}>
+                                    {isVictory
+                                        ? `vs ${opponent.name} (Lv.${opponent.level})`
+                                        : `Lost to ${opponent.name} (Lv.${opponent.level})`}
+                                </div>
+                            ) : null}
+                        </div>
+
+                        {battleOutcome !== null && (
+                            <div className={styles.sceneActions}>
+                                <button
+                                    type="button"
+                                    className={styles.resultDone}
+                                    onClick={onDone}
+                                    disabled={!resultDialogueDone}
+                                >
+                                    🏠 Leave
+                                </button>
+                            </div>
+                        )}
                     </div>
+
+                    <MechanicalLog lines={liveLog} />
+                </div>
+
+                {battleOutcome !== null ? (
+                    <DialogueRail
+                        turns={resultTurns}
+                        isLoading={dialogueLoading}
+                        attackerName={resultAttackerName}
+                        defenderName={resultDefenderName}
+                        onComplete={onResultComplete}
+                        waiting="The dust settles…"
+                    />
                 ) : null}
             </div>
-
-            {battleOutcome !== null ? (
-                <BattleLog
-                    turns={resultTurns}
-                    isLoading={dialogueLoading}
-                    attackerName={resultAttackerName}
-                    defenderName={resultDefenderName}
-                    onComplete={onResultComplete}
-                    waiting="The dust settles…"
-                />
-            ) : null}
-
-            {battleOutcome !== null && (
-                <div className={styles.sceneActions}>
-                    <button
-                        type="button"
-                        className={styles.resultDone}
-                        onClick={onDone}
-                        disabled={!resultDialogueDone}
-                    >
-                        🏠 Leave
-                    </button>
-                </div>
-            )}
         </div>
     );
 };
