@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
-vi.mock('@constants/interactionRoutes', () => ({ DASHBOARD_HOME: '/dashboard' }));
+vi.mock('@constants/interactionRoutes', () => ({ DASHBOARD_HOME: '/dashboard', BATTLE_PATH: '/battle' }));
 vi.mock('@hooks/usePetError', () => ({ formatTxHashHint: vi.fn(() => null) }));
 vi.mock('@hooks/usePetErrorToast', () => ({ usePetErrorToast: vi.fn() }));
 vi.mock('@components/pet/interactions/panels/battle/battle-matchmaking', () => ({
@@ -29,6 +29,7 @@ vi.mock('@hooks/battle/useResultDialogue', () => ({ useResultDialogue: () => res
 
 const battle = { mutate: vi.fn(), clearErrors: vi.fn(), isPending: false, isConfirming: false, error: null, hash: undefined as string | undefined, phase: null, liveReplay: null as null | { result: { firstWins: boolean }; log: unknown[]; startHp1: bigint; startHp2: bigint }, lifecycle: { phase: 'idle' } };
 const taunts = { generate: vi.fn(), reset: vi.fn(), isLoading: false, turns: [] as unknown[] };
+const createRoom = vi.fn().mockResolvedValue(null);
 let capturedOnSuccess: ((r: unknown) => void) | undefined;
 
 const pets = [{ id: 'p1', name: 'Rex', level: 3, winCount: 1, lossCount: 0, chain: 'evm', readyAt: 0n }];
@@ -43,6 +44,7 @@ vi.mock('@shared/core', () => ({
         return battle;
     },
     useBattleTaunts: () => taunts,
+    useCreateBattleRoom: () => ({ createRoom, isLoading: false }),
     useOpponents: () => ({ opponents, isLoading: false, isFetching: false, refetch: vi.fn() }),
     usePendingBattle: () => ({ isPending: false }),
     useWinEstimate: () => ({ winProbability: null, isLoading: false, samples: null }),
@@ -83,6 +85,27 @@ describe('useBattlePanel', () => {
         act(() => { result.current.setup.onBattle(); });
         expect(result.current.overlay.open).toBe(true);
         expect(taunts.generate).toHaveBeenCalled();
+    });
+
+    it('mints a battle room for the matchup and navigates to it once minted', async () => {
+        createRoom.mockResolvedValueOnce('room-123');
+        const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        act(() => { result.current.setup.onSelectFighter('p1'); });
+        act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+        await act(async () => { result.current.setup.onBattle(); });
+
+        expect(createRoom).toHaveBeenCalledWith({ chain: 'evm', attackerPetId: 'p1', defenderPetId: 'opp1' });
+        expect(mocks.navigate).toHaveBeenCalledWith('/battle/room-123', { replace: true });
+    });
+
+    it('does not navigate when room creation fails', async () => {
+        createRoom.mockResolvedValueOnce(null);
+        const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        act(() => { result.current.setup.onSelectFighter('p1'); });
+        act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+        await act(async () => { result.current.setup.onBattle(); });
+
+        expect(mocks.navigate).not.toHaveBeenCalled();
     });
 
     it('onCancel navigates home and closes overlay', () => {

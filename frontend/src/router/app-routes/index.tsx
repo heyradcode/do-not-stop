@@ -31,7 +31,9 @@ const AppRoutes: React.FC = () => {
                 <Route element={<Layout />}>
                     <Route path="/main" element={<HomePage />} />
                     <Route path="/breed" element={<BreedPage />} />
-                    <Route path="/battle" element={<BattlePage />} />
+                    {/* :roomId is optional — set once Start Battle mints a room id
+                        (see useBattlePanel's handleBattle), same page either way. */}
+                    <Route path="/battle/:roomId?" element={<BattlePage />} />
                     <Route path="/levelup" element={<LevelUpPage />} />
                     <Route path="/train" element={<TrainPage />} />
                     <Route path="/marriage" element={<MarriagePage />} />

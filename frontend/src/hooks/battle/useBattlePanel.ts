@@ -5,6 +5,7 @@ import {
     useChainCapabilities,
     useBattlePets,
     useBattleTaunts,
+    useCreateBattleRoom,
     useOpponents,
     usePetList,
     usePendingBattle,
@@ -13,7 +14,7 @@ import {
     type BattleResolvedResult,
     type SimOutcome,
 } from '@shared/core';
-import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { BATTLE_PATH, DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { formatTxHashHint } from '@hooks/usePetError';
 import { usePetErrorToast } from '@hooks/usePetErrorToast';
 import {
@@ -179,6 +180,10 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // AI pre-fight taunts — generated on Start Battle, in parallel with the wallet.
     // Requesting taunts also kicks off result pregen on the backend.
     const taunts = useBattleTaunts();
+    // Shareable room URL — minted alongside the taunts on Start Battle (see
+    // handleBattle below), before the wallet has even signed, since no
+    // on-chain identifier (tx hash / requestId) exists yet at that point.
+    const { createRoom } = useCreateBattleRoom();
 
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const selectedFighter = useMemo(
@@ -276,6 +281,17 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         battlePersonasRef.current = personas;
         pendingBattleStartRef.current = true;
         taunts.generate({ chain: activeChainKind, ...personas });
+
+        // Best-effort: mint a shareable room URL in parallel with the taunts/wallet
+        // flow. A failure here just means no room URL for this attempt — never
+        // blocks or resets the battle itself.
+        void createRoom({
+            chain: activeChainKind,
+            attackerPetId: selectedFighter.id,
+            defenderPetId: opponent.id,
+        }).then((roomId) => {
+            if (roomId) navigate(`${BATTLE_PATH}/${roomId}`, { replace: true });
+        });
     };
 
     // The taunts finished typing — now prompt the wallet for the held battle.
