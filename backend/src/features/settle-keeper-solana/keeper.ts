@@ -69,11 +69,21 @@ export async function startSolanaSettleKeeper(
         );
     }
     const program = new Program(idl as Idl, provider);
+    if (typeof program.methods.settleBattle !== 'function') {
+        throw new Error(
+            `Program ${config.programId.toBase58()}'s on-chain IDL has no settleBattle instruction ` +
+                '— check KEEPER_SOLANA_PROGRAM_ID is correct and the deployed program includes it.',
+        );
+    }
 
     let stopped = false;
     let tickInFlight = false;
 
-    async function trySettle(battleRequestKey: PublicKey, account: Record<string, unknown>): Promise<void> {
+    async function trySettle(
+        battleRequestKey: PublicKey,
+        account: Record<string, unknown>,
+        queue: Awaited<ReturnType<typeof sb.getDefaultQueue>>,
+    ): Promise<void> {
         const req = decodeBattleRequest(account);
         const label = battleRequestKey.toBase58();
 
@@ -95,7 +105,6 @@ export async function startSolanaSettleKeeper(
 
         let revealIx;
         try {
-            const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
             const randomness = new sb.Randomness(queue.program, req.randomnessAccount);
             // Fails until the oracle has actually produced a value — expected and harmless;
             // the next poll tick retries. Not logged as an error.
@@ -112,8 +121,9 @@ export async function startSolanaSettleKeeper(
             // Non-null assertion: `program.methods` is a generic `Program<Idl>` index
             // signature, so `noUncheckedIndexedAccess` (backend's tsconfig only — shared's
             // own Solana utils hit this same friction but aren't checked under this flag)
-            // types every property access as possibly undefined. The instruction genuinely
-            // exists on the deployed program whose IDL we just fetched.
+            // types every property access as possibly undefined. Startup already verified
+            // settleBattle exists on this program's IDL (see the check above), so this is
+            // just satisfying the type checker, not the only thing standing behind it.
             const settleBattleIx = await program.methods
                 .settleBattle!()
                 .accounts({
@@ -149,9 +159,13 @@ export async function startSolanaSettleKeeper(
         tickInFlight = true;
         try {
             const rows = await getAccountClient(program, 'battleRequest').all();
+            if (rows.length === 0) return;
+            // Fetched once per tick (not once per request — it's effectively static within a
+            // tick and this was previously a redundant round-trip per pending request).
+            const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
             for (const { publicKey, account } of rows) {
                 if (stopped) break;
-                await trySettle(publicKey as PublicKey, account);
+                await trySettle(publicKey as PublicKey, account, queue);
             }
         } catch (err) {
             console.error(`[settle-keeper-solana] poll failed: ${(err as Error).message}`);

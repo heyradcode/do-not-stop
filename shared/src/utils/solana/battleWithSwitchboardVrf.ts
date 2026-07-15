@@ -139,6 +139,13 @@ const trySettlePendingBattle = async (args: BattleWithVrfArgs): Promise<BattleVr
 
     const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
 
+    // The keeper may have settled while we were waiting on the oracle to reveal — one more
+    // check right before signing avoids sending a doomed (and wasted-gas) tx. EVM has an
+    // equivalent guard via simulateContract immediately before send; this is Solana's.
+    if (!(await getAccountClient(program, 'battleRequest').fetchNullable(battleRequest))) {
+        return { sig: '', firstWins: null };
+    }
+
     const settleBattleIx = await program.methods
         .settleBattle!()
         .accounts({
@@ -247,6 +254,13 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
 
     const { revealRetries, revealBackoffMs } = vrfTimingForEndpoint(connection.rpcEndpoint);
     const revealIx = await waitForRevealIx(randomness, owner, revealRetries, revealBackoffMs);
+
+    // The keeper may have settled while we were waiting on the oracle to reveal — one more
+    // check right before signing avoids sending a doomed (and wasted-gas) tx. EVM has an
+    // equivalent guard via simulateContract immediately before send; this is Solana's.
+    if (!(await getAccountClient(program, 'battleRequest').fetchNullable(battleRequest))) {
+        return { sig: '', firstWins: null };
+    }
 
     const settleBattleIx = await program.methods
         .settleBattle!()

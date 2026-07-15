@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => {
 
     return {
         settleBattleIxBuilder,
+        methods,
         fetchIdl,
         ProgramCtor,
         revealIx,
@@ -80,9 +81,11 @@ vi.mock('@shared/core/src/utils/solana', async (importOriginal) => {
 import { startSolanaSettleKeeper, type SolanaSettleKeeperConfig } from '../../../src/features/settle-keeper-solana/keeper';
 
 const {
-    settleBattleIxBuilder, fetchIdl, revealIx, getDefaultQueue, asV0Tx,
+    settleBattleIxBuilder, methods, fetchIdl, revealIx, getDefaultQueue, asV0Tx,
     getAccountClient, fetchAssetByPetId, sendSignedTx, getBalance,
 } = mocks;
+
+const originalSettleBattle = methods.settleBattle;
 
 const ZERO_KEY = new PublicKey('11111111111111111111111111111111');
 const BATTLE_REQUEST_KEY = new PublicKey('11111111111111111111111111111112');
@@ -104,14 +107,16 @@ const baseConfig: SolanaSettleKeeperConfig = {
     pollIntervalMs: 5_000,
 };
 
-/** Flush the microtask chain so an in-flight (unawaited) `void tick()` settles. */
+/** Flush the microtask chain so an in-flight (unawaited) `void tick()` settles — deep
+ *  enough for several sequentially-awaited trySettle calls within one tick. */
 async function flush(): Promise<void> {
-    for (let i = 0; i < 8; i++) await Promise.resolve();
+    for (let i = 0; i < 20; i++) await Promise.resolve();
 }
 
 beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    methods.settleBattle = originalSettleBattle;
     fetchIdl.mockResolvedValue({ instructions: [] });
     settleBattleIxBuilder.accounts.mockReturnValue(settleBattleIxBuilder);
     settleBattleIxBuilder.instruction.mockResolvedValue({ programId: ZERO_KEY, keys: [], data: Buffer.alloc(0) });
@@ -133,6 +138,12 @@ afterEach(() => {
 });
 
 describe('startSolanaSettleKeeper', () => {
+    it('refuses to start with a clear error when the fetched IDL has no settleBattle instruction', async () => {
+        delete (methods as Partial<typeof methods>).settleBattle;
+
+        await expect(startSolanaSettleKeeper(baseConfig)).rejects.toThrow(/no settleBattle instruction/);
+    });
+
     it('settles an open battle request once Switchboard has revealed', async () => {
         const handle = await startSolanaSettleKeeper(baseConfig);
         await flush();
@@ -183,6 +194,23 @@ describe('startSolanaSettleKeeper', () => {
         expect(sendSignedTx).not.toHaveBeenCalled();
         expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('asset not found'));
         errorSpy.mockRestore();
+        handle.stop();
+    });
+
+    it('fetches the Switchboard queue once per tick, not once per pending request', async () => {
+        const secondRequestKey = new PublicKey('11111111111111111111111111111115');
+        getAccountClient.mockReturnValue({
+            all: vi.fn().mockResolvedValue([
+                { publicKey: BATTLE_REQUEST_KEY, account: rawAccount },
+                { publicKey: secondRequestKey, account: rawAccount },
+            ]),
+        });
+
+        const handle = await startSolanaSettleKeeper(baseConfig);
+        await flush();
+
+        expect(sendSignedTx).toHaveBeenCalledTimes(2); // both requests settled...
+        expect(getDefaultQueue).toHaveBeenCalledTimes(1); // ...off a single queue fetch
         handle.stop();
     });
 

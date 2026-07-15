@@ -151,6 +151,26 @@ describe('battleWithSwitchboardVrf — resuming a pending battle', () => {
         expect(mocks.sendSignedTx).toHaveBeenCalledTimes(1);
         expect(result.sig).toBe('sig-settle');
     });
+
+    it('bails out gracefully when the keeper settles during the reveal wait, just before the fallback would submit', async () => {
+        // waitForKeeperSettle's own loop always sees it still pending (so it times out
+        // naturally, not because it noticed a settlement) — the keeper only "wins the race"
+        // right as the fallback starts waiting on the oracle reveal, which the final
+        // pre-submit check (the fix under test) must catch.
+        let keeperSettledDuringReveal = false;
+        mocks.fetchNullable.mockImplementation(async () => (keeperSettledDuringReveal ? null : pendingRecord));
+        mocks.waitForRevealIx.mockImplementation(async () => {
+            keeperSettledDuringReveal = true;
+            return { programId: PROGRAM_ID, keys: [], data: Buffer.alloc(0) };
+        });
+
+        const resultPromise = battleWithSwitchboardVrf(makeArgs());
+        await vi.advanceTimersByTimeAsync(60_000);
+        const result = await resultPromise;
+
+        expect(result).toEqual({ sig: '', firstWins: null });
+        expect(mocks.sendSignedTx).not.toHaveBeenCalled();
+    });
 });
 
 describe('battleWithSwitchboardVrf — committing a fresh battle', () => {
