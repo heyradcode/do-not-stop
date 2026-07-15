@@ -134,6 +134,13 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         if (!settleSentRef.current && !fallbackCancelledRef.current) sendSettleFallback(id);
     }, [gameLogic, gameLogicAbi, publicClient, sendSettleFallback]);
 
+    // Latest-ref so the arming effect below doesn't depend on this callback's identity —
+    // `settle` (from useWriteContract) is a new object every render, which would otherwise
+    // reset the 60s timer on every re-render while awaiting-vrf and defeat the whole point
+    // of the fallback (see onResolvedRef above for the same pattern).
+    const waitThenSendFallbackRef = useRef(waitThenSendFallback);
+    waitThenSendFallbackRef.current = waitThenSendFallback;
+
     // Starts the fallback window the moment the request is confirmed — independent of any
     // reveal signal, since the whole point is this must work even if the backend (keeper and
     // live-battle-socket both) is completely down.
@@ -143,10 +150,10 @@ export const useEvmBattleFlow = ({ requestHash, enabled, onResolved }: UseEvmBat
         clearFallbackTimer();
         fallbackTimerRef.current = setTimeout(() => {
             setPhase('awaiting-settle');
-            void waitThenSendFallback(requestId);
+            void waitThenSendFallbackRef.current(requestId);
         }, FALLBACK_START_DELAY_MS);
         return clearFallbackTimer;
-    }, [phase, requestId, clearFallbackTimer, waitThenSendFallback]);
+    }, [phase, requestId, clearFallbackTimer]);
 
     // Cancel any pending fallback on unmount so it can't fire (and send a tx) after the
     // component watching this battle is gone.
