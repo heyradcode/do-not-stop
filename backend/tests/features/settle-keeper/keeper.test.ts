@@ -9,6 +9,7 @@ let entropyLiveLogs: { eventName: string; args: Record<string, unknown> }[] = []
 
 const publicClient = {
     getBlockNumber: vi.fn(async () => currentBlock),
+    getBalance: vi.fn(async () => 1_000_000_000_000_000_000n), // 1 ETH, well above MIN_BALANCE_WEI
     getContractEvents: vi.fn(async (params: { address: string; eventName?: string; fromBlock: bigint; toBlock: bigint }) => {
         if (params.eventName === 'Revealed') {
             const out = entropyLiveLogs;
@@ -74,6 +75,7 @@ beforeEach(() => {
     entropyLiveLogs = [];
     backfillLogs = [];
     publicClient.getBlockNumber.mockImplementation(async () => currentBlock);
+    publicClient.getBalance.mockResolvedValue(1_000_000_000_000_000_000n);
 });
 
 afterEach(() => {
@@ -173,5 +175,60 @@ describe('startKeeper', () => {
         await vi.advanceTimersByTimeAsync(20_000);
 
         expect(publicClient.getBlockNumber.mock.calls.length).toBe(callsBefore);
+    });
+
+    it('starts the live watch from the backfill snapshot, not a later block, so nothing in between is skipped', async () => {
+        // Simulate more blocks landing between the backfill snapshot and any later
+        // getBlockNumber call the live watch makes for itself (e.g. to compute the
+        // current tick's `toBlock`). The watch's *starting* cursor must stay pinned to
+        // the backfill's own latestBlock+1 regardless of what a fresh call would return.
+        publicClient.getBlockNumber
+            .mockResolvedValueOnce(100n) // backfill's snapshot
+            .mockResolvedValue(105n); // every later call sees blocks that arrived meanwhile
+
+        const handle = await startKeeper(baseConfig);
+        await flush();
+
+        const gameLogicLiveCalls = publicClient.getContractEvents.mock.calls
+            .map(([params]) => params)
+            .filter((p) => p.eventName === undefined && !(p.fromBlock === 50n && p.toBlock === 100n));
+
+        expect(gameLogicLiveCalls[0]?.fromBlock).toBe(101n);
+        handle.stop();
+    });
+
+    it('warns when the keeper wallet balance is below the minimum threshold', async () => {
+        publicClient.getBalance.mockResolvedValue(1n); // effectively empty
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const handle = await startKeeper(baseConfig);
+        await flush();
+
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('balance is low'));
+        errorSpy.mockRestore();
+        handle.stop();
+    });
+
+    it('does not warn when the keeper wallet balance is sufficient', async () => {
+        publicClient.getBalance.mockResolvedValue(1_000_000_000_000_000_000n); // 1 ETH
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const handle = await startKeeper(baseConfig);
+        await flush();
+
+        expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('balance is low'));
+        errorSpy.mockRestore();
+        handle.stop();
+    });
+
+    it('re-checks the wallet balance periodically', async () => {
+        const handle = await startKeeper(baseConfig);
+        await flush();
+        const callsBefore = publicClient.getBalance.mock.calls.length;
+
+        await vi.advanceTimersByTimeAsync(10 * 60_000);
+
+        expect(publicClient.getBalance.mock.calls.length).toBeGreaterThan(callsBefore);
+        handle.stop();
     });
 });

@@ -44,6 +44,13 @@ export interface SolanaSettleKeeperHandle {
  * signature (see the plan doc for why: their Metaplex Core mint CPI needs a real payer
  * signature), so this keeper does not attempt those.
  */
+
+/** Below this, settle txs risk failing outright on an unfunded keeper wallet — nothing
+ *  tops the wallet up automatically, so this is just a loud, periodic reminder to do it
+ *  manually (mirrors the EVM keeper's MIN_BALANCE_WEI check). */
+const MIN_BALANCE_LAMPORTS = 50_000_000; // 0.05 SOL
+const BALANCE_CHECK_INTERVAL_MS = 10 * 60_000;
+
 export async function startSolanaSettleKeeper(
     config: SolanaSettleKeeperConfig,
 ): Promise<SolanaSettleKeeperHandle> {
@@ -160,10 +167,28 @@ export async function startSolanaSettleKeeper(
     const interval = setInterval(() => void tick(), config.pollIntervalMs);
     void tick(); // don't wait a full interval for the first poll
 
+    async function checkBalance(): Promise<void> {
+        try {
+            const balance = await connection.getBalance(config.keypair.publicKey);
+            if (balance < MIN_BALANCE_LAMPORTS) {
+                console.error(
+                    `[settle-keeper-solana] wallet ${config.keypair.publicKey.toBase58()} balance is low ` +
+                        `(${balance} lamports, min ${MIN_BALANCE_LAMPORTS}) — settle txs may start failing; ` +
+                        'top it up from fee vault proceeds',
+                );
+            }
+        } catch (err) {
+            console.error(`[settle-keeper-solana] balance check failed: ${(err as Error).message}`);
+        }
+    }
+    void checkBalance();
+    const balanceCheckTimer = setInterval(() => { void checkBalance(); }, BALANCE_CHECK_INTERVAL_MS);
+
     return {
         stop() {
             stopped = true;
             clearInterval(interval);
+            clearInterval(balanceCheckTimer);
         },
     };
 }

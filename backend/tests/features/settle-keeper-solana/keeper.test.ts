@@ -31,6 +31,17 @@ const mocks = vi.hoisted(() => {
         getAccountClient: vi.fn(),
         fetchAssetByPetId: vi.fn(),
         sendSignedTx: vi.fn(),
+        getBalance: vi.fn(),
+    };
+});
+
+vi.mock('@solana/web3.js', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@solana/web3.js')>();
+    return {
+        ...actual,
+        Connection: function ConnectionMock(this: unknown, rpcUrl: string) {
+            return { rpcEndpoint: rpcUrl, getBalance: mocks.getBalance };
+        },
     };
 });
 
@@ -70,7 +81,7 @@ import { startSolanaSettleKeeper, type SolanaSettleKeeperConfig } from '../../..
 
 const {
     settleBattleIxBuilder, fetchIdl, revealIx, getDefaultQueue, asV0Tx,
-    getAccountClient, fetchAssetByPetId, sendSignedTx,
+    getAccountClient, fetchAssetByPetId, sendSignedTx, getBalance,
 } = mocks;
 
 const ZERO_KEY = new PublicKey('11111111111111111111111111111111');
@@ -114,6 +125,7 @@ beforeEach(() => {
         all: vi.fn().mockResolvedValue([{ publicKey: BATTLE_REQUEST_KEY, account: rawAccount }]),
     });
     revealIx.mockResolvedValue({ programId: ZERO_KEY, keys: [], data: Buffer.alloc(0) });
+    getBalance.mockResolvedValue(1_000_000_000); // 1 SOL, well above MIN_BALANCE_LAMPORTS
 });
 
 afterEach(() => {
@@ -184,5 +196,40 @@ describe('startSolanaSettleKeeper', () => {
         await vi.advanceTimersByTimeAsync(baseConfig.pollIntervalMs * 3);
 
         expect(allMock.mock.calls.length).toBe(callsBefore);
+    });
+
+    it('warns when the keeper wallet balance is below the minimum threshold', async () => {
+        getBalance.mockResolvedValue(1); // effectively empty
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const handle = await startSolanaSettleKeeper(baseConfig);
+        await flush();
+
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('balance is low'));
+        errorSpy.mockRestore();
+        handle.stop();
+    });
+
+    it('does not warn when the keeper wallet balance is sufficient', async () => {
+        getBalance.mockResolvedValue(1_000_000_000); // 1 SOL
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const handle = await startSolanaSettleKeeper(baseConfig);
+        await flush();
+
+        expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('balance is low'));
+        errorSpy.mockRestore();
+        handle.stop();
+    });
+
+    it('re-checks the wallet balance periodically', async () => {
+        const handle = await startSolanaSettleKeeper(baseConfig);
+        await flush();
+        const callsBefore = getBalance.mock.calls.length;
+
+        await vi.advanceTimersByTimeAsync(10 * 60_000);
+
+        expect(getBalance.mock.calls.length).toBeGreaterThan(callsBefore);
+        handle.stop();
     });
 });

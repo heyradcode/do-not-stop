@@ -49,6 +49,12 @@ const MAX_LOG_RANGE_BLOCKS = 2000n;
 
 const POLL_INTERVAL_MS = 4_000;
 
+/** Below this, settle txs (~800k gas, see SETTLE_GAS_LIMIT) risk failing outright on an
+ *  unfunded keeper wallet — nothing tops the wallet up automatically (see GameConfig.battleFee
+ *  doc comment in CLAUDE.md), so this is just a loud, periodic reminder to do it manually. */
+const MIN_BALANCE_WEI = 20_000_000_000_000_000n; // 0.02 ETH
+const BALANCE_CHECK_INTERVAL_MS = 10 * 60_000;
+
 /**
  * Drop-in replacement for viem's `publicClient.watchContractEvent` that never touches
  * eth_newFilter/eth_getFilterChanges. viem's own watcher tries to create a filter first and
@@ -65,9 +71,14 @@ function pollContractEvents(
     publicClient: PublicClient,
     params: { address: Address; abi: Abi; eventName?: string },
     onLogs: (logs: DecodedGameLogicLog[]) => void,
+    /** Block to start watching from. Pass the same snapshot the backfill scan used (its
+     *  `latestBlock + 1n`) so there's no gap between "backfill covered up to here" and
+     *  "live watch starts here" — otherwise a request landing in that gap is caught by
+     *  neither. Omit to have the first tick fetch its own starting point. */
+    initialFromBlock?: bigint,
 ): () => void {
     let stopped = false;
-    let fromBlock: bigint | null = null;
+    let fromBlock: bigint | null = initialFromBlock ?? null;
     let inFlight = false;
 
     const tick = async () => {
@@ -216,6 +227,8 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
     for (const requestId of backfilled.keys()) trySettle(requestId);
 
     // Live watch: new requests get tracked, settlements (by us or anyone else) get untracked.
+    // Starts from the same latestBlock the backfill scan just covered up to, so nothing
+    // requested in between is missed by either pass.
     const unwatchGameLogic = pollContractEvents(
         publicClient,
         { address: config.gameLogicAddress, abi: GAME_LOGIC_ABI },
@@ -231,6 +244,7 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                 if (type) track(requestId, type);
             }
         },
+        latestBlock + 1n,
     );
 
     const entropyAddress = (await publicClient.readContract({
@@ -266,6 +280,7 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                 trySettle(sequenceNumber);
             }
         },
+        latestBlock + 1n,
     );
 
     let unwatchMockRequests: (() => void) | undefined;
@@ -305,11 +320,28 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
 
     console.log(`[settle-keeper] watching GameLogic ${config.gameLogicAddress} as ${account.address}`);
 
+    async function checkBalance(): Promise<void> {
+        try {
+            const balance = await publicClient.getBalance({ address: account.address });
+            if (balance < MIN_BALANCE_WEI) {
+                console.error(
+                    `[settle-keeper] wallet ${account.address} balance is low (${balance} wei, ` +
+                        `min ${MIN_BALANCE_WEI} wei) — settle txs may start failing; top it up from withdraw() proceeds`,
+                );
+            }
+        } catch (err) {
+            console.error(`[settle-keeper] balance check failed: ${(err as Error).message.split('\n')[0]}`);
+        }
+    }
+    void checkBalance();
+    const balanceCheckTimer = setInterval(() => { void checkBalance(); }, BALANCE_CHECK_INTERVAL_MS);
+
     return {
         stop() {
             unwatchGameLogic();
             unwatchEntropy();
             unwatchMockRequests?.();
+            clearInterval(balanceCheckTimer);
         },
     };
 }
