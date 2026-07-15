@@ -84,6 +84,10 @@ pub struct BattleRequest {
     pub defender_level: u16,
     pub attacker_species_id: u16,
     pub defender_species_id: u16,
+    /// Battle fee escrowed at `commit_battle` (mirrors EVM `PendingBattle.battleFee`),
+    /// refunded by `cancel_battle` since no `settle_battle` tx — and therefore no keeper
+    /// cost — is ever sent for a cancelled request.
+    pub battle_fee: u64,
 }
 
 impl BattleRequest {
@@ -103,7 +107,8 @@ impl BattleRequest {
         + 2 /* attacker_level */
         + 2 /* defender_level */
         + 2 /* attacker_species_id */
-        + 2; /* defender_species_id */
+        + 2 /* defender_species_id */
+        + 8; /* battle_fee */
 }
 
 // ─── MintRequest ──────────────────────────────────────────────────────────────

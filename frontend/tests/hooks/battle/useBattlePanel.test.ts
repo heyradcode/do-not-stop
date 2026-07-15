@@ -85,7 +85,7 @@ describe('useBattlePanel', () => {
         expect(result.current.setup).toBeDefined();
     });
 
-    it('setup.battleCost is null until battleFee/entropyFee (EVM) have loaded', () => {
+    it('setup.battleCost is null until battleFee has loaded', () => {
         const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         expect(result.current.setup.battleCost).toBeNull();
         expect(result.current.setup.battleButtonLabel).toBe('Start Battle');
@@ -96,6 +96,13 @@ describe('useBattlePanel', () => {
         const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         expect(result.current.setup.battleCost).toBe('5 wei');
         expect(result.current.setup.battleButtonLabel).toBe('Start Battle (5 wei)');
+    });
+
+    it('setup.battleCost formats battleFee alone when entropyFee has no equivalent (Solana)', () => {
+        Object.assign(fees, { battleFee: 4n, entropyFee: undefined });
+        const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        expect(result.current.setup.battleCost).toBe('4 wei');
+        expect(result.current.setup.battleButtonLabel).toBe('Start Battle (4 wei)');
     });
 
     it('setup.battleDisabled is true when no fighter or opponent is selected', () => {

@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     errors::ErrorCode,
-    state::{BattleRequest, GlobalState, PetAccount},
+    state::{BattleRequest, GlobalState, PetAccount, FEE_VAULT_SEED},
     utils::metadata::core_asset_owner,
     utils::randomness::assert_randomness_committed,
 };
@@ -53,6 +53,19 @@ pub fn handler(ctx: Context<CommitBattle>, randomness_account: Pubkey) -> Result
         randomness_account,
     )?;
 
+    // Battle fee (mirrors EVM `GameConfig.battleFee` / `requestBattle`): funds the settle
+    // keeper's own `settle_battle` transaction, which it previously sent entirely
+    // unfunded. Escrowed here, refunded by `cancel_battle` if the request expires unsettled.
+    let battle_fee = ctx.accounts.global_state.battle_fee_lamports;
+    let cpi_ctx = CpiContext::new(
+        ctx.accounts.system_program.to_account_info(),
+        anchor_lang::system_program::Transfer {
+            from: ctx.accounts.attacker_owner.to_account_info(),
+            to: ctx.accounts.fee_vault.to_account_info(),
+        },
+    );
+    anchor_lang::system_program::transfer(cpi_ctx, battle_fee)?;
+
     let battle_request = &mut ctx.accounts.battle_request;
     battle_request.attacker_owner = ctx.accounts.attacker_owner.key();
     battle_request.defender_owner = ctx.accounts.defender_owner.key();
@@ -72,6 +85,7 @@ pub fn handler(ctx: Context<CommitBattle>, randomness_account: Pubkey) -> Result
     battle_request.defender_level = ctx.accounts.defender_pet.level;
     battle_request.attacker_species_id = ctx.accounts.attacker_pet.species_id;
     battle_request.defender_species_id = ctx.accounts.defender_pet.species_id;
+    battle_request.battle_fee = battle_fee;
 
     let cooldown_seconds = ctx.accounts.global_state.battle_cooldown_seconds;
     ctx.accounts.attacker_pet.trigger_cooldown(now, cooldown_seconds);
@@ -140,6 +154,9 @@ pub struct CommitBattle<'info> {
         space = BattleRequest::SPACE,
     )]
     pub battle_request: Account<'info, BattleRequest>,
+
+    #[account(mut, seeds = [FEE_VAULT_SEED], bump)]
+    pub fee_vault: SystemAccount<'info>,
 
     /// CHECK: parsed as Switchboard `RandomnessAccountData` in the handler.
     pub randomness_account_data: UncheckedAccount<'info>,

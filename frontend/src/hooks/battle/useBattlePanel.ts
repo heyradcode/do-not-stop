@@ -193,15 +193,16 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // on-chain identifier (tx hash / requestId) exists yet at that point.
     const { createRoom, isLoading: roomLoading } = useCreateBattleRoom();
 
-    // EVM only: battleFee funds the settle keeper's settleBattle gas, bundled with
-    // entropyFee into the requestBattle tx (contracts/ethereum/src/GameConfig.sol's
-    // battleFee). Undefined on Solana — battleCost stays null there, same fallback
-    // rule as the mint/breed/train panels' cost display.
+    // Funds the settle keeper's settle transaction (contracts/ethereum/src/GameConfig.sol's
+    // battleFee / Solana's GlobalState.battle_fee_lamports). EVM bundles it with entropyFee
+    // into requestBattle's value; Solana's commit_battle charges it alone (no entropyFee
+    // equivalent). Null until battleFee has loaded, same fallback rule as the mint/breed/
+    // train panels' cost display.
     const fees = useFees();
     const battleCost = useMemo(
         () =>
-            fees.battleFee != null && fees.entropyFee != null
-                ? fees.formatAmount(fees.battleFee + fees.entropyFee)
+            fees.battleFee != null
+                ? fees.formatAmount(fees.battleFee + (fees.entropyFee ?? 0n))
                 : null,
         [fees],
     );

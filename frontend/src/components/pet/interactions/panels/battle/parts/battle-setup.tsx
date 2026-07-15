@@ -38,8 +38,8 @@ export type BattleSetupProps = {
     onBattle: () => void;
     battleDisabled: boolean;
     battleButtonLabel: string;
-    /** EVM only: battleFee + entropyFee, formatted (e.g. "0.0006 ETH"). Null on Solana
-     *  or while fees are still loading — no cost line is shown in either case. */
+    /** battleFee (+ entropyFee on EVM), formatted (e.g. "0.0006 ETH" / "0.005 SOL").
+     *  Null while fees are still loading — no cost line is shown in that case. */
     battleCost: string | null;
     onCancel: () => void;
     winEstimate: WinEstimateResult;

@@ -152,6 +152,10 @@ pub mod cryptopets {
         config::set_breed_fee_lamports(ctx, value)
     }
 
+    pub fn set_battle_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_battle_fee_lamports(ctx, value)
+    }
+
     pub fn set_stud_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
         config::set_stud_fee_lamports(ctx, value)
     }

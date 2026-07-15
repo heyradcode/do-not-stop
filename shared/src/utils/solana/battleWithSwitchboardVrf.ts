@@ -2,7 +2,7 @@ import type { AnchorProvider, Program , Idl } from '@coral-xyz/anchor';
 import { EventParser } from '@coral-xyz/anchor';
 import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import * as sb from '@switchboard-xyz/on-demand';
-import { battleRequestPda, globalStatePda, petPdaByAsset } from './pdas';
+import { battleRequestPda, feeVaultPda, globalStatePda, petPdaByAsset } from './pdas';
 import { fetchAssetByPetId, getAccountClient } from './accountClient';
 import { toU32 } from './numbers';
 import {
@@ -193,6 +193,7 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
     const [attackerPet] = petPdaByAsset(programId, attackerAssetKey);
     const [defenderPet] = petPdaByAsset(programId, defenderAsset.toBase58());
     const [battleRequest] = battleRequestPda(programId, owner);
+    const [feeVault] = feeVaultPda(programId);
 
     const queue = await sb.getDefaultQueue(connection.rpcEndpoint);
     const sbProgram = queue.program;
@@ -217,6 +218,7 @@ export const battleWithSwitchboardVrf = async (args: BattleWithVrfArgs): Promise
             defenderAsset,
             defenderPet,
             battleRequest,
+            feeVault,
             randomnessAccountData: rngKp.publicKey,
             systemProgram: SystemProgram.programId,
         })
