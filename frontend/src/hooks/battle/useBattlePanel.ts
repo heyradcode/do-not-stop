@@ -358,6 +358,16 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         void refetchOpponents();
     };
 
+    // Re-plays the just-finished fight from the first strike. Reuses the same
+    // showResult/animation.done gate that reveals the result card in the first place:
+    // flipping showResult back to false resumes the animation (active = !showResult),
+    // and the effect above flips it back to true on its own once animation.done is true
+    // again — no separate "replaying" state needed.
+    const handleWatchReplay = useCallback(() => {
+        animation.replay();
+        setShowResult(false);
+    }, [animation]);
+
     const handleSelectOpponent = useCallback((key: string) => {
         setSelectedOpponent(key);
     }, []);
@@ -489,6 +499,10 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         liveHp2Percent: battle.liveReplay ? animation.hp2Percent : null,
         liveLog,
         liveFlourish: animation.flourish,
+        // Nothing to replay without a live-replay log (Solana, or an EVM deployment with
+        // no GameConfig wired up — see the liveLog comment above for the same fallback rule).
+        canReplay: Boolean(battle.liveReplay?.log?.length),
+        onWatchReplay: handleWatchReplay,
     };
 
     const setup: BattleSetupProps = {

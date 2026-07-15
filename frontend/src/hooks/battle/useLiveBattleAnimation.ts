@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { StrikeLogEntry } from '@shared/core';
 
 /** Time each strike stays on screen before the next one plays. */
@@ -16,6 +16,9 @@ export interface LiveBattleAnimationState {
     /** Every strike played so far, oldest first — the persistent mechanical-log feed
      *  (as opposed to `flourish`, which is only the latest strike). */
     history: StrikeLogEntry[];
+    /** Restarts the same log from the first strike — for a "Watch Again" action on the
+     *  result screen. A no-op when there's nothing to animate. */
+    replay: () => void;
 }
 
 /**
@@ -32,6 +35,7 @@ export function useLiveBattleAnimation(
     active: boolean,
 ): LiveBattleAnimationState {
     const [index, setIndex] = useState(0);
+    const replay = useCallback(() => setIndex(0), []);
 
     // A new battle's log arrives as a new array reference — restart from the top.
     useEffect(() => {
@@ -45,7 +49,7 @@ export function useLiveBattleAnimation(
     }, [active, log, index]);
 
     if (!log || log.length === 0 || startHp1 == null || startHp2 == null) {
-        return { hp1Percent: 100, hp2Percent: 100, flourish: null, done: true, history: [] };
+        return { hp1Percent: 100, hp2Percent: 100, flourish: null, done: true, history: [], replay };
     }
 
     const current = index > 0 ? log[index - 1] : null;
@@ -55,6 +59,7 @@ export function useLiveBattleAnimation(
         flourish: current ? describeStrike(current) : null,
         done: index >= log.length,
         history: log.slice(0, index),
+        replay,
     };
 }
 

@@ -36,6 +36,7 @@ describe('useLiveBattleAnimation', () => {
             flourish: null,
             done: true,
             history: [],
+            replay: expect.any(Function),
         });
     });
 
@@ -104,6 +105,29 @@ describe('useLiveBattleAnimation', () => {
         const { result } = renderHook(() => useLiveBattleAnimation(log, 100n, 100n, true));
         act(() => { vi.advanceTimersByTime(700); });
         expect(result.current.hp1Percent).toBe(100);
+    });
+
+    it('replay() restarts the same log from the top and plays it again', () => {
+        const log = [
+            entry({ attacker: 1, hp1After: 100n, hp2After: 80n }),
+            entry({ attacker: 2, hp1After: 90n, hp2After: 80n }),
+        ];
+        const { result } = renderHook(() => useLiveBattleAnimation(log, 100n, 100n, true));
+
+        act(() => { vi.advanceTimersByTime(700); });
+        act(() => { vi.advanceTimersByTime(700); }); // play the whole log out
+        expect(result.current.done).toBe(true);
+        expect(result.current.hp1Percent).toBe(90);
+
+        act(() => { result.current.replay(); });
+        expect(result.current.done).toBe(false);
+        expect(result.current.hp1Percent).toBe(100); // back to full, nothing played yet
+        expect(result.current.history).toEqual([]);
+
+        act(() => { vi.advanceTimersByTime(700); });
+        act(() => { vi.advanceTimersByTime(700); }); // plays through again, same log reference
+        expect(result.current.done).toBe(true);
+        expect(result.current.history).toEqual(log);
     });
 
     it('restarts from the top when a new log array is provided', () => {

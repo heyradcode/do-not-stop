@@ -58,6 +58,13 @@ export type BattleOverlayProps = {
      *  no live-replay feature this deployment (Solana, or an EVM deployment with no
      *  GameConfig wired up), same fallback rule as liveHp1Percent/liveHp2Percent. */
     liveLog?: MechanicalLogLine[] | null;
+    /** Whether there's a live-replay log to watch again (same fallback rule as
+     *  liveHp1Percent/liveHp2Percent — false on Solana or an EVM deployment with no
+     *  GameConfig wired up). Gates the "Watch Again" action on the result screen. */
+    canReplay: boolean;
+    /** Restarts the fight animation from the first strike, then returns to the result
+     *  screen automatically once it finishes again. */
+    onWatchReplay: () => void;
 };
 
 /** Pet banter panel — the fighters' conversation, shown in the right-hand rail. */
@@ -225,6 +232,8 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
     liveHp2Percent,
     liveFlourish,
     liveLog,
+    canReplay,
+    onWatchReplay,
 }) => {
     if (!open) return null;
 
@@ -352,6 +361,11 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
 
                         {battleOutcome !== null && (
                             <div className={styles.sceneActions}>
+                                {canReplay ? (
+                                    <button type="button" className={styles.resultReplay} onClick={onWatchReplay}>
+                                        🔁 Watch Again
+                                    </button>
+                                ) : null}
                                 <button
                                     type="button"
                                     className={styles.resultDone}

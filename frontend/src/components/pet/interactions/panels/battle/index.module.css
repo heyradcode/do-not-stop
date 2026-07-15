@@ -1022,7 +1022,8 @@
     flex-wrap: wrap;
 }
 
-.resultDone {
+.resultDone,
+.resultReplay {
     appearance: none;
     border-radius: 2px;
     padding: 11px 22px;
@@ -1047,6 +1048,17 @@
     &:disabled {
         opacity: 0.55;
         cursor: not-allowed;
+    }
+}
+
+.resultReplay {
+    background: transparent;
+    border: 1px solid rgb(255 207 112 / 28%);
+    color: var(--cp-amber, #ffcf70);
+
+    &:hover {
+        border-color: var(--cp-amber, #ffcf70);
+        box-shadow: 0 0 10px rgb(255 207 112 / 22%);
     }
 }
 

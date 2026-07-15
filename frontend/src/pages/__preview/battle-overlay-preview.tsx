@@ -48,6 +48,8 @@ const BattleOverlayPreview = () => {
         liveHp2Percent: 30,
         liveFlourish: 'Your pet lands a physical strike — critical hit! (Fury!)',
         liveLog,
+        canReplay: true,
+        onWatchReplay: () => alert('onWatchReplay'),
     };
 
     return (
