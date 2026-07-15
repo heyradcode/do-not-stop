@@ -11,6 +11,9 @@ export interface UnifiedFees {
     breedFee?: bigint;
     trainFee?: bigint;
     studFee?: bigint;
+    /** EVM only: funds the settle keeper's settleBattle gas; bundled with entropyFee at
+     *  requestBattle time. Undefined on Solana, which has no equivalent keeper-fee charge yet. */
+    battleFee?: bigint;
     /** Next mint fee for this wallet, including per-wallet escalation. */
     nextMintFee?: bigint;
     /** EVM only: Pyth Entropy fee bundled with requestMintStarter. Undefined until loaded. */
@@ -60,6 +63,7 @@ export const useFees = (): UnifiedFees => {
                 breedFee:       evmFees.breedFee,
                 trainFee:       evmFees.trainFee,
                 studFee:        evmFees.studFee,
+                battleFee:      evmFees.battleFee,
                 nextMintFee:    evmFees.nextMintFee,
                 entropyFee:     evmFees.entropyFee,
                 walletMintCount: evmFees.walletMintCount != null ? Number(evmFees.walletMintCount) : undefined,

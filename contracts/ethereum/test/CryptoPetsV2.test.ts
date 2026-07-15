@@ -43,6 +43,13 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await entropy.write.mockReveal([provider, requestId, TEST_RANDOMNESS], { account });
     }
 
+    // Helper: sum of the current battleFee + entropyFee, i.e. the value requestBattle needs.
+    async function battleValue(entropy: any, config: any) {
+        const battleFee  = await config.read.battleFee();
+        const entropyFee = await entropy.read.getFeeV2();
+        return battleFee + entropyFee;
+    }
+
     // Helper: mint a starter pet via the async Entropy flow (request → reveal → settle),
     // computing the escalating mint fee + entropy fee automatically.
     async function mintStarter(petCore: any, gameLogic: any, entropy: any, config: any, wallet: any, name: string) {
@@ -285,7 +292,9 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await testClient.mine({ blocks: 1 });
 
         // Step 1: request
-        const reqHash = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
+        const reqHash = await gameLogic.write.requestBattle([1n, 2n], {
+            account: addr1.account, value: await battleValue(entropy, config)
+        });
         const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
         const reqLogs = parseEventLogs({
             abi: gameLogic.abi,
@@ -359,7 +368,9 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await testClient.mine({ blocks: 1 });
 
         // Step 1: request — the snapshot is captured here (pet1 level 1, pet2 level 15).
-        const reqHash = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
+        const reqHash = await gameLogic.write.requestBattle([1n, 2n], {
+            account: addr1.account, value: await battleValue(entropy, config)
+        });
         const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
         const requestId = parseEventLogs({
             abi: gameLogic.abi, logs: reqReceipt.logs, eventName: "BattleRandomnessRequested", strict: false
@@ -430,6 +441,26 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         // First-ever meeting between these two pets, so same-opponent decay is 0 either way.
         assert.equal(resolved.xpWin, 0, "winner (level-15 snapshot) beating a level-1 foe earns 0 xp");
         assert.equal(resolved.xpLoss, 50, "loser (level-1 snapshot) punching up 14 levels earns the 200%-clamped 50 xp");
+    });
+
+    it("Should reject requestBattle with insufficient battle fee", async function () {
+        const { petCore, gameLogic, entropy, config } = await deployV2();
+        const testClient = await viem.getTestClient();
+        const [, addr1, addr2] = await viem.getWalletClients();
+
+        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
+        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs");
+
+        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
+        await testClient.mine({ blocks: 1 });
+
+        const short = (await battleValue(entropy, config)) - 1n; // one wei short of battle + entropy
+        try {
+            await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account, value: short });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert((error as Error).message.includes("Insufficient battle/entropy fee"));
+        }
     });
 
     it("Should return a zeroed record from getBattleRequest for an unknown/settled requestId", async function () {
@@ -800,7 +831,10 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
         await testClient.mine({ blocks: 1 });
 
-        const reqHash = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
+        const battleFee = await config.read.battleFee();
+        const reqHash = await gameLogic.write.requestBattle([1n, 2n], {
+            account: addr1.account, value: await battleValue(entropy, config)
+        });
         const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
         const reqLogs = parseEventLogs({
             abi: gameLogic.abi,
@@ -813,12 +847,19 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         // Pets are locked
         assert.equal(await gameLogic.read.petBattleRequestId([1n]), requestId);
 
-        // Cancel frees the lock
-        await gameLogic.write.cancelBattle([requestId], { account: addr1.account });
+        // Cancel frees the lock and refunds the escrowed battle fee
+        const balanceBefore = await publicClient.getBalance({ address: addr1.account.address });
+        const cancelHash = await gameLogic.write.cancelBattle([requestId], { account: addr1.account });
+        const cancelReceipt = await publicClient.waitForTransactionReceipt({ hash: cancelHash });
+        const gasCost = cancelReceipt.gasUsed * cancelReceipt.effectiveGasPrice;
+        const balanceAfter = await publicClient.getBalance({ address: addr1.account.address });
+        assert.equal(balanceAfter, balanceBefore - gasCost + battleFee, "battleFee must be refunded on cancel");
         assert.equal(await gameLogic.read.petBattleRequestId([1n]), 0n);
 
         // Pets can be re-requested
-        const reqHash2 = await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
+        const reqHash2 = await gameLogic.write.requestBattle([1n, 2n], {
+            account: addr1.account, value: await battleValue(entropy, config)
+        });
         const rec2 = await publicClient.waitForTransactionReceipt({ hash: reqHash2 });
         assert.equal(rec2.status, "success");
     });

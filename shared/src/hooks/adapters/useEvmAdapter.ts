@@ -178,8 +178,10 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
     const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, null> = {
         async mutateAsync({ petId1, petId2 }) {
             if (!canWrite) throw new Error('EVM contract not configured');
+            if (fees.battleFee == null) throw new Error('Battle fee not loaded yet');
             if (fees.entropyFee == null) throw new Error('Entropy fee not loaded yet');
-            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], value: fees.entropyFee, gas: EVM_GAS_LIMITS.requestBattle, chainId: evm?.chainId } as unknown as Parameters<typeof battleW.writeContractAsync>[0]);
+            const value = fees.battleFee + fees.entropyFee;
+            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], value, gas: EVM_GAS_LIMITS.requestBattle, chainId: evm?.chainId } as unknown as Parameters<typeof battleW.writeContractAsync>[0]);
             return null;
         },
         lifecycle: toLc(battleW, battleR),

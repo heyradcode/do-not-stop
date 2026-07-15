@@ -109,6 +109,10 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
         uint8   rarity2;
         uint16  speciesId1;
         uint16  speciesId2;
+        // Escrowed battleFee (GameConfig.battleFee at request time), refunded on cancelBattle
+        // since no settleBattle tx — and therefore no keeper gas cost — is ever sent for a
+        // cancelled request. 0 for requests made before this field existed.
+        uint256 battleFee;
     }
 
     enum RequestType { None, Breed, Battle, Mint }
@@ -170,8 +174,9 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
 
     // ─── battle ───────────────────────────────────────────────────────────────
 
-    /// @notice Request a battle between two ready, cross-owned pets, paying the Pyth Entropy fee.
+    /// @notice Request a battle between two ready, cross-owned pets, paying the battle + Pyth Entropy fees.
     /// @dev Caller must own petId1; randomness arrives via entropyCallback, then anyone settles.
+    ///      battleFee funds the settle keeper's settleBattle gas and is refunded on cancelBattle.
     /// @param petId1 The caller's pet.
     /// @param petId2 The opponent's pet (must have a different owner).
     /// @return requestId The Entropy sequence number identifying this pending battle.
@@ -198,7 +203,8 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
         );
 
         uint256 entropyFee = entropy.getFeeV2();
-        require(msg.value >= entropyFee, "Insufficient entropy fee");
+        uint256 battleFee  = gameConfig.battleFee();
+        require(msg.value >= battleFee + entropyFee, "Insufficient battle/entropy fee");
         requestId = _requestRandomness(entropyFee);
 
         _requestTypes[requestId]    = RequestType.Battle;
@@ -218,7 +224,8 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
             rarity1:     p1.rarity,
             rarity2:     p2.rarity,
             speciesId1:  p1.speciesId,
-            speciesId2:  p2.speciesId
+            speciesId2:  p2.speciesId,
+            battleFee:   battleFee
         });
 
         emit BattleRandomnessRequested(msg.sender, requestId, petId1, petId2);
@@ -313,6 +320,12 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
         petBattleRequestId[pending.petId2] = 0;
         delete _requestTypes[requestId];
         delete _battleRequests[requestId];
+
+        // No settle, no keeper gas spent — refund the escrowed battle fee.
+        if (pending.battleFee > 0) {
+            (bool ok, ) = payable(pending.requester).call{value: pending.battleFee}("");
+            require(ok, "Battle fee refund failed");
+        }
     }
 
     /// @notice Read a pending battle's stored request/snapshot data.
