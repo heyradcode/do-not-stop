@@ -27,7 +27,7 @@ vi.mock('../../../../src/features/dialogue/result/pregen.types', () => ({
     matchupKey: vi.fn((_chain: string, a: string, b: string) => `${a}-${b}`),
 }));
 
-import { getOrGenerateDialogue } from '../../../../src/features/dialogue/result/result.service';
+import { ChainTruthMismatchError, getOrGenerateDialogue } from '../../../../src/features/dialogue/result/result.service';
 import { getDialogue } from '@repositories/dialogue.repository';
 import { getPregenStore } from '@repositories/pregen.repository';
 import { generateTurns } from '../../../../src/features/dialogue/result/turns';
@@ -88,15 +88,12 @@ describe('getOrGenerateDialogue', () => {
         expect(result.turns).toBe(defenderWins);
     });
 
-    it('logs a warning when client-reported winner contradicts chain truth', async () => {
+    it('rejects when client-reported winner contradicts chain truth', async () => {
         const { getChainSettledWinner } = await import('../../../../src/grpc/battleStream');
-        // chain says p2 (defender) won, but input claims attacker (p1) — triggers warn.
+        // chain says p2 (defender) won, but input claims attacker (p1) — must reject.
         vi.mocked(getChainSettledWinner).mockReturnValue('p2');
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-        await getOrGenerateDialogue(input);
-
-        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('contradicts chain truth'));
-        warnSpy.mockRestore();
+        await expect(getOrGenerateDialogue(input)).rejects.toThrow(ChainTruthMismatchError);
+        expect(generateTurns).not.toHaveBeenCalled();
     });
 });
