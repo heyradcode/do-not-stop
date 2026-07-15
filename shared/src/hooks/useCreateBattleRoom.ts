@@ -14,11 +14,12 @@ interface CreateRoomResponse {
 
 /**
  * Mints a shareable room id for a matchup via `POST /api/battle-room`, called
- * imperatively on "Start Battle" (same moment as useBattleTaunts) so the URL
- * can become /battle/:roomId before the wallet even signs — there is no
- * on-chain identifier (tx hash / requestId) available yet at that point.
- * Best-effort: a failure just means no room URL for this attempt; the battle
- * itself proceeds regardless (mirrors useBattleTaunts's no-fallback stance).
+ * imperatively on "Start Battle" — before the wallet even signs, since there is
+ * no on-chain identifier (tx hash / requestId) available at that point. The
+ * caller (useBattlePanel's handleBattle) awaits this and keeps the Start Battle
+ * button in a loading state (`isLoading`) until it settles, then proceeds to
+ * taunts/wallet either way: a failure (logged here) just means no room URL for
+ * this attempt, never a blocked battle.
  */
 export const useCreateBattleRoom = () => {
     const apiClient = useApiClient();
@@ -30,7 +31,8 @@ export const useCreateBattleRoom = () => {
             try {
                 const { data } = await apiClient.post<CreateRoomResponse>('/api/battle-room', vars);
                 return data.roomId;
-            } catch {
+            } catch (err) {
+                console.error('[battle-room] failed to create room:', err);
                 return null;
             } finally {
                 setIsLoading(false);

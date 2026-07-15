@@ -94,11 +94,11 @@ describe('useBattlePanel', () => {
         expect(result.current.overlay.open).toBe(false);
     });
 
-    it('onBattle opens overlay and requests taunts when both are selected', () => {
+    it('onBattle opens overlay and requests taunts when both are selected', async () => {
         const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         act(() => { result.current.setup.onSelectFighter('p1'); });
         act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
-        act(() => { result.current.setup.onBattle(); });
+        await act(async () => { result.current.setup.onBattle(); });
         expect(result.current.overlay.open).toBe(true);
         expect(taunts.generate).toHaveBeenCalled();
     });
@@ -114,7 +114,7 @@ describe('useBattlePanel', () => {
         expect(mocks.navigate).toHaveBeenCalledWith('/battle/room-123', { replace: true });
     });
 
-    it('does not navigate when room creation fails', async () => {
+    it('still starts the battle (no navigate) when room creation fails', async () => {
         createRoom.mockResolvedValueOnce(null);
         const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         act(() => { result.current.setup.onSelectFighter('p1'); });
@@ -122,6 +122,19 @@ describe('useBattlePanel', () => {
         await act(async () => { result.current.setup.onBattle(); });
 
         expect(mocks.navigate).not.toHaveBeenCalled();
+        expect(result.current.overlay.open).toBe(true);
+        expect(taunts.generate).toHaveBeenCalled();
+    });
+
+    it('holds off opening the overlay/generating taunts until room creation settles', () => {
+        createRoom.mockReturnValueOnce(new Promise(() => {})); // never resolves
+        const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        act(() => { result.current.setup.onSelectFighter('p1'); });
+        act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+        act(() => { result.current.setup.onBattle(); });
+
+        expect(result.current.overlay.open).toBe(false);
+        expect(taunts.generate).not.toHaveBeenCalled();
     });
 
     it('onCancel navigates home and closes overlay', () => {
@@ -149,12 +162,12 @@ describe('useBattlePanel', () => {
         expect(battleOutcome.applyResolvedOutcome).toHaveBeenCalledWith(true);
     });
 
-    it('overlay.open closes when battle.error is set after battle starts', () => {
+    it('overlay.open closes when battle.error is set after battle starts', async () => {
         const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         // Start a battle to open overlay.
         act(() => { result.current.setup.onSelectFighter('p1'); });
         act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
-        act(() => { result.current.setup.onBattle(); });
+        await act(async () => { result.current.setup.onBattle(); });
         expect(result.current.overlay.open).toBe(true);
 
         // Error fires: effect should close overlay.
@@ -200,7 +213,7 @@ describe('useBattlePanel', () => {
         }
     });
 
-    it('onBack minimizes the overlay, and it auto-reopens once the result is ready', () => {
+    it('onBack minimizes the overlay, and it auto-reopens once the result is ready', async () => {
         vi.useFakeTimers();
         try {
             battle.liveReplay = {
@@ -212,7 +225,7 @@ describe('useBattlePanel', () => {
             const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
             act(() => { result.current.setup.onSelectFighter('p1'); });
             act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
-            act(() => { result.current.setup.onBattle(); });
+            await act(async () => { result.current.setup.onBattle(); });
             expect(result.current.overlay.open).toBe(true);
 
             act(() => { result.current.overlay.onBack(); });

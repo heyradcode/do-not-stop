@@ -190,7 +190,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Shareable room URL — minted alongside the taunts on Start Battle (see
     // handleBattle below), before the wallet has even signed, since no
     // on-chain identifier (tx hash / requestId) exists yet at that point.
-    const { createRoom } = useCreateBattleRoom();
+    const { createRoom, isLoading: roomLoading } = useCreateBattleRoom();
 
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const selectedFighter = useMemo(
@@ -280,24 +280,27 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
             return;
         }
         setValidationError(null);
-        setOverlayOpen(true);
-        const personas = {
-            attacker: toDialoguePet(selectedFighter),
-            defender: toDialoguePet(opponent),
-        };
-        battlePersonasRef.current = personas;
-        pendingBattleStartRef.current = true;
-        taunts.generate({ chain: activeChainKind, ...personas });
 
-        // Best-effort: mint a shareable room URL in parallel with the taunts/wallet
-        // flow. A failure here just means no room URL for this attempt — never
-        // blocks or resets the battle itself.
+        // Mint the shareable room URL first — the Start Battle button shows a
+        // loading state (roomLoading, from useCreateBattleRoom) until this
+        // resolves, then the overlay opens and taunts/wallet proceed. Best-effort:
+        // a failure still lets the battle proceed, just without a room URL for
+        // this attempt (see useCreateBattleRoom's header comment).
         void createRoom({
             chain: activeChainKind,
             attackerPetId: selectedFighter.id,
             defenderPetId: opponent.id,
         }).then((roomId) => {
             if (roomId) navigate(`${BATTLE_PATH}/${roomId}`, { replace: true });
+
+            setOverlayOpen(true);
+            const personas = {
+                attacker: toDialoguePet(selectedFighter),
+                defender: toDialoguePet(opponent),
+            };
+            battlePersonasRef.current = personas;
+            pendingBattleStartRef.current = true;
+            taunts.generate({ chain: activeChainKind, ...personas });
         });
     };
 
@@ -421,7 +424,9 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         ? 'Awaiting your wallet…'
         : null;
 
-    const battleButtonLabel = taunts.isLoading
+    const battleButtonLabel = roomLoading
+        ? 'Preparing…'
+        : taunts.isLoading
         ? 'Facing off…'
         : battle.isPending
         ? pendingLabel
@@ -429,6 +434,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         ? 'Confirming...'
         : 'Start Battle';
     const battleDisabled =
+        roomLoading ||
         battle.isPending ||
         battle.isConfirming ||
         overlayOpen ||
