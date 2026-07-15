@@ -26,6 +26,7 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     event MarriageDissolved(uint256 indexed petIdA, uint256 indexed petIdB, string reason);
     event CallerAuthorized(address indexed caller);
     event CallerRevoked(address indexed caller);
+    event GameConfigUpdated(address config);
 
     struct Pet {
         string name;
@@ -118,6 +119,15 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    /// @notice Repoint at a newly deployed GameConfig (see GameLogic.setGameConfig's doc —
+    ///         must be kept in sync with GameLogic's own gameConfig pointer, since a split
+    ///         between the two would make cooldowns/fees silently diverge by contract).
+    function setGameConfig(address gameConfig_) external onlyOwner {
+        require(gameConfig_ != address(0), "Zero address");
+        gameConfig = GameConfig(gameConfig_);
+        emit GameConfigUpdated(gameConfig_);
+    }
 
     // ─── caller authorization ─────────────────────────────────────────────────
 

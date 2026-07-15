@@ -692,6 +692,37 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         }
     });
 
+    it("Should let the owner repoint GameLogic/PetCore at a newly deployed GameConfig", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const [deployer, addr1] = await viem.getWalletClients();
+
+        const freshConfig = await viem.deployContract("GameConfig", [deployer.account.address]);
+        assert.notEqual(freshConfig.address.toLowerCase(), config.address.toLowerCase());
+
+        await gameLogic.write.setGameConfig([freshConfig.address], { account: deployer.account });
+        await petCore.write.setGameConfig([freshConfig.address], { account: deployer.account });
+
+        assert.equal((await gameLogic.read.gameConfig()).toLowerCase(), freshConfig.address.toLowerCase());
+        assert.equal((await petCore.read.gameConfig()).toLowerCase(), freshConfig.address.toLowerCase());
+
+        try {
+            await gameLogic.write.setGameConfig([freshConfig.address], { account: addr1.account });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert.equal(decodeRevertReason(error), "Ownable: caller is not the owner");
+        }
+
+        try {
+            await gameLogic.write.setGameConfig(
+                ["0x0000000000000000000000000000000000000000"],
+                { account: deployer.account }
+            );
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert.equal(decodeRevertReason(error), "Zero address");
+        }
+    });
+
     it("Should breed using Pyth Entropy with generation and lineage tracking", async function () {
         const { petCore, gameLogic, entropy, config } = await deployV2();
         const publicClient = await viem.getPublicClient();

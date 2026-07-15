@@ -70,6 +70,8 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
     event MintRequested(address indexed owner, uint256 indexed requestId);
     event MintSettled(address indexed owner, uint256 indexed petId, uint256 indexed requestId);
 
+    event GameConfigUpdated(address config);
+
     // ─── structs ──────────────────────────────────────────────────────────────
 
     struct MintRequest {
@@ -171,6 +173,17 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
+
+    /// @notice Repoint at a newly deployed GameConfig (GameConfig itself isn't a proxy —
+    ///         adding a tunable means deploying a fresh instance and calling this).
+    /// @dev The new instance starts from GameConfig's constructor defaults; the caller is
+    ///      responsible for replaying any prior on-chain tuning (setBreedFee, etc.) onto it
+    ///      before or after pointing this proxy at it.
+    function setGameConfig(address gameConfig_) external onlyOwner {
+        require(gameConfig_ != address(0), "Zero address");
+        gameConfig = GameConfig(gameConfig_);
+        emit GameConfigUpdated(gameConfig_);
+    }
 
     // ─── battle ───────────────────────────────────────────────────────────────
 
