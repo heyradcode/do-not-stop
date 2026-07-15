@@ -371,6 +371,19 @@
     background: radial-gradient(circle at 50% 40%, rgb(125 214 255 / 10%), transparent 60%), #020508;
 }
 
+/* Arena backdrop — scoped to just the actual battle panel (banner/HUD/arena in the
+   fighting phase, the result card in the result phase), not the mechanical log or
+   the dialogue rail, which keep their own solid panel backgrounds. Dark top/bottom
+   fade keeps the HUD/result text readable over the neon arena photo, cover-fit and
+   anchored to its glowing floor. */
+.sceneArenaPanel,
+.sceneResultContent {
+    background:
+        linear-gradient(180deg, rgb(2 5 8 / 88%) 0%, rgb(2 5 8 / 40%) 32%, rgb(2 5 8 / 55%) 75%, rgb(2 5 8 / 94%) 100%),
+        url('../../../../../assets/images/background/battle.png') center bottom / cover no-repeat,
+        #020508;
+}
+
 /* Two-column layout, edge to edge: arena/result (+ its mechanical log, same width)
    on the left, pet banter rail on the right. .sceneLayout always fills the full
    .scene height, so the rail (a stretched flex sibling) is always full screen
@@ -387,6 +400,16 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+}
+
+/* Fighting phase only: the banner/HUD/arena content above the mechanical log,
+   which stays a direct, unpadded, full-width sibling of .sceneMain (see
+   .sceneMechLog) — this is what the arena backdrop image is scoped to. */
+.sceneArenaPanel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Result phase only: center/pad the result card within its own scrollable area,

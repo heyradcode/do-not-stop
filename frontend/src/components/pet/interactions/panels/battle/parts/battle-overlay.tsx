@@ -240,50 +240,52 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
             <div className={styles.scene} role="status" aria-live="polite">
                 <div className={styles.sceneLayout}>
                     <div className={styles.sceneMain}>
-                        <div className={styles.sceneBanner}>⚔ {preResultTitle} ⚔</div>
+                        <div className={styles.sceneArenaPanel}>
+                            <div className={styles.sceneBanner}>⚔ {preResultTitle} ⚔</div>
 
-                        <div className={styles.hud}>
-                            <FighterPlate side="isFighter" name={fighterName} hp={fighterHp} pet={fighter} attrs={fighterAttrs} />
-                            <div className={styles.hudDivider} aria-hidden>
-                                <span className={styles.hudVsBadge}>VS</span>
+                            <div className={styles.hud}>
+                                <FighterPlate side="isFighter" name={fighterName} hp={fighterHp} pet={fighter} attrs={fighterAttrs} />
+                                <div className={styles.hudDivider} aria-hidden>
+                                    <span className={styles.hudVsBadge}>VS</span>
+                                </div>
+                                <FighterPlate side="isEnemy" name={opponentName} hp={enemyHp} pet={opponent} attrs={enemyAttrs} />
                             </div>
-                            <FighterPlate side="isEnemy" name={opponentName} hp={enemyHp} pet={opponent} attrs={enemyAttrs} />
+
+                            <div className={styles.sceneArena}>
+                                <div className={styles.sceneFighter}>
+                                    <span
+                                        className={clsx(styles.sceneHit, styles.sceneHitIn, battleStarted && styles.isActive)}
+                                        aria-hidden
+                                    >
+                                        ⚡
+                                    </span>
+                                    <span className={clsx(styles.sceneAvatar, styles.isFighter)} aria-hidden>
+                                        {fighterAvatar}
+                                    </span>
+                                    <span className={clsx(styles.sceneLabel, styles.isFighter)}>{fighterName}</span>
+                                </div>
+                                <span className={styles.sceneClash} aria-hidden>
+                                    ⚔
+                                </span>
+                                <div className={styles.sceneFighter}>
+                                    <span
+                                        className={clsx(styles.sceneHit, styles.sceneHitOut, battleStarted && styles.isActive)}
+                                        aria-hidden
+                                    >
+                                        💥
+                                    </span>
+                                    <span className={clsx(styles.sceneAvatar, styles.isEnemy)} aria-hidden>
+                                        {enemyAvatar}
+                                    </span>
+                                    <span className={clsx(styles.sceneLabel, styles.isEnemy)}>{opponentName}</span>
+                                </div>
+                            </div>
+
+                            {liveFlourish ? <p className={styles.sceneFlourish}>{liveFlourish}</p> : null}
+                            {preResultStatus ? (
+                                <p className={styles.sceneStatus}>{preResultStatus}</p>
+                            ) : null}
                         </div>
-
-                        <div className={styles.sceneArena}>
-                            <div className={styles.sceneFighter}>
-                                <span
-                                    className={clsx(styles.sceneHit, styles.sceneHitIn, battleStarted && styles.isActive)}
-                                    aria-hidden
-                                >
-                                    ⚡
-                                </span>
-                                <span className={clsx(styles.sceneAvatar, styles.isFighter)} aria-hidden>
-                                    {fighterAvatar}
-                                </span>
-                                <span className={clsx(styles.sceneLabel, styles.isFighter)}>{fighterName}</span>
-                            </div>
-                            <span className={styles.sceneClash} aria-hidden>
-                                ⚔
-                            </span>
-                            <div className={styles.sceneFighter}>
-                                <span
-                                    className={clsx(styles.sceneHit, styles.sceneHitOut, battleStarted && styles.isActive)}
-                                    aria-hidden
-                                >
-                                    💥
-                                </span>
-                                <span className={clsx(styles.sceneAvatar, styles.isEnemy)} aria-hidden>
-                                    {enemyAvatar}
-                                </span>
-                                <span className={clsx(styles.sceneLabel, styles.isEnemy)}>{opponentName}</span>
-                            </div>
-                        </div>
-
-                        {liveFlourish ? <p className={styles.sceneFlourish}>{liveFlourish}</p> : null}
-                        {preResultStatus ? (
-                            <p className={styles.sceneStatus}>{preResultStatus}</p>
-                        ) : null}
 
                         <MechanicalLog lines={liveLog} />
                     </div>
