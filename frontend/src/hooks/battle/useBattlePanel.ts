@@ -144,11 +144,15 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const battle = useBattlePets({ onSuccess: handleSuccess });
     liveReplayRef.current = battle.liveReplay;
 
+    // Deliberately not gated on overlayOpen: the animation must keep progressing
+    // in the background while the overlay is minimized (handleBack below), so
+    // showResult can still become true and auto-reopen the overlay once the
+    // battle actually resolves, instead of stalling until the player returns.
     const animation = useLiveBattleAnimation(
         battle.liveReplay?.log ?? null,
         battle.liveReplay?.startHp1 ?? null,
         battle.liveReplay?.startHp2 ?? null,
-        overlayOpen && !showResult,
+        !showResult,
     );
 
     // Reveal the result card once the authoritative event has arrived AND either
@@ -165,6 +169,13 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         }
         if (animation.done) setShowResult(true);
     }, [hasResolvedEvent, mismatchNotice, animation.done]);
+
+    // If the overlay was minimized (handleBack) while the battle was still in
+    // flight, bring it back the moment the result is ready to show — so a
+    // minimized battle can never resolve silently in the background.
+    useEffect(() => {
+        if (showResult) setOverlayOpen(true);
+    }, [showResult]);
     // AI pre-fight taunts — generated on Start Battle, in parallel with the wallet.
     // Requesting taunts also kicks off result pregen on the backend.
     const taunts = useBattleTaunts();
@@ -283,6 +294,14 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
             startBattle();
         }
     }, [taunts.isLoading, taunts.turns.length, startBattle]);
+
+    // Minimizes the overlay ("back") without touching any in-flight battle
+    // state — the wallet tx, taunts, and live-replay animation all keep
+    // running; the auto-reopen effect above brings the overlay back once
+    // the result is ready, so a minimized battle can't resolve unseen.
+    const handleBack = () => {
+        setOverlayOpen(false);
+    };
 
     const handleCancel = () => {
         setShowResult(false);
@@ -425,6 +444,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         onResultComplete: dialogue.markResultDialogueDone,
         resultDialogueDone: dialogue.resultDialogueDone,
         onDone: handleDone,
+        onBack: handleBack,
         preResultTitle,
         preResultStatus,
         tauntsLoading: taunts.isLoading,

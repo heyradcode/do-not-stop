@@ -33,6 +33,7 @@ const baseProps = (over: Partial<BattleOverlayProps> = {}): BattleOverlayProps =
     onResultComplete: vi.fn(),
     resultDialogueDone: true,
     onDone: vi.fn(),
+    onBack: vi.fn(),
     preResultTitle: 'Battle Starting',
     preResultStatus: null,
     tauntsLoading: false,
@@ -105,6 +106,17 @@ describe('BattleOverlay', () => {
 
         await userEvent.click(screen.getByRole('button', { name: /Leave/ }));
         expect(onDone).toHaveBeenCalledOnce();
+    });
+
+    it('shows a back button in the fighting scene and wires it, but not in the result scene', async () => {
+        const onBack = vi.fn();
+        const { rerender } = render(<BattleOverlay {...baseProps({ showResult: false, onBack })} />);
+
+        await userEvent.click(screen.getByRole('button', { name: /Back/ }));
+        expect(onBack).toHaveBeenCalledOnce();
+
+        rerender(<BattleOverlay {...baseProps({ showResult: true, onBack })} />);
+        expect(screen.queryByRole('button', { name: /Back/ })).not.toBeInTheDocument();
     });
 
     it('renders the result dialogue while it is loading', () => {

@@ -16,6 +16,7 @@ import BattleResultArt from '../battle-result-art';
 import BattleDialogue from '../battle-dialogue';
 import type { BattleOutcome, MechanicalLogLine } from '../types';
 import styles from '../index.module.css';
+import vsClashImage from '@assets/images/background/vs.png';
 
 export type BattleOverlayProps = {
     open: boolean;
@@ -38,6 +39,11 @@ export type BattleOverlayProps = {
     tauntsTurns: DialogueTurn[];
     /** Fires once the pre-fight taunts finish typing (gates the wallet prompt). */
     onTauntsComplete: () => void;
+    /** Minimizes the overlay without touching the in-flight battle (wallet tx,
+     *  taunts, live-replay animation all keep running); the overlay auto-reopens
+     *  once the result is ready. Only shown before a result is available — the
+     *  result screen has its own "Leave" action instead. */
+    onBack: () => void;
     fighterName: string;
     opponentName: string;
     // Live-replay animation (plan-realtime-battle-impl.md Phase 4) — null falls
@@ -206,6 +212,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
     onResultComplete,
     resultDialogueDone,
     onDone,
+    onBack,
     preResultTitle,
     preResultStatus,
     tauntsLoading,
@@ -238,6 +245,9 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
     if (!showResult) {
         return (
             <div className={styles.scene} role="status" aria-live="polite">
+                <button type="button" className={styles.sceneBack} onClick={onBack}>
+                    ← Back
+                </button>
                 <div className={styles.sceneLayout}>
                     <div className={styles.sceneMain}>
                         <div className={styles.sceneArenaPanel}>
@@ -264,9 +274,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                                     </span>
                                     <span className={clsx(styles.sceneLabel, styles.isFighter)}>{fighterName}</span>
                                 </div>
-                                <span className={styles.sceneClash} aria-hidden>
-                                    ⚔
-                                </span>
+                                <img className={styles.sceneClash} src={vsClashImage} alt="" aria-hidden />
                                 <div className={styles.sceneFighter}>
                                     <span
                                         className={clsx(styles.sceneHit, styles.sceneHitOut, battleStarted && styles.isActive)}

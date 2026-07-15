@@ -143,7 +143,7 @@ describe('useBattlePanel', () => {
                 startHp2: 100n,
             };
             const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
-            // Open the overlay first — the animation only ticks while overlayOpen && !showResult.
+            // Open the overlay first — starts the battle so liveReplay's log gets picked up.
             act(() => { result.current.setup.onSelectFighter('p1'); });
             act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
             act(() => { result.current.setup.onBattle(); });
@@ -155,6 +155,36 @@ describe('useBattlePanel', () => {
             expect(result.current.overlay.showResult).toBe(false);
 
             act(() => { vi.advanceTimersByTime(700); });
+            expect(result.current.overlay.showResult).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('onBack minimizes the overlay, and it auto-reopens once the result is ready', () => {
+        vi.useFakeTimers();
+        try {
+            battle.liveReplay = {
+                result: { firstWins: true },
+                log: [{ attacker: 1, hp1After: 100n, hp2After: 80n }],
+                startHp1: 100n,
+                startHp2: 100n,
+            };
+            const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+            act(() => { result.current.setup.onSelectFighter('p1'); });
+            act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+            act(() => { result.current.setup.onBattle(); });
+            expect(result.current.overlay.open).toBe(true);
+
+            act(() => { result.current.overlay.onBack(); });
+            expect(result.current.overlay.open).toBe(false);
+
+            // The battle keeps resolving in the background while minimized.
+            act(() => { capturedOnSuccess?.({ firstWins: true }); });
+            act(() => { vi.advanceTimersByTime(700); });
+
+            // The result is ready — the overlay reopens on its own to show it.
+            expect(result.current.overlay.open).toBe(true);
             expect(result.current.overlay.showResult).toBe(true);
         } finally {
             vi.useRealTimers();

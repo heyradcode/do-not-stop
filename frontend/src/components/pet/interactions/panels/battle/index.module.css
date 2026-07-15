@@ -371,6 +371,32 @@
     background: radial-gradient(circle at 50% 40%, rgb(125 214 255 / 10%), transparent 60%), #020508;
 }
 
+/* Minimizes the overlay (handleBack) — the battle keeps running in the
+   background and the overlay auto-reopens once the result is ready. Only in
+   the fighting scene; the result scene has its own "Leave" action instead. */
+.sceneBack {
+    position: absolute;
+    top: 18px;
+    left: 20px;
+    z-index: 3;
+    appearance: none;
+    background: transparent;
+    border: 1px solid rgb(125 214 255 / 28%);
+    border-radius: 2px;
+    padding: 7px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: var(--cp-cyan);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sceneBack:hover {
+    border-color: var(--cp-cyan);
+    box-shadow: 0 0 10px rgb(125 214 255 / 22%);
+}
+
 /* Arena backdrop — scoped to just the actual battle panel (banner/HUD/arena in the
    fighting phase, the result card in the result phase), not the mechanical log or
    the dialogue rail, which keep their own solid panel backgrounds. Dark top/bottom
@@ -781,10 +807,9 @@
 
 .sceneClash {
     flex-shrink: 0;
-    width: 72px;
-    text-align: center;
-    font-size: 28px;
-    opacity: 0.65;
+    width: 110px;
+    height: auto;
+    object-fit: contain;
     animation: cp-vs-pulse 1.4s ease-in-out infinite;
 }
 

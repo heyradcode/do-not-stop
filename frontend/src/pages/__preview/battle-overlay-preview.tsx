@@ -39,6 +39,7 @@ const BattleOverlayPreview = () => {
         onResultComplete: () => {},
         resultDialogueDone: true,
         onDone: () => alert('onDone'),
+        onBack: () => alert('onBack'),
         tauntsLoading: false,
         onTauntsComplete: () => {},
         fighterName: 'Rex',
