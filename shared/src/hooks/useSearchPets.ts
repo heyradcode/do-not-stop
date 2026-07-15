@@ -47,6 +47,7 @@ export interface SearchPetsResult {
     results: OpponentPet[];
     isLoading: boolean;
     error: Error | null;
+    refetch: () => void;
 }
 
 /**
@@ -115,5 +116,6 @@ export const useSearchPets = (
         results,
         isLoading: q.isFetching,
         error: q.error as Error | null,
+        refetch: q.refetch,
     };
 };

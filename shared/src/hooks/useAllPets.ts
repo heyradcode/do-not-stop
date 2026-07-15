@@ -39,6 +39,13 @@ export interface UseAllPetsOptions {
     enabled?: boolean;
 }
 
+export interface UseAllPetsResult {
+    pets: OpponentPet[];
+    isLoading: boolean;
+    error: Error | null;
+    refetch: () => void;
+}
+
 /**
  * Fetch every pet on a given chain from the backend roster.
  * Used by the incoming-proposals flow to enumerate candidate proposers.
@@ -46,7 +53,7 @@ export interface UseAllPetsOptions {
 export const useAllPets = (
     chain: PetChain | null,
     { limit = 200, enabled = true }: UseAllPetsOptions = {},
-) => {
+): UseAllPetsResult => {
     const apiClient = useApiClient();
     const baseURL = apiClient.defaults.baseURL ?? '';
 
@@ -86,5 +93,10 @@ export const useAllPets = (
         [query.data],
     );
 
-    return { pets, isLoading: query.isLoading };
+    return {
+        pets,
+        isLoading: query.isLoading,
+        error: query.error as Error | null,
+        refetch: query.refetch,
+    };
 };
