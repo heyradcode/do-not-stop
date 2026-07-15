@@ -4,7 +4,7 @@ import PendingBreedNotice from './pending-breed-notice';
 import BreedParentsPreview from './breed-parents-preview';
 import styles from '../index.module.css';
 
-type OwnPetsTabProps = {
+export type OwnPetsTabProps = {
     petCount: number;
     allPets: { id: string; pet: Pet }[];
     pet1: string;

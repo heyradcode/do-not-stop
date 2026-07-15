@@ -5,7 +5,6 @@ import userEvent from '@testing-library/user-event';
 
 const navigate = vi.fn();
 vi.mock('react-router-dom', () => ({ useNavigate: () => navigate }));
-vi.mock('wagmi', () => ({ useReadContracts: () => ({ data: undefined }) }));
 vi.mock('@constants/interactionRoutes', () => ({ DASHBOARD_HOME: '/dashboard' }));
 vi.mock('@hooks/usePetErrorToast', () => ({ usePetErrorToast: vi.fn() }));
 vi.mock('@components/common', () => ({
@@ -91,7 +90,7 @@ vi.mock('@shared/core', () => ({
                   refetch: vi.fn(),
               },
     usePendingBreed: () => ({ isPending: false }),
-    usePetsConfig: () => ({ evm: undefined }),
+    useBreedRelationCheck: () => ({ areRelated: false }),
     useBreedPets: (opts: { onSuccess?: (arg: { name: string }) => void }) => {
         capturedOnSuccess = opts?.onSuccess;
         return breed;
