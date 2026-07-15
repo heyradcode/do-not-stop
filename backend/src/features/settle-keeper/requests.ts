@@ -26,6 +26,9 @@ const SETTLED_EVENTS = new Set(['BattleResolved', 'BreedSettled', 'MintSettled']
 export interface DecodedGameLogicLog {
     eventName: string;
     args: Record<string, unknown>;
+    /** Optional so hand-built test fixtures don't need it; real getContractEvents logs
+     *  always carry it. Used by keeper.ts to flag requests nearing the backfill cutoff. */
+    blockNumber?: bigint;
 }
 
 /** GameLogic._requestTypes is deleted from storage the moment entropy reveals

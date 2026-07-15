@@ -4,8 +4,9 @@ const GAME_LOGIC = '0x0000000000000000000000000000000000000001' as const;
 const ENTROPY = '0x0000000000000000000000000000000000000002' as const;
 
 let currentBlock = 100n;
-let gameLogicLiveLogs: { eventName: string; args: Record<string, unknown> }[] = [];
-let entropyLiveLogs: { eventName: string; args: Record<string, unknown> }[] = [];
+type TestLog = { eventName: string; args: Record<string, unknown>; blockNumber?: bigint };
+let gameLogicLiveLogs: TestLog[] = [];
+let entropyLiveLogs: TestLog[] = [];
 
 const publicClient = {
     getBlockNumber: vi.fn(async () => currentBlock),
@@ -30,7 +31,7 @@ const publicClient = {
 };
 const walletClient = { writeContract: vi.fn() };
 
-let backfillLogs: { eventName: string; args: Record<string, unknown> }[] = [];
+let backfillLogs: TestLog[] = [];
 
 vi.mock('viem', async () => {
     const actual = await vi.importActual<typeof import('viem')>('viem');
@@ -103,6 +104,31 @@ describe('startKeeper', () => {
         await flush();
 
         expect(submit).not.toHaveBeenCalled();
+        handle.stop();
+    });
+
+    it('warns when a still-pending backfilled request sits near the oldest edge of the backfill window', async () => {
+        // backfillBlocks=50n, currentBlock=100n -> window is [50n, 100n], staleness edge at 55n.
+        backfillLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 7n }, blockNumber: 52n }];
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const handle = await startKeeper(baseConfig);
+        await flush();
+
+        expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('now-invisible siblings'));
+        errorSpy.mockRestore();
+        handle.stop();
+    });
+
+    it('does not warn when a still-pending backfilled request is well inside the backfill window', async () => {
+        backfillLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 7n }, blockNumber: 90n }];
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const handle = await startKeeper(baseConfig);
+        await flush();
+
+        expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining('now-invisible siblings'));
+        errorSpy.mockRestore();
         handle.stop();
     });
 

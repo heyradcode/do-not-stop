@@ -226,6 +226,32 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
     );
     for (const requestId of backfilled.keys()) trySettle(requestId);
 
+    // fromBlock === 0n means the scan already reached genesis — nothing could have been
+    // missed. Otherwise, a still-pending request whose original log sits in the oldest
+    // tenth of the scanned window may have equally-old (or older) siblings that predate the
+    // window entirely and would be silently dropped on the next restart — surface that now
+    // rather than losing them without a trace later.
+    if (fromBlock > 0n && backfilled.size > 0) {
+        const stalenessEdge = fromBlock + (latestBlock - fromBlock) / 10n;
+        const staleRequestIds = new Set(
+            requestLogs
+                .filter((log) => {
+                    const requestId = log.args.requestId as bigint | undefined;
+                    return requestId != null && backfilled.has(requestId)
+                        && log.blockNumber != null && log.blockNumber <= stalenessEdge;
+                })
+                .map((log) => log.args.requestId as bigint),
+        );
+        if (staleRequestIds.size > 0) {
+            console.error(
+                `[settle-keeper] ${staleRequestIds.size} pending request(s) originated near the oldest edge ` +
+                    `of the ${config.backfillBlocks}-block backfill window and may have older, now-invisible ` +
+                    'siblings that a future restart would silently stop tracking — consider raising ' +
+                    'KEEPER_BACKFILL_BLOCKS or investigating why they are taking this long to settle.',
+            );
+        }
+    }
+
     // Live watch: new requests get tracked, settlements (by us or anyone else) get untracked.
     // Starts from the same latestBlock the backfill scan just covered up to, so nothing
     // requested in between is missed by either pass.
