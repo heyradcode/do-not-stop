@@ -68,10 +68,11 @@ const DialogueRail: React.FC<{
     defenderName: string;
     onComplete?: () => void;
     waiting: string;
-}> = ({ turns, isLoading, attackerName, defenderName, onComplete, waiting }) => (
+    title: string;
+}> = ({ turns, isLoading, attackerName, defenderName, onComplete, waiting, title }) => (
     <aside className={styles.sceneDialogueRail} aria-label="Pet banter">
         <div className={styles.log}>
-            <div className={styles.logTitle}>💬 Banter</div>
+            <div className={styles.logTitle}>💬 {title}</div>
             <div className={styles.logBody}>
                 {isLoading || turns.length > 0 ? (
                     <BattleDialogue
@@ -305,6 +306,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                         defenderName={opponentName}
                         onComplete={onTauntsComplete}
                         waiting="Waiting for the first taunt…"
+                        title="Banter"
                     />
                 </div>
             </div>
@@ -373,6 +375,7 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
                         defenderName={resultDefenderName}
                         onComplete={onResultComplete}
                         waiting="The dust settles…"
+                        title="Battle Dialogue"
                     />
                 ) : null}
             </div>
