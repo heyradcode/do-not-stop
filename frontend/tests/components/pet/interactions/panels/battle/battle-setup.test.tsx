@@ -58,7 +58,6 @@ const baseProps = (over: Partial<BattleSetupProps> = {}): BattleSetupProps => ({
     onBattle: vi.fn(),
     battleDisabled: false,
     battleButtonLabel: 'Battle!',
-    battleCost: null,
     onCancel: vi.fn(),
     winEstimate: { isLoading: false, winProbability: null, samples: null },
     ...over,
@@ -189,13 +188,5 @@ describe('BattleSetup (fighter-vs-rival showdown)', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
         expect(onBattle).toHaveBeenCalledOnce();
         expect(onCancel).toHaveBeenCalledOnce();
-    });
-
-    it('shows the battle-fee note only when battleCost is set (EVM)', () => {
-        const { rerender } = render(<BattleSetup {...baseProps()} />);
-        expect(screen.queryByText(/settle keeper's gas/)).not.toBeInTheDocument();
-
-        rerender(<BattleSetup {...baseProps({ battleCost: '0.0006 ETH' })} />);
-        expect(screen.getByText(/settle keeper's gas/)).toBeInTheDocument();
     });
 });

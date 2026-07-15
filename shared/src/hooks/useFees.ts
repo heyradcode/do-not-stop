@@ -11,10 +11,6 @@ export interface UnifiedFees {
     breedFee?: bigint;
     trainFee?: bigint;
     studFee?: bigint;
-    /** Funds the settle keeper's settle transaction. On EVM this is bundled with
-     *  entropyFee at requestBattle time; on Solana it's charged alone by commit_battle
-     *  (no entropyFee equivalent — Switchboard VRF cost isn't collected this way). */
-    battleFee?: bigint;
     /** Next mint fee for this wallet, including per-wallet escalation. */
     nextMintFee?: bigint;
     /** EVM only: Pyth Entropy fee bundled with requestMintStarter. Undefined until loaded. */
@@ -64,7 +60,6 @@ export const useFees = (): UnifiedFees => {
                 breedFee:       evmFees.breedFee,
                 trainFee:       evmFees.trainFee,
                 studFee:        evmFees.studFee,
-                battleFee:      evmFees.battleFee,
                 nextMintFee:    evmFees.nextMintFee,
                 entropyFee:     evmFees.entropyFee,
                 walletMintCount: evmFees.walletMintCount != null ? Number(evmFees.walletMintCount) : undefined,
@@ -80,7 +75,6 @@ export const useFees = (): UnifiedFees => {
                 breedFee:       solanaFees.breedFeeLamports,
                 trainFee:       solanaFees.trainFeeLamports,
                 studFee:        solanaFees.studFeeLamports,
-                battleFee:      solanaFees.battleFeeLamports,
                 nextMintFee:    solanaFees.nextMintFeeLamports,
                 walletMintCount: solanaFees.walletMintCount,
                 symbol: 'SOL',

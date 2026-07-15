@@ -35,7 +35,6 @@ const battle = { mutate: vi.fn(), clearErrors: vi.fn(), isPending: false, isConf
 const taunts = { generate: vi.fn(), reset: vi.fn(), isLoading: false, turns: [] as unknown[] };
 const createRoom = vi.fn().mockResolvedValue(null);
 let capturedOnSuccess: ((r: unknown) => void) | undefined;
-const fees = { battleFee: undefined as bigint | undefined, entropyFee: undefined as bigint | undefined, formatAmount: (v: bigint) => `${v} wei` };
 
 const pets = [{ id: 'p1', name: 'Rex', level: 3, winCount: 1, lossCount: 0, chain: 'evm', readyAt: 0n }];
 const opponents = [{ id: 'opp1', name: 'Blaze', owner: '0xopp', level: 2 }];
@@ -50,7 +49,6 @@ vi.mock('@shared/core', () => ({
     },
     useBattleTaunts: () => taunts,
     useCreateBattleRoom: () => ({ createRoom, isLoading: false }),
-    useFees: () => fees,
     useOpponents: () => ({ opponents, isLoading: false, isFetching: false, refetch: vi.fn() }),
     usePendingBattle: () => ({ isPending: false }),
     useWinEstimate: () => ({ winProbability: null, isLoading: false, samples: null }),
@@ -62,7 +60,6 @@ beforeEach(() => {
     vi.clearAllMocks();
     Object.assign(battle, { isPending: false, isConfirming: false, error: null, hash: undefined, phase: null, liveReplay: null });
     Object.assign(taunts, { isLoading: false, turns: [] });
-    Object.assign(fees, { battleFee: undefined, entropyFee: undefined });
     mocks.locationState = null;
     capturedOnSuccess = undefined;
 });
@@ -83,26 +80,6 @@ describe('useBattlePanel', () => {
         const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         expect(result.current.overlay).toBeDefined();
         expect(result.current.setup).toBeDefined();
-    });
-
-    it('setup.battleCost is null until battleFee has loaded', () => {
-        const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
-        expect(result.current.setup.battleCost).toBeNull();
-        expect(result.current.setup.battleButtonLabel).toBe('Start Battle');
-    });
-
-    it('setup.battleCost formats battleFee + entropyFee once loaded (EVM)', () => {
-        Object.assign(fees, { battleFee: 4n, entropyFee: 1n });
-        const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
-        expect(result.current.setup.battleCost).toBe('5 wei');
-        expect(result.current.setup.battleButtonLabel).toBe('Start Battle (5 wei)');
-    });
-
-    it('setup.battleCost formats battleFee alone when entropyFee has no equivalent (Solana)', () => {
-        Object.assign(fees, { battleFee: 4n, entropyFee: undefined });
-        const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
-        expect(result.current.setup.battleCost).toBe('4 wei');
-        expect(result.current.setup.battleButtonLabel).toBe('Start Battle (4 wei)');
     });
 
     it('setup.battleDisabled is true when no fighter or opponent is selected', () => {

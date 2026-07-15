@@ -330,13 +330,6 @@
     margin-top: 8px;
 }
 
-.battleCost {
-    margin: 4px 0 0;
-    text-align: center;
-    font-size: 0.8rem;
-    color: var(--cp-color-text-muted);
-}
-
 @media (max-width: 760px) {
     .showdown {
         grid-template-columns: 1fr;

@@ -6,7 +6,6 @@ import {
     useBattlePets,
     useBattleTaunts,
     useCreateBattleRoom,
-    useFees,
     useOpponents,
     usePetList,
     usePendingBattle,
@@ -192,20 +191,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // handleBattle below), before the wallet has even signed, since no
     // on-chain identifier (tx hash / requestId) exists yet at that point.
     const { createRoom, isLoading: roomLoading } = useCreateBattleRoom();
-
-    // Funds the settle keeper's settle transaction (contracts/ethereum/src/GameConfig.sol's
-    // battleFee / Solana's GlobalState.battle_fee_lamports). EVM bundles it with entropyFee
-    // into requestBattle's value; Solana's commit_battle charges it alone (no entropyFee
-    // equivalent). Null until battleFee has loaded, same fallback rule as the mint/breed/
-    // train panels' cost display.
-    const fees = useFees();
-    const battleCost = useMemo(
-        () =>
-            fees.battleFee != null
-                ? fees.formatAmount(fees.battleFee + (fees.entropyFee ?? 0n))
-                : null,
-        [fees],
-    );
 
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const selectedFighter = useMemo(
@@ -447,8 +432,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         ? pendingLabel
         : battle.isConfirming
         ? 'Confirming...'
-        : battleCost
-        ? `Start Battle (${battleCost})`
         : 'Start Battle';
     const battleDisabled =
         roomLoading ||
@@ -526,7 +509,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         onBattle: handleBattle,
         battleDisabled,
         battleButtonLabel,
-        battleCost,
         onCancel: handleCancel,
         winEstimate,
     };
