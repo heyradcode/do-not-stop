@@ -38,6 +38,9 @@ export type BattleSetupProps = {
     onBattle: () => void;
     battleDisabled: boolean;
     battleButtonLabel: string;
+    /** EVM only: battleFee + entropyFee, formatted (e.g. "0.0006 ETH"). Null on Solana
+     *  or while fees are still loading — no cost line is shown in either case. */
+    battleCost: string | null;
     onCancel: () => void;
     winEstimate: WinEstimateResult;
 };
@@ -135,6 +138,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
     onBattle,
     battleDisabled,
     battleButtonLabel,
+    battleCost,
     onCancel,
     winEstimate,
 }) => {
@@ -272,6 +276,9 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                     Cancel
                 </button>
             </div>
+            {battleCost ? (
+                <p className={styles.battleCost}>Covers the settle keeper&apos;s gas — refunded if cancelled.</p>
+            ) : null}
         </div>
     );
 };
