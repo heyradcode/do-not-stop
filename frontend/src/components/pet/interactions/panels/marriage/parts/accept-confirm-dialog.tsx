@@ -4,7 +4,7 @@ import NeonModal from '@components/ui/neon-modal';
 import type { PendingAccept } from '../types';
 import styles from '../index.module.css';
 
-type AcceptConfirmDialogProps = {
+export type AcceptConfirmDialogProps = {
     pending: PendingAccept;
     targetPetName: (id: string) => string;
     busy: boolean;

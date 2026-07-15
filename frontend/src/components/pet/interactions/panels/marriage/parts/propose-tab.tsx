@@ -5,7 +5,7 @@ import PetSearchDropdown from '@components/ui/pet-search-dropdown';
 import OutgoingProposalRow from './outgoing-proposal-row';
 import styles from '../index.module.css';
 
-type ProposeTabProps = {
+export type ProposeTabProps = {
     chainPets: Pet[];
     chain: PetChain | null;
     walletAddress: string | null;

@@ -3,7 +3,7 @@ import { type IncomingProposal } from '@shared/core';
 import IncomingProposalRow from './incoming-proposal-row';
 import styles from '../index.module.css';
 
-type AcceptTabProps = {
+export type AcceptTabProps = {
     proposals: IncomingProposal[];
     isLoading: boolean;
     busy: boolean;
