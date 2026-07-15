@@ -94,6 +94,45 @@ describe('startKeeper', () => {
         handle.stop();
     });
 
+    it('re-attempts a still-tracked request periodically, so a transient settle failure is not permanent', async () => {
+        // Mirrors the real gap this closes: the entropy watcher only ever calls trySettle
+        // once per Revealed event, so if that single attempt failed transiently (RPC
+        // hiccup, gas spike, momentarily low balance), nothing would retry it without
+        // this sweep. A still-tracked (never untracked) request should keep getting
+        // re-attempted on a timer regardless of what triggered the first attempt.
+        backfillLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 7n } }];
+
+        const handle = await startKeeper(baseConfig);
+        await flush();
+        expect(submit).toHaveBeenCalledTimes(1); // the initial backfill-triggered attempt
+
+        await vi.advanceTimersByTimeAsync(30_000);
+        expect(submit).toHaveBeenCalledTimes(2);
+
+        await vi.advanceTimersByTimeAsync(30_000);
+        expect(submit).toHaveBeenCalledTimes(3);
+
+        handle.stop();
+    });
+
+    it('stops re-attempting a request once it is settled (untracked)', async () => {
+        backfillLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 7n } }];
+        const handle = await startKeeper(baseConfig);
+        await flush();
+        submit.mockClear();
+
+        // The settlement lands on the live watch (by us or anyone else) — untracks it.
+        currentBlock = 101n;
+        gameLogicLiveLogs = [{ eventName: 'BattleResolved', args: { requestId: 7n } }];
+        await vi.advanceTimersByTimeAsync(4_000);
+        submit.mockClear();
+
+        await vi.advanceTimersByTimeAsync(30_000);
+        expect(submit).not.toHaveBeenCalled();
+
+        handle.stop();
+    });
+
     it('does not resettle a backfilled request whose settlement is also in the backfill window', async () => {
         backfillLogs = [
             { eventName: 'BattleRandomnessRequested', args: { requestId: 7n } },

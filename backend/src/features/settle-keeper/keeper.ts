@@ -55,6 +55,14 @@ const POLL_INTERVAL_MS = 4_000;
 const MIN_BALANCE_WEI = 20_000_000_000_000_000n; // 0.02 ETH
 const BALANCE_CHECK_INTERVAL_MS = 10 * 60_000;
 
+/** A tracked request is only ever settled once from the entropy watcher's `Revealed`
+ *  handler — if that single attempt fails for a transient reason (RPC hiccup, gas spike,
+ *  a momentarily low balance, a stuck/underpriced tx), nothing re-triggers it again until
+ *  a restart. This periodically re-attempts every still-tracked request; submitter.submit
+ *  simulates first, so retrying something not yet ready or already settled is a cheap,
+ *  harmless no-op. */
+const RETRY_INTERVAL_MS = 30_000;
+
 /**
  * Drop-in replacement for viem's `publicClient.watchContractEvent` that never touches
  * eth_newFilter/eth_getFilterChanges. viem's own watcher tries to create a filter first and
@@ -362,12 +370,19 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
     void checkBalance();
     const balanceCheckTimer = setInterval(() => { void checkBalance(); }, BALANCE_CHECK_INTERVAL_MS);
 
+    // See RETRY_INTERVAL_MS: re-attempts every still-tracked request on a timer, so a
+    // settle that failed for a transient reason isn't stuck until the next restart.
+    const retryTimer = setInterval(() => {
+        for (const requestId of pending.keys()) trySettle(requestId);
+    }, RETRY_INTERVAL_MS);
+
     return {
         stop() {
             unwatchGameLogic();
             unwatchEntropy();
             unwatchMockRequests?.();
             clearInterval(balanceCheckTimer);
+            clearInterval(retryTimer);
         },
     };
 }
