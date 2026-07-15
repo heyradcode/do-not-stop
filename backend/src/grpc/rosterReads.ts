@@ -1,6 +1,7 @@
 import * as grpc from '@grpc/grpc-js';
 import { env } from '@config/env';
 import { loadGameDataService } from './gameData';
+import { createCircuitBreaker } from './circuitBreaker';
 import type { FindOpponentsParams, RosterPet } from '@repositories/roster.repository';
 import { mapPetWireToRosterPet, type PetWire } from '@repositories/roster.mapping';
 import type { Chain } from '@typings/chain';
@@ -40,8 +41,11 @@ type RosterClient = grpc.Client & {
 };
 
 let client: RosterClient | null = null;
-let consecutiveFailures = 0;
-let breakerOpenUntil = 0;
+const breaker = createCircuitBreaker({
+    threshold: BREAKER_THRESHOLD,
+    cooldownMs: BREAKER_COOLDOWN_MS,
+    label: '[roster-grpc]',
+});
 
 function getClient(): RosterClient | null {
     const { addr } = env.indexerGrpc;
@@ -53,19 +57,6 @@ function getClient(): RosterClient | null {
     return client;
 }
 
-function breakerAllows(): boolean {
-    return Date.now() >= breakerOpenUntil;
-}
-
-function recordFailure(reason: string): void {
-    consecutiveFailures += 1;
-    if (consecutiveFailures >= BREAKER_THRESHOLD) {
-        breakerOpenUntil = Date.now() + BREAKER_COOLDOWN_MS;
-        consecutiveFailures = 0;
-        console.warn(`[roster-grpc] breaker open for ${BREAKER_COOLDOWN_MS}ms (${reason})`);
-    }
-}
-
 /**
  * Matchmaking read via indexer-go. Returns null whenever Prisma should answer
  * instead (feature off, breaker open, timeout, any error).
@@ -73,7 +64,7 @@ function recordFailure(reason: string): void {
 export function tryGrpcFindReadyOpponents(
     params: FindOpponentsParams,
 ): Promise<{ rows: RosterPet[]; total: number } | null> {
-    if (env.rosterReadSource !== 'grpc' || !breakerAllows()) return Promise.resolve(null);
+    if (env.rosterReadSource !== 'grpc' || !breaker.allows()) return Promise.resolve(null);
     const rosterClient = getClient();
     if (!rosterClient) return Promise.resolve(null);
 
@@ -90,11 +81,11 @@ export function tryGrpcFindReadyOpponents(
             { deadline },
             (err, res) => {
                 if (err) {
-                    recordFailure(err.message);
+                    breaker.recordFailure(err.message);
                     resolve(null);
                     return;
                 }
-                consecutiveFailures = 0;
+                breaker.recordSuccess();
                 resolve({
                     rows: res.pets.map(mapPetWireToRosterPet),
                     total: res.total,
@@ -111,7 +102,7 @@ export function tryGrpcFindReadyOpponents(
  * empty row — distinguished by the absent id).
  */
 export function tryGrpcGetPetState(chain: Chain, petId: string): Promise<RosterPet | null> {
-    if (env.rosterReadSource !== 'grpc' || !breakerAllows()) return Promise.resolve(null);
+    if (env.rosterReadSource !== 'grpc' || !breaker.allows()) return Promise.resolve(null);
     const rosterClient = getClient();
     if (!rosterClient) return Promise.resolve(null);
 
@@ -119,11 +110,11 @@ export function tryGrpcGetPetState(chain: Chain, petId: string): Promise<RosterP
         const deadline = new Date(Date.now() + DEADLINE_MS);
         rosterClient.getPetState({ chain, petId }, { deadline }, (err, res) => {
             if (err) {
-                recordFailure(err.message);
+                breaker.recordFailure(err.message);
                 resolve(null);
                 return;
             }
-            consecutiveFailures = 0;
+            breaker.recordSuccess();
             // A cache miss / unknown pet comes back as a defaulted (empty) row;
             // fall through to Prisma rather than returning a blank pet.
             resolve(res.petId ? mapPetWireToRosterPet(res) : null);
