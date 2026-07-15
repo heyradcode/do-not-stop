@@ -62,7 +62,7 @@ import {
 } from "../tests/utils";
 
 const PROGRAM_ID = new anchor.web3.PublicKey(
-  process.env.PROGRAM_ID ?? "Bfp1ZjoYJ8pSgWbVrpxPYMRYe7x2SxQovc821gB2Yq3w"
+  process.env.PROGRAM_ID ?? "EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1"
 );
 const MPL_CORE_PROGRAM_ID = new anchor.web3.PublicKey(
   "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
