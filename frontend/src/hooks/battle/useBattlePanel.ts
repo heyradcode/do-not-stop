@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
     getReadyPetsUnified,
     useChainCapabilities,
@@ -73,9 +73,16 @@ export interface UseBattlePanel {
  */
 export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBattlePanel => {
     const navigate = useNavigate();
+    const location = useLocation();
     const capabilities = useChainCapabilities();
     const { pets, refetch, isLoading: petsLoading } = usePetList();
-    const [selectedPet1, setSelectedPet1] = useState('');
+    // Pre-select the pet the player clicked "Battle" on from its gallery card
+    // (navigate(BATTLE_PATH, { state: { petId } })) — falls back to unselected
+    // for the generic nav entry, which carries no state. Only read once, on
+    // mount; readyPets/selectedFighter below pick it up reactively once pets load.
+    const [selectedPet1, setSelectedPet1] = useState(
+        () => (location.state as { petId?: string } | null)?.petId ?? '',
+    );
     const [selectedOpponent, setSelectedOpponent] = useState('');
     const [showResult, setShowResult] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);

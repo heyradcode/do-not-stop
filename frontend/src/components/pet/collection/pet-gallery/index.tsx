@@ -267,7 +267,7 @@ const PetGallery: React.FC = () => {
                                     <button
                                         type="button"
                                         className={styles.battleBtn}
-                                        onClick={() => navigate(BATTLE_PATH)}
+                                        onClick={() => navigate(BATTLE_PATH, { state: { petId: pet.id } })}
                                     >
                                         <Icon
                                             as={BattleIcon}

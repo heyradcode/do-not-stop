@@ -3,9 +3,13 @@ import { act, renderHook } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({
     navigate: vi.fn(),
+    locationState: null as { petId?: string } | null,
 }));
 
-vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
+vi.mock('react-router-dom', () => ({
+    useNavigate: () => mocks.navigate,
+    useLocation: () => ({ state: mocks.locationState }),
+}));
 vi.mock('@constants/interactionRoutes', () => ({ DASHBOARD_HOME: '/dashboard', BATTLE_PATH: '/battle' }));
 vi.mock('@hooks/usePetError', () => ({ formatTxHashHint: vi.fn(() => null) }));
 vi.mock('@hooks/usePetErrorToast', () => ({ usePetErrorToast: vi.fn() }));
@@ -56,10 +60,22 @@ beforeEach(() => {
     vi.clearAllMocks();
     Object.assign(battle, { isPending: false, isConfirming: false, error: null, hash: undefined, phase: null, liveReplay: null });
     Object.assign(taunts, { isLoading: false, turns: [] });
+    mocks.locationState = null;
     capturedOnSuccess = undefined;
 });
 
 describe('useBattlePanel', () => {
+    it('pre-selects the pet passed via navigation state (Battle button on a pet card)', () => {
+        mocks.locationState = { petId: 'p1' };
+        const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        expect(result.current.setup.selectedPet1).toBe('p1');
+    });
+
+    it('leaves no pet selected when navigation state carries no petId (generic nav entry)', () => {
+        const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        expect(result.current.setup.selectedPet1).toBe('');
+    });
+
     it('returns overlay and setup props', () => {
         const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         expect(result.current.overlay).toBeDefined();
