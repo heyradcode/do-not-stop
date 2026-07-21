@@ -144,9 +144,9 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Hardhat files
-cache/
-artifacts/
+# Hardhat files (scoped — a bare `cache/` also hid indexer-go/internal/cache/)
+contracts/**/cache/
+contracts/**/artifacts/
 typechain-types/
 typechain/
 coverage/
