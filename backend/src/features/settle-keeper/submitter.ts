@@ -1,7 +1,7 @@
 import { parseEventLogs, type Account, type Address, type Chain, type PublicClient, type Transport, type WalletClient } from 'viem';
 import { GAME_LOGIC_ABI, SETTLE_GAS_LIMIT, type SettleFunctionName } from './abi';
 import { broadcastLiveBattle } from '@ws/liveBattleSocket';
-// `@shared/core/node` — not the main barrel (React/.tsx). Loaded at runtime via tsx.
+// `@shared/core/node` — React-free surface; production resolves to dist/shared-node.cjs.
 import { encodeBattleResolvedResult, type BattleResolvedResult } from '@shared/core/node';
 
 export interface Submitter {

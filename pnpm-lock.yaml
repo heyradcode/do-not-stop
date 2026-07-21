@@ -89,9 +89,6 @@ importers:
       pg:
         specifier: ^8.21.0
         version: 8.21.0
-      tsx:
-        specifier: ^4.19.2
-        version: 4.20.6
       tweetnacl:
         specifier: ^1.0.3
         version: 1.0.3
@@ -126,12 +123,18 @@ importers:
       '@vitest/coverage-v8':
         specifier: ^4.1.8
         version: 4.1.9(vitest@4.1.9)
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.10
       nodemon:
         specifier: ^3.1.10
         version: 3.1.14
       prisma:
         specifier: ^7.8.0
         version: 7.8.0(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(magicast@0.5.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(typescript@5.8.3)
+      tsx:
+        specifier: ^4.19.2
+        version: 4.20.6
       typescript:
         specifier: ^5.7.2
         version: 5.8.3
