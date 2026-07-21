@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "prisma generate && tsc",
+    "build": "prisma generate && tsc && node scripts/copy-proto.cjs",
     "start": "node dist/src/server.js",
     "dev": "nodemon",
     "clean": "rm -rf dist",

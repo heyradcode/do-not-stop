@@ -29,6 +29,14 @@ services:
         value: "0"
       - key: JWT_SECRET
         generateValue: true
+      # Proto is copied to backend/dist/proto at build; this override is a belt-and-suspenders
+      # path from the monorepo-root cwd used by startCommand.
+      - key: INDEXER_PROTO_PATH
+        value: proto/cryptopets.proto
+      # Leave unset / empty until private networking reaches do-not-stop-indexer.
+      # A leftover localhost:50051 from a local .env will crash or spam reconnects.
+      - key: INDEXER_GRPC_ADDR
+        value: ""
 
   # indexer-go: unified cross-chain indexer (see indexer-go/README.md).
   # Deployed as a web service (not a worker) so it stays on the free plan —

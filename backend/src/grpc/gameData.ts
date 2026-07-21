@@ -16,22 +16,27 @@ export type GameDataClientCtor = new (
 
 let cached: GameDataClientCtor | null = null;
 
-/** Resolve cryptopets.proto whether cwd is the monorepo root (Render) or backend/. */
+/** Resolve cryptopets.proto for local backend cwd, monorepo root, or Render. */
 export function resolveProtoPath(): string {
+    const candidates: string[] = [];
+
     if (env.indexerGrpc.protoPath) {
-        return env.indexerGrpc.protoPath;
+        // Honor override only if the file actually exists (relative → cwd).
+        candidates.push(path.resolve(process.cwd(), env.indexerGrpc.protoPath));
     }
 
-    const candidates = [
-        // Render / `node backend/dist/...` from monorepo root
-        path.resolve(process.cwd(), 'proto', 'cryptopets.proto'),
-        // Local `pnpm --prefix backend` / nodemon with cwd=backend
-        path.resolve(process.cwd(), '..', 'proto', 'cryptopets.proto'),
-        // Compiled: backend/dist/src/grpc → repo root
+    candidates.push(
+        // Copied next to the compiled output by `pnpm --filter backend build`
+        path.resolve(__dirname, '../../proto/cryptopets.proto'),
+        // Monorepo proto/ from backend/dist/src/grpc
         path.resolve(__dirname, '../../../../proto/cryptopets.proto'),
-        // tsx/dev: backend/src/grpc → repo root
+        // Monorepo proto/ from backend/src/grpc (tsx / vitest)
         path.resolve(__dirname, '../../../proto/cryptopets.proto'),
-    ];
+        // cwd = monorepo root (Render startCommand)
+        path.resolve(process.cwd(), 'proto', 'cryptopets.proto'),
+        // cwd = backend/
+        path.resolve(process.cwd(), '..', 'proto', 'cryptopets.proto'),
+    );
 
     for (const candidate of candidates) {
         if (fs.existsSync(candidate)) {
