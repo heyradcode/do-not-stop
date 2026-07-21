@@ -20,11 +20,12 @@ vi.mock('../../src/contexts/SolanaAnchorContext', () => ({
     }),
 }));
 
+const cancelBattleAccounts = vi.fn(() => ({ rpc: cancelBattleRpc }));
 const programStub: { program: unknown; programId: PublicKey | null; isReady: boolean } = {
     program: {
         methods: {
             cancelBattle: () => ({
-                accounts: () => ({ rpc: cancelBattleRpc }),
+                accounts: cancelBattleAccounts,
             }),
         },
     },
@@ -45,6 +46,7 @@ const stubPda = (name: string) => [{ toBase58: () => `${name}11111111111111111` 
 vi.mock('../../src/utils/solana/pdas', () => ({
     battleRequestPda: () => stubPda('BattleReq'),
     globalStatePda: () => stubPda('GlobalState'),
+    feeVaultPda: () => stubPda('FeeVault'),
 }));
 
 import { usePendingSolanaBattle } from '../../src/hooks/chains/solana/usePendingSolanaBattle';
@@ -122,5 +124,17 @@ describe('usePendingSolanaBattle', () => {
     it('exposes a refetch function', () => {
         const { result } = renderHook(() => usePendingSolanaBattle(), { wrapper });
         expect(typeof result.current.refetch).toBe('function');
+    });
+
+    it('cancel.run() passes feeVault + systemProgram so the escrowed battle fee is refunded', async () => {
+        const { result } = renderHook(() => usePendingSolanaBattle(), { wrapper });
+        await result.current.cancel.run();
+
+        expect(cancelBattleAccounts).toHaveBeenCalledWith(
+            expect.objectContaining({
+                feeVault: expect.objectContaining({ toBase58: expect.any(Function) }),
+                systemProgram: expect.anything(),
+            }),
+        );
     });
 });

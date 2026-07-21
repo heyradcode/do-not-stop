@@ -66,7 +66,17 @@ describe('useOpponents', () => {
         post.mockResolvedValue({ data: { errors: [{ message: 'bad query' }] } });
         const { result } = renderHook(() => useOpponents({ chain: 'evm' }), { wrapper });
 
-        await waitFor(() => expect(result.current.isError).toBe(true));
+        await waitFor(() => expect(result.current.error).not.toBeNull());
         expect(result.current.error?.message).toBe('bad query');
+    });
+
+    it('exposes a refetch that re-queries graphql', async () => {
+        const { result } = renderHook(() => useOpponents({ chain: 'evm' }), { wrapper });
+        await waitFor(() => expect(result.current.opponents).toHaveLength(1));
+
+        post.mockClear();
+        await result.current.refetch();
+
+        expect(post).toHaveBeenCalledTimes(1);
     });
 });

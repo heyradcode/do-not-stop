@@ -53,3 +53,30 @@ func TestLoadRejectsNonPositiveDuration(t *testing.T) {
 		t.Fatal("Load() accepted negative RECONCILE_INTERVAL")
 	}
 }
+
+func TestHealthAddrUsesPORTWhenSet(t *testing.T) {
+	t.Setenv("PORT", "10000")
+	t.Setenv("HEALTH_ADDR", "localhost:8090")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	want := "0.0.0.0:10000"
+	if cfg.HealthAddr != want {
+		t.Errorf("HealthAddr = %q, want %q (PORT must win over HEALTH_ADDR)", cfg.HealthAddr, want)
+	}
+}
+
+func TestHealthAddrHonorsExplicitLocalOverride(t *testing.T) {
+	t.Setenv("PORT", "")
+	t.Setenv("HEALTH_ADDR", "127.0.0.1:9090")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	if cfg.HealthAddr != "127.0.0.1:9090" {
+		t.Errorf("HealthAddr = %q, want 127.0.0.1:9090", cfg.HealthAddr)
+	}
+}

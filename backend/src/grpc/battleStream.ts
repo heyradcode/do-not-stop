@@ -91,8 +91,17 @@ export function startBattleStream(): void {
     }
 
     stopped = false;
-    const Service = loadGameDataService();
-    client = new Service(addr, grpc.credentials.createInsecure());
+    try {
+        const Service = loadGameDataService();
+        client = new Service(addr, grpc.credentials.createInsecure());
+    } catch (err) {
+        // Missing proto / bad INDEXER_PROTO_PATH must not take down the HTTP API.
+        console.error(
+            '[battle-stream] failed to load GameDataService; stream disabled:',
+            err instanceof Error ? err.message : err,
+        );
+        return;
+    }
     connect();
     console.log(`[battle-stream] subscribing to ${addr}`);
 }

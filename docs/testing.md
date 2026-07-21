@@ -17,6 +17,12 @@ own suite with the toolchain native to its stack.
 > `TEST_DATABASE_URL` at a scratch DB only. See
 > [indexer-go/README.md](../indexer-go/README.md).
 
+> `shared`'s suite includes `tests/utils/combat/goldenVectors.test.ts`, which
+> consumes `contracts/test-vectors/battle.json` directly — the same file
+> Hardhat, Anchor, and `indexer-go`'s `combat_golden_test.go` consume. It's the
+> fourth combat-simulator port (TypeScript, for client-side battle replay); a
+> failure here means the TS port drifted, never the vector.
+
 ## Coverage
 
 TS packages use Vitest with the V8 coverage provider. **`@vitest/coverage-v8`

@@ -6,8 +6,8 @@ let captured: {
     enabled: boolean;
     onLogs: (logs: unknown[]) => void;
 } | undefined;
-vi.mock('wagmi', () => ({
-    useWatchContractEvent: (config: typeof captured) => {
+vi.mock('../../src/hooks/chains/ethereum/usePolledContractEvent', () => ({
+    usePolledContractEvent: (config: typeof captured) => {
         captured = config;
     },
 }));

@@ -6,6 +6,12 @@ import userEvent from '@testing-library/user-event';
 const notifyError = vi.fn();
 vi.mock('@hooks/useNotifyError', () => ({ useNotifyError: () => notifyError }));
 
+const navigateSpy = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('react-router-dom')>();
+    return { ...actual, useNavigate: () => navigateSpy };
+});
+
 vi.mock('@components/pet/transfer/send-pet-modal', () => ({
     default: ({ isOpen }: { isOpen: boolean }) => (isOpen ? <div data-testid="send-modal" /> : null),
 }));
@@ -131,6 +137,14 @@ describe('PetGallery', () => {
 
         await userEvent.click(screen.getByRole('button', { name: /Send Sparky/ }));
         expect(screen.getByTestId('send-modal')).toBeInTheDocument();
+    });
+
+    it('navigates to battle with the pet pre-selected when Battle is clicked', async () => {
+        petList.pets = [aPet()];
+        renderGallery();
+
+        await userEvent.click(screen.getByRole('button', { name: /Battle/ }));
+        expect(navigateSpy).toHaveBeenCalledWith('/battle', { state: { petId: '1' } });
     });
 
     it('shows a cooldown status when the pet is not ready', () => {

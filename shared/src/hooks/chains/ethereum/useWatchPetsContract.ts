@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useWatchContractEvent } from 'wagmi';
+import type { Abi } from 'viem';
+import { usePolledContractEvent } from './usePolledContractEvent';
 
 export type BreedSuccessPayload = {
     owner: `0x${string}`;
@@ -39,9 +40,9 @@ export const useWatchPetsContract = ({
         handleSuccessRef.current = onBreedSuccess;
     }, [onBreedSuccess]);
 
-    useWatchContractEvent({
+    usePolledContractEvent({
         address: contractAddress,
-        abi,
+        abi: abi as Abi,
         eventName: 'BreedSettled',
         enabled: Boolean(pendingRequestId != null && address && contractAddress),
         onLogs(logs) {

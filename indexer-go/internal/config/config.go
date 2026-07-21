@@ -70,20 +70,22 @@ func Load() (*Config, error) {
 		DatabaseURL:        os.Getenv("DATABASE_URL"),
 		ReconcileInterval:  reconcile,
 		GRPCAddr:           stringEnv("GRPC_ADDR", defaultGRPCAddr),
-		HealthAddr:         stringEnv("HEALTH_ADDR", defaultHealthAddrFromPort()),
+		HealthAddr:         healthAddrFromEnv(),
 		RosterCacheEnabled: strings.EqualFold(os.Getenv("ROSTER_CACHE_ENABLED"), "true"),
 		LogFormat:          stringEnv("LOG_FORMAT", "text"),
 	}, nil
 }
 
-// defaultHealthAddrFromPort honors PaaS conventions (Render injects PORT and
-// health-checks it): when PORT is set and HEALTH_ADDR isn't, bind the health
-// server publicly on that port so the platform's check passes.
-func defaultHealthAddrFromPort() string {
+// healthAddrFromEnv honors PaaS conventions (Render injects PORT and
+// health-checks it). When PORT is set it always wins — even if HEALTH_ADDR
+// is copied from a local .env as localhost:8090 — so the platform can reach
+// /healthz on 0.0.0.0:$PORT. Locally, HEALTH_ADDR (default localhost:8090)
+// is used as-is.
+func healthAddrFromEnv() string {
 	if port := os.Getenv("PORT"); port != "" {
 		return "0.0.0.0:" + port
 	}
-	return defaultHealthAddr
+	return stringEnv("HEALTH_ADDR", defaultHealthAddr)
 }
 
 func stringEnv(key, fallback string) string {

@@ -12,6 +12,8 @@ export default defineConfig({
             '@features': src('features'),
             '@middleware': src('middleware'),
             '@repositories': src('repositories'),
+            '@grpc-client': src('grpc'),
+            '@ws': src('ws'),
             '@utils': src('utils/index.ts'),
             '@typings': src('types'),
             '@generated': src('generated'),

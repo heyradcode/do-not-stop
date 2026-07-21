@@ -22,6 +22,7 @@ services:
       npm install -g --prefix "$PNPM_PREFIX" pnpm@9.15.9
       HUSKY=0 pnpm install --frozen-lockfile --prod=false --filter backend... && pnpm --filter backend build
     # Start node directly so runtime never invokes the corepack pnpm shim.
+    # @shared/core/node is bundled to backend/dist/shared-node.cjs at build time.
     startCommand: NODE_ENV=production node backend/dist/src/server.js
     healthCheckPath: /api/health
     envVars:
@@ -29,6 +30,14 @@ services:
         value: "0"
       - key: JWT_SECRET
         generateValue: true
+      # Proto is copied to backend/dist/proto at build; this override is a belt-and-suspenders
+      # path from the monorepo-root cwd used by startCommand.
+      - key: INDEXER_PROTO_PATH
+        value: proto/cryptopets.proto
+      # Leave unset / empty until private networking reaches do-not-stop-indexer.
+      # A leftover localhost:50051 from a local .env will crash or spam reconnects.
+      - key: INDEXER_GRPC_ADDR
+        value: ""
 
   # indexer-go: unified cross-chain indexer (see indexer-go/README.md).
   # Deployed as a web service (not a worker) so it stays on the free plan —
@@ -40,9 +49,11 @@ services:
   # gRPC (StreamLiveBattles / roster reads) between the two services needs
   # private networking; if unavailable on this plan, leave INDEXER_GRPC_ADDR
   # unset on the API service — indexing still works, the database is the
-  # contract. Set the connection env vars in the dashboard:
+  # contract. Do not copy localhost:50051 from a local .env onto the API.
+  # Set indexer connection env vars in the dashboard:
   #   DATABASE_URL, EVM_SUBGRAPH_URL, SOLANA_WS_URL, SOLANA_RPC_URL,
   #   SOLANA_PROGRAM_ID — and at promotion: ROSTER_CACHE_ENABLED=true.
+  # Do NOT set HEALTH_ADDR on Render (leave unset so PORT → 0.0.0.0:$PORT).
   - type: web
     name: do-not-stop-indexer
     runtime: go

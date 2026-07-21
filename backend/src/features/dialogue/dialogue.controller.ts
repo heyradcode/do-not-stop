@@ -1,7 +1,11 @@
 import type { Request, Response } from 'express';
-import { getOrGenerateDialogue } from './result/result.service';
+import type { AuthenticatedRequest } from '@middleware/auth';
+import { getPetById } from '@repositories/roster.repository';
+import { ChainTruthMismatchError, getOrGenerateDialogue } from './result/result.service';
 import { streamTauntsConversation } from './taunt/taunt.service';
 import { ResultRequestSchema, TauntsRequestSchema } from './dialogue.schema';
+import type { Chain } from '@typings/chain';
+import type { GenerateDialogueInput } from './dialogue.types';
 
 /**
  * POST /api/battle-dialogue/taunts/stream — generate the pre-fight taunts for a
@@ -50,11 +54,43 @@ export async function resolveBattleDialogue(req: Request, res: Response): Promis
         return;
     }
 
+    const caller = (req as AuthenticatedRequest).user?.address;
+    if (!caller || !(await callerOwnsMatchup(dialogueRequest.data, caller))) {
+        res.status(403).json({ error: 'Not a participant in this battle' });
+        return;
+    }
+
     try {
         const result = await getOrGenerateDialogue(dialogueRequest.data);
         res.json(result);
     } catch (err) {
+        if (err instanceof ChainTruthMismatchError) {
+            console.warn(`[dialogue] rejected result for ${dialogueRequest.data.chain}:${dialogueRequest.data.battleId}: ${err.message}`);
+            res.status(409).json({ error: 'Reported winner contradicts the on-chain result' });
+            return;
+        }
         console.error('[dialogue] generation failed:', err);
         res.status(500).json({ error: 'Failed to generate battle dialogue' });
     }
+}
+
+/**
+ * Only the attacker's or defender's registered owner may submit a battle's result.
+ * `battleId` becomes public the instant a battle settles on-chain, so without this
+ * check any authenticated wallet could race the real participant and submit a forged
+ * winner first — the result cache is first-write-wins, so that would stick.
+ */
+async function callerOwnsMatchup(input: GenerateDialogueInput, caller: string): Promise<boolean> {
+    const [attacker, defender] = await Promise.all([
+        getPetById(input.chain, input.attacker.petId),
+        getPetById(input.chain, input.defender.petId),
+    ]);
+    return [attacker?.owner, defender?.owner].some(
+        (owner) => owner != null && addressesMatch(input.chain, owner, caller),
+    );
+}
+
+function addressesMatch(chain: Chain, a: string, b: string): boolean {
+    // EVM addresses are case-insensitive; Solana pubkeys are base58 and case-sensitive.
+    return chain === 'evm' ? a.toLowerCase() === b.toLowerCase() : a === b;
 }

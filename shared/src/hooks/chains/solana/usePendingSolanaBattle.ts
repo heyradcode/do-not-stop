@@ -1,8 +1,9 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { SystemProgram } from '@solana/web3.js';
 import { useProgram } from './useProgram';
 import { useSolanaAnchor } from '../../../contexts/SolanaAnchorContext';
-import { battleRequestPda, globalStatePda } from '../../../utils/solana/pdas';
+import { battleRequestPda, feeVaultPda, globalStatePda } from '../../../utils/solana/pdas';
 import { getAccountClient } from '../../../utils/solana/accountClient';
 
 export interface PendingSolanaBattle {
@@ -65,9 +66,16 @@ export const usePendingSolanaBattle = (enabled = true): PendingSolanaBattle => {
             if (!program || !programId || !owner) throw new Error('Solana program not ready');
             const [globalState] = globalStatePda(programId);
             const [battleRequest] = battleRequestPda(programId, owner);
+            const [feeVault] = feeVaultPda(programId);
             await program.methods
                 .cancelBattle()
-                .accounts({ globalState, attackerOwner: owner, battleRequest })
+                .accounts({
+                    globalState,
+                    attackerOwner: owner,
+                    battleRequest,
+                    feeVault,
+                    systemProgram: SystemProgram.programId,
+                })
                 .rpc();
         },
         onSuccess: () => {

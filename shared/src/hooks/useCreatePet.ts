@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAccount, useReadContract, useWatchContractEvent, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import { useChainAdapter } from './adapters/useChainAdapter';
 import { useTxSuccess } from './useTxSuccess';
 import { usePetsConfig } from '../contexts/PetsConfigContext';
 import { useWatchEntropyFulfillment } from './chains/ethereum/useWatchEntropyFulfillment';
+import { usePolledContractEvent } from './chains/ethereum/usePolledContractEvent';
 import { EVM_GAS_LIMITS } from './chains/ethereum/gasLimits';
 import type { TxLifecycle } from './adapters/types';
 
@@ -119,11 +120,12 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
     }, [isEvm, settleConfirmed, handleMintSettled]);
 
     // 4b. Secondary: watch MintSettled event (covers a settle sent outside this hook).
-    useWatchContractEvent({
+    usePolledContractEvent({
         address: evm?.gameLogic.address,
         abi: evm?.gameLogic.abi ?? [],
         eventName: 'MintSettled',
         enabled: Boolean(isEvm && evm?.gameLogic.address && pendingRequestId != null),
+        chainId: evm?.chainId,
         onLogs(logs) {
             if (pendingRequestId == null) return;
             const typed = logs as unknown as { args: { requestId?: bigint } }[];

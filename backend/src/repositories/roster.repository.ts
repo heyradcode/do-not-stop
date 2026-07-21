@@ -1,5 +1,5 @@
 import { prisma } from '@config/prisma';
-import { tryGrpcFindReadyOpponents, tryGrpcGetPetState } from '../grpc/rosterReads';
+import { tryGrpcFindReadyOpponents, tryGrpcGetPetState } from '@grpc-client/rosterReads';
 import { mapRosterRowToRosterPet } from './roster.mapping';
 import type { Chain } from '@typings/chain';
 

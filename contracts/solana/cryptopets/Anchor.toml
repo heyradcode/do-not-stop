@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-cryptopets = "88HGagCw4i3BTMHEpdQy3YLeHrkTSKgXmvq66HJXKM7k"
+cryptopets = "EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1"
 
 [programs.devnet]
-cryptopets = "88HGagCw4i3BTMHEpdQy3YLeHrkTSKgXmvq66HJXKM7k"
+cryptopets = "EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1"
 
 [provider]
 cluster = "devnet"

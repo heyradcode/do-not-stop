@@ -44,7 +44,7 @@ Configure your environment variables:
 
 ```bash
 # Frontend with backend
-pnpm dev:be:fe
+pnpm dev
 
 # Frontend with Solana
 pnpm fe:sol:local

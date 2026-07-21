@@ -35,4 +35,10 @@ export {
 } from './contexts/PetsConfigContext';
 export type { Pet, PetChain, PetAction, OpponentPet } from './types/pet';
 export type { BattleResolvedResult, EvmBattlePhase } from './types/battle';
+export {
+    encodeBattleResolvedResult,
+    decodeBattleResolvedResult,
+    type BattleResolvedResultWire,
+    type LiveBattleWireMessage,
+} from './types/liveBattleSocket';
 export { queryClient } from './queryClient';

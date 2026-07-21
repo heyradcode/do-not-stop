@@ -22,7 +22,7 @@ import { globalStatePda } from "../tests/utils";
 // Defaults to the program id pinned in Anchor.toml ([programs.devnet]); override
 // with PROGRAM_ID=... if you deploy under a different key.
 const PROGRAM_ID = new anchor.web3.PublicKey(
-  process.env.PROGRAM_ID ?? "88HGagCw4i3BTMHEpdQy3YLeHrkTSKgXmvq66HJXKM7k",
+  process.env.PROGRAM_ID ?? "EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1",
 );
 
 // mpl-core program (stable across clusters). Required by the `initialize` CPI

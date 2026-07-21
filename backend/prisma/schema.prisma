@@ -91,6 +91,22 @@ model BattleHistory {
   @@map("battle_history")
 }
 
+/// A shareable room URL minted the moment a player enters the battle overlay
+/// (Start Battle, before the wallet has even signed — no on-chain identifier
+/// exists yet). Not authoritative: battle_history/battle_dialogue remain the
+/// source of truth once a battle settles. Purely a stable id for the URL.
+model BattleRoom {
+  id        String   @id @default(cuid())
+  chain     String // 'evm' | 'solana'
+  attacker  String   @map("attacker_pet_id")
+  defender  String   @map("defender_pet_id")
+  owner     String // wallet address / pubkey that created the room
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([chain, attacker, defender])
+  @@map("battle_room")
+}
+
 /// One generated conversation per settled battle — a generate-once cache so the
 /// dialogue is billed at most once and replays are reproducible.
 /// See AI_BATTLE_DIALOGUE.md.

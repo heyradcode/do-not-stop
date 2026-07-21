@@ -1,13 +1,20 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{
+    prelude::*,
+    system_program::{transfer, Transfer},
+};
 
 use crate::{
     errors::ErrorCode,
-    state::{BattleRequest, GlobalState},
+    state::{BattleRequest, GlobalState, FEE_VAULT_SEED},
 };
 
 /// Permissionless cleanup (§6 Solana #2): once the committed Switchboard randomness has
 /// gone unrevealed for `global_state.randomness_expiry_slots`, anyone may close the stuck
 /// `BattleRequest` and refund its rent to the attacker who paid for it.
+///
+/// Also refunds the escrowed battle fee (mirrors EVM `cancelBattle`'s battleFee refund):
+/// no `settle_battle` tx — and therefore no keeper cost — is ever sent for a cancelled
+/// request, so there's nothing for the fee to have funded.
 pub fn handler(ctx: Context<CancelBattle>) -> Result<()> {
     let clock = Clock::get()?;
     let expiry_slot = ctx
@@ -17,6 +24,20 @@ pub fn handler(ctx: Context<CancelBattle>) -> Result<()> {
         .checked_add(ctx.accounts.global_state.randomness_expiry_slots)
         .ok_or(ErrorCode::ArithmeticOverflow)?;
     require!(clock.slot > expiry_slot, ErrorCode::RandomnessNotExpired);
+
+    let battle_fee = ctx.accounts.battle_request.battle_fee;
+    if battle_fee > 0 {
+        let signer_seeds: &[&[&[u8]]] = &[&[FEE_VAULT_SEED, &[ctx.bumps.fee_vault]]];
+        let cpi_ctx = CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.fee_vault.to_account_info(),
+                to: ctx.accounts.attacker_owner.to_account_info(),
+            },
+            signer_seeds,
+        );
+        transfer(cpi_ctx, battle_fee)?;
+    }
 
     emit!(BattleCancelledEvent {
         attacker_owner: ctx.accounts.battle_request.attacker_owner,
@@ -53,4 +74,9 @@ pub struct CancelBattle<'info> {
         constraint = battle_request.attacker_owner == attacker_owner.key() @ ErrorCode::Unauthorized,
     )]
     pub battle_request: Account<'info, BattleRequest>,
+
+    #[account(mut, seeds = [FEE_VAULT_SEED], bump)]
+    pub fee_vault: SystemAccount<'info>,
+
+    pub system_program: Program<'info, System>,
 }

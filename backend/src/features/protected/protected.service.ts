@@ -1,5 +1,5 @@
 import { getUser, listUsers as listUserRows, type UserRecord } from '@repositories/user.repository';
-import type { User } from '@features/auth/auth.types';
+import type { User } from '@features/auth';
 
 /** API shape: dates as ISO strings (see {@link User}). */
 function toUser(row: UserRecord): User {

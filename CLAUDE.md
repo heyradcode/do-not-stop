@@ -16,7 +16,7 @@ The import above pulls in the cross-tool non-negotiables and command baseline fr
 
 **Simplicity first.** No speculative abstractions, no unrequested configurability, no error handling for scenarios that can't occur at the call site. If a change could be half the size, make it that size.
 
-**Surgical changes.** Touch only what the task requires; match each file's existing style even where you'd choose differently. When your edit makes an import, variable, or function unused, remove it, but leave pre-existing dead code alone and just flag it. Never drive-by "fix" one leg of the combat simulator (Solidity/Rust/Go) without updating the other two and rerunning the golden vectors (see Architecture).
+**Surgical changes.** Touch only what the task requires; match each file's existing style even where you'd choose differently. When your edit makes an import, variable, or function unused, remove it, but leave pre-existing dead code alone and just flag it. Never drive-by "fix" one leg of the combat simulator (Solidity/Rust/Go/TS) without updating the other three and rerunning the golden vectors (see Architecture).
 
 **Goal-driven execution.** For multi-step work, state a short plan with a verification step per item, e.g. "port fix to indexer-go, then verify with `go test ./internal/combat -run TestName` against the golden vector." Use the smallest per-package command from the table below that actually exercises the change, not the whole suite, unless the change is broad.
 
@@ -24,7 +24,7 @@ The import above pulls in the cross-tool non-negotiables and command baseline fr
 
 **Text.** In commit messages, PR descriptions, and docs written for this repo: no em-dashes, no filler ("it's worth noting," "essentially"), no LLM tells ("it's not just X, it's Y," "delve"). Reread before finishing and cut anything that doesn't earn its place.
 
-**Commit messages.** After any set of file changes, automatically draft and show a Conventional Commits message (`feat:`, `fix:`, `docs:`, `chore:`, etc., matching this repo's history) in a copyable code block, without waiting to be asked. Scope it to the actual uncommitted change set (check `git status`) and call out any unrelated modified files so they can be excluded. Do not run `git commit` yourself; the user commits manually unless they explicitly ask you to.
+**Commit messages.** After *every* response in which you change one or more files — not just at the end of a multi-step task, and not just when asked — automatically draft and show a Conventional Commits message (`feat:`, `fix:`, `docs:`, `chore:`, etc., matching this repo's history) in a copyable code block. This applies even to small, incremental edits (a single CSS tweak, a one-line fix) made in response to iterative follow-up requests, not only to larger logically-complete changes. Scope it to the actual uncommitted change set (check `git status`) and call out any unrelated modified files so they can be excluded. Do not run `git commit` yourself; the user commits manually unless they explicitly ask you to.
 
 ## Commands
 
@@ -34,6 +34,7 @@ Run from repo root unless noted. Package manager is **pnpm** (`packageManager: p
 ```bash
 pnpm install                 # root only
 pnpm install:all             # root + frontend + website + backend + mobile + contracts/ethereum
+pnpm dev                     # backend + frontend (concurrent)
 pnpm dev:fe                  # frontend only
 pnpm dev:be                  # backend only
 pnpm dev:mobile              # mobile only
@@ -46,7 +47,7 @@ pnpm fe:eth:local            # HH node + deploy + VRF watcher + backend + fronte
 pnpm mobile:eth:local        # same, with mobile instead of frontend
 pnpm fe:sol:local            # backend + frontend + Solana docker/ngrok, concurrently
 ```
-> `pnpm eth:deploy` and `pnpm eth:vrf:watch` currently reference `deploy:inject` and `vrf:watch` scripts that **no longer exist** in `contracts/ethereum/package.json` (that package was refactored to `scripts/deploy.ts` plus Hardhat Ignition). If these fail, deploy directly with `pnpm --prefix contracts/ethereum deploy` (or `deploy:sepolia` / `deploy:base-sepolia`) instead of chasing the root wrapper script. `DEVELOPMENT.md` and `contracts/ethereum/README.md` also document a few commands (`pnpm dev`, `pnpm clean`, `pnpm vrf:watch`) that don't exist in the current root/package scripts, so treat those docs as partially stale and trust `package.json` scripts blocks over prose.
+> `pnpm eth:deploy` and `pnpm eth:vrf:watch` currently reference `deploy:inject` and `vrf:watch` scripts that **no longer exist** in `contracts/ethereum/package.json` (that package was refactored to `scripts/deploy.ts` plus Hardhat Ignition). If these fail, deploy directly with `pnpm --prefix contracts/ethereum deploy` (or `deploy:sepolia` / `deploy:base-sepolia`) instead of chasing the root wrapper script. `DEVELOPMENT.md` and `contracts/ethereum/README.md` also document a few commands (`pnpm clean`, `pnpm vrf:watch`, and an older "start everything" meaning of `pnpm dev`) that don't match the current root scripts, so treat those docs as partially stale and trust `package.json` scripts blocks over prose.
 
 ### Lint / test / build (root aggregates)
 ```bash
@@ -77,7 +78,7 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | Component | Stack | Role |
 |---|---|---|
 | `frontend` | React 19, Vite, Wagmi, Viem, TanStack Query | Web app, wallet integration |
-| `backend` | Node.js, Express, TypeScript, Prisma, JWT | REST + GraphQL + gRPC API server |
+| `backend` | Node.js, Express, TypeScript, Prisma, JWT | REST + GraphQL + gRPC API server, plus the settle keeper (async battle/breed/mint settlement) |
 | `mobile` | React Native | Cross-platform client |
 | `website` | Next.js | Marketing/docs site |
 | `indexer-go` | Go | Optional cross-chain indexer (EVM pull + Solana push) |
@@ -91,17 +92,41 @@ On-chain events (EVM via subgraph watermark polling, Solana via WebSocket push +
 
 Note: `docs/README.md` and `docs/architecture.md` link to `indexer-go/ARCHITECTURE.md`, which doesn't exist. The real doc is `indexer-go/README.md`.
 
-### No shared cross-chain interface: logic is duplicated per chain, deliberately
-There is **no** shared TypeScript abstraction that both chains implement. `frontend/src/chains/ethereum/` (wagmi + in-tree ABI JSONs: `combatSimAbi.json`, `gameConfigAbi.json`, `gameLogicAbi.json`, `petCoreAbi.json`) and `frontend/src/chains/solana/` (Anchor wallet/provider/signer) sit side by side and are wired independently. Don't assume a generic `ChainAdapter`-style interface exists in `shared/`; check the concrete chain directory instead.
+### Cross-chain interfaces: one thin adapter layer, plus logic that stays deliberately separate
+`shared/src/hooks/adapters/` (`ChainAdapter` in `types.ts`) is a real, shared TypeScript interface. `useEvmAdapter` and `useSolanaAdapter` both implement it, `useChainAdapter` returns whichever is active, and every public pet-action hook (`useCreatePet`, `useLevelUpPet`, `useTrainPet`, `useRenamePet`, `useTransferPet`, `useBattlePets`, `useBreedPets`, the pet-list read) consumes it chain-blind. Check `adapters/types.ts` before assuming this doesn't exist.
 
-### Combat simulator is ported three times: golden vectors keep them in sync
-The battle/combat logic is implemented independently in `contracts/ethereum/src/CombatSim.sol`, Solana's `combat.rs`, and pure Go in `indexer-go/internal/combat/`. All three are validated against the same golden test vectors at `contracts/test-vectors/{battle,xp}.json`, run by Hardhat, Anchor, and `combat_golden_test.go` respectively. Hashing uses **legacy Keccak-256** (`keccak256(abi.encodePacked(...))` byte layout); a SHA3-vs-Keccak mismatch fails every vector.
-**If a golden vector test fails, the Go (or Rust) implementation has drifted from the Solidity contract. Fix the drifted port, never edit the vector.**
+What that adapter does NOT unify: `frontend/src/chains/ethereum/` (wagmi client, in-tree ABI JSONs: `combatSimAbi.json`, `gameConfigAbi.json`, `gameLogicAbi.json`, `petCoreAbi.json`) and `frontend/src/chains/solana/` (Anchor wallet/provider/signer) are still separate, low-level wiring with no shared interface between them, each adapter reaches into its own directly. The async battle/breed VRF flows (`useEvmBattleFlow.ts`, `battleWithSwitchboardVrf.ts`) and the combat simulator itself are also not unified; see the next section. Treat the adapter as a thin, uniform shape over pet-action mutations and reads, not a claim that the underlying chain logic is shared.
 
-### VRF / randomness
-- EVM breeding uses Chainlink VRF v2.5 (async commit, coordinator fulfills). Locally this needs a VRF watcher process (`vrf-fulfill-watcher.ts` used to provide this; see the stale-script note in Commands above). `pnpm fe:eth:local` was designed to run it automatically.
-- Solana breeding uses Switchboard On-Demand (commit then settle), also async.
-- EVM in-battle randomness (`battle()`/`attack()`) currently uses `Utils.randMod` (keccak of timestamp/sender/nonce). This is a known-predictable v1 weakness, not a hidden bug; see `contracts/plan-contract-upgrade.md` for the v2 redesign (stat-based combat, no more on-chain pseudo-randomness for battles).
+### Combat simulator is ported four times: golden vectors keep them in sync
+The battle/combat logic is implemented independently in `contracts/ethereum/src/CombatSim.sol`, Solana's `combat.rs`, pure Go in `indexer-go/internal/combat/`, and pure TypeScript in `shared/src/utils/combat/` (the fourth port, added for client-side live battle replay — see `docs/plan-realtime-battle-impl.md` Phase 3). All four are validated against the same golden test vectors at `contracts/test-vectors/{battle,xp}.json`, run by Hardhat, Anchor, `combat_golden_test.go`, and `shared`'s `tests/utils/combat/goldenVectors.test.ts` respectively. Hashing uses **legacy Keccak-256** (`keccak256(abi.encodePacked(...))` byte layout); a SHA3-vs-Keccak mismatch fails every vector. The TS port covers fight math only, not XP (`xp.go`'s equivalent isn't ported): XP depends on on-chain same-opponent streak state the client can't know, and `BattleResolved` already carries `xpWin`/`xpLoss`.
+**If a golden vector test fails, the Go, Rust, or TS implementation has drifted from the Solidity contract. Fix the drifted port, never edit the vector.**
+
+### Settle keeper: the second EVM battle/breed/mint transaction isn't the player's
+`GameLogic`'s async flows (`requestBattle`/`requestCreateFromDNA`/`requestMintStarter` → Pyth Entropy reveals → `settleX`) used to have the frontend send the settle transaction itself, meaning two wallet prompts per action even though settle is permissionless. A backend service, `backend/src/features/settle-keeper/`, now watches Pyth Entropy's `Revealed` event and sends the settle transaction from its own wallet; the frontend only falls back to prompting the player if the keeper hasn't settled within ~45s (keeper outage or not configured — see `useEvmBattleFlow.ts`'s `FALLBACK_SETTLE_DELAY_MS`). Gated by `KEEPER_ENABLED` (off by default); see `backend/env.example` for the full var list. This fixes only the double-signature UX; the related security fix — `requestBattle` snapshotting sim inputs so a level-up between request and settle can't reroll a committed battle — already lives in `GameLogic.sol` itself. See `docs/plan-realtime-battle-ux.md` / `docs/plan-realtime-battle-impl.md` for the full design and threat model.
+
+### Battle fee funds the settle keeper's own gas (EVM)
+The EVM settle keeper (above) sends `settleBattle` from its own wallet, but until this was added that transaction (~800k gas, `SETTLE_GAS_LIMIT` in `backend/src/features/settle-keeper/abi.ts`) was entirely unfunded — the player's `requestBattle` payment only ever covered the Pyth Entropy fee. `GameConfig.battleFee` (owner-tunable via `setBattleFee`) is now required on top of the entropy fee at `requestBattle` time, escrowed in the pending record, and refunded on `cancelBattle` (no settle tx is ever sent for a cancelled request); on a normal settle it just adds to the contract's withdrawable balance alongside the other protocol fees — there's no automatic reimbursement to the keeper wallet specifically, so it still needs manual top-ups from `withdraw()` proceeds. The frontend surfaces this via `useFees().battleFee` (chain-neutral — see the Solana section below) and shows it in the Start Battle button label. Because `GameConfig` isn't behind a proxy (see its own doc comment), adding this field required a fresh `GameConfig` deployment plus a new `setGameConfig(address)` setter on both `GameLogic` and `PetCore` (added together, deliberately — `PetCore` reads several other config values like `battleCooldown`/`poolSizes`, and pointing only one proxy at a new instance would let the two silently diverge). `scripts/upgrade-game-config.ts` handles the migration: it replays every existing tunable from the old `GameConfig` onto the new one before repointing anything, so live-tuned values (fees, skill balance, cooldowns) aren't reset to source defaults. This has been run against the live Base Sepolia deployment; any client env (`VITE_GAMECONFIG_ADDRESS`, `KEEPER_GAME_CONFIG_ADDRESS`) pointing at the old `GameConfig` address needs updating too, or fee reads fail outright (the old contract has no `battleFee()` at all) — check `frontend/.env`/`.env.local` and `backend/.env` aren't stale before assuming a deployment issue is something else.
+
+### Solana settle keeper and battle-only permissionless settle
+Mirrors the EVM keeper, but for Solana's `commit_battle`/`settle_battle` (Switchboard On-Demand VRF) and **battle only** — `settle_breed`/`settle_mint` still require the player's own signature, because their Metaplex Core mint CPI needs a real payer signature (see `docs/plan-realtime-battle-solana.md` Workstream S2 for why this doesn't generalize the way the EVM keeper did). `SettleBattle`'s `attacker_owner` account was changed from `Signer` to `UncheckedAccount` (mirroring this program's own pre-existing `cancel_battle` pattern), and a sibling backend module, `backend/src/features/settle-keeper-solana/`, polls open `BattleRequest`s and submits reveal+settle once Switchboard's oracle is ready. Gated by `KEEPER_SOLANA_ENABLED` (off by default); see `backend/env.example`. The frontend (`shared/src/utils/solana/battleWithSwitchboardVrf.ts`) waits up to 45s for the keeper before falling back to sending reveal+settle from the player's own wallet, same pattern as EVM's `FALLBACK_SETTLE_DELAY_MS`. A second Rust change, `BattleRequest` snapshotting attacker/defender dna/rarity/level/species at commit time (Workstream S1), closes the same train/level-up front-run reroll Phase 1 closed on EVM — `settle_battle.rs` now simulates from that frozen snapshot instead of live pet accounts. Client-side live battle animation (Workstream S3, `useLiveBattleReplaySolana`) reuses the same `shared/src/utils/combat/` TS port (no new simulator code) by independently deriving the seed from an unbroadcast Switchboard reveal instruction; this specific mechanism is unverified against a live gateway (see the hook's header comment) and degrades to no animation, never a broken UI, if the assumption is wrong.
+
+`commit_battle` also charges `GlobalState.battle_fee_lamports` now, mirroring the EVM battle fee above (funds the settle keeper's own `settle_battle` submission; escrowed in `BattleRequest.battle_fee`, refunded by `cancel_battle`). Owner-tunable via `set_battle_fee_lamports`. The already-deployed devnet `GlobalState` account predates this field — it lives in what was previously reserved padding (`GlobalState::SPACE` is unchanged), so after a program upgrade it reads back as `0` until an admin explicitly calls `set_battle_fee_lamports` once; `initialize` only sets the real default for a genuinely fresh account. `BattleRequest::SPACE` did grow (new `battle_fee` field, no reserved padding on request accounts — mirrors how `BreedRequest.stud_fee`/`other_owner` were added previously), so any already-committed-but-unsettled `BattleRequest` at upgrade time needs to be settled or let expire (`cancel_battle`) before deploying, or it will fail to deserialize.
+**Rust/Anchor changes here were written without a local toolchain (no `cargo`/`anchor`/`rustc`/`solana` on PATH in this environment) — run `anchor build` / `anchor test` before trusting them.**
+
+### Entropy / randomness
+All three async EVM flows — battle (`requestBattle`), breed (`requestCreateFromDNA`), and
+starter mint (`requestMintStarter`) — use Pyth Entropy v2 (`requestV2` → `entropyCallback`
+stores the revealed word only → a separate permissionless settle call runs the actual logic).
+This has already fully replaced the Chainlink VRF and predictable `Utils.randMod`
+(keccak-of-timestamp) schemes that older revisions of `contracts/plan-contract-upgrade.md`
+describe as the v1 baseline still to be migrated — there is no `Utils.sol`, no Chainlink
+dependency, and no `randMod` anywhere in `contracts/ethereum/src` today; treat that plan doc's
+"current state" tables as historical, not current, and trust the contract source instead.
+Locally there's no live Pyth network, so Hardhat tests deploy `MockEntropy` and reveal manually
+(`entropy.mockReveal(...)`); the settle keeper's `KEEPER_MOCK_REVEAL` flag (see above) does the
+same thing for a running local node, replacing the old `vrf-fulfill-watcher.ts` script for this
+flow (see the stale-script note in Commands above).
+Solana breeding uses Switchboard On-Demand (commit then settle), also async.
 
 ### Known v1 contract limitations (design context, not regressions to "fix")
 `contracts/plan-contract-upgrade.md` documents intentional v1 gaps that v2 is designed around: no battle authorization (anyone can call `battle()`/`attack()` on anyone's pets), an EVM `changeDna` cheat that lets a level-20 pet set arbitrary DNA, and a Solana `create_starter_pet` that accepts client-supplied dna/rarity. v2 plan: EVM moves to UUPS proxies (`PetCoreProxy` + `GameLogicProxy`, with `CombatSimV1` deployed as a separate contract to stay under the 24KB bytecode ceiling); Solana adds versioned/reserved-space accounts and migrates pets to Metaplex Core NFTs. This is a plan doc; check current contract source before assuming any of it is implemented.

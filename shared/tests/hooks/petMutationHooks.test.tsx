@@ -23,7 +23,7 @@ vi.mock('wagmi', () => ({
     useReadContract: () => ({ data: undefined }),
     useWriteContract: () => ({ writeContract: vi.fn(), writeContractAsync: vi.fn(), reset: vi.fn(), isPending: false, data: undefined, error: null }),
     useWaitForTransactionReceipt: () => ({ isSuccess: false, isError: false, data: undefined }),
-    useWatchContractEvent: vi.fn(),
+    usePublicClient: () => undefined,
 }));
 vi.mock('../../src/hooks/chains/ethereum/useWatchPetsContract', () => ({ useWatchPetsContract: vi.fn() }));
 vi.mock('../../src/hooks/chains/ethereum/useWatchEntropyFulfillment', () => ({ useWatchEntropyFulfillment: vi.fn() }));

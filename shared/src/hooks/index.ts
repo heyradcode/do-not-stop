@@ -10,6 +10,7 @@ export { useSolanaFees, type SolanaFees } from './chains/solana/useSolanaFees';
 // Manual recovery for an interrupted async battle (settle / cancel a pending request).
 export { usePendingBattle, type PendingBattle } from './chains/ethereum/usePendingBattle';
 export { usePendingBreed, type PendingBreed } from './chains/ethereum/usePendingBreed';
+export { useBreedRelationCheck, type BreedRelationCheck } from './chains/ethereum/useBreedRelationCheck';
 // Solana pending VRF requests — auto-resumes on next action; cancel available after randomness expiry.
 export { usePendingSolanaBattle, type PendingSolanaBattle } from './chains/solana/usePendingSolanaBattle';
 export { usePendingSolanaBreed, type PendingSolanaBreed } from './chains/solana/usePendingSolanaBreed';
@@ -66,5 +67,6 @@ export {
     type DialoguePhase,
 } from './useBattleDialogue';
 export { useBattleTaunts, type GenerateTauntsVars } from './useBattleTaunts';
+export { useCreateBattleRoom, type CreateRoomVars } from './useCreateBattleRoom';
 export { usePetError, type PetError } from './usePetError';
 export { useTxError, type TxError } from './useTxError';

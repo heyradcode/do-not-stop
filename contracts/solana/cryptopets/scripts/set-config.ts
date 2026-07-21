@@ -28,7 +28,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { globalStatePda } from "../tests/utils";
 
 const PROGRAM_ID = new anchor.web3.PublicKey(
-  process.env.PROGRAM_ID ?? "88HGagCw4i3BTMHEpdQy3YLeHrkTSKgXmvq66HJXKM7k",
+  process.env.PROGRAM_ID ?? "EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1",
 );
 
 const KEY_TO_INSTRUCTION: Record<string, string> = {

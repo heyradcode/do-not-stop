@@ -2,9 +2,9 @@ import { getDialogue, saveDialogue } from '@repositories/dialogue.repository';
 import { buildPersona } from '../llm/persona';
 import { generateTurns, ensureResultCoverage } from './turns';
 import { getPregenStore } from '@repositories/pregen.repository';
-import { matchupKey } from './pregen.types';
+import { matchupKey } from '@typings/pregen';
 import { recordBattleHistory, recordResultLines } from '../recording';
-import { getChainSettledWinner } from '../../../grpc/battleStream';
+import { getChainSettledWinner } from '@grpc-client/battleStream';
 import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
 /**
@@ -37,12 +37,22 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
     return finalizeDialogue(input, turns, model);
 }
 
+/** Thrown by {@link verifyAgainstChainTruth} when the battle stream has already seen this
+ *  battle settle on-chain with a different winner than the client is claiming. */
+export class ChainTruthMismatchError extends Error {
+    constructor(public readonly chainWinner: string) {
+        super(`client-reported winner contradicts chain truth (${chainWinner})`);
+        this.name = 'ChainTruthMismatchError';
+    }
+}
+
 /**
- * Shadow check (indexer-go milestone 7): when the battle stream has seen this
- * battle settle on-chain, compare the client-reported winner against chain
- * truth. Log-only for now — promotion to a hard reject happens once shadow
- * mode proves the stream reliable. No-op when the stream is off or the battle
- * hasn't been seen.
+ * When the battle stream has seen this battle settle on-chain, the client-reported
+ * winner must match. Chain truth is the actual authority here — a mismatch means the
+ * client is either buggy or forging a result, and letting it through would poison
+ * `battle_history` and the cached dialogue via the idempotent first-write-wins cache
+ * in {@link finalizeDialogue}. No-op when the stream is off or the battle hasn't been
+ * seen yet (the common case — the stream lags settlement).
  */
 function verifyAgainstChainTruth(input: GenerateDialogueInput): void {
     if (!input.battleId) return;
@@ -51,10 +61,7 @@ function verifyAgainstChainTruth(input: GenerateDialogueInput): void {
 
     const claimed = input.winner === 'attacker' ? input.attacker.petId : input.defender.petId;
     if (claimed !== chainWinner) {
-        console.warn(
-            `[dialogue] client-reported winner ${claimed} contradicts chain truth ${chainWinner} ` +
-                `for ${input.chain}:${input.battleId}`,
-        );
+        throw new ChainTruthMismatchError(chainWinner);
     }
 }
 

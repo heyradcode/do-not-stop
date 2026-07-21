@@ -1,5 +1,5 @@
 import { findReadyOpponents, getAllPets, getPetById, searchPets, type RosterPet } from '@repositories/roster.repository';
-import { tryGrpcEstimateWin } from '../grpc/estimateWin';
+import { tryGrpcEstimateWin } from '@grpc-client/estimateWin';
 import { isSupportedChain, SUPPORTED_CHAINS } from '@typings/chain';
 
 const DEFAULT_PAGE_SIZE = 20;

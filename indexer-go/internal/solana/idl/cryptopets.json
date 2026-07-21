@@ -1,5 +1,5 @@
 {
-  "address": "88HGagCw4i3BTMHEpdQy3YLeHrkTSKgXmvq66HJXKM7k",
+  "address": "EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1",
   "metadata": {
     "name": "cryptopets",
     "version": "0.1.0",
@@ -10,7 +10,16 @@
   "accounts": [
     {
       "name": "PetAccount",
-      "discriminator": [223, 222, 129, 89, 70, 231, 141, 184]
+      "discriminator": [
+        223,
+        222,
+        129,
+        89,
+        70,
+        231,
+        141,
+        184
+      ]
     }
   ],
   "types": [
@@ -19,34 +28,128 @@
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "id", "type": "u32" },
-          { "name": "owner", "type": "pubkey" },
-          { "name": "dna", "type": "u64" },
-          { "name": "rarity", "type": "u8" },
-          { "name": "level", "type": "u16" },
-          { "name": "readyTime", "type": "i64" },
-          { "name": "winCount", "type": "u16" },
-          { "name": "lossCount", "type": "u16" },
-          { "name": "version", "type": "u8" },
-          { "name": "bump", "type": "u8" },
-          { "name": "name", "type": { "array": ["u8", 32] } },
-          { "name": "nameLen", "type": "u8" },
-          { "name": "openToChallenges", "type": "bool" },
-          { "name": "xp", "type": "u32" },
-          { "name": "lastOpponentId", "type": "u32" },
-          { "name": "sameOpponentStreak", "type": "u8" },
-          { "name": "generation", "type": "u8" },
-          { "name": "parent1Id", "type": "u32" },
-          { "name": "parent2Id", "type": "u32" },
-          { "name": "breedCount", "type": "u8" },
-          { "name": "breedReadyTime", "type": "i64" },
-          { "name": "trainReadyTime", "type": "i64" },
-          { "name": "speciesId", "type": "u16" },
-          { "name": "spouseId", "type": "u32" },
-          { "name": "marriageOwnerSnapshot", "type": "pubkey" },
-          { "name": "marriageCooldownUntil", "type": "i64" },
-          { "name": "asset", "type": "pubkey" },
-          { "name": "reserved", "type": { "array": ["u8", 8] } }
+          {
+            "name": "id",
+            "type": "u32"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "dna",
+            "type": "u64"
+          },
+          {
+            "name": "rarity",
+            "type": "u8"
+          },
+          {
+            "name": "level",
+            "type": "u16"
+          },
+          {
+            "name": "readyTime",
+            "type": "i64"
+          },
+          {
+            "name": "winCount",
+            "type": "u16"
+          },
+          {
+            "name": "lossCount",
+            "type": "u16"
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "name",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "nameLen",
+            "type": "u8"
+          },
+          {
+            "name": "openToChallenges",
+            "type": "bool"
+          },
+          {
+            "name": "xp",
+            "type": "u32"
+          },
+          {
+            "name": "lastOpponentId",
+            "type": "u32"
+          },
+          {
+            "name": "sameOpponentStreak",
+            "type": "u8"
+          },
+          {
+            "name": "generation",
+            "type": "u8"
+          },
+          {
+            "name": "parent1Id",
+            "type": "u32"
+          },
+          {
+            "name": "parent2Id",
+            "type": "u32"
+          },
+          {
+            "name": "breedCount",
+            "type": "u8"
+          },
+          {
+            "name": "breedReadyTime",
+            "type": "i64"
+          },
+          {
+            "name": "trainReadyTime",
+            "type": "i64"
+          },
+          {
+            "name": "speciesId",
+            "type": "u16"
+          },
+          {
+            "name": "spouseId",
+            "type": "u32"
+          },
+          {
+            "name": "marriageOwnerSnapshot",
+            "type": "pubkey"
+          },
+          {
+            "name": "marriageCooldownUntil",
+            "type": "i64"
+          },
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "reserved",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          }
         ]
       }
     }

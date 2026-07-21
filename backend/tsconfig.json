@@ -20,6 +20,12 @@
             "@repositories/*": [
                 "./src/repositories/*"
             ],
+            "@grpc-client/*": [
+                "./src/grpc/*"
+            ],
+            "@ws/*": [
+                "./src/ws/*"
+            ],
             "@utils": [
                 "./src/utils/index.ts"
             ],

@@ -7,7 +7,7 @@ pub mod utils;
 use anchor_lang::{prelude::*, solana_program::system_program};
 use instructions::*;
 
-declare_id!("88HGagCw4i3BTMHEpdQy3YLeHrkTSKgXmvq66HJXKM7k");
+declare_id!("EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1");
 
 #[program]
 pub mod cryptopets {
@@ -150,6 +150,10 @@ pub mod cryptopets {
 
     pub fn set_breed_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
         config::set_breed_fee_lamports(ctx, value)
+    }
+
+    pub fn set_battle_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
+        config::set_battle_fee_lamports(ctx, value)
     }
 
     pub fn set_stud_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {

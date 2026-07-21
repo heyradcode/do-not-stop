@@ -2,18 +2,33 @@ import './register-path-aliases';
 import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import app from './app';
-import { startBattleStream, stopBattleStream } from './grpc/battleStream';
+import { startBattleStream, stopBattleStream } from '@grpc-client/battleStream';
+import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
+import { startSolanaSettleKeeperFeature, stopSolanaSettleKeeperFeature } from '@features/settle-keeper-solana';
+import { startLiveBattleSocket, stopLiveBattleSocket } from '@ws/liveBattleSocket';
 
-const server = app.listen(env.port, () => {
+// Bind 0.0.0.0 so Render's internal health check can reach the process
+// (listen(port) alone is not always reachable on their network scan).
+const server = app.listen(env.port, '0.0.0.0', () => {
     const { port } = env;
-    console.log(`🚀 Backend server running on port ${port}`);
+    console.log(`🚀 Backend server running on 0.0.0.0:${port}`);
     console.log(`📊 Health check: http://localhost:${port}/api/health`);
     console.log(`🔐 Auth endpoints: http://localhost:${port}/api/auth`);
     console.log(`🛡️  Protected endpoints: http://localhost:${port}/api/protected`);
     console.log(`⚔️  GraphQL endpoint: http://localhost:${port}/graphql`);
 
+    // Pushes a computed battle sim to the frontend the moment entropy reveals (settle
+    // keeper's job). Always listening; only actually broadcasts once the keeper is enabled
+    // with KEEPER_GAME_CONFIG_ADDRESS set.
+    startLiveBattleSocket(server);
     // indexer-go battle push (chain-truth settles). No-op unless INDEXER_GRPC_ADDR is set.
     startBattleStream();
+    // Settles GameLogic battle/breed/mint requests once entropy reveals. No-op unless
+    // KEEPER_ENABLED is set.
+    startSettleKeeper();
+    // Settles Solana commit_battle requests once Switchboard reveals. No-op unless
+    // KEEPER_SOLANA_ENABLED is set.
+    startSolanaSettleKeeperFeature();
 });
 
 /** Force-exit deadline: don't let a stuck connection block the orchestrator forever. */
@@ -38,6 +53,9 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     forceExit.unref(); // don't let the failsafe itself keep the process alive
 
     stopBattleStream();
+    stopSettleKeeper();
+    stopSolanaSettleKeeperFeature();
+    stopLiveBattleSocket();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
 

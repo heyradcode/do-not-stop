@@ -36,6 +36,7 @@ const fees = {
     trainFee: 3n,
     breedFee: 4n,
     studFee: 5n,
+    battleFee: 1n,
     entropyFee: 0n,
 };
 const config: {
@@ -169,6 +170,7 @@ describe('useEvmAdapter', () => {
                 address: '0x2222222222222222222222222222222222222222',
                 functionName: 'requestBattle',
                 args: [1n, 2n],
+                value: 1n,
                 gas: 800000n,
             }),
         );

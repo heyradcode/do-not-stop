@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useWatchContractEvent } from 'wagmi';
+import type { Abi } from 'viem';
+import { usePolledContractEvent } from './usePolledContractEvent';
 
 const ENTROPY_REVEALED_ABI = [
     {
@@ -28,8 +29,12 @@ type UseWatchEntropyFulfillmentParams = {
     gameLogicAddress?: `0x${string}`;
     /** requestId (= entropy sequenceNumber as uint256) to wait on; null disables the watch. */
     requestId: bigint | null;
-    /** Fired once `Revealed` lands for `requestId` called by our GameLogic. */
-    onFulfilled?: (requestId: bigint) => void;
+    /** Fired once `Revealed` lands for `requestId` called by our GameLogic. `randomNumber`
+     *  is the raw revealed word (same 32 bytes GameLogic stores as `uint256(randomNumber)`
+     *  and CombatSim.simulate's `seed` — this is what lets the client run the same
+     *  deterministic sim locally the moment reveal happens, plan-realtime-battle-impl.md
+     *  Phase 4, without waiting for settleBattle to be mined). */
+    onFulfilled?: (requestId: bigint, randomNumber: `0x${string}`) => void;
 };
 
 /**
@@ -52,20 +57,23 @@ export const useWatchEntropyFulfillment = ({
     useEffect(() => { gameLogicRef.current = gameLogicAddress; }, [gameLogicAddress]);
     useEffect(() => { handlerRef.current = onFulfilled; }, [onFulfilled]);
 
-    useWatchContractEvent({
+    usePolledContractEvent({
         address: entropyAddress,
-        abi: ENTROPY_REVEALED_ABI,
+        abi: ENTROPY_REVEALED_ABI as unknown as Abi,
         eventName: 'Revealed',
         enabled: Boolean(requestId != null && entropyAddress && gameLogicAddress),
         onLogs(logs) {
             const want = wantRef.current;
             const gl = gameLogicRef.current?.toLowerCase();
             if (want == null || !gl) return;
-            const typed = logs as unknown as { args: { caller?: string; sequenceNumber?: bigint } }[];
+            const typed = logs as unknown as {
+                args: { caller?: string; sequenceNumber?: bigint; randomNumber?: `0x${string}` };
+            }[];
             for (const log of typed) {
                 if (log.args.caller?.toLowerCase() !== gl) continue;
                 if (log.args.sequenceNumber !== want) continue;
-                handlerRef.current?.(want);
+                if (log.args.randomNumber == null) continue;
+                handlerRef.current?.(want, log.args.randomNumber);
                 return;
             }
         },

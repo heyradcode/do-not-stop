@@ -93,10 +93,21 @@ const BattleDialogue: React.FC<BattleDialogueProps> = ({
 
     const inProgress = turns[shownTurns];
 
+    // Newest on top: the line currently typing (if any), then completed turns
+    // most-recent-first. Keyed by each turn's original chronological index (not
+    // its display position) so a turn keeps its identity — and doesn't replay its
+    // entrance animation — as later turns get prepended above it.
+    const completedNewestFirst = turns
+        .slice(0, shownTurns)
+        .map((turn, chronologicalIndex) => ({ turn, chronologicalIndex }))
+        .reverse();
+
     return (
         <div className="battle-dialogue" aria-live="polite">
-            {turns.slice(0, shownTurns).map((turn, i) => renderLine(turn, turn.text, i))}
             {inProgress ? renderLine(inProgress, typed, 'typing') : null}
+            {completedNewestFirst.map(({ turn, chronologicalIndex }) =>
+                renderLine(turn, turn.text, chronologicalIndex),
+            )}
         </div>
     );
 };

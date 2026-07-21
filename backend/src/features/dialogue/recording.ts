@@ -1,6 +1,6 @@
 import { recordBattle } from '@repositories/history.repository';
 import { recordConversation } from '@repositories/conversation.repository';
-import { getChainSettledBattle } from '../../grpc/battleStream';
+import { getChainSettledBattle } from '@grpc-client/battleStream';
 import type { Chain } from '@typings/chain';
 import { withFallback } from '@utils';
 import type { DialogueTurn, GenerateDialogueInput } from './dialogue.types';

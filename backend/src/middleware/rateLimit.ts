@@ -40,3 +40,17 @@ export const dialogueRateLimit = rateLimit({
     keyGenerator: walletKey,
     message: { error: 'Too many dialogue requests, try again shortly' },
 });
+
+/**
+ * Room creation is a single cheap insert (no LLM), so it gets a much looser
+ * budget than dialogue — just enough to stop room-spam from repeated
+ * Start Battle clicks/retries.
+ */
+export const battleRoomRateLimit = rateLimit({
+    windowMs: 60_000,
+    limit: 30,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    keyGenerator: walletKey,
+    message: { error: 'Too many battle room requests, try again shortly' },
+});

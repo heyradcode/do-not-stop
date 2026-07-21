@@ -52,23 +52,29 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
     let defender_pet_id = ctx.accounts.defender_pet.id;
 
     // Skill archetype (plan §3.7/v2.1 Phase B, mirrors EVM `GameLogicV1.fight`'s
-    // `uint8(p.speciesId % 8)`): each pet's passive skill is derived from its species id,
-    // resolved once at mint/breed time.
-    let attacker_skill = (ctx.accounts.attacker_pet.species_id % 8) as u8;
-    let defender_skill = (ctx.accounts.defender_pet.species_id % 8) as u8;
+    // `uint8(p.speciesId % 8)`): each pet's passive skill is derived from its species id.
+    // Read from the commit-time snapshot (plan-realtime-battle-solana.md Workstream S1),
+    // not the live pet, so it can't change between commit and settle.
+    let attacker_skill = (battle_request.attacker_species_id % 8) as u8;
+    let defender_skill = (battle_request.defender_species_id % 8) as u8;
 
+    // Sim inputs come from the frozen snapshot, not the live PetAccounts (Workstream S1):
+    // a level_up (or any other stat change) committed between commit_battle and
+    // settle_battle must not be able to change an already-committed battle's outcome.
     let sim = battle_sim::simulate(
-        ctx.accounts.attacker_pet.dna,
-        ctx.accounts.attacker_pet.rarity,
-        ctx.accounts.attacker_pet.level,
+        battle_request.attacker_dna,
+        battle_request.attacker_rarity,
+        battle_request.attacker_level,
         attacker_skill,
-        ctx.accounts.defender_pet.dna,
-        ctx.accounts.defender_pet.rarity,
-        ctx.accounts.defender_pet.level,
+        battle_request.defender_dna,
+        battle_request.defender_rarity,
+        battle_request.defender_level,
         defender_skill,
         seed,
         &SkillConfig::default(),
     );
+    let snapshot_attacker_level = battle_request.attacker_level;
+    let snapshot_defender_level = battle_request.defender_level;
 
     let attacker_pet = &mut ctx.accounts.attacker_pet;
     let defender_pet = &mut ctx.accounts.defender_pet;
@@ -79,17 +85,20 @@ pub fn handler(ctx: Context<SettleBattle>) -> Result<()> {
     let attacker_decay = attacker_pet.record_battle_opponent(defender_pet_id);
     let defender_decay = defender_pet.record_battle_opponent(attacker_pet_id);
 
+    // XP also uses the snapshot levels (Workstream S1), so the sim and the XP calc agree
+    // on the same committed inputs rather than the sim using frozen levels while XP uses
+    // whatever the live levels happen to be by settle time.
     let (winner_level, loser_level, winner_decay, loser_decay) = if sim.first_wins {
         (
-            attacker_pet.level,
-            defender_pet.level,
+            snapshot_attacker_level,
+            snapshot_defender_level,
             attacker_decay,
             defender_decay,
         )
     } else {
         (
-            defender_pet.level,
-            attacker_pet.level,
+            snapshot_defender_level,
+            snapshot_attacker_level,
             defender_decay,
             attacker_decay,
         )
@@ -173,8 +182,13 @@ pub struct SettleBattle<'info> {
     #[account(seeds = [GlobalState::SEED], bump = global_state.bump)]
     pub global_state: Account<'info, GlobalState>,
 
+    /// CHECK: rent-refund destination for the closed `battle_request`; validated against
+    /// `battle_request.attacker_owner` below. Permissionless (plan-realtime-battle-solana.md
+    /// Workstream S2, mirrors this program's own `cancel_battle` and EVM's `settleBattle`):
+    /// settle only recomputes a deterministic sim from already-committed state, so it needs
+    /// no signature from the attacker — a backend keeper (or anyone else) may submit it.
     #[account(mut)]
-    pub attacker_owner: Signer<'info>,
+    pub attacker_owner: UncheckedAccount<'info>,
 
     /// CHECK: attacker pet's Metaplex Core asset account; PDA seed for `attacker_pet`
     /// and source of truth for ownership (plan §2.3/v2.1 Phase A).

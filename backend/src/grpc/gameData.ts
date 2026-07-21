@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
@@ -15,11 +16,43 @@ export type GameDataClientCtor = new (
 
 let cached: GameDataClientCtor | null = null;
 
+/** Resolve cryptopets.proto for local backend cwd, monorepo root, or Render. */
+export function resolveProtoPath(): string {
+    const candidates: string[] = [];
+
+    if (env.indexerGrpc.protoPath) {
+        // Honor override only if the file actually exists (relative → cwd).
+        candidates.push(path.resolve(process.cwd(), env.indexerGrpc.protoPath));
+    }
+
+    candidates.push(
+        // Copied next to the compiled output by `pnpm --filter backend build`
+        path.resolve(__dirname, '../../proto/cryptopets.proto'),
+        // Monorepo proto/ from backend/dist/src/grpc
+        path.resolve(__dirname, '../../../../proto/cryptopets.proto'),
+        // Monorepo proto/ from backend/src/grpc (tsx / vitest)
+        path.resolve(__dirname, '../../../proto/cryptopets.proto'),
+        // cwd = monorepo root (Render startCommand)
+        path.resolve(process.cwd(), 'proto', 'cryptopets.proto'),
+        // cwd = backend/
+        path.resolve(process.cwd(), '..', 'proto', 'cryptopets.proto'),
+    );
+
+    for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
+    }
+
+    throw new Error(
+        `cryptopets.proto not found (set INDEXER_PROTO_PATH). Tried:\n  ${candidates.join('\n  ')}`,
+    );
+}
+
 export function loadGameDataService(): GameDataClientCtor {
     if (cached) return cached;
 
-    const protoPath =
-        env.indexerGrpc.protoPath ?? path.resolve(process.cwd(), '..', 'proto', 'cryptopets.proto');
+    const protoPath = resolveProtoPath();
     const definition = protoLoader.loadSync(protoPath, {
         keepCase: false,
         longs: String,

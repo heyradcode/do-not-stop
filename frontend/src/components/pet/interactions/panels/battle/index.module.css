@@ -368,12 +368,126 @@
 }
 
 .scene.isResult {
+    background: radial-gradient(circle at 50% 40%, rgb(125 214 255 / 10%), transparent 60%), #020508;
+}
+
+/* Minimizes the overlay (handleBack) — the battle keeps running in the
+   background and the overlay auto-reopens once the result is ready. Only in
+   the fighting scene; the result scene has its own "Leave" action instead. */
+.sceneBack {
+    position: absolute;
+    top: 18px;
+    left: 20px;
+    z-index: 3;
+    appearance: none;
+    background: transparent;
+    border: 1px solid rgb(125 214 255 / 28%);
+    border-radius: 2px;
+    padding: 7px 14px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: var(--cp-cyan);
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sceneBack:hover {
+    border-color: var(--cp-cyan);
+    box-shadow: 0 0 10px rgb(125 214 255 / 22%);
+}
+
+/* Arena backdrop — scoped to just the actual battle panel (banner/HUD/arena in the
+   fighting phase, the result card in the result phase), not the mechanical log or
+   the dialogue rail, which keep their own solid panel backgrounds. Dark top/bottom
+   fade keeps the HUD/result text readable over the neon arena photo, cover-fit and
+   anchored to its glowing floor. */
+.sceneArenaPanel,
+.sceneResultContent {
+    background:
+        linear-gradient(180deg, rgb(2 5 8 / 88%) 0%, rgb(2 5 8 / 40%) 32%, rgb(2 5 8 / 55%) 75%, rgb(2 5 8 / 94%) 100%),
+        url('../../../../../assets/images/background/battle.png') center bottom / cover no-repeat,
+        #020508;
+}
+
+/* Two-column layout, edge to edge: arena/result (+ its mechanical log, same width)
+   on the left, pet banter rail on the right. .sceneLayout always fills the full
+   .scene height, so the rail (a stretched flex sibling) is always full screen
+   height too — in both the fighting and result phases. */
+.sceneLayout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.sceneMain {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* Fighting phase only: the banner/HUD/arena content above the mechanical log,
+   which stays a direct, unpadded, full-width sibling of .sceneMain (see
+   .sceneMechLog) — this is what the arena backdrop image is scoped to. */
+.sceneArenaPanel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Result phase only: center/pad the result card within its own scrollable area,
+   above the mechanical log — which stays a direct, unpadded, full-width child of
+   .sceneMain in both phases (see .sceneMechLog) so its position/width matches the
+   fighting phase exactly, rather than being centered/inset with the result card. */
+.sceneResultContent {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 20px;
     padding: 32px 24px;
-    background: radial-gradient(circle at 50% 40%, rgb(125 214 255 / 10%), transparent 60%), #020508;
     overflow-y: auto;
+}
+
+.sceneDialogueRail {
+    flex: 0 0 380px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-left: 1px solid rgb(101 131 255 / 14%);
+}
+
+.sceneDialogueRail .log {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+}
+
+/* Narrow viewports: stack the banter rail below the arena/result instead of beside it —
+   a fixed-width side column would otherwise squeeze the arena unusably narrow. */
+@media (max-width: 760px) {
+    .sceneLayout {
+        flex-direction: column;
+    }
+
+    .sceneDialogueRail {
+        flex: 0 0 auto;
+        max-height: 160px;
+        border-left: none;
+        border-top: 1px solid rgb(101 131 255 / 14%);
+    }
+
+    .sceneDialogueRail .log {
+        max-height: 160px;
+    }
 }
 
 .sceneBanner {
@@ -390,86 +504,228 @@
 }
 
 /* HP bars */
-.sceneHp {
+/* ── Fighter HUD plates (top bar) ────────────────────────────────────────────
+   Each side is one angular "ID plate" (corners cut opposite the VS badge, like a
+   sci-fi status card) instead of loose floating rows, so the HUD reads as a
+   structured versus panel rather than a pile of stacked text. */
+.hud {
     flex-shrink: 0;
     display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 4px 28px 16px;
+    align-items: stretch;
+    gap: 0;
+    padding: 14px 20px 10px;
 }
 
-.sceneHpSide {
+.plate {
     flex: 1;
     min-width: 0;
-}
-
-.sceneHpHead {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 22px;
+    background: linear-gradient(160deg, rgb(10 16 34 / 92%), rgb(6 10 24 / 96%));
+    border: 1px solid rgb(101 131 255 / 18%);
 }
 
-.sceneHpName {
+.plate.isFighter {
+    border-color: rgb(125 214 255 / 30%);
+    box-shadow: inset 0 0 24px rgb(125 214 255 / 6%), 0 0 18px rgb(125 214 255 / 8%);
+    clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+}
+
+.plate.isEnemy {
+    border-color: rgb(255 123 203 / 30%);
+    box-shadow: inset 0 0 24px rgb(255 123 203 / 6%), 0 0 18px rgb(255 123 203 / 8%);
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+}
+
+.plateHead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.plate.isEnemy .plateHead {
+    flex-direction: row-reverse;
+}
+
+.plateGem {
+    flex-shrink: 0;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    box-shadow: 0 0 8px currentColor;
+}
+
+.plateName {
+    flex: 1;
+    min-width: 0;
     font-family: var(--cp-title-font);
-    font-size: 11px;
+    font-size: 19px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.sceneHpName.isFighter {
+.plate.isFighter .plateName {
     color: var(--cp-cyan);
 }
 
-.sceneHpName.isEnemy {
+.plate.isEnemy .plateName {
     color: var(--cp-magenta);
+    text-align: right;
 }
 
-.sceneHpVal {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--cp-emerald);
+.plateLevel {
     flex-shrink: 0;
+    font-family: var(--cp-title-font);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 3px 9px;
+    border-radius: 2px;
+    background: rgb(255 214 125 / 12%);
+    border: 1px solid rgb(255 214 125 / 35%);
+    color: var(--cp-amber);
 }
 
-.sceneHpTrack {
-    height: 11px;
-    background: rgb(5 13 30 / 92%);
-    border: 1px solid rgb(125 214 255 / 18%);
-    border-radius: 999px;
+.plateHpRow {
+    display: flex;
+}
+
+.plate.isFighter .plateHpRow {
+    justify-content: flex-start;
+}
+
+.plate.isEnemy .plateHpRow {
+    justify-content: flex-end;
+}
+
+.plateHpVal {
+    font-family: var(--cp-title-font);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--cp-emerald);
+    text-shadow: 0 0 14px rgb(15 255 174 / 45%);
+}
+
+.plateGaugeTrack {
+    height: 14px;
+    background:
+        repeating-linear-gradient(
+            135deg,
+            rgb(255 255 255 / 4%) 0 2px,
+            transparent 2px 7px
+        ),
+        rgb(5 10 24 / 85%);
+    border: 1px solid rgb(101 131 255 / 20%);
+    border-radius: 2px;
     overflow: hidden;
 }
 
-.sceneHpTrack.isEnemy {
-    border-color: rgb(255 123 203 / 18%);
-}
-
-.sceneHpFill {
+.plateGaugeFill {
     height: 100%;
-    border-radius: 999px;
     transition: width 0.55s ease;
 }
 
-.sceneHpFill.isFighter {
+.plate.isFighter .plateGaugeFill {
     background: linear-gradient(90deg, #0fffae, #7dd6ff);
-    box-shadow: 0 0 12px rgb(15 255 174 / 60%);
+    box-shadow: 0 0 12px rgb(15 255 174 / 55%);
 }
 
-.sceneHpFill.isEnemy {
+.plate.isEnemy .plateGaugeFill {
     margin-left: auto;
     background: linear-gradient(90deg, #ff7bcb, #b58cff);
-    box-shadow: 0 0 12px rgb(255 123 203 / 60%);
+    box-shadow: 0 0 12px rgb(255 123 203 / 55%);
 }
 
-.sceneHpVs {
-    flex-shrink: 0;
+.plateMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.plate.isEnemy .plateMeta {
+    justify-content: flex-end;
+}
+
+.pill {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    padding: 3px 9px;
+    border-radius: 2px;
+    background: rgb(255 255 255 / 5%);
+    border: 1px solid rgb(255 255 255 / 12%);
+    color: rgb(195 210 255 / 75%);
+}
+
+.pillGhost {
+    background: transparent;
+    color: rgb(195 210 255 / 50%);
+}
+
+.plateStats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-top: 2px;
+}
+
+.plate.isEnemy .plateStats {
+    justify-content: flex-end;
+}
+
+.statChip {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    color: rgb(195 210 255 / 70%);
+}
+
+/* ── VS divider: a pulsing hex badge breaking a connecting energy line ──────── */
+.hudDivider {
+    flex: 0 0 72px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hudDivider::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    transform: translateY(-50%);
+    background: linear-gradient(90deg, rgb(125 214 255 / 0%), rgb(185 160 255 / 60%), rgb(255 123 203 / 0%));
+}
+
+.hudVsBadge {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    background: radial-gradient(circle, rgb(10 16 34 / 96%), rgb(4 6 16 / 98%));
+    border: 1px solid rgb(255 123 203 / 45%);
+    box-shadow: 0 0 16px rgb(255 123 203 / 30%), inset 0 0 10px rgb(125 214 255 / 12%);
     font-family: var(--cp-title-font);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 900;
-    color: rgb(255 123 203 / 65%);
+    letter-spacing: 1px;
+    color: #f6f3ff;
+    animation: cp-vs-pulse 2.4s ease-in-out infinite;
 }
 
 /* Arena */
@@ -493,7 +749,9 @@
     gap: 12px;
 }
 
-/* Decorative attack flashes (ambient — the real battle resolves atomically) */
+/* Decorative attack flashes (ambient — the real battle resolves atomically).
+   Stay off (opacity 0, no animation) until the battle log actually has a strike
+   to react to (.isActive) — they shouldn't loop during taunts/awaiting-randomness. */
 .sceneHit {
     position: absolute;
     top: 24px;
@@ -504,11 +762,11 @@
     z-index: 2;
 }
 
-.sceneHitIn {
+.sceneHitIn.isActive {
     animation: cp-attack-left 1.6s ease-in-out 0.4s infinite;
 }
 
-.sceneHitOut {
+.sceneHitOut.isActive {
     animation: cp-attack-right 1.6s ease-in-out 1.2s infinite;
 }
 
@@ -549,10 +807,9 @@
 
 .sceneClash {
     flex-shrink: 0;
-    width: 72px;
-    text-align: center;
-    font-size: 28px;
-    opacity: 0.65;
+    width: 110px;
+    height: auto;
+    object-fit: contain;
     animation: cp-vs-pulse 1.4s ease-in-out infinite;
 }
 
@@ -564,15 +821,37 @@
     color: rgb(125 214 255 / 70%);
 }
 
-/* Battle Log panel (the chatting) */
+/* Live combat-sim strike flourish (plan-realtime-battle-impl.md Phase 4) */
+.sceneFlourish {
+    flex-shrink: 0;
+    margin: 0 20px 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgb(255 214 125 / 85%);
+}
+
+/* Battle Log panel (the chatting) — title pinned at top, .logBody scrolls
+   independently, content flows top to bottom in reading order (first line on top). */
 .log {
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     margin: 0 20px 20px;
     padding: 12px 16px;
     background: rgb(5 13 30 / 88%);
     border: 1px solid rgb(101 131 255 / 18%);
     border-radius: 8px;
     max-height: 190px;
+}
+
+.logBody {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding-top: 32px;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgb(125 214 255 / 35%) transparent;
@@ -587,9 +866,9 @@
 
 .logTitle {
     font-family: var(--cp-title-font);
-    font-size: 8px;
+    font-size: 16px;
     font-weight: 700;
-    letter-spacing: 2.2px;
+    letter-spacing: 1.6px;
     text-transform: uppercase;
     color: rgb(125 214 255 / 45%);
     margin-bottom: 8px;
@@ -602,9 +881,70 @@
     color: rgb(195 210 255 / 35%);
 }
 
-.scene.isResult .log {
-    width: min(100%, 520px);
+/* Mechanical (round-by-round) log — hits/crits/damage, along the bottom of the scene.
+   Warm/gold-tinted panel (vs. the dialogue rail's cool blue tint) so the two logs read
+   as distinct at a glance. No panel margin or padding — full width, flush against the
+   bottom of its column; title/entries carry their own padding instead, same split as
+   .log/.logBody. Title is pinned (outside .mechLogBody's scroll), same fixed-header
+   pattern as .log/.logTitle. */
+.sceneMechLog {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     margin: 0;
+    height: 220px;
+    background: rgb(18 10 4 / 88%);
+    border: 1px solid rgb(255 214 125 / 16%);
+    border-radius: 0;
+}
+
+.mechLogTitle {
+    flex-shrink: 0;
+    font-family: var(--cp-title-font);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: rgb(255 214 125 / 50%);
+    padding: 10px 16px 0;
+    margin-bottom: 6px;
+}
+
+.mechLogBody {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 214 125 / 30%) transparent;
+}
+
+.mechLogEntry {
+    margin: 0;
+    padding: 2px 16px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: rgb(195 210 255 / 60%);
+}
+
+.mechLogEntry:last-child {
+    padding-bottom: 10px;
+}
+
+.mechLogWaiting {
+    margin: 0;
+    padding: 0 16px 10px;
+    font-size: 12px;
+    font-style: italic;
+    color: rgb(195 210 255 / 35%);
+}
+
+.mechLogEntry.isFighter {
+    color: rgb(125 214 255 / 80%);
+}
+
+.mechLogEntry.isEnemy {
+    color: rgb(255 123 203 / 80%);
 }
 
 /* Result banner */
@@ -682,8 +1022,8 @@
     flex-wrap: wrap;
 }
 
-.resultRematch,
-.resultDone {
+.resultDone,
+.resultReplay {
     appearance: none;
     border-radius: 2px;
     padding: 11px 22px;
@@ -693,28 +1033,6 @@
     text-transform: uppercase;
     cursor: pointer;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.resultRematch {
-    background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
-    border: 1px solid rgb(255 110 196 / 55%);
-    color: #ff9ad6;
-    box-shadow: inset 0 0 12px rgb(255 110 196 / 14%), 0 0 12px rgb(255 110 196 / 22%);
-
-    &.isDefeat {
-        border-color: rgb(255 110 196 / 38%);
-        box-shadow: inset 0 0 10px rgb(255 110 196 / 10%), 0 0 8px rgb(255 110 196 / 16%);
-    }
-
-    &:hover:not(:disabled) {
-        transform: translateY(-1px);
-        border-color: rgb(255 110 196 / 75%);
-    }
-
-    &:disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
-    }
 }
 
 .resultDone {
@@ -730,6 +1048,17 @@
     &:disabled {
         opacity: 0.55;
         cursor: not-allowed;
+    }
+}
+
+.resultReplay {
+    background: transparent;
+    border: 1px solid rgb(255 207 112 / 28%);
+    color: var(--cp-amber, #ffcf70);
+
+    &:hover {
+        border-color: var(--cp-amber, #ffcf70);
+        box-shadow: 0 0 10px rgb(255 207 112 / 22%);
     }
 }
 

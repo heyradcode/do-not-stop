@@ -1,6 +1,7 @@
 import * as grpc from '@grpc/grpc-js';
 import { env } from '@config/env';
 import { loadGameDataService } from './gameData';
+import { createCircuitBreaker } from './circuitBreaker';
 import type { Chain } from '@typings/chain';
 
 /**
@@ -53,8 +54,11 @@ type EstimateClient = grpc.Client & {
 };
 
 let client: EstimateClient | null = null;
-let consecutiveFailures = 0;
-let breakerOpenUntil = 0;
+const breaker = createCircuitBreaker({
+    threshold: BREAKER_THRESHOLD,
+    cooldownMs: BREAKER_COOLDOWN_MS,
+    label: '[estimate-grpc]',
+});
 
 function getClient(): EstimateClient | null {
     const { addr } = env.indexerGrpc;
@@ -66,26 +70,13 @@ function getClient(): EstimateClient | null {
     return client;
 }
 
-function breakerAllows(): boolean {
-    return Date.now() >= breakerOpenUntil;
-}
-
-function recordFailure(reason: string): void {
-    consecutiveFailures += 1;
-    if (consecutiveFailures >= BREAKER_THRESHOLD) {
-        breakerOpenUntil = Date.now() + BREAKER_COOLDOWN_MS;
-        consecutiveFailures = 0;
-        console.warn(`[estimate-grpc] breaker open for ${BREAKER_COOLDOWN_MS}ms (${reason})`);
-    }
-}
-
 /**
  * Pre-fight win estimate via indexer-go. Returns null whenever the estimate
  * should be omitted instead of shown (link off, breaker open, timeout, cold
  * cache / any error) — the matchup page degrades to "odds unavailable".
  */
 export function tryGrpcEstimateWin(params: EstimateWinParams): Promise<WinEstimate | null> {
-    if (!breakerAllows()) return Promise.resolve(null);
+    if (!breaker.allows()) return Promise.resolve(null);
     const estimateClient = getClient();
     if (!estimateClient) return Promise.resolve(null);
 
@@ -101,11 +92,11 @@ export function tryGrpcEstimateWin(params: EstimateWinParams): Promise<WinEstima
             { deadline },
             (err, res) => {
                 if (err) {
-                    recordFailure(err.message);
+                    breaker.recordFailure(err.message);
                     resolve(null);
                     return;
                 }
-                consecutiveFailures = 0;
+                breaker.recordSuccess();
                 resolve({ winProbability: res.winProbability, samples: res.samples });
             },
         );

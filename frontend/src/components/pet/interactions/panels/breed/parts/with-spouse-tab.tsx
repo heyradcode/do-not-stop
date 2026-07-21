@@ -4,7 +4,7 @@ import PendingBreedNotice from './pending-breed-notice';
 import SpouseLabel from './spouse-label';
 import styles from '../index.module.css';
 
-type WithSpouseTabProps = {
+export type WithSpouseTabProps = {
     allPets: { id: string; pet: Pet }[];
     chain: PetChain | null;
     spousePetId: string;

@@ -3,7 +3,7 @@ import clsx from 'clsx';
 import type { MarriageTab } from '../types';
 import styles from '../index.module.css';
 
-type MarriageTabBarProps = {
+export type MarriageTabBarProps = {
     tab: MarriageTab;
     onChange: (tab: MarriageTab) => void;
     proposalCount: number;

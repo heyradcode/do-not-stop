@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react';
 import { useChainAdapter } from './adapters/useChainAdapter';
 import { useTxSuccess } from './useTxSuccess';
 import { useEvmBattleFlow } from './chains/ethereum/useEvmBattleFlow';
+import { useLiveBattleReplaySolana } from './chains/solana/useLiveBattleReplaySolana';
 import type { BattleResolvedResult } from '../types/battle';
 
 export interface BattlePetsArgs {
@@ -37,6 +38,12 @@ export const useBattlePets = (options?: UseBattlePetsOptions) => {
         enabled: isEvm,
         onResolved: (result) => onSuccessRef.current?.(result),
     });
+
+    // Solana: no async request/settle state machine like EVM's, so live
+    // replay is derived independently by polling for a pending battleRequest
+    // (see useLiveBattleReplaySolana's header comment for why, and its
+    // verification caveat).
+    const solanaLiveReplay = useLiveBattleReplaySolana(!isEvm);
 
     // Solana: success fires from the mutateAsync return value (BattleResolvedResult | null).
     // useTxSuccess is kept as a fallback only — the ref prevents double-firing.
@@ -80,6 +87,11 @@ export const useBattlePets = (options?: UseBattlePetsOptions) => {
         isAwaitingVrf: isEvm ? battleFlow.phase === 'awaiting-vrf' : battlePets.lifecycle.phase === 'awaiting-vrf',
         phase: isEvm ? battleFlow.phase : (battlePets.lifecycle.phase === 'awaiting-vrf' ? 'awaiting-vrf' : undefined),
         result: battleFlow.result,
+        /** Client-side live-replay outcome, presentation only — see
+         *  useEvmBattleFlow's liveReplay doc (EVM) and
+         *  useLiveBattleReplaySolana's header doc (Solana, incl. its
+         *  verification caveat) for how each chain derives this. */
+        liveReplay: isEvm ? battleFlow.liveReplay : solanaLiveReplay,
         reset,
         clearErrors: reset,
         hash: battlePets.lifecycle.hash,

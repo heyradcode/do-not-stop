@@ -52,13 +52,21 @@ export interface UseOpponentsOptions {
     enabled?: boolean;
 }
 
+export interface UseOpponentsResult {
+    opponents: OpponentPet[];
+    total: number;
+    isLoading: boolean;
+    error: Error | null;
+    refetch: () => void;
+}
+
 /**
  * Fetches battle-ready pets owned by OTHER players for PvP matchmaking via the
  * backend's `/graphql` endpoint. Requires {@link ApiClientProvider} and an
  * authenticated session (the JWT address is used server-side to exclude the
  * caller's own pets).
  */
-export const useOpponents = ({ chain, minLevel, page = 0, enabled = true }: UseOpponentsOptions) => {
+export const useOpponents = ({ chain, minLevel, page = 0, enabled = true }: UseOpponentsOptions): UseOpponentsResult => {
     const apiClient = useApiClient();
     const { isAuthenticated } = useAuth();
     const baseURL = apiClient.defaults.baseURL ?? '';
@@ -98,8 +106,10 @@ export const useOpponents = ({ chain, minLevel, page = 0, enabled = true }: UseO
     );
 
     return {
-        ...query,
         opponents,
         total: query.data?.total ?? 0,
+        isLoading: query.isLoading,
+        error: query.error as Error | null,
+        refetch: query.refetch,
     };
 };

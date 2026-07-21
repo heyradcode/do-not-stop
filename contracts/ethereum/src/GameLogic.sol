@@ -21,10 +21,16 @@ import "./DnaLib.sol";
  *        entropyCallback                       → store randomness only (provider's default callback gas)
  *        settleBattle / settleBreed            → run sim / mix DNA, apply results
  *      This makes a failed settle retryable and keeps states symmetric across EVM/Solana.
+ *
+ *      requestBattle additionally snapshots both pets' sim inputs (dna/level/rarity/species)
+ *      into the pending record; settleBattle sims from that snapshot, not live state, so a
+ *      mutation between request and settle (e.g. train()) can't change a committed battle's
+ *      outcome (plan-realtime-battle-impl Phase 1). Requests from before this field existed
+ *      fall back to a live read, guarded by the record's `snapshotted` flag.
  */
 contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, IEntropyConsumer {
 
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.1.0";
 
     // ─── events ───────────────────────────────────────────────────────────────
 
@@ -64,6 +70,8 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
     event MintRequested(address indexed owner, uint256 indexed requestId);
     event MintSettled(address indexed owner, uint256 indexed petId, uint256 indexed requestId);
 
+    event GameConfigUpdated(address config);
+
     // ─── structs ──────────────────────────────────────────────────────────────
 
     struct MintRequest {
@@ -91,6 +99,22 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
         uint256 petId2;
         uint256 randomness;
         bool    fulfilled;
+        // v1.1 snapshot (plan-realtime-battle-impl Phase 1). Captured in requestBattle;
+        // settleBattle sims from these, not live state, so a train() between request
+        // and settle cannot change a committed battle's outcome.
+        bool    snapshotted; // false for requests created before this upgrade
+        uint256 dna1;
+        uint256 dna2;
+        uint32  level1;
+        uint32  level2;
+        uint8   rarity1;
+        uint8   rarity2;
+        uint16  speciesId1;
+        uint16  speciesId2;
+        // Escrowed battleFee (GameConfig.battleFee at request time), refunded on cancelBattle
+        // since no settleBattle tx — and therefore no keeper gas cost — is ever sent for a
+        // cancelled request. 0 for requests made before this field existed.
+        uint256 battleFee;
     }
 
     enum RequestType { None, Breed, Battle, Mint }
@@ -150,10 +174,22 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
+    /// @notice Repoint at a newly deployed GameConfig (GameConfig itself isn't a proxy —
+    ///         adding a tunable means deploying a fresh instance and calling this).
+    /// @dev The new instance starts from GameConfig's constructor defaults; the caller is
+    ///      responsible for replaying any prior on-chain tuning (setBreedFee, etc.) onto it
+    ///      before or after pointing this proxy at it.
+    function setGameConfig(address gameConfig_) external onlyOwner {
+        require(gameConfig_ != address(0), "Zero address");
+        gameConfig = GameConfig(gameConfig_);
+        emit GameConfigUpdated(gameConfig_);
+    }
+
     // ─── battle ───────────────────────────────────────────────────────────────
 
-    /// @notice Request a battle between two ready, cross-owned pets, paying the Pyth Entropy fee.
+    /// @notice Request a battle between two ready, cross-owned pets, paying the battle + Pyth Entropy fees.
     /// @dev Caller must own petId1; randomness arrives via entropyCallback, then anyone settles.
+    ///      battleFee funds the settle keeper's settleBattle gas and is refunded on cancelBattle.
     /// @param petId1 The caller's pet.
     /// @param petId2 The opponent's pet (must have a different owner).
     /// @return requestId The Entropy sequence number identifying this pending battle.
@@ -167,9 +203,12 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
         // onlyPetOwner(petId1) already proved ownerOf(petId1) == msg.sender.
         require(msg.sender != petCore.ownerOf(petId2), "Can't fight own pet");
 
-        (uint32 lvl1, , , ) = petCore.getPetStats(petId1);
-        (uint32 lvl2, , , ) = petCore.getPetStats(petId2);
-        uint32 gap = lvl1 > lvl2 ? lvl1 - lvl2 : lvl2 - lvl1;
+        // Snapshot both pets now: settleBattle sims from this snapshot, not live state,
+        // so no mutation between request and settle (e.g. train()) can change a
+        // committed battle's outcome (plan-realtime-battle-impl Phase 1).
+        PetCore.Pet memory p1 = petCore.getPet(petId1);
+        PetCore.Pet memory p2 = petCore.getPet(petId2);
+        uint32 gap = p1.level > p2.level ? p1.level - p2.level : p2.level - p1.level;
         require(gap <= gameConfig.levelBandWidth(), "Level gap too large");
         require(
             petBattleRequestId[petId1] == 0 && petBattleRequestId[petId2] == 0,
@@ -177,18 +216,29 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
         );
 
         uint256 entropyFee = entropy.getFeeV2();
-        require(msg.value >= entropyFee, "Insufficient entropy fee");
+        uint256 battleFee  = gameConfig.battleFee();
+        require(msg.value >= battleFee + entropyFee, "Insufficient battle/entropy fee");
         requestId = _requestRandomness(entropyFee);
 
         _requestTypes[requestId]    = RequestType.Battle;
         petBattleRequestId[petId1]   = requestId;
         petBattleRequestId[petId2]   = requestId;
         _battleRequests[requestId]  = PendingBattle({
-            requester:  msg.sender,
-            petId1:     petId1,
-            petId2:     petId2,
-            randomness: 0,
-            fulfilled:  false
+            requester:   msg.sender,
+            petId1:      petId1,
+            petId2:      petId2,
+            randomness:  0,
+            fulfilled:   false,
+            snapshotted: true,
+            dna1:        p1.dna,
+            dna2:        p2.dna,
+            level1:      p1.level,
+            level2:      p2.level,
+            rarity1:     p1.rarity,
+            rarity2:     p2.rarity,
+            speciesId1:  p1.speciesId,
+            speciesId2:  p2.speciesId,
+            battleFee:   battleFee
         });
 
         emit BattleRandomnessRequested(msg.sender, requestId, petId1, petId2);
@@ -202,23 +252,41 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
         require(pending.requester != address(0), "No pending battle");
         require(pending.fulfilled, "Entropy not yet fulfilled");
 
-        PetCore.Pet memory p1 = petCore.getPet(pending.petId1);
-        PetCore.Pet memory p2 = petCore.getPet(pending.petId2);
+        // Sim from the request-time snapshot when available (plan-realtime-battle-impl
+        // Phase 1) so a mutation between request and settle can't change the outcome.
+        // Requests created before this upgrade have no snapshot; fall back to live state.
+        uint256 dna1; uint256 dna2;
+        uint32  level1; uint32 level2;
+        uint8   rarity1; uint8 rarity2;
+        uint16  speciesId1; uint16 speciesId2;
+        if (pending.snapshotted) {
+            dna1       = pending.dna1;       dna2       = pending.dna2;
+            level1     = pending.level1;     level2     = pending.level2;
+            rarity1    = pending.rarity1;    rarity2    = pending.rarity2;
+            speciesId1 = pending.speciesId1; speciesId2 = pending.speciesId2;
+        } else {
+            PetCore.Pet memory p1 = petCore.getPet(pending.petId1);
+            PetCore.Pet memory p2 = petCore.getPet(pending.petId2);
+            dna1       = p1.dna;       dna2       = p2.dna;
+            level1     = p1.level;     level2     = p2.level;
+            rarity1    = p1.rarity;    rarity2    = p2.rarity;
+            speciesId1 = p1.speciesId; speciesId2 = p2.speciesId;
+        }
 
-        uint8 skill1 = uint8(p1.speciesId % 8);
-        uint8 skill2 = uint8(p2.speciesId % 8);
+        uint8 skill1 = uint8(speciesId1 % 8);
+        uint8 skill2 = uint8(speciesId2 % 8);
 
         CombatSim.BattleResult memory sim = CombatSim(gameConfig.combatSim()).simulate(
-            p1.dna, p1.rarity, p1.level, skill1,
-            p2.dna, p2.rarity, p2.level, skill2,
+            dna1, rarity1, level1, skill1,
+            dna2, rarity2, level2, skill2,
             pending.randomness,
             gameConfig.getSkillConfig()
         );
 
         uint256 winnerId    = sim.firstWins ? pending.petId1 : pending.petId2;
         uint256 loserId     = sim.firstWins ? pending.petId2 : pending.petId1;
-        uint32  winnerLevel = sim.firstWins ? p1.level : p2.level;
-        uint32  loserLevel  = sim.firstWins ? p2.level : p1.level;
+        uint32  winnerLevel = sim.firstWins ? level1 : level2;
+        uint32  loserLevel  = sim.firstWins ? level2 : level1;
 
         petCore.updateBattleStats(winnerId, true);
         petCore.updateBattleStats(loserId,  false);
@@ -265,6 +333,22 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
         petBattleRequestId[pending.petId2] = 0;
         delete _requestTypes[requestId];
         delete _battleRequests[requestId];
+
+        // No settle, no keeper gas spent — refund the escrowed battle fee.
+        if (pending.battleFee > 0) {
+            (bool ok, ) = payable(pending.requester).call{value: pending.battleFee}("");
+            require(ok, "Battle fee refund failed");
+        }
+    }
+
+    /// @notice Read a pending battle's stored request/snapshot data.
+    /// @dev Lets the frontend read the exact inputs settleBattle will simulate from, so it can
+    ///      run the same deterministic sim client-side once entropy reveals
+    ///      (plan-realtime-battle-impl Phase 4). Returns a zeroed struct for an unknown/settled
+    ///      requestId; callers must check `requester != address(0)`.
+    /// @param requestId The pending battle's Entropy sequence number.
+    function getBattleRequest(uint256 requestId) external view returns (PendingBattle memory) {
+        return _battleRequests[requestId];
     }
 
     // ─── breeding ─────────────────────────────────────────────────────────────

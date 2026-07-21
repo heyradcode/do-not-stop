@@ -2,14 +2,14 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // Use the in-memory store by keeping REDIS_URL unset.
 vi.mock('@config/redis', () => ({ getRedis: vi.fn().mockResolvedValue(null) }));
-vi.mock('@features/dialogue/result/pregen.types', () => ({
+vi.mock('@typings/pregen', () => ({
     PREGEN_TTL_MS: 60_000,
     PREGEN_TTL_SEC: 60,
 }));
 
 // Reset the module between tests so each suite gets a fresh singleton store.
 import { getPregenStore } from '../../src/repositories/pregen.repository';
-import type { PregenDialogue } from '../../src/features/dialogue/result/pregen.types';
+import type { PregenDialogue } from '../../src/types/pregen';
 
 const payload: PregenDialogue = {
     attackerWins: [{ speaker: 'attacker', text: 'I win!', phase: 'result' }],

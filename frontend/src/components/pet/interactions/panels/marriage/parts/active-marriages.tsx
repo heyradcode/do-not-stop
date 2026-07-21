@@ -3,7 +3,7 @@ import { type OpponentPet, type Pet, type PetChain } from '@shared/core';
 import MarriageCard from './marriage-card';
 import styles from '../index.module.css';
 
-type ActiveMarriagesProps = {
+export type ActiveMarriagesProps = {
     chainPets: Pet[];
     chain: PetChain | null;
     petById: Map<string, OpponentPet>;

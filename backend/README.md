@@ -90,6 +90,10 @@ pnpm dev
 - `PORT`: Server port (default: 3001; Render sets this automatically)
 - `CORS_ORIGIN`: Optional comma-separated allowed origins for production CORS
 
+See [`env.example`](./env.example) for the full list (indexer link, AI dialogue,
+Helius webhooks, the settle keeper's `KEEPER_*` vars — see
+[API.md](./API.md#relevant-environment-variables)).
+
 ## Deploy to Render
 
 This repo includes a [`render.yaml`](../render.yaml) blueprint at the monorepo root.

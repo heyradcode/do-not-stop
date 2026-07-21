@@ -17,6 +17,12 @@ import {
 import { MPL_CORE_PROGRAM_ID } from './constants';
 import { sleep } from '../common';
 
+// `program.methods.<name>!(...)` below: `program: Program<Idl>` (untyped generic IDL, not
+// a generated `Program<Cryptopets>`) makes `.methods` an index signature, so consumers with
+// `noUncheckedIndexedAccess` enabled (backend, not frontend/mobile) see every property as
+// possibly undefined. The instruction genuinely exists on whichever program's IDL was
+// fetched — asserted, not defensively checked.
+
 const toPublicKey = (value: unknown): PublicKey => {
     if (value instanceof PublicKey) return value;
     if (value && typeof value === 'object' && 'toBase58' in value) {
@@ -63,7 +69,7 @@ const trySettlePendingMint = async (args: MintWithVrfArgs): Promise<string | nul
     const [pet] = petPdaByAsset(programId, assetKp.publicKey.toBase58());
 
     const settleMintIx = await program.methods
-        .settleMint()
+        .settleMint!()
         .accounts({
             globalState,
             owner,
@@ -122,7 +128,7 @@ export const mintWithSwitchboardVrf = async (args: MintWithVrfArgs): Promise<str
 
     const commitIx = await randomness.commitIx(queue.pubkey, owner);
     const commitMintIx = await program.methods
-        .commitMint(rngKp.publicKey, name)
+        .commitMint!(rngKp.publicKey, name)
         .accounts({
             globalState,
             owner,
@@ -152,7 +158,7 @@ export const mintWithSwitchboardVrf = async (args: MintWithVrfArgs): Promise<str
     const [pet] = petPdaByAsset(programId, assetKp.publicKey.toBase58());
 
     const settleMintIx = await program.methods
-        .settleMint()
+        .settleMint!()
         .accounts({
             globalState,
             owner,

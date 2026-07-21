@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "prisma generate && tsc",
+    "build": "prisma generate && tsc && node scripts/copy-proto.cjs && node scripts/bundle-shared-node.cjs",
     "start": "node dist/src/server.js",
     "dev": "nodemon",
     "clean": "rm -rf dist",
@@ -23,10 +23,14 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.68",
+    "@coral-xyz/anchor": "^0.32.0",
     "@grpc/grpc-js": "^1.14.4",
     "@grpc/proto-loader": "^0.8.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "@shared/core": "workspace:*",
+    "@solana/web3.js": "^1.95.0",
+    "@switchboard-xyz/on-demand": "^3.10.2",
     "ai": "^6.0.197",
     "bs58": "^6.0.0",
     "cors": "^2.8.5",
@@ -40,6 +44,8 @@
     "module-alias": "^2.2.3",
     "pg": "^8.21.0",
     "tweetnacl": "^1.0.3",
+    "viem": "^2.0.0",
+    "ws": "^8.18.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -48,7 +54,9 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^22.18.6",
     "@types/pg": "^8.20.0",
+    "@types/ws": "^8.5.13",
     "@vitest/coverage-v8": "^4.1.8",
+    "esbuild": "^0.25.0",
     "nodemon": "^3.1.10",
     "prisma": "^7.8.0",
     "tsx": "^4.19.2",

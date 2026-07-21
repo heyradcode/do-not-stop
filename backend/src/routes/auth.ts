@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 import { authRateLimit } from '@middleware/rateLimit';
-import { getNonce, verify } from '@features/auth/auth.controller';
+import { getNonce, verify } from '@features/auth';
 
 const router: Router = express.Router();
 

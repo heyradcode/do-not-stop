@@ -17,6 +17,13 @@ export interface IncomingProposal {
     expiry: number;
 }
 
+export interface UseIncomingProposalsResult {
+    proposals: IncomingProposal[];
+    isLoading: boolean;
+    error: Error | null;
+    refetch: () => void;
+}
+
 // Anchor discriminator (8) + petAId u32 (4) = offset 12 for petBId.
 const MARRIAGE_PROPOSAL_PET_B_OFFSET = 12;
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
@@ -25,13 +32,13 @@ const ZERO_ADDR = '0x0000000000000000000000000000000000000000';
 const useEvmIncomingProposals = (
     userPetIds: string[],
     enabled: boolean,
-): { proposals: IncomingProposal[]; isLoading: boolean } => {
+): UseIncomingProposalsResult => {
     const { evm } = usePetsConfig();
     const petCore = evm?.petCore.address as `0x${string}` | undefined;
     const abi = useMemo(() => evm?.petCore.abi ?? [], [evm?.petCore.abi]);
     const chainId = evm?.chainId;
 
-    const { pets: allPets, isLoading: petsLoading } = useAllPets('evm', { enabled });
+    const { pets: allPets, isLoading: petsLoading, error: petsError, refetch: refetchPets } = useAllPets('evm', { enabled });
 
     const contracts = useMemo(
         () =>
@@ -45,7 +52,12 @@ const useEvmIncomingProposals = (
         [allPets, petCore, abi, chainId],
     );
 
-    const { data: results, isLoading: readsLoading } = useReadContracts({
+    const {
+        data: results,
+        isLoading: readsLoading,
+        error: readsError,
+        refetch: refetchReads,
+    } = useReadContracts({
         contracts,
         allowFailure: true,
         query: {
@@ -76,14 +88,22 @@ const useEvmIncomingProposals = (
         });
     }, [results, allPets, userPetIds]);
 
-    return { proposals, isLoading: petsLoading || readsLoading };
+    return {
+        proposals,
+        isLoading: petsLoading || readsLoading,
+        error: petsError ?? (readsError as Error | null),
+        refetch: () => {
+            refetchPets();
+            void refetchReads();
+        },
+    };
 };
 
 /** Solana: use getProgramAccounts with memcmp on petBId to find incoming proposals. */
 const useSolanaIncomingProposals = (
     userPetIds: string[],
     enabled: boolean,
-): { proposals: IncomingProposal[]; isLoading: boolean } => {
+): UseIncomingProposalsResult => {
     const { programId, program, isReady } = useProgram();
     const { pets: allPets } = useAllPets('solana', { enabled });
 
@@ -145,6 +165,8 @@ const useSolanaIncomingProposals = (
     return {
         proposals: query.data ?? [],
         isLoading: query.isLoading,
+        error: query.error as Error | null,
+        refetch: query.refetch,
     };
 };
 
@@ -156,7 +178,7 @@ const useSolanaIncomingProposals = (
 export const useIncomingProposals = (
     chain: PetChain | null,
     userPetIds: string[],
-): { proposals: IncomingProposal[]; isLoading: boolean } => {
+): UseIncomingProposalsResult => {
     const isEvm = chain === 'evm';
     const isSolana = chain === 'solana';
 
@@ -165,5 +187,5 @@ export const useIncomingProposals = (
 
     if (isEvm) return evm;
     if (isSolana) return solana;
-    return { proposals: [], isLoading: false };
+    return { proposals: [], isLoading: false, error: null, refetch: () => {} };
 };

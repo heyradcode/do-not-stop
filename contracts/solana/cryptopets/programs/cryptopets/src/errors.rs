@@ -78,6 +78,8 @@ pub enum ErrorCode {
     PetNotTrainReady,
     #[msg("Breed fee exceeds the maximum allowed")]
     InvalidBreedFee,
+    #[msg("Battle fee exceeds the maximum allowed")]
+    InvalidBattleFee,
     #[msg("Stud fee exceeds the maximum allowed")]
     InvalidStudFee,
     #[msg("Marriage cooldown exceeds the maximum allowed")]

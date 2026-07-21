@@ -401,6 +401,97 @@
                            "type":  "uint256"
                        }
                    ],
+        "name":  "getBattleRequest",
+        "outputs":  [
+                        {
+                            "components":  [
+                                               {
+                                                   "internalType":  "address",
+                                                   "name":  "requester",
+                                                   "type":  "address"
+                                               },
+                                               {
+                                                   "internalType":  "uint256",
+                                                   "name":  "petId1",
+                                                   "type":  "uint256"
+                                               },
+                                               {
+                                                   "internalType":  "uint256",
+                                                   "name":  "petId2",
+                                                   "type":  "uint256"
+                                               },
+                                               {
+                                                   "internalType":  "uint256",
+                                                   "name":  "randomness",
+                                                   "type":  "uint256"
+                                               },
+                                               {
+                                                   "internalType":  "bool",
+                                                   "name":  "fulfilled",
+                                                   "type":  "bool"
+                                               },
+                                               {
+                                                   "internalType":  "bool",
+                                                   "name":  "snapshotted",
+                                                   "type":  "bool"
+                                               },
+                                               {
+                                                   "internalType":  "uint256",
+                                                   "name":  "dna1",
+                                                   "type":  "uint256"
+                                               },
+                                               {
+                                                   "internalType":  "uint256",
+                                                   "name":  "dna2",
+                                                   "type":  "uint256"
+                                               },
+                                               {
+                                                   "internalType":  "uint32",
+                                                   "name":  "level1",
+                                                   "type":  "uint32"
+                                               },
+                                               {
+                                                   "internalType":  "uint32",
+                                                   "name":  "level2",
+                                                   "type":  "uint32"
+                                               },
+                                               {
+                                                   "internalType":  "uint8",
+                                                   "name":  "rarity1",
+                                                   "type":  "uint8"
+                                               },
+                                               {
+                                                   "internalType":  "uint8",
+                                                   "name":  "rarity2",
+                                                   "type":  "uint8"
+                                               },
+                                               {
+                                                   "internalType":  "uint16",
+                                                   "name":  "speciesId1",
+                                                   "type":  "uint16"
+                                               },
+                                               {
+                                                   "internalType":  "uint16",
+                                                   "name":  "speciesId2",
+                                                   "type":  "uint16"
+                                               }
+                                           ],
+                            "internalType":  "struct GameLogic.PendingBattle",
+                            "name":  "",
+                            "type":  "tuple"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "requestId",
+                           "type":  "uint256"
+                       }
+                   ],
         "name":  "cancelBreed",
         "outputs":  [
 
