@@ -43,6 +43,7 @@ services:
   # contract. Set the connection env vars in the dashboard:
   #   DATABASE_URL, EVM_SUBGRAPH_URL, SOLANA_WS_URL, SOLANA_RPC_URL,
   #   SOLANA_PROGRAM_ID — and at promotion: ROSTER_CACHE_ENABLED=true.
+  # Do NOT set HEALTH_ADDR on Render (leave unset so PORT → 0.0.0.0:$PORT).
   - type: web
     name: do-not-stop-indexer
     runtime: go
