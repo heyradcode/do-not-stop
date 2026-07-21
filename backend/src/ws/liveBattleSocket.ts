@@ -5,10 +5,7 @@ import type { Server } from 'node:http';
 // The installed `ws` runtime (8.18.3) supports both forms; using the older-but-compatible
 // `WebSocket.Server` form works regardless of which @types/ws version ends up installed.
 import WebSocket from 'ws';
-// Deep import (not the `@shared/core` barrel): the barrel re-exports React hooks/contexts
-// (.tsx files) that pull JSX into backend's typecheck, which has no --jsx support (same
-// reasoning as settle-keeper-solana's imports).
-import type { LiveBattleWireMessage } from '@shared/core/src/types/liveBattleSocket';
+import type { LiveBattleWireMessage } from '@shared/core/node';
 
 /**
  * Pushes battle updates (backend-run sim once entropy reveals, then the actual settled

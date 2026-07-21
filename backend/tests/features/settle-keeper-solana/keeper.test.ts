@@ -66,8 +66,8 @@ vi.mock('@switchboard-xyz/on-demand', () => ({
     asV0Tx: mocks.asV0Tx,
 }));
 
-vi.mock('@shared/core/src/utils/solana', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@shared/core/src/utils/solana')>();
+vi.mock('@shared/core/node', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@shared/core/node')>();
     return {
         ...actual,
         getAccountClient: mocks.getAccountClient,

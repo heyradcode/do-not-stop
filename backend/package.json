@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "prisma generate && tsc && node scripts/copy-proto.cjs",
-    "start": "node dist/src/server.js",
+    "start": "node --import tsx dist/src/server.js",
     "dev": "nodemon",
     "clean": "rm -rf dist",
     "postinstall": "prisma generate",
@@ -44,6 +44,7 @@
     "module-alias": "^2.2.3",
     "pg": "^8.21.0",
     "tweetnacl": "^1.0.3",
+    "tsx": "^4.19.2",
     "viem": "^2.0.0",
     "ws": "^8.18.3",
     "zod": "^4.4.3"
@@ -58,7 +59,6 @@
     "@vitest/coverage-v8": "^4.1.8",
     "nodemon": "^3.1.10",
     "prisma": "^7.8.0",
-    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^4.1.8"
   }

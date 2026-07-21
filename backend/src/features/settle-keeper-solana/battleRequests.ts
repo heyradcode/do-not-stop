@@ -1,7 +1,5 @@
 import type { PublicKey } from '@solana/web3.js';
-// Deep import, not the `@shared/core` barrel: the barrel re-exports React hooks/contexts
-// (.tsx, no JSX support in this Node backend) this module has no business pulling in.
-import { toU32 } from '@shared/core/src/utils/solana';
+import { toU32 } from '@shared/core/node';
 
 /**
  * Normalized fields pulled off an Anchor-decoded `BattleRequest` account

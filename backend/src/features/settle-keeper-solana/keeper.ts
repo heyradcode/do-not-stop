@@ -1,15 +1,13 @@
 import { Connection, Keypair, PublicKey, type VersionedTransaction } from '@solana/web3.js';
 import { AnchorProvider, Program, Wallet, type Idl } from '@coral-xyz/anchor';
 import * as sb from '@switchboard-xyz/on-demand';
-// Deep import, not the `@shared/core` barrel: the barrel re-exports React hooks/contexts
-// (.tsx, no JSX support in this Node backend) this module has no business pulling in.
 import {
     fetchAssetByPetId,
     getAccountClient,
     globalStatePda,
     petPdaByAsset,
     sendSignedTx,
-} from '@shared/core/src/utils/solana';
+} from '@shared/core/node';
 import { decodeBattleRequest } from './battleRequests';
 
 export interface SolanaSettleKeeperConfig {

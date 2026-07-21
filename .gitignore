@@ -184,6 +184,12 @@ Thumbs.db
 dist/
 build/
 
+# @shared/core is raw TypeScript (no build). Ignore accidental tsc emit into it.
+shared/src/**/*.js
+shared/src/**/*.js.map
+shared/src/**/*.d.ts
+shared/src/**/*.d.ts.map
+
 # Android debug keystore (should not be committed)
 **/debug.keystore
 
