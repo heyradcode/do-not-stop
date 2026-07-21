@@ -7,9 +7,11 @@ import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { startSolanaSettleKeeperFeature, stopSolanaSettleKeeperFeature } from '@features/settle-keeper-solana';
 import { startLiveBattleSocket, stopLiveBattleSocket } from '@ws/liveBattleSocket';
 
-const server = app.listen(env.port, () => {
+// Bind 0.0.0.0 so Render's internal health check can reach the process
+// (listen(port) alone is not always reachable on their network scan).
+const server = app.listen(env.port, '0.0.0.0', () => {
     const { port } = env;
-    console.log(`🚀 Backend server running on port ${port}`);
+    console.log(`🚀 Backend server running on 0.0.0.0:${port}`);
     console.log(`📊 Health check: http://localhost:${port}/api/health`);
     console.log(`🔐 Auth endpoints: http://localhost:${port}/api/auth`);
     console.log(`🛡️  Protected endpoints: http://localhost:${port}/api/protected`);
