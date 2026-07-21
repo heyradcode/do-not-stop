@@ -65,7 +65,7 @@ export const env = {
     indexerGrpc: {
         /** e.g. localhost:50051. */
         addr: process.env.INDEXER_GRPC_ADDR?.trim() || undefined,
-        /** Path to the shared proto contract (defaults to ../proto from the backend dir). */
+        /** Path to the shared proto contract (auto-resolved from repo root or backend cwd). */
         protoPath: process.env.INDEXER_PROTO_PATH?.trim() || undefined,
     },
 
