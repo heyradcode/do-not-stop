@@ -34,6 +34,7 @@ Run from repo root unless noted. Package manager is **pnpm** (`packageManager: p
 ```bash
 pnpm install                 # root only
 pnpm install:all             # root + frontend + website + backend + mobile + contracts/ethereum
+pnpm dev                     # backend + frontend (concurrent)
 pnpm dev:fe                  # frontend only
 pnpm dev:be                  # backend only
 pnpm dev:mobile              # mobile only
@@ -46,7 +47,7 @@ pnpm fe:eth:local            # HH node + deploy + VRF watcher + backend + fronte
 pnpm mobile:eth:local        # same, with mobile instead of frontend
 pnpm fe:sol:local            # backend + frontend + Solana docker/ngrok, concurrently
 ```
-> `pnpm eth:deploy` and `pnpm eth:vrf:watch` currently reference `deploy:inject` and `vrf:watch` scripts that **no longer exist** in `contracts/ethereum/package.json` (that package was refactored to `scripts/deploy.ts` plus Hardhat Ignition). If these fail, deploy directly with `pnpm --prefix contracts/ethereum deploy` (or `deploy:sepolia` / `deploy:base-sepolia`) instead of chasing the root wrapper script. `DEVELOPMENT.md` and `contracts/ethereum/README.md` also document a few commands (`pnpm dev`, `pnpm clean`, `pnpm vrf:watch`) that don't exist in the current root/package scripts, so treat those docs as partially stale and trust `package.json` scripts blocks over prose.
+> `pnpm eth:deploy` and `pnpm eth:vrf:watch` currently reference `deploy:inject` and `vrf:watch` scripts that **no longer exist** in `contracts/ethereum/package.json` (that package was refactored to `scripts/deploy.ts` plus Hardhat Ignition). If these fail, deploy directly with `pnpm --prefix contracts/ethereum deploy` (or `deploy:sepolia` / `deploy:base-sepolia`) instead of chasing the root wrapper script. `DEVELOPMENT.md` and `contracts/ethereum/README.md` also document a few commands (`pnpm clean`, `pnpm vrf:watch`, and an older "start everything" meaning of `pnpm dev`) that don't match the current root scripts, so treat those docs as partially stale and trust `package.json` scripts blocks over prose.
 
 ### Lint / test / build (root aggregates)
 ```bash

@@ -19,7 +19,7 @@
     "fe:eth:local": "concurrently --kill-others-on-fail --names \"HH,ETH,VRF,BE,FE\" \"pnpm eth:node\" \"pnpm eth:deploy\" \"pnpm eth:vrf:watch\" \"pnpm dev:be\" \"pnpm dev:fe\"",
     "mobile:eth:local": "concurrently --kill-others-on-fail --names \"HH,ETH,VRF,BE,MB\" \"pnpm eth:node\" \"pnpm eth:deploy\" \"pnpm eth:vrf:watch\" \"pnpm dev:be\" \"pnpm dev:mobile\"",
     "fe:sol:local": "concurrently --kill-others-on-fail --names \"BE,FE,SOL\" \"pnpm dev:be\" \"pnpm dev:fe\" \"pnpm sol:docker && pnpm sol:inject-ngrok\"",
-    "dev:be:fe": "concurrently --kill-others-on-fail --names \"BE,FE\" \"pnpm dev:be\" \"pnpm dev:fe\"",
+    "dev": "concurrently --kill-others-on-fail --names \"BE,FE\" \"pnpm dev:be\" \"pnpm dev:fe\"",
     "dev:be:mobile": "concurrently --kill-others-on-fail --names \"BE,MB\" \"pnpm dev:be\" \"pnpm dev:mobile\"",
     "compile": "pnpm --prefix contracts/ethereum compile",
     "graph:evm:configure": "pnpm --filter cryptopets-subgraph-evm configure",

@@ -22,7 +22,7 @@ Normative language: `MUST`/`MUST NOT` are mandatory. `SHOULD`/`SHOULD NOT` are e
 ## Command Baseline
 
 - Install: `pnpm install` (root), or `pnpm install:all` (root + frontend + website + backend + mobile + contracts/ethereum)
-- Dev: `pnpm dev:fe` / `pnpm dev:be` / `pnpm dev:mobile` / `pnpm dev:web`, or `pnpm fe:eth:local` / `pnpm fe:sol:local` for a full local chain + backend + frontend stack
+- Dev: `pnpm dev` (backend + frontend), or `pnpm dev:fe` / `pnpm dev:be` / `pnpm dev:mobile` / `pnpm dev:web` individually, or `pnpm fe:eth:local` / `pnpm fe:sol:local` for a full local chain + backend + frontend stack
 - Lint: `pnpm lint` (covers frontend, shared, website, mobile only, not backend or contracts/ethereum)
 - Test: `pnpm test` (equals `contracts/ethereum` test only; per-package test commands are in CLAUDE.md)
 - Build: `pnpm build`
