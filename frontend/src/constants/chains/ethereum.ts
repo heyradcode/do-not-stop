@@ -1,13 +1,4 @@
-import {
-    // L2 Mainnets
-    arbitrum,
-    optimism,
-    base,
-    // L2 Testnets
-    arbitrumSepolia,
-    optimismSepolia,
-    baseSepolia,
-} from 'viem/chains';
+import { baseSepolia } from 'viem/chains';
 import { type Chain, defineChain } from 'viem';
 
 const hardhatLocal = defineChain({
@@ -18,6 +9,15 @@ const hardhatLocal = defineChain({
     testnet: true,
 });
 
+/**
+ * The chain this build's contracts are deployed on. `VITE_EVM_CHAIN_ID` (see
+ * `.env.local`) overrides it; Base Sepolia is the default because it is the only
+ * network with a live v2 deployment.
+ */
+export const TARGET_CHAIN_ID = import.meta.env.VITE_EVM_CHAIN_ID
+    ? Number(import.meta.env.VITE_EVM_CHAIN_ID)
+    : baseSepolia.id;
+
 export interface ChainConfig {
     chain: Chain;
     name: string;
@@ -25,27 +25,26 @@ export interface ChainConfig {
     isTestnet: boolean;
 }
 
+/**
+ * Every chain the game can actually be played on, target chain first.
+ *
+ * Order matters: wagmi treats `chains[0]` as its default, so whatever sits first
+ * is the chain RPC reads fall back to before a wallet reports a usable one.
+ * Hardhat Local used to hold that slot, which pointed hosted builds at
+ * `localhost:8545`.
+ *
+ * Chains without a deployment are deliberately absent: offering them would let a
+ * player switch to a network where every contract read silently fails.
+ */
 export const CHAINS: ChainConfig[] = [
-    // Local dev
-    { chain: hardhatLocal, name: 'Hardhat Local', symbol: 'ETH', isTestnet: true },
-    // Arbitrum
-    { chain: arbitrum, name: 'Arbitrum', symbol: 'ETH', isTestnet: false },
-    { chain: arbitrumSepolia, name: 'Arbitrum Sepolia', symbol: 'ETH', isTestnet: true },
-    // Optimism
-    { chain: optimism, name: 'Optimism', symbol: 'ETH', isTestnet: false },
-    { chain: optimismSepolia, name: 'Optimism Sepolia', symbol: 'ETH', isTestnet: true },
-    // Base
-    { chain: base, name: 'Base', symbol: 'ETH', isTestnet: false },
     { chain: baseSepolia, name: 'Base Sepolia', symbol: 'ETH', isTestnet: true },
+    ...(import.meta.env.DEV
+        ? [{ chain: hardhatLocal, name: 'Hardhat Local', symbol: 'ETH', isTestnet: true }]
+        : []),
 ];
 
 export const CHAIN_SYMBOLS: { [key: number]: string } = {
     31337: 'ETH', // Hardhat Local
-    42161: 'ETH', // Arbitrum
-    421614: 'ETH', // Arbitrum Sepolia
-    10: 'ETH', // Optimism
-    11155420: 'ETH', // Optimism Sepolia
-    8453: 'ETH', // Base
     84532: 'ETH', // Base Sepolia
 };
 
@@ -57,9 +56,6 @@ export const getNativeTokenSymbol = (chainId?: number): string => {
 export const getChainConfig = (chainId: number): ChainConfig | undefined =>
     CHAINS.find((c) => c.chain.id === chainId);
 
-export const getMainnetChains = (): ChainConfig[] => CHAINS.filter((c) => !c.isTestnet);
-
-export const getTestnetChains = (): ChainConfig[] => CHAINS.filter((c) => c.isTestnet);
-
-export const getChainsByType = (showTestnets: boolean): ChainConfig[] =>
-    showTestnets ? getTestnetChains() : getMainnetChains();
+/** True when the wallet's current chain is one the app has contracts on. */
+export const isSupportedChain = (chainId: number | undefined): boolean =>
+    chainId !== undefined && CHAINS.some((c) => c.chain.id === chainId);

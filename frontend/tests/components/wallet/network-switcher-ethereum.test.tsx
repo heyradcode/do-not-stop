@@ -3,13 +3,14 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const wagmi = {
-    chain: undefined as { id: number } | undefined,
+    chainId: undefined as number | undefined,
+    isConnected: true,
     switchChain: vi.fn(),
     isPending: false,
     switchError: null as { message: string } | null,
 };
 vi.mock('wagmi', () => ({
-    useAccount: () => ({ chain: wagmi.chain }),
+    useAccount: () => ({ chainId: wagmi.chainId, isConnected: wagmi.isConnected }),
     useSwitchChain: () => ({
         switchChain: wagmi.switchChain,
         isPending: wagmi.isPending,
@@ -19,14 +20,11 @@ vi.mock('wagmi', () => ({
 
 vi.mock('@constants/chains/ethereum', () => {
     const CHAINS = [
-        { chain: { id: 1 }, name: 'Mainnet', symbol: 'ETH', isTestnet: false },
-        { chain: { id: 11155111 }, name: 'Sepolia', symbol: 'ETH', isTestnet: true },
+        { chain: { id: 84532 }, name: 'Base Sepolia', symbol: 'ETH', isTestnet: true },
+        { chain: { id: 31337 }, name: 'Hardhat Local', symbol: 'ETH', isTestnet: true },
     ];
     return {
         CHAINS,
-        getChainsByType: (testnet: boolean) => CHAINS.filter((c) => c.isTestnet === testnet),
-        getMainnetChains: () => CHAINS.filter((c) => !c.isTestnet),
-        getTestnetChains: () => CHAINS.filter((c) => c.isTestnet),
         getChainConfig: (id: number) => CHAINS.find((c) => c.chain.id === id),
     };
 });
@@ -36,7 +34,12 @@ import { EthereumNetworkSwitcher } from '@components/wallet/network-switcher';
 beforeEach(() => {
     document.body.innerHTML = '<div id="root"></div>';
     vi.clearAllMocks();
-    Object.assign(wagmi, { chain: { id: 1 }, isPending: false, switchError: null });
+    Object.assign(wagmi, {
+        chainId: 84532,
+        isConnected: true,
+        isPending: false,
+        switchError: null,
+    });
 });
 
 afterEach(() => {
@@ -44,15 +47,23 @@ afterEach(() => {
 });
 
 describe('EthereumNetworkSwitcher', () => {
-    it('renders nothing when no chain is connected', () => {
-        wagmi.chain = undefined;
+    it('renders nothing when no wallet is connected', () => {
+        wagmi.isConnected = false;
         const { container } = render(<EthereumNetworkSwitcher />);
         expect(container).toBeEmptyDOMElement();
     });
 
     it('shows the current network name on the trigger', () => {
         render(<EthereumNetworkSwitcher />);
-        expect(screen.getByRole('button', { name: /Mainnet/ })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Base Sepolia/ })).toBeInTheDocument();
+    });
+
+    // Regression: this used to return null on an unconfigured chain, hiding the
+    // one control that could switch back to a supported one.
+    it('stays visible and reads "Wrong network" on an unsupported chain', () => {
+        wagmi.chainId = 1; // Ethereum mainnet, no deployment
+        render(<EthereumNetworkSwitcher />);
+        expect(screen.getByRole('button', { name: /Wrong network/ })).toBeInTheDocument();
     });
 
     it('shows a switching state and disables the trigger while pending', () => {
@@ -70,25 +81,23 @@ describe('EthereumNetworkSwitcher', () => {
     it('opens the modal and switches chain on selection', async () => {
         render(<EthereumNetworkSwitcher />);
 
-        await userEvent.click(screen.getByRole('button', { name: /Mainnet/ }));
+        await userEvent.click(screen.getByRole('button', { name: /Base Sepolia/ }));
         expect(screen.getByText('Select Network')).toBeInTheDocument();
 
         // Current chain's option is marked active.
-        const option = screen.getByText('Mainnet', { selector: '.optionName' }).closest('button');
+        const option = screen
+            .getByText('Base Sepolia', { selector: '.optionName' })
+            .closest('button');
         expect(option).toHaveClass('option', 'active');
 
         await userEvent.click(option as Element);
-        expect(wagmi.switchChain).toHaveBeenCalledWith({ chainId: 1 });
+        expect(wagmi.switchChain).toHaveBeenCalledWith({ chainId: 84532 });
     });
 
-    it('reveals testnets when the toggle is checked', async () => {
+    it('offers every supported chain, not just the current one', async () => {
         render(<EthereumNetworkSwitcher />);
-        await userEvent.click(screen.getByRole('button', { name: /Mainnet/ }));
+        await userEvent.click(screen.getByRole('button', { name: /Base Sepolia/ }));
 
-        expect(screen.queryByText('Sepolia')).not.toBeInTheDocument();
-
-        await userEvent.click(screen.getByRole('checkbox'));
-
-        expect(screen.getByText('Sepolia')).toBeInTheDocument();
+        expect(screen.getByText('Hardhat Local', { selector: '.optionName' })).toBeInTheDocument();
     });
 });
