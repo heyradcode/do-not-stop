@@ -706,6 +706,49 @@ today's non-agentic flows. Do not let the agent hold signing authority or spend 
 autonomously; that's a different, much higher-risk feature than "AI personality," and should be
 a separate explicit decision if ever pursued.
 
+**Memory: build it on the per-pet receipt chain, don't invent a second one.** An agentic pet is
+only interesting if it has continuity, and continuity needs a bounded, ordered view of one pet's
+past. [plan-backend-battle-architecture.md](./plan-backend-battle-architecture.md) §G already
+produces exactly that: every battle receipt links to the previous receipt involving that same pet
+(`attackerProgressPrevReceiptHash` / `defenderProgressPrevReceiptHash`), with `PetBattleProgress`
+holding the head pointer. Walking that link is the retrieval query this feature needs, already
+built and already signed. Two consequences worth taking deliberately:
+
+- Prompt context should be assembled from signed receipts, not from a mutable log. When a pet
+  references a past win, that reference resolves to a receipt hash a third party can verify,
+  rather than to a row the operator could have written after the fact.
+- The `PetProgressCheckpoint` that keeps verification cost bounded doubles as compacted agent
+  memory: cumulative state plus notable events, signed, at a fixed cadence. One artifact, both
+  jobs. Do not build a separate summarisation path for the agent.
+
+**The hard rule: agent output never enters the battle receipt chain.** The receipt chain is
+valuable only because it is replayable, meaning the same snapshot, seed, and ruleset produce the
+same result on any machine, forever. LLM output is not reproducible: temperature, model version,
+provider-side changes, and prompt drift all break it. Hashing a generated journal entry into a
+battle receipt would break public replay at that link and take down everything chained after it,
+which is the one mechanism that keeps the backend operator honest. This is the same boundary as
+the "narrative is a hub, not a mechanism" note above, applied to the data structure.
+
+So: two chains, referencing in one direction only.
+
+```text
+BattleReceipt chain      deterministic, replayable, publicly verifiable
+        ^
+        |  referenced by hash (facts anchor narrative)
+        |
+PetAgentJournal chain    signed, append-only, timestamped
+                         attested, NOT replayable
+```
+
+Journal entries reference receipt hashes. Receipts never reference journal entries. A signed but
+non-replayable entry still earns its place: it proves what was published, when, and from which
+facts, which is what continuity and tamper-evidence need. It just cannot claim correctness, and
+should not be presented as though it does.
+
+Keep the two in separate tables regardless: journal entries are large where receipts are small,
+and receipts are meant to be fully public for replay while a pet's journal may reasonably be
+gated to its owner.
+
 **Data model:**
 
 ```prisma
@@ -718,22 +761,42 @@ model PetPersonality {
   @@map("pet_personality")
 }
 
+/// Append-only, hash-linked per pet. Signed for tamper-evidence, but NOT
+/// replayable — see the two-chain rule above. Never referenced by a battle
+/// receipt.
 model PetAgentJournal {
-  id        Int      @id @default(autoincrement())
-  chain     String
-  petId     String   @map("pet_id")
-  entry     String             // free text, generated
-  createdAt DateTime @default(now()) @map("created_at")
+  id            Int      @id @default(autoincrement())
+  chain         String
+  petId         String   @map("pet_id")
+  entry         String             // free text, generated
+  entryHash     String   @map("entry_hash")
+  prevEntryHash String?  @map("prev_entry_hash")   // null for a pet's first entry
+  sourceReceipts Json    @map("source_receipts")   // battle receipt hashes in context
+  model         String                              // Claude model id, or 'fallback'
+  promptVersion String   @map("prompt_version")
+  signingKeyId  String   @map("signing_key_id")
+  signature     String
+  createdAt     DateTime @default(now()) @map("created_at")
   @@index([chain, petId])
   @@map("pet_agent_journal")
 }
 ```
 
+`model` and `promptVersion` are not bookkeeping. Without them, a model upgrade silently changes a
+pet's voice and there is no way to tell whether an old entry reflects the pet's character or a
+since-replaced prompt. `BattleDialogue.model` already records the first half of this today.
+
 **Open decisions (explicitly a human/product call, not one to loop on autonomously):** how
 autonomous the agent gets (suggestion-only vs. auto-executing free actions like training),
-per-pet or per-owner LLM call budget/rate limits, and whether personality is purely cosmetic
-flavor or actually influences battle/training outcomes (the latter would require the same
-cross-language parity discipline as combat, since it'd become part of a deterministic outcome).
+per-pet or per-owner LLM call budget/rate limits, and whether the journal chain is public
+alongside the receipt corpus or gated to the pet's owner.
+
+One decision that was previously listed as open should now be treated as closed: **personality
+must not influence battle or training outcomes.** Beyond the cross-language parity cost noted
+before, a trait that modifies a stat makes combat depend on generated content, so the ruleset
+stops being a pure function of published inputs and public replay dies. Reopening it means giving
+up the backend battle architecture's verifiability, which is a much larger trade than a flavor
+decision.
 
 ---
 
