@@ -6,6 +6,8 @@ interface ImportMetaEnv {
     /** Override the devnet RPC endpoint (e.g. a dedicated Helius/QuickNode URL). Falls back to the public clusterApiUrl('devnet') when unset. */
     readonly VITE_SOLANA_DEVNET_RPC_URL?: string;
     readonly VITE_API_URL?: string;
+    /** Chain id the deployed v2 contracts live on. Defaults to Base Sepolia (84532). */
+    readonly VITE_EVM_CHAIN_ID?: string;
     /** v2 PetCore UUPS proxy address (ERC-721 storage, mint, level/XP, marriage). */
     readonly VITE_PETCORE_ADDRESS?: string;
     /** v2 GameLogic UUPS proxy address (async battle/breed/train + VRF). */

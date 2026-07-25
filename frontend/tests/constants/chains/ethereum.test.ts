@@ -2,11 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
     CHAINS,
+    TARGET_CHAIN_ID,
     getChainConfig,
-    getChainsByType,
-    getMainnetChains,
     getNativeTokenSymbol,
-    getTestnetChains,
+    isSupportedChain,
 } from '../../../src/constants/chains/ethereum';
 
 describe('getNativeTokenSymbol', () => {
@@ -15,9 +14,8 @@ describe('getNativeTokenSymbol', () => {
     });
 
     it('returns the mapped symbol for a known chain', () => {
-        expect(getNativeTokenSymbol(42161)).toBe('ETH');   // Arbitrum
-        expect(getNativeTokenSymbol(8453)).toBe('ETH');    // Base
-        expect(getNativeTokenSymbol(10)).toBe('ETH');      // Optimism
+        expect(getNativeTokenSymbol(84532)).toBe('ETH'); // Base Sepolia
+        expect(getNativeTokenSymbol(31337)).toBe('ETH'); // Hardhat Local
     });
 
     it('falls back to ETH for an unknown chain id', () => {
@@ -27,11 +25,11 @@ describe('getNativeTokenSymbol', () => {
 
 describe('getChainConfig', () => {
     it('finds a chain config by chain id', () => {
-        const config = getChainConfig(42161);
+        const config = getChainConfig(84532);
 
         expect(config).toBeDefined();
-        expect(config?.name).toBe('Arbitrum');
-        expect(config?.isTestnet).toBe(false);
+        expect(config?.name).toBe('Base Sepolia');
+        expect(config?.isTestnet).toBe(true);
     });
 
     it('returns undefined for an unknown chain id', () => {
@@ -39,32 +37,33 @@ describe('getChainConfig', () => {
     });
 });
 
-describe('mainnet / testnet partitioning', () => {
-    it('getMainnetChains returns only non-testnet chains', () => {
-        const mainnets = getMainnetChains();
-
-        expect(mainnets.length).toBeGreaterThan(0);
-        expect(mainnets.every((c) => c.isTestnet === false)).toBe(true);
+describe('CHAINS', () => {
+    // wagmi treats chains[0] as its default, so anything else here sends RPC
+    // reads to the wrong endpoint before a wallet reports a usable chain.
+    it('lists the target chain first', () => {
+        expect(CHAINS[0]?.chain.id).toBe(TARGET_CHAIN_ID);
     });
 
-    it('getTestnetChains returns only testnet chains', () => {
-        const testnets = getTestnetChains();
-
-        expect(testnets.length).toBeGreaterThan(0);
-        expect(testnets.every((c) => c.isTestnet === true)).toBe(true);
-    });
-
-    it('mainnets and testnets together account for every chain', () => {
-        expect(getMainnetChains().length + getTestnetChains().length).toBe(CHAINS.length);
+    it('only lists chains with a deployment', () => {
+        // Mainnets and the other testnets have no contracts; offering them would
+        // let a player switch to a network where every read silently fails.
+        expect(CHAINS.every((c) => c.isTestnet)).toBe(true);
+        expect(CHAINS.map((c) => c.chain.id)).not.toContain(8453); // Base mainnet
+        expect(CHAINS.map((c) => c.chain.id)).not.toContain(42161); // Arbitrum
     });
 });
 
-describe('getChainsByType', () => {
-    it('returns testnets when showTestnets is true', () => {
-        expect(getChainsByType(true)).toEqual(getTestnetChains());
+describe('isSupportedChain', () => {
+    it('accepts the target chain', () => {
+        expect(isSupportedChain(TARGET_CHAIN_ID)).toBe(true);
     });
 
-    it('returns mainnets when showTestnets is false', () => {
-        expect(getChainsByType(false)).toEqual(getMainnetChains());
+    it('rejects a chain with no deployment', () => {
+        expect(isSupportedChain(1)).toBe(false); // Ethereum mainnet
+        expect(isSupportedChain(11155111)).toBe(false); // Sepolia
+    });
+
+    it('rejects an undefined chain id', () => {
+        expect(isSupportedChain(undefined)).toBe(false);
     });
 });

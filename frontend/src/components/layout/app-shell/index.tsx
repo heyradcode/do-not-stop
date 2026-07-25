@@ -3,6 +3,7 @@ import React from 'react';
 import Ambient from '@components/layout/ambient';
 import Sidebar from '@components/layout/sidebar';
 import TopBar from '@components/layout/top-bar';
+import NetworkGate from '@components/wallet/network-gate';
 import styles from './index.module.css';
 
 type AppShellProps = {
@@ -21,6 +22,7 @@ const AppShell: React.FC<AppShellProps> = ({ children }) => (
             <Sidebar />
             <div className={styles.main}>
                 <TopBar />
+                <NetworkGate />
                 <div className={styles.content}>{children}</div>
             </div>
         </div>
