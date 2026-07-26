@@ -18,6 +18,22 @@ export type { StrikeOutcome } from './strike';
 export { addHeal, strike } from './strike';
 export { MAX_ROUNDS, simulate, type SimOutcome, type SimResult, type StrikeLogEntry } from './sim';
 export {
+    applyDecayShift,
+    applyXp,
+    BASE_XP_LOSS,
+    BASE_XP_WIN,
+    calcXp,
+    DEFAULT_MAX_LEVEL,
+    type LevelState,
+    type LevelStateUpdate,
+    MAX_DECAY_SHIFT,
+    MAX_SAME_OPPONENT_STREAK,
+    type OpponentHistory,
+    type OpponentHistoryUpdate,
+    recordBattleOpponent,
+    XP_PER_LEVEL_MULTIPLIER,
+} from './xp';
+export {
     encodeSimOutcome,
     decodeSimOutcome,
     type SimOutcomeWire,

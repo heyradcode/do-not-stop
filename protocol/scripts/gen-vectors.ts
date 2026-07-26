@@ -25,6 +25,7 @@ import {
 import type { ChainId } from '../src/domain/chainId';
 import type { Hex } from '../src/encoding/bytes';
 import { battleIntentSolanaMessage, type BattleIntent, hashBattleIntent } from '../src/intent';
+import { computeProgression, type ProgressionParams } from '../src/progression';
 import { deriveBattleSeed, type SeedInputs } from '../src/randomness';
 import { type BattleSnapshot, hashBattleSnapshot, type PetSnapshot } from '../src/snapshot';
 
@@ -725,8 +726,168 @@ function writeCommitmentVectors(): void {
     process.stdout.write(`wrote ${out.cases.length} commitment cases to ${path}\n`);
 }
 
+/**
+ * Progression cases, in the snapshot shape §F's workstream introduces.
+ *
+ * `contracts/test-vectors/xp.json` already pins the formula and the decay across
+ * Solidity, Rust, and Go, and this port is tested against that file directly. What
+ * it does not cover is the composition: which pet gets the winner's base, which
+ * decay shift applies to whom, and how the level threshold interacts with a zero
+ * award. That is what these cases pin, and what indexer-go's own progression port
+ * will have to match at Step 25.
+ */
+interface ProgressionFixture {
+    snapshot: SnapshotFixture;
+    attackerWon: boolean;
+    maxLevel: number;
+}
+
+const PROGRESSION_BASE: ProgressionFixture = {
+    snapshot: SNAPSHOT_BASE,
+    attackerWon: true,
+    maxLevel: 100,
+};
+
+const progressionCases: { name: string; note: string; fixture: ProgressionFixture }[] = [
+    {
+        name: 'attacker-wins-fresh',
+        note: 'Baseline. Attacker has no prior opponent so takes no decay; defender is mid-streak against this attacker, so its loss XP is decayed.',
+        fixture: PROGRESSION_BASE,
+    },
+    {
+        name: 'defender-wins',
+        note: 'Same snapshot, other winner. The winner base (100) and loser base (25) swap sides, as do the level arguments.',
+        fixture: { ...PROGRESSION_BASE, attackerWon: false },
+    },
+    {
+        name: 'rematch-both-streaked',
+        note: 'Both pets have fought each other last, so both streaks advance and both awards are halved.',
+        fixture: {
+            ...PROGRESSION_BASE,
+            snapshot: {
+                ...SNAPSHOT_BASE,
+                attacker: { ...SNAPSHOT_BASE.attacker, lastOpponentId: '2', streak: 0 },
+                defender: { ...SNAPSHOT_BASE.defender, lastOpponentId: '1', streak: 0 },
+            },
+        },
+    },
+    {
+        name: 'streak-zeroes-award',
+        note: 'A long streak drives the award to zero, which then leaves level and XP untouched because both chains guard the write with `if (xp > 0)`.',
+        fixture: {
+            ...PROGRESSION_BASE,
+            snapshot: {
+                ...SNAPSHOT_BASE,
+                attacker: { ...SNAPSHOT_BASE.attacker, lastOpponentId: '2', streak: 12 },
+                defender: { ...SNAPSHOT_BASE.defender, lastOpponentId: '1', streak: 12 },
+            },
+        },
+    },
+    {
+        name: 'punching-up',
+        note: 'Attacker ten levels below the defender wins: the multiplier caps at 200, so the award doubles.',
+        fixture: {
+            ...PROGRESSION_BASE,
+            snapshot: {
+                ...SNAPSHOT_BASE,
+                attacker: { ...SNAPSHOT_BASE.attacker, level: 5 },
+                defender: { ...SNAPSHOT_BASE.defender, level: 15 },
+            },
+        },
+    },
+    {
+        name: 'punching-down',
+        note: 'Attacker ten levels above wins: multiplier floors at 0, so the winner earns nothing while the loser still earns its share.',
+        fixture: {
+            ...PROGRESSION_BASE,
+            snapshot: {
+                ...SNAPSHOT_BASE,
+                attacker: { ...SNAPSHOT_BASE.attacker, level: 20 },
+                defender: { ...SNAPSHOT_BASE.defender, level: 10 },
+            },
+        },
+    },
+    {
+        name: 'level-up-on-win',
+        note: 'Attacker sitting one award short of its threshold levels up, carrying the remainder.',
+        fixture: {
+            ...PROGRESSION_BASE,
+            snapshot: {
+                ...SNAPSHOT_BASE,
+                attacker: { ...SNAPSHOT_BASE.attacker, level: 10, xp: 950 },
+            },
+        },
+    },
+    {
+        name: 'winner-at-level-cap',
+        note: 'Winner sits at the cap and accrues nothing, not even partial XP, while the loser below the cap still accrues. `xpAwarded` stays populated for both, mirroring the on-chain event, which reports the computed award whether or not the cap swallowed it.',
+        fixture: {
+            ...PROGRESSION_BASE,
+            maxLevel: 12,
+            snapshot: {
+                ...SNAPSHOT_BASE,
+                attacker: { ...SNAPSHOT_BASE.attacker, level: 12, xp: 40 },
+            },
+        },
+    },
+];
+
+function writeProgressionVectors(): void {
+    const out = {
+        description:
+            'Progression-delta vectors in the frozen-snapshot shape (docs/plan-backend-battle-architecture.md §F). Generated by protocol/scripts/gen-vectors.ts from protocol/src/progression. The XP formula and decay themselves are pinned cross-language by contracts/test-vectors/xp.json; these cases pin the composition (which base applies to whom, which decay shift, and the level-threshold interaction). A failure means the implementation drifted. Never edit an expectation to match new output.',
+        cases: progressionCases.map((c) => {
+            const params: ProgressionParams = { maxLevel: c.fixture.maxLevel };
+            const delta = computeProgression(
+                snapshotFromFixture(c.fixture.snapshot),
+                c.fixture.attackerWon,
+                params,
+            );
+            return {
+                name: c.name,
+                note: c.note,
+                snapshot: c.fixture.snapshot,
+                attackerWon: c.fixture.attackerWon,
+                maxLevel: c.fixture.maxLevel,
+                expected: {
+                    attacker: serializeProgression(delta.attacker),
+                    defender: serializeProgression(delta.defender),
+                },
+            };
+        }),
+    };
+    const path = join(VECTORS_DIR, 'protocol-progression.json');
+    writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
+    process.stdout.write(`wrote ${out.cases.length} progression cases to ${path}\n`);
+}
+
+function serializeProgression(progression: {
+    petId: bigint;
+    won: boolean;
+    decayShift: number;
+    xpAwarded: number;
+    lastOpponentId: bigint;
+    streak: number;
+    level: number;
+    xp: number;
+    leveledUp: boolean;
+}) {
+    return {
+        petId: progression.petId.toString(),
+        won: progression.won,
+        decayShift: progression.decayShift,
+        xpAwarded: progression.xpAwarded,
+        lastOpponentId: progression.lastOpponentId.toString(),
+        streak: progression.streak,
+        level: progression.level,
+        xp: progression.xp,
+        leveledUp: progression.leveledUp,
+    };
+}
+
 writeIntentVectors();
 writeConsentVectors();
 writeSnapshotVectors();
 writeSeedVectors();
 writeCommitmentVectors();
+writeProgressionVectors();

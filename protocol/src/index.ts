@@ -17,5 +17,6 @@ export * from './consent';
 export * from './domain';
 export * from './encoding';
 export * from './intent';
+export * from './progression';
 export * from './randomness';
 export * from './snapshot';
