@@ -9,7 +9,7 @@ import {
     type PublicClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { ENTROPY_ABI, GAME_CONFIG_ABI, GAME_LOGIC_ABI } from './abi';
+import { ENTROPY_ABI, GAME_LOGIC_ABI } from './abi';
 import {
     buildPendingMap,
     isSettledEvent,
@@ -19,26 +19,17 @@ import {
     type TrackedRequestType,
 } from './requests';
 import { createSubmitter } from './submitter';
-import { broadcastLiveBattle } from '@ws/liveBattleSocket';
-import { observeOnSettle, predictOnReveal } from '@features/battle-shadow';
-import { simulate, encodeSimOutcome } from '@shared/core/node';
 
 export interface SettleKeeperConfig {
     rpcUrl: string;
     privateKey: `0x${string}`;
     chainId: number;
     gameLogicAddress: Address;
-    /** Optional: enables the live-battle-socket broadcast (see its call site). */
-    gameConfigAddress?: Address | undefined;
     backfillBlocks: bigint;
     /** Local-dev only: also act as the Entropy provider, auto-revealing every
-     *  tracked request against MockEntropy so battles/breeds/mints actually
-     *  progress without a human calling mockReveal by hand. */
+     *  tracked request against MockEntropy so breeds/mints actually progress
+     *  without a human calling mockReveal by hand. */
     mockReveal: boolean;
-    /** Shadow mode (§L Phase 2): recompute settled battles and compare, changing nothing.
-     *  Off by default — it writes rows and calls indexer-go per battle, and the on-chain
-     *  path must keep running identically whether it is on or not. */
-    shadowEnabled: boolean;
 }
 
 export interface SettleKeeperHandle {
@@ -155,102 +146,6 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
         void submitter.submit(settleFunctionFor(type), requestId);
     }
 
-    // Live-battle-socket (docs/plan-realtime-battle-ux.md): runs the identical sim
-    // CombatSim.settleBattle will use and pushes it to any connected frontend the moment
-    // entropy reveals, so the live animation doesn't depend on the client's own (unreliable
-    // — see pollContractEvents above) RPC event watching. Best-effort and non-fatal: settling
-    // itself does not depend on this succeeding.
-    async function broadcastBattleLiveSim(requestId: bigint, seed: bigint): Promise<void> {
-        if (!config.gameConfigAddress) return;
-        try {
-            const [request, skillConfig] = await Promise.all([
-                publicClient.readContract({
-                    address: config.gameLogicAddress,
-                    abi: GAME_LOGIC_ABI,
-                    functionName: 'getBattleRequest',
-                    args: [requestId],
-                }),
-                publicClient.readContract({
-                    address: config.gameConfigAddress,
-                    abi: GAME_CONFIG_ABI,
-                    functionName: 'getSkillConfig',
-                }),
-            ]);
-            const req = request as {
-                snapshotted: boolean;
-                petId1: bigint;
-                petId2: bigint;
-                dna1: bigint;
-                dna2: bigint;
-                level1: number;
-                level2: number;
-                rarity1: number;
-                rarity2: number;
-                speciesId1: number;
-                speciesId2: number;
-            };
-            if (!req.snapshotted) return; // request predates the Phase 1 snapshot upgrade
-
-            const outcome = simulate(
-                req.dna1, req.rarity1, req.level1, req.speciesId1 % 8,
-                req.dna2, req.rarity2, req.level2, req.speciesId2 % 8,
-                seed, skillConfig as never,
-            );
-            broadcastLiveBattle({
-                type: 'live',
-                chainId: config.chainId,
-                requestId: requestId.toString(),
-                outcome: encodeSimOutcome(outcome),
-            });
-
-            // Shadow mode (§L Phase 2). This is the only window in which the frozen sim
-            // inputs are readable at all — settleBattle deletes them — so the prediction is
-            // recorded here, alongside a read that was happening anyway. Awaited but never
-            // allowed to throw: predictOnReveal swallows its own failures, because a shadow
-            // run must not be able to disturb a real settle.
-            if (config.shadowEnabled) {
-                await predictOnReveal({
-                    chainId: String(config.chainId),
-                    requestId,
-                    petId1: req.petId1,
-                    petId2: req.petId2,
-                    seed,
-                    inputs: {
-                        dna1: req.dna1,
-                        rarity1: req.rarity1,
-                        level1: req.level1,
-                        skill1: req.speciesId1 % 8,
-                        dna2: req.dna2,
-                        rarity2: req.rarity2,
-                        level2: req.level2,
-                        skill2: req.speciesId2 % 8,
-                    },
-                    skillConfig: skillConfig as never,
-                });
-            }
-        } catch (err) {
-            console.error(
-                `[settle-keeper] live-battle-socket sim failed for request ${requestId}: ` +
-                    `${(err as Error).message.split('\n')[0]}`,
-            );
-        }
-    }
-
-    /** Hands a decoded `BattleResolved` to shadow mode as the chain's own answer. */
-    async function observeBattleResolved(requestId: bigint, args: Record<string, unknown>): Promise<void> {
-        await observeOnSettle({
-            chainId: String(config.chainId),
-            requestId,
-            observed: {
-                firstWins: args.firstWins as boolean,
-                rounds: Number(args.rounds),
-                winnerHpRemaining: Number(args.winnerHpRemaining),
-                winnerPetId: String(args.winnerId),
-                loserPetId: String(args.loserId),
-            },
-        });
-    }
-
     // Backfill: catch up on anything requested-but-not-settled while this keeper (or its
     // predecessor) was offline, so a restart self-heals instead of losing track.
     const latestBlock = await publicClient.getBlockNumber();
@@ -317,11 +212,6 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                 if (requestId == null) continue;
                 if (isSettledEvent(log.eventName)) {
                     untrack(requestId);
-                    if (config.shadowEnabled && log.eventName === 'BattleResolved') {
-                        // Fire-and-forget: the chain has already settled, so nothing here is
-                        // on a critical path, and observeOnSettle handles its own failures.
-                        void observeBattleResolved(requestId, log.args);
-                    }
                     continue;
                 }
                 const type = requestTypeForEvent(log.eventName);
@@ -348,7 +238,6 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                 const caller = log.args.caller as string | undefined;
                 const sequenceNumber = log.args.sequenceNumber as bigint | undefined;
                 const callbackFailed = log.args.callbackFailed as boolean | undefined;
-                const randomNumber = log.args.randomNumber as `0x${string}` | undefined;
                 if (caller?.toLowerCase() !== config.gameLogicAddress.toLowerCase()) continue;
                 if (sequenceNumber == null) continue;
                 if (callbackFailed) {
@@ -357,9 +246,6 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                             'randomness was not stored, skipping',
                     );
                     continue;
-                }
-                if (randomNumber != null && pending.get(sequenceNumber) === 'battle') {
-                    void broadcastBattleLiveSim(sequenceNumber, BigInt(randomNumber));
                 }
                 trySettle(sequenceNumber);
             }

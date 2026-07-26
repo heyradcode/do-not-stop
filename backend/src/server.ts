@@ -5,7 +5,6 @@ import app from './app';
 import { startBattleStream, stopBattleStream } from '@grpc-client/battleStream';
 import { configureSigner, loadPersistedSigningKeys } from '@features/battle-signer';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
-import { startSolanaSettleKeeperFeature, stopSolanaSettleKeeperFeature } from '@features/settle-keeper-solana';
 import { type BattleWorkerHandle, startBattleWorker } from '@features/battle-worker';
 import { startBatchAnchor, stopBatchAnchor } from '@features/battle-anchor';
 import { startLiveBattleSocket, stopLiveBattleSocket } from '@ws/liveBattleSocket';
@@ -35,9 +34,6 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     // Settles GameLogic battle/breed/mint requests once entropy reveals. No-op unless
     // KEEPER_ENABLED is set.
     startSettleKeeper();
-    // Settles Solana commit_battle requests once Switchboard reveals. No-op unless
-    // KEEPER_SOLANA_ENABLED is set.
-    startSolanaSettleKeeperFeature();
 
     // Backend-authoritative battles (docs/plan-backend-battle-architecture.md §L Phase 3).
     // Selects the signing backend (refuses an in-process key in production; see
@@ -87,7 +83,6 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
 
     stopBattleStream();
     stopSettleKeeper();
-    stopSolanaSettleKeeperFeature();
     battleWorker?.stop();
     stopBatchAnchor();
     stopLiveBattleSocket();

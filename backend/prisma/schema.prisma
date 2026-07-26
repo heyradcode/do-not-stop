@@ -524,52 +524,6 @@ model BattleOutbox {
   @@map("battle_outbox")
 }
 
-/// One shadow run: what the backend engine predicted for an on-chain battle, and what
-/// the chain actually did (§L Phase 2).
-///
-/// Written in two stages, because the inputs and the answer are available at different
-/// moments. `GameLogic.settleBattle` deletes its request-time snapshot, so the frozen sim
-/// inputs only exist between entropy revealing and the settle transaction landing — the
-/// prediction is recorded in that window, and the observation is filled in when
-/// `BattleResolved` arrives.
-///
-/// Deliberately no relation to `battle_history`: shadow mode observes the on-chain path
-/// without participating in it, and a foreign key would make a shadow write able to fail
-/// a real settle.
-model BattleShadowRun {
-  chainId   String @map("chain_id")
-  /// Pyth Entropy sequence number, which is GameLogic's battle request id.
-  requestId String @map("request_id")
-
-  /// Frozen sim inputs and the revealed seed, exactly as predicted from.
-  seed          String
-  attackerPetId String @map("attacker_pet_id")
-  defenderPetId String @map("defender_pet_id")
-  inputs        Json
-
-  /// The TypeScript engine's outcome, computed from `inputs` and `seed`.
-  predicted Json
-  /// indexer-go's independent recomputation, plus whether it could be reached at all.
-  /// Null means the verifier was not configured or did not answer; that is recorded as
-  /// its own status rather than being mistaken for agreement.
-  goVerdict Json? @map("go_verdict")
-
-  /// The chain's own answer, from the `BattleResolved` event. Null until it lands.
-  observed Json?
-  /// Field-level differences, empty when everything matched.
-  mismatches Json?
-
-  /// 'pending' | 'agreed' | 'mismatch' | 'engine-disagreement'
-  status String @default("pending")
-
-  predictedAt DateTime  @default(now()) @map("predicted_at")
-  observedAt  DateTime? @map("observed_at")
-
-  @@id([chainId, requestId])
-  @@index([status, predictedAt])
-  @@map("battle_shadow_run")
-}
-
 /// A reward season: the set of entitlements computed from anchored receipts, and the
 /// Merkle root a claim is proven against (§I).
 ///

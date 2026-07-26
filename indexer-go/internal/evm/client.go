@@ -32,17 +32,6 @@ const (
     }
   }
 `
-	// The Battle entity joins BattleRandomnessRequested (attacker/defender) with
-	// BattleResolved (winner/loser + sim outputs) by requestId — the subgraph is
-	// the EVM join layer (plan §3.5). The v2 sim fields require the subgraph
-	// schema bump (plan §6 open decision).
-	battlesQuery = `
-  query BattlesSince($first: Int!, $since: BigInt!) {
-    battles(first: $first, orderBy: foughtAt, orderDirection: asc, where: { foughtAt_gt: $since }) {
-      id attacker defender winnerPetId loserPetId seed rounds winnerHpRemaining xpWin xpLoss foughtAt
-    }
-  }
-`
 )
 
 // subgraphPet mirrors the subgraph's Pet entity. The Graph encodes Int as a
@@ -151,17 +140,6 @@ func (c *client) fetchPetsPage(ctx context.Context, query string, variables map[
 		return nil, err
 	}
 	return data.Pets, nil
-}
-
-func (c *client) fetchBattlesPage(ctx context.Context, since string) ([]subgraphBattle, error) {
-	var data struct {
-		Battles []subgraphBattle `json:"battles"`
-	}
-	vars := map[string]any{"first": c.pageSize, "since": since}
-	if err := c.query(ctx, battlesQuery, vars, &data); err != nil {
-		return nil, err
-	}
-	return data.Battles, nil
 }
 
 // paginate cursor-pages through all matching pets using the given query and

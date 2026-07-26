@@ -229,14 +229,17 @@ AI battle dialogue uses `rounds`/HP/XP to flavor its narration.
 
 ### Settle keeper
 
-`backend/src/features/settle-keeper/` settles EVM `GameLogic` battle/breed/mint
+`backend/src/features/settle-keeper/` settles EVM `GameLogic` **breed and mint**
 requests (the `requestX` → Pyth Entropy reveals → `settleX` flow) from a
 backend-held wallet once entropy reveals, so the player only signs the request
 transaction — `settleX` is permissionless and needed no special authorization,
 it was just being sent from the player's wallet by default. Off unless
-`KEEPER_ENABLED=true`; the frontend falls back to sending the settle tx itself
-if the keeper hasn't within ~45s. See `docs/plan-realtime-battle-ux.md` /
+`KEEPER_ENABLED=true`. See `docs/plan-realtime-battle-ux.md` /
 `docs/plan-realtime-battle-impl.md` for the design and threat model.
+
+Battles are **not** settled here any more (§L Phase 6). `requestBattle`/`settleBattle`
+were removed from the contracts entirely, along with the Solana settle keeper and shadow
+mode; battles run through the backend-authoritative path below.
 
 ### Backend-authoritative battles (v2)
 
@@ -353,11 +356,10 @@ that could still be reorganised.
 | `INDEXER_GRPC_ADDR` | indexer-go gRPC link (e.g. `localhost:50051`). Unset = stream + `winEstimate` off; roster falls back to Postgres. |
 | `ROSTER_READ_SOURCE` | `grpc` to read matchmaking from indexer-go's cache (Postgres fallback); `postgres` (default) for Prisma only. |
 | `INDEXER_PROTO_PATH` | Override path to `proto/cryptopets.proto` (defaults to `../proto`). |
-| `KEEPER_ENABLED` | Turns the settle keeper on. Off by default. |
+| `KEEPER_ENABLED` | Turns the settle keeper on (breed and mint only — battles are settled by the backend, §L Phase 6). Off by default. |
 | `KEEPER_RPC_URL` / `KEEPER_PRIVATE_KEY` / `KEEPER_CHAIN_ID` / `KEEPER_GAME_LOGIC_ADDRESS` | Required once enabled; keeper logs and no-ops if any are missing rather than crashing the server. |
 | `KEEPER_BACKFILL_BLOCKS` | How far back to scan on boot for requests never settled (default 5000). |
 | `KEEPER_MOCK_REVEAL` | Local dev only: keeper also acts as the Entropy provider (`MockEntropy.mockReveal`). Only takes effect when `KEEPER_CHAIN_ID=31337`. |
-| `KEEPER_SHADOW_ENABLED` | Shadow mode (§L Phase 2): recompute settled on-chain battles through the backend engine and indexer-go and record whether they matched `BattleResolved`. Observation only. Off by default. |
 | `BATTLE_BACKEND_MODE_ENABLED` | Backend-authoritative battle mode (§L Phase 3). Off by default; gates the write routes, the outbox worker, and the signer requirement. Reads stay served either way. |
 | `BATTLE_BATCH_MIN_SIZE` / `BATTLE_BATCH_MAX_SIZE` | Smallest run worth anchoring, and the cap on one batch (§I). |
 | `BATTLE_ANCHOR_RPC_URL` / `BATTLE_ANCHOR_PRIVATE_KEY` / `BATTLE_ANCHOR_REGISTRY_ADDRESS` / `BATTLE_ANCHOR_CHAIN_ID` | Anchoring batch roots in `BattleBatchRegistry`. Required together; with any missing, batches are built but never anchored. The wallet needs the registry's publisher role. |

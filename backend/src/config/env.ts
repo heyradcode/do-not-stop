@@ -96,10 +96,6 @@ export const env = {
             : undefined) as `0x${string}` | undefined,
         chainId: process.env.KEEPER_CHAIN_ID ? Number(process.env.KEEPER_CHAIN_ID) : undefined,
         gameLogicAddress: process.env.KEEPER_GAME_LOGIC_ADDRESS?.trim() as `0x${string}` | undefined,
-        /** Optional: enables the live-battle-socket feature (push a computed sim to the
-         *  frontend over WebSocket the moment entropy reveals). Unset = feature just
-         *  doesn't broadcast; settling itself is unaffected. */
-        gameConfigAddress: process.env.KEEPER_GAME_CONFIG_ADDRESS?.trim() as `0x${string}` | undefined,
         backfillBlocks: BigInt(process.env.KEEPER_BACKFILL_BLOCKS?.trim() || '5000'),
         /** Local dev only: also acts as the Entropy provider (MockEntropy.mockReveal),
          *  replacing the old removed vrf-fulfill-watcher.ts for the entropy flow. Refuse
@@ -109,30 +105,6 @@ export const env = {
         mockReveal:
             process.env.KEEPER_MOCK_REVEAL?.trim().toLowerCase() === 'true' &&
             Number(process.env.KEEPER_CHAIN_ID) === 31337,
-        /** Shadow mode (docs/plan-backend-battle-architecture.md §L Phase 2): recompute
-         *  every settled on-chain battle through the backend engine and record whether it
-         *  agreed. Observation only — it settles nothing and blocks nothing. Off by
-         *  default because it writes a row and calls indexer-go per battle, and the
-         *  on-chain path has to behave identically whether it is on or not. */
-        shadowEnabled: process.env.KEEPER_SHADOW_ENABLED?.trim().toLowerCase() === 'true',
-    },
-
-    /**
-     * Solana settle keeper (docs/plan-realtime-battle-solana.md Workstream S2): settles
-     * `commit_battle` requests from this wallet once Switchboard On-Demand reveals their
-     * randomness. Battle only — settle_breed/settle_mint still need the player's own
-     * signature (their Metaplex Core mint CPI requires a real payer signature; see the
-     * plan doc). Off unless KEEPER_SOLANA_ENABLED=true; all three fields below are
-     * required once it is (checked at startSolanaSettleKeeperFeature() time so a
-     * misconfigured keeper logs and no-ops rather than crashing the server on boot).
-     */
-    solanaSettleKeeper: {
-        enabled: process.env.KEEPER_SOLANA_ENABLED?.trim().toLowerCase() === 'true',
-        rpcUrl: process.env.KEEPER_SOLANA_RPC_URL?.trim() || undefined,
-        /** JSON array string (solana-keygen file format), e.g. "[12,34,...]". */
-        keypairJson: process.env.KEEPER_SOLANA_KEYPAIR?.trim() || undefined,
-        programId: process.env.KEEPER_SOLANA_PROGRAM_ID?.trim() || undefined,
-        pollIntervalMs: Number(process.env.KEEPER_SOLANA_POLL_INTERVAL_MS?.trim() || '5000'),
     },
 
     /**

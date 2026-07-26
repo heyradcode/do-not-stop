@@ -1,20 +1,18 @@
 import type { SettleFunctionName } from './abi';
 
-export type TrackedRequestType = 'battle' | 'breed' | 'mint';
+export type TrackedRequestType = 'breed' | 'mint';
 
 const REQUEST_EVENT_TYPE: Record<string, TrackedRequestType> = {
-    BattleRandomnessRequested: 'battle',
     BreedRandomnessRequested: 'breed',
     MintRequested: 'mint',
 };
 
 const SETTLE_FUNCTION: Record<TrackedRequestType, SettleFunctionName> = {
-    battle: 'settleBattle',
     breed: 'settleBreed',
     mint: 'settleMint',
 };
 
-const SETTLED_EVENTS = new Set(['BattleResolved', 'BreedSettled', 'MintSettled']);
+const SETTLED_EVENTS = new Set(['BreedSettled', 'MintSettled']);
 
 /**
  * Minimal shape shared by viem's decoded `getContractEvents`/`watchContractEvent` logs.
@@ -53,7 +51,7 @@ export function isSettledEvent(eventName: string): boolean {
  * downtime self-heals instead of losing track of anything left pending.
  *
  * Note this can't distinguish a settled request from a *cancelled* one —
- * cancelBattle/cancelBreed/cancelMint emit no event. That's fine: the
+ * cancelBreed/cancelMint emit no event. That's fine: the
  * settle-simulation step (see submitter.ts) is the authoritative pending
  * check, and simulating a cancelled request simply fails harmlessly.
  */
