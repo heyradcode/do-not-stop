@@ -313,6 +313,14 @@ model BattleLedger {
   combatLog         Json?    @map("combat_log")
   combatLogHash     String?  @map("combat_log_hash")
   progression       Json?
+  /// The independent Go recomputation, retained whether it matched or not (§F).
+  /// On a match this is what a `go-verifier` EngineAttestation is built from at
+  /// signing time; on a mismatch it is the postmortem — the whole point of
+  /// retaining both outputs is that nobody has to reproduce the disagreement by
+  /// re-running indexer-go against a battle that may no longer reconstruct the
+  /// same way (a ruleset or dependency change between the incident and the
+  /// investigation).
+  verificationDetail Json? @map("verification_detail")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

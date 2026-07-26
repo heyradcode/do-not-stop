@@ -7,7 +7,7 @@ vi.mock('@config/env', () => ({
 vi.mock('@features/battle-ledger', () => ({
     claimOutbox: vi.fn(),
     failOutbox: vi.fn(),
-    OUTBOX_TOPICS: { awaitBeacon: 'await-beacon', compute: 'compute' },
+    OUTBOX_TOPICS: { awaitBeacon: 'await-beacon', compute: 'compute', verify: 'verify' },
 }));
 
 vi.mock('@features/battle-worker/beacon.worker', () => ({
@@ -15,6 +15,9 @@ vi.mock('@features/battle-worker/beacon.worker', () => ({
 }));
 vi.mock('@features/battle-worker/compute.worker', () => ({
     processComputeMessage: vi.fn(),
+}));
+vi.mock('@features/battle-worker/verify.worker', () => ({
+    processVerifyMessage: vi.fn(),
 }));
 
 import { claimOutbox, failOutbox } from '@features/battle-ledger';
@@ -51,7 +54,7 @@ describe('dispatch', () => {
     it('claims only the topics this worker owns, with the configured batch size', async () => {
         vi.mocked(claimOutbox).mockResolvedValue([]);
         await runBattleWorkerOnce('worker-a', NOW);
-        expect(claimOutbox).toHaveBeenCalledWith(['await-beacon', 'compute'], 'worker-a', 10, NOW);
+        expect(claimOutbox).toHaveBeenCalledWith(['await-beacon', 'compute', 'verify'], 'worker-a', 10, NOW);
     });
 
     it('sends a real handler failure through failOutbox for backoff, not a silent swallow', async () => {

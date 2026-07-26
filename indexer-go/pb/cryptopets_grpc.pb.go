@@ -27,6 +27,7 @@ const (
 	GameDataService_GetPetState_FullMethodName        = "/cryptopets.GameDataService/GetPetState"
 	GameDataService_ListReadyOpponents_FullMethodName = "/cryptopets.GameDataService/ListReadyOpponents"
 	GameDataService_EstimateWin_FullMethodName        = "/cryptopets.GameDataService/EstimateWin"
+	GameDataService_VerifyBattle_FullMethodName       = "/cryptopets.GameDataService/VerifyBattle"
 )
 
 // GameDataServiceClient is the client API for GameDataService service.
@@ -50,6 +51,15 @@ type GameDataServiceClient interface {
 	// many seeds for pet_id1 vs pet_id2 (both read from the warm roster cache)
 	// and returns pet_id1's win probability. UNAVAILABLE until the cache is warm.
 	EstimateWin(ctx context.Context, in *WinRequest, opts ...grpc.CallOption) (*WinResponse, error)
+	// Independent recomputation of a backend-authoritative battle
+	// (docs/plan-backend-battle-architecture.md §F). Takes everything needed to
+	// rerun the fight and the progression composition — no database, no cache,
+	// no chain state — so a mismatch against the TypeScript engine's own result
+	// means the two implementations disagree, not that either read something
+	// different. Release safety only: this does not constrain an operator who
+	// controls both processes (see the architecture doc's "what the Go verifier
+	// is for" section). Never wired to any state-mutating path.
+	VerifyBattle(ctx context.Context, in *VerifyBattleRequest, opts ...grpc.CallOption) (*VerifyBattleResponse, error)
 }
 
 type gameDataServiceClient struct {
@@ -109,6 +119,16 @@ func (c *gameDataServiceClient) EstimateWin(ctx context.Context, in *WinRequest,
 	return out, nil
 }
 
+func (c *gameDataServiceClient) VerifyBattle(ctx context.Context, in *VerifyBattleRequest, opts ...grpc.CallOption) (*VerifyBattleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyBattleResponse)
+	err := c.cc.Invoke(ctx, GameDataService_VerifyBattle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GameDataServiceServer is the server API for GameDataService service.
 // All implementations must embed UnimplementedGameDataServiceServer
 // for forward compatibility.
@@ -130,6 +150,15 @@ type GameDataServiceServer interface {
 	// many seeds for pet_id1 vs pet_id2 (both read from the warm roster cache)
 	// and returns pet_id1's win probability. UNAVAILABLE until the cache is warm.
 	EstimateWin(context.Context, *WinRequest) (*WinResponse, error)
+	// Independent recomputation of a backend-authoritative battle
+	// (docs/plan-backend-battle-architecture.md §F). Takes everything needed to
+	// rerun the fight and the progression composition — no database, no cache,
+	// no chain state — so a mismatch against the TypeScript engine's own result
+	// means the two implementations disagree, not that either read something
+	// different. Release safety only: this does not constrain an operator who
+	// controls both processes (see the architecture doc's "what the Go verifier
+	// is for" section). Never wired to any state-mutating path.
+	VerifyBattle(context.Context, *VerifyBattleRequest) (*VerifyBattleResponse, error)
 	mustEmbedUnimplementedGameDataServiceServer()
 }
 
@@ -151,6 +180,9 @@ func (UnimplementedGameDataServiceServer) ListReadyOpponents(context.Context, *O
 }
 func (UnimplementedGameDataServiceServer) EstimateWin(context.Context, *WinRequest) (*WinResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EstimateWin not implemented")
+}
+func (UnimplementedGameDataServiceServer) VerifyBattle(context.Context, *VerifyBattleRequest) (*VerifyBattleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VerifyBattle not implemented")
 }
 func (UnimplementedGameDataServiceServer) mustEmbedUnimplementedGameDataServiceServer() {}
 func (UnimplementedGameDataServiceServer) testEmbeddedByValue()                         {}
@@ -238,6 +270,24 @@ func _GameDataService_EstimateWin_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _GameDataService_VerifyBattle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyBattleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GameDataServiceServer).VerifyBattle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: GameDataService_VerifyBattle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GameDataServiceServer).VerifyBattle(ctx, req.(*VerifyBattleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // GameDataService_ServiceDesc is the grpc.ServiceDesc for GameDataService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -256,6 +306,10 @@ var GameDataService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EstimateWin",
 			Handler:    _GameDataService_EstimateWin_Handler,
+		},
+		{
+			MethodName: "VerifyBattle",
+			Handler:    _GameDataService_VerifyBattle_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

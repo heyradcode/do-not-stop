@@ -95,6 +95,30 @@ hashing is **legacy Keccak-256** with the exact `keccak256(abi.encodePacked)`
 byte layout; a SHA3-vs-Keccak slip would fail every vector. If a vector fails,
 the Go has drifted from the contracts — fix the Go, never the vector.
 
+## Independent verification for backend-authoritative battles (§F)
+
+`internal/combat/verify.go` recomputes a backend-resolved battle from a frozen
+snapshot and a verified drand seed, surfaced over gRPC as `VerifyBattle`
+(`internal/grpcsrv/verify.go`): winner, rounds, winner HP, the full per-strike
+log (`SimulateWithLog` in `simlog.go`), and the progression delta for both pets
+(`progression.go`, which ported level-up from `PetCore.addXp` so this can check
+the whole delta, not just the XP formula `xp.go` already covered).
+
+This is release safety, not a trust boundary — see
+`docs/plan-backend-battle-architecture.md` §F's "what the Go verifier is for"
+before reusing it as anything stronger. The backend
+(`backend/src/features/battle-worker/verify.worker.ts`) calls it, converts the
+structured log back into `@cryptopets/protocol`'s `SimOutcome` shape, and hashes
+it with the *real* canonical encoder — Go never reimplements that encoding
+itself, so the only question this check answers is whether the two engines
+computed the same strikes, never whether Go's encoding agrees with TS's (there
+is only one canonical encoding, and it lives in `protocol/`).
+
+`TestProgressionMatchesGoldenVectors` in `progression_test.go` consumes
+`contracts/test-vectors/protocol-progression.json`, the same file
+`protocol/tests/progression/vectors.test.ts` consumes, so the composition
+around the formula (not just the formula itself) is cross-language locked too.
+
 ## Layout
 
 ```
@@ -103,8 +127,8 @@ internal/indexer/   ChainIndexer contract + pipeline types
 internal/evm/       subgraph watermark adapter (pets + battles)
 internal/solana/    WS push adapter, Borsh decode, reconnect/backfill
 internal/store/     single version-guarded batch writer (pgx)
-internal/combat/    pure Go combat sim (cross-chain parity via golden vectors)
+internal/combat/    pure Go combat sim + independent verify (cross-chain parity via golden vectors)
 internal/battlebus/ fan-out to gRPC stream subscribers
-internal/grpcsrv/   StreamLiveBattles + reads + EstimateWin server
+internal/grpcsrv/   StreamLiveBattles + reads + EstimateWin + VerifyBattle server
 pb/                 generated stubs (buf generate ../proto)
 ```

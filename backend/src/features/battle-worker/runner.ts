@@ -3,6 +3,7 @@ import { type ClaimedMessage, claimOutbox, failOutbox, OUTBOX_TOPICS } from '@fe
 
 import { processAwaitBeaconMessage } from './beacon.worker';
 import { processComputeMessage } from './compute.worker';
+import { processVerifyMessage } from './verify.worker';
 
 /**
  * Dispatches claimed outbox messages to their handler.
@@ -17,6 +18,7 @@ import { processComputeMessage } from './compute.worker';
 const HANDLERS: Record<string, (message: ClaimedMessage, nowSeconds: number) => Promise<void>> = {
     [OUTBOX_TOPICS.awaitBeacon]: processAwaitBeaconMessage,
     [OUTBOX_TOPICS.compute]: processComputeMessage,
+    [OUTBOX_TOPICS.verify]: processVerifyMessage,
 };
 
 /** One poll: claims due messages for the topics this worker owns and processes each in turn. */

@@ -531,6 +531,625 @@ func (x *WinResponse) GetSamples() uint32 {
 	return 0
 }
 
+// One pet's frozen snapshot fields, as needed to recompute a fight and its
+// progression. Mirrors indexer-go's combat.PetInputs / protocol's PetSnapshot
+// (the subset both computations actually read — owner, readyAt, and
+// sourceVersion are not needed to run the fight).
+type VerifyPetInputs struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PetId          string                 `protobuf:"bytes,1,opt,name=pet_id,json=petId,proto3" json:"pet_id,omitempty"` // decimal string; parsed to uint64 server-side
+	Dna            string                 `protobuf:"bytes,2,opt,name=dna,proto3" json:"dna,omitempty"`                  // decimal string (16-digit DNA fits uint64)
+	Rarity         uint32                 `protobuf:"varint,3,opt,name=rarity,proto3" json:"rarity,omitempty"`
+	Level          uint32                 `protobuf:"varint,4,opt,name=level,proto3" json:"level,omitempty"`
+	Skill          uint32                 `protobuf:"varint,5,opt,name=skill,proto3" json:"skill,omitempty"`
+	Xp             uint32                 `protobuf:"varint,6,opt,name=xp,proto3" json:"xp,omitempty"`
+	LastOpponentId string                 `protobuf:"bytes,7,opt,name=last_opponent_id,json=lastOpponentId,proto3" json:"last_opponent_id,omitempty"` // decimal string; "0" = no prior opponent
+	Streak         uint32                 `protobuf:"varint,8,opt,name=streak,proto3" json:"streak,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *VerifyPetInputs) Reset() {
+	*x = VerifyPetInputs{}
+	mi := &file_cryptopets_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyPetInputs) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyPetInputs) ProtoMessage() {}
+
+func (x *VerifyPetInputs) ProtoReflect() protoreflect.Message {
+	mi := &file_cryptopets_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyPetInputs.ProtoReflect.Descriptor instead.
+func (*VerifyPetInputs) Descriptor() ([]byte, []int) {
+	return file_cryptopets_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *VerifyPetInputs) GetPetId() string {
+	if x != nil {
+		return x.PetId
+	}
+	return ""
+}
+
+func (x *VerifyPetInputs) GetDna() string {
+	if x != nil {
+		return x.Dna
+	}
+	return ""
+}
+
+func (x *VerifyPetInputs) GetRarity() uint32 {
+	if x != nil {
+		return x.Rarity
+	}
+	return 0
+}
+
+func (x *VerifyPetInputs) GetLevel() uint32 {
+	if x != nil {
+		return x.Level
+	}
+	return 0
+}
+
+func (x *VerifyPetInputs) GetSkill() uint32 {
+	if x != nil {
+		return x.Skill
+	}
+	return 0
+}
+
+func (x *VerifyPetInputs) GetXp() uint32 {
+	if x != nil {
+		return x.Xp
+	}
+	return 0
+}
+
+func (x *VerifyPetInputs) GetLastOpponentId() string {
+	if x != nil {
+		return x.LastOpponentId
+	}
+	return ""
+}
+
+func (x *VerifyPetInputs) GetStreak() uint32 {
+	if x != nil {
+		return x.Streak
+	}
+	return 0
+}
+
+// Mirrors protocol's SkillConfig field for field.
+type VerifySkillConfig struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	TankHpMult      uint32                 `protobuf:"varint,1,opt,name=tank_hp_mult,json=tankHpMult,proto3" json:"tank_hp_mult,omitempty"`
+	ShellDefMult    uint32                 `protobuf:"varint,2,opt,name=shell_def_mult,json=shellDefMult,proto3" json:"shell_def_mult,omitempty"`
+	SwiftCritBonus  uint32                 `protobuf:"varint,3,opt,name=swift_crit_bonus,json=swiftCritBonus,proto3" json:"swift_crit_bonus,omitempty"`
+	CunningCritCap  uint32                 `protobuf:"varint,4,opt,name=cunning_crit_cap,json=cunningCritCap,proto3" json:"cunning_crit_cap,omitempty"`
+	FuryDmgMult     uint32                 `protobuf:"varint,5,opt,name=fury_dmg_mult,json=furyDmgMult,proto3" json:"fury_dmg_mult,omitempty"`
+	FuryHpThreshold uint32                 `protobuf:"varint,6,opt,name=fury_hp_threshold,json=furyHpThreshold,proto3" json:"fury_hp_threshold,omitempty"`
+	SageMdefMult    uint32                 `protobuf:"varint,7,opt,name=sage_mdef_mult,json=sageMdefMult,proto3" json:"sage_mdef_mult,omitempty"`
+	BloodlustBps    uint32                 `protobuf:"varint,8,opt,name=bloodlust_bps,json=bloodlustBps,proto3" json:"bloodlust_bps,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *VerifySkillConfig) Reset() {
+	*x = VerifySkillConfig{}
+	mi := &file_cryptopets_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifySkillConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifySkillConfig) ProtoMessage() {}
+
+func (x *VerifySkillConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_cryptopets_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifySkillConfig.ProtoReflect.Descriptor instead.
+func (*VerifySkillConfig) Descriptor() ([]byte, []int) {
+	return file_cryptopets_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *VerifySkillConfig) GetTankHpMult() uint32 {
+	if x != nil {
+		return x.TankHpMult
+	}
+	return 0
+}
+
+func (x *VerifySkillConfig) GetShellDefMult() uint32 {
+	if x != nil {
+		return x.ShellDefMult
+	}
+	return 0
+}
+
+func (x *VerifySkillConfig) GetSwiftCritBonus() uint32 {
+	if x != nil {
+		return x.SwiftCritBonus
+	}
+	return 0
+}
+
+func (x *VerifySkillConfig) GetCunningCritCap() uint32 {
+	if x != nil {
+		return x.CunningCritCap
+	}
+	return 0
+}
+
+func (x *VerifySkillConfig) GetFuryDmgMult() uint32 {
+	if x != nil {
+		return x.FuryDmgMult
+	}
+	return 0
+}
+
+func (x *VerifySkillConfig) GetFuryHpThreshold() uint32 {
+	if x != nil {
+		return x.FuryHpThreshold
+	}
+	return 0
+}
+
+func (x *VerifySkillConfig) GetSageMdefMult() uint32 {
+	if x != nil {
+		return x.SageMdefMult
+	}
+	return 0
+}
+
+func (x *VerifySkillConfig) GetBloodlustBps() uint32 {
+	if x != nil {
+		return x.BloodlustBps
+	}
+	return 0
+}
+
+type VerifyBattleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Attacker      *VerifyPetInputs       `protobuf:"bytes,1,opt,name=attacker,proto3" json:"attacker,omitempty"`
+	Defender      *VerifyPetInputs       `protobuf:"bytes,2,opt,name=defender,proto3" json:"defender,omitempty"`
+	Seed          []byte                 `protobuf:"bytes,3,opt,name=seed,proto3" json:"seed,omitempty"` // 32 bytes, big-endian, matching the on-chain uint256 seed
+	SkillConfig   *VerifySkillConfig     `protobuf:"bytes,4,opt,name=skill_config,json=skillConfig,proto3" json:"skill_config,omitempty"`
+	MaxLevel      uint32                 `protobuf:"varint,5,opt,name=max_level,json=maxLevel,proto3" json:"max_level,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VerifyBattleRequest) Reset() {
+	*x = VerifyBattleRequest{}
+	mi := &file_cryptopets_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyBattleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyBattleRequest) ProtoMessage() {}
+
+func (x *VerifyBattleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_cryptopets_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyBattleRequest.ProtoReflect.Descriptor instead.
+func (*VerifyBattleRequest) Descriptor() ([]byte, []int) {
+	return file_cryptopets_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *VerifyBattleRequest) GetAttacker() *VerifyPetInputs {
+	if x != nil {
+		return x.Attacker
+	}
+	return nil
+}
+
+func (x *VerifyBattleRequest) GetDefender() *VerifyPetInputs {
+	if x != nil {
+		return x.Defender
+	}
+	return nil
+}
+
+func (x *VerifyBattleRequest) GetSeed() []byte {
+	if x != nil {
+		return x.Seed
+	}
+	return nil
+}
+
+func (x *VerifyBattleRequest) GetSkillConfig() *VerifySkillConfig {
+	if x != nil {
+		return x.SkillConfig
+	}
+	return nil
+}
+
+func (x *VerifyBattleRequest) GetMaxLevel() uint32 {
+	if x != nil {
+		return x.MaxLevel
+	}
+	return 0
+}
+
+// One resolved attack, in fight order. Mirrors indexer-go's
+// combat.StrikeLogEntry / protocol's StrikeLogEntry field for field, so the
+// caller can convert this into the same shape the TypeScript engine produces
+// and hash both with @cryptopets/protocol's canonical encoding — Go never
+// reimplements that encoding itself (see indexer-go's simlog.go doc comment).
+type VerifyStrikeLogEntry struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Round            uint32                 `protobuf:"varint,1,opt,name=round,proto3" json:"round,omitempty"`
+	Attacker         uint32                 `protobuf:"varint,2,opt,name=attacker,proto3" json:"attacker,omitempty"` // 1 = pet1/attacker, 2 = pet2/defender
+	IsMagic          bool                   `protobuf:"varint,3,opt,name=is_magic,json=isMagic,proto3" json:"is_magic,omitempty"`
+	Crit             bool                   `protobuf:"varint,4,opt,name=crit,proto3" json:"crit,omitempty"`
+	Damage           uint64                 `protobuf:"varint,5,opt,name=damage,proto3" json:"damage,omitempty"`
+	Heal             uint64                 `protobuf:"varint,6,opt,name=heal,proto3" json:"heal,omitempty"`
+	ElementMult      uint32                 `protobuf:"varint,7,opt,name=element_mult,json=elementMult,proto3" json:"element_mult,omitempty"` // 85 | 100 | 115
+	FuryTriggered    bool                   `protobuf:"varint,8,opt,name=fury_triggered,json=furyTriggered,proto3" json:"fury_triggered,omitempty"`
+	RebirthTriggered bool                   `protobuf:"varint,9,opt,name=rebirth_triggered,json=rebirthTriggered,proto3" json:"rebirth_triggered,omitempty"`
+	Hp1After         uint32                 `protobuf:"varint,10,opt,name=hp1_after,json=hp1After,proto3" json:"hp1_after,omitempty"`
+	Hp2After         uint32                 `protobuf:"varint,11,opt,name=hp2_after,json=hp2After,proto3" json:"hp2_after,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *VerifyStrikeLogEntry) Reset() {
+	*x = VerifyStrikeLogEntry{}
+	mi := &file_cryptopets_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyStrikeLogEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyStrikeLogEntry) ProtoMessage() {}
+
+func (x *VerifyStrikeLogEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_cryptopets_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyStrikeLogEntry.ProtoReflect.Descriptor instead.
+func (*VerifyStrikeLogEntry) Descriptor() ([]byte, []int) {
+	return file_cryptopets_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *VerifyStrikeLogEntry) GetRound() uint32 {
+	if x != nil {
+		return x.Round
+	}
+	return 0
+}
+
+func (x *VerifyStrikeLogEntry) GetAttacker() uint32 {
+	if x != nil {
+		return x.Attacker
+	}
+	return 0
+}
+
+func (x *VerifyStrikeLogEntry) GetIsMagic() bool {
+	if x != nil {
+		return x.IsMagic
+	}
+	return false
+}
+
+func (x *VerifyStrikeLogEntry) GetCrit() bool {
+	if x != nil {
+		return x.Crit
+	}
+	return false
+}
+
+func (x *VerifyStrikeLogEntry) GetDamage() uint64 {
+	if x != nil {
+		return x.Damage
+	}
+	return 0
+}
+
+func (x *VerifyStrikeLogEntry) GetHeal() uint64 {
+	if x != nil {
+		return x.Heal
+	}
+	return 0
+}
+
+func (x *VerifyStrikeLogEntry) GetElementMult() uint32 {
+	if x != nil {
+		return x.ElementMult
+	}
+	return 0
+}
+
+func (x *VerifyStrikeLogEntry) GetFuryTriggered() bool {
+	if x != nil {
+		return x.FuryTriggered
+	}
+	return false
+}
+
+func (x *VerifyStrikeLogEntry) GetRebirthTriggered() bool {
+	if x != nil {
+		return x.RebirthTriggered
+	}
+	return false
+}
+
+func (x *VerifyStrikeLogEntry) GetHp1After() uint32 {
+	if x != nil {
+		return x.Hp1After
+	}
+	return 0
+}
+
+func (x *VerifyStrikeLogEntry) GetHp2After() uint32 {
+	if x != nil {
+		return x.Hp2After
+	}
+	return 0
+}
+
+// Mirrors indexer-go's combat.PetProgression / protocol's PetProgression.
+type VerifyPetProgression struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	PetId          string                 `protobuf:"bytes,1,opt,name=pet_id,json=petId,proto3" json:"pet_id,omitempty"`
+	Won            bool                   `protobuf:"varint,2,opt,name=won,proto3" json:"won,omitempty"`
+	DecayShift     uint32                 `protobuf:"varint,3,opt,name=decay_shift,json=decayShift,proto3" json:"decay_shift,omitempty"`
+	XpAwarded      uint32                 `protobuf:"varint,4,opt,name=xp_awarded,json=xpAwarded,proto3" json:"xp_awarded,omitempty"`
+	LastOpponentId string                 `protobuf:"bytes,5,opt,name=last_opponent_id,json=lastOpponentId,proto3" json:"last_opponent_id,omitempty"`
+	Streak         uint32                 `protobuf:"varint,6,opt,name=streak,proto3" json:"streak,omitempty"`
+	Level          uint32                 `protobuf:"varint,7,opt,name=level,proto3" json:"level,omitempty"`
+	Xp             uint32                 `protobuf:"varint,8,opt,name=xp,proto3" json:"xp,omitempty"`
+	LeveledUp      bool                   `protobuf:"varint,9,opt,name=leveled_up,json=leveledUp,proto3" json:"leveled_up,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *VerifyPetProgression) Reset() {
+	*x = VerifyPetProgression{}
+	mi := &file_cryptopets_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyPetProgression) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyPetProgression) ProtoMessage() {}
+
+func (x *VerifyPetProgression) ProtoReflect() protoreflect.Message {
+	mi := &file_cryptopets_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyPetProgression.ProtoReflect.Descriptor instead.
+func (*VerifyPetProgression) Descriptor() ([]byte, []int) {
+	return file_cryptopets_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *VerifyPetProgression) GetPetId() string {
+	if x != nil {
+		return x.PetId
+	}
+	return ""
+}
+
+func (x *VerifyPetProgression) GetWon() bool {
+	if x != nil {
+		return x.Won
+	}
+	return false
+}
+
+func (x *VerifyPetProgression) GetDecayShift() uint32 {
+	if x != nil {
+		return x.DecayShift
+	}
+	return 0
+}
+
+func (x *VerifyPetProgression) GetXpAwarded() uint32 {
+	if x != nil {
+		return x.XpAwarded
+	}
+	return 0
+}
+
+func (x *VerifyPetProgression) GetLastOpponentId() string {
+	if x != nil {
+		return x.LastOpponentId
+	}
+	return ""
+}
+
+func (x *VerifyPetProgression) GetStreak() uint32 {
+	if x != nil {
+		return x.Streak
+	}
+	return 0
+}
+
+func (x *VerifyPetProgression) GetLevel() uint32 {
+	if x != nil {
+		return x.Level
+	}
+	return 0
+}
+
+func (x *VerifyPetProgression) GetXp() uint32 {
+	if x != nil {
+		return x.Xp
+	}
+	return 0
+}
+
+func (x *VerifyPetProgression) GetLeveledUp() bool {
+	if x != nil {
+		return x.LeveledUp
+	}
+	return false
+}
+
+type VerifyBattleResponse struct {
+	state             protoimpl.MessageState  `protogen:"open.v1"`
+	FirstWins         bool                    `protobuf:"varint,1,opt,name=first_wins,json=firstWins,proto3" json:"first_wins,omitempty"`
+	Rounds            uint32                  `protobuf:"varint,2,opt,name=rounds,proto3" json:"rounds,omitempty"`
+	WinnerHpRemaining uint32                  `protobuf:"varint,3,opt,name=winner_hp_remaining,json=winnerHpRemaining,proto3" json:"winner_hp_remaining,omitempty"`
+	StartHp1          uint32                  `protobuf:"varint,4,opt,name=start_hp1,json=startHp1,proto3" json:"start_hp1,omitempty"`
+	StartHp2          uint32                  `protobuf:"varint,5,opt,name=start_hp2,json=startHp2,proto3" json:"start_hp2,omitempty"`
+	Log               []*VerifyStrikeLogEntry `protobuf:"bytes,6,rep,name=log,proto3" json:"log,omitempty"`
+	Attacker          *VerifyPetProgression   `protobuf:"bytes,7,opt,name=attacker,proto3" json:"attacker,omitempty"`
+	Defender          *VerifyPetProgression   `protobuf:"bytes,8,opt,name=defender,proto3" json:"defender,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *VerifyBattleResponse) Reset() {
+	*x = VerifyBattleResponse{}
+	mi := &file_cryptopets_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyBattleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyBattleResponse) ProtoMessage() {}
+
+func (x *VerifyBattleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_cryptopets_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyBattleResponse.ProtoReflect.Descriptor instead.
+func (*VerifyBattleResponse) Descriptor() ([]byte, []int) {
+	return file_cryptopets_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *VerifyBattleResponse) GetFirstWins() bool {
+	if x != nil {
+		return x.FirstWins
+	}
+	return false
+}
+
+func (x *VerifyBattleResponse) GetRounds() uint32 {
+	if x != nil {
+		return x.Rounds
+	}
+	return 0
+}
+
+func (x *VerifyBattleResponse) GetWinnerHpRemaining() uint32 {
+	if x != nil {
+		return x.WinnerHpRemaining
+	}
+	return 0
+}
+
+func (x *VerifyBattleResponse) GetStartHp1() uint32 {
+	if x != nil {
+		return x.StartHp1
+	}
+	return 0
+}
+
+func (x *VerifyBattleResponse) GetStartHp2() uint32 {
+	if x != nil {
+		return x.StartHp2
+	}
+	return 0
+}
+
+func (x *VerifyBattleResponse) GetLog() []*VerifyStrikeLogEntry {
+	if x != nil {
+		return x.Log
+	}
+	return nil
+}
+
+func (x *VerifyBattleResponse) GetAttacker() *VerifyPetProgression {
+	if x != nil {
+		return x.Attacker
+	}
+	return nil
+}
+
+func (x *VerifyBattleResponse) GetDefender() *VerifyPetProgression {
+	if x != nil {
+		return x.Defender
+	}
+	return nil
+}
+
 type StreamRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Resume point per chain so a reconnecting client misses nothing:
@@ -543,7 +1162,7 @@ type StreamRequest struct {
 
 func (x *StreamRequest) Reset() {
 	*x = StreamRequest{}
-	mi := &file_cryptopets_proto_msgTypes[6]
+	mi := &file_cryptopets_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -555,7 +1174,7 @@ func (x *StreamRequest) String() string {
 func (*StreamRequest) ProtoMessage() {}
 
 func (x *StreamRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_cryptopets_proto_msgTypes[6]
+	mi := &file_cryptopets_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -568,7 +1187,7 @@ func (x *StreamRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamRequest.ProtoReflect.Descriptor instead.
 func (*StreamRequest) Descriptor() ([]byte, []int) {
-	return file_cryptopets_proto_rawDescGZIP(), []int{6}
+	return file_cryptopets_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *StreamRequest) GetAfterVersion() map[string]uint64 {
@@ -600,7 +1219,7 @@ type BattleEvent struct {
 
 func (x *BattleEvent) Reset() {
 	*x = BattleEvent{}
-	mi := &file_cryptopets_proto_msgTypes[7]
+	mi := &file_cryptopets_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -612,7 +1231,7 @@ func (x *BattleEvent) String() string {
 func (*BattleEvent) ProtoMessage() {}
 
 func (x *BattleEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_cryptopets_proto_msgTypes[7]
+	mi := &file_cryptopets_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -625,7 +1244,7 @@ func (x *BattleEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BattleEvent.ProtoReflect.Descriptor instead.
 func (*BattleEvent) Descriptor() ([]byte, []int) {
-	return file_cryptopets_proto_rawDescGZIP(), []int{7}
+	return file_cryptopets_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *BattleEvent) GetChain() string {
@@ -776,7 +1395,68 @@ const file_cryptopets_proto_rawDesc = "" +
 	"\asamples\x18\x04 \x01(\rR\asamples\"P\n" +
 	"\vWinResponse\x12'\n" +
 	"\x0fwin_probability\x18\x01 \x01(\x01R\x0ewinProbability\x12\x18\n" +
-	"\asamples\x18\x02 \x01(\rR\asamples\"\xa2\x01\n" +
+	"\asamples\x18\x02 \x01(\rR\asamples\"\xd0\x01\n" +
+	"\x0fVerifyPetInputs\x12\x15\n" +
+	"\x06pet_id\x18\x01 \x01(\tR\x05petId\x12\x10\n" +
+	"\x03dna\x18\x02 \x01(\tR\x03dna\x12\x16\n" +
+	"\x06rarity\x18\x03 \x01(\rR\x06rarity\x12\x14\n" +
+	"\x05level\x18\x04 \x01(\rR\x05level\x12\x14\n" +
+	"\x05skill\x18\x05 \x01(\rR\x05skill\x12\x0e\n" +
+	"\x02xp\x18\x06 \x01(\rR\x02xp\x12(\n" +
+	"\x10last_opponent_id\x18\a \x01(\tR\x0elastOpponentId\x12\x16\n" +
+	"\x06streak\x18\b \x01(\rR\x06streak\"\xca\x02\n" +
+	"\x11VerifySkillConfig\x12 \n" +
+	"\ftank_hp_mult\x18\x01 \x01(\rR\n" +
+	"tankHpMult\x12$\n" +
+	"\x0eshell_def_mult\x18\x02 \x01(\rR\fshellDefMult\x12(\n" +
+	"\x10swift_crit_bonus\x18\x03 \x01(\rR\x0eswiftCritBonus\x12(\n" +
+	"\x10cunning_crit_cap\x18\x04 \x01(\rR\x0ecunningCritCap\x12\"\n" +
+	"\rfury_dmg_mult\x18\x05 \x01(\rR\vfuryDmgMult\x12*\n" +
+	"\x11fury_hp_threshold\x18\x06 \x01(\rR\x0ffuryHpThreshold\x12$\n" +
+	"\x0esage_mdef_mult\x18\a \x01(\rR\fsageMdefMult\x12#\n" +
+	"\rbloodlust_bps\x18\b \x01(\rR\fbloodlustBps\"\xfa\x01\n" +
+	"\x13VerifyBattleRequest\x127\n" +
+	"\battacker\x18\x01 \x01(\v2\x1b.cryptopets.VerifyPetInputsR\battacker\x127\n" +
+	"\bdefender\x18\x02 \x01(\v2\x1b.cryptopets.VerifyPetInputsR\bdefender\x12\x12\n" +
+	"\x04seed\x18\x03 \x01(\fR\x04seed\x12@\n" +
+	"\fskill_config\x18\x04 \x01(\v2\x1d.cryptopets.VerifySkillConfigR\vskillConfig\x12\x1b\n" +
+	"\tmax_level\x18\x05 \x01(\rR\bmaxLevel\"\xd4\x02\n" +
+	"\x14VerifyStrikeLogEntry\x12\x14\n" +
+	"\x05round\x18\x01 \x01(\rR\x05round\x12\x1a\n" +
+	"\battacker\x18\x02 \x01(\rR\battacker\x12\x19\n" +
+	"\bis_magic\x18\x03 \x01(\bR\aisMagic\x12\x12\n" +
+	"\x04crit\x18\x04 \x01(\bR\x04crit\x12\x16\n" +
+	"\x06damage\x18\x05 \x01(\x04R\x06damage\x12\x12\n" +
+	"\x04heal\x18\x06 \x01(\x04R\x04heal\x12!\n" +
+	"\felement_mult\x18\a \x01(\rR\velementMult\x12%\n" +
+	"\x0efury_triggered\x18\b \x01(\bR\rfuryTriggered\x12+\n" +
+	"\x11rebirth_triggered\x18\t \x01(\bR\x10rebirthTriggered\x12\x1b\n" +
+	"\thp1_after\x18\n" +
+	" \x01(\rR\bhp1After\x12\x1b\n" +
+	"\thp2_after\x18\v \x01(\rR\bhp2After\"\x86\x02\n" +
+	"\x14VerifyPetProgression\x12\x15\n" +
+	"\x06pet_id\x18\x01 \x01(\tR\x05petId\x12\x10\n" +
+	"\x03won\x18\x02 \x01(\bR\x03won\x12\x1f\n" +
+	"\vdecay_shift\x18\x03 \x01(\rR\n" +
+	"decayShift\x12\x1d\n" +
+	"\n" +
+	"xp_awarded\x18\x04 \x01(\rR\txpAwarded\x12(\n" +
+	"\x10last_opponent_id\x18\x05 \x01(\tR\x0elastOpponentId\x12\x16\n" +
+	"\x06streak\x18\x06 \x01(\rR\x06streak\x12\x14\n" +
+	"\x05level\x18\a \x01(\rR\x05level\x12\x0e\n" +
+	"\x02xp\x18\b \x01(\rR\x02xp\x12\x1d\n" +
+	"\n" +
+	"leveled_up\x18\t \x01(\bR\tleveledUp\"\xe7\x02\n" +
+	"\x14VerifyBattleResponse\x12\x1d\n" +
+	"\n" +
+	"first_wins\x18\x01 \x01(\bR\tfirstWins\x12\x16\n" +
+	"\x06rounds\x18\x02 \x01(\rR\x06rounds\x12.\n" +
+	"\x13winner_hp_remaining\x18\x03 \x01(\rR\x11winnerHpRemaining\x12\x1b\n" +
+	"\tstart_hp1\x18\x04 \x01(\rR\bstartHp1\x12\x1b\n" +
+	"\tstart_hp2\x18\x05 \x01(\rR\bstartHp2\x122\n" +
+	"\x03log\x18\x06 \x03(\v2 .cryptopets.VerifyStrikeLogEntryR\x03log\x12<\n" +
+	"\battacker\x18\a \x01(\v2 .cryptopets.VerifyPetProgressionR\battacker\x12<\n" +
+	"\bdefender\x18\b \x01(\v2 .cryptopets.VerifyPetProgressionR\bdefender\"\xa2\x01\n" +
 	"\rStreamRequest\x12P\n" +
 	"\rafter_version\x18\x01 \x03(\v2+.cryptopets.StreamRequest.AfterVersionEntryR\fafterVersion\x1a?\n" +
 	"\x11AfterVersionEntry\x12\x10\n" +
@@ -797,12 +1477,13 @@ const file_cryptopets_proto_rawDesc = "" +
 	" \x01(\rR\x06rounds\x12.\n" +
 	"\x13winner_hp_remaining\x18\v \x01(\rR\x11winnerHpRemaining\x12\x15\n" +
 	"\x06xp_win\x18\f \x01(\rR\x05xpWin\x12\x17\n" +
-	"\axp_loss\x18\r \x01(\rR\x06xpLoss2\xaf\x02\n" +
+	"\axp_loss\x18\r \x01(\rR\x06xpLoss2\x82\x03\n" +
 	"\x0fGameDataService\x12I\n" +
 	"\x11StreamLiveBattles\x12\x19.cryptopets.StreamRequest\x1a\x17.cryptopets.BattleEvent0\x01\x12>\n" +
 	"\vGetPetState\x12\x16.cryptopets.PetRequest\x1a\x17.cryptopets.PetResponse\x12Q\n" +
 	"\x12ListReadyOpponents\x12\x1c.cryptopets.OpponentsRequest\x1a\x1d.cryptopets.OpponentsResponse\x12>\n" +
-	"\vEstimateWin\x12\x16.cryptopets.WinRequest\x1a\x17.cryptopets.WinResponseB.Z,github.com/radcrew/do-not-stop/indexer-go/pbb\x06proto3"
+	"\vEstimateWin\x12\x16.cryptopets.WinRequest\x1a\x17.cryptopets.WinResponse\x12Q\n" +
+	"\fVerifyBattle\x12\x1f.cryptopets.VerifyBattleRequest\x1a .cryptopets.VerifyBattleResponseB.Z,github.com/radcrew/do-not-stop/indexer-go/pbb\x06proto3"
 
 var (
 	file_cryptopets_proto_rawDescOnce sync.Once
@@ -816,34 +1497,48 @@ func file_cryptopets_proto_rawDescGZIP() []byte {
 	return file_cryptopets_proto_rawDescData
 }
 
-var file_cryptopets_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_cryptopets_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_cryptopets_proto_goTypes = []any{
-	(*PetRequest)(nil),        // 0: cryptopets.PetRequest
-	(*PetResponse)(nil),       // 1: cryptopets.PetResponse
-	(*OpponentsRequest)(nil),  // 2: cryptopets.OpponentsRequest
-	(*OpponentsResponse)(nil), // 3: cryptopets.OpponentsResponse
-	(*WinRequest)(nil),        // 4: cryptopets.WinRequest
-	(*WinResponse)(nil),       // 5: cryptopets.WinResponse
-	(*StreamRequest)(nil),     // 6: cryptopets.StreamRequest
-	(*BattleEvent)(nil),       // 7: cryptopets.BattleEvent
-	nil,                       // 8: cryptopets.StreamRequest.AfterVersionEntry
+	(*PetRequest)(nil),           // 0: cryptopets.PetRequest
+	(*PetResponse)(nil),          // 1: cryptopets.PetResponse
+	(*OpponentsRequest)(nil),     // 2: cryptopets.OpponentsRequest
+	(*OpponentsResponse)(nil),    // 3: cryptopets.OpponentsResponse
+	(*WinRequest)(nil),           // 4: cryptopets.WinRequest
+	(*WinResponse)(nil),          // 5: cryptopets.WinResponse
+	(*VerifyPetInputs)(nil),      // 6: cryptopets.VerifyPetInputs
+	(*VerifySkillConfig)(nil),    // 7: cryptopets.VerifySkillConfig
+	(*VerifyBattleRequest)(nil),  // 8: cryptopets.VerifyBattleRequest
+	(*VerifyStrikeLogEntry)(nil), // 9: cryptopets.VerifyStrikeLogEntry
+	(*VerifyPetProgression)(nil), // 10: cryptopets.VerifyPetProgression
+	(*VerifyBattleResponse)(nil), // 11: cryptopets.VerifyBattleResponse
+	(*StreamRequest)(nil),        // 12: cryptopets.StreamRequest
+	(*BattleEvent)(nil),          // 13: cryptopets.BattleEvent
+	nil,                          // 14: cryptopets.StreamRequest.AfterVersionEntry
 }
 var file_cryptopets_proto_depIdxs = []int32{
-	1, // 0: cryptopets.OpponentsResponse.pets:type_name -> cryptopets.PetResponse
-	8, // 1: cryptopets.StreamRequest.after_version:type_name -> cryptopets.StreamRequest.AfterVersionEntry
-	6, // 2: cryptopets.GameDataService.StreamLiveBattles:input_type -> cryptopets.StreamRequest
-	0, // 3: cryptopets.GameDataService.GetPetState:input_type -> cryptopets.PetRequest
-	2, // 4: cryptopets.GameDataService.ListReadyOpponents:input_type -> cryptopets.OpponentsRequest
-	4, // 5: cryptopets.GameDataService.EstimateWin:input_type -> cryptopets.WinRequest
-	7, // 6: cryptopets.GameDataService.StreamLiveBattles:output_type -> cryptopets.BattleEvent
-	1, // 7: cryptopets.GameDataService.GetPetState:output_type -> cryptopets.PetResponse
-	3, // 8: cryptopets.GameDataService.ListReadyOpponents:output_type -> cryptopets.OpponentsResponse
-	5, // 9: cryptopets.GameDataService.EstimateWin:output_type -> cryptopets.WinResponse
-	6, // [6:10] is the sub-list for method output_type
-	2, // [2:6] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	1,  // 0: cryptopets.OpponentsResponse.pets:type_name -> cryptopets.PetResponse
+	6,  // 1: cryptopets.VerifyBattleRequest.attacker:type_name -> cryptopets.VerifyPetInputs
+	6,  // 2: cryptopets.VerifyBattleRequest.defender:type_name -> cryptopets.VerifyPetInputs
+	7,  // 3: cryptopets.VerifyBattleRequest.skill_config:type_name -> cryptopets.VerifySkillConfig
+	9,  // 4: cryptopets.VerifyBattleResponse.log:type_name -> cryptopets.VerifyStrikeLogEntry
+	10, // 5: cryptopets.VerifyBattleResponse.attacker:type_name -> cryptopets.VerifyPetProgression
+	10, // 6: cryptopets.VerifyBattleResponse.defender:type_name -> cryptopets.VerifyPetProgression
+	14, // 7: cryptopets.StreamRequest.after_version:type_name -> cryptopets.StreamRequest.AfterVersionEntry
+	12, // 8: cryptopets.GameDataService.StreamLiveBattles:input_type -> cryptopets.StreamRequest
+	0,  // 9: cryptopets.GameDataService.GetPetState:input_type -> cryptopets.PetRequest
+	2,  // 10: cryptopets.GameDataService.ListReadyOpponents:input_type -> cryptopets.OpponentsRequest
+	4,  // 11: cryptopets.GameDataService.EstimateWin:input_type -> cryptopets.WinRequest
+	8,  // 12: cryptopets.GameDataService.VerifyBattle:input_type -> cryptopets.VerifyBattleRequest
+	13, // 13: cryptopets.GameDataService.StreamLiveBattles:output_type -> cryptopets.BattleEvent
+	1,  // 14: cryptopets.GameDataService.GetPetState:output_type -> cryptopets.PetResponse
+	3,  // 15: cryptopets.GameDataService.ListReadyOpponents:output_type -> cryptopets.OpponentsResponse
+	5,  // 16: cryptopets.GameDataService.EstimateWin:output_type -> cryptopets.WinResponse
+	11, // 17: cryptopets.GameDataService.VerifyBattle:output_type -> cryptopets.VerifyBattleResponse
+	13, // [13:18] is the sub-list for method output_type
+	8,  // [8:13] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_cryptopets_proto_init() }
@@ -857,7 +1552,7 @@ func file_cryptopets_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_cryptopets_proto_rawDesc), len(file_cryptopets_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

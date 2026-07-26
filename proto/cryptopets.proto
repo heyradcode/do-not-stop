@@ -27,6 +27,16 @@ service GameDataService {
   // many seeds for pet_id1 vs pet_id2 (both read from the warm roster cache)
   // and returns pet_id1's win probability. UNAVAILABLE until the cache is warm.
   rpc EstimateWin(WinRequest) returns (WinResponse);
+
+  // Independent recomputation of a backend-authoritative battle
+  // (docs/plan-backend-battle-architecture.md §F). Takes everything needed to
+  // rerun the fight and the progression composition — no database, no cache,
+  // no chain state — so a mismatch against the TypeScript engine's own result
+  // means the two implementations disagree, not that either read something
+  // different. Release safety only: this does not constrain an operator who
+  // controls both processes (see the architecture doc's "what the Go verifier
+  // is for" section). Never wired to any state-mutating path.
+  rpc VerifyBattle(VerifyBattleRequest) returns (VerifyBattleResponse);
 }
 
 message PetRequest {
@@ -84,6 +94,84 @@ message WinRequest {
 message WinResponse {
   double win_probability = 1; // pet_id1's win probability in [0,1]
   uint32 samples = 2; // seeds actually sampled
+}
+
+// One pet's frozen snapshot fields, as needed to recompute a fight and its
+// progression. Mirrors indexer-go's combat.PetInputs / protocol's PetSnapshot
+// (the subset both computations actually read — owner, readyAt, and
+// sourceVersion are not needed to run the fight).
+message VerifyPetInputs {
+  string pet_id = 1; // decimal string; parsed to uint64 server-side
+  string dna = 2; // decimal string (16-digit DNA fits uint64)
+  uint32 rarity = 3;
+  uint32 level = 4;
+  uint32 skill = 5;
+  uint32 xp = 6;
+  string last_opponent_id = 7; // decimal string; "0" = no prior opponent
+  uint32 streak = 8;
+}
+
+// Mirrors protocol's SkillConfig field for field.
+message VerifySkillConfig {
+  uint32 tank_hp_mult = 1;
+  uint32 shell_def_mult = 2;
+  uint32 swift_crit_bonus = 3;
+  uint32 cunning_crit_cap = 4;
+  uint32 fury_dmg_mult = 5;
+  uint32 fury_hp_threshold = 6;
+  uint32 sage_mdef_mult = 7;
+  uint32 bloodlust_bps = 8;
+}
+
+message VerifyBattleRequest {
+  VerifyPetInputs attacker = 1;
+  VerifyPetInputs defender = 2;
+  bytes seed = 3; // 32 bytes, big-endian, matching the on-chain uint256 seed
+  VerifySkillConfig skill_config = 4;
+  uint32 max_level = 5;
+}
+
+// One resolved attack, in fight order. Mirrors indexer-go's
+// combat.StrikeLogEntry / protocol's StrikeLogEntry field for field, so the
+// caller can convert this into the same shape the TypeScript engine produces
+// and hash both with @cryptopets/protocol's canonical encoding — Go never
+// reimplements that encoding itself (see indexer-go's simlog.go doc comment).
+message VerifyStrikeLogEntry {
+  uint32 round = 1;
+  uint32 attacker = 2; // 1 = pet1/attacker, 2 = pet2/defender
+  bool is_magic = 3;
+  bool crit = 4;
+  uint64 damage = 5;
+  uint64 heal = 6;
+  uint32 element_mult = 7; // 85 | 100 | 115
+  bool fury_triggered = 8;
+  bool rebirth_triggered = 9;
+  uint32 hp1_after = 10;
+  uint32 hp2_after = 11;
+}
+
+// Mirrors indexer-go's combat.PetProgression / protocol's PetProgression.
+message VerifyPetProgression {
+  string pet_id = 1;
+  bool won = 2;
+  uint32 decay_shift = 3;
+  uint32 xp_awarded = 4;
+  string last_opponent_id = 5;
+  uint32 streak = 6;
+  uint32 level = 7;
+  uint32 xp = 8;
+  bool leveled_up = 9;
+}
+
+message VerifyBattleResponse {
+  bool first_wins = 1;
+  uint32 rounds = 2;
+  uint32 winner_hp_remaining = 3;
+  uint32 start_hp1 = 4;
+  uint32 start_hp2 = 5;
+  repeated VerifyStrikeLogEntry log = 6;
+  VerifyPetProgression attacker = 7;
+  VerifyPetProgression defender = 8;
 }
 
 message StreamRequest {
