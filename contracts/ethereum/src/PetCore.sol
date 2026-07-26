@@ -28,6 +28,20 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     event CallerRevoked(address indexed caller);
     event GameConfigUpdated(address config);
 
+    /// @dev `winCount`, `lossCount`, `lastOpponentId`, and `sameOpponentStreak` are retired
+    ///      with the on-chain battle path (§L Phase 6): nothing writes them any more, because
+    ///      backend battles keep progression in `pet_battle_progress`, keyed separately so
+    ///      on-chain and off-chain state can never be mistaken for each other.
+    ///
+    ///      They stay declared, in place, because this contract is behind a UUPS proxy and
+    ///      `Pet` lives in a mapping: removing or reordering a member re-lays out every pet
+    ///      already minted. Read them as a frozen record of whatever the last on-chain battle
+    ///      left behind — zero for a pet that never fought on chain.
+    ///
+    ///      `readyTime` is **not** retired. Breeding still writes it (`setCooldown` applies
+    ///      `newbornCooldown` to offspring), and the backend honours it through the indexed
+    ///      `pet_roster.ready_at`, so a newborn is still barred from fighting. What changed is
+    ///      only that battles no longer *set* it.
     struct Pet {
         string name;
         uint256 dna;
@@ -158,10 +172,6 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
         _mint(to, tokenId);
     }
 
-    function triggerCooldown(uint256 petId) external onlyAuthorized entryExists(petId) {
-        _pets[petId].readyTime = _deadline(gameConfig.battleCooldown());
-    }
-
     // Set the breed-specific cooldown (does NOT touch the battle readyTime).
     function triggerBreedCooldown(
         uint256 petId,
@@ -178,10 +188,6 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     // Set the train-specific cooldown.
     function triggerTrainCooldown(uint256 petId) external onlyAuthorized entryExists(petId) {
         _pets[petId].trainReadyAt = _deadline(gameConfig.trainCooldown());
-    }
-
-    function updateBattleStats(uint256 petId, bool won) external onlyAuthorized entryExists(petId) {
-        if (won) { _pets[petId].winCount++; } else { _pets[petId].lossCount++; }
     }
 
     function addXp(uint256 petId, uint32 amount) external onlyAuthorized entryExists(petId) {
@@ -206,25 +212,6 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     ///      starter mint settles, so the escalating mint fee tracks successful mints.
     function incrementWalletMintCount(address account) external onlyAuthorized {
         walletMintCount[account]++;
-    }
-
-    // Same-opponent decay (plan §3.4): tracks consecutive battles against `opponentId` and
-    // returns the XP-halving shift to apply (0 = full XP, 1 = half, 2 = quarter, ...).
-    // Facing a different opponent resets the streak to 0.
-    function recordBattleOpponent(
-        uint256 petId,
-        uint256 opponentId
-    ) external onlyAuthorized entryExists(petId) returns (uint8 decayShift) {
-        Pet storage p = _pets[petId];
-        if (p.lastOpponentId == opponentId) {
-            if (p.sameOpponentStreak < type(uint8).max) {
-                p.sameOpponentStreak++;
-            }
-        } else {
-            p.lastOpponentId = opponentId;
-            p.sameOpponentStreak = 0;
-        }
-        decayShift = p.sameOpponentStreak;
     }
 
     // ─── user-facing functions ────────────────────────────────────────────────
@@ -495,7 +482,10 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
             name:         name_,
             dna:          dna,
             level:        1,
-            readyTime:    _deadline(gameConfig.battleCooldown()),
+            // Retired battle field (§L Phase 6). Zeroed at mint rather than seeded from a
+            // cooldown that no longer exists: nothing on chain reads it, and backend battles
+            // track readiness in `pet_battle_progress`.
+            readyTime:    0,
             winCount:     0,
             lossCount:    0,
             rarity:       rarity,

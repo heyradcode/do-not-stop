@@ -15,13 +15,11 @@ contract GameConfig is Ownable {
     uint256 public levelUpFee          = 0.004 ether; // level-scaled: baseFee * (100 + (L-1)^2) / 100, capped at maxLevel; 1->99 total > train's 1->99 total
     uint256 public breedFee            = 0.0005 ether;
     uint256 public baseMintFee         = 0.001 ether;
-    // Charged on top of the Entropy fee at requestBattle time, to cover the settle keeper's
-    // own settleBattle gas (~800k gas, see backend/src/features/settle-keeper/abi.ts's
-    // SETTLE_GAS_LIMIT) — that second tx is sent from the keeper's wallet, not the player's,
-    // and was previously fully unfunded. Starting estimate; tune via setBattleFee() against
-    // observed keeper gas spend. Refunded on cancelBattle (no settle tx is ever sent).
-    uint256 public battleFee           = 0.0005 ether;
-    uint256 public battleCooldown      = 900 seconds;   // post-battle lockout (§3.4: 15 min)
+    // `battleFee` and `battleCooldown` were removed with the on-chain battle path (§L Phase
+    // 6): the first funded settleBattle's gas and the second fed PetCore.triggerCooldown,
+    // and neither exists any more. Backend battles carry no per-battle transaction, and their
+    // cooldown is BATTLE_COOLDOWN_SECONDS in the backend. GameConfig is not behind a proxy,
+    // so dropping the fields is a redeploy rather than a layout hazard.
     uint256 public breedCooldownBase   = 3600 seconds;  // doubles per breedCount, capped at 30 days (§4.1: 1h base)
     uint256 public newbornCooldown     = 43200 seconds; // bred pets: battle lockout after birth (§4.2: 12h)
     uint256 public maxNameLength       = 32;
@@ -37,8 +35,6 @@ contract GameConfig is Ownable {
     uint256 public studFee             = 0.001 ether; // cross-owner breed: payer → other parent's owner (§4.4)
     uint256 public marriageCooldown    = 60 seconds;  // lockout after divorce/stale (§5 dev: 60s, prod: 24h)
     uint256 public proposalTTL         = 60 seconds;  // marriage proposal expiry (§5 dev: 60s, prod: 7 days)
-
-    address public combatSim;
 
     // Species pool sizes per rarity tier (1-5); speciesId = digitPair % poolSizes[rarity] (§3.7).
     mapping(uint8 => uint8) public poolSizes;
@@ -56,7 +52,6 @@ contract GameConfig is Ownable {
     event LevelUpFeeUpdated(uint256 fee);
     event BreedFeeUpdated(uint256 fee);
     event BaseMintFeeUpdated(uint256 fee);
-    event BattleFeeUpdated(uint256 fee);
     event BreedCooldownBaseUpdated(uint256 cooldown);
     event NewbornCooldownUpdated(uint256 cooldown);
     event GenerationCapUpdated(uint8 cap);
@@ -68,7 +63,6 @@ contract GameConfig is Ownable {
     event StudFeeUpdated(uint256 fee);
     event MarriageCooldownUpdated(uint256 cooldown);
     event ProposalTTLUpdated(uint256 ttl);
-    event CombatSimUpdated(address sim);
     event PoolSizeUpdated(uint8 tier, uint8 size);
     event TankHpMultUpdated(uint16 value);
     event ShellDefMultUpdated(uint16 value);
@@ -98,11 +92,6 @@ contract GameConfig is Ownable {
     function setBaseMintFee(uint256 fee) external onlyOwner {
         baseMintFee = fee;
         emit BaseMintFeeUpdated(fee);
-    }
-
-    function setBattleFee(uint256 fee) external onlyOwner {
-        battleFee = fee;
-        emit BattleFeeUpdated(fee);
     }
 
     function setBreedCooldownBase(uint256 cooldown) external onlyOwner {
@@ -160,12 +149,6 @@ contract GameConfig is Ownable {
     function setProposalTTL(uint256 ttl) external onlyOwner {
         proposalTTL = ttl;
         emit ProposalTTLUpdated(ttl);
-    }
-
-    function setCombatSim(address sim) external onlyOwner {
-        require(sim != address(0), "Zero address");
-        combatSim = sim;
-        emit CombatSimUpdated(sim);
     }
 
     function setPoolSize(uint8 tier, uint8 size) external onlyOwner {
