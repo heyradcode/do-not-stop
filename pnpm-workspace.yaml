@@ -4,6 +4,7 @@ packages:
   - 'backend'
   - 'mobile'
   - 'shared'
+  - 'protocol'
   - 'contracts/ethereum'
   - 'contracts/ethereum/subgraph'
   - 'contracts/solana/cryptopets'

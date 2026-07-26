@@ -1,0 +1,30 @@
+{
+    // Typecheck-only config (`pnpm typecheck`). This package is consumed as raw
+    // TypeScript source, like `shared`, so nothing is emitted. It exists so the
+    // standalone verifier and any third party can typecheck against the protocol
+    // without inheriting an app package's config.
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        // `node` is here for the test suites only (golden vectors are read off disk).
+        // Nothing under src/ may import a node builtin: this package has to run in a
+        // browser bundle too.
+        "types": ["vitest/globals", "node"],
+        "noEmit": true,
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "verbatimModuleSyntax": true,
+        "isolatedModules": true
+    },
+    "include": ["src/**/*.ts", "tests/**/*.ts"]
+}
