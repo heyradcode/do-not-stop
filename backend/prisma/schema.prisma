@@ -238,10 +238,34 @@ model DefenseAuthorization {
   revokedAt         DateTime? @map("revoked_at")
 
   ledger BattleLedger[]
+  usage  DefenseUsage[]
 
   @@index([chainId, deploymentId, defenderOwner])
   @@index([chainId, deploymentId, rulesetHash])
+  /// Revocation bumps a monotonic nonce per owner, so the highest nonce an owner has ever
+  /// used is looked up on every submission.
+  @@index([chainId, deploymentId, defenderOwner, revocationNonce], map: "defense_authorization_owner_nonce_idx")
   @@map("defense_authorization")
+}
+
+/// Battles used against one authorization on one day, enforcing `maxBattlesPerDay` (§D).
+///
+/// The bucket is a UTC epoch day (`floor(unixSeconds / 86400)`) rather than a calendar date
+/// string, because a date implies a timezone and a defender's daily cap should not depend on
+/// which one the server happens to think it is in.
+///
+/// Counted per authorization rather than per pet: the cap is what the defender agreed to, and
+/// a per-pet count would let a blanket authorization be spent many times over.
+model DefenseUsage {
+  authorizationHash String               @map("authorization_hash")
+  authorization     DefenseAuthorization @relation(fields: [authorizationHash], references: [authorizationHash], onDelete: Cascade)
+  /// UTC epoch day.
+  dayBucket         Int                  @map("day_bucket")
+  count             Int                  @default(0)
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  @@id([authorizationHash, dayBucket])
+  @@map("defense_usage")
 }
 
 /// The durable workflow row for one backend-resolved battle: the state machine, the

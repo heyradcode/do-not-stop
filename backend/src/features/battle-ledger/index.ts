@@ -1,3 +1,20 @@
+export { deleteDefenseAuthorizations, postDefenseAuthorization } from './consent.controller';
+export {
+    type AuthorizationRejection,
+    type ConsentFailure,
+    type ConsentResult,
+    consumeDailyBudget,
+    type CoverageRequest,
+    type DefenseAuthorizationWire,
+    epochDay,
+    findCoveringAuthorization,
+    revokeDefenseAuthorizations,
+    type SubmitAuthorizationRequest,
+    type SubmitAuthorizationResult,
+    submitDefenseAuthorization,
+    toProtocolAuthorization,
+    verifyAuthorizationSignature,
+} from './consent.service';
 export { assertServedDomain, servedChainIds, servedDeploymentId, servedDomain } from './domain';
 export { postBattleIntent } from './intent.controller';
 export {
