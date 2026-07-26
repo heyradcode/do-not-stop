@@ -41,6 +41,10 @@ export const DOMAIN_TAGS = {
     /** Merkle internal node (§I). Distinct from the leaf tag, so a leaf digest can
      *  never be presented as an internal node in a proof. */
     MERKLE_NODE: 'CRYPTOPETS_MERKLE_NODE_V1',
+    /** Merkle leaf over a season reward entitlement (§I). Its own tag rather than an
+     *  extension of `MERKLE_LEAF`, so a receipt leaf can never be presented as a claim
+     *  on a reward, or the reverse. */
+    MERKLE_REWARD_LEAF: 'CRYPTOPETS_MERKLE_REWARD_LEAF_V1',
 } as const;
 
 /** One of the protocol's domain tags. */

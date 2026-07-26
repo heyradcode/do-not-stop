@@ -29,6 +29,7 @@ describe('schema versions', () => {
             'receipt',
             'combatLog',
             'merkleLeaf',
+            'merkleRewardLeaf',
         ]);
     });
 

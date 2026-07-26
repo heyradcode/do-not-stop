@@ -25,6 +25,7 @@ export const SCHEMA_VERSIONS = {
     receipt: 1,
     combatLog: 1,
     merkleLeaf: 1,
+    merkleRewardLeaf: 1,
 } as const;
 
 /** Kinds of object this protocol versions. */
@@ -40,6 +41,7 @@ const SUPPORTED_VERSIONS: Record<SchemaKind, readonly number[]> = {
     receipt: [1],
     combatLog: [1],
     merkleLeaf: [1],
+    merkleRewardLeaf: [1],
 };
 
 /** The version this build writes for `kind`. */
