@@ -159,6 +159,22 @@ export async function failOutbox(
     return { deadLettered: false, retryAt };
 }
 
+/**
+ * Reschedules a message without treating the wait as a failure.
+ *
+ * Waiting for a drand round to publish is the expected, common case for `await-beacon`, not an
+ * error: `failOutbox`'s exponential backoff and eventual dead-lettering exist for something
+ * actually going wrong, and applying them here would dead-letter a perfectly healthy battle
+ * just because its committed round has not arrived yet. `attempts` and `lastError` are left
+ * untouched, so a genuine failure later still starts its own backoff from zero.
+ */
+export async function rescheduleOutbox(id: string, availableAt: Date): Promise<void> {
+    await prisma.battleOutbox.update({
+        where: { id },
+        data: { availableAt, lockedAt: null, lockedBy: null },
+    });
+}
+
 /** Exponential backoff in seconds for the nth attempt (1-based), capped. */
 export function retryDelaySeconds(attempts: number): number {
     const delay = BASE_RETRY_SECONDS * 2 ** Math.max(0, attempts - 1);

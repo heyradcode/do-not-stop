@@ -166,6 +166,18 @@ export const env = {
             .map((url) => url.trim().replace(/\/$/, ''))
             .filter((url) => url.length > 0),
         drandTimeoutMs: Number(process.env.BATTLE_DRAND_TIMEOUT_MS?.trim() || '4000'),
+        /**
+         * How long a battle waits on its committed round before forfeiting (§E). Measured from
+         * when the round was *due* to publish, not from acceptance, since a couple of rounds'
+         * offset is expected delay, not an outage. Long enough that ordinary drand jitter never
+         * forfeits a battle; short enough that a genuine outage does not leave pets locked
+         * indefinitely. Default: 300s (100 quicknet rounds).
+         */
+        forfeitAfterSeconds: Number(process.env.BATTLE_FORFEIT_AFTER_SECONDS?.trim() || '300'),
+        /** How often the compute worker polls the outbox for due messages, in ms. */
+        workerPollIntervalMs: Number(process.env.BATTLE_WORKER_POLL_INTERVAL_MS?.trim() || '2000'),
+        /** Messages claimed per poll, per topic. */
+        workerBatchSize: Number(process.env.BATTLE_WORKER_BATCH_SIZE?.trim() || '10'),
     },
 
     /**

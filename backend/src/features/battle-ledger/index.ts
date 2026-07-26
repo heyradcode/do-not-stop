@@ -46,6 +46,7 @@ export {
     OUTBOX_TOPICS,
     type OutboxMessage,
     type OutboxTopic,
+    rescheduleOutbox,
     retryDelaySeconds,
 } from './outbox';
 export {

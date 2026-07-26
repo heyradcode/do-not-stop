@@ -3,9 +3,13 @@ import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import app from './app';
 import { startBattleStream, stopBattleStream } from '@grpc-client/battleStream';
+import { configureSigner } from '@features/battle-signer';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { startSolanaSettleKeeperFeature, stopSolanaSettleKeeperFeature } from '@features/settle-keeper-solana';
+import { type BattleWorkerHandle, startBattleWorker } from '@features/battle-worker';
 import { startLiveBattleSocket, stopLiveBattleSocket } from '@ws/liveBattleSocket';
+
+let battleWorker: BattleWorkerHandle | undefined;
 
 // Bind 0.0.0.0 so Render's internal health check can reach the process
 // (listen(port) alone is not always reachable on their network scan).
@@ -29,6 +33,14 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     // Settles Solana commit_battle requests once Switchboard reveals. No-op unless
     // KEEPER_SOLANA_ENABLED is set.
     startSolanaSettleKeeperFeature();
+
+    // Backend-authoritative battles (docs/plan-backend-battle-architecture.md). Selects the
+    // signing backend (refuses an in-process key in production; see @features/battle-signer)
+    // and starts the outbox worker that carries accepted battles from `committed` through
+    // `computed`. Both are always on: unlike the settle keepers there is no separate enable
+    // flag yet, since accepting a battle already requires a configured signer to succeed.
+    configureSigner(Math.floor(Date.now() / 1000));
+    battleWorker = startBattleWorker(`backend-${process.pid}`);
 });
 
 /** Force-exit deadline: don't let a stuck connection block the orchestrator forever. */
@@ -55,6 +67,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     stopBattleStream();
     stopSettleKeeper();
     stopSolanaSettleKeeperFeature();
+    battleWorker?.stop();
     stopLiveBattleSocket();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
