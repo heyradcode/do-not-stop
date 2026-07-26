@@ -17,6 +17,7 @@ export * from './consent';
 export * from './domain';
 export * from './encoding';
 export * from './intent';
+export * from './merkle';
 export * from './progression';
 export * from './randomness';
 export * from './receipt';
