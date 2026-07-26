@@ -62,6 +62,7 @@ export {
     verifyAuthorizationSignature,
 } from './consent.service';
 export { assertServedDomain, servedChainIds, servedDeploymentId, servedDomain } from './domain';
+export { backendBattleModeEnabled, requireBackendBattleMode } from './mode';
 export { postBattleIntent } from './intent.controller';
 export {
     type BattleIntentWire,
@@ -80,6 +81,7 @@ export {
     enqueueOutbox,
     failOutbox,
     listDeadLetters,
+    requeueDeadLetter,
     MAX_OUTBOX_ATTEMPTS,
     OUTBOX_TOPICS,
     type OutboxMessage,

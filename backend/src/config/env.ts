@@ -149,6 +149,19 @@ export const env = {
      * sharing staging's identity.
      */
     battle: {
+        /**
+         * Backend-authoritative battle mode (§L Phase 3).
+         *
+         * Off by default, and deliberately a separate switch from the on-chain path rather
+         * than a replacement for it: Phase 3 runs both side by side, and the on-chain flow
+         * has to keep working untouched whether this is on or not. With it off the write
+         * routes refuse, the worker does not start, and no signer is required — a
+         * deployment that never turns this on should not need a signing key at all.
+         *
+         * "Rewardless" is not a setting. Receipts carry no transferable reward at any
+         * setting; that arrives with the batch registry in Group I.
+         */
+        enabled: process.env.BATTLE_BACKEND_MODE_ENABLED?.trim().toLowerCase() === 'true',
         deploymentId: process.env.BATTLE_DEPLOYMENT_ID?.trim() || 'local-dev',
         /** Comma-separated protocol chain ids, e.g. `eip155:84532,solana:devnet`. */
         chainIds: (process.env.BATTLE_CHAIN_IDS?.trim() || 'eip155:31337,solana:localnet')

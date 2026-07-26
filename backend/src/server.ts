@@ -38,13 +38,20 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     // KEEPER_SOLANA_ENABLED is set.
     startSolanaSettleKeeperFeature();
 
-    // Backend-authoritative battles (docs/plan-backend-battle-architecture.md). Selects the
-    // signing backend (refuses an in-process key in production; see @features/battle-signer)
-    // and starts the outbox worker that carries accepted battles from `committed` through
-    // `computed`. Both are always on: unlike the settle keepers there is no separate enable
-    // flag yet, since accepting a battle already requires a configured signer to succeed.
-    configureSigner(Math.floor(Date.now() / 1000));
-    battleWorker = startBattleWorker(`backend-${process.pid}`);
+    // Backend-authoritative battles (docs/plan-backend-battle-architecture.md §L Phase 3).
+    // Selects the signing backend (refuses an in-process key in production; see
+    // @features/battle-signer) and starts the outbox worker that carries accepted battles
+    // through to a signed receipt.
+    //
+    // Both are gated on the mode, so a deployment running only the on-chain path needs no
+    // signing key at all. The read routes and the public corpus stay served either way —
+    // receipts already issued must remain checkable after the mode is switched off.
+    if (env.battle.enabled) {
+        configureSigner(Math.floor(Date.now() / 1000));
+        battleWorker = startBattleWorker(`backend-${process.pid}`);
+    } else {
+        console.log('[battle] BATTLE_BACKEND_MODE_ENABLED not set; backend battle writes disabled (reads stay served)');
+    }
 });
 
 /** Force-exit deadline: don't let a stuck connection block the orchestrator forever. */

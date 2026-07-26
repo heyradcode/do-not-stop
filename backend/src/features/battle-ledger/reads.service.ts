@@ -5,6 +5,7 @@ import { prisma } from '@config/prisma';
 import { listSigningKeys } from '@features/battle-signer';
 
 import { servedChainIds, servedDeploymentId } from './domain';
+import { backendBattleModeEnabled } from './mode';
 
 /**
  * Public, authoritative reads for a battle in flight or settled (§J).
@@ -24,6 +25,14 @@ import { servedChainIds, servedDeploymentId } from './domain';
  */
 
 export interface BattleConfig {
+    /**
+     * Whether this deployment is currently accepting backend-authoritative battles.
+     *
+     * False means the write routes refuse (503) while every read still answers, so a client
+     * should offer the on-chain path instead. Reported here rather than discovered by
+     * attempting a battle and failing after the wallet prompt.
+     */
+    enabled: boolean;
     /** The deployment an intent must name, or it is refused as `wrong-deployment`. */
     deploymentId: string;
     /** Chain ids this process serves battles for. */
@@ -49,6 +58,7 @@ export interface BattleConfig {
 export function getBattleConfig(): BattleConfig {
     const ruleset = SOURCE_DEFAULT_RULESET;
     return {
+        enabled: backendBattleModeEnabled(),
         deploymentId: servedDeploymentId(),
         chainIds: servedChainIds(),
         ruleset: { hash: hashRuleset(ruleset), version: ruleset.version },

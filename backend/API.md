@@ -249,6 +249,11 @@ to check independently.
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
+The four write routes are gated on `BATTLE_BACKEND_MODE_ENABLED` and return **503
+`backend-battle-mode-disabled`** when it is off. Every read below stays served regardless:
+switching the mode off stops new battles, it does not retract receipts already issued.
+`DELETE /authorizations` is ungated too, since withdrawing consent must keep working.
+
 | POST | `/api/battle/intents` | JWT | Submit a signed battle intent (§D). |
 | POST | `/api/battle/intents/:intentHash/accept` | JWT | Freeze the snapshot, commit to a future drand round, sign the commitment, and return it synchronously (§E). |
 | POST | `/api/battle/authorizations` | JWT | Submit a signed standing defence authorization (§D). |

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { hashRuleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
 
 const battleEnv = vi.hoisted(() => ({
+    enabled: true,
     deploymentId: 'base-sepolia-live',
     chainIds: ['eip155:84532', 'solana:devnet'],
 }));
@@ -21,6 +22,7 @@ vi.mock('@features/battle-signer', () => ({ listSigningKeys: vi.fn() }));
 import { getBattleConfig } from '@features/battle-ledger';
 
 beforeEach(() => {
+    battleEnv.enabled = true;
     battleEnv.deploymentId = 'base-sepolia-live';
     battleEnv.chainIds = ['eip155:84532', 'solana:devnet'];
 });
@@ -53,6 +55,22 @@ describe('getBattleConfig', () => {
             deploymentId: 'base-mainnet-live',
             chainIds: ['eip155:8453'],
         });
+    });
+
+    it('reports whether this deployment is accepting backend battles', () => {
+        // The frontend mode switch reads this. Discovering the answer by submitting an
+        // intent and getting a 503 would mean finding out after the wallet prompt.
+        expect(getBattleConfig().enabled).toBe(true);
+
+        battleEnv.enabled = false;
+        expect(getBattleConfig().enabled).toBe(false);
+    });
+
+    it('keeps serving the deployment and ruleset while the mode is off', () => {
+        // Reads stay open when writes are refused, so a client can still verify receipts
+        // this deployment issued before the mode was switched off.
+        battleEnv.enabled = false;
+        expect(getBattleConfig()).toMatchObject({ deploymentId: 'base-sepolia-live' });
     });
 
     it('rejects a chain id the protocol does not recognise', () => {

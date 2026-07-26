@@ -199,3 +199,27 @@ export async function listDeadLetters(limit = 100): Promise<ClaimedMessage[]> {
         attempts: row.attempts,
     }));
 }
+
+/**
+ * Puts a dead-lettered message back in the queue, once a human has decided it should run
+ * again.
+ *
+ * The deliberate counterpart to `listDeadLetters`: dead-lettering is not automatic retry
+ * exhaustion to be undone by a cron, it is a battle parked for a person to look at, and this
+ * is what that person calls after fixing whatever parked it. `attempts` resets so the
+ * backoff starts fresh rather than dead-lettering again on the first hiccup.
+ *
+ * `lastError` is deliberately left in place. It is the record of why this message died, and
+ * a requeue is not evidence that the cause is gone — the next genuine failure overwrites it
+ * anyway.
+ *
+ * Returns false when the id is unknown or was never dead-lettered, so a mistyped id during
+ * an incident reads as "nothing happened" instead of silently succeeding.
+ */
+export async function requeueDeadLetter(id: string, now: Date): Promise<boolean> {
+    const { count } = await prisma.battleOutbox.updateMany({
+        where: { id, deadLetteredAt: { not: null } },
+        data: { deadLetteredAt: null, attempts: 0, lockedAt: null, lockedBy: null, availableAt: now },
+    });
+    return count > 0;
+}

@@ -17,6 +17,8 @@ import { useApiClient } from '../contexts/ApiClientContext';
  */
 
 export interface BattleConfig {
+    /** False when this deployment is not accepting backend battles; offer the on-chain path. */
+    enabled: boolean;
     deploymentId: string;
     chainIds: string[];
     ruleset: { hash: string; version: number };
