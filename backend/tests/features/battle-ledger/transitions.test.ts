@@ -11,6 +11,7 @@ const tx = {
     battleLedger: { updateMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
     battleOutbox: { createMany: vi.fn() },
     petBattleLock: { create: vi.fn(), deleteMany: vi.fn() },
+    battleIntent: { updateMany: vi.fn() },
 };
 
 vi.mock('@config/prisma', () => ({
@@ -42,6 +43,7 @@ beforeEach(() => {
     tx.battleOutbox.createMany.mockResolvedValue({ count: 1 });
     tx.petBattleLock.create.mockResolvedValue({});
     tx.petBattleLock.deleteMany.mockResolvedValue({ count: 2 });
+    tx.battleIntent.updateMany.mockResolvedValue({ count: 1 });
 });
 
 describe('applyTransition', () => {
@@ -154,12 +156,13 @@ describe('failBattle', () => {
 
 describe('openBattle', () => {
     it('creates the row, locks both pets, and enqueues in one transaction', async () => {
-        await openBattle({
+        const result = await openBattle({
             ledger: { chainId: 'eip155:84532' } as never,
             petIds: ['9', '10'],
             outbox: [{ battleId: 'btl_1', topic: OUTBOX_TOPICS.awaitBeacon }],
         });
 
+        expect(result).toEqual({ ok: true, battleId: 'btl_1' });
         expect(tx.battleLedger.create).toHaveBeenCalledTimes(1);
         expect(tx.petBattleLock.create).toHaveBeenCalledTimes(2);
         expect(tx.battleOutbox.createMany).toHaveBeenCalledTimes(1);
@@ -172,6 +175,46 @@ describe('openBattle', () => {
         await openBattle({ ledger: { chainId: 'eip155:84532' } as never, petIds: ['10', '9'] });
         const order = tx.petBattleLock.create.mock.calls.map((call) => call[0].data.petId);
         expect(order).toEqual(['9', '10']);
+    });
+
+    it('consumes the originating intent in the same transaction, guarded on it not already being spent', async () => {
+        await openBattle({
+            ledger: { chainId: 'eip155:84532' } as never,
+            petIds: ['9', '10'],
+            consumeIntentHash: '0xabc',
+        });
+        expect(tx.battleIntent.updateMany).toHaveBeenCalledWith({
+            where: { intentHash: '0xabc', consumedAt: null },
+            data: { consumedAt: expect.any(Date) },
+        });
+    });
+
+    it('aborts without creating a ledger row when the intent was already consumed', async () => {
+        // Two accept calls racing on one intent must not both succeed. The abort has to roll
+        // back everything in the transaction, not just skip the ledger create.
+        tx.battleIntent.updateMany.mockResolvedValue({ count: 0 });
+        const result = await openBattle({
+            ledger: { chainId: 'eip155:84532' } as never,
+            petIds: ['9', '10'],
+            consumeIntentHash: '0xabc',
+        });
+        expect(result).toEqual({ ok: false, reason: 'intent-already-consumed' });
+        expect(tx.battleLedger.create).not.toHaveBeenCalled();
+    });
+
+    it('reports which pet was already locked, rather than a raw database error', async () => {
+        tx.petBattleLock.create.mockResolvedValueOnce({}).mockRejectedValueOnce(
+            Object.assign(new Error('unique'), { code: 'P2002' }),
+        );
+        const result = await openBattle({ ledger: { chainId: 'eip155:84532' } as never, petIds: ['9', '10'] });
+        expect(result).toEqual({ ok: false, reason: 'pet-locked', petId: '10' });
+    });
+
+    it('rethrows an unexpected lock error rather than reporting a conflict', async () => {
+        tx.petBattleLock.create.mockRejectedValueOnce(new Error('connection reset'));
+        await expect(
+            openBattle({ ledger: { chainId: 'eip155:84532' } as never, petIds: ['9', '10'] }),
+        ).rejects.toThrow(/connection reset/);
     });
 });
 

@@ -32,6 +32,13 @@ export interface TransitionRequest {
     patch?: BattleLedgerPatch;
     /** Messages to enqueue atomically with the transition. */
     outbox?: readonly OutboxMessage[];
+    /**
+     * Extra work to run in the same transaction, after the state guard succeeds and before
+     * the outbox write. For a transition that also creates a related row — the accept flow's
+     * `accepted` -> `committed` move creates the `BattleCommitment` row alongside it — so that
+     * row cannot exist without the state change that produced it, or vice versa.
+     */
+    onApplied?: (tx: Prisma.TransactionClient) => Promise<void>;
 }
 
 export interface TransitionResult {
@@ -77,6 +84,9 @@ export async function applyTransition(request: TransitionRequest): Promise<Trans
                 return { applied: false, state: current.state };
             }
 
+            if (request.onApplied) {
+                await request.onApplied(tx);
+            }
             if (request.outbox && request.outbox.length > 0) {
                 await enqueueOutbox(tx, request.outbox);
             }
@@ -98,10 +108,36 @@ export interface OpenBattleRequest {
     /** Pet ids to lock for the duration, as decimal strings. */
     petIds: readonly string[];
     outbox?: readonly OutboxMessage[];
+    /**
+     * Marks the originating intent consumed in the same transaction, guarded on it not
+     * already being consumed. Two accept calls racing on one intent must not both succeed:
+     * whichever loses this guard gets `intentAlreadyConsumed`, never a second ledger row.
+     */
+    consumeIntentHash?: string;
+}
+
+export type OpenBattleResult =
+    | { ok: true; battleId: string }
+    | { ok: false; reason: 'pet-locked'; petId: string }
+    | { ok: false; reason: 'intent-already-consumed' };
+
+/**
+ * Signals a clean, expected abort of the `openBattle` transaction.
+ *
+ * Prisma's interactive transactions only roll back when the callback throws; returning a
+ * value, even one that *looks* like a failure, commits whatever ran so far. So an aborted
+ * ledger row or a lock taken before the conflict must be undone by throwing, not by returning
+ * `{ ok: false }` directly from inside the callback.
+ */
+class OpenBattleAbort extends Error {
+    constructor(readonly result: Extract<OpenBattleResult, { ok: false }>) {
+        super(`openBattle aborted: ${result.reason}`);
+    }
 }
 
 /**
- * Creates a ledger row, locks both pets, and enqueues the first message, atomically.
+ * Creates a ledger row, locks both pets, consumes the originating intent, and enqueues the
+ * first message, all atomically.
  *
  * Lock rows are inserted in ascending numeric pet-id order. Two battles involving the same
  * pair, submitted at the same moment, therefore contend on the same row first, so one of
@@ -109,26 +145,50 @@ export interface OpenBattleRequest {
  * (threat T11). Numeric rather than lexicographic, because pet ids are decimal strings and
  * `"10" < "9"` as text.
  */
-export async function openBattle(request: OpenBattleRequest): Promise<{ battleId: string }> {
+export async function openBattle(request: OpenBattleRequest): Promise<OpenBattleResult> {
     const petIds = sortPetIds(request.petIds);
 
-    return prisma.$transaction(
-        async (tx) => {
-            const ledger = await tx.battleLedger.create({ data: request.ledger });
-            for (const petId of petIds) {
-                // Sequential on purpose: the ordering is the deadlock avoidance, and
-                // issuing these in parallel would throw it away.
-                await tx.petBattleLock.create({
-                    data: { chainId: ledger.chainId, petId, battleId: ledger.battleId },
-                });
-            }
-            if (request.outbox && request.outbox.length > 0) {
-                await enqueueOutbox(tx, request.outbox);
-            }
-            return { battleId: ledger.battleId };
-        },
-        { isolationLevel: 'Serializable' },
-    );
+    try {
+        return await prisma.$transaction(
+            async (tx) => {
+                if (request.consumeIntentHash) {
+                    const { count } = await tx.battleIntent.updateMany({
+                        where: { intentHash: request.consumeIntentHash, consumedAt: null },
+                        data: { consumedAt: new Date() },
+                    });
+                    if (count === 0) {
+                        throw new OpenBattleAbort({ ok: false, reason: 'intent-already-consumed' });
+                    }
+                }
+
+                const ledger = await tx.battleLedger.create({ data: request.ledger });
+                for (const petId of petIds) {
+                    // Sequential on purpose: the ordering is the deadlock avoidance, and
+                    // issuing these in parallel would throw it away.
+                    try {
+                        await tx.petBattleLock.create({
+                            data: { chainId: ledger.chainId, petId, battleId: ledger.battleId },
+                        });
+                    } catch (error) {
+                        if ((error as { code?: string }).code === 'P2002') {
+                            throw new OpenBattleAbort({ ok: false, reason: 'pet-locked', petId });
+                        }
+                        throw error;
+                    }
+                }
+                if (request.outbox && request.outbox.length > 0) {
+                    await enqueueOutbox(tx, request.outbox);
+                }
+                return { ok: true, battleId: ledger.battleId };
+            },
+            { isolationLevel: 'Serializable' },
+        );
+    } catch (error) {
+        if (error instanceof OpenBattleAbort) {
+            return error.result;
+        }
+        throw error;
+    }
 }
 
 /** Ascending numeric order, which is the lock-acquisition order. */

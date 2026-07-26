@@ -1,3 +1,11 @@
+export { postAcceptBattle } from './accept.controller';
+export {
+    type AcceptBattleRequest,
+    type AcceptBattleResult,
+    acceptBattle,
+    type AcceptedBattle,
+    type AcceptRejection,
+} from './accept.service';
 export { deleteDefenseAuthorizations, postDefenseAuthorization } from './consent.controller';
 export {
     type AuthorizationRejection,
@@ -58,7 +66,9 @@ export {
     getBattleState,
     openBattle,
     type OpenBattleRequest,
+    type OpenBattleResult,
     sortPetIds,
     type TransitionRequest,
     type TransitionResult,
 } from './transitions';
+export { buildPetSnapshot } from './snapshot.builder';
