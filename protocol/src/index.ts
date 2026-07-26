@@ -12,6 +12,7 @@
 export const PROTOCOL_PACKAGE = '@cryptopets/protocol';
 
 export * from './combat';
+export * from './consent';
 export * from './domain';
 export * from './encoding';
 export * from './intent';
