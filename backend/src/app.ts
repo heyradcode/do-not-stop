@@ -10,6 +10,7 @@ import dialogueRoutes from '@routes/dialogue';
 import battleRoomRoutes from '@routes/battle-room';
 import battleRoutes from '@routes/battle';
 import receiptRoutes from '@routes/receipts';
+import rewardRoutes from '@routes/rewards';
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use('/api/battle-dialogue', dialogueRoutes);
 app.use('/api/battle-room', battleRoomRoutes);
 app.use('/api/battle', battleRoutes);
 app.use('/api/receipts', receiptRoutes);
+app.use('/api/rewards', rewardRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
     res.json({

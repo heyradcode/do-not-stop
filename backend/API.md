@@ -324,6 +324,25 @@ Known gap: `GET /api/battle/signing-keys` serves whatever
 registered via `registerRotatedKey` does not survive a process restart today,
 so historical-key durability is not yet backed by persistent storage.
 
+### Reward seasons (v2)
+
+`backend/src/routes/rewards.ts` — the claim-proof half of §I. Unauthenticated, like the
+receipt corpus: a claim proof only ever pays the wallet bound inside its leaf, so publishing
+one lets a third party sponsor someone's gas rather than take their reward.
+
+Read-only by design. Building a season and opening it on chain are operator actions with
+real money attached; they belong behind an owner key and a deliberate command, not an HTTP
+route reachable by anything holding a token.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/rewards/seasons/:seasonId` | Season metadata: the receipt `sequence` range it covers, the distributor and token its leaves bind to, the root, the total, and the rates it was computed from. The range and rates are the reproducibility contract — they say exactly which slice of the corpus to replay to arrive at this root. |
+| GET | `/api/rewards/seasons/:seasonId/claim/:wallet` | The wallet's `amount`, its Merkle `proof`, and the `breakdown` behind the number. **404 `no-entitlement`** covers both an unknown season and a wallet that earned nothing — the answer to "what can I claim" is the same either way, and distinguishing them would leak which wallets participated to anyone enumerating. |
+
+Only **anchored** receipts count toward a season. An unanchored receipt is signed and public,
+but its batch root is not yet immutable, so rewarding it would mean paying against a history
+that could still be reorganised.
+
 ### Relevant environment variables
 
 | Var | Purpose |

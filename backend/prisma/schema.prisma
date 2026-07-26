@@ -569,3 +569,64 @@ model BattleShadowRun {
   @@index([status, predictedAt])
   @@map("battle_shadow_run")
 }
+
+/// A reward season: the set of entitlements computed from anchored receipts, and the
+/// Merkle root a claim is proven against (§I).
+///
+/// Immutable once its root is set, mirroring `SeasonRewardDistributor.openSeason`: a
+/// re-posted root would let entitlements be rewritten after people had read them. A
+/// mistaken season is superseded by a new one, visibly.
+model RewardSeason {
+  seasonId     Int    @id @map("season_id")
+  chainId      String @map("chain_id")
+  deploymentId String @map("deployment_id")
+
+  /// The receipt sequence range this season covers, inclusive. Recorded so anyone can
+  /// recompute the entitlements from the public corpus and get the same root.
+  firstSequence BigInt @map("first_sequence")
+  lastSequence  BigInt @map("last_sequence")
+
+  /// Distributor address and chain the leaves are bound to. A season built for one
+  /// deployment produces leaves that are not in any other deployment's tree.
+  distributor String
+  evmChainId  Int    @map("evm_chain_id")
+  token       String
+
+  merkleRoot String @map("merkle_root")
+  /// Sum of every entitlement. Must be within the on-chain season cap, or late claims
+  /// revert once the pool is drained.
+  totalAmount String @map("total_amount")
+
+  /// Inputs the amounts were computed from, kept so a season is reproducible rather than
+  /// merely asserted.
+  params Json
+
+  createdAt DateTime @default(now()) @map("created_at")
+  /// Null until the root is posted on chain.
+  openedTxHash String?   @map("opened_tx_hash")
+  openedAt     DateTime? @map("opened_at")
+
+  entitlements RewardEntitlement[]
+
+  @@index([chainId, deploymentId])
+  @@map("reward_season")
+}
+
+/// One wallet's entitlement in one season. The Merkle leaf is derived from these fields.
+model RewardEntitlement {
+  seasonId Int          @map("season_id")
+  season   RewardSeason @relation(fields: [seasonId], references: [seasonId], onDelete: Cascade)
+  /// Lowercased, matching how the protocol normalizes accounts before hashing.
+  wallet   String
+  /// Decimal string: amounts are uint256 on chain and exceed Int range.
+  amount   String
+  /// Position in the tree, which is what `proof` is generated against.
+  leafIndex Int @map("leaf_index")
+  /// How this amount was arrived at — battles counted, wins, losses, caps applied. Not
+  /// protocol input; it exists so a player asking "why this number" gets an answer.
+  breakdown Json
+
+  @@id([seasonId, wallet])
+  @@index([seasonId, leafIndex])
+  @@map("reward_entitlement")
+}
