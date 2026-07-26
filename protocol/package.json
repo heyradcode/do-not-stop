@@ -17,6 +17,9 @@
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage"
     },
+    "dependencies": {
+        "@noble/hashes": "^1.8.0"
+    },
     "devDependencies": {
         "@eslint/js": "^9.36.0",
         "@types/node": "^22.18.6",
