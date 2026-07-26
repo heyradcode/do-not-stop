@@ -65,6 +65,7 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | `backend` | *(none)* | `pnpm --filter backend test` (vitest) | `pnpm --filter backend build` (`prisma generate && tsc`) | `pnpm --filter backend exec vitest run <path>` |
 | `shared` (`@shared/core`) | `pnpm --filter @shared/core lint` | `pnpm --filter @shared/core test` (vitest) | *(none, consumed as raw TS)* | same vitest pattern |
 | `protocol` (`@cryptopets/protocol`) | `pnpm --filter @cryptopets/protocol lint` | `pnpm --filter @cryptopets/protocol test` (vitest) | *(none, consumed as raw TS; `typecheck` runs `tsc --noEmit`)* | same vitest pattern |
+| `verifier` (`@cryptopets/verifier`) | `pnpm --filter @cryptopets/verifier lint` | `pnpm --filter @cryptopets/verifier test` (vitest) | *(none, consumed as raw TS; `typecheck` runs `tsc --noEmit`)* | same vitest pattern |
 | `mobile` | `pnpm --filter mobile lint` | `pnpm --filter mobile test` (jest) | *(none, RN, use `android`/`ios` scripts)* | `pnpm --filter mobile exec jest <path>` or `-t "<name>"` |
 | `website` | `pnpm --filter website lint` (`next lint`) | *(no test script)* | `pnpm --filter website build` | n/a |
 | `contracts/ethereum` | *(none)* | `pnpm --prefix contracts/ethereum test` (`pnpm hh test`) | `pnpm compile` (`pnpm hh compile --force`) | `pnpm --prefix contracts/ethereum hh test test/<File>.test.ts` |
@@ -86,7 +87,8 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | `contracts/ethereum` | Solidity, Hardhat | EVM contracts + subgraph |
 | `contracts/solana/cryptopets` | Rust, Anchor | Solana programs |
 | `shared` (`@shared/core`) | TypeScript | Common utils/types/hooks, consumed as raw TS (no build step), shared by frontend + mobile |
-| `protocol` (`@cryptopets/protocol`) | TypeScript | MIT, dependency-free battle protocol: the TS combat engine plus (in progress) canonical encodings, hashes, and drand seed derivation. Consumed as raw TS by `shared`/`backend` and by the public receipt verifier |
+| `protocol` (`@cryptopets/protocol`) | TypeScript | MIT, dependency-free battle protocol: the TS combat engine plus (in progress) canonical encodings, hashes, and drand seed derivation. Consumed as raw TS by `shared`/`backend` and by `verifier` |
+| `verifier` (`@cryptopets/verifier`) | TypeScript | MIT, standalone public receipt verifier (§H). Depends only on `protocol`; no backend access, no database. So far: operator-signature and hash-chain-continuity checks (Step 30); drand/seed/replay/progression checks land in Step 31 |
 | `proto` | Protobuf/Buf | gRPC contract (`GameDataService`) between `indexer-go` and `backend` |
 
 ### Data flow
@@ -153,6 +155,6 @@ See `docs/testing.md` for the full per-package suite table. Test work is expecte
 
 ## Licensing
 
-This monorepo has split licensing; see the table in `README.md`. `contracts/ethereum`, `contracts/solana`, `indexer-go`, `proto`, and `protocol` are MIT; everything else (`frontend`, `backend`, `mobile`, `website`, `shared`) is PolyForm Noncommercial 1.0.0 (root `LICENSE`). Match the license of whichever package you're editing when adding new files.
+This monorepo has split licensing; see the table in `README.md`. `contracts/ethereum`, `contracts/solana`, `indexer-go`, `proto`, `protocol`, and `verifier` are MIT; everything else (`frontend`, `backend`, `mobile`, `website`, `shared`) is PolyForm Noncommercial 1.0.0 (root `LICENSE`). Match the license of whichever package you're editing when adding new files.
 
 `protocol` (`@cryptopets/protocol`) is MIT deliberately: the backend-authoritative battle design (`docs/plan-backend-battle-architecture.md` §H) only holds up if outsiders can run the receipt verifier, and the verifier depends on this package. So it must never import from a PolyForm package (`tests/package.test.ts` enforces it), and it must stay free of clock reads, ambient randomness, and I/O (eslint enforces the first two). The TS combat engine lives here now, re-exported from `shared/src/utils/combat` so existing importers are unchanged.

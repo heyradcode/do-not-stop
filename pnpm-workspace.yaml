@@ -5,6 +5,7 @@ packages:
   - 'mobile'
   - 'shared'
   - 'protocol'
+  - 'verifier'
   - 'contracts/ethereum'
   - 'contracts/ethereum/subgraph'
   - 'contracts/solana/cryptopets'

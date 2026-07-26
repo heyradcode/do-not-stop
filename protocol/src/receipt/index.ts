@@ -20,3 +20,11 @@ export {
     type ReceiptVerification,
     verifyReceiptConsistency,
 } from './verify';
+export {
+    receiptFromWire,
+    type WireBattleReceipt,
+    type WireBattleSnapshot,
+    type WirePetProgression,
+    type WirePetSnapshot,
+    type WireProgressionDelta,
+} from './wire';

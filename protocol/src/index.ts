@@ -22,4 +22,5 @@ export * from './progression';
 export * from './randomness';
 export * from './receipt';
 export * from './ruleset';
+export * from './signature';
 export * from './snapshot';
