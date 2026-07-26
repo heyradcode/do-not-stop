@@ -24,6 +24,7 @@ import {
 import type { ChainId } from '../src/domain/chainId';
 import type { Hex } from '../src/encoding/bytes';
 import { battleIntentSolanaMessage, type BattleIntent, hashBattleIntent } from '../src/intent';
+import { type BattleSnapshot, hashBattleSnapshot, type PetSnapshot } from '../src/snapshot';
 
 const VECTORS_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../contracts/test-vectors');
 
@@ -304,5 +305,178 @@ function writeConsentVectors(): void {
     process.stdout.write(`wrote ${out.cases.length} consent cases to ${path}\n`);
 }
 
+/** Serializable form of a pet snapshot. */
+interface PetFixture {
+    petId: string;
+    owner: string;
+    dna: string;
+    rarity: number;
+    level: number;
+    skill: number;
+    xp: number;
+    lastOpponentId: string;
+    streak: number;
+    readyAt: number;
+    sourceVersion: string;
+}
+
+interface SnapshotFixture {
+    chainId: string;
+    deploymentId: string;
+    attacker: PetFixture;
+    defender: PetFixture;
+    takenAt: number;
+}
+
+const ATTACKER: PetFixture = {
+    petId: '1',
+    owner: '0xabcdef0123456789abcdef0123456789abcdef01',
+    dna: '1234567890123456',
+    rarity: 3,
+    level: 10,
+    skill: 4,
+    xp: 120,
+    lastOpponentId: '0',
+    streak: 0,
+    readyAt: 1861919000,
+    sourceVersion: '1861918000',
+};
+
+const DEFENDER: PetFixture = {
+    petId: '2',
+    owner: '0x2222222222222222222222222222222222222222',
+    dna: '6543210987654321',
+    rarity: 2,
+    level: 11,
+    skill: 7,
+    xp: 45,
+    lastOpponentId: '1',
+    streak: 2,
+    readyAt: 1861919500,
+    sourceVersion: '1861918500',
+};
+
+const SNAPSHOT_BASE: SnapshotFixture = {
+    chainId: 'eip155:84532',
+    deploymentId: 'base-sepolia-live',
+    attacker: ATTACKER,
+    defender: DEFENDER,
+    takenAt: 1861920000,
+};
+
+const snapshotCases: { name: string; note: string; snapshot: SnapshotFixture }[] = [
+    {
+        name: 'evm-baseline',
+        note: 'Fresh attacker (no prior opponent) against a defender mid-streak.',
+        snapshot: SNAPSHOT_BASE,
+    },
+    {
+        name: 'evm-roles-swapped',
+        note: 'Same two pets with the roles exchanged. Must differ: roles are not symmetric, since the result is stated from the attacker perspective.',
+        snapshot: { ...SNAPSHOT_BASE, attacker: DEFENDER, defender: ATTACKER },
+    },
+    {
+        name: 'evm-level-up',
+        note: 'Attacker one level higher. Must differ: this is the front-run the snapshot exists to prevent.',
+        snapshot: { ...SNAPSHOT_BASE, attacker: { ...ATTACKER, level: 11 } },
+    },
+    {
+        name: 'evm-streak-advanced',
+        note: 'Defender streak advanced by one. Must differ: streak is an XP input, so it cannot be adjustable after the fact.',
+        snapshot: { ...SNAPSHOT_BASE, defender: { ...DEFENDER, streak: 3 } },
+    },
+    {
+        name: 'evm-other-source-version',
+        note: 'Same pet state read at a later indexed version. Must differ: which chain version a snapshot came from is part of what it claims.',
+        snapshot: { ...SNAPSHOT_BASE, attacker: { ...ATTACKER, sourceVersion: '1861918001' } },
+    },
+    {
+        name: 'evm-later-takenAt',
+        note: 'Same pets, one second later. Must differ.',
+        snapshot: { ...SNAPSHOT_BASE, takenAt: 1861920001 },
+    },
+    {
+        name: 'evm-checksummed-owner',
+        note: 'Baseline with the attacker owner checksummed. Must hash IDENTICALLY to evm-baseline.',
+        snapshot: {
+            ...SNAPSHOT_BASE,
+            attacker: { ...ATTACKER, owner: '0xABcDEF0123456789abcDef0123456789aBCDeF01' },
+        },
+    },
+    {
+        name: 'evm-field-widths',
+        note: 'Pet ids near the 256-bit ceiling, maximum DNA, rarity 5, level and skill at u16 bounds, xp and streak at u32 bounds.',
+        snapshot: {
+            ...SNAPSHOT_BASE,
+            attacker: {
+                ...ATTACKER,
+                petId: '115792089237316195423570985008687907853269984665640564039457584007913129639935',
+                dna: '9999999999999999',
+                rarity: 5,
+                level: 65535,
+                skill: 65535,
+                xp: 4294967295,
+                lastOpponentId: '340282366920938463463374607431768211457',
+                streak: 4294967295,
+                readyAt: 281474976710655,
+                sourceVersion: '18446744073709551615',
+            },
+        },
+    },
+    {
+        name: 'solana-baseline',
+        note: 'Solana snapshot with base58 owners. Must differ from the EVM baseline.',
+        snapshot: {
+            ...SNAPSHOT_BASE,
+            chainId: 'solana:devnet',
+            attacker: { ...ATTACKER, owner: 'DRiP2Pn2K6fuMLKQmt5rZWyHiUZ6aK3TzhBd8ZUqzTqL' },
+            defender: { ...DEFENDER, owner: 'GDDMwNyyx8uB6zrqwBFHjLLG3TBYk2F8Az4yrQC5RzMp' },
+        },
+    },
+];
+
+function petFromFixture(fixture: PetFixture): PetSnapshot {
+    return {
+        petId: BigInt(fixture.petId),
+        owner: fixture.owner,
+        dna: BigInt(fixture.dna),
+        rarity: fixture.rarity,
+        level: fixture.level,
+        skill: fixture.skill,
+        xp: fixture.xp,
+        lastOpponentId: BigInt(fixture.lastOpponentId),
+        streak: fixture.streak,
+        readyAt: fixture.readyAt,
+        sourceVersion: BigInt(fixture.sourceVersion),
+    };
+}
+
+/** Rebuilds a runtime snapshot from its serializable fixture. */
+export function snapshotFromFixture(fixture: SnapshotFixture): BattleSnapshot {
+    return {
+        domain: { chainId: fixture.chainId as ChainId, deploymentId: fixture.deploymentId },
+        attacker: petFromFixture(fixture.attacker),
+        defender: petFromFixture(fixture.defender),
+        takenAt: fixture.takenAt,
+    };
+}
+
+function writeSnapshotVectors(): void {
+    const out = {
+        description:
+            'BattleSnapshot canonical-hash vectors (docs/plan-backend-battle-architecture.md §C, §F). Generated by protocol/scripts/gen-vectors.ts from protocol/src/snapshot. They lock the canonical byte layout; a failure means the implementation drifted. Never edit an expectation to match new output.',
+        cases: snapshotCases.map((c) => ({
+            name: c.name,
+            note: c.note,
+            snapshot: c.snapshot,
+            expectedSnapshotHash: hashBattleSnapshot(snapshotFromFixture(c.snapshot)),
+        })),
+    };
+    const path = join(VECTORS_DIR, 'protocol-snapshot.json');
+    writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
+    process.stdout.write(`wrote ${out.cases.length} snapshot cases to ${path}\n`);
+}
+
 writeIntentVectors();
 writeConsentVectors();
+writeSnapshotVectors();
