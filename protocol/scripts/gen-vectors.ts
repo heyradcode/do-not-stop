@@ -16,6 +16,7 @@ import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { type BattleCommitment, hashBattleCommitment } from '../src/commitment';
 import {
     type DefenseAuthorization,
     defenseAuthorizationSolanaMessage,
@@ -583,7 +584,149 @@ function writeSeedVectors(): void {
     process.stdout.write(`wrote ${out.cases.length} seed cases to ${path}\n`);
 }
 
+/** Serializable form of a commitment. Its snapshot reuses the snapshot fixtures. */
+interface CommitmentFixture {
+    chainId: string;
+    deploymentId: string;
+    battleId: string;
+    intentHash: string;
+    defenseAuthorizationHash: string;
+    snapshot: SnapshotFixture;
+    rulesetVersion: number;
+    rulesetHash: string;
+    drandChainHash: string;
+    drandRound: number;
+    acceptedAt: number;
+    previousCommitmentHash: string | null;
+    signingKeyId: string;
+}
+
+// quicknet round 1000 publishes at genesis + 3000 = 1692806367, so a battle accepted
+// then commits to round 1002 (offset 2), which publishes six seconds later.
+const ACCEPTED_AT = 1692806367;
+const COMMITTED_ROUND = 1002;
+const QUICKNET_CHAIN_HASH = '0x52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971';
+
+const COMMITMENT_BASE: CommitmentFixture = {
+    chainId: 'eip155:84532',
+    deploymentId: 'base-sepolia-live',
+    battleId: 'btl_01hq8z0000000000000000',
+    intentHash: `0x${'11'.repeat(32)}`,
+    defenseAuthorizationHash: `0x${'22'.repeat(32)}`,
+    snapshot: { ...SNAPSHOT_BASE, takenAt: ACCEPTED_AT - 1 },
+    rulesetVersion: 1,
+    rulesetHash: RULESET_HASH,
+    drandChainHash: QUICKNET_CHAIN_HASH,
+    drandRound: COMMITTED_ROUND,
+    acceptedAt: ACCEPTED_AT,
+    previousCommitmentHash: `0x${'33'.repeat(32)}`,
+    signingKeyId: 'battle-signer-2026-07',
+};
+
+const commitmentCases: { name: string; note: string; commitment: CommitmentFixture }[] = [
+    {
+        name: 'baseline',
+        note: 'Reference commitment: accepted at quicknet round 1000 time, bound to round 1002.',
+        commitment: COMMITMENT_BASE,
+    },
+    {
+        name: 'genesis-no-previous',
+        note: 'First commitment under a signing key, so the chain link is absent. Must differ from baseline: an absent link is not an empty one.',
+        commitment: { ...COMMITMENT_BASE, previousCommitmentHash: null },
+    },
+    {
+        name: 'other-committed-round',
+        note: 'Same battle bound to round 1003 instead. Must differ: this is precisely the substitution a reroll would need, and the two signatures over one battleId are what make it provable.',
+        commitment: { ...COMMITMENT_BASE, drandRound: COMMITTED_ROUND + 1 },
+    },
+    {
+        name: 'other-battle-id',
+        note: 'Same everything, different battle. Must differ.',
+        commitment: { ...COMMITMENT_BASE, battleId: 'btl_01hq8z0000000000000001' },
+    },
+    {
+        name: 'other-intent',
+        note: 'Same battle authorized by a different intent. Must differ.',
+        commitment: { ...COMMITMENT_BASE, intentHash: `0x${'44'.repeat(32)}` },
+    },
+    {
+        name: 'other-consent',
+        note: 'Same battle relying on a different defence authorization. Must differ: which consent a battle leaned on is part of what is being claimed.',
+        commitment: { ...COMMITMENT_BASE, defenseAuthorizationHash: `0x${'55'.repeat(32)}` },
+    },
+    {
+        name: 'levelled-up-snapshot',
+        note: 'Baseline with the attacker one level higher. Must differ: the commitment binds the frozen photo, so pets cannot change after acceptance.',
+        commitment: {
+            ...COMMITMENT_BASE,
+            snapshot: {
+                ...COMMITMENT_BASE.snapshot,
+                attacker: { ...COMMITMENT_BASE.snapshot.attacker, level: 11 },
+            },
+        },
+    },
+    {
+        name: 'other-ruleset-version',
+        note: 'Same ruleset hash, different version number. Must differ.',
+        commitment: { ...COMMITMENT_BASE, rulesetVersion: 2 },
+    },
+    {
+        name: 'other-signing-key',
+        note: 'Same commitment attributed to a different key. Must differ: which key signed is part of the statement, so a rotated key cannot be retro-fitted to old commitments.',
+        commitment: { ...COMMITMENT_BASE, signingKeyId: 'battle-signer-2026-08' },
+    },
+    {
+        name: 'solana-deployment',
+        note: 'Solana battle. Must differ from the EVM baseline.',
+        commitment: {
+            ...COMMITMENT_BASE,
+            chainId: 'solana:devnet',
+            snapshot: {
+                ...COMMITMENT_BASE.snapshot,
+                chainId: 'solana:devnet',
+                attacker: { ...COMMITMENT_BASE.snapshot.attacker, owner: 'DRiP2Pn2K6fuMLKQmt5rZWyHiUZ6aK3TzhBd8ZUqzTqL' },
+                defender: { ...COMMITMENT_BASE.snapshot.defender, owner: 'GDDMwNyyx8uB6zrqwBFHjLLG3TBYk2F8Az4yrQC5RzMp' },
+            },
+        },
+    },
+];
+
+/** Rebuilds a runtime commitment from its serializable fixture. */
+export function commitmentFromFixture(fixture: CommitmentFixture): BattleCommitment {
+    return {
+        domain: { chainId: fixture.chainId as ChainId, deploymentId: fixture.deploymentId },
+        battleId: fixture.battleId,
+        intentHash: fixture.intentHash as Hex,
+        defenseAuthorizationHash: fixture.defenseAuthorizationHash as Hex,
+        snapshot: snapshotFromFixture(fixture.snapshot),
+        rulesetVersion: fixture.rulesetVersion,
+        rulesetHash: fixture.rulesetHash as Hex,
+        drandChainHash: fixture.drandChainHash as Hex,
+        drandRound: fixture.drandRound,
+        acceptedAt: fixture.acceptedAt,
+        previousCommitmentHash: fixture.previousCommitmentHash as Hex | null,
+        signingKeyId: fixture.signingKeyId,
+    };
+}
+
+function writeCommitmentVectors(): void {
+    const out = {
+        description:
+            'BattleCommitment canonical-hash vectors (docs/plan-backend-battle-architecture.md §E). Generated by protocol/scripts/gen-vectors.ts from protocol/src/commitment. The snapshot enters the hash as snapshotHash, while the payload carries the full snapshot. A failure means the implementation drifted. Never edit an expectation to match new output.',
+        cases: commitmentCases.map((c) => ({
+            name: c.name,
+            note: c.note,
+            commitment: c.commitment,
+            expectedCommitmentHash: hashBattleCommitment(commitmentFromFixture(c.commitment)),
+        })),
+    };
+    const path = join(VECTORS_DIR, 'protocol-commitment.json');
+    writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
+    process.stdout.write(`wrote ${out.cases.length} commitment cases to ${path}\n`);
+}
+
 writeIntentVectors();
 writeConsentVectors();
 writeSnapshotVectors();
 writeSeedVectors();
+writeCommitmentVectors();
