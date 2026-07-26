@@ -149,5 +149,22 @@ export const env = {
             .split(',')
             .map((id) => id.trim())
             .filter((id) => id.length > 0),
+        /**
+         * drand quicknet endpoints, tried in order.
+         *
+         * Several by default because a battle waiting on a committed round cannot be moved to
+         * a different round if one endpoint is down (§E): the only options are to keep trying
+         * or to forfeit, so redundancy here directly reduces forfeits. Every response is BLS
+         * verified against the pinned key regardless of which endpoint answered, so an
+         * untrustworthy mirror cannot do worse than fail.
+         */
+        drandUrls: (
+            process.env.BATTLE_DRAND_URLS?.trim() ||
+            'https://api.drand.sh,https://api2.drand.sh,https://api3.drand.sh'
+        )
+            .split(',')
+            .map((url) => url.trim().replace(/\/$/, ''))
+            .filter((url) => url.length > 0),
+        drandTimeoutMs: Number(process.env.BATTLE_DRAND_TIMEOUT_MS?.trim() || '4000'),
     },
 } as const;
