@@ -37,11 +37,26 @@ port, they need their own golden vectors, not a "close enough" reimplementation.
 stay server/backend-computed (leaderboard ranking, quest progress) don't need this — only
 give something a TS port if the client actually needs to simulate it before the chain confirms.
 
-**The settle-keeper pattern is reusable.** `backend/src/features/settle-keeper/` (EVM) and
-`settle-keeper-solana/` established: async VRF request → provider reveal → permissionless settle
-→ a backend hot wallet sends the settle tx so the player isn't stuck with two signatures, with a
-player-side fallback timer if the keeper is down. Any new feature with its own commit/reveal/settle
-cycle (team battles, item-drop rolls) should reuse this shape rather than inventing a new one.
+**Combat authority is moving off-chain, and that reshapes several features below.**
+`docs/plan-backend-battle-architecture.md` is the accepted architecture for battle execution: the
+backend resolves fights from a frozen snapshot against a versioned ruleset, seeds them from a
+pre-committed drand round, and publishes signed receipts anyone can replay
+(`docs/plan-backend-battle-steps.md` sequences the work). Two consequences for this doc. First, a
+*new* combat mechanic is built once, in the canonical TypeScript engine (moving from
+`shared/src/utils/combat/` into an MIT `protocol/` package early in that plan), with the Go port
+acting as an independent pre-signing verifier rather than a fourth hand-maintained implementation.
+Second, the four-port rule stays a `MUST` in `AGENTS.md` until the legacy on-chain path actually
+retires, so any change to *existing* combat math still updates all four ports until then.
+
+**The settle-keeper pattern is reusable, but it is legacy for battle execution.**
+`backend/src/features/settle-keeper/` (EVM) and `settle-keeper-solana/` established: async VRF
+request → provider reveal → permissionless settle → a backend hot wallet sends the settle tx so the
+player isn't stuck with two signatures, with a player-side fallback timer if the keeper is down.
+That shape is still right for any feature whose outcome must land in chain state, such as gacha
+crates minting a real item. It is the wrong shape for battles from here on: backend-resolved
+battles send no transaction at all, so they need no keeper, no per-battle entropy fee, and no
+settle gas. Treat the two keepers as the legacy 1v1 path, maintained until it retires, not as the
+template a new battle mode should copy.
 
 **Indexer extension pattern.** Every existing on-chain asset type (`PetRoster`, `BattleHistory`)
 follows the same shape: a `(chain, id)` composite primary key, a monotonic `lastVersion` /
@@ -76,7 +91,8 @@ nothing else in this doc needs to exist first.
 
 *Tier 3 — depth.* Moderate contract work, each reusing patterns tier 2 or shipped features
 already established.
-6. **Team battles** — reuses the settle-keeper shape and combat math untouched.
+6. **Team battles** — backend orchestration over the versioned ruleset, so this now sequences
+   after the backend battle path exists (see the cross-cutting note above).
 7. **Marketplace** — needs inventory to exist so there's more than pets to list.
 
 *Tier 4 — differentiation.* The content and AI layer that makes this project distinct from a
@@ -134,7 +150,7 @@ generation · parents · spouse"]
         TOKEN["11. ERC20 tokenomics"]
     end
 
-    BATTLE -->|"reuses CombatSim + settle-keeper shape"| TEAMBATTLE
+    BATTLE -->|"backend runs the same ruleset per pairing"| TEAMBATTLE
     ROSTER -->|hardens| INDEXHARDEN
     BREED -->|"marriage gates v1 chat access"| SOCIAL
     PETCORE -->|"parallel asset type"| INVENTORY
@@ -168,8 +184,14 @@ generation · parents · spouse"]
 
 Reading the graph:
 
-- **Team battles** are additive, not risky — they call the existing, golden-vector-validated
-  single-fight function repeatedly and reuse the settle-keeper shape. No new combat math.
+- **Team battles reuse the fight function but are not therefore low risk.** The per-pairing math is
+  the existing, vector-validated single fight, and that part is genuinely additive. Everything
+  around it is not: N pairings need N sub-seeds derived from one pre-committed drand round, a
+  snapshot covering every pet on both teams, consent from every defender, an aggregation rule that
+  is itself part of the ruleset hash, and a receipt shape that survives replay. Authorization,
+  snapshots, seed derivation, signer scope, and reward aggregation are all security-sensitive here.
+  Treat this as a feature that inherits the full backend battle threat model
+  (`docs/threat-model-backend-battles.md`), not as a loop around a proven function.
 - **Inventory is the pivot feature.** It's a parallel asset type to pets (same ownership/indexing
   pattern), the second thing the marketplace can list besides pets, and the default reward
   payload for quests. Everything downstream of it moves faster once it exists — see feature 4
@@ -189,6 +211,10 @@ Reading the graph:
   pet's story progress, but none of them read the story to *decide* an outcome. That distinction
   is exactly why this doesn't trigger the four-port parity rule the way inventory's equip-stats
   sub-feature does — the arrows out of `STORY` carry narrative content, not deterministic values.
+  Under backend-resolved combat this hardens into a rule: AI-generated or story-derived content
+  never enters a battle snapshot, a ruleset, or any other receipt input. A receipt has to be
+  replayable years later by someone with no access to our model, our prompts, or our content
+  tables, and a non-deterministic input makes it unreplayable.
 - **Image generation feeds two other features' visuals** (marketplace listings, inventory
   cosmetic item art) but depends on nothing itself — it's the most schedule-flexible feature on
   the list precisely because of that one-way arrow direction.
@@ -215,6 +241,12 @@ fights strong ones), consider an ELO/Glicko-style rating computed purely in the 
 existing `BattleHistory` stream on each new settled battle — this stays backend-only and never
 needs to touch `CombatSim` or the settle contracts, since rating is a presentation-layer
 derivative of an already-final on-chain result, not part of the outcome itself.
+
+Once backend battles land, rating stops being a pure presentation derivative: it becomes part of
+off-chain progression (`PetBattleProgress`) and, if it ever gates rewards, part of the replayable
+`progressionDelta` in each receipt. Build one rating, in the ruleset, computed from receipts. A
+second rating invented at the leaderboard layer would disagree with the receipts and neither would be
+checkable.
 
 **Data model (if ELO, else skip — win/loss counts already suffice for a naive leaderboard):**
 
@@ -329,8 +361,23 @@ updates to the frontend.
   enable `ROSTER_CACHE_ENABLED` by default — this is explicitly called "promotable later" in the
   current docs, so this feature is largely finishing that promotion rather than new design.
 
-This feature has the least product-design risk of the eleven — it's operational hardening of a
-path that already exists end-to-end.
+Both indexers are still live: the Node `RosterIndexer` is the source of truth in local dev and
+`indexer-go` is the promotable path, so "dual-indexer" describes the current state, not a leftover.
+What changes is that `indexer-go` picks up a second, unrelated job under backend-resolved combat: it
+becomes the independent pre-signing verifier that recomputes every battle result before a receipt is
+signed (`docs/plan-backend-battle-steps.md` Step 25). That is a release-safety role, not an indexing
+role, and it does not depend on which indexer owns roster writes. Worth knowing before promotion,
+because an `indexer-go` outage then blocks receipt signing as well as roster freshness, so the two
+concerns need separate health signals.
+
+Snapshot inputs are the other connection. Backend battles freeze pet state at acceptance from
+indexed chain state at a recorded source version, so indexer lag and reorg handling stop being
+purely cosmetic: a snapshot taken from an unfinalized write is threat T10 in
+`docs/threat-model-backend-battles.md`. The confirmation-depth work above is a prerequisite for
+that, not an optional polish item.
+
+This feature has little product-design risk — it's operational hardening of a path that already
+exists end-to-end — but it now sits upstream of battle correctness, not just of display freshness.
 
 ---
 
@@ -354,7 +401,7 @@ room to grow.
 | Category | Example | On/off-chain effect | Combat-port risk |
 |---|---|---|---|
 | Consumable | XP potion, cooldown reset, fertility charm | Burned on use via a `GameLogic`-style `useItem(petId, itemId)` call; effect applies immediately (grants XP, clears a timer) | None — same shape as `trainPet` |
-| Equipment / gear | Weapon, armor, trinket — Dota-style, one per slot | **Persistent**, equip/unequip, grants a stat modifier while equipped | **Yes** — see below |
+| Equipment / gear | Weapon, armor, trinket — Dota-style, one per slot | **Persistent**, equip/unequip, grants a stat modifier while equipped | **No new ports** for backend battles, but snapshot verifiability applies — see below |
 | Cosmetic / skin | Recolor, hat, aura — Dota-style, visual only | Persistent, equip/unequip, no stat effect | None |
 | Collectible / currency | Crate keys, event tokens, badges — OwoBot-style | Tradeable, stackable, no direct effect; gacha-crate inputs | None |
 | Crafting material | Combine N materials into an item | Burned on craft, mirrors item minting | None |
@@ -364,19 +411,35 @@ Rarity should reuse the game's existing five-tier system verbatim
 50/25/15/8/2 pet-rarity split) rather than inventing a separate item-rarity scale — one rarity
 vocabulary across pets and items keeps the UI (and the player's mental model) consistent.
 
-**The one edge that matters: equipment stats and combat parity.** If gear changes battle
-outcomes, its stat modifier becomes an input to `CombatSim.sol` — which means it also has to
-become an input to `combat.rs`, `indexer-go/internal/combat`, and `shared/src/utils/combat`, per
-`AGENTS.md`'s "update all four ports together" rule, plus new golden vectors covering geared
-fights. This is real scope, not a config tweak. Recommendations:
+**The one edge that matters: equipment stats and verifiable snapshots.** The cost here changed with
+backend-resolved combat. Gear that only affects backend battles needs **no Solidity or Rust
+implementation and no fourth port**: the modifier is an input to the versioned TypeScript ruleset,
+with the Go verifier recomputing it before signing. That removes most of what made this expensive.
+
+What replaces it is a verifiability requirement, and it is not weaker. A geared fight is only
+replayable by an outsider if the gear is part of the frozen snapshot and the snapshot's inputs are
+checkable. So:
+
+- Equipment ownership must be verifiable at snapshot time from chain state at a recorded source
+  version, exactly like pet ownership. Backend-only equip state that no third party can confirm
+  turns every geared receipt into an assertion (threat T13 in
+  `docs/threat-model-backend-battles.md`).
+- The snapshot carries the resolved modifiers, not a reference to a mutable item row. Unequipping
+  after acceptance must not change a committed fight, the same reason pet stats are frozen.
+- `ItemDefinition.effect` becomes part of the ruleset hash if it feeds combat. A rebalance is then a
+  new `rulesetVersion`, historical receipts keep replaying against the pinned old bundle, and
+  outstanding defence authorizations bound to the old ruleset are invalidated by design.
+
+Recommendations:
 
 - Ship consumables, cosmetics, and collectibles first — none of them touch combat math, so
-  they're purely additive to `backend` + the new `ItemCore` contract, no combat-port work at all.
+  they're purely additive to `backend` + the new `ItemCore` contract.
 - Scope "equipment affects battle" as its **own separate phase**, gated behind an explicit design
   review (per CLAUDE.md's rule that game-balance calls aren't for an agent to loop on alone) —
-  decide slot count, whether stats are additive or multiplicative, and whether equipped gear
-  needs its own snapshot-at-request-time protection (mirroring the existing pet-stat snapshot
-  that stops a mid-battle stat change from rerolling a committed fight).
+  decide slot count, whether stats are additive or multiplicative, and how equip state is proven at
+  snapshot time.
+- If gear must also affect the legacy on-chain 1v1 path, the four-port cost returns in full. Prefer
+  gating gear to backend battles until that path retires.
 - Keep the modifier model simple when it lands (flat additive bonuses to existing `Attrs` fields
   in `DnaLib.extract`-shaped output) — a small, closed modifier space is what keeps four
   independent ports and one vector file tractable. A multiplicative or conditional (set-bonus,
@@ -435,8 +498,9 @@ model PetEquipment {
 cosmetic slot, arbitrary pending design input); whether `ItemDefinition` content is owner-tunable
 on-chain (immutable, expensive to rebalance) or backend-managed (cheap to rebalance, matches the
 existing `GameConfig` pattern of keeping balance knobs off-chain and owner-tunable at that layer);
-and — the big one — whether equipment-affects-combat ships at all in v1, given the four-port cost
-above.
+and — the big one — whether equipment-affects-combat ships at all in v1. That call is now about
+snapshot verifiability and ruleset versioning rather than four-port cost, and it is cheaper than it
+used to be, but it is still a phase of its own.
 
 ---
 
@@ -489,18 +553,40 @@ model PlayerQuestProgress {
 **Goal.** N-vs-N pet battles (e.g. best-of-3 or best-of-5 pairings) instead of 1v1, aggregating
 to a single winner.
 
-**Design.** Do not touch `CombatSim.sol` / `combat.rs` — the golden-vector-validated single-fight
-function stays exactly as is. Add an orchestration layer above it: a new `TeamBattleManager`
-(EVM) / equivalent Anchor instruction (Solana) that takes two arrays of pet IDs, runs the existing
-single-fight function once per pairing with a VRF-derived sub-seed per match, and aggregates
-match wins into a team result. This keeps the combat math itself untouched and out of scope for
-new golden vectors — only the *aggregation/pairing order* logic is new, and only needs its own
-golden vectors if it gets a client-side TS replay port for live animation.
+**Design.** This is a backend feature now, not a contract feature. The earlier sketch here was a
+`TeamBattleManager` contract on each chain calling the on-chain single-fight function once per
+pairing; that multiplies exactly the per-battle gas the backend battle architecture exists to
+remove, so it is superseded. Build team battles as orchestration inside the versioned ruleset: one
+accepted team battle, one snapshot covering every pet on both teams, one pre-committed drand round,
+N pairings resolved by the same single-fight function, aggregated into a team result, one signed
+receipt.
 
-Reuse the settle-keeper flow: `requestTeamBattle` → entropy/Switchboard reveal → permissionless
-`settleTeamBattle`, mirroring `requestBattle`/`settleBattle`.
+What is genuinely reused is the fight function. What is new, and needs specifying rather than
+assuming:
 
-**Data model** (new table, mirrors `BattleHistory`):
+- **Sub-seed derivation.** One beacon value seeds N fights, so each pairing takes a domain-separated
+  sub-seed (`battleSeed` plus pairing index) rather than reusing one seed or fetching N rounds.
+  Deriving this wrong is the whole feature's correctness.
+- **Aggregation is part of the ruleset.** Pairing order, early termination, and tie-breaks feed
+  `rulesetHash`, so a change to them is a ruleset version bump, not a config edit.
+- **Consent scales with team size.** Every defending pet's owner must have a valid
+  `DefenseAuthorization`, and one revoked authorization invalidates the whole match rather than one
+  pairing.
+- **Snapshot size.** Freezing 10 pets instead of 2 makes the snapshot the largest receipt field.
+  Decide whether the receipt carries full snapshots or a snapshot hash plus a separately published
+  snapshot blob before the shape is frozen.
+- **Golden vectors** for aggregation and sub-seed derivation, alongside the protocol vectors, since
+  the client replays team battles for animation too.
+
+No `requestTeamBattle`, no reveal, no settle transaction: a backend team battle sends nothing
+on-chain, and rewards flow through the same aggregated claim path as 1v1.
+
+**Data model.** Not a mirror of `BattleHistory` any more. `BattleHistory` is an ingested projection
+of on-chain events, and a backend team battle produces no event to ingest. Team battles extend the
+battle ledger models instead (`BattleLedger`, `BattleCommitment`, `BattleReceipt`), most likely as a
+battle kind plus a team-composition table, so they inherit the state machine, the commitment chain,
+and the receipt chains rather than reimplementing them. The sketch below is kept only as a shape
+reference for what a team result holds:
 
 ```prisma
 model TeamBattleHistory {
@@ -519,7 +605,10 @@ model TeamBattleHistory {
 
 **Open decisions (human call, per CLAUDE.md's guidance on game-balance):** team size, whether
 pets can be reused across multiple team slots' cooldowns, pairing order (fixed vs. player-chosen
-vs. random), and whether a mid-team loss ends the match early or all pairings always resolve.
+vs. random), and whether a mid-team loss ends the match early or all pairings always resolve. Note
+that pairing order and early termination are no longer purely balance knobs: they are ruleset inputs,
+so each answer is baked into a `rulesetVersion` and outstanding defence authorizations are
+invalidated when it changes.
 
 Once feature 8 (pet stories) exists, a team match can pull a narrative title from the two teams'
 story progress — framing a repeat matchup as a rivalry chapter, say — as pure display copy with
@@ -814,7 +903,10 @@ architecture gives no precedent for, and isn't needed for a single-game utility 
 Utility sinks should replace or supplement the current native-currency fees: `GameConfig.battleFee`
 and the Solana `GlobalState.battle_fee_lamports` are ETH/SOL today; a token option would need
 either a dual-payment path or a full migration, which is itself a real design decision, not a
-default.
+default. Note that both battle fees exist to fund the settle keeper's own gas, so they disappear
+along with the legacy path: a backend battle sends no transaction and has no gas to fund. Do not
+plan a token sink around a fee that is scheduled to be removed. Breeding, minting, marketplace fees,
+and item crafting are the durable sinks.
 
 **This is the highest-risk feature on this list from a game-balance standpoint.** Emission rate,
 reward amounts, and fee levels are exactly the kind of judgment call CLAUDE.md says not to loop on
