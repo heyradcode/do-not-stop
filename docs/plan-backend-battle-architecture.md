@@ -332,15 +332,25 @@ This is a real design decision. Without it, backend ranked mode is online-only.
 6. Derive the seed with domain separation:
 
 ```text
-battleSeed = keccak256(
-  "CRYPTOPETS_BATTLE_V1" ||
-  chainId || deploymentId ||
-  drandRandomness ||
-  battleId ||
-  snapshotHash ||
+battleSeed = keccak256(canonical(
+  "CRYPTOPETS_BATTLE_V1",
+  chainId, deploymentId,
+  drandRandomness,
+  battleId,
+  snapshotHash,
   rulesetHash
-)
+))
 ```
+
+`canonical(...)` is the encoder in `protocol/src/encoding/writer.ts`: fixed-width integers, and a
+4-byte length prefix on every variable-length element. Field order is as listed. This is not bare
+`||` concatenation, and the difference matters: concatenated without prefixes, deployment `ab` with
+battle id `c` produces the same preimage as `a` with `bc`, so a boundary an attacker can move is a
+seed they can reach twice. `contracts/test-vectors/protocol-seed.json` carries that exact pair as a
+case.
+
+The tag is the version. A future derivation gets a new tag, which leaves every historical seed
+derivable under the old one, so there is no schema-version field here.
 
 Never derive randomness from timestamps, UUIDs, backend secrets, or a round chosen after its value
 was known.
