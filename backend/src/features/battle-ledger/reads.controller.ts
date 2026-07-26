@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
 import {
+    getBattleConfig,
     getBattleStateSummary,
     getCombatLog,
     getRuleset,
@@ -10,6 +11,11 @@ import {
     listRulesets,
     verifyReceiptSignature,
 } from './reads.service';
+
+/** The deployment, chains, and active ruleset a client needs before it can sign an intent. */
+export function getBattleConfigHandler(_req: Request, res: Response): void {
+    res.status(200).json(getBattleConfig());
+}
 
 export async function getBattleStateHandler(req: Request, res: Response): Promise<void> {
     const summary = await getBattleStateSummary(req.params.battleId as string);

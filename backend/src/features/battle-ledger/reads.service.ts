@@ -1,8 +1,10 @@
-import type { Hex } from '@cryptopets/protocol';
+import { hashRuleset, SOURCE_DEFAULT_RULESET, type Hex } from '@cryptopets/protocol';
 import { ethers } from 'ethers';
 
 import { prisma } from '@config/prisma';
 import { listSigningKeys } from '@features/battle-signer';
+
+import { servedChainIds, servedDeploymentId } from './domain';
 
 /**
  * Public, authoritative reads for a battle in flight or settled (§J).
@@ -20,6 +22,38 @@ import { listSigningKeys } from '@features/battle-signer';
  * would just mean a spectator with a room link can't do the one thing this
  * design is supposed to let them do.
  */
+
+export interface BattleConfig {
+    /** The deployment an intent must name, or it is refused as `wrong-deployment`. */
+    deploymentId: string;
+    /** Chain ids this process serves battles for. */
+    chainIds: string[];
+    /** The ruleset a defence authorization must be bound to for a battle to be accepted. */
+    ruleset: { hash: string; version: number };
+}
+
+/**
+ * The parameters a client needs before it can build a signable intent (§D).
+ *
+ * These are not derivable client-side. `deploymentId` is this process's own
+ * identity, and the active ruleset is whichever bundle the accept path actually
+ * commits battles under — currently the source defaults, later whatever
+ * `GameConfig` is tuned to. A client that guessed either would produce intents
+ * refused as `wrong-deployment`, or authorizations refused as `ruleset-mismatch`,
+ * and the failure would surface a signature step too late to be obvious.
+ *
+ * Served unauthenticated for the same reason as the other reads here: none of it
+ * is secret, and needing a login to find out which rules are in force would make
+ * a third-party client harder to write than it has any reason to be.
+ */
+export function getBattleConfig(): BattleConfig {
+    const ruleset = SOURCE_DEFAULT_RULESET;
+    return {
+        deploymentId: servedDeploymentId(),
+        chainIds: servedChainIds(),
+        ruleset: { hash: hashRuleset(ruleset), version: ruleset.version },
+    };
+}
 
 export interface BattleStateSummary {
     battleId: string;

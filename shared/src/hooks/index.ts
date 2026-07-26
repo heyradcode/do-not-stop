@@ -68,5 +68,24 @@ export {
 } from './useBattleDialogue';
 export { useBattleTaunts, type GenerateTauntsVars } from './useBattleTaunts';
 export { useCreateBattleRoom, type CreateRoomVars } from './useCreateBattleRoom';
+// Backend-authoritative battles (docs/plan-backend-battle-architecture.md §D, §E, §J).
+export { BATTLE_CONFIG_QUERY_KEY, useBattleConfig, type BattleConfig } from './useBattleConfig';
+export {
+    useSubmitBattleIntent,
+    type AcceptedBattle,
+    type SubmitBattleIntentVars,
+} from './useSubmitBattleIntent';
+export {
+    battleStateQueryKey,
+    useBackendBattle,
+    useStoredBattleEvidence,
+    type BattleStateSummary,
+    type UseBackendBattleOptions,
+} from './useBackendBattle';
+export {
+    useBattleRoomSocket,
+    type BattleRoomNotification,
+    type UseBattleRoomSocketOptions,
+} from './useBattleRoomSocket';
 export { usePetError, type PetError } from './usePetError';
 export { useTxError, type TxError } from './useTxError';

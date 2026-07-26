@@ -1,3 +1,4 @@
+export * from './battleEvidence';
 export * from './common';
 export * from './ethereum';
 export * from './solana';

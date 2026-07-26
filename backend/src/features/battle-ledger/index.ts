@@ -19,6 +19,7 @@ export { deleteDefenseAuthorizations, postDefenseAuthorization } from './consent
 export {
     getBattleCombatLog,
     getBattleCommitment,
+    getBattleConfigHandler,
     getBattleReceipt,
     getBattleStateHandler,
     getRulesetByHash,
@@ -27,6 +28,8 @@ export {
     postVerifyReceipt,
 } from './reads.controller';
 export {
+    type BattleConfig,
+    getBattleConfig,
     type BattleStateSummary,
     type CombatLogResponse,
     getBattleStateSummary,

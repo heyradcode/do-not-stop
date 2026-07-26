@@ -4,6 +4,7 @@ import {
     deleteDefenseAuthorizations,
     getBattleCombatLog,
     getBattleCommitment,
+    getBattleConfigHandler,
     getBattleReceipt,
     getBattleStateHandler,
     getRulesetByHash,
@@ -40,6 +41,9 @@ router.delete('/authorizations', verifyToken, deleteDefenseAuthorizations);
 // public on chain or is itself a signed artifact anyone is meant to check, so gating
 // these behind a JWT would stop a spectator with a room link from doing the one thing
 // this design exists to let them do.
+// Declared before `/:battleId`, or that route would happily match "config" as a battle id.
+// Same reason the other fixed paths below sit above it.
+router.get('/config', getBattleConfigHandler);
 router.get('/signing-keys', getSigningKeys);
 router.get('/rulesets', getRulesets);
 router.get('/rulesets/:rulesetHash', getRulesetByHash);

@@ -253,6 +253,7 @@ to check independently.
 | POST | `/api/battle/intents/:intentHash/accept` | JWT | Freeze the snapshot, commit to a future drand round, sign the commitment, and return it synchronously (§E). |
 | POST | `/api/battle/authorizations` | JWT | Submit a signed standing defence authorization (§D). |
 | DELETE | `/api/battle/authorizations?chainId=` | JWT | Revoke every live authorization for the caller on one chain. No wallet signature required — refusing battles is never the dangerous direction. |
+| GET | `/api/battle/config` | none | The `deploymentId`, served `chainIds`, and active ruleset a client needs *before* it can build a signable intent. None of it is derivable client-side, and guessing it fails only after the wallet prompt: a wrong deployment is refused as `wrong-deployment`, a wrong ruleset produces an authorization no battle matches. |
 | GET | `/api/battle/:battleId` | none | Battle state summary: state, failure reason, both pets, ruleset hash. |
 | GET | `/api/battle/:battleId/commitment` | none | The signed commitment, exactly as delivered at accept time — the re-fetch path if a client's local copy was lost. |
 | GET | `/api/battle/:battleId/receipt` | none | The signed receipt, once signing completes. |
