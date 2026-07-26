@@ -118,10 +118,21 @@ signed under it must keep verifying forever, and delisting a key silently invali
 receipt it ever signed — a retroactive erasure of evidence, which is exactly what §G's
 validity windows exist to make unnecessary.
 
-**Known gap.** The key registry is in-memory. A key registered via `registerRotatedKey` does
-not survive a process restart, so rotation is not yet durable across deploys and the
-registry must be re-seeded at startup. This is a real limitation, not a footnote — it is
-flagged in `backend/API.md` too, and it needs closing before the mode carries value.
+**Durability.** The registry is persisted in `battle_signing_key` and reloaded at startup, so
+a rotated key keeps being published across restarts and deploys. Two properties are worth
+knowing during an incident:
+
+- Any key that is not the one currently signing is reported as **rotated**, whatever the row
+  says. Swapping keys without calling `registerRotatedKey` still leaves the old key
+  published — the safe direction to fail in.
+- **`compromised` is sticky.** Once a key is marked compromised it stays marked, and is never
+  reported active again, even if configuration points back at it. "This key may have signed
+  things we did not authorise" is a fact about history that a restart must not quietly
+  downgrade to a routine rotation.
+
+If `registerRotatedKey` logs a persistence failure, the key is published by the running
+process but will not survive a restart. Re-run it once the database is reachable; it is
+idempotent.
 
 ## Drill 4: incident
 

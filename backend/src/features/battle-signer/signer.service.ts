@@ -11,6 +11,7 @@ import { env } from '@config/env';
 
 import { createKmsSigner } from './signer.kms';
 import { createLocalSigner } from './signer.local';
+import { loadSigningKeys, persistSigningKey } from './signer.registry';
 import {
     type EngineAttestation,
     type SignerAuditEntry,
@@ -73,9 +74,52 @@ export function configureSigner(nowSeconds: number): void {
     backend = createLocalSigner({ keyId, privateKey, notBefore: nowSeconds });
 }
 
-/** Registers a key that is no longer signing but must stay published for verification. */
+/**
+ * Registers a key that is no longer signing but must stay published for verification.
+ *
+ * Writes through to storage as well as memory. The in-memory copy keeps `listSigningKeys`
+ * synchronous, which matters because it runs on every receipt verification; the persisted
+ * copy is what survives a restart.
+ *
+ * Persistence is best-effort here so a database blip cannot fail a rotation half-way — but
+ * an unpersisted key is a real gap, so it is logged loudly rather than swallowed. Rerunning
+ * `registerRotatedKey` is idempotent and is the fix.
+ */
 export function registerRotatedKey(key: SigningKeyDescriptor): void {
-    rotatedKeys.push(key);
+    if (!rotatedKeys.some((existing) => existing.keyId === key.keyId)) {
+        rotatedKeys.push(key);
+    }
+    void persistSigningKey(key).catch((error: unknown) => {
+        console.error(
+            `[battle-signer] failed to persist rotated key ${key.keyId}: ${(error as Error).message}. ` +
+                'It is published by this process but will not survive a restart; re-register it once the database is reachable.',
+        );
+    });
+}
+
+/**
+ * Reloads every key this deployment has ever used from storage.
+ *
+ * Called at startup, after `configureSigner`, so a restart republishes the keys that signed
+ * historical receipts instead of quietly forgetting them. Without this the registry was only
+ * ever as old as the process, and a rotated key disappeared on the next deploy — making its
+ * receipts unverifiable rather than invalid, which is the failure §H exists to prevent.
+ */
+export async function loadPersistedSigningKeys(): Promise<void> {
+    const active = activeSigningKey();
+    if (active) {
+        // Recorded on every boot, so the key currently signing is in the registry even if it
+        // is never explicitly rotated out later.
+        await persistSigningKey(active);
+    }
+
+    const stored = await loadSigningKeys(active?.keyId ?? null);
+    rotatedKeys.length = 0;
+    for (const key of stored) {
+        if (key.keyId !== active?.keyId) {
+            rotatedKeys.push(key);
+        }
+    }
 }
 
 /** The key currently signing, or null when the signer is unconfigured. */

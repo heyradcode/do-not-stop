@@ -319,10 +319,13 @@ share a `createdAt` (concurrent battles resolving in the same second) and an
 order that isn't fully deterministic makes cursor pagination silently skip or
 repeat rows at a page boundary.
 
-Known gap: `GET /api/battle/signing-keys` serves whatever
-`@features/battle-signer`'s in-memory registry currently holds. A rotated key
-registered via `registerRotatedKey` does not survive a process restart today,
-so historical-key durability is not yet backed by persistent storage.
+`GET /api/battle/signing-keys` is backed by the `battle_signing_key` table, so a rotated
+key keeps being published across restarts and deploys. The in-memory copy is a cache that
+keeps the lookup synchronous on the receipt-verification path; the durable list is reloaded
+at startup, and any key that is not the one currently signing is reported as rotated —
+so an operator who swapped keys without registering the old one explicitly still gets the
+old key published. Rows are never deleted: dropping a key would make its receipts
+*unverifiable* rather than invalid, which is a different and worse outcome (§H item 4).
 
 ### Reward seasons (v2)
 

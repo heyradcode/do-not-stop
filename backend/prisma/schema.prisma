@@ -630,3 +630,34 @@ model RewardEntitlement {
   @@index([seasonId, leafIndex])
   @@map("reward_entitlement")
 }
+
+/// Every signing key this deployment has ever used (§G, §H item 4).
+///
+/// Persisted because the registry it feeds is what makes a receipt checkable: a verifier
+/// asks `GET /api/battle/signing-keys` for the addresses it should trust, and a key missing
+/// from that list makes every receipt it signed *unverifiable* rather than invalid — a
+/// different and much worse outcome. Holding the list only in memory meant a restart
+/// silently retracted the ability to check historical receipts.
+///
+/// Rows are never deleted. `notAfter` marks a key as retired; nothing marks it as gone.
+model BattleSigningKey {
+  keyId     String @id @map("key_id")
+  algorithm String
+  /// Uncompressed public key, 0x-hex.
+  publicKey String @map("public_key")
+  /// EVM address form, lowercased — what a receipt signature recovers to.
+  address   String
+  /// Unix seconds this key became valid.
+  notBefore BigInt  @map("not_before")
+  /// Unix seconds it stopped signing, or null while it is the active key.
+  notAfter  BigInt? @map("not_after")
+  /// True when this key was retired because it was compromised, rather than routinely
+  /// rotated. Persisted rather than derived: "this key may have signed things we did not
+  /// authorise" is a fact about history that a restart must not downgrade to an ordinary
+  /// rotation. See docs/runbook-signing-key-compromise.md.
+  compromised Boolean @default(false)
+
+  firstSeenAt DateTime @default(now()) @map("first_seen_at")
+
+  @@map("battle_signing_key")
+}

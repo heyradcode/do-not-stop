@@ -3,7 +3,7 @@ import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import app from './app';
 import { startBattleStream, stopBattleStream } from '@grpc-client/battleStream';
-import { configureSigner } from '@features/battle-signer';
+import { configureSigner, loadPersistedSigningKeys } from '@features/battle-signer';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { startSolanaSettleKeeperFeature, stopSolanaSettleKeeperFeature } from '@features/settle-keeper-solana';
 import { type BattleWorkerHandle, startBattleWorker } from '@features/battle-worker';
@@ -49,6 +49,12 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     // receipts already issued must remain checkable after the mode is switched off.
     if (env.battle.enabled) {
         configureSigner(Math.floor(Date.now() / 1000));
+        // Republishes every key this deployment has ever signed under. Without it the
+        // registry is only as old as the process, and a rotated key vanishes on the next
+        // deploy — making its receipts unverifiable rather than invalid (§H item 4).
+        void loadPersistedSigningKeys().catch((error: unknown) =>
+            console.error(`[battle-signer] could not load persisted signing keys: ${(error as Error).message}`),
+        );
         battleWorker = startBattleWorker(`backend-${process.pid}`);
         // Aggregates published receipts into Merkle batches and anchors the roots (§I).
         // No-ops unless BATTLE_ANCHOR_* is configured; batches are still built either way.
