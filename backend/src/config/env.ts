@@ -167,4 +167,28 @@ export const env = {
             .filter((url) => url.length > 0),
         drandTimeoutMs: Number(process.env.BATTLE_DRAND_TIMEOUT_MS?.trim() || '4000'),
     },
+
+    /**
+     * The battle signer (§G). Separate from `battle` because these are credentials, and keeping
+     * them in their own block makes it obvious which config is sensitive.
+     *
+     * Production must use a KMS: `BATTLE_SIGNER_PRIVATE_KEY` is refused when NODE_ENV is
+     * production, so a deployment cannot quietly fall back to an in-process key.
+     *
+     * `requiredAttesters` is what makes §F's circuit breaker unbypassable: a receipt cannot be
+     * signed unless every listed implementation has attested to that exact receipt hash. Add
+     * `go-verifier` once the independent verifier is wired up; until then the single-attester
+     * default means only the TypeScript engine's agreement is enforced.
+     */
+    battleSigner: {
+        keyId: process.env.BATTLE_SIGNER_KEY_ID?.trim() || 'battle-signer-dev',
+        /** Dev and test only. Ignored (and refused) in production. */
+        privateKey: process.env.BATTLE_SIGNER_PRIVATE_KEY?.trim() || undefined,
+        /** e.g. `aws-kms` or `gcp-kms`. Unset locally; required in production. */
+        kmsProvider: process.env.BATTLE_SIGNER_KMS_PROVIDER?.trim() || undefined,
+        requiredAttesters: (process.env.BATTLE_SIGNER_REQUIRED_ATTESTERS?.trim() || 'typescript-engine')
+            .split(',')
+            .map((name) => name.trim())
+            .filter((name) => name.length > 0),
+    },
 } as const;
