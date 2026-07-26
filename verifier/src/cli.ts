@@ -1,34 +1,55 @@
 #!/usr/bin/env node
-import { loadReceipts, loadSigningKeys } from './io';
+import { builtInRulesets, loadReceipts, loadRulesets, loadSigningKeys } from './io';
 import { verifyReceipts } from './verify';
 
 /**
- * `cryptopets-verify <receipt-file-or-url> [--keys <keys-file-or-url>]`
+ * `cryptopets-verify <receipt-file-or-url> [--keys <source>] [--rulesets <source>]`
  *
- * Prints one pass/fail line per check and exits non-zero if any check failed. Omitting
- * `--keys` is not "skip the signature check" — it means no key is trusted, so every
- * receipt's operator-signature check fails closed rather than silently passing.
+ * Prints one pass/fail line per check and exits non-zero if any check failed.
+ *
+ * Both flags default to the safe answer rather than the convenient one. Omitting `--keys`
+ * is not "skip the signature check": it means no key is trusted, so every receipt's
+ * operator-signature check fails. Omitting `--rulesets` falls back to this build's
+ * source-default ruleset only, so a battle fought under tuned `GameConfig` values reports
+ * `ruleset-unavailable` instead of being replayed against the wrong numbers.
  */
 async function main(): Promise<void> {
     const args = process.argv.slice(2);
     const receiptSource = args[0];
-    if (!receiptSource) {
-        console.error('usage: cryptopets-verify <receipt-file-or-url> [--keys <keys-file-or-url>]');
+    if (!receiptSource || receiptSource.startsWith('--')) {
+        console.error('usage: cryptopets-verify <receipt-file-or-url> [--keys <source>] [--rulesets <source>]');
         process.exitCode = 1;
         return;
     }
-    const keysFlagIndex = args.indexOf('--keys');
-    const keysSource = keysFlagIndex >= 0 ? args[keysFlagIndex + 1] : undefined;
+
+    const keysSource = flagValue(args, '--keys');
+    const rulesetsSource = flagValue(args, '--rulesets');
 
     const envelopes = await loadReceipts(receiptSource);
     const trustedKeys = keysSource ? await loadSigningKeys(keysSource) : [];
 
-    const report = verifyReceipts(envelopes, trustedKeys);
+    const rulesets = builtInRulesets();
+    if (rulesetsSource) {
+        for (const [hash, ruleset] of await loadRulesets(rulesetsSource)) {
+            rulesets.set(hash, ruleset);
+        }
+    }
+
+    const report = verifyReceipts(envelopes, trustedKeys, { rulesets });
     for (const result of report.results) {
-        const status = result.ok ? 'PASS' : 'FAIL';
-        console.log(`[${status}] ${result.check}${result.detail ? `: ${result.detail}` : ''}`);
+        console.log(`[${result.ok ? 'PASS' : 'FAIL'}] ${result.check}${result.detail ? `: ${result.detail}` : ''}`);
     }
     process.exitCode = report.ok ? 0 : 1;
+}
+
+function flagValue(args: readonly string[], flag: string): string | undefined {
+    const index = args.indexOf(flag);
+    if (index < 0) return undefined;
+    const value = args[index + 1];
+    if (!value || value.startsWith('--')) {
+        throw new Error(`${flag} needs a file path or URL`);
+    }
+    return value;
 }
 
 main().catch((error: unknown) => {

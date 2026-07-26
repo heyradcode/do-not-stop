@@ -18,7 +18,9 @@ export {
     type ReceiptCheck,
     type ReceiptCheckFailure,
     type ReceiptVerification,
+    verifyReceiptBeacon,
     verifyReceiptConsistency,
+    verifyReceiptProgression,
 } from './verify';
 export {
     receiptFromWire,

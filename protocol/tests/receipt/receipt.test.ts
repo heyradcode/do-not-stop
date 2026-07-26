@@ -12,8 +12,10 @@ import {
     hashCombatLog,
     petPreviousReceiptHash,
     verifyPetReceiptChain,
+    verifyReceiptBeacon,
     verifyReceiptChain,
     verifyReceiptConsistency,
+    verifyReceiptProgression,
 } from '../../src/receipt';
 import { hashRuleset, SOURCE_DEFAULT_RULESET } from '../../src/ruleset';
 import { type BattleSnapshot, hashBattleSnapshot } from '../../src/snapshot';
@@ -266,6 +268,59 @@ describe('verifyReceiptConsistency', () => {
         // pass: the progression simply will not reproduce.
         const atCap = build({ progression: computeProgression(SNAPSHOT, VALID.result.attackerWon, { maxLevel: 5 }) });
         expect(verifyReceiptConsistency(atCap, { maxLevel: 100 }).ok).toBe(false);
+    });
+});
+
+describe('the halves on their own', () => {
+    // The split exists so a verifier that could not obtain the named ruleset bundle can
+    // still check the beacon, instead of reporting the whole receipt as unverifiable.
+    const forgedBeacon = build({
+        beacon: {
+            ...BEACON,
+            signature:
+                '0x971cbe88adc436f6411fd26d51887ede7ba144264cd05edec6645b5e170a7702d16082947a85d89c89cb47cd8eb7d817',
+            randomness: '0x36ecd957580ee415f951370e2a5e13273be97de9072418aaf14d38242979e3c1',
+        },
+    });
+
+    it('verifyReceiptBeacon checks the beacon without needing any ruleset parameters', () => {
+        expect(verifyReceiptBeacon(VALID)).toEqual({ ok: true });
+        const result = verifyReceiptBeacon(forgedBeacon);
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+            expect(result.failures.map((f) => f.check)).toEqual(['beacon-signature']);
+        }
+    });
+
+    it('verifyReceiptProgression checks progression without touching the beacon', () => {
+        // The beacon here is forged, and this half must not notice or care.
+        expect(verifyReceiptProgression(forgedBeacon, { maxLevel: 100 })).toEqual({ ok: true });
+
+        const inflated = build({
+            progression: { ...VALID.progression, attacker: { ...VALID.progression.attacker, xp: 9999 } },
+        });
+        const result = verifyReceiptProgression(inflated, { maxLevel: 100 });
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+            expect(result.failures.map((f) => f.check)).toEqual(['progression']);
+        }
+    });
+
+    it('together they report exactly what the composed function reports', () => {
+        const broken = build({
+            beacon: forgedBeacon.beacon,
+            progression: { ...VALID.progression, defender: { ...VALID.progression.defender, xp: 1 } },
+        });
+        const composed = verifyReceiptConsistency(broken, { maxLevel: 100 });
+        const beacon = verifyReceiptBeacon(broken);
+        const progression = verifyReceiptProgression(broken, { maxLevel: 100 });
+        expect(composed).toEqual({
+            ok: false,
+            failures: [
+                ...(beacon.ok ? [] : beacon.failures),
+                ...(progression.ok ? [] : progression.failures),
+            ],
+        });
     });
 });
 

@@ -29,18 +29,35 @@ import type { SignedReceiptEnvelope, TrustedSigningKey } from '../../src/io/type
  * across runs without needing `Math.random`.
  */
 
-const BEACON = {
+/** Real quicknet round 1000, so the BLS check runs against genuine drand output. */
+export const BEACON = {
     chainHash: QUICKNET.chainHash,
     round: 1000,
     signature:
         '0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39' as Hex,
     randomness: '0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd' as Hex,
 };
+
+/**
+ * Round 21000000's real signature, presented as round 1000.
+ *
+ * Well-formed, and the randomness really is its hash, so every cheap check passes and the
+ * seed derives consistently from it. Only the BLS verification catches it, because the
+ * round number is the message being signed — which is exactly the attack the beacon check
+ * exists to stop.
+ */
+export const FORGED_BEACON = {
+    ...BEACON,
+    signature:
+        '0x971cbe88adc436f6411fd26d51887ede7ba144264cd05edec6645b5e170a7702d16082947a85d89c89cb47cd8eb7d817' as Hex,
+    randomness: '0x36ecd957580ee415f951370e2a5e13273be97de9072418aaf14d38242979e3c1' as Hex,
+};
+
 const PUBLISHED_AT = roundTime(QUICKNET, BEACON.round);
 const DOMAIN = { chainId: 'eip155:84532' as const, deploymentId: 'base-sepolia-live' };
-const RULESET_HASH = hashRuleset(SOURCE_DEFAULT_RULESET);
+export const RULESET_HASH = hashRuleset(SOURCE_DEFAULT_RULESET);
 
-const SNAPSHOT: BattleSnapshot = {
+export const SNAPSHOT: BattleSnapshot = {
     domain: DOMAIN,
     attacker: {
         petId: 1n,
@@ -112,17 +129,36 @@ export interface ReceiptOverrides {
     previousReceiptHash?: Hex | null;
     createdAt?: number;
     signingKeyId?: string;
+    /** Swapped wholesale; the seed is re-derived from whichever beacon is supplied. */
+    beacon?: BattleReceipt['beacon'];
+    /**
+     * Names a different ruleset. Re-derives the seed too, since the seed binds the ruleset
+     * hash — patching it afterwards would produce a receipt that fails seed derivation
+     * rather than one that coherently names a bundle the verifier does not hold.
+     */
+    rulesetHash?: Hex;
+    /** Applied after the honest values, so a test can state exactly what it tampered with. */
+    patch?: Partial<BattleReceipt>;
 }
 
-/** Builds one valid, internally-consistent receipt. Each call re-simulates independently. */
+/**
+ * Builds one valid, internally-consistent receipt. Each call re-simulates independently.
+ *
+ * The seed always derives from whichever beacon is in play, because it has to: a receipt
+ * whose seed does not follow from its own inputs cannot be hashed at all, so there is no
+ * way to build one with a beacon it was not seeded from. Tests that want that specific
+ * tampering use `patch` to set the seed after the fact.
+ */
 export function buildReceipt(overrides: ReceiptOverrides = {}): BattleReceipt {
     const battleId = overrides.battleId ?? 'btl_0001';
+    const beacon = overrides.beacon ?? BEACON;
+    const rulesetHash = overrides.rulesetHash ?? RULESET_HASH;
     const seed = deriveBattleSeed({
         domain: DOMAIN,
-        drandRandomness: BEACON.randomness,
+        drandRandomness: beacon.randomness,
         battleId,
         snapshotHash: hashBattleSnapshot(SNAPSHOT),
-        rulesetHash: RULESET_HASH,
+        rulesetHash,
     });
     const outcome = simulate(
         SNAPSHOT.attacker.dna,
@@ -143,10 +179,10 @@ export function buildReceipt(overrides: ReceiptOverrides = {}): BattleReceipt {
         commitmentHash: `0x${'22'.repeat(32)}`,
         defenseAuthorizationHash: `0x${'33'.repeat(32)}`,
         snapshot: SNAPSHOT,
-        beacon: BEACON,
+        beacon,
         seed: seed.hex,
         rulesetVersion: SOURCE_DEFAULT_RULESET.version,
-        rulesetHash: RULESET_HASH,
+        rulesetHash,
         result: {
             attackerWon: outcome.result.firstWins,
             rounds: outcome.result.rounds,
@@ -160,6 +196,7 @@ export function buildReceipt(overrides: ReceiptOverrides = {}): BattleReceipt {
         defenderPreviousReceiptHash: null,
         createdAt: overrides.createdAt ?? PUBLISHED_AT + 1,
         signingKeyId: overrides.signingKeyId ?? TEST_SIGNING_KEY_ID,
+        ...overrides.patch,
     };
 }
 
@@ -175,16 +212,31 @@ export function buildSignedReceipt(overrides: ReceiptOverrides = {}): {
     trustedKey: TrustedSigningKey;
 } {
     const receipt = buildReceipt(overrides);
-    const receiptHash = hashBattleReceipt(receipt);
-    const signature = signWithTestKey(receiptHash);
     return {
         receipt,
-        envelope: {
-            receiptHash,
-            signature,
-            signingKeyId: receipt.signingKeyId,
-            payload: toWireJson(receipt) as SignedReceiptEnvelope['payload'],
-        },
+        envelope: envelopeFor(receipt),
         trustedKey: { keyId: receipt.signingKeyId, address: testSigningAddress() },
+    };
+}
+
+/** The trusted-key entry matching `signWithTestKey`. */
+export function testTrustedKey(keyId = TEST_SIGNING_KEY_ID): TrustedSigningKey {
+    return { keyId, address: testSigningAddress() };
+}
+
+/**
+ * Wraps a receipt in a signed envelope.
+ *
+ * `hashBattleReceipt` asserts, so a deliberately-broken receipt cannot be hashed. Those
+ * tests pass `receiptHash` explicitly: the envelope still has to carry *some* hash, and
+ * what it carries is beside the point when the receipt itself is what is under test.
+ */
+export function envelopeFor(receipt: BattleReceipt, receiptHash?: Hex): SignedReceiptEnvelope {
+    const hash = receiptHash ?? hashBattleReceipt(receipt);
+    return {
+        receiptHash: hash,
+        signature: signWithTestKey(hash),
+        signingKeyId: receipt.signingKeyId,
+        payload: toWireJson(receipt) as SignedReceiptEnvelope['payload'],
     };
 }

@@ -1,7 +1,24 @@
-import { assertBattleReceipt, type BattleReceipt, receiptFromWire } from '@cryptopets/protocol';
+import { assertBattleReceipt, type BattleReceipt, receiptFromWire, type Ruleset } from '@cryptopets/protocol';
 
-import { checkChainContinuity, checkOperatorSignature, type CheckResult } from './checks';
-import type { SignedReceiptEnvelope, TrustedSigningKey } from './io';
+import {
+    checkBeaconSignature,
+    checkChainContinuity,
+    checkCombatReplay,
+    checkOperatorSignature,
+    checkProgression,
+    checkSeedDerivation,
+    type CheckResult,
+} from './checks';
+import { builtInRulesets, type RulesetRegistry, type SignedReceiptEnvelope, type TrustedSigningKey } from './io';
+
+export interface VerifyOptions {
+    /**
+     * Published ruleset bundles, keyed by lowercase `rulesetHash`. Defaults to this build's
+     * source-default ruleset alone, which covers every battle fought under untuned
+     * `GameConfig` values.
+     */
+    rulesets?: RulesetRegistry;
+}
 
 export interface VerifyReceiptsReport {
     results: CheckResult[];
@@ -9,43 +26,99 @@ export interface VerifyReceiptsReport {
 }
 
 /**
- * Runs every check this step covers over a set of signed receipt envelopes: the operator
- * signature per receipt, then hash-chain continuity across the whole run (§H item 1). Both
- * need nothing beyond the receipts themselves and a trusted key list — no drand round, no
- * combat replay, no backend access.
+ * Runs every check §H item 1 calls for over a set of signed receipt envelopes: operator
+ * signature, drand BLS beacon, seed derivation, combat replay, progression, and hash-chain
+ * continuity across the run.
  *
- * A receipt that fails to parse, or fails its own internal consistency check
- * (`assertBattleReceipt` — malformed hashes, a seed that does not follow from its own
- * inputs, and so on), is reported as a `malformed-receipt` failure and excluded from the
- * chain-continuity walk, since that walk assumes every receipt in the run is at least
- * well-formed to begin with.
+ * Nothing here contacts the operator. Every input is either in the receipt itself or was
+ * supplied by the caller (a trusted key list, published ruleset bundles), which is the
+ * whole point — an answer that depended on the backend telling the truth would not be
+ * verification.
+ *
+ * Every check is reported, not just the first failure. "The beacon is forged" and "the XP
+ * is wrong" are different accusations, and a verifier that stopped at the first one would
+ * make the second invisible.
+ *
+ * Two things fail closed rather than being skipped quietly:
+ *
+ * - A receipt that will not parse, or fails its own internal consistency
+ *   (`assertBattleReceipt`), is reported as `malformed-receipt`. Only the checks that do
+ *   not need a hashable receipt still run on it, and it is left out of the chain walk,
+ *   which assumes well-formed members.
+ * - A receipt naming a ruleset bundle the caller did not supply is reported as
+ *   `ruleset-unavailable`, and its replay and progression checks do not run. Reporting
+ *   those as passed would be a lie; silently omitting them would read as a clean bill of
+ *   health.
  */
 export function verifyReceipts(
     envelopes: readonly SignedReceiptEnvelope[],
     trustedKeys: readonly TrustedSigningKey[],
+    options: VerifyOptions = {},
 ): VerifyReceiptsReport {
+    const rulesets = options.rulesets ?? builtInRulesets();
     const results: CheckResult[] = [];
-    const receipts: BattleReceipt[] = [];
+    const wellFormed: BattleReceipt[] = [];
 
     for (const envelope of envelopes) {
-        let receipt: BattleReceipt;
-        try {
-            receipt = assertBattleReceipt(receiptFromWire(envelope.payload));
-        } catch (error) {
-            results.push({
-                check: 'malformed-receipt',
-                ok: false,
-                detail: `${envelope.receiptHash}: ${(error as Error).message}`,
-            });
-            continue;
-        }
-        receipts.push(receipt);
-        results.push(checkOperatorSignature(envelope, receipt, trustedKeys));
+        results.push(...verifyOne(envelope, trustedKeys, rulesets, wellFormed));
     }
 
-    if (receipts.length > 0) {
-        results.push(checkChainContinuity(receipts));
+    if (wellFormed.length > 0) {
+        results.push(checkChainContinuity(wellFormed));
     }
 
     return { results, ok: results.every((result) => result.ok) };
+}
+
+function verifyOne(
+    envelope: SignedReceiptEnvelope,
+    trustedKeys: readonly TrustedSigningKey[],
+    rulesets: RulesetRegistry,
+    wellFormed: BattleReceipt[],
+): CheckResult[] {
+    let converted: BattleReceipt;
+    try {
+        converted = receiptFromWire(envelope.payload);
+    } catch (error) {
+        // Not even structurally a receipt: nothing further can run against it.
+        return [{ check: 'malformed-receipt', ok: false, detail: `${envelope.receiptHash}: ${(error as Error).message}` }];
+    }
+
+    // Runs before the well-formedness gate on purpose. A chosen seed is the specific thing
+    // `assertBattleReceipt` would reject, and reporting only "malformed" there would bury
+    // the actual accusation under a shape complaint.
+    const results: CheckResult[] = [checkSeedDerivation(converted)];
+
+    let receipt: BattleReceipt;
+    try {
+        receipt = assertBattleReceipt(converted);
+    } catch (error) {
+        results.push({
+            check: 'malformed-receipt',
+            ok: false,
+            detail: `${envelope.receiptHash}: ${(error as Error).message}`,
+        });
+        return results;
+    }
+    wellFormed.push(receipt);
+
+    results.push(checkOperatorSignature(envelope, receipt, trustedKeys));
+    results.push(checkBeaconSignature(receipt));
+
+    const ruleset = resolveRuleset(receipt, rulesets);
+    if (!ruleset) {
+        results.push({
+            check: 'ruleset-unavailable',
+            ok: false,
+            detail: `no published bundle supplied for rulesetHash ${receipt.rulesetHash}; combat replay and progression could not be checked`,
+        });
+        return results;
+    }
+    results.push(checkCombatReplay(receipt, ruleset));
+    results.push(checkProgression(receipt, ruleset));
+    return results;
+}
+
+function resolveRuleset(receipt: BattleReceipt, rulesets: RulesetRegistry): Ruleset | undefined {
+    return rulesets.get(receipt.rulesetHash.toLowerCase());
 }

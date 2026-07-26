@@ -88,7 +88,7 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | `contracts/solana/cryptopets` | Rust, Anchor | Solana programs |
 | `shared` (`@shared/core`) | TypeScript | Common utils/types/hooks, consumed as raw TS (no build step), shared by frontend + mobile |
 | `protocol` (`@cryptopets/protocol`) | TypeScript | MIT, dependency-free battle protocol: the TS combat engine plus (in progress) canonical encodings, hashes, and drand seed derivation. Consumed as raw TS by `shared`/`backend` and by `verifier` |
-| `verifier` (`@cryptopets/verifier`) | TypeScript | MIT, standalone public receipt verifier (§H). Depends only on `protocol`; no backend access, no database. So far: operator-signature and hash-chain-continuity checks (Step 30); drand/seed/replay/progression checks land in Step 31 |
+| `verifier` (`@cryptopets/verifier`) | TypeScript | MIT, standalone public receipt verifier (§H). Depends only on `protocol`; no backend access, no database. Checks seed derivation, operator signature, drand BLS beacon, combat replay, progression, and hash-chain continuity, reporting each independently |
 | `proto` | Protobuf/Buf | gRPC contract (`GameDataService`) between `indexer-go` and `backend` |
 
 ### Data flow
