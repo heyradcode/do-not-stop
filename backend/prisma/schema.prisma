@@ -144,3 +144,342 @@ model BattleConversation {
   @@index([chain, attacker, defender])
   @@map("battle_conversation")
 }
+
+// ─── Backend-authoritative battles ────────────────────────────────────────────
+// Models for the design in docs/plan-backend-battle-architecture.md. The existing
+// pet_roster / battle_history tables stay exactly as they are: they are projections
+// of on-chain events, and the legacy on-chain battle path keeps writing them.
+// Everything below is the durable workflow for battles the backend resolves itself.
+//
+// Conventions follow the tables above: pet ids and DNA are strings (an EVM uint256
+// does not fit a 64-bit BigInt), protocol timestamps are BigInt unix seconds, and row
+// bookkeeping uses DateTime. Canonical hashes are 0x-prefixed lowercase hex.
+
+/// The §J state machine. `rejected` exists only before `committed`: once a battle is
+/// committed to a drand round it resolves, because free abandonment after seeing a
+/// seed is outcome grinding (threat T5).
+enum BattleState {
+  accepted
+  committed
+  seeded
+  computed
+  verified
+  signed
+  published
+  batched
+  rejected
+  expired
+  verification_failed
+  signing_failed
+  forfeited
+
+  @@map("battle_state")
+}
+
+/// A wallet-signed request to fight (§D). Permission, not a result. The signature is
+/// kept so a third party can be shown that the attacker really asked for this battle,
+/// rather than taking our word that they did.
+model BattleIntent {
+  /// `hashBattleIntent` from @cryptopets/protocol.
+  intentHash      String    @id @map("intent_hash")
+  chainId         String    @map("chain_id") // protocol chain id, e.g. 'eip155:84532'
+  deploymentId    String    @map("deployment_id")
+  attackerOwner   String    @map("attacker_owner")
+  attackerPetId   String    @map("attacker_pet_id")
+  defenderOwner   String    @map("defender_owner")
+  defenderPetId   String    @map("defender_pet_id")
+  challengeId     String?   @map("challenge_id")
+  /// Wallet-chosen idempotency nonce, consumed once (see the unique index below).
+  clientNonce     String    @map("client_nonce")
+  rulesetHash     String    @map("ruleset_hash")
+  expiresAt       BigInt    @map("expires_at") // unix seconds
+  /// Wallet signature over the EIP-712 typed data (EVM) or the signed message (Solana).
+  signature       String
+  /// 'eip712' | 'solana-message' — which payload the signature covers.
+  signatureFormat String    @map("signature_format")
+  submittedAt     DateTime  @default(now()) @map("submitted_at")
+  /// Set when this intent produced a ledger row. A second submission with the same
+  /// nonce is rejected by the unique index, never merged by an upsert.
+  consumedAt      DateTime? @map("consumed_at")
+
+  ledger BattleLedger?
+
+  /// The replay guard: one nonce per wallet per deployment, enforced by the database
+  /// rather than by a check-then-insert race (§J, threat T7).
+  @@unique([chainId, deploymentId, attackerOwner, clientNonce], name: "battle_intent_nonce")
+  @@index([chainId, deploymentId, attackerOwner])
+  @@map("battle_intent")
+}
+
+/// A defender's standing, revocable permission to be challenged while offline (§D).
+model DefenseAuthorization {
+  /// `hashDefenseAuthorization` from @cryptopets/protocol.
+  authorizationHash String    @id @map("authorization_hash")
+  chainId           String    @map("chain_id")
+  deploymentId      String    @map("deployment_id")
+  defenderOwner     String    @map("defender_owner")
+  /// True = every pet the owner holds, now or later. False = `petIds` is the scope.
+  allPets           Boolean   @map("all_pets")
+  /// Ascending pet-id strings. Empty when `allPets`.
+  petIds            Json      @map("pet_ids")
+  /// Consent is per ruleset version: a rules change invalidates outstanding grants.
+  rulesetHash       String    @map("ruleset_hash")
+  minLevel          Int       @map("min_level")
+  maxLevel          Int       @map("max_level")
+  maxBattlesPerDay  Int       @map("max_battles_per_day")
+  notBefore         BigInt    @map("not_before") // unix seconds
+  expiresAt         BigInt    @map("expires_at")
+  revocationNonce   Int       @map("revocation_nonce")
+  signature         String
+  signatureFormat   String    @map("signature_format")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  /// Revocation is immediate. Kept rather than deleted, because receipts reference
+  /// this hash and a verifier must still be able to see what was consented to.
+  revokedAt         DateTime? @map("revoked_at")
+
+  ledger BattleLedger[]
+
+  @@index([chainId, deploymentId, defenderOwner])
+  @@index([chainId, deploymentId, rulesetHash])
+  @@map("defense_authorization")
+}
+
+/// The durable workflow row for one backend-resolved battle: the state machine, the
+/// frozen snapshot, and the committed randomness round.
+model BattleLedger {
+  /// Ledger id, also the `battleId` bound into the commitment, the seed, and the receipt.
+  battleId      String      @id @default(cuid()) @map("battle_id")
+  chainId       String      @map("chain_id")
+  deploymentId  String      @map("deployment_id")
+  state         BattleState
+  /// Set on a failure transition, so `verification_failed` says what mismatched.
+  failureReason String?     @map("failure_reason")
+
+  intentHash        String               @unique @map("intent_hash")
+  intent            BattleIntent         @relation(fields: [intentHash], references: [intentHash])
+  authorizationHash String               @map("authorization_hash")
+  authorization     DefenseAuthorization @relation(fields: [authorizationHash], references: [authorizationHash])
+
+  attackerPetId String @map("attacker_pet_id")
+  attackerOwner String @map("attacker_owner")
+  defenderPetId String @map("defender_pet_id")
+  defenderOwner String @map("defender_owner")
+
+  /// The frozen photo, persisted before any randomness for this battle exists (§J).
+  snapshot       Json
+  snapshotHash   String @map("snapshot_hash")
+  rulesetHash    String @map("ruleset_hash")
+  rulesetVersion Int    @map("ruleset_version")
+
+  /// The committed future round. Never substituted: on a fetch failure the same round
+  /// is retried, and a permanent beacon outage forfeits (§E).
+  drandChainHash String @map("drand_chain_hash")
+  drandRound     BigInt @map("drand_round")
+  acceptedAt     BigInt @map("accepted_at") // unix seconds
+
+  /// Filled as the battle advances. Null until the state that produces them.
+  beaconSignature   String?  @map("beacon_signature")
+  beaconRandomness  String?  @map("beacon_randomness")
+  seed              String?
+  attackerWon       Boolean? @map("attacker_won")
+  rounds            Int?
+  winnerHpRemaining Int?     @map("winner_hp_remaining")
+  /// The full per-strike log, served separately from the receipt and bound by
+  /// `combatLogHash` inside it.
+  combatLog         Json?    @map("combat_log")
+  combatLogHash     String?  @map("combat_log_hash")
+  progression       Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  commitment BattleCommitment?
+  receipt    BattleReceipt?
+  locks      PetBattleLock[]
+  outbox     BattleOutbox[]
+
+  @@index([chainId, deploymentId, state])
+  @@index([chainId, attackerPetId])
+  @@index([chainId, defenderPetId])
+  @@index([drandChainHash, drandRound])
+  @@map("battle_ledger")
+}
+
+/// One row per pet with a battle in flight, so "one open battle per pet" is a database
+/// constraint rather than a convention. Deterministic lock ordering inside a
+/// serializable transaction still applies; this makes the invariant survive a bug in
+/// that ordering (threat T11). Rows are deleted when a battle reaches a terminal state.
+model PetBattleLock {
+  chainId  String       @map("chain_id")
+  petId    String       @map("pet_id")
+  battleId String       @map("battle_id")
+  battle   BattleLedger @relation(fields: [battleId], references: [battleId], onDelete: Cascade)
+  lockedAt DateTime     @default(now()) @map("locked_at")
+
+  @@id([chainId, petId])
+  @@index([battleId])
+  @@map("pet_battle_lock")
+}
+
+/// Our signed statement, made before the round published, of which round a battle uses
+/// (§E). The payload is stored exactly as delivered to the players, because the
+/// player's copy is the evidence and ours has to match it byte for byte.
+model BattleCommitment {
+  /// `hashBattleCommitment` from @cryptopets/protocol.
+  commitmentHash         String       @id @map("commitment_hash")
+  battleId               String       @unique @map("battle_id")
+  battle                 BattleLedger @relation(fields: [battleId], references: [battleId])
+  /// Position in this signing key's commitment chain.
+  sequence               BigInt
+  previousCommitmentHash String?      @map("previous_commitment_hash")
+  signingKeyId           String       @map("signing_key_id")
+  signature              String
+  /// The canonical object, as signed and as returned in the accept response.
+  payload                Json
+  acceptedAt             BigInt       @map("accepted_at") // unix seconds
+  createdAt              DateTime     @default(now()) @map("created_at")
+  /// When the accept response carrying this commitment reached the client. Null here
+  /// alongside a successful acceptance is the alert condition in §J: the player holds
+  /// no evidence, so commit-before-reveal proves nothing for that battle (threat T15).
+  deliveredAt            DateTime?    @map("delivered_at")
+
+  @@unique([signingKeyId, sequence], name: "battle_commitment_chain_position")
+  @@index([signingKeyId, createdAt])
+  @@map("battle_commitment")
+}
+
+/// The signed permanent record of one battle (§G), with its three chain links.
+model BattleReceipt {
+  /// `hashBattleReceipt` from @cryptopets/protocol.
+  receiptHash String       @id @map("receipt_hash")
+  battleId    String       @unique @map("battle_id")
+  battle      BattleLedger @relation(fields: [battleId], references: [battleId])
+
+  chainId       String @map("chain_id")
+  deploymentId  String @map("deployment_id")
+  /// Denormalized from the payload so the per-pet corpus and the per-pet chain walk are
+  /// indexed lookups rather than JSON scans.
+  attackerPetId String @map("attacker_pet_id")
+  defenderPetId String @map("defender_pet_id")
+
+  signingKeyId                String  @map("signing_key_id")
+  sequence                    BigInt
+  previousReceiptHash         String? @map("previous_receipt_hash")
+  attackerPreviousReceiptHash String? @map("attacker_previous_receipt_hash")
+  defenderPreviousReceiptHash String? @map("defender_previous_receipt_hash")
+
+  /// The canonical object, as signed.
+  payload   Json
+  signature String
+  createdAt BigInt   @map("created_at") // unix seconds, from the receipt itself
+  storedAt  DateTime @default(now()) @map("stored_at")
+
+  /// Set when a batch anchoring this receipt is created. An unbatched receipt past the
+  /// inclusion SLO is operator failure, not a claim (§I).
+  batchId String?      @map("batch_id")
+  batch   BattleBatch? @relation(fields: [batchId], references: [id])
+
+  @@unique([signingKeyId, sequence], name: "battle_receipt_chain_position")
+  @@index([chainId, attackerPetId])
+  @@index([chainId, defenderPetId])
+  @@index([batchId])
+  @@map("battle_receipt")
+}
+
+/// A Merkle batch over receipts, and its on-chain anchor (§I).
+model BattleBatch {
+  id             String    @id @default(cuid())
+  chainId        String    @map("chain_id")
+  deploymentId   String    @map("deployment_id")
+  batchNumber    BigInt    @map("batch_number")
+  previousRoot   String?   @map("previous_root")
+  merkleRoot     String    @map("merkle_root")
+  /// Hash over the set of ruleset hashes the batched receipts used, so a batch names
+  /// the rules its contents were fought under.
+  rulesetSetHash String    @map("ruleset_set_hash")
+  firstSequence  BigInt    @map("first_sequence")
+  lastSequence   BigInt    @map("last_sequence")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  /// Null until the root is accepted on chain.
+  anchoredTxHash String?   @map("anchored_tx_hash")
+  anchoredAt     DateTime? @map("anchored_at")
+
+  receipts BattleReceipt[]
+
+  @@unique([chainId, deploymentId, batchNumber], name: "battle_batch_number")
+  @@index([chainId, deploymentId, anchoredAt])
+  @@map("battle_batch")
+}
+
+/// A published, content-addressed ruleset bundle (§H). Historical receipts name a hash
+/// here, so rows are never deleted: without the bundle, a receipt names rules nobody
+/// can replay.
+model BattleRuleset {
+  rulesetHash   String    @id @map("ruleset_hash")
+  version       Int       @unique
+  engineId      String    @map("engine_id")
+  engineVersion Int       @map("engine_version")
+  /// The full bundle exactly as published.
+  bundle        Json
+  publishedAt   DateTime  @default(now()) @map("published_at")
+  /// Set when a newer version supersedes this one. Retired rulesets still verify.
+  retiredAt     DateTime? @map("retired_at")
+
+  @@map("battle_ruleset")
+}
+
+/// Off-chain progression, kept distinct from NFT state (§C).
+/// Deliberately not `pet_roster`: that table mirrors chain state, and mixing backend XP
+/// into it would make it impossible to say which numbers the chain guarantees. Off-chain
+/// XP is never represented as NFT state unless an aggregate claim applied it on chain.
+model PetBattleProgress {
+  chainId      String @map("chain_id")
+  deploymentId String @map("deployment_id")
+  petId        String @map("pet_id")
+
+  level          Int    @default(1)
+  xp             Int    @default(0)
+  /// Same-opponent decay state, frozen into each battle snapshot so progression stays
+  /// recomputable from a receipt alone.
+  lastOpponentId String @default("0") @map("last_opponent_id")
+  streak         Int    @default(0)
+  winCount       Int    @default(0) @map("win_count")
+  lossCount      Int    @default(0) @map("loss_count")
+  /// Backend-mode cooldown, separate from the on-chain `pet_roster.ready_at`.
+  readyAt        BigInt @default(0) @map("ready_at") // unix seconds
+  /// Head of this pet's receipt chain: what the next receipt links back to.
+  lastReceiptHash String?  @map("last_receipt_hash")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@id([chainId, deploymentId, petId])
+  @@index([chainId, deploymentId, readyAt])
+  @@map("pet_battle_progress")
+}
+
+/// Transactional outbox. Every state transition and its message commit together, so a
+/// crash cannot advance a battle without scheduling the work that follows (§J).
+model BattleOutbox {
+  id       String       @id @default(cuid())
+  battleId String       @map("battle_id")
+  battle   BattleLedger @relation(fields: [battleId], references: [battleId], onDelete: Cascade)
+  /// What to do next, e.g. 'await-beacon' | 'compute' | 'verify' | 'sign'.
+  topic    String
+  payload  Json
+  /// Earliest time a worker may claim this message. Used to wait for a beacon round
+  /// rather than spinning on it.
+  availableAt DateTime  @default(now()) @map("available_at")
+  attempts    Int       @default(0)
+  lockedAt    DateTime? @map("locked_at")
+  lockedBy    String?   @map("locked_by")
+  processedAt DateTime? @map("processed_at")
+  /// Set when retries are exhausted. A dead-lettered message is an incident, not a
+  /// dropped job.
+  deadLetteredAt DateTime? @map("dead_lettered_at")
+  lastError      String?   @map("last_error")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([processedAt, availableAt])
+  @@index([battleId])
+  @@index([topic, processedAt])
+  @@map("battle_outbox")
+}
