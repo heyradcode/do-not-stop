@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "prisma generate && tsc && node scripts/copy-proto.cjs && node scripts/bundle-shared-node.cjs",
+    "build": "prisma generate && tsc && node scripts/copy-proto.cjs && node scripts/bundle-shared-node.cjs && node scripts/bundle-protocol.cjs",
     "start": "node dist/src/server.js",
     "dev": "nodemon",
     "clean": "rm -rf dist",
@@ -24,6 +24,7 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.68",
     "@coral-xyz/anchor": "^0.32.0",
+    "@cryptopets/protocol": "workspace:*",
     "@grpc/grpc-js": "^1.14.4",
     "@noble/curves": "^1.9.7",
     "@noble/hashes": "^1.8.0",

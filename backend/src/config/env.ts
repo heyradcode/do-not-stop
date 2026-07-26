@@ -128,4 +128,26 @@ export const env = {
         programId: process.env.KEEPER_SOLANA_PROGRAM_ID?.trim() || undefined,
         pollIntervalMs: Number(process.env.KEEPER_SOLANA_POLL_INTERVAL_MS?.trim() || '5000'),
     },
+
+    /**
+     * Backend-authoritative battles (docs/plan-backend-battle-architecture.md).
+     *
+     * Every wallet-signed object binds `chainId` and `deploymentId`, and that binding only
+     * stops a replay if this server refuses payloads naming a different one. Both values are
+     * configured rather than inferred: a deployment id has no on-chain source, and reading it
+     * from the database would make it whatever the data happened to say.
+     *
+     * `BATTLE_DEPLOYMENT_ID` must differ between environments, or a staging signature is a
+     * valid production signature. The default is deliberately a local-only value, so a
+     * production deployment that forgets to set it rejects everything rather than silently
+     * sharing staging's identity.
+     */
+    battle: {
+        deploymentId: process.env.BATTLE_DEPLOYMENT_ID?.trim() || 'local-dev',
+        /** Comma-separated protocol chain ids, e.g. `eip155:84532,solana:devnet`. */
+        chainIds: (process.env.BATTLE_CHAIN_IDS?.trim() || 'eip155:31337,solana:localnet')
+            .split(',')
+            .map((id) => id.trim())
+            .filter((id) => id.length > 0),
+    },
 } as const;

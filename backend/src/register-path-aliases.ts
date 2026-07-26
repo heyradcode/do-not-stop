@@ -12,9 +12,19 @@ const sharedNodeBundle = path.join(root, '..', 'shared-node.cjs');
 const sharedNodeDev = path.join(root, '..', '..', 'shared', 'src', 'node.ts');
 const sharedNode = fs.existsSync(sharedNodeBundle) ? sharedNodeBundle : sharedNodeDev;
 
+/**
+ * Same split for @cryptopets/protocol: the production build emits `dist/protocol.cjs`
+ * (see scripts/bundle-protocol.cjs), while `tsx src/server.ts` loads the raw source.
+ * Without this the compiled output would `require` a .ts entry point.
+ */
+const protocolBundle = path.join(root, '..', 'protocol.cjs');
+const protocolDev = path.join(root, '..', '..', 'protocol', 'src', 'index.ts');
+const protocolEntry = fs.existsSync(protocolBundle) ? protocolBundle : protocolDev;
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 require('module-alias').addAliases({
     '@shared/core/node': sharedNode,
+    '@cryptopets/protocol': protocolEntry,
     '@config': path.join(root, 'config'),
     '@routes': path.join(root, 'routes'),
     '@features': path.join(root, 'features'),

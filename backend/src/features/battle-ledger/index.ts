@@ -1,3 +1,15 @@
+export { assertServedDomain, servedChainIds, servedDeploymentId, servedDomain } from './domain';
+export { postBattleIntent } from './intent.controller';
+export {
+    type BattleIntentWire,
+    type IntentRejection,
+    type SignatureFormat,
+    type SubmitIntentRequest,
+    type SubmitIntentResult,
+    submitBattleIntent,
+    toProtocolIntent,
+    verifyIntentSignature,
+} from './intent.service';
 export {
     type ClaimedMessage,
     claimOutbox,
