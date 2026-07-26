@@ -262,12 +262,33 @@ to check independently.
 | GET | `/api/battle/rulesets/:rulesetHash` | none | One ruleset's full bundle, for replaying against it. |
 | POST | `/api/battle/verify-receipt` | none | Body `{ receiptHash }`. Checks the stored signature against a published key and that the payload is well-formed — §A's "operator signature, verified against a published key" row, nothing more. It does **not** re-run the fight, check the drand BLS signature, or recompute progression; that is the standalone verifier's job (§H), which runs with no backend access so its answer cannot depend on this process telling the truth. Passing this check is necessary, not sufficient. |
 
-These reads are what let the live-battle WebSocket become a notification only,
-never a source of truth (`docs/plan-backend-battle-architecture.md` §J): a
-client refetches from the routes above after reconnecting rather than trusting
-whatever the socket last pushed. `backend/src/ws/liveBattleSocket.ts` itself
-still broadcasts globally as of this writing — scoping it per room and marking
-it notification-only in its own right is a separate, later change (§J).
+### Battle room WebSocket (v2)
+
+```
+ws(s)://<host>/ws/battle-room?roomId=<roomId>
+```
+
+Notification-only, per-room channel for backend-authoritative battles (§J).
+Connecting without a `roomId` query parameter closes the socket immediately
+(code `1008`). Every message is the same small shape:
+
+```json
+{ "type": "battle-updated", "battleId": "btl_...", "state": "signed" }
+```
+
+The payload never carries battle content, only "this battle changed state, go
+re-fetch it" from the read routes above — a client that never connected, or
+missed a message, gets the exact same information by polling those same
+endpoints; this socket only makes that faster, never more authoritative. A
+battle only has a `roomId` if it was accepted with one (`POST
+/api/battle/intents/:intentHash/accept` takes an optional `roomId` in its
+body); a battle accepted without one still runs through every state normally,
+it just has no spectator link to push a notification through.
+
+This is a second, separate socket from `backend/src/ws/liveBattleSocket.ts`,
+not a change to it — that socket keeps broadcasting globally, which remains
+correct for the legacy on-chain settle-keeper flow it carries (chain-derived
+data, filtered client-side by `(chainId, requestId)`).
 
 ### Public receipt corpus (v2)
 

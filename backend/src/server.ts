@@ -8,6 +8,7 @@ import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { startSolanaSettleKeeperFeature, stopSolanaSettleKeeperFeature } from '@features/settle-keeper-solana';
 import { type BattleWorkerHandle, startBattleWorker } from '@features/battle-worker';
 import { startLiveBattleSocket, stopLiveBattleSocket } from '@ws/liveBattleSocket';
+import { startBattleRoomSocket, stopBattleRoomSocket } from '@ws/battleRoomSocket';
 
 let battleWorker: BattleWorkerHandle | undefined;
 
@@ -25,6 +26,9 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     // keeper's job). Always listening; only actually broadcasts once the keeper is enabled
     // with KEEPER_GAME_CONFIG_ADDRESS set.
     startLiveBattleSocket(server);
+    // Notification-only per-room channel for backend-authoritative battles (§J). Always on;
+    // a client only gets pushed to if it connected with a roomId it already knows about.
+    startBattleRoomSocket(server);
     // indexer-go battle push (chain-truth settles). No-op unless INDEXER_GRPC_ADDR is set.
     startBattleStream();
     // Settles GameLogic battle/breed/mint requests once entropy reveals. No-op unless
@@ -69,6 +73,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     stopSolanaSettleKeeperFeature();
     battleWorker?.stop();
     stopLiveBattleSocket();
+    stopBattleRoomSocket();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
 

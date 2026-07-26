@@ -34,6 +34,8 @@ const STATUS_BY_REASON: Record<AcceptRejection, number> = {
 
 interface AcceptBody {
     intentHash?: string;
+    /** The shareable room this accept call is happening through, if any (§J). */
+    roomId?: string;
 }
 
 /**
@@ -53,7 +55,11 @@ export async function postAcceptBattle(req: AuthenticatedRequest, res: Response)
         return;
     }
 
-    const result = await acceptBattle({ intentHash: body.intentHash, nowSeconds: Math.floor(Date.now() / 1000) });
+    const result = await acceptBattle({
+        intentHash: body.intentHash,
+        ...(typeof body.roomId === 'string' ? { roomId: body.roomId } : {}),
+        nowSeconds: Math.floor(Date.now() / 1000),
+    });
 
     if (!result.ok) {
         res.status(STATUS_BY_REASON[result.reason]).json({ error: result.reason, detail: result.detail });

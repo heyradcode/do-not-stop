@@ -22,10 +22,15 @@ vi.mock('@features/battle-randomness', () => ({
     roundPublishTime: vi.fn((round: number) => new Date(roundTime(QUICKNET, round) * 1000)),
 }));
 
+vi.mock('@ws/battleRoomSocket', () => ({
+    notifyBattleRoomIfPresent: vi.fn(),
+}));
+
 import { prisma } from '@config/prisma';
 import { applyTransition, completeOutbox, rescheduleOutbox } from '@features/battle-ledger';
 import { fetchVerifiedRound } from '@features/battle-randomness';
 import { processAwaitBeaconMessage } from '@features/battle-worker';
+import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 const ROUND = 1000;
 const PUBLISHED_AT = roundTime(QUICKNET, ROUND);
@@ -47,6 +52,7 @@ const BATTLE = {
     drandRound: BigInt(ROUND),
     snapshotHash: `0x${'11'.repeat(32)}`,
     rulesetHash: `0x${'22'.repeat(32)}`,
+    roomId: 'room_1',
 };
 
 beforeEach(() => {
@@ -78,6 +84,11 @@ describe('the round has verified', () => {
         expect(call.patch.seed).toBe(expectedSeed.hex);
         expect(call.outbox[0]!.topic).toBe('compute');
         expect(completeOutbox).toHaveBeenCalledWith('msg_1', expect.any(Date));
+        expect(notifyBattleRoomIfPresent).toHaveBeenCalledWith('room_1', {
+            type: 'battle-updated',
+            battleId: 'btl_1',
+            state: 'seeded',
+        });
     });
 
     it('never re-derives a different seed for the same message', async () => {
@@ -123,6 +134,11 @@ describe('the outage has outlasted the forfeit window', () => {
         expect(call.to).toBe('forfeited');
         expect(rescheduleOutbox).not.toHaveBeenCalled();
         expect(completeOutbox).toHaveBeenCalled();
+        expect(notifyBattleRoomIfPresent).toHaveBeenCalledWith('room_1', {
+            type: 'battle-updated',
+            battleId: 'btl_1',
+            state: 'forfeited',
+        });
     });
 
     it('measures the window from the round due time, not from a fixed poll count', async () => {

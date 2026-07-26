@@ -41,10 +41,15 @@ vi.mock('@features/battle-signer', async () => {
     };
 });
 
+vi.mock('@ws/battleRoomSocket', () => ({
+    notifyBattleRoomIfPresent: vi.fn(),
+}));
+
 import { prisma } from '@config/prisma';
 import { applyTransition, completeOutbox } from '@features/battle-ledger';
 import { activeSigningKey, sign, SignerRefusedError } from '@features/battle-signer';
 import { processSignMessage } from '@features/battle-worker';
+import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 const RULESET_HASH = hashRuleset(SOURCE_DEFAULT_RULESET);
 const NOW = roundTime(QUICKNET, 1000) + 5;
@@ -145,6 +150,7 @@ const BATTLE = {
     combatLogHash,
     progression: serializedProgression,
     verificationDetail: { mismatches: [] },
+    roomId: 'room_1',
 };
 
 const MESSAGE = { id: 'msg_1', battleId: 'btl_1', topic: 'sign', payload: {}, attempts: 1 };
@@ -189,6 +195,11 @@ describe('the happy path', () => {
         expect(call.from).toBe('verified');
         expect(call.to).toBe('signed');
         expect(call.outbox[0]!.topic).toBe('publish');
+        expect(notifyBattleRoomIfPresent).toHaveBeenCalledWith('room_1', {
+            type: 'battle-updated',
+            battleId: 'btl_1',
+            state: 'signed',
+        });
     });
 
     it('links to the prior receipt under the same signing key', async () => {
@@ -311,6 +322,11 @@ describe('signing failure', () => {
         expect(applyTransition).toHaveBeenCalledWith(
             expect.objectContaining({ battleId: 'btl_1', from: 'verified', to: 'signing_failed' }),
         );
+        expect(notifyBattleRoomIfPresent).toHaveBeenCalledWith('room_1', {
+            type: 'battle-updated',
+            battleId: 'btl_1',
+            state: 'signing_failed',
+        });
     });
 
     it('never signs when there is no active signing key at all', async () => {
@@ -320,6 +336,11 @@ describe('signing failure', () => {
         expect(applyTransition).toHaveBeenCalledWith(
             expect.objectContaining({ from: 'verified', to: 'signing_failed' }),
         );
+        expect(notifyBattleRoomIfPresent).toHaveBeenCalledWith('room_1', {
+            type: 'battle-updated',
+            battleId: 'btl_1',
+            state: 'signing_failed',
+        });
     });
 
     it('propagates an unexpected signer error rather than treating it as signing_failed', async () => {

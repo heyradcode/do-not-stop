@@ -12,6 +12,7 @@ import {
     rescheduleOutbox,
 } from '@features/battle-ledger';
 import { fetchVerifiedRound, roundPublishTime } from '@features/battle-randomness';
+import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 /**
  * Handles `await-beacon` messages: `committed` -> `seeded` (§E, §J).
@@ -77,6 +78,7 @@ export async function processAwaitBeaconMessage(message: ClaimedMessage, nowSeco
             patch,
             outbox: [{ battleId: battle.battleId, topic: OUTBOX_TOPICS.compute }],
         });
+        notifyBattleRoomIfPresent(battle.roomId, { type: 'battle-updated', battleId: battle.battleId, state: BattleState.seeded });
         await completeOutbox(message.id, new Date(nowSeconds * 1000));
         return;
     }
@@ -88,6 +90,7 @@ export async function processAwaitBeaconMessage(message: ClaimedMessage, nowSeco
             to: BattleState.forfeited,
             patch: { failureReason: `drand round ${round} unavailable for ${overdueSeconds}s: ${describeOutcome(outcome)}` },
         });
+        notifyBattleRoomIfPresent(battle.roomId, { type: 'battle-updated', battleId: battle.battleId, state: BattleState.forfeited });
         await completeOutbox(message.id, new Date(nowSeconds * 1000));
         return;
     }

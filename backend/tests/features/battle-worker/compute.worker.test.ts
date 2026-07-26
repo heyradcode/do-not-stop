@@ -15,9 +15,14 @@ vi.mock('@features/battle-ledger', () => ({
     OUTBOX_TOPICS: { verify: 'verify' },
 }));
 
+vi.mock('@ws/battleRoomSocket', () => ({
+    notifyBattleRoomIfPresent: vi.fn(),
+}));
+
 import { prisma } from '@config/prisma';
 import { applyTransition, completeOutbox } from '@features/battle-ledger';
 import { processComputeMessage } from '@features/battle-worker';
+import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 const RULESET_HASH = hashRuleset(SOURCE_DEFAULT_RULESET);
 const NOW = roundTime(QUICKNET, 1000) + 5;
@@ -66,6 +71,7 @@ const BATTLE = {
     seed: seed.hex,
     snapshot: SNAPSHOT,
     rulesetHash: RULESET_HASH,
+    roomId: 'room_1',
 };
 
 const MESSAGE = { id: 'msg_1', battleId: 'btl_1', topic: 'compute', payload: {}, attempts: 1 };
@@ -94,6 +100,11 @@ describe('running the fight', () => {
         expect(Array.isArray(call.patch.combatLog)).toBe(true);
         expect(call.outbox[0]!.topic).toBe('verify');
         expect(completeOutbox).toHaveBeenCalledWith('msg_1', expect.any(Date));
+        expect(notifyBattleRoomIfPresent).toHaveBeenCalledWith('room_1', {
+            type: 'battle-updated',
+            battleId: 'btl_1',
+            state: 'computed',
+        });
     });
 
     it('is deterministic: the same seeded battle always computes the same result', async () => {

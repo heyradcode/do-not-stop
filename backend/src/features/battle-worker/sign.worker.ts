@@ -12,6 +12,7 @@ import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import { applyTransition, type ClaimedMessage, completeOutbox, OUTBOX_TOPICS } from '@features/battle-ledger';
 import { activeSigningKey, type EngineAttestation, sign, SignerRefusedError } from '@features/battle-signer';
+import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 /**
  * Handles `sign` messages: `verified` -> `signed` (§G).
@@ -82,7 +83,7 @@ export async function processSignMessage(message: ClaimedMessage, nowSeconds: nu
     for (let attempt = 0; attempt < MAX_RECEIPT_CHAIN_RETRIES; attempt++) {
         const key = activeSigningKey();
         if (!key) {
-            await failSigning(battle.battleId, 'no active signing key');
+            await failSigning(battle.battleId, battle.roomId, 'no active signing key');
             await completeOutbox(message.id, new Date(nowSeconds * 1000));
             return;
         }
@@ -158,7 +159,7 @@ export async function processSignMessage(message: ClaimedMessage, nowSeconds: nu
             signed = await sign({ kind: 'receipt', receipt, attestations }, nowSeconds);
         } catch (error) {
             if (error instanceof SignerRefusedError) {
-                await failSigning(battle.battleId, error.message);
+                await failSigning(battle.battleId, battle.roomId, error.message);
                 await completeOutbox(message.id, new Date(nowSeconds * 1000));
                 return;
             }
@@ -200,6 +201,7 @@ export async function processSignMessage(message: ClaimedMessage, nowSeconds: nu
             throw error;
         }
 
+        notifyBattleRoomIfPresent(battle.roomId, { type: 'battle-updated', battleId: battle.battleId, state: BattleState.signed });
         await completeOutbox(message.id, new Date(nowSeconds * 1000));
         return;
     }
@@ -301,13 +303,14 @@ async function applyProgression(
     });
 }
 
-async function failSigning(battleId: string, reason: string): Promise<void> {
+async function failSigning(battleId: string, roomId: string | null, reason: string): Promise<void> {
     await applyTransition({
         battleId,
         from: BattleState.verified,
         to: BattleState.signing_failed,
         patch: { failureReason: reason },
     });
+    notifyBattleRoomIfPresent(roomId, { type: 'battle-updated', battleId, state: BattleState.signing_failed });
 }
 
 function serializeBigints<T>(value: T): Prisma.InputJsonValue {

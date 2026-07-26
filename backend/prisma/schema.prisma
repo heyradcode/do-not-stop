@@ -301,6 +301,14 @@ model BattleLedger {
   drandRound     BigInt @map("drand_round")
   acceptedAt     BigInt @map("accepted_at") // unix seconds
 
+  /// The shareable room this battle was accepted through, if any (battle_room.id).
+  /// No FK: a room is minted before any battleId exists and outlives this one battle's
+  /// row, so the link is one-directional and best-effort. Null means the battle was
+  /// accepted without a room (e.g. accepted directly by intentHash) — every state
+  /// change still lands in the read APIs (§J), it just has no spectator link to push
+  /// a notification through.
+  roomId String? @map("room_id")
+
   /// Filled as the battle advances. Null until the state that produces them.
   beaconSignature   String?  @map("beacon_signature")
   beaconRandomness  String?  @map("beacon_randomness")

@@ -11,6 +11,7 @@ import type { Prisma } from '@generated/prisma/client';
 
 import { prisma } from '@config/prisma';
 import { applyTransition, type ClaimedMessage, completeOutbox, OUTBOX_TOPICS } from '@features/battle-ledger';
+import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 /**
  * Handles `compute` messages: `seeded` -> `computed` (§F).
@@ -87,6 +88,7 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
         patch,
         outbox: [{ battleId: battle.battleId, topic: OUTBOX_TOPICS.verify }],
     });
+    notifyBattleRoomIfPresent(battle.roomId, { type: 'battle-updated', battleId: battle.battleId, state: BattleState.computed });
     await completeOutbox(message.id, new Date(nowSeconds * 1000));
 }
 

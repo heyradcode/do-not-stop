@@ -29,10 +29,15 @@ vi.mock('@grpc-client/verifyBattle', () => ({
     callVerifyBattle: vi.fn(),
 }));
 
+vi.mock('@ws/battleRoomSocket', () => ({
+    notifyBattleRoomIfPresent: vi.fn(),
+}));
+
 import { prisma } from '@config/prisma';
 import { applyTransition, completeOutbox } from '@features/battle-ledger';
 import { processVerifyMessage } from '@features/battle-worker';
 import { callVerifyBattle } from '@grpc-client/verifyBattle';
+import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 const RULESET_HASH = hashRuleset(SOURCE_DEFAULT_RULESET);
 const NOW = roundTime(QUICKNET, 1000) + 5;
@@ -119,6 +124,7 @@ const BATTLE = {
     winnerHpRemaining: outcome.result.winnerHpRemaining,
     combatLogHash,
     progression: JSON.parse(JSON.stringify(progression, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))),
+    roomId: 'room_1',
 };
 
 const MESSAGE = { id: 'msg_1', battleId: 'btl_1', topic: 'verify', payload: {}, attempts: 1 };
@@ -187,6 +193,11 @@ describe('agreement', () => {
         expect(call.to).toBe('verified');
         expect(call.outbox[0]!.topic).toBe('sign');
         expect(completeOutbox).toHaveBeenCalled();
+        expect(notifyBattleRoomIfPresent).toHaveBeenCalledWith('room_1', {
+            type: 'battle-updated',
+            battleId: 'btl_1',
+            state: 'verified',
+        });
     });
 
     it('recomputes the combat-log hash from Go structured log using the real canonical encoder', async () => {
@@ -213,6 +224,11 @@ describe('disagreement', () => {
         expect(call.to).toBe('verification_failed');
         expect(call.patch.failureReason).toContain('winner');
         expect(call.patch.verificationDetail.mismatches.length).toBeGreaterThan(0);
+        expect(notifyBattleRoomIfPresent).toHaveBeenCalledWith('room_1', {
+            type: 'battle-updated',
+            battleId: 'btl_1',
+            state: 'verification_failed',
+        });
     });
 
     it('flags a progression mismatch even when the fight result agrees', async () => {

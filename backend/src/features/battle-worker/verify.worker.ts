@@ -13,6 +13,7 @@ import type { Prisma } from '@generated/prisma/client';
 import { prisma } from '@config/prisma';
 import { applyTransition, type ClaimedMessage, completeOutbox, OUTBOX_TOPICS } from '@features/battle-ledger';
 import { callVerifyBattle, type VerifyBattleWire, type VerifyPetProgressionWire } from '@grpc-client/verifyBattle';
+import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 /**
  * Handles `verify` messages: `computed` -> `verified` (§F).
@@ -86,6 +87,7 @@ export async function processVerifyMessage(message: ClaimedMessage, nowSeconds: 
             patch: { verificationDetail },
             outbox: [{ battleId: battle.battleId, topic: OUTBOX_TOPICS.sign }],
         });
+        notifyBattleRoomIfPresent(battle.roomId, { type: 'battle-updated', battleId: battle.battleId, state: BattleState.verified });
     } else {
         await applyTransition({
             battleId: battle.battleId,
@@ -95,6 +97,11 @@ export async function processVerifyMessage(message: ClaimedMessage, nowSeconds: 
                 failureReason: `engine mismatch: ${mismatches.join('; ')}`,
                 verificationDetail,
             },
+        });
+        notifyBattleRoomIfPresent(battle.roomId, {
+            type: 'battle-updated',
+            battleId: battle.battleId,
+            state: BattleState.verification_failed,
         });
     }
     await completeOutbox(message.id, new Date(nowSeconds * 1000));

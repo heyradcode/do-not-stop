@@ -16,6 +16,7 @@ import type { Prisma } from '@generated/prisma/client';
 import { BattleState } from '@generated/prisma/enums';
 
 import { prisma } from '@config/prisma';
+import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 import { activeSigningKey, sign, SignerRefusedError } from '../battle-signer';
 import { chooseCommitmentRound, roundPublishTime } from '../battle-randomness';
@@ -54,6 +55,13 @@ import { applyTransition, openBattle } from './transitions';
 export interface AcceptBattleRequest {
     intentHash: string;
     nowSeconds: number;
+    /**
+     * The shareable room this accept call came through, if any (§J). Optional: a
+     * battle accepted without a room simply gets no spectator notifications — every
+     * state change still lands in the read APIs (Step 27), just with no push channel
+     * to announce it faster.
+     */
+    roomId?: string;
 }
 
 export type AcceptRejection =
@@ -178,6 +186,7 @@ export async function acceptBattle(request: AcceptBattleRequest): Promise<Accept
             drandChainHash: '',
             drandRound: 0n,
             acceptedAt: 0n,
+            roomId: request.roomId ?? null,
         },
     });
     if (!opened.ok) {
@@ -201,9 +210,19 @@ export async function acceptBattle(request: AcceptBattleRequest): Promise<Accept
             drandRound: roundChoice.round,
             acceptedAt: request.nowSeconds,
         });
+        notifyBattleRoomIfPresent(request.roomId ?? null, {
+            type: 'battle-updated',
+            battleId,
+            state: BattleState.committed,
+        });
         return { ok: true, battle: { battleId, ...signed } };
     } catch (error) {
         await unwindToRejected(battleId, error instanceof Error ? error.message : String(error));
+        notifyBattleRoomIfPresent(request.roomId ?? null, {
+            type: 'battle-updated',
+            battleId,
+            state: BattleState.rejected,
+        });
         if (error instanceof SignerRefusedError) {
             return reject('signer-unavailable', error.message);
         }
