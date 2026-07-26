@@ -58,3 +58,15 @@ export function assertChainId(value: string): ChainId {
 export function chainFamily(chainId: ChainId): 'evm' | 'solana' {
     return chainId.startsWith('eip155:') ? 'evm' : 'solana';
 }
+
+/**
+ * The numeric chain id an EIP-712 domain needs. Throws for Solana, where there is
+ * no such number and a caller asking for one has taken a wrong turn.
+ */
+export function evmChainIdNumber(chainId: ChainId): number {
+    const match = EVM_PATTERN.exec(chainId);
+    if (!match) {
+        throw new Error(`${chainId} is not an EVM chain id, so it has no numeric chain id`);
+    }
+    return Number(match[1]);
+}

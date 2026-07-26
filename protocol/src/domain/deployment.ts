@@ -71,9 +71,13 @@ export function assertSameDomain(expected: ProtocolDomain, actual: ProtocolDomai
  * where the receipt lists `battleId` ahead of `chainId`: header first, body
  * after, for every object.
  */
-export function writeHeader(writer: CanonicalWriter, kind: SchemaKind, domain: ProtocolDomain): void {
+export function writeHeader(
+    writer: CanonicalWriter,
+    kind: SchemaKind,
+    domain: ProtocolDomain,
+): CanonicalWriter {
     const version = currentSchemaVersion(kind);
     assertSupportedSchemaVersion(kind, version);
     const checked = assertProtocolDomain(domain);
-    writer.u16(version).text(checked.chainId).text(checked.deploymentId);
+    return writer.u16(version).text(checked.chainId).text(checked.deploymentId);
 }
