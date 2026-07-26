@@ -50,6 +50,7 @@
         "vitest": "^4.1.8"
     },
     "dependencies": {
+        "@cryptopets/protocol": "workspace:*",
         "@switchboard-xyz/on-demand": "^3.10.2",
         "bs58": "^6.0.0",
         "buffer": "^6.0.3"

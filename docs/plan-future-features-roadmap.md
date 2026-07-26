@@ -29,7 +29,7 @@ names as historical pointers, not sources to read.
 new files must carry the license header matching whichever package they land in.
 
 **The chain-parity discipline extends past combat.** `CombatSim.sol` / `combat.rs` /
-`indexer-go/internal/combat` / `shared/src/utils/combat` are kept in sync today via golden
+`indexer-go/internal/combat` / `protocol/src/combat` are kept in sync today via golden
 vectors (`contracts/test-vectors/{battle,xp}.json`). Any new feature that (a) computes a
 deterministic on-chain outcome and (b) needs a client-side TypeScript port for animation or
 preview inherits the same obligation: if team battles or story-chapter unlocks get a TS replay
@@ -42,8 +42,8 @@ give something a TS port if the client actually needs to simulate it before the 
 backend resolves fights from a frozen snapshot against a versioned ruleset, seeds them from a
 pre-committed drand round, and publishes signed receipts anyone can replay
 (`docs/plan-backend-battle-steps.md` sequences the work). Two consequences for this doc. First, a
-*new* combat mechanic is built once, in the canonical TypeScript engine (moving from
-`shared/src/utils/combat/` into an MIT `protocol/` package early in that plan), with the Go port
+*new* combat mechanic is built once, in the canonical TypeScript engine (`protocol/src/combat/`,
+moved out of `shared/src/utils/combat/` into the MIT `protocol` package), with the Go port
 acting as an independent pre-signing verifier rather than a fourth hand-maintained implementation.
 Second, the four-port rule stays a `MUST` in `AGENTS.md` until the legacy on-chain path actually
 retires, so any change to *existing* combat math still updates all four ports until then.

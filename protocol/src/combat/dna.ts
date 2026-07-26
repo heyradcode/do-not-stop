@@ -8,7 +8,7 @@
  * Every function here is pure bigint math, bit-identical to the Solidity /
  * Rust / Go implementations — cross-chain (and now cross-runtime) parity is
  * enforced by the golden vectors in contracts/test-vectors/battle.json (see
- * shared/tests/utils/combat/goldenVectors.test.ts). If a vector fails, this
+ * protocol/tests/combat/goldenVectors.test.ts). If a vector fails, this
  * port is wrong; fix the TS, never the vector.
  */
 

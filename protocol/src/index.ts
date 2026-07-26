@@ -10,3 +10,5 @@
 
 /** Package identity, exported so a consumer can assert which protocol build it loaded. */
 export const PROTOCOL_PACKAGE = '@cryptopets/protocol';
+
+export * from './combat';

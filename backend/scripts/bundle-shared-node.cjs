@@ -11,6 +11,14 @@ const esbuild = require('esbuild');
 const entry = path.resolve(__dirname, '../../shared/src/node.ts');
 const outfile = path.resolve(__dirname, '../dist/shared-node.cjs');
 
+/**
+ * `@cryptopets/protocol` is raw TypeScript source, like shared itself, so it must
+ * be inlined rather than left as a `require()` that production Node cannot load.
+ * `packages: 'external'` would externalize it on name alone, so point the
+ * specifier at the source file and let esbuild pull it in.
+ */
+const protocolEntry = path.resolve(__dirname, '../../protocol/src/index.ts');
+
 esbuild
     .build({
         entryPoints: [entry],
@@ -19,8 +27,9 @@ esbuild
         platform: 'node',
         format: 'cjs',
         target: 'node20',
-        // Keep heavy native/npm deps external; only inline our shared TS sources.
+        // Keep heavy native/npm deps external; only inline our own TS sources.
         packages: 'external',
+        alias: { '@cryptopets/protocol': protocolEntry },
         logLevel: 'info',
     })
     .then(() => {

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { simulate, type SimOutcome, type SkillConfig } from '../../../src/utils/combat';
+import { simulate, type SimOutcome, type SkillConfig } from '../../src/combat';
 
 /**
  * Consumes contracts/test-vectors/battle.json directly — the same file
@@ -31,7 +31,7 @@ interface BattleVectorFile {
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
-const vectorsPath = join(here, '../../../../contracts/test-vectors/battle.json');
+const vectorsPath = join(here, '../../../contracts/test-vectors/battle.json');
 const vectors: BattleVectorFile = JSON.parse(readFileSync(vectorsPath, 'utf8'));
 
 // Internal consistency check, independent of the golden expectations: the log
@@ -42,6 +42,9 @@ function assertLogExplainsResult(outcome: SimOutcome): void {
     const { result, log } = outcome;
     expect(log.length).toBeGreaterThan(0);
     const last = log[log.length - 1];
+    // Narrowing for this package's `noUncheckedIndexedAccess`; the length
+    // assertion above is the real check.
+    if (!last) throw new Error('combat log is empty');
     expect(last.round).toBe(result.rounds - 1);
     const winnerHp = result.firstWins ? last.hp1After : last.hp2After;
     const cappedWinnerHp = winnerHp > 0xffffn ? 0xffffn : winnerHp;

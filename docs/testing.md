@@ -9,6 +9,7 @@ own suite with the toolchain native to its stack.
 | --- | --- | --- |
 | backend | Vitest | `pnpm --filter backend test` |
 | shared (`@shared/core`) | Vitest | `pnpm --filter @shared/core test` |
+| protocol (`@cryptopets/protocol`) | Vitest | `pnpm --filter @cryptopets/protocol test` |
 | frontend | Vitest | `pnpm --filter frontend test` |
 | contracts/ethereum | Hardhat | `pnpm test` (root) |
 | indexer-go | `go test` | `go test ./...` (in `indexer-go`) |
@@ -17,7 +18,7 @@ own suite with the toolchain native to its stack.
 > `TEST_DATABASE_URL` at a scratch DB only. See
 > [indexer-go/README.md](../indexer-go/README.md).
 
-> `shared`'s suite includes `tests/utils/combat/goldenVectors.test.ts`, which
+> `@cryptopets/protocol`'s suite includes `tests/combat/goldenVectors.test.ts`, which
 > consumes `contracts/test-vectors/battle.json` directly — the same file
 > Hardhat, Anchor, and `indexer-go`'s `combat_golden_test.go` consume. It's the
 > fourth combat-simulator port (TypeScript, for client-side battle replay); a

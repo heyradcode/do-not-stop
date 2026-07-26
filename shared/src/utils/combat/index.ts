@@ -1,9 +1,34 @@
-export type { Attrs } from './dna';
-export { digitPair, elementMod, extract, toUint16 } from './dna';
-export { roundSeed, strikeRoll } from './rng';
+/**
+ * Compatibility re-export. The combat engine moved to `@cryptopets/protocol`
+ * (`protocol/src/combat/`) so the standalone receipt verifier can replay fights
+ * under an MIT license — see that package's README for why. Existing
+ * `shared/src/utils/combat` imports in frontend, mobile, and backend keep
+ * working unchanged.
+ *
+ * New code should import from `@cryptopets/protocol` directly.
+ */
+export type {
+    Attrs,
+    SimOutcome,
+    SimOutcomeWire,
+    SimResult,
+    SkillConfig,
+    StrikeLogEntry,
+    StrikeLogEntryWire,
+    StrikeOutcome,
+} from '@cryptopets/protocol';
 export {
+    addHeal,
     DEFAULT_SKILL_CONFIG,
+    decodeSimOutcome,
+    digitPair,
+    elementMod,
+    encodeSimOutcome,
+    extract,
+    MAX_ROUNDS,
     NO_SKILL,
+    roundSeed,
+    simulate,
     SKILL_BLOODLUST,
     SKILL_CUNNING,
     SKILL_FURY,
@@ -12,14 +37,7 @@ export {
     SKILL_SHELL,
     SKILL_SWIFT,
     SKILL_TANK,
-    type SkillConfig,
-} from './skills';
-export type { StrikeOutcome } from './strike';
-export { addHeal, strike } from './strike';
-export { MAX_ROUNDS, simulate, type SimOutcome, type SimResult, type StrikeLogEntry } from './sim';
-export {
-    encodeSimOutcome,
-    decodeSimOutcome,
-    type SimOutcomeWire,
-    type StrikeLogEntryWire,
-} from './wire';
+    strike,
+    strikeRoll,
+    toUint16,
+} from '@cryptopets/protocol';

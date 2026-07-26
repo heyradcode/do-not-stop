@@ -419,7 +419,8 @@ drand.
 > **In plain words:** the fight math becomes a versioned, published rulebook, and we run a second
 > copy to catch our own bugs.
 
-`shared/src/utils/combat/` becomes the canonical computation path for backend and client replay.
+`protocol/src/combat/` (moved out of `shared/src/utils/combat/`, which now re-exports it) becomes the
+canonical computation path for backend and client replay.
 Every battle records `rulesetVersion`, `rulesetHash`, the immutable skill/balance configuration,
 the snapshot hash, the beacon proof, the derived seed, and the result plus combat-log hash.
 
@@ -427,14 +428,14 @@ the snapshot hash, the beacon proof, the derived seed, and the result plus comba
 
 This is real work on the critical path, not a checklist item.
 
-`shared/src/utils/combat/` today implements fight math only. There is no `xp.ts`. XP lives solely in
+`protocol/src/combat/` today implements fight math only. There is no `xp.ts`. XP lives solely in
 `indexer-go/internal/combat/xp.go`, and it depends on stateful inputs the current client cannot see:
 `lastOpponentId` and same-opponent streak decay (`xp.go:32-41`). That is exactly why the TS port
 stopped at fight math.
 
 Under backend authority that state moves into `PetBattleProgress`, so it becomes portable:
 
-1. Port `xp.go` to `shared/src/utils/combat/xp.ts`, reading streak state from the frozen snapshot
+1. Port `xp.go` to `protocol/src/combat/xp.ts`, reading streak state from the frozen snapshot
    rather than chain state.
 2. Extend the snapshot to carry `lastOpponentId` and `streak` per pet, so progression is a pure
    function of the receipt's own inputs and stays independently replayable.
