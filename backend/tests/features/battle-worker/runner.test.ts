@@ -7,7 +7,16 @@ vi.mock('@config/env', () => ({
 vi.mock('@features/battle-ledger', () => ({
     claimOutbox: vi.fn(),
     failOutbox: vi.fn(),
-    OUTBOX_TOPICS: { awaitBeacon: 'await-beacon', compute: 'compute', verify: 'verify', sign: 'sign' },
+    // Must list every real topic. A missing one is not a smaller map — it registers as an
+    // `undefined` key and the dispatcher claims a topic called "undefined".
+    OUTBOX_TOPICS: {
+        awaitBeacon: 'await-beacon',
+        compute: 'compute',
+        verify: 'verify',
+        sign: 'sign',
+        publish: 'publish',
+        batch: 'batch',
+    },
 }));
 
 vi.mock('@features/battle-worker/beacon.worker', () => ({
@@ -21,6 +30,9 @@ vi.mock('@features/battle-worker/verify.worker', () => ({
 }));
 vi.mock('@features/battle-worker/sign.worker', () => ({
     processSignMessage: vi.fn(),
+}));
+vi.mock('@features/battle-worker/publish.worker', () => ({
+    processPublishMessage: vi.fn(),
 }));
 
 import { claimOutbox, failOutbox } from '@features/battle-ledger';
@@ -58,7 +70,7 @@ describe('dispatch', () => {
         vi.mocked(claimOutbox).mockResolvedValue([]);
         await runBattleWorkerOnce('worker-a', NOW);
         expect(claimOutbox).toHaveBeenCalledWith(
-            ['await-beacon', 'compute', 'verify', 'sign'],
+            ['await-beacon', 'compute', 'verify', 'sign', 'publish'],
             'worker-a',
             10,
             NOW,
@@ -81,8 +93,10 @@ describe('dispatch', () => {
     });
 
     it('dead-letters a message whose topic has no handler, rather than leaving it claimed forever', async () => {
+        // `batch` is a declared topic with no handler: batching aggregates across many
+        // receipts on its own schedule rather than per battle, so nothing enqueues it.
         vi.mocked(claimOutbox).mockResolvedValue([
-            { id: 'm1', battleId: 'btl_1', topic: 'publish', payload: {}, attempts: 1 },
+            { id: 'm1', battleId: 'btl_1', topic: 'batch', payload: {}, attempts: 1 },
         ]);
 
         await runBattleWorkerOnce('worker-a', NOW);

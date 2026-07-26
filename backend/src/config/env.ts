@@ -205,6 +205,18 @@ export const env = {
          * is just a sane starting value rather than an arbitrary one.
          */
         cooldownSeconds: Number(process.env.BATTLE_COOLDOWN_SECONDS?.trim() || '900'),
+        /**
+         * Smallest run of published receipts worth anchoring (§I).
+         *
+         * A batch costs one transaction regardless of how many receipts it covers, so tiny
+         * batches spend gas to amortise nothing. The default is deliberately low for a
+         * quiet deployment rather than tuned: the right cadence depends on real battle
+         * volume and gas price, which §L Phase 4 says to set from what the rewardless
+         * launch actually shows, not from a guess made here.
+         */
+        batchMinSize: Number(process.env.BATTLE_BATCH_MIN_SIZE?.trim() || '1'),
+        /** Most receipts in one batch. Bounds proof length and the anchoring transaction. */
+        batchMaxSize: Number(process.env.BATTLE_BATCH_MAX_SIZE?.trim() || '1000'),
     },
 
     /**

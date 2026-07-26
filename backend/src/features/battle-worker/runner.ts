@@ -3,6 +3,7 @@ import { type ClaimedMessage, claimOutbox, failOutbox, OUTBOX_TOPICS } from '@fe
 
 import { processAwaitBeaconMessage } from './beacon.worker';
 import { processComputeMessage } from './compute.worker';
+import { processPublishMessage } from './publish.worker';
 import { processSignMessage } from './sign.worker';
 import { processVerifyMessage } from './verify.worker';
 
@@ -21,6 +22,7 @@ const HANDLERS: Record<string, (message: ClaimedMessage, nowSeconds: number) => 
     [OUTBOX_TOPICS.compute]: processComputeMessage,
     [OUTBOX_TOPICS.verify]: processVerifyMessage,
     [OUTBOX_TOPICS.sign]: processSignMessage,
+    [OUTBOX_TOPICS.publish]: processPublishMessage,
 };
 
 /** One poll: claims due messages for the topics this worker owns and processes each in turn. */

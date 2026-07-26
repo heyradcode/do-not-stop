@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
 
+import { getReceiptInclusionProof } from '@features/battle-batcher';
 import { getReceiptsByPet, getReceiptsBySequence, getReceiptsByWallet } from '@features/battle-ledger';
 
 /**
@@ -12,6 +13,9 @@ const router: Router = express.Router();
 
 router.get('/by-pet/:chainId/:petId', getReceiptsByPet);
 router.get('/by-wallet/:wallet', getReceiptsByWallet);
+// Declared before `/`, and specific enough not to collide with it: the Merkle proof that
+// one receipt is in its anchored batch (§I).
+router.get('/:receiptHash/inclusion-proof', getReceiptInclusionProof);
 router.get('/', getReceiptsBySequence);
 
 export default router;
