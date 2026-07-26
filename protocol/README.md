@@ -42,6 +42,23 @@ infrastructure. That rules out more than it sounds like:
 - **Golden vectors for anything hashed.** Every hash and every combat rule has vectors in
   `contracts/test-vectors/`, so a port or a refactor that changes a byte fails loudly.
 
+## Browser cost of beacon verification
+
+§E of the architecture doc requires confirming what client-side BLS verification costs before
+committing to drand, because a client that takes our word for the beacon value gets nothing from
+commit-before-reveal.
+
+Measured with esbuild (minified, `platform: browser`, `target: es2022`):
+
+| Entry point | Minified | Minified + gzip |
+|---|---|---|
+| `verifyBeacon` + pinned quicknet params (pulls in `@noble/curves` BLS12-381) | 62.5 kB | 24.2 kB |
+| Encoding and hashing only (`@noble/hashes`) | 4.7 kB | 2.1 kB |
+
+So verification costs roughly **22 kB gzipped** on top of hashing. Against a frontend bundle already
+over 2 MB gzipped, that is noise, and it is the only thing that makes the client's verification real
+rather than trust. Re-measure if `@noble/curves` is upgraded.
+
 ## Consumption
 
 Raw TypeScript, no build step, same as `@shared/core`. Workspace packages depend on it directly;
