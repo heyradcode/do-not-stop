@@ -485,27 +485,24 @@ replay. The existing four-port rule stays in force until the legacy path retires
 > it links to the previous one so nothing can be quietly removed.
 
 ```text
-receiptSchemaVersion
-battleId
+receiptSchemaVersion                 <- header, written first
 chainId
 deploymentId
+battleId
 intentHash
 commitmentHash
 defenseAuthorizationHash
-attackerSnapshot
-defenderSnapshot
-snapshotHash
-sourceChainVersions
+snapshotHash                         <- full snapshot travels in the payload
 drandChainHash
 drandRound
 drandSignature
 drandRandomness
+seed                                 <- must follow from the fields above
 rulesetVersion
 rulesetHash
 result
 combatLogHash
 progressionDelta
-rewardDelta
 sequence
 previousReceiptHash                  <- global chain, per signing key
 attackerProgressPrevReceiptHash      <- per-pet chain
@@ -513,6 +510,24 @@ defenderProgressPrevReceiptHash      <- per-pet chain
 createdAt
 signingKeyId
 ```
+
+Four notes where the implementation (`protocol/src/receipt/`) settled details this list left open.
+
+**Header first.** Schema version, chain id, and deployment id precede the body in every hashed
+object, so the shared prefix is defined once rather than copy-pasted per object. That moves
+`battleId` after the header.
+
+**The snapshot enters as `snapshotHash`.** Hashing the snapshots *and* their hash would bind the
+same bytes twice. The full snapshot still travels in the payload, so replay needs nothing from us,
+and `sourceChainVersions` is per pet inside it rather than a separate field.
+
+**`seed` is recorded and checked.** Validation rejects a receipt whose seed does not follow from its
+own domain, beacon, battle id, snapshot, and ruleset, which makes a favourable seed impossible to
+staple onto a real beacon.
+
+**`rewardDelta` is deferred.** Phase 3 receipts carry no transferable reward, and freezing the field
+before the reward model exists would pin a layout to guesswork. Adding it in Phase 5 is a `receipt`
+schema-version bump, which is what the version registry is for.
 
 ### Why three hash links
 

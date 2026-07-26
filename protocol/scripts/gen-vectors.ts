@@ -25,7 +25,9 @@ import {
 import type { ChainId } from '../src/domain/chainId';
 import type { Hex } from '../src/encoding/bytes';
 import { battleIntentSolanaMessage, type BattleIntent, hashBattleIntent } from '../src/intent';
-import { computeProgression, type ProgressionParams } from '../src/progression';
+import { simulate } from '../src/combat';
+import { computeProgression, type ProgressionDelta, type ProgressionParams } from '../src/progression';
+import { type BattleReceipt, hashBattleReceipt, hashCombatLog } from '../src/receipt';
 import { deriveBattleSeed, type SeedInputs } from '../src/randomness';
 import { hashRuleset, type Ruleset, SOURCE_DEFAULT_RULESET } from '../src/ruleset';
 import { type BattleSnapshot, hashBattleSnapshot, type PetSnapshot } from '../src/snapshot';
@@ -964,6 +966,243 @@ function writeRulesetVectors(): void {
     process.stdout.write(`wrote ${out.cases.length} ruleset cases to ${path}\n`);
 }
 
+/**
+ * Receipt cases.
+ *
+ * Built as genuinely coherent receipts rather than field bags: real quicknet beacons from
+ * `tests/fixtures/drand.json`, seeds derived from each receipt's own inputs, progression
+ * recomputed, and the combat-log hash taken from an actual simulated fight. That is
+ * deliberate. `assertBattleReceipt` rejects a receipt whose seed does not follow from its
+ * inputs, so a fixture assembled by hand would not even validate, and a vector that
+ * cannot occur in production locks a layout nothing will ever produce.
+ */
+interface ReceiptBeaconFixture {
+    chainHash: string;
+    round: number;
+    signature: string;
+    randomness: string;
+    /** Unix seconds this round publishes: genesis (1692803367) + round * 3. */
+    publishedAt: number;
+}
+
+// From protocol/tests/fixtures/drand.json, fetched from the live network.
+const BEACON_ROUND_1000: ReceiptBeaconFixture = {
+    chainHash: QUICKNET_CHAIN_HASH,
+    round: 1000,
+    signature:
+        '0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39',
+    randomness: '0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd',
+    publishedAt: 1692806367,
+};
+
+const BEACON_ROUND_21M: ReceiptBeaconFixture = {
+    chainHash: QUICKNET_CHAIN_HASH,
+    round: 21000000,
+    signature:
+        '0x971cbe88adc436f6411fd26d51887ede7ba144264cd05edec6645b5e170a7702d16082947a85d89c89cb47cd8eb7d817',
+    randomness: '0x36ecd957580ee415f951370e2a5e13273be97de9072418aaf14d38242979e3c1',
+    publishedAt: 1755803367,
+};
+
+interface ReceiptFixture {
+    chainId: string;
+    deploymentId: string;
+    battleId: string;
+    intentHash: string;
+    commitmentHash: string;
+    defenseAuthorizationHash: string;
+    snapshot: SnapshotFixture;
+    beacon: ReceiptBeaconFixture;
+    attackerWon: boolean;
+    maxLevel: number;
+    sequence: number;
+    previousReceiptHash: string | null;
+    attackerPreviousReceiptHash: string | null;
+    defenderPreviousReceiptHash: string | null;
+    createdAt: number;
+    signingKeyId: string;
+}
+
+const RECEIPT_SNAPSHOT: SnapshotFixture = { ...SNAPSHOT_BASE, takenAt: BEACON_ROUND_1000.publishedAt - 6 };
+
+const RECEIPT_BASE: ReceiptFixture = {
+    chainId: 'eip155:84532',
+    deploymentId: 'base-sepolia-live',
+    battleId: 'btl_01hq8z0000000000000000',
+    intentHash: `0x${'11'.repeat(32)}`,
+    commitmentHash: `0x${'22'.repeat(32)}`,
+    defenseAuthorizationHash: `0x${'33'.repeat(32)}`,
+    snapshot: RECEIPT_SNAPSHOT,
+    beacon: BEACON_ROUND_1000,
+    attackerWon: true,
+    maxLevel: 100,
+    sequence: 1,
+    previousReceiptHash: null,
+    attackerPreviousReceiptHash: null,
+    defenderPreviousReceiptHash: null,
+    createdAt: BEACON_ROUND_1000.publishedAt + 1,
+    signingKeyId: 'battle-signer-2026-07',
+};
+
+const receiptCases: { name: string; note: string; receipt: ReceiptFixture }[] = [
+    {
+        name: 'first-receipt-under-key',
+        note: 'Sequence 1, so every chain link is absent. Both pets are having their first backend battle.',
+        receipt: RECEIPT_BASE,
+    },
+    {
+        name: 'linked-receipt',
+        note: 'Sequence 2 with the global link and both per-pet links present. Must differ from the first receipt: the links are part of the record, which is what makes a removed receipt detectable.',
+        receipt: {
+            ...RECEIPT_BASE,
+            battleId: 'btl_01hq8z0000000000000001',
+            sequence: 2,
+            previousReceiptHash: `0x${'44'.repeat(32)}`,
+            attackerPreviousReceiptHash: `0x${'55'.repeat(32)}`,
+            defenderPreviousReceiptHash: `0x${'66'.repeat(32)}`,
+        },
+    },
+    {
+        name: 'attacker-first-battle-defender-veteran',
+        note: 'Only the defender has a prior battle, so one per-pet link is present and the other is not. Must differ: an absent link and a present one are distinct.',
+        receipt: { ...RECEIPT_BASE, defenderPreviousReceiptHash: `0x${'66'.repeat(32)}` },
+    },
+    {
+        name: 'defender-wins',
+        note: 'Same inputs, other outcome, with the progression delta recomputed accordingly. Must differ.',
+        receipt: { ...RECEIPT_BASE, attackerWon: false },
+    },
+    {
+        name: 'later-beacon-round',
+        note: 'A different real quicknet round, which changes the randomness and therefore the seed and the fight. Must differ.',
+        receipt: {
+            ...RECEIPT_BASE,
+            beacon: BEACON_ROUND_21M,
+            snapshot: { ...SNAPSHOT_BASE, takenAt: BEACON_ROUND_21M.publishedAt - 6 },
+            createdAt: BEACON_ROUND_21M.publishedAt + 1,
+        },
+    },
+    {
+        name: 'other-signing-key',
+        note: 'Same battle attributed to a different key. Must differ: which key signed is part of the record, so a rotated key cannot be retro-fitted.',
+        receipt: { ...RECEIPT_BASE, signingKeyId: 'battle-signer-2026-08' },
+    },
+    {
+        name: 'staging-deployment',
+        note: 'Same battle on the same chain in another deployment. Must differ. The snapshot carries the same deployment, which the receipt enforces.',
+        receipt: {
+            ...RECEIPT_BASE,
+            deploymentId: 'base-sepolia-staging',
+            snapshot: { ...RECEIPT_SNAPSHOT, deploymentId: 'base-sepolia-staging' },
+        },
+    },
+    {
+        name: 'solana-deployment',
+        note: 'Solana battle with base58 owners. Must differ from the EVM baseline.',
+        receipt: {
+            ...RECEIPT_BASE,
+            chainId: 'solana:devnet',
+            snapshot: {
+                ...RECEIPT_SNAPSHOT,
+                chainId: 'solana:devnet',
+                attacker: { ...RECEIPT_SNAPSHOT.attacker, owner: 'DRiP2Pn2K6fuMLKQmt5rZWyHiUZ6aK3TzhBd8ZUqzTqL' },
+                defender: { ...RECEIPT_SNAPSHOT.defender, owner: 'GDDMwNyyx8uB6zrqwBFHjLLG3TBYk2F8Az4yrQC5RzMp' },
+            },
+        },
+    },
+];
+
+/**
+ * Builds a runtime receipt from a fixture, deriving everything derivable: the seed from
+ * the receipt's own inputs, the result and combat-log hash from an actual simulation, and
+ * the progression delta from the frozen snapshot.
+ */
+export function receiptFromFixture(fixture: ReceiptFixture): BattleReceipt {
+    const snapshot = snapshotFromFixture(fixture.snapshot);
+    const domain = { chainId: fixture.chainId as ChainId, deploymentId: fixture.deploymentId };
+    const rulesetHash = hashRuleset(SOURCE_DEFAULT_RULESET);
+    const seed = deriveBattleSeed({
+        domain,
+        drandRandomness: fixture.beacon.randomness as Hex,
+        battleId: fixture.battleId,
+        snapshotHash: hashBattleSnapshot(snapshot),
+        rulesetHash,
+    });
+    const outcome = simulate(
+        snapshot.attacker.dna,
+        snapshot.attacker.rarity,
+        snapshot.attacker.level,
+        snapshot.attacker.skill,
+        snapshot.defender.dna,
+        snapshot.defender.rarity,
+        snapshot.defender.level,
+        snapshot.defender.skill,
+        seed.value,
+        SOURCE_DEFAULT_RULESET.skillConfig,
+    );
+    // The fixture chooses the winner so a case can cover both outcomes; the rounds and
+    // remaining HP still come from the simulation the seed produced.
+    const progression: ProgressionDelta = computeProgression(snapshot, fixture.attackerWon, {
+        maxLevel: fixture.maxLevel,
+    });
+
+    return {
+        domain,
+        battleId: fixture.battleId,
+        intentHash: fixture.intentHash as Hex,
+        commitmentHash: fixture.commitmentHash as Hex,
+        defenseAuthorizationHash: fixture.defenseAuthorizationHash as Hex,
+        snapshot,
+        beacon: {
+            chainHash: fixture.beacon.chainHash as Hex,
+            round: fixture.beacon.round,
+            signature: fixture.beacon.signature as Hex,
+            randomness: fixture.beacon.randomness as Hex,
+        },
+        seed: seed.hex,
+        rulesetVersion: SOURCE_DEFAULT_RULESET.version,
+        rulesetHash,
+        result: {
+            attackerWon: fixture.attackerWon,
+            rounds: outcome.result.rounds,
+            winnerHpRemaining: outcome.result.winnerHpRemaining,
+        },
+        combatLogHash: hashCombatLog(outcome),
+        progression,
+        sequence: fixture.sequence,
+        previousReceiptHash: fixture.previousReceiptHash as Hex | null,
+        attackerPreviousReceiptHash: fixture.attackerPreviousReceiptHash as Hex | null,
+        defenderPreviousReceiptHash: fixture.defenderPreviousReceiptHash as Hex | null,
+        createdAt: fixture.createdAt,
+        signingKeyId: fixture.signingKeyId,
+    };
+}
+
+function writeReceiptVectors(): void {
+    const out = {
+        description:
+            'BattleReceipt canonical-hash vectors (docs/plan-backend-battle-architecture.md §G). Generated by protocol/scripts/gen-vectors.ts from protocol/src/receipt. Each case is a coherent receipt: real quicknet beacons, a seed derived from the receipt own inputs, a combat-log hash from an actual simulation, and a recomputed progression delta. Derived fields are recorded so a reader can see what the encoding covered. A failure means the implementation drifted. Never edit an expectation to match new output.',
+        cases: receiptCases.map((c) => {
+            const receipt = receiptFromFixture(c.receipt);
+            return {
+                name: c.name,
+                note: c.note,
+                fixture: c.receipt,
+                derived: {
+                    seed: receipt.seed,
+                    rulesetHash: receipt.rulesetHash,
+                    combatLogHash: receipt.combatLogHash,
+                    result: receipt.result,
+                },
+                expectedReceiptHash: hashBattleReceipt(receipt),
+            };
+        }),
+    };
+    const path = join(VECTORS_DIR, 'protocol-receipt.json');
+    writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
+    process.stdout.write(`wrote ${out.cases.length} receipt cases to ${path}\n`);
+}
+
 writeIntentVectors();
 writeConsentVectors();
 writeSnapshotVectors();
@@ -971,3 +1210,4 @@ writeSeedVectors();
 writeCommitmentVectors();
 writeProgressionVectors();
 writeRulesetVectors();
+writeReceiptVectors();
