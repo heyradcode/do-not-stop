@@ -109,6 +109,12 @@ export const env = {
         mockReveal:
             process.env.KEEPER_MOCK_REVEAL?.trim().toLowerCase() === 'true' &&
             Number(process.env.KEEPER_CHAIN_ID) === 31337,
+        /** Shadow mode (docs/plan-backend-battle-architecture.md §L Phase 2): recompute
+         *  every settled on-chain battle through the backend engine and record whether it
+         *  agreed. Observation only — it settles nothing and blocks nothing. Off by
+         *  default because it writes a row and calls indexer-go per battle, and the
+         *  on-chain path has to behave identically whether it is on or not. */
+        shadowEnabled: process.env.KEEPER_SHADOW_ENABLED?.trim().toLowerCase() === 'true',
     },
 
     /**

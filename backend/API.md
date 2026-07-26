@@ -329,6 +329,7 @@ so historical-key durability is not yet backed by persistent storage.
 | `KEEPER_RPC_URL` / `KEEPER_PRIVATE_KEY` / `KEEPER_CHAIN_ID` / `KEEPER_GAME_LOGIC_ADDRESS` | Required once enabled; keeper logs and no-ops if any are missing rather than crashing the server. |
 | `KEEPER_BACKFILL_BLOCKS` | How far back to scan on boot for requests never settled (default 5000). |
 | `KEEPER_MOCK_REVEAL` | Local dev only: keeper also acts as the Entropy provider (`MockEntropy.mockReveal`). Only takes effect when `KEEPER_CHAIN_ID=31337`. |
+| `KEEPER_SHADOW_ENABLED` | Shadow mode (§L Phase 2): recompute settled on-chain battles through the backend engine and indexer-go and record whether they matched `BattleResolved`. Observation only. Off by default. |
 
 > **Migration prerequisite:** the v2 `pet_roster` / `battle_history` columns ship
 > in `prisma/schema.prisma`; run `pnpm prisma:migrate` then `pnpm prisma:generate`

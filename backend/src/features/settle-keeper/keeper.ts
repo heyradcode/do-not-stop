@@ -20,6 +20,7 @@ import {
 } from './requests';
 import { createSubmitter } from './submitter';
 import { broadcastLiveBattle } from '@ws/liveBattleSocket';
+import { observeOnSettle, predictOnReveal } from '@features/battle-shadow';
 import { simulate, encodeSimOutcome } from '@shared/core/node';
 
 export interface SettleKeeperConfig {
@@ -34,6 +35,10 @@ export interface SettleKeeperConfig {
      *  tracked request against MockEntropy so battles/breeds/mints actually
      *  progress without a human calling mockReveal by hand. */
     mockReveal: boolean;
+    /** Shadow mode (§L Phase 2): recompute settled battles and compare, changing nothing.
+     *  Off by default — it writes rows and calls indexer-go per battle, and the on-chain
+     *  path must keep running identically whether it is on or not. */
+    shadowEnabled: boolean;
 }
 
 export interface SettleKeeperHandle {
@@ -173,6 +178,8 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
             ]);
             const req = request as {
                 snapshotted: boolean;
+                petId1: bigint;
+                petId2: bigint;
                 dna1: bigint;
                 dna2: bigint;
                 level1: number;
@@ -195,12 +202,53 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                 requestId: requestId.toString(),
                 outcome: encodeSimOutcome(outcome),
             });
+
+            // Shadow mode (§L Phase 2). This is the only window in which the frozen sim
+            // inputs are readable at all — settleBattle deletes them — so the prediction is
+            // recorded here, alongside a read that was happening anyway. Awaited but never
+            // allowed to throw: predictOnReveal swallows its own failures, because a shadow
+            // run must not be able to disturb a real settle.
+            if (config.shadowEnabled) {
+                await predictOnReveal({
+                    chainId: String(config.chainId),
+                    requestId,
+                    petId1: req.petId1,
+                    petId2: req.petId2,
+                    seed,
+                    inputs: {
+                        dna1: req.dna1,
+                        rarity1: req.rarity1,
+                        level1: req.level1,
+                        skill1: req.speciesId1 % 8,
+                        dna2: req.dna2,
+                        rarity2: req.rarity2,
+                        level2: req.level2,
+                        skill2: req.speciesId2 % 8,
+                    },
+                    skillConfig: skillConfig as never,
+                });
+            }
         } catch (err) {
             console.error(
                 `[settle-keeper] live-battle-socket sim failed for request ${requestId}: ` +
                     `${(err as Error).message.split('\n')[0]}`,
             );
         }
+    }
+
+    /** Hands a decoded `BattleResolved` to shadow mode as the chain's own answer. */
+    async function observeBattleResolved(requestId: bigint, args: Record<string, unknown>): Promise<void> {
+        await observeOnSettle({
+            chainId: String(config.chainId),
+            requestId,
+            observed: {
+                firstWins: args.firstWins as boolean,
+                rounds: Number(args.rounds),
+                winnerHpRemaining: Number(args.winnerHpRemaining),
+                winnerPetId: String(args.winnerId),
+                loserPetId: String(args.loserId),
+            },
+        });
     }
 
     // Backfill: catch up on anything requested-but-not-settled while this keeper (or its
@@ -269,6 +317,11 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                 if (requestId == null) continue;
                 if (isSettledEvent(log.eventName)) {
                     untrack(requestId);
+                    if (config.shadowEnabled && log.eventName === 'BattleResolved') {
+                        // Fire-and-forget: the chain has already settled, so nothing here is
+                        // on a critical path, and observeOnSettle handles its own failures.
+                        void observeBattleResolved(requestId, log.args);
+                    }
                     continue;
                 }
                 const type = requestTypeForEvent(log.eventName);

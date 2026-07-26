@@ -20,8 +20,16 @@ export function startSettleKeeper(): void {
         return;
     }
 
-    const { rpcUrl, privateKey, chainId, gameLogicAddress, gameConfigAddress, backfillBlocks, mockReveal } =
-        env.settleKeeper;
+    const {
+        rpcUrl,
+        privateKey,
+        chainId,
+        gameLogicAddress,
+        gameConfigAddress,
+        backfillBlocks,
+        mockReveal,
+        shadowEnabled,
+    } = env.settleKeeper;
     if (!rpcUrl || !privateKey || !chainId || !gameLogicAddress) {
         console.error(
             '[settle-keeper] KEEPER_ENABLED=true but KEEPER_RPC_URL / KEEPER_PRIVATE_KEY / ' +
@@ -36,7 +44,25 @@ export function startSettleKeeper(): void {
         );
     }
 
-    startKeeper({ rpcUrl, privateKey, chainId, gameLogicAddress, gameConfigAddress, backfillBlocks, mockReveal })
+    if (shadowEnabled && !gameConfigAddress) {
+        // Shadow mode reads the skill config from GameConfig, so without that address it
+        // would silently observe nothing. Better to say so than to look enabled.
+        console.warn(
+            '[settle-keeper] KEEPER_SHADOW_ENABLED=true but KEEPER_GAME_CONFIG_ADDRESS is not set; ' +
+                'shadow mode will not record any predictions',
+        );
+    }
+
+    startKeeper({
+        rpcUrl,
+        privateKey,
+        chainId,
+        gameLogicAddress,
+        gameConfigAddress,
+        backfillBlocks,
+        mockReveal,
+        shadowEnabled,
+    })
         .then((h) => { handle = h; })
         .catch((err) => console.error(`[settle-keeper] failed to start: ${(err as Error).message}`));
 }
