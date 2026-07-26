@@ -104,11 +104,18 @@ describe('terminal states', () => {
         expect([...withoutEdges].sort()).toEqual([...TERMINAL_STATES].sort());
     });
 
-    it('release both pets', () => {
+    it('release both pets on every terminal state, and on signed', () => {
         for (const state of TERMINAL_STATES) {
             expect(shouldReleaseLocks(state)).toBe(true);
         }
-        for (const state of BATTLE_HAPPY_PATH.filter((s) => !isTerminal(s))) {
+        expect(shouldReleaseLocks(BattleState.signed)).toBe(true);
+    });
+
+    it('keeps locks held only while the fight itself could still change', () => {
+        // Once signed, nothing about publishing or batching can change a pet's outcome, so the
+        // release check itself does not need to fire again at those later states — the pets are
+        // already free from the moment signing succeeds.
+        for (const state of BATTLE_HAPPY_PATH.filter((s) => !isTerminal(s) && s !== BattleState.signed)) {
             expect(shouldReleaseLocks(state)).toBe(false);
         }
     });

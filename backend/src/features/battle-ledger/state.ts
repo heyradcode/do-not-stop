@@ -97,9 +97,19 @@ export function isCommitted(state: BattleState): boolean {
     return state !== BattleState.accepted;
 }
 
-/** Whether locks on both pets should be released once a battle reaches `state`. */
+/**
+ * Whether locks on both pets should be released once a battle reaches `state`.
+ *
+ * Every terminal state releases, plus `signed` specifically: once a receipt is
+ * signed, the fight is fully sealed and nothing about `published`/`batched`
+ * afterward can change a pet's outcome. Waiting for `batched` instead — the
+ * periodic, possibly hours-later aggregation step (§I) — would leave both pets
+ * unable to battle again for however long batching happens to take, which has
+ * nothing to do with why a lock exists in the first place (one open battle per
+ * pet, not "until the receipt is aggregated").
+ */
 export function shouldReleaseLocks(state: BattleState): boolean {
-    return isTerminal(state);
+    return isTerminal(state) || state === BattleState.signed;
 }
 
 /** Thrown for an illegal move, so callers can distinguish it from a retry. */
