@@ -375,6 +375,12 @@ caps, and claim shape depend on what shadow mode and the rewardless launch actua
   stays a `MUST` until the legacy on-chain path actually retires. Legacy receipts and events stay
   replayable.
 - Commit: `docs: retire per-battle settlement and amend the four-port combat rule`
+- **Done.** The rule was split rather than relaxed: `CombatSim.sol` and `combat.rs` became
+  `MUST NOT` change (frozen, so the battles they settled stay replayable), while
+  `protocol/src/combat/` and `indexer-go/internal/combat/` stay `MUST` change together, since
+  §F's circuit breaker only works while those two are independent. All four golden-vector
+  suites keep running. The settle keepers stay deployable so in-flight requests can drain
+  rather than being stranded, and breed/mint still settle on chain — only battles retired.
 
 ---
 

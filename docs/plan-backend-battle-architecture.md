@@ -732,6 +732,13 @@ The four-port combat rule is a `MUST` in `AGENTS.md`, restated in `CLAUDE.md`. I
 roadmap guidance, so accepting this document does not relax it. Amend both files **at Phase 6**,
 when the legacy on-chain path actually retires, not at acceptance.
 
+**Done (Step 40).** The amendment split the four ports rather than loosening the rule: `CombatSim.sol`
+and `combat.rs` are now `MUST NOT` change — frozen, because the battles they settled are permanent
+records that must stay replayable — while `protocol/src/combat/` and `indexer-go/internal/combat/`
+are `MUST` change together, since §F's circuit breaker depends on the two being independent. All four
+golden-vector suites keep running: the frozen pair proves the vectors still describe what settled on
+chain, the live pair proves the current engine has not drifted from it.
+
 Update `docs/plan-future-features-roadmap.md` on acceptance:
 
 - Replace team battles that repeatedly call on-chain `CombatSim` with backend orchestration over a

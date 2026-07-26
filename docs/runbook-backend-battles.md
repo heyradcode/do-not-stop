@@ -164,10 +164,59 @@ outage past `BATTLE_FORFEIT_AFTER_SECONDS` forfeits affected battles, with no pr
 change. If an outage is ongoing, turn the mode off rather than let battles accumulate
 toward mass forfeiture.
 
+## Drill 5: opening a reward season
+
+**Scenario.** A season's battles are anchored and it is time to pay out. This is the only
+procedure here that moves real value, so it is the one worth rehearsing on a testnet first.
+
+**Procedure.**
+
+1. Confirm the receipts are **anchored**, not merely signed. `buildSeason` only counts
+   anchored receipts, but check the batch backlog is drained rather than discovering a
+   short season afterwards.
+2. Build the season: sequence range, distributor address, token, and rates. The season is
+   written with its rates and range so anyone can recompute the root from the public corpus.
+3. Fund the distributor with at least the season total.
+4. Choose caps and dry-run them with `boundsViolations` before committing to any. It is
+   pure, so this costs nothing and answers "would this season open" directly.
+5. `openSeasonOnChain`. It refuses unless every entitlement fits the per-wallet cap, the
+   total fits the season cap, and the distributor already holds the full amount — and
+   reports every failing reason at once rather than one transaction at a time.
+6. Spot-check a claim proof against the on-chain root before announcing anything.
+
+**The rule that matters.** Caps are enforced per claim, first come first served. A season
+opened over its cap, or underfunded, pays whoever claims first and reverts on whoever claims
+last (threat T20). That is why the bound is checked *before* the root is posted: afterwards,
+the season is immutable and the only remedy is a second season making people whole.
+
+**Sweeping.** `sweepUnclaimed` only works after the claim window closes, so it cannot be
+used to pull funds out from under people still entitled to them.
+
+## Drill 6: a bad season root
+
+**Scenario.** A season was opened with wrong entitlements.
+
+1. **Pause the distributor.** This stops claims without touching battles — the registry and
+   the battle path are separate contracts precisely so one can be halted without the other.
+2. Work out who was overpaid before the pause. Claims are events; the nullifier mapping says
+   who has claimed.
+3. **The season cannot be corrected in place.** `openSeason` refuses to reopen a season, and
+   that refusal is deliberate: a rewritable root would let entitlements change after people
+   had read them. The remedy is a new season that makes the difference up.
+4. Unpause once the replacement is ready, or leave paused and sweep after the window if the
+   season is being abandoned entirely.
+
+**Note on the owner key.** The distributor owner can open seasons, pause, and sweep after
+close. It cannot rewrite an open season, mint, or take funds mid-window. That is the blast
+radius to assume if the key is compromised — and it is why the owner should be a multisig
+behind a timelock (§I) rather than a hot wallet.
+
 ## What this mode deliberately does not do
 
-- **No transferable reward.** Receipts carry no `rewardDelta` at any setting. Rewards arrive
-  with the Merkle batch registry in Group I, behind their own caps and review.
+- **No reward inside a receipt.** Receipts carry no `rewardDelta` at any setting, and they
+  never will — rewards are computed *from* anchored receipts into a separate season tree, so
+  a receipt stays a statement about a fight rather than a promise of payment. Nothing pays
+  out until a season is deliberately built, funded, bounded, and opened (Drill 5).
 - **No rating.** There is no rating or matchmaking-score system in this repo yet. §L Phase 3
   lists "off-chain XP, rating, and cooldown"; XP and cooldown exist in `pet_battle_progress`,
   stored separately from NFT state. Rating is a game-design decision — what it measures, how

@@ -229,6 +229,25 @@ Each row: what the attacker does, what stops or bounds it, how we notice, what i
 - **Residual.** Recovery procedure must reconcile against the published corpus, not just restore.
   Point-in-time recovery drills have to include that reconciliation (Step 36).
 
+### T20: a season nobody can fully claim
+
+- **Attack.** Not an attack so much as a self-inflicted one, which is why it is easy to miss. The
+  reward caps in `SeasonRewardDistributor` are enforced *per claim*, first come first served. Open a
+  season whose total exceeds its season cap, or whose distributor is underfunded, and early claimants
+  are paid in full while the last ones get a revert they did nothing to earn. An entitlement above
+  the per-wallet cap is worse: that wallet can never claim at all, and finds out only by trying.
+- **Control.** `boundsViolations` refuses to open a season unless every entitlement fits the
+  per-wallet cap, the total fits the season cap, and the distributor already holds the full amount
+  (Step 39). All three are checked before the root is posted, where the answer is still "do not open
+  this season" rather than "some people lost". The check is pure, so candidate caps can be tested
+  before any of them are committed to.
+- **Detection.** Refusal at open time, with every failing reason reported at once. After opening,
+  a claim reverting with `ExceedsSeasonCap` means this check was bypassed.
+- **Residual.** The caps still protect against a *bad* root, which is their real job; this control
+  only stops a *correct* season from being opened in an unpayable state. A distributor drained by
+  some other means after opening reintroduces the same race, so the balance is a precondition rather
+  than a guarantee.
+
 ## 4. Invariants
 
 These are the properties tests and alerts exist to defend. Any one of them breaking is an incident,
