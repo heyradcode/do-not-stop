@@ -7,6 +7,7 @@ import { configureSigner } from '@features/battle-signer';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { startSolanaSettleKeeperFeature, stopSolanaSettleKeeperFeature } from '@features/settle-keeper-solana';
 import { type BattleWorkerHandle, startBattleWorker } from '@features/battle-worker';
+import { startBatchAnchor, stopBatchAnchor } from '@features/battle-anchor';
 import { startLiveBattleSocket, stopLiveBattleSocket } from '@ws/liveBattleSocket';
 import { startBattleRoomSocket, stopBattleRoomSocket } from '@ws/battleRoomSocket';
 
@@ -49,6 +50,9 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     if (env.battle.enabled) {
         configureSigner(Math.floor(Date.now() / 1000));
         battleWorker = startBattleWorker(`backend-${process.pid}`);
+        // Aggregates published receipts into Merkle batches and anchors the roots (§I).
+        // No-ops unless BATTLE_ANCHOR_* is configured; batches are still built either way.
+        startBatchAnchor();
     } else {
         console.log('[battle] BATTLE_BACKEND_MODE_ENABLED not set; backend battle writes disabled (reads stay served)');
     }
@@ -79,6 +83,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     stopSettleKeeper();
     stopSolanaSettleKeeperFeature();
     battleWorker?.stop();
+    stopBatchAnchor();
     stopLiveBattleSocket();
     stopBattleRoomSocket();
     await new Promise<void>((resolve) => server.close(() => resolve()));

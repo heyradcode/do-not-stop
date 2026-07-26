@@ -336,6 +336,10 @@ so historical-key durability is not yet backed by persistent storage.
 | `KEEPER_BACKFILL_BLOCKS` | How far back to scan on boot for requests never settled (default 5000). |
 | `KEEPER_MOCK_REVEAL` | Local dev only: keeper also acts as the Entropy provider (`MockEntropy.mockReveal`). Only takes effect when `KEEPER_CHAIN_ID=31337`. |
 | `KEEPER_SHADOW_ENABLED` | Shadow mode (§L Phase 2): recompute settled on-chain battles through the backend engine and indexer-go and record whether they matched `BattleResolved`. Observation only. Off by default. |
+| `BATTLE_BACKEND_MODE_ENABLED` | Backend-authoritative battle mode (§L Phase 3). Off by default; gates the write routes, the outbox worker, and the signer requirement. Reads stay served either way. |
+| `BATTLE_BATCH_MIN_SIZE` / `BATTLE_BATCH_MAX_SIZE` | Smallest run worth anchoring, and the cap on one batch (§I). |
+| `BATTLE_ANCHOR_RPC_URL` / `BATTLE_ANCHOR_PRIVATE_KEY` / `BATTLE_ANCHOR_REGISTRY_ADDRESS` / `BATTLE_ANCHOR_CHAIN_ID` | Anchoring batch roots in `BattleBatchRegistry`. Required together; with any missing, batches are built but never anchored. The wallet needs the registry's publisher role. |
+| `BATTLE_ANCHOR_INTERVAL_MS` | How often to build and anchor (default 60000). Latency only — both halves are idempotent. |
 
 > **Migration prerequisite:** the v2 `pet_roster` / `battle_history` columns ship
 > in `prisma/schema.prisma`; run `pnpm prisma:migrate` then `pnpm prisma:generate`

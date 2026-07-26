@@ -217,6 +217,24 @@ export const env = {
         batchMinSize: Number(process.env.BATTLE_BATCH_MIN_SIZE?.trim() || '1'),
         /** Most receipts in one batch. Bounds proof length and the anchoring transaction. */
         batchMaxSize: Number(process.env.BATTLE_BATCH_MAX_SIZE?.trim() || '1000'),
+        /**
+         * Anchoring batch roots in `BattleBatchRegistry` (§I).
+         *
+         * All four are required together; with any missing, batches are still built and
+         * their receipts are still signed and public, they are simply not anchored. That
+         * degradation is the right one: anchoring proves publication, not honesty, so
+         * losing it costs immutability rather than correctness.
+         */
+        anchorRpcUrl: process.env.BATTLE_ANCHOR_RPC_URL?.trim() || undefined,
+        anchorPrivateKey: (process.env.BATTLE_ANCHOR_PRIVATE_KEY?.trim()
+            ? (process.env.BATTLE_ANCHOR_PRIVATE_KEY.trim().startsWith('0x')
+                ? process.env.BATTLE_ANCHOR_PRIVATE_KEY.trim()
+                : `0x${process.env.BATTLE_ANCHOR_PRIVATE_KEY.trim()}`)
+            : undefined) as `0x${string}` | undefined,
+        anchorRegistryAddress: process.env.BATTLE_ANCHOR_REGISTRY_ADDRESS?.trim() || undefined,
+        anchorChainId: process.env.BATTLE_ANCHOR_CHAIN_ID ? Number(process.env.BATTLE_ANCHOR_CHAIN_ID) : undefined,
+        /** How often to build and anchor. Latency only — both halves are idempotent. */
+        anchorIntervalMs: Number(process.env.BATTLE_ANCHOR_INTERVAL_MS?.trim() || '60000'),
     },
 
     /**
