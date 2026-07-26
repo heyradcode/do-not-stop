@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { builtInRulesets, loadReceipts, loadRulesets, loadSigningKeys } from './io';
+import { loadReceipts, loadRulesets, loadSigningKeys } from './io';
+import { pinnedRulesets } from './ruleset';
 import { verifyReceipts } from './verify';
 
 /**
@@ -9,12 +10,14 @@ import { verifyReceipts } from './verify';
  *
  * Both flags default to the safe answer rather than the convenient one. Omitting `--keys`
  * is not "skip the signature check": it means no key is trusted, so every receipt's
- * operator-signature check fails. Omitting `--rulesets` falls back to this build's
- * source-default ruleset only, so a battle fought under tuned `GameConfig` values reports
+ * operator-signature check fails. Omitting `--rulesets` falls back to the bundles pinned
+ * into this package, so a battle fought under a ruleset nobody pinned reports
  * `ruleset-unavailable` instead of being replayed against the wrong numbers.
  */
 async function main(): Promise<void> {
-    const args = process.argv.slice(2);
+    // `pnpm run cli -- foo.json` forwards the `--` itself rather than consuming it, so a
+    // bare separator is dropped here instead of being mistaken for the receipt source.
+    const args = process.argv.slice(2).filter((arg) => arg !== '--');
     const receiptSource = args[0];
     if (!receiptSource || receiptSource.startsWith('--')) {
         console.error('usage: cryptopets-verify <receipt-file-or-url> [--keys <source>] [--rulesets <source>]');
@@ -28,7 +31,7 @@ async function main(): Promise<void> {
     const envelopes = await loadReceipts(receiptSource);
     const trustedKeys = keysSource ? await loadSigningKeys(keysSource) : [];
 
-    const rulesets = builtInRulesets();
+    const rulesets = pinnedRulesets();
     if (rulesetsSource) {
         for (const [hash, ruleset] of await loadRulesets(rulesetsSource)) {
             rulesets.set(hash, ruleset);
@@ -37,7 +40,8 @@ async function main(): Promise<void> {
 
     const report = verifyReceipts(envelopes, trustedKeys, { rulesets });
     for (const result of report.results) {
-        console.log(`[${result.ok ? 'PASS' : 'FAIL'}] ${result.check}${result.detail ? `: ${result.detail}` : ''}`);
+        const subject = result.subject ? `${result.subject} ` : '';
+        console.log(`[${result.ok ? 'PASS' : 'FAIL'}] ${subject}${result.check}${result.detail ? `: ${result.detail}` : ''}`);
     }
     process.exitCode = report.ok ? 0 : 1;
 }

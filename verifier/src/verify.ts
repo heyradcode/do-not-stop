@@ -63,6 +63,7 @@ export function verifyReceipts(
         results.push(...verifyOne(envelope, trustedKeys, rulesets, wellFormed));
     }
 
+
     if (wellFormed.length > 0) {
         results.push(checkChainContinuity(wellFormed));
     }
@@ -80,42 +81,53 @@ function verifyOne(
     try {
         converted = receiptFromWire(envelope.payload);
     } catch (error) {
-        // Not even structurally a receipt: nothing further can run against it.
-        return [{ check: 'malformed-receipt', ok: false, detail: `${envelope.receiptHash}: ${(error as Error).message}` }];
+        // Not even structurally a receipt: nothing further can run against it, and there is
+        // no readable battle id to attribute it to either.
+        return [
+            {
+                check: 'malformed-receipt',
+                ok: false,
+                detail: (error as Error).message,
+                subject: envelope.receiptHash,
+            },
+        ];
     }
+
+    // Every result for this receipt is attributed to it, so a corpus of hundreds does not
+    // print an anonymous wall of check names.
+    const subject = typeof converted.battleId === 'string' ? converted.battleId : envelope.receiptHash;
+    const about = (result: CheckResult): CheckResult => ({ ...result, subject });
 
     // Runs before the well-formedness gate on purpose. A chosen seed is the specific thing
     // `assertBattleReceipt` would reject, and reporting only "malformed" there would bury
     // the actual accusation under a shape complaint.
-    const results: CheckResult[] = [checkSeedDerivation(converted)];
+    const results: CheckResult[] = [about(checkSeedDerivation(converted))];
 
     let receipt: BattleReceipt;
     try {
         receipt = assertBattleReceipt(converted);
     } catch (error) {
-        results.push({
-            check: 'malformed-receipt',
-            ok: false,
-            detail: `${envelope.receiptHash}: ${(error as Error).message}`,
-        });
+        results.push(about({ check: 'malformed-receipt', ok: false, detail: (error as Error).message }));
         return results;
     }
     wellFormed.push(receipt);
 
-    results.push(checkOperatorSignature(envelope, receipt, trustedKeys));
-    results.push(checkBeaconSignature(receipt));
+    results.push(about(checkOperatorSignature(envelope, receipt, trustedKeys)));
+    results.push(about(checkBeaconSignature(receipt)));
 
     const ruleset = resolveRuleset(receipt, rulesets);
     if (!ruleset) {
-        results.push({
-            check: 'ruleset-unavailable',
-            ok: false,
-            detail: `no published bundle supplied for rulesetHash ${receipt.rulesetHash}; combat replay and progression could not be checked`,
-        });
+        results.push(
+            about({
+                check: 'ruleset-unavailable',
+                ok: false,
+                detail: `no published bundle for rulesetHash ${receipt.rulesetHash}; combat replay and progression could not be checked`,
+            }),
+        );
         return results;
     }
-    results.push(checkCombatReplay(receipt, ruleset));
-    results.push(checkProgression(receipt, ruleset));
+    results.push(about(checkCombatReplay(receipt, ruleset)));
+    results.push(about(checkProgression(receipt, ruleset)));
     return results;
 }
 

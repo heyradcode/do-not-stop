@@ -127,6 +127,8 @@ export interface ReceiptOverrides {
     battleId?: string;
     sequence?: number;
     previousReceiptHash?: Hex | null;
+    attackerPreviousReceiptHash?: Hex | null;
+    defenderPreviousReceiptHash?: Hex | null;
     createdAt?: number;
     signingKeyId?: string;
     /** Swapped wholesale; the seed is re-derived from whichever beacon is supplied. */
@@ -192,8 +194,8 @@ export function buildReceipt(overrides: ReceiptOverrides = {}): BattleReceipt {
         progression: computeProgression(SNAPSHOT, outcome.result.firstWins),
         sequence: overrides.sequence ?? 1,
         previousReceiptHash: overrides.previousReceiptHash ?? null,
-        attackerPreviousReceiptHash: null,
-        defenderPreviousReceiptHash: null,
+        attackerPreviousReceiptHash: overrides.attackerPreviousReceiptHash ?? null,
+        defenderPreviousReceiptHash: overrides.defenderPreviousReceiptHash ?? null,
         createdAt: overrides.createdAt ?? PUBLISHED_AT + 1,
         signingKeyId: overrides.signingKeyId ?? TEST_SIGNING_KEY_ID,
         ...overrides.patch,

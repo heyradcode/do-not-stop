@@ -1,0 +1,59 @@
+name: Verifier
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verifier-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The verifier's suite builds real receipts through @cryptopets/protocol — real
+      # signatures, real drand fixtures, real combat simulation — so a protocol regression
+      # surfaces here too, without needing a separate step for it.
+      - name: Verifier tests
+        run: pnpm --filter @cryptopets/verifier test
+
+      - name: Verifier lint
+        if: always()
+        run: pnpm --filter @cryptopets/verifier lint
+
+      # The committed corpus, run through the actual CLI rather than the library, so the
+      # thing a third party would run is the thing CI proves still works. No network
+      # access: the ruleset these battles were fought under is pinned in the checkout.
+      - name: Honest corpus must verify
+        if: always()
+        run: pnpm --filter @cryptopets/verifier cli -- fixtures/corpus.json --keys fixtures/signing-keys.json
+
+      # The half that stops this from being theatre. "The honest corpus verifies" is also
+      # true of a verifier that has quietly degraded into always passing; only this step
+      # notices that.
+      - name: Tampered corpus must be rejected
+        if: always()
+        run: |
+          if pnpm --filter @cryptopets/verifier cli -- fixtures/corpus-tampered.json --keys fixtures/signing-keys.json; then
+            echo "::error::The tampered corpus verified successfully. The verifier is not actually checking anything."
+            exit 1
+          fi
+          echo "Tampered corpus rejected, as expected."

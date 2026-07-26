@@ -51,9 +51,39 @@ walk. A receipt naming a ruleset bundle the caller did not supply is reported as
 `ruleset-unavailable`, and its replay and progression checks do not run — reporting those as passed
 would be a lie, and omitting them silently would read as a clean bill of health.
 
-**Not yet covered** (Step 32): fetching and pinning content-addressed ruleset artifacts
-automatically, and a CI job running this over a committed corpus fixture. Merkle inclusion proofs
-arrive with the batch registry (Group G).
+**Not yet covered**: Merkle inclusion proofs, which arrive with the batch registry (Group G).
+
+## Pinned ruleset artifacts
+
+`rulesets/<rulesetHash>.json` holds the published bundles, committed as plain JSON, one file per
+ruleset, each named for its own hash.
+
+Content addressing already makes a bundle's *integrity* independent of where it came from — a
+receipt names a `rulesetHash`, and a bundle either hashes to it or does not get used. What it does
+not give you is *availability*. If the only copy of the rules a 2026 battle was fought under lives
+on an endpoint the operator runs, then replaying that battle in 2030 needs the operator to still be
+serving it, and "you can check our homework, as long as we hand you the textbook" is a weaker claim
+than §H is making. Pinning them here means a checkout is enough.
+
+The filename is checked against the hash recomputed from the file's contents at load, so a
+corrupted or mislabelled artifact fails loudly rather than quietly answering to a hash it does not
+have. This includes the ruleset the current build implements: `ENGINE_VERSION` bumps eventually,
+and when it does, today's ruleset becomes a historical one whose only durable copy is that file.
+
+## Committed corpus
+
+`fixtures/` holds a regression corpus that CI (`.github/workflows/verifier.yml`) runs on every PR:
+
+- `corpus.json` — three linked receipts under one signing key. Must verify.
+- `corpus-tampered.json` — the same chain with one receipt's beacon and fight result altered. Must
+  **fail**. A corpus that only ever proves the verifier passes would be satisfied just as well by a
+  verifier that had degraded into always passing, which is the regression actually worth guarding.
+- `signing-keys.json` — the key those signatures recover to.
+
+Regenerate with `pnpm --filter @cryptopets/verifier corpus`. Everything in the generator is
+deterministic (fixed test key, RFC6979 deterministic ECDSA, a real but fixed drand round, a fixed
+snapshot), so regenerating produces no diff unless something that matters changed —
+`tests/corpus.test.ts` asserts exactly that.
 
 ## Usage
 
@@ -69,13 +99,17 @@ pnpm --filter @cryptopets/verifier cli -- \
 Output is one line per check, and the process exits non-zero if any failed:
 
 ```text
-[PASS] seed-derivation
-[PASS] operator-signature
-[FAIL] beacon-signature: drand round 1000 does not verify against chain 0x52db9ba7...
-[PASS] combat-replay
-[PASS] progression
-[PASS] chain-continuity
+[PASS] btl_0001 seed-derivation
+[PASS] btl_0001 operator-signature
+[FAIL] btl_0001 beacon-signature: drand round 1000 does not verify against chain 0x52db9ba7...
+[PASS] btl_0001 combat-replay
+[PASS] btl_0001 progression
+[FAIL] chain-continuity: receipt at index 2 (battleId btl_0003): broken-link
 ```
+
+Each line names the receipt it is about, so a corpus of hundreds stays attributable.
+`chain-continuity` is the one check about a *run* rather than a single receipt, so it names the
+offending position in its detail instead.
 
 Programmatically, `verifyReceipts(envelopes, trustedKeys, { rulesets })` returns the same results
 as `{ results, ok }`.
@@ -92,8 +126,8 @@ Both flags default to the safe answer rather than the convenient one:
 
 - Omitting `--keys` does not skip the operator-signature check. It means no key is trusted, so
   every receipt fails that check rather than silently passing one nobody actually verified.
-- Omitting `--rulesets` falls back to this build's source-default ruleset only. A battle fought
-  under tuned `GameConfig` values then reports `ruleset-unavailable` instead of being replayed
+- Omitting `--rulesets` falls back to the bundles pinned into this package (see below). A battle
+  fought under a ruleset nobody pinned then reports `ruleset-unavailable` instead of being replayed
   against the wrong numbers.
 
 ## Consumption
