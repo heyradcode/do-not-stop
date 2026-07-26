@@ -2,9 +2,17 @@ import express, { Router } from 'express';
 
 import {
     deleteDefenseAuthorizations,
+    getBattleCombatLog,
+    getBattleCommitment,
+    getBattleReceipt,
+    getBattleStateHandler,
+    getRulesetByHash,
+    getRulesets,
+    getSigningKeys,
     postAcceptBattle,
     postBattleIntent,
     postDefenseAuthorization,
+    postVerifyReceipt,
 } from '@features/battle-ledger';
 import { verifyToken } from '@middleware/auth';
 import { battleRoomRateLimit } from '@middleware/rateLimit';
@@ -27,5 +35,18 @@ router.post('/intents/:intentHash/accept', verifyToken, battleRoomRateLimit, (re
 // only the JWT, because refusing battles is never the dangerous direction.
 router.post('/authorizations', verifyToken, battleRoomRateLimit, postDefenseAuthorization);
 router.delete('/authorizations', verifyToken, deleteDefenseAuthorizations);
+
+// Authoritative, re-fetchable reads (§J). No auth: every value here is either already
+// public on chain or is itself a signed artifact anyone is meant to check, so gating
+// these behind a JWT would stop a spectator with a room link from doing the one thing
+// this design exists to let them do.
+router.get('/signing-keys', getSigningKeys);
+router.get('/rulesets', getRulesets);
+router.get('/rulesets/:rulesetHash', getRulesetByHash);
+router.post('/verify-receipt', postVerifyReceipt);
+router.get('/:battleId', getBattleStateHandler);
+router.get('/:battleId/commitment', getBattleCommitment);
+router.get('/:battleId/receipt', getBattleReceipt);
+router.get('/:battleId/combat-log', getBattleCombatLog);
 
 export default router;

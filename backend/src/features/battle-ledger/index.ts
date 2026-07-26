@@ -8,6 +8,32 @@ export {
 } from './accept.service';
 export { deleteDefenseAuthorizations, postDefenseAuthorization } from './consent.controller';
 export {
+    getBattleCombatLog,
+    getBattleCommitment,
+    getBattleReceipt,
+    getBattleStateHandler,
+    getRulesetByHash,
+    getRulesets,
+    getSigningKeys,
+    postVerifyReceipt,
+} from './reads.controller';
+export {
+    type BattleStateSummary,
+    type CombatLogResponse,
+    getBattleStateSummary,
+    getCombatLog,
+    getRuleset,
+    getSignedCommitment,
+    getSignedReceipt,
+    listActiveSigningKeys,
+    listRulesets,
+    type RulesetSummary,
+    type SignedArtifact,
+    verifyReceiptSignature,
+    type VerifyReceiptFailure,
+    type VerifyReceiptResult,
+} from './reads.service';
+export {
     type AuthorizationRejection,
     type ConsentFailure,
     type ConsentResult,

@@ -238,6 +238,42 @@ it was just being sent from the player's wallet by default. Off unless
 if the keeper hasn't within ~45s. See `docs/plan-realtime-battle-ux.md` /
 `docs/plan-realtime-battle-impl.md` for the design and threat model.
 
+### Backend-authoritative battles (v2)
+
+`backend/src/routes/battle.ts` — the workflow described in
+`docs/plan-backend-battle-architecture.md`. Submission and consent require a JWT
+(the wallet signature inside the body is what actually authorizes the action,
+per §D); the reads below require nothing, because every value they return is
+either already public on chain or is itself a signed artifact anyone is meant
+to check independently.
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| POST | `/api/battle/intents` | JWT | Submit a signed battle intent (§D). |
+| POST | `/api/battle/intents/:intentHash/accept` | JWT | Freeze the snapshot, commit to a future drand round, sign the commitment, and return it synchronously (§E). |
+| POST | `/api/battle/authorizations` | JWT | Submit a signed standing defence authorization (§D). |
+| DELETE | `/api/battle/authorizations?chainId=` | JWT | Revoke every live authorization for the caller on one chain. No wallet signature required — refusing battles is never the dangerous direction. |
+| GET | `/api/battle/:battleId` | none | Battle state summary: state, failure reason, both pets, ruleset hash. |
+| GET | `/api/battle/:battleId/commitment` | none | The signed commitment, exactly as delivered at accept time — the re-fetch path if a client's local copy was lost. |
+| GET | `/api/battle/:battleId/receipt` | none | The signed receipt, once signing completes. |
+| GET | `/api/battle/:battleId/combat-log` | none | The per-strike log plus its hash, served separately from the receipt per §G. |
+| GET | `/api/battle/signing-keys` | none | Every signing key this process currently publishes, active and retired (§G). |
+| GET | `/api/battle/rulesets` | none | Metadata for every published ruleset bundle. |
+| GET | `/api/battle/rulesets/:rulesetHash` | none | One ruleset's full bundle, for replaying against it. |
+| POST | `/api/battle/verify-receipt` | none | Body `{ receiptHash }`. Checks the stored signature against a published key and that the payload is well-formed — §A's "operator signature, verified against a published key" row, nothing more. It does **not** re-run the fight, check the drand BLS signature, or recompute progression; that is the standalone verifier's job (§H), which runs with no backend access so its answer cannot depend on this process telling the truth. Passing this check is necessary, not sufficient. |
+
+These reads are what let the live-battle WebSocket become a notification only,
+never a source of truth (`docs/plan-backend-battle-architecture.md` §J): a
+client refetches from the routes above after reconnecting rather than trusting
+whatever the socket last pushed. `backend/src/ws/liveBattleSocket.ts` itself
+still broadcasts globally as of this writing — scoping it per room and marking
+it notification-only in its own right is a separate, later change (§J).
+
+Known gap: `GET /api/battle/signing-keys` serves whatever
+`@features/battle-signer`'s in-memory registry currently holds. A rotated key
+registered via `registerRotatedKey` does not survive a process restart today,
+so historical-key durability is not yet backed by persistent storage.
+
 ### Relevant environment variables
 
 | Var | Purpose |
