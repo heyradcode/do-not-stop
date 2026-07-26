@@ -1,5 +1,4 @@
 import type { Pet } from '../../types/pet';
-import type { BattleResolvedResult } from '../../types/battle';
 
 export type TxPhase =
     | 'idle'
@@ -63,8 +62,7 @@ export interface ChainAdapter {
     /** v2 train: pay a level-scaled fee for flat XP. */
     trainPet:    AdapterMutation<{ petId: string }>;
     renamePet:   AdapterMutation<{ petId: string; name: string }>;
-    transferPet: AdapterMutation<{ petId: string; to: string }>;
-    battlePets:  AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, BattleResolvedResult | null>;
+    transferPet: AdapterMutation<{ petId: string; to: string }>;
     // crossOwner adds the stud fee (EVM married cross-owner breeding); ignored on Solana.
     breedPets:   AdapterMutation<{ parentId1: string; parentId2: string; name: string; crossOwner?: boolean }>;
 }

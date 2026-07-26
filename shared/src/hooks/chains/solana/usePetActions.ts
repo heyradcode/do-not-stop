@@ -8,7 +8,6 @@ import {
     petPdaByAsset,
     studFeeAccountPda,
 } from '../../../utils/solana/pdas';
-import { battleWithSwitchboardVrf, type BattleVrfResult } from '../../../utils/solana/battleWithSwitchboardVrf';
 import { breedWithSwitchboardVrf } from '../../../utils/solana/breedWithSwitchboardVrf';
 import { mintWithSwitchboardVrf } from '../../../utils/solana/mintWithSwitchboardVrf';
 import { getAccountClient } from '../../../utils/solana/accountClient';
@@ -20,7 +19,6 @@ export const usePetActions = () => {
     const { signingWallet } = useSolanaAnchor();
     const { program, programId, provider } = useProgram();
 
-    const [battleSubPhase, setBattleSubPhase] = useState<'idle' | 'awaiting-vrf'>('idle');
     const [breedSubPhase, setBreedSubPhase] = useState<'idle' | 'awaiting-vrf'>('idle');
 
     const invalidateProgramQueries = () => queryClient.invalidateQueries({ queryKey: ['cryptopets'] });
@@ -192,42 +190,6 @@ export const usePetActions = () => {
     });
 
     /**
-     * Battle the signer's pet (attacker) against any pet. When `defenderOwner` is
-     * omitted it defaults to the signer (same-wallet battle); pass a foreign owner
-     * pubkey for PvP against another player's pet.
-     */
-    const battlePets = useMutation<BattleVrfResult, Error, {
-        attackerPetId: number;
-        defenderPetId: number;
-        attackerAssetKey: string;
-        defenderOwner?: string;
-    }>({
-        mutationFn: async (args) => {
-            const { program, programId, owner } = requireReady();
-            if (!provider) throw new Error('Solana provider is not ready');
-            setBattleSubPhase('idle');
-            try {
-                return await battleWithSwitchboardVrf({
-                    program,
-                    provider,
-                    programId,
-                    owner,
-                    attackerPetId: args.attackerPetId,
-                    defenderPetId: args.defenderPetId,
-                    attackerAssetKey: args.attackerAssetKey,
-                    ...(args.defenderOwner
-                        ? { defenderOwner: new PublicKey(args.defenderOwner) }
-                        : {}),
-                    onCommitted: () => setBattleSubPhase('awaiting-vrf'),
-                });
-            } finally {
-                setBattleSubPhase('idle');
-            }
-        },
-        onSuccess: invalidateProgramQueries,
-    });
-
-    /**
      * Breed via Switchboard On-Demand VRF (commit + reveal), matching the EVM Chainlink flow.
      * For cross-owner breeding, pass `parent2AssetKey` and `parent2Owner`; for same-wallet
      * breeding both can be omitted (parent2AssetKey is looked up on-chain).
@@ -276,8 +238,6 @@ export const usePetActions = () => {
         withdrawStudFees,
         syncMetadata,
         setOpenToChallenges,
-        battlePets,
-        battleSubPhase,
         breedPets,
         breedSubPhase,
         walletPublicKey: signingWallet?.publicKey ?? null,

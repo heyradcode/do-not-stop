@@ -12,7 +12,6 @@ export {
     studFeeAccountPda,
 } from './pdas';
 export { breedWithSwitchboardVrf } from './breedWithSwitchboardVrf';
-export { battleWithSwitchboardVrf } from './battleWithSwitchboardVrf';
 export { mintWithSwitchboardVrf } from './mintWithSwitchboardVrf';
 export { sendSignedTx } from './switchboardVrfTx';
 export { toU32, formatLamports } from './numbers';

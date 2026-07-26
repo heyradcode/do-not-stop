@@ -81,7 +81,6 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
     const levelUpW = useWriteContract();
     const renameW = useWriteContract();
     const transferW = useWriteContract();
-    const battleW = useWriteContract();
     const breedW = useWriteContract();
     const trainW = useWriteContract();
 
@@ -90,7 +89,6 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
     const levelUpR = useWaitForTransactionReceipt({ hash: levelUpW.data, query: { enabled: !!levelUpW.data } });
     const renameR = useWaitForTransactionReceipt({ hash: renameW.data, query: { enabled: !!renameW.data } });
     const transferR = useWaitForTransactionReceipt({ hash: transferW.data, query: { enabled: !!transferW.data } });
-    const battleR = useWaitForTransactionReceipt({ hash: battleW.data, query: { enabled: !!battleW.data } });
     const breedR = useWaitForTransactionReceipt({ hash: breedW.data, query: { enabled: !!breedW.data } });
     const trainR = useWaitForTransactionReceipt({ hash: trainW.data, query: { enabled: !!trainW.data } });
 
@@ -171,23 +169,6 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
         isPending: isInFlight(transferW, transferR),
     };
 
-    // GameLogic: v2 battle is async (request → VRF → settle). requestBattle makes
-    // a VRF request, which the RPC can't gas-estimate (estimateGas returns the
-    // block limit → "gas limit too high"), so a manual limit is REQUIRED — sized
-    // like breed's working VRF path, not v1's synchronous-battle 300k.
-    const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, null> = {
-        async mutateAsync({ petId1, petId2 }) {
-            if (!canWrite) throw new Error('EVM contract not configured');
-            if (fees.battleFee == null) throw new Error('Battle fee not loaded yet');
-            if (fees.entropyFee == null) throw new Error('Entropy fee not loaded yet');
-            const value = fees.battleFee + fees.entropyFee;
-            await battleW.writeContractAsync({ address: gameLogic, abi: gameLogicAbi, functionName: 'requestBattle', args: [BigInt(petId1), BigInt(petId2)], value, gas: EVM_GAS_LIMITS.requestBattle, chainId: evm?.chainId } as unknown as Parameters<typeof battleW.writeContractAsync>[0]);
-            return null;
-        },
-        lifecycle: toLc(battleW, battleR),
-        isPending: isInFlight(battleW, battleR),
-    };
-
     // GameLogic: breed request (payable). Same-owner requires msg.value >=
     // breedFee(); cross-owner (married) requires breedFee() + studFee().
     // Offspring is minted on BreedSettled, watched in useBreedPets.
@@ -223,8 +204,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
         levelUpPet,
         trainPet,
         renamePet,
-        transferPet,
-        battlePets,
+        transferPet,
         breedPets,
     };
 };

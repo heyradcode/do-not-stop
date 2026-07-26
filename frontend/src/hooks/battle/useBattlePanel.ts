@@ -8,7 +8,6 @@ import {
     useCreateBattleRoom,
     useOpponents,
     usePetList,
-    usePendingBattle,
     useWinEstimate,
     type TxLifecycle,
     type BattleResolvedResult,
@@ -203,12 +202,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     );
     const fighterLevel = selectedFighter?.level ?? null;
 
-    // An unresolved battle on either pet makes requestBattle revert ("Battle
-    // pending for pet"); block the new battle until it's settled/cancelled
-    // (the PendingBattleNotice in the setup view drives that).
-    const fighterPending = usePendingBattle(selectedPet1 || undefined);
-    const opponentPending = usePendingBattle(opponent?.id);
-    const hasPendingBattle = fighterPending.isPending || opponentPending.isPending;
     const sortedOpponents = useMemo(
         () => sortOpponentsByMatch(opponents, fighterLevel),
         [opponents, fighterLevel],
@@ -419,17 +412,13 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         : hasResolvedEvent && !animation.done
         ? 'Result in — playing out the fight…'
         : !hasResolvedEvent && animation.done && battle.liveReplay
-        ? 'Finalizing on-chain…'
+        ? 'Finalizing…'
         : battle.phase === 'awaiting-vrf'
         ? 'Awaiting randomness…'
-        : battle.phase === 'awaiting-settle'
-        ? 'Settling the battle…'
-        : battle.phase === 'settling'
-        ? 'Settling the battle…'
         : battle.phase === 'resolving'
         ? 'Resolving the outcome…'
         : battle.isConfirming
-        ? 'Confirming on-chain…'
+        ? 'Verifying the receipt…'
         : battle.isPending
         ? 'Awaiting your wallet…'
         : null;
@@ -450,8 +439,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         overlayOpen ||
         !selectedPet1 ||
         !selectedOpponent ||
-        showResult ||
-        hasPendingBattle;
+        showResult;
     const randomMatchDisabled = !canRandomMatch || battle.isPending || showResult;
 
     const fighterDisplayName = selectedFighter?.name ?? 'Your pet';

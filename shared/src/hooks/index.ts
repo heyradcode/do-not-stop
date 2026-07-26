@@ -7,12 +7,10 @@ export { usePetsContract } from './chains/ethereum/usePetsContract';
 export { useFees, type UnifiedFees } from './useFees';
 export { useEvmFees, type EvmFees } from './chains/ethereum/useEvmFees';
 export { useSolanaFees, type SolanaFees } from './chains/solana/useSolanaFees';
-// Manual recovery for an interrupted async battle (settle / cancel a pending request).
-export { usePendingBattle, type PendingBattle } from './chains/ethereum/usePendingBattle';
+// Manual recovery for an interrupted async breed (settle / cancel a pending request).
 export { usePendingBreed, type PendingBreed } from './chains/ethereum/usePendingBreed';
 export { useBreedRelationCheck, type BreedRelationCheck } from './chains/ethereum/useBreedRelationCheck';
 // Solana pending VRF requests — auto-resumes on next action; cancel available after randomness expiry.
-export { usePendingSolanaBattle, type PendingSolanaBattle } from './chains/solana/usePendingSolanaBattle';
 export { usePendingSolanaBreed, type PendingSolanaBreed } from './chains/solana/usePendingSolanaBreed';
 // Solana defender-consent toggle (openToChallenges). No-op on EVM.
 export { useSetOpenToChallenges, type UseSetOpenToChallengesResult } from './useSetOpenToChallenges';

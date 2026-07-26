@@ -28,13 +28,11 @@ const actions = {
     levelUpPet: makeMutation(),
     trainPet: makeMutation(),
     renamePet: makeMutation(),
-    battlePets: makeMutation({ sig: 'settle-sig', firstWins: true }),
     breedPets: makeMutation(),
     transferPet: makeMutation(),
     setOpenToChallenges: makeMutation(),
     syncMetadata: makeMutation(),
     withdrawStudFees: makeMutation(),
-    battleSubPhase: 'idle' as 'idle' | 'awaiting-vrf',
     breedSubPhase: 'idle' as 'idle' | 'awaiting-vrf',
 };
 const petsQuery = { data: testPets, isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
@@ -68,15 +66,12 @@ beforeEach(() => {
     Object.assign(actions.levelUpPet, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.trainPet,   { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.renamePet,  { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
-    Object.assign(actions.battlePets, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.breedPets,  { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.transferPet, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.setOpenToChallenges, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.syncMetadata, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
     Object.assign(actions.withdrawStudFees, { isPending: false, isSuccess: false, isError: false, error: null, data: undefined });
-    actions.battlePets.mutateAsync.mockResolvedValue({ sig: 'settle-sig', firstWins: true });
     actions.breedPets.mutateAsync.mockResolvedValue(undefined);
-    actions.battleSubPhase = 'idle';
     actions.breedSubPhase = 'idle';
     anchor.signingWallet = { publicKey: Keypair.generate().publicKey };
 });
@@ -161,25 +156,6 @@ describe('useSolanaAdapter', () => {
         await expect(
             result.current.breedPets.mutateAsync({ parentId1: '1', parentId2: '99', name: 'Baby', crossOwner: true }),
         ).rejects.toThrow(/not found on-chain|program.*not ready|programId/i);
-    });
-
-    it('includes defenderOwner and attackerAssetKey in battle', async () => {
-        const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
-
-        await result.current.battlePets.mutateAsync({ petId1: '1', petId2: '2' });
-        expect(actions.battlePets.mutateAsync).toHaveBeenCalledWith({
-            attackerPetId: 1,
-            defenderPetId: 2,
-            attackerAssetKey: ASSET_1,
-        });
-
-        await result.current.battlePets.mutateAsync({ petId1: '1', petId2: '2', defenderOwner: '0xo' });
-        expect(actions.battlePets.mutateAsync).toHaveBeenLastCalledWith({
-            attackerPetId: 1,
-            defenderPetId: 2,
-            attackerAssetKey: ASSET_1,
-            defenderOwner: '0xo',
-        });
     });
 
     it('derives the lifecycle phase from the action mutation state', () => {
