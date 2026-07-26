@@ -51,6 +51,7 @@
     },
     "dependencies": {
         "@cryptopets/protocol": "workspace:*",
+        "@cryptopets/verifier": "workspace:*",
         "@switchboard-xyz/on-demand": "^3.10.2",
         "bs58": "^6.0.0",
         "buffer": "^6.0.3"

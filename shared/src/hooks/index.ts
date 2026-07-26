@@ -87,5 +87,10 @@ export {
     type BattleRoomNotification,
     type UseBattleRoomSocketOptions,
 } from './useBattleRoomSocket';
+export {
+    useVerifiedBattleReceipt,
+    verifiedReceiptQueryKey,
+    type VerifiedBattleReceipt,
+} from './useVerifiedBattleReceipt';
 export { usePetError, type PetError } from './usePetError';
 export { useTxError, type TxError } from './useTxError';

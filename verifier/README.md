@@ -53,6 +53,35 @@ would be a lie, and omitting them silently would read as a clean bill of health.
 
 **Not yet covered**: Merkle inclusion proofs, which arrive with the batch registry (Group G).
 
+## Running in a browser
+
+`@cryptopets/verifier/checks` is a browser-safe subpath exporting the checks alone. Every
+module behind it is pure — `@cryptopets/protocol` and type-only imports, no `node:fs`, no
+network — while the package root pulls in the loaders and the pinned-artifact reader, which
+are Node-only.
+
+The frontend uses this so the browser runs the *same* verification code the CLI runs
+(`shared/src/hooks/useVerifiedBattleReceipt.ts`). A client that reimplemented the checks to
+avoid the dependency is how the browser's answer and the CLI's answer start disagreeing, and
+§H's argument only holds while they cannot.
+
+### What it costs a bundle
+
+Measured with esbuild (minified, `platform: browser`, `target: es2022`), the same way
+`protocol/README.md` measured the BLS cost:
+
+| Entry point | Minified | Minified + gzip |
+|---|---|---|
+| Combat replay only (`simulate` + `hashCombatLog`) | 16.6 kB | 6.5 kB |
+| Replay + operator-signature, seed, and progression checks | 65.5 kB | 24.1 kB |
+| Full verification, adding the drand BLS beacon check | 103.0 kB | 38.2 kB |
+
+So verifying a receipt rather than merely replaying it costs about **32 kB gzipped**, of
+which the BLS beacon check is **14 kB**. Against a frontend bundle already over 2 MB
+gzipped that is under 2%, and it is the only thing separating "we watched the fight the
+receipt commits to" from "we watched what the server sent". Re-measure if `@noble/curves`
+is upgraded.
+
 ## Pinned ruleset artifacts
 
 `rulesets/<rulesetHash>.json` holds the published bundles, committed as plain JSON, one file per
