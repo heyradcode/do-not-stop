@@ -6,6 +6,15 @@ export {
     type AcceptedBattle,
     type AcceptRejection,
 } from './accept.service';
+export {
+    type CursorPage,
+    listReceiptsByPet,
+    listReceiptsBySequence,
+    listReceiptsByWallet,
+    type ReceiptSummary,
+    type SequencePage,
+} from './corpus.service';
+export { getReceiptsByPet, getReceiptsBySequence, getReceiptsByWallet } from './corpus.controller';
 export { deleteDefenseAuthorizations, postDefenseAuthorization } from './consent.controller';
 export {
     getBattleCombatLog,

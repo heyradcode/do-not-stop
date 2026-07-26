@@ -9,6 +9,7 @@ import graphqlRoutes from '@routes/graphql';
 import dialogueRoutes from '@routes/dialogue';
 import battleRoomRoutes from '@routes/battle-room';
 import battleRoutes from '@routes/battle';
+import receiptRoutes from '@routes/receipts';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/graphql', graphqlRoutes);
 app.use('/api/battle-dialogue', dialogueRoutes);
 app.use('/api/battle-room', battleRoomRoutes);
 app.use('/api/battle', battleRoutes);
+app.use('/api/receipts', receiptRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
     res.json({

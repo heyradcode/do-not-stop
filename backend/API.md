@@ -269,6 +269,28 @@ whatever the socket last pushed. `backend/src/ws/liveBattleSocket.ts` itself
 still broadcasts globally as of this writing — scoping it per room and marking
 it notification-only in its own right is a separate, later change (§J).
 
+### Public receipt corpus (v2)
+
+`backend/src/routes/receipts.ts` — the paginated export §H item 3 calls for.
+No authentication on any route here, deliberately: public replay only works if
+anyone can *get* the receipts to replay, not just verify a signature over one
+they already have. Every route is cursor-paginated; a response's
+`nextCursor`/`nextAfter` is `null` once there is nothing further to fetch, so a
+client can stop after the first short page instead of making one guaranteed-
+empty extra request.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/receipts/by-pet/:chainId/:petId?cursor=&limit=` | Every receipt naming this pet as attacker or defender, oldest first. This is the export a per-pet chain walk (§G) starts from — proving a pet was really level 12 means replaying the receipts that got it there. |
+| GET | `/api/receipts/by-wallet/:wallet?cursor=&limit=` | Every receipt where this wallet owned either side, oldest first. Matched case-insensitively against the ledger's owner columns (the receipt table itself has no owner field, only pet ids). |
+| GET | `/api/receipts?signingKeyId=&after=&limit=` | Receipts under one signing key, strictly in `sequence` order — the order the *global* hash chain requires. `signingKeyId` is required; this is the endpoint for walking one key's whole chain end to end, not for a general receipt search. |
+
+`limit` defaults to 100 and is clamped to 500 on every route. The by-pet and
+by-wallet exports order by `(createdAt, receiptHash)`, since two receipts can
+share a `createdAt` (concurrent battles resolving in the same second) and an
+order that isn't fully deterministic makes cursor pagination silently skip or
+repeat rows at a page boundary.
+
 Known gap: `GET /api/battle/signing-keys` serves whatever
 `@features/battle-signer`'s in-memory registry currently holds. A rotated key
 registered via `registerRotatedKey` does not survive a process restart today,
