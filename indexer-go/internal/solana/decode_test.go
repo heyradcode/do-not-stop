@@ -2,7 +2,6 @@ package solana
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/binary"
 	"testing"
 )
@@ -203,66 +202,3 @@ func fieldDataOffset(t *testing.T, name string) int {
 	return 0
 }
 
-// buildBattleLog serializes a BattleResolved event as the on-chain program
-// emits it: 8-byte discriminator + Borsh body. attackerWon picks which pet id
-// fills the winner/loser slots (the chain resolves these absolutely).
-func buildBattleLog(attacker, defender uint32, attackerWon bool) string {
-	winner, loser := defender, attacker
-	if attackerWon {
-		winner, loser = attacker, defender
-	}
-	raw := make([]byte, 8+battleResolvedBodyLen)
-	copy(raw, battleResolvedDiscriminator)
-	b := raw[8:]
-	binary.LittleEndian.PutUint32(b[0:4], attacker)
-	binary.LittleEndian.PutUint32(b[4:8], defender)
-	binary.LittleEndian.PutUint32(b[8:12], winner)
-	binary.LittleEndian.PutUint32(b[12:16], loser)
-	for i := range 32 { // distinctive seed: 0x00010203...
-		b[16+i] = byte(i)
-	}
-	if attackerWon {
-		b[48] = 1 // firstWins
-	}
-	b[49] = 6                                    // rounds
-	binary.LittleEndian.PutUint16(b[50:52], 174) // winnerHpRemaining
-	binary.LittleEndian.PutUint32(b[52:56], 100) // xpWin
-	binary.LittleEndian.PutUint32(b[56:60], 25)  // xpLoss
-	return programDataPrefix + base64.StdEncoding.EncodeToString(raw)
-}
-
-func TestParseBattleResults(t *testing.T) {
-	logs := []string{
-		"Program EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1 invoke [1]",
-		"Program log: Instruction: SettleBattle",
-		buildBattleLog(7, 9, true),
-		programDataPrefix + "bm90LWFuLWV2ZW50", // valid b64, wrong shape — skipped
-		"Program data: %%%not-base64%%%",       // undecodable — skipped
-		buildBattleLog(3, 5, false),
-	}
-
-	results := parseBattleResults(logs)
-	if len(results) != 2 {
-		t.Fatalf("parsed %d results, want 2", len(results))
-	}
-	if results[0].AttackerPetID != 7 || results[0].DefenderPetID != 9 ||
-		results[0].WinnerPetID != 7 || results[0].LoserPetID != 9 || !results[0].FirstWins {
-		t.Errorf("first result: %+v", results[0])
-	}
-	if results[0].Rounds != 6 || results[0].WinnerHpRemaining != 174 ||
-		results[0].XPWin != 100 || results[0].XPLoss != 25 {
-		t.Errorf("first result sim fields: %+v", results[0])
-	}
-
-	event := results[1].toBattleEvent("sig123", 555, 1770000300)
-	if event.WinnerPetID != "5" || event.LoserPetID != "3" {
-		t.Errorf("defender won: winner=%s loser=%s, want 5/3", event.WinnerPetID, event.LoserPetID)
-	}
-	if event.Seed != "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f" {
-		t.Errorf("seed = %q", event.Seed)
-	}
-	if event.Chain != "solana" || event.BattleID != "sig123" || event.Attacker != "3" ||
-		event.Defender != "5" || event.Version != 555 || event.FoughtAt != 1770000300 {
-		t.Errorf("event mapping: %+v", event)
-	}
-}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"time"
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
 )
@@ -22,13 +21,13 @@ type wsNotification struct {
 }
 
 // subNames maps subscribe request ids to what was requested (see subscribe).
-var subNames = map[int]string{1: "programSubscribe", 2: "logsSubscribe"}
+var subNames = map[int]string{1: "programSubscribe"}
 
 func (ix *Indexer) handleMessage(
 	ctx context.Context,
 	msg []byte,
 	roster chan<- indexer.RosterUpdate,
-	battles chan<- indexer.BattleEvent,
+	_ chan<- indexer.BattleEvent,
 ) {
 	var note wsNotification
 	if err := json.Unmarshal(msg, &note); err != nil {
@@ -51,8 +50,6 @@ func (ix *Indexer) handleMessage(
 	switch note.Method {
 	case "programNotification":
 		ix.handleProgramNotification(ctx, note.Params.Result, roster)
-	case "logsNotification":
-		ix.handleLogsNotification(ctx, note.Params.Result, battles)
 	}
 }
 
@@ -89,41 +86,3 @@ func (ix *Indexer) handleProgramNotification(
 	}
 }
 
-func (ix *Indexer) handleLogsNotification(
-	ctx context.Context,
-	result json.RawMessage,
-	battles chan<- indexer.BattleEvent,
-) {
-	var payload struct {
-		Context struct {
-			Slot uint64 `json:"slot"`
-		} `json:"context"`
-		Value struct {
-			Signature string          `json:"signature"`
-			Err       json.RawMessage `json:"err"`
-			Logs      []string        `json:"logs"`
-		} `json:"value"`
-	}
-	if err := json.Unmarshal(result, &payload); err != nil {
-		slog.Warn("solana bad logs notification", "err", err)
-		return
-	}
-	if string(payload.Value.Err) != "null" && len(payload.Value.Err) > 0 {
-		return // failed transaction
-	}
-
-	// The notification carries no blockTime; the settle just happened, so
-	// wall clock is honest within seconds (matches the dialogue recorder).
-	now := time.Now().Unix()
-	for _, r := range parseBattleResults(payload.Value.Logs) {
-		event := r.toBattleEvent(payload.Value.Signature, payload.Context.Slot, now)
-		slog.Info("solana live battle",
-			"battle", event.BattleID, "winner", event.WinnerPetID, "slot", event.Version)
-		select {
-		case <-ctx.Done():
-			return
-		case battles <- event:
-		}
-	}
-	ix.lastSig = payload.Value.Signature
-}

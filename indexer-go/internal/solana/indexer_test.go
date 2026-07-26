@@ -163,20 +163,6 @@ func programNotification(slot uint64, data []byte) map[string]any {
 	}
 }
 
-func logsNotification(slot uint64, signature string, logs []string) map[string]any {
-	return map[string]any{
-		"jsonrpc": "2.0",
-		"method":  "logsNotification",
-		"params": map[string]any{
-			"subscription": 2,
-			"result": map[string]any{
-				"context": map[string]any{"slot": slot},
-				"value":   map[string]any{"signature": signature, "err": nil, "logs": logs},
-			},
-		},
-	}
-}
-
 // newTestIndexer wires an Indexer to the fake RPC and a scripted dialer.
 func newTestIndexer(t *testing.T, rpc *fakeRPC, conns ...*fakeConn) (*Indexer, *atomic.Int32) {
 	t.Helper()
@@ -227,7 +213,7 @@ func TestScanEmitsDecodedPetsWithSnapshotSlot(t *testing.T) {
 	}
 }
 
-func TestSessionStreamsAccountAndBattleNotifications(t *testing.T) {
+func TestSessionStreamsAccountNotifications(t *testing.T) {
 	var owner [32]byte
 	petData := buildPetAccount(t, 11, owner, 5, 1, 2, 100, 1, 0, "Nyx")
 	rpc := &fakeRPC{slot: 1000} // empty roster scan, no signatures → baseline stays ""
@@ -253,21 +239,9 @@ func TestSessionStreamsAccountAndBattleNotifications(t *testing.T) {
 		t.Fatal("no roster update from program notification")
 	}
 
-	conn.push(t, logsNotification(1300, "settleSig1", []string{
-		"Program log: Instruction: SettleBattle",
-		buildBattleLog(11, 22, false),
-	}))
-	select {
-	case b := <-battles:
-		if b.BattleID != "settleSig1" || b.WinnerPetID != "22" || b.Version != 1300 {
-			t.Errorf("battle = %+v, want settleSig1 winner 22 slot 1300", b)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("no battle event from logs notification")
-	}
-
-	if methods := conn.subscribeMethods(); len(methods) != 2 ||
-		methods[0] != "programSubscribe" || methods[1] != "logsSubscribe" {
+	// Only the roster subscription is issued now: logsSubscribe existed to catch
+	// settle_battle's BattleResolved event, and battles no longer settle on chain.
+	if methods := conn.subscribeMethods(); len(methods) != 1 || methods[0] != "programSubscribe" {
 		t.Errorf("subscriptions = %v", methods)
 	}
 
@@ -295,7 +269,7 @@ func TestRunRedialsAfterConnectionLoss(t *testing.T) {
 
 	// Backoff after one healthy session is attempt 1: ~1-1.5s.
 	testutil.WaitFor(t, "redial after drop", func() bool { return dials.Load() >= 2 })
-	testutil.WaitFor(t, "resubscribe on new conn", func() bool { return len(conn2.subscribeMethods()) == 2 })
+	testutil.WaitFor(t, "resubscribe on new conn", func() bool { return len(conn2.subscribeMethods()) == 1 })
 
 	cancel()
 	if err := <-done; err != nil {
@@ -303,73 +277,3 @@ func TestRunRedialsAfterConnectionLoss(t *testing.T) {
 	}
 }
 
-func TestBackfillEmitsMissedBattlesOldestFirst(t *testing.T) {
-	failedErr := json.RawMessage(`{"InstructionError":[0,"Custom"]}`)
-	rpc := &fakeRPC{
-		signatures: []signatureInfo{ // newest-first, as RPC returns them
-			{Signature: "sig3", Slot: 30, BlockTime: ptr(int64(3000))},
-			{Signature: "sigFailed", Slot: 25, Err: failedErr},
-			{Signature: "sig2", Slot: 20, BlockTime: ptr(int64(2000))},
-			{Signature: "sigOld", Slot: 10},
-		},
-		transactions: map[string]transactionResult{
-			"sig2": txWithLogs(20, 2000, buildBattleLog(1, 2, true)),
-			"sig3": txWithLogs(30, 3000, buildBattleLog(3, 4, false)),
-		},
-	}
-
-	ix, _ := newTestIndexer(t, rpc)
-	ix.lastSig = "sigOld"
-
-	battles := make(chan indexer.BattleEvent, 10)
-	if err := ix.backfillBattles(context.Background(), battles); err != nil {
-		t.Fatalf("backfill: %v", err)
-	}
-	close(battles)
-
-	var events []indexer.BattleEvent
-	for b := range battles {
-		events = append(events, b)
-	}
-	if len(events) != 2 {
-		t.Fatalf("backfilled %d battles, want 2 (failed tx skipped)", len(events))
-	}
-	if events[0].BattleID != "sig2" || events[1].BattleID != "sig3" {
-		t.Errorf("order = %s, %s — want oldest first", events[0].BattleID, events[1].BattleID)
-	}
-	if events[0].FoughtAt != 2000 {
-		t.Errorf("foughtAt = %d, want blockTime 2000", events[0].FoughtAt)
-	}
-	if ix.lastSig != "sig3" {
-		t.Errorf("lastSig = %q, want sig3", ix.lastSig)
-	}
-}
-
-func TestBackfillSetsBaselineOnFirstConnect(t *testing.T) {
-	rpc := &fakeRPC{signatures: []signatureInfo{{Signature: "head", Slot: 99}}}
-	ix, _ := newTestIndexer(t, rpc)
-
-	battles := make(chan indexer.BattleEvent, 1)
-	if err := ix.backfillBattles(context.Background(), battles); err != nil {
-		t.Fatalf("backfill: %v", err)
-	}
-	if len(battles) != 0 {
-		t.Error("baseline connect must not replay history")
-	}
-	if ix.lastSig != "head" {
-		t.Errorf("lastSig = %q, want head", ix.lastSig)
-	}
-}
-
-func ptr[T any](v T) *T { return &v }
-
-func txWithLogs(slot uint64, blockTime int64, logs ...string) transactionResult {
-	var tx transactionResult
-	tx.Slot = slot
-	tx.BlockTime = &blockTime
-	tx.Meta = &struct {
-		Err         json.RawMessage `json:"err"`
-		LogMessages []string        `json:"logMessages"`
-	}{LogMessages: logs}
-	return tx
-}
