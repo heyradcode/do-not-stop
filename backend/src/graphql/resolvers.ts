@@ -84,20 +84,10 @@ export const rootValue = {
             pageSize,
         });
 
-        // The query filters and bands on chain truth, which no longer moves for battles.
-        // Overlaying progression here fixes the levels shown, and drops anyone still on a
-        // backend cooldown that `pet_roster.ready_at` knows nothing about. Two knock-on
-        // effects, both deliberate:
-        //  - a page can come back shorter than `pageSize`, and `total` is an upper bound.
-        //    Matchmaking is a browse, not a ledger; a short page costs nothing.
-        //  - `minLevel` still bands on the pet's on-chain level, so a pet that has climbed
-        //    through backend battles can still be offered to a low-level challenger. Fixing
-        //    that needs the band pushed into the query as a join, not a post-filter.
-        const overlaid = await withBattleProgress(args.chain, rows);
-        const now = BigInt(Math.floor(Date.now() / 1000));
-
+        // No overlay here: unlike the other pet reads, `findReadyOpponents` filters, bands
+        // and orders on level and cooldown, so it merges progression in the query itself.
         return {
-            opponents: overlaid.filter((pet) => pet.readyAt <= now).map(toOpponentPet),
+            opponents: rows.map(toOpponentPet),
             total,
             page,
             pageSize,

@@ -69,7 +69,7 @@ export function overlayRosterPet(pet: RosterPet, progress: ProgressRow | undefin
  * rather than defensive: there is no progression to show for a chain this process does
  * not run battles for.
  */
-function servedChainIdForFamily(chain: Chain): ChainId | null {
+export function servedChainIdForFamily(chain: Chain): ChainId | null {
     const matches = servedChainIds().filter((chainId) => chainFamily(chainId) === chain);
     return matches.length === 1 ? (matches[0] ?? null) : null;
 }

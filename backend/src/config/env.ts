@@ -70,10 +70,13 @@ export const env = {
     },
 
     /**
-     * Where roster reads (matchmaking) are answered: 'grpc' = indexer-go's
-     * RAM cache with automatic Prisma fallback; 'postgres' (default) = Prisma
-     * only. The instant kill switch for the milestone 8 read path — flip back
-     * without redeploying indexer-go.
+     * Where roster reads are answered: 'grpc' = indexer-go's RAM cache with automatic
+     * Prisma fallback; 'postgres' (default) = Prisma only. The instant kill switch for the
+     * milestone 8 read path — flip back without redeploying indexer-go.
+     *
+     * No longer covers matchmaking. `findReadyOpponents` filters and bands on merged
+     * backend progression, which the cache has no view of, so it always reads Postgres
+     * regardless of this setting. Pet-detail reads still honour it.
      */
     rosterReadSource:
         process.env.ROSTER_READ_SOURCE?.trim().toLowerCase() === 'grpc' ? 'grpc' : 'postgres',
