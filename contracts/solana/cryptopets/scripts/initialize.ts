@@ -3,7 +3,7 @@
 // One-time on-chain setup for a freshly deployed `cryptopets` program: runs the
 // `initialize` instruction, which creates the `global-state` PDA (admin + fee
 // config + next_pet_id) and the Metaplex Core collection that every pet is
-// minted into. Without this, mint/breed/battle and pet loading have nothing to
+// minted into. Without this, mint/breed and pet loading have nothing to
 // read or write, so the frontend shows an empty list and create fails.
 //
 // Idempotent: if `global-state` already exists it prints the current config and

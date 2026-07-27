@@ -10,7 +10,6 @@ export const GLOBAL_STATE_SEED = Buffer.from("global-state");
 export const PLAYER_PROFILE_SEED = Buffer.from("player-profile");
 export const PET_SEED = Buffer.from("pet");
 export const BREED_REQUEST_SEED = Buffer.from("breed-request");
-export const BATTLE_REQUEST_SEED = Buffer.from("battle-request");
 export const MINT_REQUEST_SEED = Buffer.from("mint-request");
 export const MARRIAGE_PROPOSAL_SEED = Buffer.from("marriage-proposal");
 export const STUD_FEE_SEED = Buffer.from("stud-fee");
@@ -47,13 +46,6 @@ export function mintRequestPda(programId: anchor.web3.PublicKey, owner: anchor.w
 export function breedRequestPda(programId: anchor.web3.PublicKey, owner: anchor.web3.PublicKey) {
   return anchor.web3.PublicKey.findProgramAddressSync(
     [BREED_REQUEST_SEED, owner.toBuffer()],
-    programId,
-  );
-}
-
-export function battleRequestPda(programId: anchor.web3.PublicKey, owner: anchor.web3.PublicKey) {
-  return anchor.web3.PublicKey.findProgramAddressSync(
-    [BATTLE_REQUEST_SEED, owner.toBuffer()],
     programId,
   );
 }

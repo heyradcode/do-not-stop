@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
 import {
-    battleRequestPda,
     breedRequestPda,
     globalStatePda,
     playerProfilePda,
@@ -30,10 +29,9 @@ describe('solana PDAs', () => {
         const global = globalStatePda(programId)[0];
         const profile = playerProfilePda(programId, owner)[0];
         const breed = breedRequestPda(programId, owner)[0];
-        const battle = battleRequestPda(programId, owner)[0];
 
-        const all = [global, profile, breed, battle].map((k) => k.toBase58());
-        expect(new Set(all).size).toBe(4);
+        const all = [global, profile, breed].map((k) => k.toBase58());
+        expect(new Set(all).size).toBe(3);
     });
 
     it('ties the player profile PDA to its owner', () => {

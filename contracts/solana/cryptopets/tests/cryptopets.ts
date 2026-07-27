@@ -8,9 +8,9 @@
 //
 // Covers the v2 instruction set (plan-contract-upgrade.md) that doesn't
 // depend on a Switchboard On-Demand randomness commit/reveal cycle:
-// initialize, pause/unpause, and the SetConfig setters. The gacha mint, breed,
-// and battle commit/settle flows -- and anything downstream of them (pets,
-// marriage, fee withdrawals) -- require minting a randomness account and
+// initialize, pause/unpause, and the SetConfig setters. The gacha mint and
+// breed flows -- and anything downstream of them (pets, marriage, fee
+// withdrawals) -- require minting a randomness account and
 // driving it through Switchboard's on-chain commit/reveal, which needs the
 // `@switchboard-xyz/on-demand` JS SDK wired into the local validator; that
 // infrastructure doesn't exist yet, so those flows aren't covered here.
@@ -138,9 +138,9 @@ describe("cryptopets", () => {
 
     // Audit finding: unlike every other SetConfig setter, set_level_band_width
     // has no MAX_* bounds check (config.rs), so any u16 is accepted. Low
-    // priority -- an oversized band width just disables level-gating in
-    // commit_battle, it doesn't brick anything -- but documented here so a
-    // future bounds check (and this test) can be added together.
+    // priority -- nothing reads level_band_width since the on-chain battle path
+    // was retired, so an oversized value cannot brick anything -- but documented
+    // here so a future bounds check (and this test) can be added together.
     it("set_level_band_width accepts any u16 (no bounds check)", async () => {
       const value = 65535;
 
@@ -172,10 +172,10 @@ describe("cryptopets", () => {
   });
 
   // TODO (plan §4.3/§4.4): gacha mint (commit_mint/settle_mint), breeding
-  // (commit_breed/settle_breed), battling (commit_battle/settle_battle), and
-  // everything that depends on an existing pet (level_up, train, rename_pet,
-  // set_open_to_challenges, marriage, cancel_mint/cancel_breed/cancel_battle,
-  // clear_stale_marriage, withdraw_stud_fees, sync_metadata). All of these
+  // (commit_breed/settle_breed), and everything that depends on an existing pet
+  // (level_up, train, rename_pet, set_open_to_challenges, marriage,
+  // cancel_mint/cancel_breed, clear_stale_marriage, withdraw_stud_fees,
+  // sync_metadata). All of these
   // need a pet, which only comes from settle_mint/settle_breed minting a
   // Metaplex Core asset after a Switchboard On-Demand randomness reveal --
   // build that test harness (Randomness.create/commitIx/revealIx from

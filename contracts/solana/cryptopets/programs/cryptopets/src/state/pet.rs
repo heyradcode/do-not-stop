@@ -21,7 +21,8 @@ pub struct PetAccount {
     pub name: [u8; PetAccount::MAX_NAME_LEN],
     pub name_len: u8,
     /// Interim defender-consent fix (§3.5/§6 Solana #3): when false, this pet cannot be
-    /// targeted as a defender in `commit_battle`. Owner-toggleable, defaults to true.
+    /// targeted as a defender. Owner-toggleable, defaults to true. Enforced by the
+    /// backend matchmaker, not by this program (§L Phase 6).
     pub open_to_challenges: bool,
     /// XP toward the next level (§3.4); auto-levels via [`PetAccount::add_xp`] at `100 * level`.
     pub xp: u32,

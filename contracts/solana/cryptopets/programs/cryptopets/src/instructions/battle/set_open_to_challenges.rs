@@ -2,8 +2,12 @@ use anchor_lang::prelude::*;
 
 use crate::{errors::ErrorCode, utils::metadata::core_asset_owner, state::PetAccount};
 
-/// Interim defender-consent fix (§3.5/§6 Solana #3): lets a pet's owner opt their pet
-/// out of (or back into) being targeted as a defender in `commit_battle`.
+/// Defender consent (§3.5/§6 Solana #3): lets a pet's owner opt their pet out of (or
+/// back into) being targeted as a defender.
+///
+/// The on-chain battle path that enforced this flag is retired (§L Phase 6), so the
+/// program itself no longer reads it. The flag stays as the owner's stated preference,
+/// published on the pet account for the backend matchmaker to honour.
 pub fn handler(ctx: Context<SetOpenToChallenges>, value: bool) -> Result<()> {
     require_keys_eq!(
         core_asset_owner(&ctx.accounts.pet_asset.to_account_info())?,

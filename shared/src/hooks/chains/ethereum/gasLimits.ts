@@ -2,7 +2,7 @@
 // The VRF/Entropy request and settle txs can't be gas-estimated by the RPC —
 // estimateGas returns the block limit ("gas limit too high") — so each gets an
 // explicit, empirically sized limit. Centralized here so values shared across
-// hooks (e.g. settleBattle in usePendingBattle and useEvmBattleFlow) stay in
+// hooks (e.g. settleBreed in usePendingBreed and useBreedPets) stay in
 // lockstep instead of drifting as separate literals.
 export const EVM_GAS_LIMITS = {
     // PetCore
@@ -14,11 +14,6 @@ export const EVM_GAS_LIMITS = {
     // GameLogic — async mint
     requestMintStarter: 500_000n,
     settleMint: 500_000n,
-
-    // GameLogic — async battle (request → VRF → settle)
-    requestBattle: 800_000n,
-    settleBattle: 800_000n,
-    cancelBattle: 200_000n,
 
     // GameLogic — async breed (requestCreateFromDNA → VRF → settle)
     requestBreed: 800_000n,

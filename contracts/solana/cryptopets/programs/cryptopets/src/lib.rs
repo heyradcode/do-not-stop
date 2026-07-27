@@ -45,17 +45,6 @@ pub mod cryptopets {
         unpause::handler(ctx)
     }
 
-    pub fn commit_battle(
-        ctx: Context<CommitBattle>,
-        randomness_account: Pubkey,
-    ) -> Result<()> {
-        commit_battle::handler(ctx, randomness_account)
-    }
-
-    pub fn settle_battle(ctx: Context<SettleBattle>) -> Result<()> {
-        settle_battle::handler(ctx)
-    }
-
     pub fn commit_breed(
         ctx: Context<CommitBreed>,
         randomness_account: Pubkey,
@@ -86,10 +75,6 @@ pub mod cryptopets {
 
     pub fn sync_metadata(ctx: Context<SyncMetadata>) -> Result<()> {
         sync_metadata::handler(ctx)
-    }
-
-    pub fn cancel_battle(ctx: Context<CancelBattle>) -> Result<()> {
-        cancel_battle::handler(ctx)
     }
 
     pub fn cancel_breed(ctx: Context<CancelBreed>) -> Result<()> {
@@ -150,10 +135,6 @@ pub mod cryptopets {
 
     pub fn set_breed_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
         config::set_breed_fee_lamports(ctx, value)
-    }
-
-    pub fn set_battle_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
-        config::set_battle_fee_lamports(ctx, value)
     }
 
     pub fn set_stud_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {

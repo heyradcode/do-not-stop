@@ -5,7 +5,6 @@ const GLOBAL_STATE_SEED = Buffer.from('global-state');
 const PLAYER_PROFILE_SEED = Buffer.from('player-profile');
 const PET_SEED = Buffer.from('pet');
 const BREED_REQUEST_SEED = Buffer.from('breed-request');
-const BATTLE_REQUEST_SEED = Buffer.from('battle-request');
 const MARRIAGE_PROPOSAL_SEED = Buffer.from('marriage-proposal');
 const FEE_VAULT_SEED = Buffer.from('fee-vault');
 const MINT_REQUEST_SEED = Buffer.from('mint-request');
@@ -22,11 +21,6 @@ export const playerProfilePda = (programId: PublicKey, owner: PublicKey): [Publi
 /** Pending breed PDA while Switchboard randomness is in flight. */
 export const breedRequestPda = (programId: PublicKey, owner: PublicKey): [PublicKey, number] => {
     return PublicKey.findProgramAddressSync([BREED_REQUEST_SEED, owner.toBuffer()], programId);
-};
-
-/** Pending battle PDA (one per attacker wallet). */
-export const battleRequestPda = (programId: PublicKey, attacker: PublicKey): [PublicKey, number] => {
-    return PublicKey.findProgramAddressSync([BATTLE_REQUEST_SEED, attacker.toBuffer()], programId);
 };
 
 /** v2.1 pet PDA keyed by Metaplex Core asset address: seeds ["pet", asset_pubkey]. */

@@ -2,8 +2,7 @@ use crate::{
     errors::ErrorCode,
     state::{
         GlobalState, PetAccount, CURRENT_ACCOUNT_VERSION, DEFAULT_BASE_MINT_FEE_LAMPORTS,
-        DEFAULT_BATTLE_COOLDOWN_SECONDS, DEFAULT_BATTLE_FEE_LAMPORTS,
-        DEFAULT_BREED_COOLDOWN_BASE_SECONDS,
+        DEFAULT_BATTLE_COOLDOWN_SECONDS, DEFAULT_BREED_COOLDOWN_BASE_SECONDS,
         DEFAULT_BREED_FEE_LAMPORTS, DEFAULT_GENERATION_CAP, DEFAULT_LEVEL_BAND_WIDTH,
         DEFAULT_MARRIAGE_COOLDOWN_SECONDS, DEFAULT_MAX_LEVEL, DEFAULT_NEWBORN_COOLDOWN_SECONDS,
         DEFAULT_POOL_SIZE, DEFAULT_PROPOSAL_TTL_SECONDS, DEFAULT_RANDOMNESS_EXPIRY_SLOTS,
@@ -32,7 +31,6 @@ pub fn handler(ctx: Context<Initialize>, level_up_fee_lamports: u64) -> Result<(
     global_state.train_cooldown_seconds = DEFAULT_TRAIN_COOLDOWN_SECONDS;
     global_state.train_xp = DEFAULT_TRAIN_XP;
     global_state.breed_fee_lamports = DEFAULT_BREED_FEE_LAMPORTS;
-    global_state.battle_fee_lamports = DEFAULT_BATTLE_FEE_LAMPORTS;
     global_state.stud_fee_lamports = DEFAULT_STUD_FEE_LAMPORTS;
     global_state.marriage_cooldown_seconds = DEFAULT_MARRIAGE_COOLDOWN_SECONDS;
     global_state.proposal_ttl_seconds = DEFAULT_PROPOSAL_TTL_SECONDS;

@@ -5,7 +5,7 @@ use crate::{
     state::{GlobalState, MintRequest},
 };
 
-/// Permissionless cleanup (plan §4.3, mirrors `cancel_battle`/`cancel_breed`): once the
+/// Permissionless cleanup (plan §4.3, mirrors `cancel_breed`): once the
 /// committed Switchboard randomness has gone unrevealed for
 /// `global_state.randomness_expiry_slots`, anyone may close the stuck `MintRequest` and
 /// refund its rent to the owner who paid for it. The mint fee charged at `commit_mint` is

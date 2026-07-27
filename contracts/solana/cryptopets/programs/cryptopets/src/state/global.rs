@@ -4,9 +4,13 @@ use crate::errors::ErrorCode;
 
 // ─── Config defaults (mirrors EVM GameConfig initializers) ────────────────────
 
+/// Battle-cooldown lockout applied to a pet's `ready_time`. Despite the name, the only
+/// writer left is `commit_breed`, which locks both parents out for the pending-breed
+/// window; the post-battle cooldown itself is now the backend's
+/// (`BATTLE_COOLDOWN_SECONDS`), applied to `pet_battle_progress`.
 pub const DEFAULT_BATTLE_COOLDOWN_SECONDS: i64 = 5;
 
-/// Slots a committed Switchboard randomness has to be revealed before `cancel_battle` /
+/// Slots a committed Switchboard randomness has to be revealed before `cancel_mint` /
 /// `cancel_breed` may close the stuck request (§5: ~150 slots, ~1 minute).
 pub const DEFAULT_RANDOMNESS_EXPIRY_SLOTS: u64 = 150;
 
@@ -40,21 +44,6 @@ pub const DEFAULT_POOL_SIZE: u8 = 8;
 /// Fee charged by `commit_breed`, transferred to the fee vault (plan §4.3, mirrors EVM
 /// `GameConfig.breedFee`).
 pub const DEFAULT_BREED_FEE_LAMPORTS: u64 = 10_000_000; // 0.01 SOL
-
-/// Fee charged by `commit_battle`, transferred to the fee vault (mirrors EVM
-/// `GameConfig.battleFee`). Funds the settle keeper's own `settle_battle` transaction,
-/// which it previously sent entirely unfunded. Refunded via `cancel_battle` — no settle
-/// tx (and therefore no keeper cost) is ever sent for a cancelled request. Cheaper than
-/// [`DEFAULT_BREED_FEE_LAMPORTS`]/[`DEFAULT_BASE_MINT_FEE_LAMPORTS`] since `settle_battle`
-/// does no mpl-core mint CPI. Starting estimate; tune via `set_battle_fee_lamports`
-/// against observed keeper compute-unit spend.
-///
-/// NOTE: the already-deployed devnet `GlobalState` account predates this field — it lives
-/// in what was previously `_reserved` padding, so after a program upgrade it reads back as
-/// `0` (untouched reserved bytes) until an admin explicitly calls
-/// `set_battle_fee_lamports(DEFAULT_BATTLE_FEE_LAMPORTS)` once. `initialize` only sets it
-/// for a genuinely fresh `GlobalState`.
-pub const DEFAULT_BATTLE_FEE_LAMPORTS: u64 = 5_000_000; // 0.005 SOL
 
 /// Base fee for the gacha mint (plan §4.3, mirrors EVM `GameConfig.baseMintFee`).
 /// Escalates per wallet as `baseMintFee << min(mint_count, 7)` (up to 128x).
@@ -92,7 +81,6 @@ pub const MAX_BREED_COOLDOWN_BASE_SECONDS: i64 = BREED_COOLDOWN_CAP_SECONDS;
 pub const MAX_NEWBORN_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_BASE_MINT_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
 pub const MAX_BREED_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
-pub const MAX_BATTLE_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
 pub const MAX_TRAIN_FEE_LAMPORTS: u64 = 1_000_000_000; // 1 SOL
 pub const MAX_TRAIN_COOLDOWN_SECONDS: i64 = 7 * 24 * 60 * 60;
 pub const MAX_TRAIN_XP: u32 = 10_000;
@@ -152,11 +140,12 @@ pub struct GlobalState {
     /// `initialize`. Collection/plugin authority is the `GlobalState` PDA; `settle_mint`
     /// and `settle_breed` CPI into `mpl-core` to mint pet assets into it.
     pub collection: Pubkey,
-    /// Fee charged by `commit_battle`, transferred to the fee vault (mirrors EVM
-    /// `GameConfig.battleFee`). See [`DEFAULT_BATTLE_FEE_LAMPORTS`] for why the
-    /// already-deployed devnet account reads `0` here until explicitly set.
-    pub battle_fee_lamports: u64,
-    pub _reserved: [u8; 16],
+    /// Reserved padding for fields added by future upgrades without moving any of the
+    /// above. It grew back from 16 to 24 when `battle_fee_lamports` was removed with the
+    /// on-chain battle path (§L Phase 6): the field sat immediately before this, so
+    /// reclaiming its 8 bytes here keeps every preceding offset and [`GlobalState::SPACE`]
+    /// exactly as deployed. A live account simply reads the old fee back as padding.
+    pub _reserved: [u8; 24],
 }
 
 impl GlobalState {
@@ -185,8 +174,7 @@ impl GlobalState {
         + 8 /* marriage_cooldown_seconds */
         + 8 /* proposal_ttl_seconds */
         + 32 /* collection */
-        + 8 /* battle_fee_lamports */
-        + 16; /* reserved */
+        + 24; /* reserved */
 }
 
 #[account]

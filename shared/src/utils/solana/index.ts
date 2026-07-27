@@ -5,7 +5,6 @@ export {
     playerProfilePda,
     petPdaByAsset,
     breedRequestPda,
-    battleRequestPda,
     marriageProposalPda,
     feeVaultPda,
     mintRequestPda,

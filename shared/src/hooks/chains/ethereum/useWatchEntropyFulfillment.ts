@@ -30,18 +30,16 @@ type UseWatchEntropyFulfillmentParams = {
     /** requestId (= entropy sequenceNumber as uint256) to wait on; null disables the watch. */
     requestId: bigint | null;
     /** Fired once `Revealed` lands for `requestId` called by our GameLogic. `randomNumber`
-     *  is the raw revealed word (same 32 bytes GameLogic stores as `uint256(randomNumber)`
-     *  and CombatSim.simulate's `seed` — this is what lets the client run the same
-     *  deterministic sim locally the moment reveal happens, plan-realtime-battle-impl.md
-     *  Phase 4, without waiting for settleBattle to be mined). */
+     *  is the raw revealed word — the same 32 bytes GameLogic stores as
+     *  `uint256(randomNumber)` and settles the request from. */
     onFulfilled?: (requestId: bigint, randomNumber: `0x${string}`) => void;
 };
 
 /**
- * Resolves when Pyth Entropy reveals randomness for `requestId`. Used by the
- * mint flow (analogous to `useWatchVrfFulfillment` for battle/breed), but watches
- * the Entropy contract's `Revealed` event filtered by `caller = gameLogicAddress`
- * and `sequenceNumber = requestId` (the two are the same value, different types).
+ * Resolves when Pyth Entropy reveals randomness for `requestId`. Used by the mint
+ * and breed flows, watching the Entropy contract's `Revealed` event filtered by
+ * `caller = gameLogicAddress` and `sequenceNumber = requestId` (the two are the
+ * same value, different types).
  */
 export const useWatchEntropyFulfillment = ({
     entropyAddress,
