@@ -2,10 +2,11 @@ import { env } from '@config/env';
 import { startKeeper, type SettleKeeperHandle } from './keeper';
 
 /**
- * Settles GameLogic battle/breed/mint requests from a backend-held wallet the
- * moment Pyth Entropy reveals, so the player never has to send the second
- * (settle) transaction themselves. See docs/plan-realtime-battle-ux.md and
- * docs/plan-realtime-battle-impl.md Phase 2.
+ * Settles GameLogic breed/mint requests from a backend-held wallet the moment
+ * Pyth Entropy reveals, so the player never has to send the second (settle)
+ * transaction themselves. See docs/plan-realtime-battle-ux.md and
+ * docs/plan-realtime-battle-impl.md Phase 2 for the original design; battles no
+ * longer take this path at all (§L Phase 6), breed and mint still do.
  *
  * Off unless KEEPER_ENABLED=true, mirroring the indexer-go gRPC stream
  * (src/grpc/battleStream.ts): the feature simply doesn't start rather than

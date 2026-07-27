@@ -11,8 +11,6 @@ export interface SolanaFees {
     levelUpFeeLamports?: bigint;
     /** GlobalState.breed_fee_lamports — same-owner breed fee. */
     breedFeeLamports?: bigint;
-    /** GlobalState.battle_fee_lamports — funds the settle keeper's settle_battle tx. */
-    battleFeeLamports?: bigint;
     /** GlobalState.train_fee_lamports — base train fee, level-scaled at call time. */
     trainFeeLamports?: bigint;
     /** GlobalState.stud_fee_lamports — added on top of breedFee for cross-owner breeding. */
@@ -69,7 +67,6 @@ export const useSolanaFees = (enabled: boolean): SolanaFees => {
         baseMintFeeLamports: baseMint,
         levelUpFeeLamports:  toBigInt(gs?.levelUpFeeLamports),
         breedFeeLamports:    toBigInt(gs?.breedFeeLamports),
-        battleFeeLamports:   toBigInt(gs?.battleFeeLamports),
         trainFeeLamports:    toBigInt(gs?.trainFeeLamports),
         studFeeLamports:     toBigInt(gs?.studFeeLamports),
         walletMintCount:     mintCount,

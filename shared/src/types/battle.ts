@@ -1,12 +1,19 @@
 /**
- * Decoded `BattleResolved` event from GameLogic (EVM). Carries everything the
- * fight-replay UI needs: the VRF seed (to re-run the deterministic combat sim)
- * plus the resolved outcome and XP deltas.
+ * A resolved battle, as the UI renders it.
+ *
+ * Previously the decoded `BattleResolved` event from GameLogic; battles are now resolved by
+ * the backend (§L Phase 6), so this is built from a *verified* signed receipt instead. The
+ * field names are kept so the existing UI is unchanged, but two now mean something slightly
+ * different: `requestId` is always 0 (there is no on-chain request behind a backend battle)
+ * and `vrfSeed` is the drand-derived battle seed rather than a Pyth Entropy word. Both still
+ * re-run the deterministic combat sim identically.
  */
 export interface BattleResolvedResult {
+    /** Always 0 for a backend battle: there is no on-chain request to reference. */
     requestId: bigint;
     winnerId: bigint;
     loserId: bigint;
+    /** The battle seed, derived from the committed drand round (§E). */
     vrfSeed: bigint;
     /** True when petId1 (the requester's attacker) won. */
     firstWins: boolean;
@@ -14,22 +21,13 @@ export interface BattleResolvedResult {
     winnerHpRemaining: number;
     xpWin: number;
     xpLoss: number;
+    /**
+     * Whether the attacker's pet levelled up.
+     *
+     * Carried on the result because on-chain pet stats no longer move when a battle
+     * resolves — backend progression lives in `pet_battle_progress` — so the old approach of
+     * diffing refreshed chain stats can never detect it.
+     */
+    attackerLeveledUp: boolean;
 }
 
-/**
- * Stage of the async EVM battle flow: request → VRF fulfill → settle → resolved.
- *
- * `awaiting-settle` is the normal post-reveal state: the backend settle keeper
- * (plan-realtime-battle-impl.md Phase 2) is expected to submit `settleBattle`
- * without the player's wallet. `settling` only appears if that keeper hasn't
- * settled within the fallback timeout and the frontend sends it itself.
- */
-export type EvmBattlePhase =
-    | 'idle'
-    | 'requesting'
-    | 'awaiting-vrf'
-    | 'awaiting-settle'
-    | 'settling'
-    | 'resolving'
-    | 'resolved'
-    | 'error';

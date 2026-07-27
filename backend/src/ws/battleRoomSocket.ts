@@ -1,24 +1,23 @@
 import type { Server } from 'node:http';
 import { URL } from 'node:url';
 
-// `WebSocket.Server` (liveBattleSocket.ts's form) is only attached to the default export
-// under `ws`'s CJS entry point; its ESM entry (`wrapper.mjs`, what Vitest resolves) exports
-// the server class only as the named `WebSocketServer`, with no `.Server` static property.
-// The named form resolves correctly under both, so it's used here instead.
+// `WebSocket.Server` is only attached to the default export under `ws`'s CJS entry point;
+// its ESM entry (`wrapper.mjs`, what Vitest resolves) exports the server class only as the
+// named `WebSocketServer`, with no `.Server` static property. The named form resolves
+// correctly under both, so it's used here instead.
 import WebSocket, { WebSocketServer } from 'ws';
 
 /**
  * The per-room, notification-only channel for backend-authoritative battles
  * (docs/plan-backend-battle-architecture.md §J).
  *
- * This is deliberately a second, separate socket from `liveBattleSocket.ts`, not
- * a change to it. That socket's global broadcast is correct for what it carries
- * today: chain-derived data for the legacy on-chain flow, filtered client-side
- * by `(chainId, requestId)`, which is fine because anyone could read the same
- * data straight off the chain anyway. Backend-resolved battles carry full
- * combat logs, which is not chain-derived data — a global broadcast would tell
- * every connected client the outcome of every battle as it resolves. So this
- * channel scopes delivery to one room, and carries no battle content at all:
+ * It replaced a global-broadcast socket that pushed chain-derived data for the
+ * on-chain flow, filtered client-side by `(chainId, requestId)`. Broadcasting was
+ * acceptable there because anyone could read the same data straight off the chain
+ * anyway. Backend-resolved battles carry full combat logs, which is not chain-derived
+ * data — a global broadcast would tell every connected client the outcome of every
+ * battle as it resolves. So this channel scopes delivery to one room, and carries
+ * no battle content at all:
  * only "battleId X changed to state Y, go re-fetch it" (§J's read APIs, Step
  * 27). A client that missed a notification, or was never connected, gets the
  * exact same information by polling those same endpoints — this socket makes

@@ -170,11 +170,13 @@ export const env = {
         /** Messages claimed per poll, per topic. */
         workerBatchSize: Number(process.env.BATTLE_WORKER_BATCH_SIZE?.trim() || '10'),
         /**
-         * Backend-mode post-battle cooldown, applied to both pets after a signed
-         * receipt (§C's `pet_battle_progress`, distinct from the on-chain
-         * `pet_roster.ready_at`). Matches `GameConfig.battleCooldown`'s 900s
-         * on-chain default; there is no requirement the two agree going forward; this
-         * is just a sane starting value rather than an arbitrary one.
+         * Post-battle cooldown, applied to both pets after a signed receipt
+         * (§C's `pet_battle_progress`, distinct from the indexed `pet_roster.ready_at`,
+         * which breeding still writes).
+         *
+         * 900s carries over from the retired on-chain `GameConfig.battleCooldown`, which
+         * no longer exists (§L Phase 6) — it is kept as a sane starting value rather than
+         * an arbitrary one, and is now free to change independently.
          */
         cooldownSeconds: Number(process.env.BATTLE_COOLDOWN_SECONDS?.trim() || '900'),
         /**

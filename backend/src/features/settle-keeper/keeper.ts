@@ -43,8 +43,8 @@ const MAX_LOG_RANGE_BLOCKS = 2000n;
 const POLL_INTERVAL_MS = 4_000;
 
 /** Below this, settle txs (~800k gas, see SETTLE_GAS_LIMIT) risk failing outright on an
- *  unfunded keeper wallet — nothing tops the wallet up automatically (see GameConfig.battleFee
- *  doc comment in CLAUDE.md), so this is just a loud, periodic reminder to do it manually. */
+ *  unfunded keeper wallet — nothing tops the wallet up automatically, so this is just a
+ *  loud, periodic reminder to do it manually from `withdraw()` proceeds. */
 const MIN_BALANCE_WEI = 20_000_000_000_000_000n; // 0.02 ETH
 const BALANCE_CHECK_INTERVAL_MS = 10 * 60_000;
 

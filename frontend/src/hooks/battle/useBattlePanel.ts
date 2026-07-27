@@ -63,18 +63,17 @@ export interface UseBattlePanel {
  * in their own hooks (`useBattleOutcome`, `useResultDialogue`) and are
  * composed below.
  *
- * No rematch action: GameLogic.sol's settleBattle puts both participants on a
- * 900s battleCooldown (contracts/ethereum/src/GameConfig.sol) regardless of
- * outcome, so the exact pairing that just fought can never legally re-battle
- * immediately after a result — a same-opponent "Rematch" button would always
- * fail with a cooldown error. Players re-battle by picking a fresh opponent
- * from the setup screen instead.
+ * No rematch action: publishing a receipt puts both participants on a cooldown
+ * (`BATTLE_COOLDOWN_SECONDS`, 900s by default) regardless of outcome, so the exact
+ * pairing that just fought can never legally re-battle immediately after a result —
+ * a same-opponent "Rematch" button would always be rejected. Players re-battle by
+ * picking a fresh opponent from the setup screen instead.
  */
 export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBattlePanel => {
     const navigate = useNavigate();
     const location = useLocation();
     const capabilities = useChainCapabilities();
-    const { pets, refetch, isLoading: petsLoading } = usePetList();
+    const { pets, refetch } = usePetList();
     // Pre-select the pet the player clicked "Battle" on from its gallery card
     // (navigate(BATTLE_PATH, { state: { petId } })) — falls back to unselected
     // for the generic nav entry, which carries no state. Only read once, on
@@ -119,25 +118,22 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         refetch: refetchOpponents,
     } = useOpponents({ chain: activeChainKind });
 
-    // Outcome detection (snapshot diff against refreshed on-chain stats).
-    const outcome = useBattleOutcome({ pets, selectedPet1, petsLoading });
+    // Victory/defeat and level-up, both read straight off the verified receipt.
+    const outcome = useBattleOutcome();
 
     const handleSuccess = useCallback(
-        (result: BattleResolvedResult | null) => {
+        (result: BattleResolvedResult) => {
             setValidationError(null);
-            outcome.markPendingOutcome();
-            // EVM: BattleResolved is authoritative — petId1 is the player's pet, so
-            // firstWins is the player's verdict. Solana resolves via the stat diff.
-            if (result) {
-                outcome.applyResolvedOutcome(result.firstWins);
-                const local = liveReplayRef.current?.result;
-                if (local && local.firstWins !== result.firstWins) {
-                    console.error('[battle] live-replay mismatch — on-chain result is authoritative', {
-                        onChain: result,
-                        local,
-                    });
-                    setMismatchNotice(true);
-                }
+            // The verified receipt is authoritative — petId1 is the player's pet, so
+            // firstWins is the player's verdict on either chain.
+            outcome.applyResolvedOutcome(result.firstWins, result.attackerLeveledUp);
+            const local = liveReplayRef.current?.result;
+            if (local && local.firstWins !== result.firstWins) {
+                console.error('[battle] live-replay mismatch — the signed receipt is authoritative', {
+                    receipt: result,
+                    local,
+                });
+                setMismatchNotice(true);
             }
             // Result display gates on the live animation finishing too (or the
             // mismatch notice, if one fired) — see the effect below.
@@ -223,25 +219,20 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Receipt errors are folded into `battle.error` by the chain adapter.
     usePetErrorToast(battle.error, null, validationError, BATTLE_FAIL_MESSAGE);
 
-    const usesSwitchboardVrf = capabilities.randomness.provider === 'switchboard';
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
-    const subtitle = usesSwitchboardVrf
-        ? 'Pick your fighter and an opponent (Switchboard VRF)'
-        : 'Pick your fighter and an opponent';
-    const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Starting Battle...';
-    // Fall back to the retained battle id: the lifecycle auto-resets (hash
-    // cleared) once the battle settles, but the hint should keep showing.
-    const hashHint = usesSwitchboardVrf
-        ? formatTxHashHint(battle.hash ?? settledBattleId ?? undefined)
-        : null;
+    // Chain-blind: a battle is seeded from a committed drand round on either chain, so
+    // there is no per-chain VRF provider to name here any more.
+    const subtitle = 'Pick your fighter and an opponent';
+    const pendingLabel = 'Starting Battle...';
+    // The battle id, shown so a player can look their receipt up later. Falls back to the
+    // retained id: `battle.hash` clears once the battle settles, the hint should not.
+    const hashHint = formatTxHashHint(battle.hash ?? settledBattleId ?? undefined);
 
     const startBattle = useCallback(() => {
         if (!selectedPet1 || !opponent) {
             setValidationError(VALIDATION_MESSAGE);
             return false;
         }
-
-        if (selectedFighter) outcome.snapshotFighterStats(selectedFighter);
 
         setValidationError(null);
         void battle.mutate({
@@ -250,7 +241,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
             defenderOwner: opponent.owner,
         });
         return true;
-    }, [battle, opponent, selectedFighter, selectedPet1, outcome]);
+    }, [battle, opponent, selectedPet1]);
 
     // Start Battle: generate AI pre-fight taunts, then hold the wallet prompt until
     // they finish playing (handleTauntsComplete / the empty-taunts fallback effect
@@ -341,7 +332,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         taunts.reset();
         setValidationError(null);
         outcome.resetOutcome();
-        outcome.clearSnapshot();
         setSelectedPet1('');
         setSelectedOpponent('');
         navigate(DASHBOARD_HOME);

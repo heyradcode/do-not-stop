@@ -1,18 +1,12 @@
 /**
- * Node-safe surface for the backend settle-keepers / live-battle socket.
+ * Node-safe surface for the backend settle keeper.
  *
  * Deliberately does NOT re-export the main barrel (`./index.ts`): that pulls in
  * React hooks/contexts (.tsx) which the backend typechecks without JSX and
  * which Node has no business loading at runtime.
  */
 
-export {
-    encodeBattleResolvedResult,
-    decodeBattleResolvedResult,
-    type BattleResolvedResultWire,
-    type LiveBattleWireMessage,
-} from './types/liveBattleSocket';
-export type { BattleResolvedResult, EvmBattlePhase } from './types/battle';
+export type { BattleResolvedResult } from './types/battle';
 export {
     simulate,
     encodeSimOutcome,

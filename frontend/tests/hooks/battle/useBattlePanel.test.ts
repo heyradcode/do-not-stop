@@ -25,7 +25,7 @@ vi.mock('@components/pet/interactions/panels/battle/battle-utils', () => ({
     toDialoguePet: (p: { id: string; name: string }) => ({ petId: p.id, name: p.name }),
 }));
 
-const battleOutcome = { battleOutcome: null as null | object, markPendingOutcome: vi.fn(), applyResolvedOutcome: vi.fn(), resetOutcome: vi.fn(), clearSnapshot: vi.fn(), snapshotFighterStats: vi.fn() };
+const battleOutcome = { battleOutcome: null as null | object, applyResolvedOutcome: vi.fn(), resetOutcome: vi.fn() };
 vi.mock('@hooks/battle/useBattleOutcome', () => ({ useBattleOutcome: () => battleOutcome }));
 
 const resultDialogue = { resultTurns: [], dialogueLoading: false, attackerName: '', defenderName: '', markResultDialogueDone: vi.fn(), resultDialogueDone: false, resetResultDialogue: vi.fn() };
@@ -50,7 +50,6 @@ vi.mock('@shared/core', () => ({
     useBattleTaunts: () => taunts,
     useCreateBattleRoom: () => ({ createRoom, isLoading: false }),
     useOpponents: () => ({ opponents, isLoading: false, isFetching: false, refetch: vi.fn() }),
-    usePendingBattle: () => ({ isPending: false }),
     useWinEstimate: () => ({ winProbability: null, isLoading: false, samples: null }),
 }));
 
@@ -150,16 +149,11 @@ describe('useBattlePanel', () => {
         expect(result.current.overlay.open).toBe(false);
     });
 
-    it('handleSuccess marks pending outcome and refetches', () => {
+    it('handleSuccess applies the verified receipt outcome and refetches', () => {
         renderHook(() => useBattlePanel({ isStandaloneView: false }));
-        act(() => { capturedOnSuccess?.(null); });
-        expect(battleOutcome.markPendingOutcome).toHaveBeenCalled();
-    });
-
-    it('handleSuccess applies resolved outcome when result is provided', () => {
-        renderHook(() => useBattlePanel({ isStandaloneView: false }));
-        act(() => { capturedOnSuccess?.({ firstWins: true }); });
-        expect(battleOutcome.applyResolvedOutcome).toHaveBeenCalledWith(true);
+        act(() => { capturedOnSuccess?.({ firstWins: true, attackerLeveledUp: true }); });
+        // Both values come from the receipt; nothing is inferred from refreshed chain stats.
+        expect(battleOutcome.applyResolvedOutcome).toHaveBeenCalledWith(true, true);
     });
 
     it('overlay.open closes when battle.error is set after battle starts', async () => {
@@ -256,10 +250,10 @@ describe('useBattlePanel', () => {
 
             expect(errorSpy).toHaveBeenCalledWith(
                 expect.stringContaining('mismatch'),
-                expect.objectContaining({ onChain: { firstWins: false }, local: { firstWins: true } }),
+                expect.objectContaining({ receipt: { firstWins: false }, local: { firstWins: true } }),
             );
-            // The on-chain result must still be applied as authoritative despite the mismatch.
-            expect(battleOutcome.applyResolvedOutcome).toHaveBeenCalledWith(false);
+            // The receipt must still be applied as authoritative despite the mismatch.
+            expect(battleOutcome.applyResolvedOutcome).toHaveBeenCalledWith(false, undefined);
             // Result card doesn't appear immediately — the notice holds it briefly.
             expect(result.current.overlay.showResult).toBe(false);
 

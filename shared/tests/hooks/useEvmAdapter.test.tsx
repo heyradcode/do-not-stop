@@ -36,7 +36,6 @@ const fees = {
     trainFee: 3n,
     breedFee: 4n,
     studFee: 5n,
-    battleFee: 1n,
     entropyFee: 0n,
 };
 const config: {

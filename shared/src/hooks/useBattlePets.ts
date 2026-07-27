@@ -37,8 +37,12 @@ export interface BattlePetsArgs {
 }
 
 export type UseBattlePetsOptions = {
-    /** Fires once the receipt is signed and has verified locally. */
-    onSuccess?: (result: BattleResolvedResult | null) => void;
+    /**
+     * Fires once, when the receipt is signed and has verified locally.
+     *
+     * Never fires with a null result: an unverified receipt is simply not surfaced.
+     */
+    onSuccess?: (result: BattleResolvedResult) => void;
     /** Room to follow for push updates, and the socket to reach it on. */
     roomId?: string | null;
     roomSocketUrl?: string | undefined;
@@ -172,5 +176,6 @@ function toResolvedResult(receipt: BattleReceipt): BattleResolvedResult {
         winnerHpRemaining: receipt.result.winnerHpRemaining,
         xpWin: attackerWon ? receipt.progression.attacker.xpAwarded : receipt.progression.defender.xpAwarded,
         xpLoss: attackerWon ? receipt.progression.defender.xpAwarded : receipt.progression.attacker.xpAwarded,
+        attackerLeveledUp: receipt.progression.attacker.leveledUp,
     };
 }

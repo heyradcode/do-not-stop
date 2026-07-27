@@ -7,7 +7,6 @@ import { configureSigner, loadPersistedSigningKeys } from '@features/battle-sign
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { type BattleWorkerHandle, startBattleWorker } from '@features/battle-worker';
 import { startBatchAnchor, stopBatchAnchor } from '@features/battle-anchor';
-import { startLiveBattleSocket, stopLiveBattleSocket } from '@ws/liveBattleSocket';
 import { startBattleRoomSocket, stopBattleRoomSocket } from '@ws/battleRoomSocket';
 
 let battleWorker: BattleWorkerHandle | undefined;
@@ -22,10 +21,6 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     console.log(`🛡️  Protected endpoints: http://localhost:${port}/api/protected`);
     console.log(`⚔️  GraphQL endpoint: http://localhost:${port}/graphql`);
 
-    // Pushes a computed battle sim to the frontend the moment entropy reveals (settle
-    // keeper's job). Always listening; only actually broadcasts once the keeper is enabled
-    // with KEEPER_GAME_CONFIG_ADDRESS set.
-    startLiveBattleSocket(server);
     // Notification-only per-room channel for backend-authoritative battles (§J). Always on;
     // a client only gets pushed to if it connected with a roomId it already knows about.
     startBattleRoomSocket(server);
@@ -85,7 +80,6 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     stopSettleKeeper();
     battleWorker?.stop();
     stopBatchAnchor();
-    stopLiveBattleSocket();
     stopBattleRoomSocket();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
