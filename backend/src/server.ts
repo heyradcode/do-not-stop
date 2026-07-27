@@ -2,7 +2,6 @@ import './register-path-aliases';
 import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import app from './app';
-import { startBattleStream, stopBattleStream } from '@grpc-client/battleStream';
 import { configureSigner, loadPersistedSigningKeys } from '@features/battle-signer';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { type BattleWorkerHandle, startBattleWorker } from '@features/battle-worker';
@@ -24,8 +23,6 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     // Notification-only per-room channel for backend-authoritative battles (§J). Always on;
     // a client only gets pushed to if it connected with a roomId it already knows about.
     startBattleRoomSocket(server);
-    // indexer-go battle push (chain-truth settles). No-op unless INDEXER_GRPC_ADDR is set.
-    startBattleStream();
     // Settles GameLogic battle/breed/mint requests once entropy reveals. No-op unless
     // KEEPER_ENABLED is set.
     startSettleKeeper();
@@ -76,7 +73,6 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     }, SHUTDOWN_TIMEOUT_MS);
     forceExit.unref(); // don't let the failsafe itself keep the process alive
 
-    stopBattleStream();
     stopSettleKeeper();
     battleWorker?.stop();
     stopBatchAnchor();

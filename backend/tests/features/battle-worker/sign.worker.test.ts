@@ -161,6 +161,8 @@ function fakeTx() {
     return {
         battleReceipt: { create: vi.fn().mockResolvedValue({}) },
         petBattleProgress: { update: vi.fn().mockResolvedValue({}) },
+        // The rivalry record for the dialogue service, written on the same transaction.
+        battleHistory: { upsert: vi.fn().mockResolvedValue({}) },
     };
 }
 
@@ -267,6 +269,33 @@ describe('the happy path', () => {
         expect(attackerUpdate.where.chainId_deploymentId_petId.petId).toBe('1');
         expect(attackerUpdate.data.readyAt).toBe(BigInt(NOW + 900));
         expect(attackerUpdate.data.lastReceiptHash).toBe(`0x${'dd'.repeat(32)}`);
+    });
+
+    it('records the battle for rivalry context, from the receipt and on the same transaction', async () => {
+        // The indexer used to write `battle_history` from an on-chain settle event. With no
+        // such event left, the receipt is the only authority for what happened.
+        const tx = fakeTx();
+        vi.mocked(applyTransition).mockImplementationOnce((async (req: { onApplied?: (tx: unknown) => Promise<void> }) => {
+            if (req.onApplied) await req.onApplied(tx);
+            return { applied: true, state: 'signed' };
+        }) as never);
+
+        await processSignMessage(MESSAGE, NOW);
+
+        expect(tx.battleHistory.upsert).toHaveBeenCalledTimes(1);
+        const { create, where } = tx.battleHistory.upsert.mock.calls[0]![0];
+        expect(where.chain_battleId).toEqual({ chain: 'evm', battleId: BATTLE.battleId });
+        expect(create.attacker).toBe('1');
+        expect(create.defender).toBe('2');
+        // Unix seconds, matching every other row. The removed client-report path wrote
+        // Date.now() milliseconds here.
+        expect(create.foughtAt).toBe(BigInt(NOW));
+        expect(create.seed).toBe(BATTLE.seed);
+
+        // Winner and loser as absolute pet ids, so head-to-head survives a role swap.
+        const [winner, loser] = outcome.result.firstWins ? ['1', '2'] : ['2', '1'];
+        expect(create.winnerPetId).toBe(winner);
+        expect(create.loserPetId).toBe(loser);
     });
 
     it('credits a win to the winner and a loss to the loser', async () => {

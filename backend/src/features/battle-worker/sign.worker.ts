@@ -1,6 +1,7 @@
 import {
     type BattleReceipt,
     type BattleSnapshot,
+    chainFamily,
     hashBattleReceipt,
     type Hex,
     type ProgressionDelta,
@@ -12,6 +13,7 @@ import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import { applyTransition, type ClaimedMessage, completeOutbox, OUTBOX_TOPICS } from '@features/battle-ledger';
 import { activeSigningKey, type EngineAttestation, sign, SignerRefusedError } from '@features/battle-signer';
+import { recordBattleFromReceipt } from '@repositories/history.repository';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 /**
@@ -191,6 +193,25 @@ export async function processSignMessage(message: ClaimedMessage, nowSeconds: nu
                         },
                     });
                     await applyProgression(tx, battle, progression, signed.digest, nowSeconds);
+                    // Rivalry context for the dialogue service (`battle_history`). Written
+                    // here, from the receipt, because the indexer that used to fill this
+                    // table decoded on-chain settle events and there are none any more.
+                    await recordBattleFromReceipt(tx, {
+                        chain: chainFamily(battle.chainId as never),
+                        battleId: battle.battleId,
+                        attacker: battle.attackerPetId,
+                        defender: battle.defenderPetId,
+                        // From the receipt, not the ledger row it was built from: the
+                        // receipt is what was signed, so it is what the record should agree
+                        // with, and its result fields are non-null by construction.
+                        attackerWon: receipt.result.attackerWon,
+                        foughtAt: receipt.createdAt,
+                        seed: receipt.seed,
+                        rounds: receipt.result.rounds,
+                        winnerHpRemaining: receipt.result.winnerHpRemaining,
+                        attackerXp: progression.attacker.xpAwarded,
+                        defenderXp: progression.defender.xpAwarded,
+                    });
                 },
                 outbox: [{ battleId: battle.battleId, topic: OUTBOX_TOPICS.publish }],
             });

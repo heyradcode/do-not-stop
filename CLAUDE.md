@@ -164,6 +164,15 @@ The merge is deliberately **not** in `roster.repository.ts`. `snapshot.builder.t
 
 Matchmaking is the exception to the two-site split above: `findReadyOpponents` filters, bands and orders on level and cooldown, so it merges in the query itself (a raw `LEFT JOIN` against `pet_battle_progress`) rather than being overlaid afterwards. A post-filter can only drop rows a page already holds, which fixes the cooldown and leaves the level band reading frozen values. The cost is that this one query has **no gRPC fast path**: indexer-go's cache holds chain state and has no view of `pet_battle_progress`, a backend-owned table, so it can no longer answer it correctly. `getPetById` keeps its cache path, because there the resolver does the merge.
 
+### battle_history comes from the receipt now, not the indexer
+`battle_history` feeds the AI dialogue service's rivalry / head-to-head context. It used to be written by the indexer from on-chain settle events, with the dialogue endpoint filling gaps from the client's own result report. Both sources are gone: there are no settle events, and a client-reported result must never be able to restate what was signed.
+
+The battle worker writes the row from the signed receipt, in the **same transaction** as the receipt itself, so a battle cannot be recorded without its receipt or the reverse. `foughtAt` is unix seconds, taken from `receipt.createdAt` — the removed client-report path wrote `Date.now()` milliseconds, so any row predating this sorts far in the future in `getRecentForm`.
+
+The dialogue endpoint's anti-forgery guard still exists but now compares the client's claimed winner against that recorded row rather than against a chain event. It stays permissive when the battle is not yet on record (dialogue can be requested before the receipt commits), which is acceptable because it now only protects the dialogue cache — the battle record itself is no longer writable from that path.
+
+Consequently `src/grpc/battleStream.ts` is deleted: nothing published to it after indexer-go stopped ingesting battles, and nothing read from it after this. `INDEXER_GRPC_ADDR` still matters for pet-state reads and win estimates. indexer-go still serves `StreamLiveBattles` and `ListReadyOpponents`; neither has a caller in this repo.
+
 ### Known v1 contract limitations (design context, not regressions to "fix")
 `contracts/plan-contract-upgrade.md` documents intentional v1 gaps that v2 is designed around: no battle authorization (anyone can call `battle()`/`attack()` on anyone's pets), an EVM `changeDna` cheat that lets a level-20 pet set arbitrary DNA, and a Solana `create_starter_pet` that accepts client-supplied dna/rarity. v2 plan: EVM moves to UUPS proxies (`PetCoreProxy` + `GameLogicProxy`, with `CombatSimV1` deployed as a separate contract to stay under the 24KB bytecode ceiling); Solana adds versioned/reserved-space accounts and migrates pets to Metaplex Core NFTs. This is a plan doc; check current contract source before assuming any of it is implemented.
 

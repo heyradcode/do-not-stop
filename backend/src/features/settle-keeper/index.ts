@@ -8,9 +8,8 @@ import { startKeeper, type SettleKeeperHandle } from './keeper';
  * docs/plan-realtime-battle-impl.md Phase 2 for the original design; battles no
  * longer take this path at all (§L Phase 6), breed and mint still do.
  *
- * Off unless KEEPER_ENABLED=true, mirroring the indexer-go gRPC stream
- * (src/grpc/battleStream.ts): the feature simply doesn't start rather than
- * failing, so local dev / CI without a configured keeper wallet is unaffected.
+ * Off unless KEEPER_ENABLED=true: the feature simply doesn't start rather than failing,
+ * so local dev / CI without a configured keeper wallet is unaffected.
  */
 
 let handle: SettleKeeperHandle | null = null;

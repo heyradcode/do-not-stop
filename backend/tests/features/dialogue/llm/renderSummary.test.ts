@@ -1,14 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildBattleSummaryContext } from '../../../../src/features/dialogue/llm/render';
-import type { SettledBattle } from '../../../../src/grpc/battleStream';
+import { type BattleSummary, buildBattleSummaryContext } from '../../../../src/features/dialogue/llm/render';
 
-function battle(overrides: Partial<SettledBattle>): SettledBattle {
-    return {
-        chain: 'evm', battleId: 'b1', attackerPet: 'p1', defenderPet: 'p2',
-        winnerPet: 'p1', loserPet: 'p2', version: 1n, foughtAt: 0,
-        seed: '0x', rounds: 5, winnerHpRemaining: 10, xpWin: 20, xpLoss: 5,
-        ...overrides,
-    };
+function battle(overrides: Partial<BattleSummary>): BattleSummary {
+    return { rounds: 5, winnerHpRemaining: 10, xpWin: 20, xpLoss: 5, ...overrides };
 }
 
 describe('buildBattleSummaryContext', () => {

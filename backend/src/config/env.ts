@@ -59,8 +59,12 @@ export const env = {
     },
 
     /**
-     * indexer-go gRPC link (StreamLiveBattles — chain-truth battle pushes).
-     * Optional: unset = feature off, the webhook/poll paths still work.
+     * indexer-go gRPC link (pet-state reads and win estimates). Optional: unset = those
+     * fall back to Postgres and to "odds unavailable" respectively.
+     *
+     * No longer carries battles. `StreamLiveBattles` pushed chain-truth settle events,
+     * which stopped existing with on-chain battles (§L Phase 6); the backend's own signed
+     * receipt is the record now.
      */
     indexerGrpc: {
         /** e.g. localhost:50051. */

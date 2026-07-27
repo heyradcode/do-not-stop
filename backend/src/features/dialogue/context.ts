@@ -1,6 +1,5 @@
-import { getHeadToHead, getRecentForm } from '@repositories/history.repository';
+import { getBattleSummary, getHeadToHead, getRecentForm } from '@repositories/history.repository';
 import { getRecentBanter } from '@repositories/conversation.repository';
-import { getChainSettledBattle } from '@grpc-client/battleStream';
 import type { Chain } from '@typings/chain';
 import { withFallback } from '@utils';
 import { buildBanterContext, buildBattleSummaryContext, buildRivalryContext } from './llm/render';
@@ -62,14 +61,21 @@ export function buildRivalry(
 }
 
 /**
- * How the settled fight actually went (rounds / surviving HP / XP swing), for
- * the result prompt only. Read synchronously from the live battle stream's
- * chain-truth record — returns '' when the stream is off or hasn't seen this
- * battle, so generation proceeds unchanged. The taunt path never calls this:
- * pre-fight banter must stay outcome-free.
+ * How the settled fight actually went (rounds / surviving HP / XP swing), for the result
+ * prompt only. Read from `battle_history`, which the battle worker writes from the signed
+ * receipt — so this is the receipt's own account of the fight, not the client's.
+ *
+ * Returns '' when the battle is not on record, so generation proceeds unchanged. The taunt
+ * path never calls this: pre-fight banter must stay outcome-free.
  */
-export function buildBattleIntensity(chain: Chain, battleId?: string): string {
+export async function buildBattleIntensity(chain: Chain, battleId?: string): Promise<string> {
     if (!battleId) return '';
-    const settled = getChainSettledBattle(chain, battleId);
-    return settled ? buildBattleSummaryContext(settled) : '';
+    return withFallback(
+        '[dialogue] battle summary lookup failed, continuing without it:',
+        async () => {
+            const summary = await getBattleSummary(chain, battleId);
+            return summary ? buildBattleSummaryContext(summary) : '';
+        },
+        '',
+    );
 }
