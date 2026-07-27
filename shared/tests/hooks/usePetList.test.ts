@@ -12,6 +12,16 @@ vi.mock('../../src/hooks/adapters/useChainAdapter', () => ({
     useChainAdapter: () => ({ pets }),
 }));
 
+const activeChain = { kind: 'evm' as 'evm' | 'solana' | 'none' };
+vi.mock('../../src/hooks/useActiveChain', () => ({
+    useActiveChain: () => activeChain,
+}));
+
+const useBattleProgress = vi.fn((_chain: unknown, list: Pet[]) => list);
+vi.mock('../../src/hooks/useBattleProgress', () => ({
+    useBattleProgress: (chain: unknown, list: Pet[]) => useBattleProgress(chain, list),
+}));
+
 import { usePetList } from '../../src/hooks/usePetList';
 
 const pet = {
@@ -33,6 +43,9 @@ beforeEach(() => {
     pets.isLoading = false;
     pets.error = null;
     pets.refetch = vi.fn();
+    activeChain.kind = 'evm';
+    useBattleProgress.mockClear();
+    useBattleProgress.mockImplementation((_chain, list) => list);
 });
 
 describe('usePetList', () => {
@@ -58,5 +71,32 @@ describe('usePetList', () => {
         result.refetch();
 
         expect(pets.refetch).toHaveBeenCalledOnce();
+    });
+
+    it('returns pets with backend progression applied, not the raw chain read', () => {
+        // The whole point of the seam: battles no longer move on-chain stats, so what the
+        // adapter hands back is stale for any pet that has fought.
+        pets.data = [pet];
+        const levelled = { ...pet, level: 12, winCount: 25 };
+        useBattleProgress.mockReturnValue([levelled]);
+
+        expect(usePetList().pets).toEqual([levelled]);
+    });
+
+    it('passes the active chain through so progression is looked up on the right one', () => {
+        activeChain.kind = 'solana';
+        pets.data = [pet];
+
+        usePetList();
+
+        expect(useBattleProgress).toHaveBeenCalledWith('solana', [pet]);
+    });
+
+    it('asks for no progression while disconnected', () => {
+        activeChain.kind = 'none';
+
+        usePetList();
+
+        expect(useBattleProgress).toHaveBeenCalledWith(null, []);
     });
 });

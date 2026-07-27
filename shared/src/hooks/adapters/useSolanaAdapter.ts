@@ -19,7 +19,7 @@ export const SOLANA_CAPABILITIES: ChainCapabilities = {
     },
     levelUpFee: null,
     renameMinLevel: 1,
-    randomness: { provider: 'switchboard', appliesTo: ['battle', 'breed'] },
+    randomness: { provider: 'switchboard', appliesTo: ['breed'] },
     explorerTxUrl: () => null,
     parseError: (err, fallback) => {
         const message = formatSolanaActionError(err, fallback);

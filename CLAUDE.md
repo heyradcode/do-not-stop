@@ -151,6 +151,19 @@ flow (see the stale-script note in Commands above).
 Solana breeding and minting use Switchboard On-Demand (commit then settle), also async.
 Battles use neither: they are seeded from a committed drand round by the backend (§E).
 
+### Pet stats: chain state plus backend progression, merged at the read
+On-chain `level`/`xp`/`winCount`/`lossCount` are **frozen** for battles — nothing has written them since §L Phase 6 — while the live record accumulates in `pet_battle_progress`. Neither table alone is right: the roster misses every backend battle, and progress rows only exist for pets that have fought.
+
+The rule, applied in two places because there are two read paths:
+- **Backend-served pets** (opponents, `pet`, `searchPets`, `allPets`): merged server-side in the GraphQL resolvers via `backend/src/repositories/battleProgress.overlay.ts`.
+- **A player's own pets**: read straight off PetCore / the Solana program by the chain adapter, so the *client* merges, in `usePetList` via `shared/src/hooks/useBattleProgress.ts` (backed by the `battleProgress(chain, petIds)` GraphQL field).
+
+Both apply the same rule: a pet with a progress row shows backend progression, one without shows chain truth, and `readyAt` takes the **later** of the two cooldowns (breeding still writes the on-chain one; battles write the backend one). Progress rows are seeded from on-chain level on a pet's first battle, so the two agree the moment a row appears.
+
+The merge is deliberately **not** in `roster.repository.ts`. `snapshot.builder.ts` seeds a first progress row from the roster's on-chain level and `intent.service.ts` checks ownership there; merging in the repository would feed overlaid progression back into the thing that produces it.
+
+Two known gaps, both in matchmaking rather than display: `opponents` post-filters on the merged cooldown, so a page can be shorter than `pageSize` and `total` is an upper bound; and `minLevel` still bands on **on-chain** level, so a pet that climbed through backend battles can still be offered to a low-level challenger. Closing that needs the band pushed into the query as a join.
+
 ### Known v1 contract limitations (design context, not regressions to "fix")
 `contracts/plan-contract-upgrade.md` documents intentional v1 gaps that v2 is designed around: no battle authorization (anyone can call `battle()`/`attack()` on anyone's pets), an EVM `changeDna` cheat that lets a level-20 pet set arbitrary DNA, and a Solana `create_starter_pet` that accepts client-supplied dna/rarity. v2 plan: EVM moves to UUPS proxies (`PetCoreProxy` + `GameLogicProxy`, with `CombatSimV1` deployed as a separate contract to stay under the 24KB bytecode ceiling); Solana adds versioned/reserved-space accounts and migrates pets to Metaplex Core NFTs. This is a plan doc; check current contract source before assuming any of it is implemented.
 

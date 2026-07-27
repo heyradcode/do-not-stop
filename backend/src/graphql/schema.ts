@@ -36,6 +36,24 @@ export const schema = buildSchema(`
         asset: String!
     }
 
+    """
+    A pet's backend battle progression, for pets read straight from the chain.
+
+    The opponents/pet/searchPets/allPets reads already have this merged in. This is for
+    the one surface that cannot: a player's own pet list, which the client reads from
+    PetCore/the Solana program directly and so only ever sees frozen chain values.
+    """
+    type PetBattleProgress {
+        "Pet id as a decimal string."
+        id: String!
+        level: Int!
+        xp: Int!
+        winCount: Int!
+        lossCount: Int!
+        "Unix seconds this pet is next battle-ready per the backend cooldown."
+        readyAt: Float!
+    }
+
     type OpponentsPage {
         opponents: [OpponentPet!]!
         total: Int!
@@ -87,6 +105,14 @@ export const schema = buildSchema(`
         (ROSTER_READ_SOURCE=grpc) with automatic Postgres fallback.
         """
         pet(chain: String!, id: String!): OpponentPet
+
+        """
+        Backend battle progression for specific pets. Pets that have never fought a
+        backend battle are omitted rather than returned as zeroes — absence means "no
+        backend record, chain state is the whole truth", which a zeroed row could not
+        distinguish from a pet that has fought and lost everything.
+        """
+        battleProgress(chain: String!, petIds: [String!]!): [PetBattleProgress!]!
 
         """
         Pre-fight win probability for pet1 vs pet2. Returns null when the

@@ -7,6 +7,12 @@ vi.mock('@repositories/roster.repository', () => ({
 vi.mock('../../src/grpc/estimateWin', () => ({
     tryGrpcEstimateWin: vi.fn(),
 }));
+// The overlay's own merge rule is covered in repositories/battleProgress.overlay.test.ts;
+// here it is stubbed to a pass-through so these tests stay about resolver shaping.
+vi.mock('@repositories/battleProgress.overlay', () => ({
+    withBattleProgress: vi.fn(async (_chain: unknown, pets: unknown[]) => pets),
+    findBattleProgress: vi.fn(async () => []),
+}));
 
 import { rootValue } from '../../src/graphql/resolvers';
 import { findReadyOpponents, getPetById } from '@repositories/roster.repository';

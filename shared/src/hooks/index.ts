@@ -26,6 +26,9 @@ export { useActiveChain, type ActiveChain } from './useActiveChain';
 export { useChainCapabilities, type ChainContext } from './useChainCapabilities';
 export type { TxLifecycle, TxPhase, ChainCapabilities } from './adapters/types';
 export { usePetList, type PetListResult } from './usePetList';
+// Backend battle progression. usePetList already applies it to a player's own pets;
+// exported for anything reading pets from the chain by another route.
+export { useBattleProgress, mergeBattleProgress } from './useBattleProgress';
 export {
     useCreatePet,
     type CreatePetArgs,

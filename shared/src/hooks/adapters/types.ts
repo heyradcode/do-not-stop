@@ -35,7 +35,11 @@ export interface ChainCapabilities {
     randomness: {
         /** null when no chain is active (disconnected). */
         provider: 'chainlink' | 'switchboard' | null;
-        appliesTo: ('battle' | 'breed')[];
+        /**
+         * Which flows still draw randomness from the chain. Battles never do: they are
+         * seeded from a committed drand round by the backend (§E), on either chain.
+         */
+        appliesTo: 'breed'[];
     };
     explorerTxUrl(hash: string): string | null;
     parseError(error: unknown, fallback: string): { message: string; isUserRejection: boolean; isContractError: boolean };
@@ -62,7 +66,7 @@ export interface ChainAdapter {
     /** v2 train: pay a level-scaled fee for flat XP. */
     trainPet:    AdapterMutation<{ petId: string }>;
     renamePet:   AdapterMutation<{ petId: string; name: string }>;
-    transferPet: AdapterMutation<{ petId: string; to: string }>;
+    transferPet: AdapterMutation<{ petId: string; to: string }>;
     // crossOwner adds the stud fee (EVM married cross-owner breeding); ignored on Solana.
     breedPets:   AdapterMutation<{ parentId1: string; parentId2: string; name: string; crossOwner?: boolean }>;
 }
