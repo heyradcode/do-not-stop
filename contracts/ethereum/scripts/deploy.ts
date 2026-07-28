@@ -117,6 +117,8 @@ async function injectContractAddresses(network: NetworkSpec): Promise<void> {
         const petCoreAddress    = deployedAddresses['CryptoPetsV2Live#PetCoreProxy']   as string | undefined;
         const gameLogicAddress  = deployedAddresses['CryptoPetsV2Live#GameLogicProxy'] as string | undefined;
         const gameConfigAddress = deployedAddresses['CryptoPetsV2Live#GameConfig']     as string | undefined;
+        const batchRegistryAddress = deployedAddresses['CryptoPetsV2Live#BattleBatchRegistry']    as string | undefined;
+        const rewardDistributorAddress = deployedAddresses['CryptoPetsV2Live#SeasonRewardDistributor'] as string | undefined;
 
         if (!petCoreAddress) {
             console.error('❌ PetCore proxy not found in deployed_addresses.json');
@@ -126,6 +128,15 @@ async function injectContractAddresses(network: NetworkSpec): Promise<void> {
         console.log(`📝 PetCore:    ${petCoreAddress}`);
         console.log(`📝 GameLogic:  ${gameLogicAddress  ?? '(not found)'}`);
         console.log(`📝 GameConfig: ${gameConfigAddress ?? '(not found)'}`);
+        console.log(`📝 BattleBatchRegistry:     ${batchRegistryAddress      ?? '(not found)'}`);
+        console.log(`📝 SeasonRewardDistributor: ${rewardDistributorAddress  ?? '(not found)'}`);
+
+        // These two are read by the backend, not the frontend, so they are printed for the
+        // operator to copy rather than written into frontend/.env.local.
+        if (batchRegistryAddress) {
+            console.log(`
+   backend/.env: BATTLE_ANCHOR_REGISTRY_ADDRESS=${batchRegistryAddress}`);
+        }
 
         const frontendEnvLocalPath = join(process.cwd(), '..', '..', 'frontend', '.env.local');
 

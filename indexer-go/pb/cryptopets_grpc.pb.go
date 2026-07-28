@@ -23,30 +23,20 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	GameDataService_StreamLiveBattles_FullMethodName  = "/cryptopets.GameDataService/StreamLiveBattles"
-	GameDataService_GetPetState_FullMethodName        = "/cryptopets.GameDataService/GetPetState"
-	GameDataService_ListReadyOpponents_FullMethodName = "/cryptopets.GameDataService/ListReadyOpponents"
-	GameDataService_EstimateWin_FullMethodName        = "/cryptopets.GameDataService/EstimateWin"
-	GameDataService_VerifyBattle_FullMethodName       = "/cryptopets.GameDataService/VerifyBattle"
+	GameDataService_GetPetState_FullMethodName  = "/cryptopets.GameDataService/GetPetState"
+	GameDataService_EstimateWin_FullMethodName  = "/cryptopets.GameDataService/EstimateWin"
+	GameDataService_VerifyBattle_FullMethodName = "/cryptopets.GameDataService/VerifyBattle"
 )
 
 // GameDataServiceClient is the client API for GameDataService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GameDataServiceClient interface {
-	// Server streaming: indexer-go pushes settled battles (both chains) the
-	// moment they index. Delivery is at-least-once — consumers must be
-	// idempotent by (chain, battle_id).
-	StreamLiveBattles(ctx context.Context, in *StreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BattleEvent], error)
-	// RAM reads from the write-through roster cache (coherent because
-	// indexer-go is the sole writer of pet_roster after promotion). Both
-	// return UNAVAILABLE until warm-up completes — callers fall back to
-	// their own database read.
+	// RAM read from the write-through roster cache (coherent because
+	// indexer-go is the sole writer of pet_roster after promotion). Returns
+	// UNAVAILABLE until warm-up completes — callers fall back to their own
+	// database read.
 	GetPetState(ctx context.Context, in *PetRequest, opts ...grpc.CallOption) (*PetResponse, error)
-	// Mirrors the backend's findReadyOpponents matchmaking query:
-	// battle-ready (ready_at <= now), not owned by the caller, optional
-	// minimum level, ordered by (level, pet_id), paged.
-	ListReadyOpponents(ctx context.Context, in *OpponentsRequest, opts ...grpc.CallOption) (*OpponentsResponse, error)
 	// Pre-fight win estimate (plan §3.3): runs the round-based combat sim over
 	// many seeds for pet_id1 vs pet_id2 (both read from the warm roster cache)
 	// and returns pet_id1's win probability. UNAVAILABLE until the cache is warm.
@@ -70,39 +60,10 @@ func NewGameDataServiceClient(cc grpc.ClientConnInterface) GameDataServiceClient
 	return &gameDataServiceClient{cc}
 }
 
-func (c *gameDataServiceClient) StreamLiveBattles(ctx context.Context, in *StreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BattleEvent], error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &GameDataService_ServiceDesc.Streams[0], GameDataService_StreamLiveBattles_FullMethodName, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &grpc.GenericClientStream[StreamRequest, BattleEvent]{ClientStream: stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type GameDataService_StreamLiveBattlesClient = grpc.ServerStreamingClient[BattleEvent]
-
 func (c *gameDataServiceClient) GetPetState(ctx context.Context, in *PetRequest, opts ...grpc.CallOption) (*PetResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PetResponse)
 	err := c.cc.Invoke(ctx, GameDataService_GetPetState_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *gameDataServiceClient) ListReadyOpponents(ctx context.Context, in *OpponentsRequest, opts ...grpc.CallOption) (*OpponentsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(OpponentsResponse)
-	err := c.cc.Invoke(ctx, GameDataService_ListReadyOpponents_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -133,19 +94,11 @@ func (c *gameDataServiceClient) VerifyBattle(ctx context.Context, in *VerifyBatt
 // All implementations must embed UnimplementedGameDataServiceServer
 // for forward compatibility.
 type GameDataServiceServer interface {
-	// Server streaming: indexer-go pushes settled battles (both chains) the
-	// moment they index. Delivery is at-least-once — consumers must be
-	// idempotent by (chain, battle_id).
-	StreamLiveBattles(*StreamRequest, grpc.ServerStreamingServer[BattleEvent]) error
-	// RAM reads from the write-through roster cache (coherent because
-	// indexer-go is the sole writer of pet_roster after promotion). Both
-	// return UNAVAILABLE until warm-up completes — callers fall back to
-	// their own database read.
+	// RAM read from the write-through roster cache (coherent because
+	// indexer-go is the sole writer of pet_roster after promotion). Returns
+	// UNAVAILABLE until warm-up completes — callers fall back to their own
+	// database read.
 	GetPetState(context.Context, *PetRequest) (*PetResponse, error)
-	// Mirrors the backend's findReadyOpponents matchmaking query:
-	// battle-ready (ready_at <= now), not owned by the caller, optional
-	// minimum level, ordered by (level, pet_id), paged.
-	ListReadyOpponents(context.Context, *OpponentsRequest) (*OpponentsResponse, error)
 	// Pre-fight win estimate (plan §3.3): runs the round-based combat sim over
 	// many seeds for pet_id1 vs pet_id2 (both read from the warm roster cache)
 	// and returns pet_id1's win probability. UNAVAILABLE until the cache is warm.
@@ -169,14 +122,8 @@ type GameDataServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedGameDataServiceServer struct{}
 
-func (UnimplementedGameDataServiceServer) StreamLiveBattles(*StreamRequest, grpc.ServerStreamingServer[BattleEvent]) error {
-	return status.Error(codes.Unimplemented, "method StreamLiveBattles not implemented")
-}
 func (UnimplementedGameDataServiceServer) GetPetState(context.Context, *PetRequest) (*PetResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPetState not implemented")
-}
-func (UnimplementedGameDataServiceServer) ListReadyOpponents(context.Context, *OpponentsRequest) (*OpponentsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListReadyOpponents not implemented")
 }
 func (UnimplementedGameDataServiceServer) EstimateWin(context.Context, *WinRequest) (*WinResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EstimateWin not implemented")
@@ -205,17 +152,6 @@ func RegisterGameDataServiceServer(s grpc.ServiceRegistrar, srv GameDataServiceS
 	s.RegisterService(&GameDataService_ServiceDesc, srv)
 }
 
-func _GameDataService_StreamLiveBattles_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(StreamRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(GameDataServiceServer).StreamLiveBattles(m, &grpc.GenericServerStream[StreamRequest, BattleEvent]{ServerStream: stream})
-}
-
-// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
-type GameDataService_StreamLiveBattlesServer = grpc.ServerStreamingServer[BattleEvent]
-
 func _GameDataService_GetPetState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PetRequest)
 	if err := dec(in); err != nil {
@@ -230,24 +166,6 @@ func _GameDataService_GetPetState_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(GameDataServiceServer).GetPetState(ctx, req.(*PetRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _GameDataService_ListReadyOpponents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OpponentsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(GameDataServiceServer).ListReadyOpponents(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: GameDataService_ListReadyOpponents_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GameDataServiceServer).ListReadyOpponents(ctx, req.(*OpponentsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -300,10 +218,6 @@ var GameDataService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GameDataService_GetPetState_Handler,
 		},
 		{
-			MethodName: "ListReadyOpponents",
-			Handler:    _GameDataService_ListReadyOpponents_Handler,
-		},
-		{
 			MethodName: "EstimateWin",
 			Handler:    _GameDataService_EstimateWin_Handler,
 		},
@@ -312,12 +226,6 @@ var GameDataService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _GameDataService_VerifyBattle_Handler,
 		},
 	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "StreamLiveBattles",
-			Handler:       _GameDataService_StreamLiveBattles_Handler,
-			ServerStreams: true,
-		},
-	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "cryptopets.proto",
 }

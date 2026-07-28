@@ -54,10 +54,30 @@ const CryptoPetsV2LiveModule = buildModule("CryptoPetsV2Live", (m) => {
         id: "GameLogic",
     });
 
+    // ── backend-battle contracts (§I) ────────────────────────────────────────
+    // Neither is a proxy, and neither is upgradeable, on purpose: the registry records
+    // history, so being able to rewrite the thing that records it would defeat the point.
+    //
+    // The registry is where the backend anchors Merkle roots of signed receipts, and the
+    // distributor is the claim path for a season's rewards. Both are deployed here so a
+    // fresh network comes up complete; anchoring still no-ops until the backend's
+    // BATTLE_ANCHOR_* vars point at the registry address this writes out.
+    const batchRegistry = m.contract("BattleBatchRegistry", [deployer], {
+        id: "BattleBatchRegistry",
+    });
+    const rewardDistributor = m.contract("SeasonRewardDistributor", [deployer], {
+        id: "SeasonRewardDistributor",
+    });
+
     // ── wire up ──────────────────────────────────────────────────────────────
     m.call(petCore, "authorizeCaller", [gameLogicProxy]);
+    // Publishing rights for the deployer, so a local stack can anchor immediately. This
+    // grants nothing the owner did not already have (it can call setPublisher at will).
+    // A real deployment should rotate this to the backend's own anchor wallet — the key
+    // in BATTLE_ANCHOR_PRIVATE_KEY — and revoke the deployer.
+    m.call(batchRegistry, "setPublisher", [deployer, true]);
 
-    return { config, petCore, gameLogic };
+    return { config, petCore, gameLogic, batchRegistry, rewardDistributor };
 });
 
 export default CryptoPetsV2LiveModule;
