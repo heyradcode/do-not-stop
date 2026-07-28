@@ -12,10 +12,12 @@ import "./DnaLib.sol";
  * @title PetCore
  * @dev UUPS-upgradeable ERC-721 that owns all pet data (DNA, stats, lineage, cooldowns).
  *      Exposes mutator methods callable only by the authorized GameLogic proxy (or owner).
- *      Storage layout must be append-only from this point forward.
+ *      Storage layout is append-only from 2.0.0 forward. 2.0.0 itself is not: it drops the
+ *      retired battle members from `Pet`, which re-lays out every entry in the `_pets`
+ *      mapping, so an existing proxy cannot be upgraded onto it. It is a fresh deployment.
  */
 contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeable {
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "2.0.0";
 
     event NewPet(uint256 indexed petId, string name, uint256 dna, uint8 rarity);
     event PetLevelUp(uint256 indexed petId, uint32 newLevel);
@@ -28,27 +30,19 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     event CallerRevoked(address indexed caller);
     event GameConfigUpdated(address config);
 
-    /// @dev `winCount`, `lossCount`, `lastOpponentId`, and `sameOpponentStreak` are retired
-    ///      with the on-chain battle path (§L Phase 6): nothing writes them any more, because
-    ///      backend battles keep progression in `pet_battle_progress`, keyed separately so
-    ///      on-chain and off-chain state can never be mistaken for each other.
+    /// @dev No battle record here. Win/loss counts and the same-opponent decay state
+    ///      (`lastOpponentId`, `sameOpponentStreak`) lived on this struct when battles settled
+    ///      on chain; they are gone as of §L Phase 6, because nothing would ever write them
+    ///      again. A pet's battle record lives in the backend's `pet_battle_progress`.
     ///
-    ///      They stay declared, in place, because this contract is behind a UUPS proxy and
-    ///      `Pet` lives in a mapping: removing or reordering a member re-lays out every pet
-    ///      already minted. Read them as a frozen record of whatever the last on-chain battle
-    ///      left behind — zero for a pet that never fought on chain.
-    ///
-    ///      `readyTime` is **not** retired. Breeding still writes it (`setCooldown` applies
-    ///      `newbornCooldown` to offspring), and the backend honours it through the indexed
-    ///      `pet_roster.ready_at`, so a newborn is still barred from fighting. What changed is
-    ///      only that battles no longer *set* it.
+    ///      `readyTime` stays. Breeding writes it (`setCooldown` applies `newbornCooldown` to
+    ///      offspring) and the backend honours it through the indexed `pet_roster.ready_at`,
+    ///      so a newborn is still barred from fighting. Only battles stopped setting it.
     struct Pet {
         string name;
         uint256 dna;
         uint32 level;
         uint32 readyTime;
-        uint16 winCount;
-        uint16 lossCount;
         uint8  rarity;
         uint32 xp;           // XP toward next level; auto-levels at 100 * currentLevel
         uint8  generation;   // 0 = starter; N = N breeding events from starters
@@ -58,8 +52,6 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
         uint16 speciesId;    // resolved at mint from DNA + rarity tier (plan §3.7)
         uint256 parent1Id;   // 0 for gen-0 pets
         uint256 parent2Id;   // 0 for gen-0 pets
-        uint256 lastOpponentId;    // 0 = no battles yet (plan §3.4 same-opponent decay)
-        uint8   sameOpponentStreak; // consecutive battles vs lastOpponentId; halves XP each time
     }
 
     // Marriage record (plan §4.4): written for both pets at accept time (mutual).
@@ -425,9 +417,9 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
 
     function getPetStats(
         uint256 petId
-    ) external view entryExists(petId) returns (uint32, uint16, uint16, uint8) {
+    ) external view entryExists(petId) returns (uint32 level, uint8 rarity) {
         Pet memory p = _pets[petId];
-        return (p.level, p.winCount, p.lossCount, p.rarity);
+        return (p.level, p.rarity);
     }
 
     function getBreedInfo(
@@ -482,12 +474,7 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
             name:         name_,
             dna:          dna,
             level:        1,
-            // Retired battle field (§L Phase 6). Zeroed at mint rather than seeded from a
-            // cooldown that no longer exists: nothing on chain reads it, and backend battles
-            // track readiness in `pet_battle_progress`.
-            readyTime:    0,
-            winCount:     0,
-            lossCount:    0,
+            readyTime:    0,  // battle-ready immediately; only breeding sets this now
             rarity:       rarity,
             xp:           0,
             generation:   generation,
@@ -496,9 +483,7 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
             trainReadyAt: 0,  // train-ready immediately
             speciesId:    _resolveSpecies(dna, rarity),
             parent1Id:    parent1Id,
-            parent2Id:    parent2Id,
-            lastOpponentId:     0,
-            sameOpponentStreak: 0
+            parent2Id:    parent2Id
         });
         emit NewPet(newId, name_, dna, rarity);
         return newId;

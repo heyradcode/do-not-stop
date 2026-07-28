@@ -105,7 +105,7 @@ func (f *fakeSubgraph) serveBattles(w http.ResponseWriter, sinceStr string, firs
 func pet(id, owner string, level uint32, updatedAt string) subgraphPet {
 	return subgraphPet{
 		ID: id, Owner: owner, Name: "pet-" + id, DNA: "12345",
-		Level: level, Rarity: 2, WinCount: 3, LossCount: 1,
+		Level: level, Rarity: 2,
 		ReadyAt: "1770000000", UpdatedAt: updatedAt,
 	}
 }

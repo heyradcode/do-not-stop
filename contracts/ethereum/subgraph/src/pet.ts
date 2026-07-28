@@ -29,8 +29,6 @@ export function refreshPet(petId: BigInt, updatedAt: BigInt): void {
   pet.dna = p.dna;
   pet.level = p.level.toI32();
   pet.rarity = p.rarity;
-  pet.winCount = p.winCount;
-  pet.lossCount = p.lossCount;
   pet.readyAt = p.readyTime;
   pet.updatedAt = updatedAt;
 

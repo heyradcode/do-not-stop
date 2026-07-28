@@ -35,11 +35,13 @@ func (ix *Indexer) toUpdate(pet subgraphPet) (indexer.RosterUpdate, error) {
 		Level:     pet.Level,
 		Rarity:    pet.Rarity,
 		DNA:       pet.DNA,
-		WinCount:  pet.WinCount,
-		LossCount: pet.LossCount,
 		ReadyAt:   readyAt,
 		Version:   updatedAt,
 
+		// WinCount/LossCount stay zero: PetCore stopped carrying a battle record when
+		// battles moved off chain (§L Phase 6), so there is nothing on chain to mirror.
+		// A pet's real record is the backend's `pet_battle_progress`.
+		//
 		// v2 fields. EVM has no Metaplex Core asset (ERC-721 token id IS the
 		// pet id), so Asset stays empty.
 		XP:           pet.XP,

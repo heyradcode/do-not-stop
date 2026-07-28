@@ -15,7 +15,7 @@ import (
 // ready the moment they deploy. petFields is shared so the full and
 // incremental queries can never drift.
 const (
-	petFields = `id owner name dna level rarity winCount lossCount readyAt updatedAt
+	petFields = `id owner name dna level rarity readyAt updatedAt
       xp generation parent1Id parent2Id breedCount speciesId spouseId breedReadyAt trainReadyAt`
 
 	fullSyncQuery = `
@@ -43,8 +43,6 @@ type subgraphPet struct {
 	DNA       string `json:"dna"`
 	Level     uint32 `json:"level"`
 	Rarity    uint32 `json:"rarity"`
-	WinCount  uint32 `json:"winCount"`
-	LossCount uint32 `json:"lossCount"`
 	ReadyAt   string `json:"readyAt"`
 	UpdatedAt string `json:"updatedAt"`
 

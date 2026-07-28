@@ -6,8 +6,6 @@ const raw: EvmRawPet = {
     dna: 1234567890123456789n,
     level: 3,
     readyTime: 1_700_000_000n,
-    winCount: 5,
-    lossCount: 2,
     rarity: 4,
 };
 
@@ -21,8 +19,9 @@ describe('mapEvmPet', () => {
             dna: 1234567890123456789n,
             level: 3,
             rarity: 4,
-            winCount: 5,
-            lossCount: 2,
+            // PetCore has no battle record; the backend's is merged on later.
+            winCount: 0,
+            lossCount: 0,
             readyAt: 1_700_000_000,
         });
     });
@@ -35,15 +34,18 @@ describe('mapEvmPet', () => {
     });
 
     it('coerces bigint-valued numeric fields to numbers', () => {
-        const pet = mapEvmPet(
-            { ...raw, level: 9n, winCount: 100n, lossCount: 1n, rarity: 5n },
-            1n,
-        );
+        const pet = mapEvmPet({ ...raw, level: 9n, rarity: 5n }, 1n);
         expect(pet.level).toBe(9);
-        expect(pet.winCount).toBe(100);
-        expect(pet.lossCount).toBe(1);
         expect(pet.rarity).toBe(5);
         expect(typeof pet.level).toBe('number');
+    });
+
+    it('zeroes the battle record rather than reading one off the chain', () => {
+        // PetCore stopped carrying win/loss when battles moved off chain, so there is
+        // nothing to read. useBattleProgress merges the backend's record over this.
+        const pet = mapEvmPet(raw, 1n);
+        expect(pet.winCount).toBe(0);
+        expect(pet.lossCount).toBe(0);
     });
 
     it('maps v2 fields when present and coerces them to numbers', () => {

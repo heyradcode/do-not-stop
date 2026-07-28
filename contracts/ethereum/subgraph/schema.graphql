@@ -19,14 +19,6 @@ type Pet @entity(immutable: false) {
   rarity: Int!
 
   """
-  Lifetime on-chain record. Frozen at whatever the retired on-chain battle path left
-  behind: nothing writes these any more, and backend battle records live in
-  `pet_battle_progress` instead. Kept because indexer-go's selection set reads them.
-  """
-  winCount: Int!
-  lossCount: Int!
-
-  """
   Unix seconds the pet is next battle-ready (Pet.readyTime). Only breeding writes it
   now — a newborn is barred from fighting until its cooldown expires — but the backend
   still honours it before accepting a battle intent.
