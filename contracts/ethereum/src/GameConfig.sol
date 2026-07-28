@@ -29,7 +29,6 @@ contract GameConfig is Ownable {
     uint32  public trainXp             = 100;         // flat XP per train (§3.4)
 
     uint32  public maxLevel            = 100;         // hard cap; no XP/level-up beyond this (§3.4)
-    uint32  public levelBandWidth      = 100;         // ±N level gap allowed for battle (§3.4 dev: 100=off, prod: 10)
 
     uint256 public studFee             = 0.001 ether; // cross-owner breed: payer → other parent's owner (§4.4)
     uint256 public marriageCooldown    = 60 seconds;  // lockout after divorce/stale (§5 dev: 60s, prod: 24h)
@@ -61,7 +60,6 @@ contract GameConfig is Ownable {
     event TrainCooldownUpdated(uint256 cooldown);
     event TrainXpUpdated(uint32 xp);
     event MaxLevelUpdated(uint32 level);
-    event LevelBandWidthUpdated(uint32 width);
     event StudFeeUpdated(uint256 fee);
     event MarriageCooldownUpdated(uint256 cooldown);
     event ProposalTTLUpdated(uint256 ttl);
@@ -133,10 +131,6 @@ contract GameConfig is Ownable {
         emit MaxLevelUpdated(level);
     }
 
-    function setLevelBandWidth(uint32 width) external onlyOwner {
-        levelBandWidth = width;
-        emit LevelBandWidthUpdated(width);
-    }
 
     function setStudFee(uint256 fee) external onlyOwner {
         studFee = fee;

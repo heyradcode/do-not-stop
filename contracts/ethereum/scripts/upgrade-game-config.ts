@@ -121,7 +121,6 @@ async function main() {
         ['trainCooldown', 'setTrainCooldown'],
         ['trainXp', 'setTrainXp'],
         ['maxLevel', 'setMaxLevel'],
-        ['levelBandWidth', 'setLevelBandWidth'],
         ['studFee', 'setStudFee'],
         ['marriageCooldown', 'setMarriageCooldown'],
         ['proposalTTL', 'setProposalTTL'],

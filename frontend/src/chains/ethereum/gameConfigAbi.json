@@ -142,19 +142,6 @@
       "inputs": [
         {
           "indexed": false,
-          "internalType": "uint32",
-          "name": "width",
-          "type": "uint32"
-        }
-      ],
-      "name": "LevelBandWidthUpdated",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
           "internalType": "uint256",
           "name": "fee",
           "type": "uint256"
@@ -463,19 +450,6 @@
     },
     {
       "inputs": [],
-      "name": "levelBandWidth",
-      "outputs": [
-        {
-          "internalType": "uint32",
-          "name": "",
-          "type": "uint32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "levelUpFee",
       "outputs": [
         {
@@ -704,19 +678,6 @@
         }
       ],
       "name": "setGenerationCap",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint32",
-          "name": "width",
-          "type": "uint32"
-        }
-      ],
-      "name": "setLevelBandWidth",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
