@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
- * Migrate to a new GameConfig (e.g. after adding a tunable like battleFee) without losing
- * any prior on-chain tuning, and without changing GameLogicProxy/PetCoreProxy addresses.
+ * Migrate to a new GameConfig (e.g. after adding or removing a tunable) without losing any
+ * prior on-chain tuning, and without changing GameLogicProxy/PetCoreProxy addresses.
  *
  * GameConfig is NOT behind a proxy (see its own doc comment) — adding a field means
  * deploying a fresh instance, which resets every tunable back to its Solidity constructor
@@ -11,9 +11,12 @@
  * setGameConfig() setter to repoint at the new instance, so this upgrades both proxies'
  * implementations first (same upgradeTo pattern as upgrade-game-logic.ts).
  *
- * battleCooldown has no setter (see GameConfig.sol) — it's fixed at construction from
- * source, so the new instance already carries whatever the current source defines; there
- * is nothing to replay for it.
+ * Only fields the CURRENT GameConfig still declares are replayed. The artifact ABI is used
+ * to read the old instance as well as write the new one, so a field dropped from source
+ * (`battleFee`, `battleCooldown`, `combatSim`, all retired with the on-chain battle path in
+ * §L Phase 6) is simply not read — adding it back here would fail on the ABI, not on chain.
+ * Anything without a setter is likewise unreplayable: the new instance carries whatever its
+ * constructor defines.
  *
  * Usage:
  *   pnpm --prefix contracts/ethereum exec tsx scripts/upgrade-game-config.ts --network=base-sepolia
@@ -106,8 +109,6 @@ async function main() {
 
     console.log(`\nReplaying tunables from old GameConfig (${oldConfigAddress}) onto the new one...`);
     const oldAbi = gameConfigArtifact.abi;
-    const combatSim = await read<`0x${string}`>(oldConfigAddress!, oldAbi, 'combatSim');
-    await write(newConfigAddress, oldAbi, 'setCombatSim', [combatSim]);
 
     const singleFieldSetters: [string, string][] = [
         ['levelUpFee', 'setLevelUpFee'],
@@ -142,9 +143,6 @@ async function main() {
         const size = await read<number>(oldConfigAddress!, oldAbi, 'poolSizes', [tier]);
         await write(newConfigAddress, oldAbi, 'setPoolSize', [tier, size]);
     }
-
-    // battleFee has no old value to replay — the new GameConfig's own constructor default
-    // applies (see GameConfig.sol; tune via setBattleFee afterward if the default is wrong).
 
     console.log(`\nDeploying fresh GameLogic + PetCore implementations (both need setGameConfig)...`);
     const newGameLogicImpl = await deploy(gameLogicArtifact);

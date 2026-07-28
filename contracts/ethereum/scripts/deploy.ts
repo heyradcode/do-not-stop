@@ -117,7 +117,6 @@ async function injectContractAddresses(network: NetworkSpec): Promise<void> {
         const petCoreAddress    = deployedAddresses['CryptoPetsV2Live#PetCoreProxy']   as string | undefined;
         const gameLogicAddress  = deployedAddresses['CryptoPetsV2Live#GameLogicProxy'] as string | undefined;
         const gameConfigAddress = deployedAddresses['CryptoPetsV2Live#GameConfig']     as string | undefined;
-        const combatSimAddress  = deployedAddresses['CryptoPetsV2Live#CombatSim']      as string | undefined;
 
         if (!petCoreAddress) {
             console.error('❌ PetCore proxy not found in deployed_addresses.json');
@@ -127,7 +126,6 @@ async function injectContractAddresses(network: NetworkSpec): Promise<void> {
         console.log(`📝 PetCore:    ${petCoreAddress}`);
         console.log(`📝 GameLogic:  ${gameLogicAddress  ?? '(not found)'}`);
         console.log(`📝 GameConfig: ${gameConfigAddress ?? '(not found)'}`);
-        console.log(`📝 CombatSim:  ${combatSimAddress  ?? '(not found)'}`);
 
         const frontendEnvLocalPath = join(process.cwd(), '..', '..', 'frontend', '.env.local');
 
@@ -142,12 +140,15 @@ async function injectContractAddresses(network: NetworkSpec): Promise<void> {
             else           { lines.push(`${key}=${value}`); }
         }
 
-        const lines = envContent.split('\n').filter((l) => !l.startsWith('VITE_VRF_COORDINATOR='));
+        // Drop vars for contracts this stack no longer deploys, so an existing .env.local
+        // does not keep pointing the frontend at a dead address: VITE_VRF_COORDINATOR from
+        // the Chainlink era, VITE_COMBATSIM_ADDRESS since battles left the chain (§L Phase 6).
+        const STALE_ENV_KEYS = ['VITE_VRF_COORDINATOR=', 'VITE_COMBATSIM_ADDRESS='];
+        const lines = envContent.split('\n').filter((l) => !STALE_ENV_KEYS.some((k) => l.startsWith(k)));
 
         upsertEnvLine(lines, 'VITE_PETCORE_ADDRESS', petCoreAddress);
         if (gameLogicAddress)  upsertEnvLine(lines, 'VITE_GAMELOGIC_ADDRESS',  gameLogicAddress);
         if (gameConfigAddress) upsertEnvLine(lines, 'VITE_GAMECONFIG_ADDRESS', gameConfigAddress);
-        if (combatSimAddress)  upsertEnvLine(lines, 'VITE_COMBATSIM_ADDRESS',  combatSimAddress);
 
         if (!lines.some((l) => l.startsWith('VITE_API_URL='))) {
             lines.push('VITE_API_URL=http://localhost:3001');

@@ -31,7 +31,7 @@ import "./DnaLib.sol";
  */
 contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, IEntropyConsumer {
 
-    string public constant VERSION = "1.1.0";
+    string public constant VERSION = "2.0.0";
 
     // ─── events ───────────────────────────────────────────────────────────────
 
@@ -77,11 +77,14 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
         address otherOwner; // recipient of studFee at settle; address(0) for same-owner breeds
     }
 
-    /// @dev `Battle` is retired (§L Phase 6) but kept in place: removing it would renumber
-    ///      `Mint`, and this enum's values are persisted in `_requestTypes`.
-    enum RequestType { None, Breed, RetiredBattle, Mint }
+    enum RequestType { None, Breed, Mint }
 
-    // ─── storage (layout append-only) ────────────────────────────────────────
+    // ─── storage ─────────────────────────────────────────────────────────────
+    //
+    // Append-only from here on. The 2.0.0 layout dropped the retired battle slots outright
+    // rather than parking them, which is a BREAKING change. Every slot after the removed
+    // pair shifts, so upgrading an existing proxy onto this would reinterpret live breed
+    // and mint state. 2.0.0 is a fresh deployment, not an upgrade target.
 
     PetCore                public petCore;
     GameConfig               public gameConfig;
@@ -91,12 +94,6 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
     mapping(uint256 => uint256)        public  petBreedRequestId;
 
     mapping(uint256 => RequestType)    private _requestTypes;
-    /// @dev Retired with the on-chain battle path (§L Phase 6). The slots stay declared and
-    ///      unused rather than deleted: this contract sits behind a UUPS proxy, and removing a
-    ///      storage variable shifts every slot after it, which would silently reinterpret live
-    ///      breeding and mint state on the next upgrade. Never reuse these.
-    mapping(uint256 => uint256)        private __retired_battleRequests;
-    mapping(uint256 => uint256)        private __retired_petBattleRequestId;
 
     // Stud fees owed to the non-initiating owner of a cross-owner breed (plan §4.4),
     // released as a pull payment via withdrawStudFees().
@@ -105,8 +102,8 @@ contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, 
     // Pending starter mints (plan §4.3): DNA is fixed by the Entropy reveal, not at request.
     mapping(uint256 => MintRequest)    private _mintRequests;
 
-    // Reserve 40 slots: 10 declared above (through _mintRequests) + 40 gap = 50 total.
-    uint256[40] private __gap;
+    // Reserve 42 slots: 8 declared above (through _mintRequests) + 42 gap = 50 total.
+    uint256[42] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
 
