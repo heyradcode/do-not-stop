@@ -463,61 +463,6 @@
     },
     {
       "inputs": [],
-      "name": "getSkillConfig",
-      "outputs": [
-        {
-          "components": [
-            {
-              "internalType": "uint16",
-              "name": "tankHpMult",
-              "type": "uint16"
-            },
-            {
-              "internalType": "uint16",
-              "name": "shellDefMult",
-              "type": "uint16"
-            },
-            {
-              "internalType": "uint16",
-              "name": "swiftCritBonus",
-              "type": "uint16"
-            },
-            {
-              "internalType": "uint16",
-              "name": "cunningCritCap",
-              "type": "uint16"
-            },
-            {
-              "internalType": "uint16",
-              "name": "furyDmgMult",
-              "type": "uint16"
-            },
-            {
-              "internalType": "uint16",
-              "name": "furyHpThreshold",
-              "type": "uint16"
-            },
-            {
-              "internalType": "uint16",
-              "name": "sageMdefMult",
-              "type": "uint16"
-            },
-            {
-              "internalType": "uint16",
-              "name": "bloodlustBps",
-              "type": "uint16"
-            }
-          ],
-          "internalType": "struct CombatSim.SkillConfig",
-          "name": "",
-          "type": "tuple"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
       "name": "levelBandWidth",
       "outputs": [
         {

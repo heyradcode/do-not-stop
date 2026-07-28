@@ -3,12 +3,11 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./CombatSim.sol";
 
 /**
  * @title GameConfig
  * @dev Single source of truth for all tunables. Not behind a proxy — upgrading the
- *      config means deploying a new GameConfig and calling setCombatSim/setGameConfig
+ *      config means deploying a new GameConfig and calling setGameConfig
  *      on the proxy. Owned by the same Safe/timelock that owns the proxies.
  */
 contract GameConfig is Ownable {
@@ -39,7 +38,10 @@ contract GameConfig is Ownable {
     // Species pool sizes per rarity tier (1-5); speciesId = digitPair % poolSizes[rarity] (§3.7).
     mapping(uint8 => uint8) public poolSizes;
 
-    // Skill archetype balance values, passed to CombatSim.simulate() (§3.7).
+    // Skill archetype balance values (§3.7). Owner-tunable, but nothing reads them: they
+    // parameterized the on-chain simulator, and the live values now travel in the backend's
+    // signed ruleset (`protocol/src/ruleset/`) so a receipt names the balance it was fought
+    // under. Kept as tunables pending a decision on where balance should live.
     uint16 public tankHpMult       = 120;  // Tank: ×/100 HP
     uint16 public shellDefMult     = 125;  // Shell: ×/100 DEF
     uint16 public swiftCritBonus   = 50;   // Swift: + bps to crit base
@@ -195,20 +197,5 @@ contract GameConfig is Ownable {
     function setBloodlustBps(uint16 value) external onlyOwner {
         bloodlustBps = value;
         emit BloodlustBpsUpdated(value);
-    }
-
-    // ─── views ────────────────────────────────────────────────────────────────
-
-    function getSkillConfig() external view returns (CombatSim.SkillConfig memory) {
-        return CombatSim.SkillConfig({
-            tankHpMult:      tankHpMult,
-            shellDefMult:    shellDefMult,
-            swiftCritBonus:  swiftCritBonus,
-            cunningCritCap:  cunningCritCap,
-            furyDmgMult:     furyDmgMult,
-            furyHpThreshold: furyHpThreshold,
-            sageMdefMult:    sageMdefMult,
-            bloodlustBps:    bloodlustBps
-        });
     }
 }

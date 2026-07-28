@@ -879,67 +879,19 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(pet.speciesId, 0, "speciesId should be 0 when the rarity tier's pool size is 0");
     });
 
-    it("Should expose default skill config values via getSkillConfig()", async function () {
+    it("Should expose the default skill balance values", async function () {
+        // getSkillConfig() went with CombatSim (it returned that contract's struct). The
+        // individual tunables remain, so the defaults are still pinned here.
         const { config } = await deployV2();
-        const sc = await config.read.getSkillConfig();
 
-        assert.equal(sc.tankHpMult, 120);
-        assert.equal(sc.shellDefMult, 125);
-        assert.equal(sc.swiftCritBonus, 50);
-        assert.equal(sc.cunningCritCap, 4000);
-        assert.equal(sc.furyDmgMult, 130);
-        assert.equal(sc.furyHpThreshold, 3000);
-        assert.equal(sc.sageMdefMult, 125);
-        assert.equal(sc.bloodlustBps, 150);
-    });
-
-    it("Should apply the Tank skill's pre-battle HP bonus in CombatSim.simulate", async function () {
-        const { config } = await deployV2();
-        const combatSim = await viem.deployContract("CombatSim");
-        const sc = await config.read.getSkillConfig();
-
-        const dna1 = 1234567890123456n; // level-50 attacker, far stronger than dna2
-        const dna2 = 9876543210987654n; // level-1 defender
-        const seed = 42n;
-        const NO_SKILL = 99; // sentinel: matches none of the 0-7 archetype branches
-
-        const withTank = await combatSim.read.simulate([
-            dna1, 1, 50, 0,        // pet1: rarity 1, level 50, Tank
-            dna2, 1, 1, NO_SKILL,  // pet2: rarity 1, level 1, no skill
-            seed, sc,
-        ]);
-        const withoutTank = await combatSim.read.simulate([
-            dna1, 1, 50, NO_SKILL,
-            dna2, 1, 1, NO_SKILL,
-            seed, sc,
-        ]);
-
-        assert.equal(withTank.firstWins, true, "pet1 should win regardless of Tank");
-        assert.equal(withoutTank.firstWins, true, "pet1 should win regardless of Tank");
-        assert(
-            withTank.winnerHpRemaining > withoutTank.winnerHpRemaining,
-            "Tank's +20% starting HP should leave more HP remaining after an identical fight"
-        );
-    });
-
-    it("Should run CombatSim.simulate without reverting for every skill archetype (0-7)", async function () {
-        const { config } = await deployV2();
-        const combatSim = await viem.deployContract("CombatSim");
-        const sc = await config.read.getSkillConfig();
-
-        const dna1 = 1234567890123456n;
-        const dna2 = 9876543210987654n;
-
-        for (let skill = 0; skill < 8; skill++) {
-            const result = await combatSim.read.simulate([
-                dna1, 3, 20, skill,
-                dna2, 3, 20, skill,
-                BigInt(skill) + 1n,
-                sc,
-            ]);
-            assert(result.rounds >= 1 && result.rounds <= 30, `skill ${skill}: rounds in range`);
-            assert(result.winnerHpRemaining <= 65535, `skill ${skill}: winnerHpRemaining within uint16`);
-        }
+        assert.equal(await config.read.tankHpMult(), 120);
+        assert.equal(await config.read.shellDefMult(), 125);
+        assert.equal(await config.read.swiftCritBonus(), 50);
+        assert.equal(await config.read.cunningCritCap(), 4000);
+        assert.equal(await config.read.furyDmgMult(), 130);
+        assert.equal(await config.read.furyHpThreshold(), 3000);
+        assert.equal(await config.read.sageMdefMult(), 125);
+        assert.equal(await config.read.bloodlustBps(), 150);
     });
 
     const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";

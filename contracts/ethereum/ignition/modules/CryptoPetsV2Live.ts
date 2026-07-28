@@ -9,10 +9,8 @@ import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
  * (GameConfig, PetCore proxy, GameLogic proxy) and as the UUPS upgrade
  * authority for both proxies.
  *
- * CombatSim is deliberately **not** deployed (§L Phase 6). Battles are settled by
- * the backend, so nothing on chain calls the simulator; the Solidity source stays
- * in the repository only as the fourth leg of the golden-vector parity check, which
- * deploys it locally per test run.
+ * There is no combat simulator here (§L Phase 6). Battles are settled by the backend, so
+ * nothing on chain calls one and the Solidity implementation has been removed.
  *
  * The `entropyAddress` parameter (Pyth Entropy V2 contract) must be supplied
  * via a parameters file, which `scripts/deploy.ts` generates from per-network
