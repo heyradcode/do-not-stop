@@ -219,13 +219,17 @@ matchup UI degrades to "odds unavailable". Intended for a single confirmed
 matchup, not per opponents row. Optional `samples` arg overrides the server
 default (clamped to 10,000).
 
-### v2 battle data
+### Battle data
 
-Settled battles carry the round-based combat-sim outputs `indexer-go` now emits —
-`loserPetId, seed (0x-hex), rounds, winnerHpRemaining, xpWin, xpLoss`. These flow
-through the live `StreamLiveBattles` chain-truth feed (the `seed` re-runs the sim
-client-side for blow-by-blow replay) and are persisted on `battle_history`; the
-AI battle dialogue uses `rounds`/HP/XP to flavor its narration.
+`battle_history` carries `loserPetId, seed (0x-hex), rounds, winnerHpRemaining,
+xpWin, xpLoss` for every settled battle. The battle worker writes the row from the
+signed receipt, in the receipt's own transaction, so a battle cannot be recorded
+without its receipt. The AI battle dialogue reads `rounds`/HP/XP to flavor its
+narration, and head-to-head/recent form for rivalry context.
+
+There is no chain-truth feed behind this any more: `indexer-go` stopped decoding
+settle events when battles left the chain, and its `StreamLiveBattles` push is
+gone. `foughtAt` is unix seconds.
 
 ### Settle keeper
 

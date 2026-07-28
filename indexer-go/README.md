@@ -5,8 +5,12 @@ Unified cross-chain indexer for Cryptopets (see
 two chain adapters behind the `ChainIndexer`
 interface — Solana push (WebSocket subscriptions + backfill) and EVM pull
 (subgraph watermark polling) — feeding a single version-guarded writer into
-the Prisma-owned Postgres, plus a `StreamLiveBattles` gRPC push to the Node
-backend.
+the Prisma-owned Postgres, plus a gRPC read path for the Node backend.
+
+It indexes the **roster only**. Battles left the chain in §L Phase 6, so there
+are no settle events to decode; `battle_history` is written by the backend from
+its own signed receipts. The `StreamLiveBattles` push and the whole `BattleEvent`
+pipeline behind it are gone.
 
 ## Build & test
 
@@ -32,9 +36,9 @@ connection settings is skipped, so adapters roll out independently.
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` | Postgres (schema owned by `backend/prisma` — run migrations there first) |
-| `EVM_SUBGRAPH_URL` | The Graph query endpoint (needs the `Battle` entity deployed) |
+| `EVM_SUBGRAPH_URL` | The Graph query endpoint (needs the `Pet` entity deployed) |
 | `SOLANA_WS_URL` / `SOLANA_RPC_URL` / `SOLANA_PROGRAM_ID` | Helius endpoints + program id |
-| `GRPC_ADDR` | StreamLiveBattles bind address (default `localhost:50051`) |
+| `GRPC_ADDR` | GameDataService bind address (default `localhost:50051`) |
 | `EVM_POLL_INTERVAL` / `RECONCILE_INTERVAL` | pull tick / reconciliation scan |
 
 Prereq migrations (from `backend/`): `npx prisma migrate dev`. Beyond
@@ -68,7 +72,7 @@ promotion. Connection env vars are set in the Render dashboard.
 
 ## Read cache (milestone 8)
 
-`ROSTER_CACHE_ENABLED=true` serves `GetPetState` / `ListReadyOpponents` from a
+`ROSTER_CACHE_ENABLED=true` serves `GetPetState` / `EstimateWin` from a
 write-through RAM copy of `pet_roster`: warmed from the table at startup,
 updated commit-then-cache by the single writer, version-guarded like the SQL.
 **Coherent only while indexer-go is the sole writer of the table** — enable at
@@ -124,11 +128,10 @@ around the formula (not just the formula itself) is cross-language locked too.
 ```
 cmd/indexer/        binary: adapters + writer + gRPC, or -scan-once
 internal/indexer/   ChainIndexer contract + pipeline types
-internal/evm/       subgraph watermark adapter (pets + battles)
+internal/evm/       subgraph watermark adapter (pets)
 internal/solana/    WS push adapter, Borsh decode, reconnect/backfill
 internal/store/     single version-guarded batch writer (pgx)
 internal/combat/    pure Go combat sim + independent verify (cross-chain parity via golden vectors)
-internal/battlebus/ fan-out to gRPC stream subscribers
-internal/grpcsrv/   StreamLiveBattles + reads + EstimateWin + VerifyBattle server
+internal/grpcsrv/   GetPetState + EstimateWin + VerifyBattle server
 pb/                 generated stubs (buf generate ../proto)
 ```
