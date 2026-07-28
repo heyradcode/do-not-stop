@@ -81,7 +81,32 @@ async function deployToNetwork(networkName: string): Promise<void> {
         JSON.stringify({ CryptoPetsV2Live: { entropyAddress: entropy.entropyAddress } }, null, 2)
     );
 
-    const deployCmd = `pnpm hh ignition deploy ignition/modules/CryptoPetsV2Live.ts --network ${network.name} --parameters ${paramsPath}`;
+    // Ignition keys deployment state by id, defaulting to `chain-<id>`. Re-running against
+    // an existing one RECONCILES with it: futures already deployed are kept, so the old
+    // proxies survive. That is wrong for the 2.0.0 contracts, whose storage layout is
+    // deliberately breaking (see GameLogic/PetCore) — reusing a proxy from before would
+    // leave it pointing at an implementation that reads its slots differently.
+    //
+    // So warn loudly and let the operator pass an explicit id, rather than guessing which
+    // they meant.
+    const deploymentId = process.argv.find((a) => a.startsWith('--deployment-id='))?.split('=')[1];
+    const existingDeployment = join(process.cwd(), 'ignition', 'deployments', `chain-${network.chainId}`);
+    if (!deploymentId && existsSync(existingDeployment)) {
+        console.warn(
+            `\n⚠️  A deployment already exists for chain ${network.chainId}.\n` +
+            `   Ignition reconciles against it and keeps the existing proxies.\n` +
+            `   The 2.0.0 contracts change storage layout and are NOT upgrade-compatible,\n` +
+            `   so an existing proxy must not be reused.\n\n` +
+            `   For a fresh stack: pnpm deploy:${network.name} --deployment-id=<name>\n`
+        );
+    }
+
+    const deployCmd = [
+        'pnpm hh ignition deploy ignition/modules/CryptoPetsV2Live.ts',
+        `--network ${network.name}`,
+        `--parameters ${paramsPath}`,
+        ...(deploymentId ? [`--deployment-id ${deploymentId}`] : []),
+    ].join(' ');
 
     console.log(`\n🚀 Deploying to ${networkName} (chain ${network.chainId})...`);
     try {
