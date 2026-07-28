@@ -98,14 +98,9 @@ func (ix *Indexer) sync(ctx context.Context, roster chan<- indexer.RosterUpdate)
 //
 // Battles are no longer ingested (§L Phase 6): GameLogic has no requestBattle /
 // settleBattle and the subgraph no longer emits a Battle entity, so there is nothing on
-// chain left to index. The `battles` channel is kept in the signature because the
-// delivery path behind it (battle_history, the bus, StreamLiveBattles) is still wired and
-// would be the place to feed backend-resolved receipts if they are ever mirrored here.
-func (ix *Indexer) Run(
-	ctx context.Context,
-	roster chan<- indexer.RosterUpdate,
-	_ chan<- indexer.BattleEvent,
-) error {
+// chain left to index. `battle_history` is written by the backend from its own signed
+// receipts now, so this indexer carries no battle path at all.
+func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) error {
 	if scanned, err := ix.Scan(ctx, roster); err != nil {
 		if ctx.Err() != nil {
 			return nil

@@ -222,12 +222,11 @@ func TestSessionStreamsAccountNotifications(t *testing.T) {
 	ix, _ := newTestIndexer(t, rpc, conn)
 
 	roster := make(chan indexer.RosterUpdate, 10)
-	battles := make(chan indexer.BattleEvent, 10)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	done := make(chan error, 1)
-	go func() { done <- ix.Run(ctx, roster, battles) }()
+	go func() { done <- ix.Run(ctx, roster) }()
 
 	conn.push(t, programNotification(1234, petData))
 	select {
@@ -257,12 +256,11 @@ func TestRunRedialsAfterConnectionLoss(t *testing.T) {
 	ix, dials := newTestIndexer(t, rpc, conn1, conn2)
 
 	roster := make(chan indexer.RosterUpdate, 10)
-	battles := make(chan indexer.BattleEvent, 10)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	done := make(chan error, 1)
-	go func() { done <- ix.Run(ctx, roster, battles) }()
+	go func() { done <- ix.Run(ctx, roster) }()
 
 	testutil.WaitFor(t, "first dial", func() bool { return dials.Load() >= 1 })
 	conn1.Close() // simulate connection drop

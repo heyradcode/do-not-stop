@@ -19,11 +19,7 @@ const (
 // Run maintains the subscription session forever: dial, subscribe, catch up,
 // stream; on any failure, back off and start over. Returns nil only when ctx
 // ends.
-func (ix *Indexer) Run(
-	ctx context.Context,
-	roster chan<- indexer.RosterUpdate,
-	battles chan<- indexer.BattleEvent,
-) error {
+func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) error {
 	attempt := 0
 	for {
 		if ctx.Err() != nil {
@@ -43,7 +39,7 @@ func (ix *Indexer) Run(
 			continue
 		}
 
-		subscribed, err := ix.session(ctx, conn, roster, battles)
+		subscribed, err := ix.session(ctx, conn, roster)
 		_ = conn.Close()
 		if ctx.Err() != nil {
 			return nil
@@ -67,7 +63,6 @@ func (ix *Indexer) session(
 	ctx context.Context,
 	conn wsConn,
 	roster chan<- indexer.RosterUpdate,
-	battles chan<- indexer.BattleEvent,
 ) (subscribed bool, err error) {
 	if err := ix.subscribe(conn); err != nil {
 		return false, fmt.Errorf("subscribe: %w", err)
@@ -116,7 +111,7 @@ func (ix *Indexer) session(
 				slog.Info("solana reconciliation scan", "scanned", scanned)
 			}
 		case msg := <-msgs:
-			ix.handleMessage(ctx, msg, roster, battles)
+			ix.handleMessage(ctx, msg, roster)
 		}
 	}
 }

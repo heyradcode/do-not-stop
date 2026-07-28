@@ -6,7 +6,6 @@ import (
 
 	"github.com/radcrew/do-not-stop/indexer-go/internal/cache"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/config"
-	"github.com/radcrew/do-not-stop/indexer-go/internal/grpcsrv"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/store"
 )
@@ -14,9 +13,8 @@ import (
 // storage is the persistence side of the pipeline, or its log-only stand-in
 // when DATABASE_URL is unset.
 type storage struct {
-	replayer    grpcsrv.Replayer // nil → stream replay disabled
-	rosterCache *cache.Roster    // nil → read RPCs disabled
-	writerDone  <-chan struct{}  // closed after the writer's final drain
+	rosterCache *cache.Roster   // nil → read RPCs disabled
+	writerDone  <-chan struct{} // closed after the writer's final drain
 	close       func()
 }
 
@@ -26,11 +24,10 @@ func startStorage(
 	ctx context.Context,
 	cfg *config.Config,
 	roster chan indexer.RosterUpdate,
-	battles chan indexer.BattleEvent,
 ) (*storage, error) {
 	if cfg.DatabaseURL == "" {
-		slog.Warn("DATABASE_URL not set; draining pipeline to logs only (stream replay disabled)")
-		go drainSink(ctx, roster, battles)
+		slog.Warn("DATABASE_URL not set; draining pipeline to logs only")
+		go drainSink(ctx, roster)
 		return &storage{close: func() {}}, nil
 	}
 
@@ -61,30 +58,27 @@ func startStorage(
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		if err := writer.Run(ctx, roster, battles); err != nil {
+		if err := writer.Run(ctx, roster); err != nil {
 			slog.Error("writer exited", "err", err)
 		}
 	}()
 
 	return &storage{
-		replayer:    pg,
 		rosterCache: rosterCache,
 		writerDone:  done,
 		close:       pg.Close,
 	}, nil
 }
 
-// drainSink discards roster/battle updates to logs when no database is
-// configured, so the channels never block the adapters.
-func drainSink(ctx context.Context, roster <-chan indexer.RosterUpdate, battles <-chan indexer.BattleEvent) {
+// drainSink discards roster updates to logs when no database is configured, so the
+// channel never blocks the adapters.
+func drainSink(ctx context.Context, roster <-chan indexer.RosterUpdate) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case u := <-roster:
 			slog.Debug("roster update (drained)", "chain", u.Chain, "pet", u.PetID, "version", u.Version)
-		case b := <-battles:
-			slog.Debug("battle event (drained)", "chain", b.Chain, "battle", b.BattleID)
 		}
 	}
 }

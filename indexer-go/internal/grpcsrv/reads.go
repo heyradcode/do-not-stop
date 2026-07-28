@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/radcrew/do-not-stop/indexer-go/internal/cache"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/combat"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
 	"github.com/radcrew/do-not-stop/indexer-go/pb"
@@ -35,25 +33,6 @@ func (s *Server) GetPetState(_ context.Context, req *pb.PetRequest) (*pb.PetResp
 		return nil, status.Errorf(codes.NotFound, "pet %s/%s", req.GetChain(), req.GetPetId())
 	}
 	return petToProto(pet), nil
-}
-
-func (s *Server) ListReadyOpponents(_ context.Context, req *pb.OpponentsRequest) (*pb.OpponentsResponse, error) {
-	if err := s.readable(); err != nil {
-		return nil, err
-	}
-	pets, total := s.roster.ListReadyOpponents(cache.OpponentsQuery{
-		Chain:        req.GetChain(),
-		ExcludeOwner: req.GetExcludeOwner(),
-		MinLevel:     req.GetMinLevel(),
-		NowUnix:      time.Now().Unix(),
-		Page:         int(req.GetPage()),
-		PageSize:     int(req.GetPageSize()),
-	})
-	out := &pb.OpponentsResponse{Total: uint32(total)}
-	for _, p := range pets {
-		out.Pets = append(out.Pets, petToProto(p))
-	}
-	return out, nil
 }
 
 // EstimateWin runs the combat sim over many seeds and returns pet_id1's win

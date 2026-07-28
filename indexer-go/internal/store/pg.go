@@ -51,25 +51,6 @@ type petRosterRow struct {
 
 func (petRosterRow) TableName() string { return "pet_roster" }
 
-// battleRow maps indexer.BattleEvent onto battle_history. created_at is omitted
-// so the table's CURRENT_TIMESTAMP default fills it (matching the old INSERT).
-type battleRow struct {
-	Chain             string `gorm:"column:chain;primaryKey"`
-	BattleID          string `gorm:"column:battle_id;primaryKey"`
-	AttackerPetID     string `gorm:"column:attacker_pet_id"`
-	DefenderPetID     string `gorm:"column:defender_pet_id"`
-	WinnerPetID       string `gorm:"column:winner_pet_id"`
-	LoserPetID        string `gorm:"column:loser_pet_id"`
-	Seed              string `gorm:"column:seed"`
-	Rounds            int32  `gorm:"column:rounds"`
-	WinnerHpRemaining int32  `gorm:"column:winner_hp_remaining"`
-	XPWin             int32  `gorm:"column:xp_win"`
-	XPLoss            int32  `gorm:"column:xp_loss"`
-	FoughtAt          int64  `gorm:"column:fought_at"`
-	Version           int64  `gorm:"column:version"`
-}
-
-func (battleRow) TableName() string { return "battle_history" }
 
 // rosterUpdateColumns are every non-key column, set to EXCLUDED.<col> on
 // conflict — the upsert's "freshest write wins" body (guarded by last_version).
@@ -146,32 +127,6 @@ func (f *PgFlusher) FlushRoster(ctx context.Context, batch []indexer.RosterUpdat
 	return nil
 }
 
-// InsertBattles appends settled battles. battle_id is the settle signature /
-// txHash-logIndex, so DO NOTHING makes at-least-once delivery idempotent.
-func (f *PgFlusher) InsertBattles(ctx context.Context, events []indexer.BattleEvent) error {
-	if len(events) == 0 {
-		return nil
-	}
-
-	rows := make([]battleRow, len(events))
-	for i, e := range events {
-		rows[i] = battleRow{
-			Chain: e.Chain, BattleID: e.BattleID, AttackerPetID: e.Attacker, DefenderPetID: e.Defender,
-			WinnerPetID: e.WinnerPetID, LoserPetID: e.LoserPetID, Seed: e.Seed,
-			Rounds: int32(e.Rounds), WinnerHpRemaining: int32(e.WinnerHpRemaining),
-			XPWin: int32(e.XPWin), XPLoss: int32(e.XPLoss), FoughtAt: e.FoughtAt, Version: int64(e.Version),
-		}
-	}
-
-	err := f.db.WithContext(ctx).Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "chain"}, {Name: "battle_id"}},
-		DoNothing: true,
-	}).Create(&rows).Error
-	if err != nil {
-		return fmt.Errorf("store: battle insert (%d rows): %w", len(events), err)
-	}
-	return nil
-}
 
 // LoadRoster reads the whole pet_roster table — the cache warm-up source
 // (the table is the persistent copy of the exact data the cache mirrors).
@@ -196,29 +151,3 @@ func (f *PgFlusher) LoadRoster(ctx context.Context) ([]indexer.RosterUpdate, err
 	return pets, nil
 }
 
-// BattlesSince reads chain-indexed battles newer than `after` for the gRPC
-// replay path, oldest first. Rows with version 0 (client-reported via the
-// dialogue path, never chain-indexed) are excluded by the strict inequality
-// when after >= 0 — exactly the rows a resuming stream consumer already has
-// no cursor for.
-func (f *PgFlusher) BattlesSince(ctx context.Context, chain string, after uint64) ([]indexer.BattleEvent, error) {
-	var rows []battleRow
-	err := f.db.WithContext(ctx).
-		Where("chain = ? AND version > ?", chain, after).
-		Order("version ASC").
-		Find(&rows).Error
-	if err != nil {
-		return nil, fmt.Errorf("store: battles since: %w", err)
-	}
-
-	events := make([]indexer.BattleEvent, len(rows))
-	for i, r := range rows {
-		events[i] = indexer.BattleEvent{
-			Chain: r.Chain, BattleID: r.BattleID, Attacker: r.AttackerPetID, Defender: r.DefenderPetID,
-			WinnerPetID: r.WinnerPetID, LoserPetID: r.LoserPetID, Seed: r.Seed,
-			Rounds: uint32(r.Rounds), WinnerHpRemaining: uint32(r.WinnerHpRemaining),
-			XPWin: uint32(r.XPWin), XPLoss: uint32(r.XPLoss), FoughtAt: r.FoughtAt, Version: uint64(r.Version),
-		}
-	}
-	return events, nil
-}

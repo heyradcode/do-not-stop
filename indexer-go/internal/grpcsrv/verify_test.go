@@ -12,17 +12,16 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/radcrew/do-not-stop/indexer-go/internal/battlebus"
 	"github.com/radcrew/do-not-stop/indexer-go/pb"
 )
 
 // VerifyBattle needs no cache and no warm-up: everything arrives in the
-// request, unlike GetPetState/ListReadyOpponents/EstimateWin. Passing a nil
+// request, unlike GetPetState/EstimateWin. Passing a nil
 // roster (the pre-promotion, cache-disabled state those RPCs refuse) proves
 // that independently.
 func verifyClient(t *testing.T) pb.GameDataServiceClient {
 	t.Helper()
-	return startServer(t, battlebus.New(), nil, nil)
+	return startServer(t, nil)
 }
 
 func TestVerifyBattleWorksWithNoCache(t *testing.T) {

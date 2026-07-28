@@ -64,7 +64,7 @@ export const env = {
      *
      * No longer carries battles. `StreamLiveBattles` pushed chain-truth settle events,
      * which stopped existing with on-chain battles (§L Phase 6); the backend's own signed
-     * receipt is the record now.
+     * receipt is the record now, and the RPC is gone from the proto contract.
      */
     indexerGrpc: {
         /** e.g. localhost:50051. */

@@ -36,27 +36,6 @@ type RosterUpdate struct {
 	Asset        string // Metaplex Core asset pubkey (Solana only, §2.3); "" on EVM / pre-Core
 }
 
-// BattleEvent is one settled battle, headed for battle_history and the
-// StreamLiveBattles gRPC feed.
-type BattleEvent struct {
-	Chain       string
-	BattleID    string // settle sig (solana) / txHash-logIndex (evm)
-	Attacker    string
-	Defender    string
-	WinnerPetID string // absolute pet id — head-to-head survives role swaps
-	Version     uint64
-	FoughtAt    int64 // unix seconds
-
-	// v2 fields from the round-based combat sim (plan §3.3). The seed makes a
-	// battle replayable: the frontend re-runs the sim locally to animate it.
-	LoserPetID        string // absolute pet id of the loser
-	Seed              string // 0x-prefixed 32-byte combat seed (hex), chain-agnostic
-	Rounds            uint32 // rounds the sim ran
-	WinnerHpRemaining uint32 // winner's HP at the final round
-	XPWin             uint32 // XP credited to the winner (level-diff scaled, §3.4)
-	XPLoss            uint32 // XP credited to the loser
-}
-
 // ChainIndexer is one roster source, any chain.
 type ChainIndexer interface {
 	Chain() string
@@ -68,5 +47,5 @@ type ChainIndexer interface {
 	// watermark polling). Blocks until ctx is done; returns nil on clean
 	// shutdown. Transient source errors are logged and retried internally,
 	// never returned.
-	Run(ctx context.Context, roster chan<- RosterUpdate, battles chan<- BattleEvent) error
+	Run(ctx context.Context, roster chan<- RosterUpdate) error
 }

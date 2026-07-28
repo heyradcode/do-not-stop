@@ -229,7 +229,7 @@ func TestRunRecoversAfterFailedInitialScan(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	done := make(chan error, 1)
-	go func() { done <- ix.Run(ctx, ch, nil) }()
+	go func() { done <- ix.Run(ctx, ch) }()
 
 	// Initial scan fails; heal the endpoint and wait for the sweep
 	// (watermark 0 → updatedAt_gt: 0 matches everything).

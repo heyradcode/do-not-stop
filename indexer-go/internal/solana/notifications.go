@@ -27,7 +27,6 @@ func (ix *Indexer) handleMessage(
 	ctx context.Context,
 	msg []byte,
 	roster chan<- indexer.RosterUpdate,
-	_ chan<- indexer.BattleEvent,
 ) {
 	var note wsNotification
 	if err := json.Unmarshal(msg, &note); err != nil {

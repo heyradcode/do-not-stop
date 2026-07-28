@@ -13,9 +13,8 @@ import type { Chain } from '@typings/chain';
  * process from adding the deadline to every read.
  *
  * Only the single-pet read is left. Matchmaking stopped using the cache when it began
- * banding on backend progression (`roster.repository.ts`), which the cache cannot see.
- * indexer-go still serves `ListReadyOpponents` and its tests still cover it; nothing in
- * this repo calls it now.
+ * banding on backend progression (`roster.repository.ts`), which the cache cannot see, so
+ * `ListReadyOpponents` was dropped from the proto contract entirely.
  */
 
 /** Per-call deadline. The cache answers from RAM; anything slower is a fault. */
