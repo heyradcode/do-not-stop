@@ -1,10 +1,24 @@
 # image-generator
 
-Standalone microservice that renders pet NFT art. Given a pet's DNA it produces
-deterministic SVG art plus ERC-721 metadata, procedurally: no stored images, no
-generative-AI call per pet, no database. See
+Standalone microservice that renders pet NFT art. A pet's DNA is decoded into
+visual traits, those traits build a fixed prompt, and Cloudflare Workers AI
+turns the prompt into an image. See
 [`docs/plan-future-features-roadmap.md`](../docs/plan-future-features-roadmap.md) §9
 for the design rationale.
+
+## The one hard constraint: generate once, then never again
+
+DNA -> traits -> prompt is exact integer math and reproducible forever. The
+diffusion step is not: the same prompt and seed give the same image only for one
+model version on one provider, so a model deprecation or a silent weights update
+would change what an already-minted NFT looks like. Every generated image must
+therefore be written to immutable content-addressed storage on first request and
+served from there afterwards. Regenerating on cache miss is a correctness bug,
+not a performance one.
+
+That also happens to fit the free allocation: Workers AI bills per request, so
+one image per pet for the lifetime of the pet keeps a collection's cost bounded
+by the number of pets rather than by traffic.
 
 ## Why it is a separate package
 
@@ -20,11 +34,16 @@ there is no golden-vector obligation and nothing to drift.
 Built incrementally. Done so far:
 
 - [x] DNA -> visual trait derivation (`src/traits.ts`)
-- [ ] Element palettes and the procedural SVG renderer
-- [ ] HTTP surface: `/health`, stateless `/image.svg?dna=&rarity=&speciesId=`
-- [ ] On-chain reads: `/metadata/:chain/:tokenId` and `/image/:chain/:tokenId.svg`
-- [ ] PNG rasterization and cache headers
+- [x] Traits -> deterministic prompt and seed (`src/prompt.ts`)
+- [x] Cloudflare Workers AI client and `pnpm generate` CLI (`src/workersAi.ts`)
+- [ ] Content-addressed immutable image store (see above)
+- [ ] HTTP surface: `/health`, `/image/:chain/:tokenId.png`, `/metadata/:chain/:tokenId`
+- [ ] On-chain reads: tokenId -> dna/rarity/speciesId
 - [ ] Deployment (Dockerfile / Render service)
+
+The Workers AI request and response shapes are written against Cloudflare's
+documented REST contract and covered by mocked tests only. The first live
+`pnpm generate` is what actually validates them.
 
 ## Traits
 
@@ -60,7 +79,23 @@ pnpm install --ignore-workspace
 pnpm test          # vitest
 pnpm lint          # eslint
 pnpm build         # tsc -> dist/
+
+# One-shot generation. Prints traits, seed, and prompt before it needs
+# credentials, so prompt wording can be iterated on with no token set.
+cp env.example .env   # then fill in CF_ACCOUNT_ID / CF_API_TOKEN
+pnpm generate --dna=7934056188134207 --rarity=3 --out=pet.png
 ```
+
+## Model choice
+
+Default is `@cf/bytedance/stable-diffusion-xl-lightning`. It takes an explicit
+`seed`, so a pet's image is re-derivable from its DNA, and it is tuned for 4-8
+steps, which keeps free-allocation usage low.
+`@cf/black-forest-labs/flux-1-schnell` also works via `CF_IMAGE_MODEL`: it
+returns base64 in a JSON envelope instead of raw PNG bytes and rejects SDXL's
+extra knobs, and the client handles both. No LLM is involved anywhere; prompts
+come from a lookup table, because an LLM would add nondeterminism and a second
+inference cost to something a table does exactly.
 
 ## License
 
