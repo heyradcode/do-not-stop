@@ -36,14 +36,15 @@ Built incrementally. Done so far:
 - [x] DNA -> visual trait derivation (`src/traits.ts`)
 - [x] Traits -> deterministic prompt and seed (`src/prompt.ts`)
 - [x] Cloudflare Workers AI client and `pnpm generate` CLI (`src/workersAi.ts`)
-- [ ] Content-addressed immutable image store (see above)
+- [x] Immutable image store: R2, filesystem, memory (`src/store.ts`, `src/r2Store.ts`)
+- [x] Generate-once pipeline with in-flight dedupe (`src/pipeline.ts`)
 - [ ] HTTP surface: `/health`, `/image/:chain/:tokenId.png`, `/metadata/:chain/:tokenId`
 - [ ] On-chain reads: tokenId -> dna/rarity/speciesId
 - [ ] Deployment (Dockerfile / Render service)
 
-The Workers AI request and response shapes are written against Cloudflare's
-documented REST contract and covered by mocked tests only. The first live
-`pnpm generate` is what actually validates them.
+The Workers AI and R2 request/response shapes are written against Cloudflare's
+documented contracts and covered by mocked tests only. The first live
+`pnpm generate` against a real bucket is what actually validates them.
 
 ## Traits
 
@@ -66,6 +67,36 @@ map to a distinct pattern/eye/marking combination. Pair 6 is already spent on
 species at mint time (`PetCore._resolveSpecies`), so the HP and INT genes supply
 the remaining per-pet variation. Art reads DNA and never feeds back into combat.
 
+## Storage
+
+`IMAGE_STORE` selects the backend: `r2` (production), `filesystem` (dev), or
+`memory` (tests and one-shot CLI runs; never persists). All three implement the
+same two-method `ImageStore` interface, so an IPFS or Arweave pin can be added
+later without touching the pipeline.
+
+**The key is derived from a pet's art identity — `(dna, rarity, speciesId)` —
+not from the prompt.** That distinction is the whole point. Keying on the prompt
+would mean any wording tweak in `prompt.ts` becomes a cache miss and a brand-new
+image for a pet somebody already owns. Keying on identity means an existing pet
+keeps its art however much the prompt table later evolves. Pets with identical
+dna, rarity, and species are identical by construction, so they share a key and
+one generation covers both.
+
+Regenerating art for existing pets is therefore an explicit decision: bump
+`ART_VERSION` in `src/store.ts`. Keys are namespaced by version, so old art stays
+readable and a bump can be rolled back. Every owner sees their pet change, which
+makes it a product call, not a refactor.
+
+Each image is written alongside a JSON manifest recording the traits, model,
+prompt, seed, and timestamp that produced it. Once a model version moves on, that
+manifest is the only record of how a given pet came to look the way it does.
+
+Concurrent first-ever requests for the same pet are collapsed into one
+generation, so a pet's page open in two tabs bills one inference rather than two.
+The dedupe is per process; with several instances the race is still possible, and
+the honest bound is that R2 resolves it last-write-wins and the pet is stable
+from then on. A shared lock is only worth adding if that shows up in practice.
+
 ## Commands
 
 Run from this directory. The service is deliberately *not* a member of the root
@@ -84,6 +115,10 @@ pnpm build         # tsc -> dist/
 # credentials, so prompt wording can be iterated on with no token set.
 cp env.example .env   # then fill in CF_ACCOUNT_ID / CF_API_TOKEN
 pnpm generate --dna=7934056188134207 --rarity=3 --out=pet.png
+
+# Defaults to the filesystem store, so running the same pet twice serves the
+# second from cache and bills nothing. --store=memory forces a fresh inference.
+pnpm generate --dna=7934056188134207 --rarity=3 --store=memory
 ```
 
 ## Model choice

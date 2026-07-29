@@ -54,4 +54,50 @@ export const loadWorkersAiConfig = (): WorkersAiConfig => ({
     timeoutMs: readNumber('CF_TIMEOUT_MS', DEFAULTS.timeoutMs),
 });
 
+/** Which ImageStore backs the service. `memory` never persists, so it is only
+ *  correct for one-shot CLI runs and tests: a server on `memory` regenerates
+ *  after every restart, which costs money and changes existing pets' art. */
+export type StoreKind = 'r2' | 'filesystem' | 'memory';
+
+export interface StoreSelection {
+    kind: StoreKind;
+    /** filesystem only. */
+    root: string;
+    /** r2 only. */
+    r2?: {
+        accountId: string;
+        accessKeyId: string;
+        secretAccessKey: string;
+        bucket: string;
+        publicBaseUrl?: string;
+    };
+}
+
+const STORE_KINDS: readonly StoreKind[] = ['r2', 'filesystem', 'memory'];
+
+const isStoreKind = (value: string): value is StoreKind => (STORE_KINDS as readonly string[]).includes(value);
+
+export const loadStoreSelection = (fallback: StoreKind = 'r2'): StoreSelection => {
+    const raw = process.env.IMAGE_STORE || fallback;
+    if (!isStoreKind(raw)) {
+        throw new ConfigError(`IMAGE_STORE must be one of ${STORE_KINDS.join(', ')}, got "${raw}"`);
+    }
+
+    const root = process.env.IMAGE_STORE_ROOT || './.art';
+    if (raw !== 'r2') return { kind: raw, root };
+
+    const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL;
+    return {
+        kind: raw,
+        root,
+        r2: {
+            accountId: process.env.R2_ACCOUNT_ID || readRequired('CF_ACCOUNT_ID'),
+            accessKeyId: readRequired('R2_ACCESS_KEY_ID'),
+            secretAccessKey: readRequired('R2_SECRET_ACCESS_KEY'),
+            bucket: readRequired('R2_BUCKET'),
+            ...(publicBaseUrl ? { publicBaseUrl } : {}),
+        },
+    };
+};
+
 export { ConfigError };
