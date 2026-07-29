@@ -108,7 +108,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const pendingBattleStartRef = useRef(false);
     // Latest live-replay outcome, read by handleSuccess (defined before `battle`
     // exists) for the mismatch check. Assigned during render each time `battle`
-    // updates, mirroring the onResolvedRef pattern in useEvmBattleFlow.
+    // updates, keeping the callback identity stable across renders.
     const liveReplayRef = useRef<SimOutcome | null>(null);
 
     const activeChainKind = capabilities.activeKind;

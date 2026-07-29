@@ -5,9 +5,19 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 // Cross-chain parity fixture (plan §3.4, §7): contracts/test-vectors/xp.json pins the XP
-// formula and same-opponent decay sequences shared by GameLogic._calcXp /
-// PetCore.recordBattleOpponent (EVM) and settle_battle::calc_xp /
-// PetAccount::record_battle_opponent (Solana).
+// formula and the same-opponent decay sequences.
+//
+// Read what this actually does before trusting it. It reimplements the formula in
+// TypeScript below and checks that against the fixture — it calls no contract, and cannot:
+// `GameLogic._calcXp` is internal, and `PetCore.recordBattleOpponent` was removed with the
+// on-chain battle path (§L Phase 6). So this pins the fixture's internal consistency, not
+// the EVM implementation.
+//
+// The real validators of xp.json are `@cryptopets/protocol`'s
+// tests/combat/xpGoldenVectors.test.ts (the live TS engine), indexer-go's
+// combat_golden_test.go (the live Go verifier), and Anchor's frozen suite over
+// `PetAccount::record_battle_opponent`, which is the only remaining port that actually
+// settled battles on chain.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

@@ -79,8 +79,9 @@ model BattleHistory {
   xpWin             Int    @default(0) @map("xp_win")
   xpLoss            Int    @default(0) @map("xp_loss")
   foughtAt          BigInt @map("fought_at") // unix seconds (block/tx time)
-  /// Monotonic source version (Solana slot / EVM block timestamp). The
-  /// StreamLiveBattles gRPC replay resumes from `WHERE version > after_version`.
+  /// Monotonic source version, from when the indexer wrote these rows from chain
+  /// events. Receipt-written rows leave it at 0: nothing resumes from it any more
+  /// (the gRPC replay it served is gone), and the receipt chain is the ordering.
   version     BigInt   @default(0)
   createdAt   DateTime @default(now()) @map("created_at")
 

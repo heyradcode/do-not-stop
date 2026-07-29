@@ -22,7 +22,7 @@ export interface LiveBattleAnimationState {
 }
 
 /**
- * Plays a combat-sim log (@cryptopets/protocol's combat engine, via useEvmBattleFlow's
+ * Plays a combat-sim log (@cryptopets/protocol's combat engine, via the verified receipt's
  * `liveReplay`) one strike at a time, exposing HP percentages and a flavor
  * line for the fighting scene. Presentation only — see useBattlePanel.ts for
  * the gate that keeps the result card off this animation and the
