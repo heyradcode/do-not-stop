@@ -38,9 +38,11 @@ Built incrementally. Done so far:
 - [x] Cloudflare Workers AI client and `pnpm generate` CLI (`src/workersAi.ts`)
 - [x] Immutable image store: R2, filesystem, memory (`src/store.ts`, `src/r2Store.ts`)
 - [x] Generate-once pipeline with in-flight dedupe (`src/pipeline.ts`)
-- [ ] HTTP surface: `/health`, `/image/:chain/:tokenId.png`, `/metadata/:chain/:tokenId`
-- [ ] On-chain reads: tokenId -> dna/rarity/speciesId
+- [x] On-chain reads: tokenId -> dna/rarity/speciesId (`src/chain.ts`)
+- [x] HTTP surface and ERC-721 metadata (`src/routes.ts`, `src/metadata.ts`)
 - [ ] Deployment (Dockerfile / Render service)
+- [ ] Point `PetCore.tokenURI` at this service (needs a contract change)
+- [ ] Solana pets (Metaplex Core assets, a different client entirely)
 
 The Workers AI and R2 request/response shapes are written against Cloudflare's
 documented contracts and covered by mocked tests only. The first live
@@ -66,6 +68,39 @@ Cosmetic pair 7 decomposes exactly (5 x 4 x 5 = 100), so all 100 of its values
 map to a distinct pattern/eye/marking combination. Pair 6 is already spent on
 species at mint time (`PetCore._resolveSpecies`), so the HP and INT genes supply
 the remaining per-pet variation. Art reads DNA and never feeds back into combat.
+
+## HTTP surface
+
+| Route | Purpose |
+| --- | --- |
+| `GET /health` | Store and model in use |
+| `GET /image/:chain/:tokenId.png` | The pet's art. Generates on first request, cached forever after. 302s to the bucket when `R2_PUBLIC_BASE_URL` is set |
+| `GET /metadata/:chain/:tokenId` | ERC-721 metadata, what `tokenURI` should point at |
+
+`:chain` is `evm` today. Solana pets are Metaplex Core assets read through a
+different client, so the segment is in the route from the start and `solana`
+returns an explicit 400 rather than pretending.
+
+**Metadata never triggers generation.** A marketplace indexing a whole
+collection hits every metadata URL at once; if that generated images it would
+bill thousands of inferences in a burst. Art is generated when an image is first
+actually fetched.
+
+Token ids are resolved by reading `PetCore.getPet` directly over RPC, not via the
+backend. The backend's roster is an indexer projection that can lag, and a wrong
+`dna` here does not render a slightly stale pet, it renders a *different* pet and
+then caches that mistake permanently.
+
+One sharp edge in that contract: **`getPet` has no `entryExists` modifier.** It
+reads the mapping directly, so an unminted tokenId returns a zero-valued struct
+rather than reverting. Taken at face value that would generate art for a pet that
+does not exist and cache it forever, so existence is checked against
+`totalPets()`, mirroring PetCore's own `petId > 0 && petId <= _petCount`. The two
+calls are issued in parallel, so the check costs an extra `eth_call` and no extra
+latency.
+
+Status codes are deliberately distinguishable: 404 unminted pet, 400 bad chain or
+token id, 502 Workers AI failure (nothing was cached, so a retry can succeed).
 
 ## Storage
 
@@ -110,6 +145,8 @@ pnpm install --ignore-workspace
 pnpm test          # vitest
 pnpm lint          # eslint
 pnpm build         # tsc -> dist/
+pnpm dev           # watch mode on :8787
+pnpm start         # run the built server
 
 # One-shot generation. Prints traits, seed, and prompt before it needs
 # credentials, so prompt wording can be iterated on with no token set.

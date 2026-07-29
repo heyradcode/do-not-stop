@@ -100,4 +100,33 @@ export const loadStoreSelection = (fallback: StoreKind = 'r2'): StoreSelection =
     };
 };
 
+export interface ServerConfig {
+    port: number;
+    /** Absolute URL this service is reachable at, used in metadata image links. */
+    publicBaseUrl: string;
+    /** Per-pet game URL template; `{chain}` and `{tokenId}` are substituted. */
+    externalUrlTemplate?: string;
+    evm: {
+        rpcUrl: string;
+        petCoreAddress: string;
+    };
+}
+
+export const loadServerConfig = (): ServerConfig => {
+    const port = readNumber('PORT', 8787);
+    const externalUrlTemplate = process.env.EXTERNAL_URL_TEMPLATE;
+
+    return {
+        port,
+        // Defaults to localhost so `pnpm dev` works with no config; production
+        // must set this or metadata will hand marketplaces unreachable image URLs.
+        publicBaseUrl: process.env.PUBLIC_BASE_URL || `http://localhost:${port}`,
+        ...(externalUrlTemplate ? { externalUrlTemplate } : {}),
+        evm: {
+            rpcUrl: readRequired('EVM_RPC_URL'),
+            petCoreAddress: readRequired('PETCORE_ADDRESS'),
+        },
+    };
+};
+
 export { ConfigError };

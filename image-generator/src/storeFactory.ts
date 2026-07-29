@@ -23,5 +23,13 @@ export const createStore = async (selection: StoreSelection): Promise<ImageStore
     }
 };
 
-export const describeStore = (selection: StoreSelection): string =>
-    selection.kind === 'r2' ? `r2:${selection.r2?.bucket ?? '?'}` : `${selection.kind}:${selection.root}`;
+export const describeStore = (selection: StoreSelection): string => {
+    switch (selection.kind) {
+        case 'r2':
+            return `r2:${selection.r2?.bucket ?? '?'}`;
+        case 'filesystem':
+            return `filesystem:${selection.root}`;
+        case 'memory':
+            return 'memory (nothing persists)';
+    }
+};
