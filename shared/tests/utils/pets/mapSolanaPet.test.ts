@@ -118,12 +118,4 @@ describe('mapSolanaPet', () => {
         expect(pet.name).toBe('');
     });
 
-    it('maps openToChallenges boolean', () => {
-        expect(mapSolanaPet(row({ openToChallenges: true })).openToChallenges).toBe(true);
-        expect(mapSolanaPet(row({ openToChallenges: false })).openToChallenges).toBe(false);
-    });
-
-    it('omits openToChallenges when absent from account', () => {
-        expect(mapSolanaPet(row({})).openToChallenges).toBeUndefined();
-    });
 });

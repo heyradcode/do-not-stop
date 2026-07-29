@@ -82,10 +82,6 @@
             "type": "u8"
           },
           {
-            "name": "openToChallenges",
-            "type": "bool"
-          },
-          {
             "name": "xp",
             "type": "u32"
           },

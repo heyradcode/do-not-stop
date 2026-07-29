@@ -15,7 +15,6 @@ import {
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import Icon, { BattleIcon } from '@components/ui/icon';
-import OpenToChallengesToggle from './open-to-challenges-toggle';
 import { opponentKey, shortAddress } from '../battle-utils';
 import styles from '../index.module.css';
 
@@ -249,11 +248,6 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                     />
                 </div>
             </div>
-
-            <OpenToChallengesToggle
-                petId={selectedPet1}
-                currentValue={selectedFighter?.openToChallenges}
-            />
 
             <div className={styles.actions}>
                 <AuthActionButton tone="magenta" onClick={onBattle} disabled={battleDisabled}>

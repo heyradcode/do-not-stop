@@ -18,10 +18,6 @@ pub const DEFAULT_RANDOMNESS_EXPIRY_SLOTS: u64 = 150;
 /// granting levels once a pet reaches this; `level_up` rejects further fee-paid levels too.
 pub const DEFAULT_MAX_LEVEL: u16 = 100;
 
-/// Max allowed level gap between battle participants (§3.4, mirrors EVM
-/// `GameConfig.levelBandWidth`). 100 effectively disables the check during dev/testing.
-pub const DEFAULT_LEVEL_BAND_WIDTH: u16 = 100;
-
 /// Max child generation for breeding (plan §4.1, mirrors EVM `GameConfig.generationCap`).
 pub const DEFAULT_GENERATION_CAP: u8 = 20;
 
@@ -101,7 +97,6 @@ pub struct GlobalState {
     pub bump: u8,
     pub randomness_expiry_slots: u64,
     pub max_level: u16,
-    pub level_band_width: u16,
     /// Max child generation for breeding (plan §4.1, mirrors EVM `generationCap`).
     pub generation_cap: u8,
     /// Breed cooldown base in seconds; doubles per `breed_count`, capped at
@@ -141,11 +136,15 @@ pub struct GlobalState {
     /// and `settle_breed` CPI into `mpl-core` to mint pet assets into it.
     pub collection: Pubkey,
     /// Reserved padding for fields added by future upgrades without moving any of the
-    /// above. It grew back from 16 to 24 when `battle_fee_lamports` was removed with the
-    /// on-chain battle path (§L Phase 6): the field sat immediately before this, so
-    /// reclaiming its 8 bytes here keeps every preceding offset and [`GlobalState::SPACE`]
-    /// exactly as deployed. A live account simply reads the old fee back as padding.
-    pub _reserved: [u8; 24],
+    /// above. Grown as retired fields were reclaimed — 16 → 24 for `battle_fee_lamports`,
+    /// 24 → 26 for `level_band_width` — so [`GlobalState::SPACE`] never changes and the
+    /// account's rent-exempt size stays put.
+    ///
+    /// The two removals differ in blast radius. `battle_fee_lamports` sat immediately before
+    /// this, so reclaiming it preserved every preceding offset. `level_band_width` sat
+    /// mid-struct, so every field after it moved: this account must be re-initialized
+    /// (see `CURRENT_ACCOUNT_VERSION` v7).
+    pub _reserved: [u8; 26],
 }
 
 impl GlobalState {
@@ -160,7 +159,6 @@ impl GlobalState {
         + 1 /* bump */
         + 8 /* randomness_expiry_slots */
         + 2 /* max_level */
-        + 2 /* level_band_width */
         + 1 /* generation_cap */
         + 8 /* breed_cooldown_base_seconds */
         + 8 /* newborn_cooldown_seconds */
@@ -174,7 +172,7 @@ impl GlobalState {
         + 8 /* marriage_cooldown_seconds */
         + 8 /* proposal_ttl_seconds */
         + 32 /* collection */
-        + 24; /* reserved */
+        + 26; /* reserved */
 }
 
 #[account]

@@ -29,7 +29,6 @@ func TestBase58Encode(t *testing.T) {
 const (
 	fxVersion          = 2
 	fxBump             = 7
-	fxOpenToChallenges = true
 	fxXP               = 250
 	fxLastOpponentID   = 17
 	fxSameOpponentStrk = 1
@@ -71,8 +70,9 @@ func buildPetAccount(t *testing.T, id uint32, owner [32]byte, dna uint64, rarity
 	copy(nameBuf[:], name)
 	buf.Write(nameBuf[:])
 	buf.WriteByte(uint8(len(name)))
-	// v2 fields, in struct order.
-	writeBool(&buf, fxOpenToChallenges)
+	// v2 fields, in struct order. No open_to_challenges byte: the flag was removed with
+	// the on-chain battle path (§L Phase 6), so writing one here would shift every field
+	// after it and silently misalign the decode.
 	_ = binary.Write(&buf, binary.LittleEndian, uint32(fxXP))
 	_ = binary.Write(&buf, binary.LittleEndian, uint32(fxLastOpponentID))
 	buf.WriteByte(fxSameOpponentStrk)
@@ -94,14 +94,6 @@ func buildPetAccount(t *testing.T, id uint32, owner [32]byte, dna uint64, rarity
 		t.Fatalf("fixture is %d bytes, layout says %d", len(data), layout.totalLen())
 	}
 	return data
-}
-
-func writeBool(buf *bytes.Buffer, v bool) {
-	if v {
-		buf.WriteByte(1)
-		return
-	}
-	buf.WriteByte(0)
 }
 
 func TestDecodePetAccount(t *testing.T) {

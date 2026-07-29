@@ -20,10 +20,6 @@ pub struct PetAccount {
     pub bump: u8,
     pub name: [u8; PetAccount::MAX_NAME_LEN],
     pub name_len: u8,
-    /// Interim defender-consent fix (§3.5/§6 Solana #3): when false, this pet cannot be
-    /// targeted as a defender. Owner-toggleable, defaults to true. Enforced by the
-    /// backend matchmaker, not by this program (§L Phase 6).
-    pub open_to_challenges: bool,
     /// XP toward the next level (§3.4); auto-levels via [`PetAccount::add_xp`] at `100 * level`.
     pub xp: u32,
     /// Most recent opponent's pet id (§3.4 same-opponent decay); `0` = no battles yet, since
@@ -87,7 +83,6 @@ impl PetAccount {
         + 1 /* bump */
         + Self::MAX_NAME_LEN /* name */
         + 1 /* name_len */
-        + 1 /* open_to_challenges */
         + 4 /* xp */
         + 4 /* last_opponent_id */
         + 1 /* same_opponent_streak */
@@ -251,7 +246,6 @@ mod tests {
             bump: 0,
             name: [0u8; PetAccount::MAX_NAME_LEN],
             name_len: 0,
-            open_to_challenges: true,
             xp: 0,
             last_opponent_id: 0,
             same_opponent_streak: 0,

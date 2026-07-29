@@ -135,23 +135,6 @@ describe("cryptopets", () => {
       }
       expect(threw).to.be.true;
     });
-
-    // Audit finding: unlike every other SetConfig setter, set_level_band_width
-    // has no MAX_* bounds check (config.rs), so any u16 is accepted. Low
-    // priority -- nothing reads level_band_width since the on-chain battle path
-    // was retired, so an oversized value cannot brick anything -- but documented
-    // here so a future bounds check (and this test) can be added together.
-    it("set_level_band_width accepts any u16 (no bounds check)", async () => {
-      const value = 65535;
-
-      await program.methods
-        .setLevelBandWidth(value)
-        .accounts({ globalState, admin: wallet.publicKey })
-        .rpc();
-
-      const gs = await program.account.globalState.fetch(globalState);
-      expect(gs.levelBandWidth).to.equal(value);
-    });
   });
 
   describe("withdraw_fees", () => {
@@ -173,7 +156,7 @@ describe("cryptopets", () => {
 
   // TODO (plan §4.3/§4.4): gacha mint (commit_mint/settle_mint), breeding
   // (commit_breed/settle_breed), and everything that depends on an existing pet
-  // (level_up, train, rename_pet, set_open_to_challenges, marriage,
+  // (level_up, train, rename_pet, marriage,
   // cancel_mint/cancel_breed, clear_stale_marriage, withdraw_stud_fees,
   // sync_metadata). All of these
   // need a pet, which only comes from settle_mint/settle_breed minting a

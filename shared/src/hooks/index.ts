@@ -12,8 +12,6 @@ export { usePendingBreed, type PendingBreed } from './chains/ethereum/usePending
 export { useBreedRelationCheck, type BreedRelationCheck } from './chains/ethereum/useBreedRelationCheck';
 // Solana pending VRF requests — auto-resumes on next action; cancel available after randomness expiry.
 export { usePendingSolanaBreed, type PendingSolanaBreed } from './chains/solana/usePendingSolanaBreed';
-// Solana defender-consent toggle (openToChallenges). No-op on EVM.
-export { useSetOpenToChallenges, type UseSetOpenToChallengesResult } from './useSetOpenToChallenges';
 // Solana NFT metadata sync — re-publishes on-chain state to Metaplex Core attributes. No-op on EVM.
 export { useSyncMetadata, type UseSyncMetadataResult } from './useSyncMetadata';
 // Solana stud fee earnings: balance query + withdraw_stud_fees action.

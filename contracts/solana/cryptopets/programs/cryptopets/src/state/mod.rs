@@ -42,7 +42,15 @@ pub use requests::*;
 /// ownership transfers happen as standard Core asset transfers through any wallet. Bumps
 /// `PetAccount::SPACE` (+32 bytes). Breaking; requires redeploy + reinit of pet accounts
 /// (`GlobalState`/`PlayerProfile` layouts unchanged).
-pub const CURRENT_ACCOUNT_VERSION: u8 = 6;
+/// v7: removes retired battle config and consent state. `PetAccount.open_to_challenges`
+/// is gone — `commit_battle` was its only reader, and defender consent is now a
+/// wallet-signed `DefenseAuthorization` (§D), so the flag protected nothing while still
+/// appearing to. `GlobalState.level_band_width` goes with it, matching the EVM removal of
+/// `GameConfig.levelBandWidth`. Both sat mid-struct, so every field after them moves:
+/// breaking for `PetAccount` and `GlobalState` alike, requiring redeploy plus reinit of
+/// `GlobalState` and re-mint of pets. `PetAccount::SPACE` shrinks 1 byte;
+/// `GlobalState::SPACE` is held constant by growing its `_reserved`.
+pub const CURRENT_ACCOUNT_VERSION: u8 = 7;
 
 /// PDA seed for the lamport-only fee vault (§6 Solana #5). Holds `level_up_fee_lamports`
 /// and future protocol fees; swept via `withdraw_fees`.

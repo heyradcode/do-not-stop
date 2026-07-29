@@ -176,19 +176,6 @@ export const usePetActions = () => {
         },
     });
 
-    const setOpenToChallenges = useMutation({
-        mutationFn: async (args: { petId: number; assetKey: string; value: boolean }) => {
-            const { program, programId, owner } = requireReady();
-            const petAsset = new PublicKey(args.assetKey);
-            const [pet] = petPdaByAsset(programId, args.assetKey);
-            return program.methods
-                .setOpenToChallenges(args.value)
-                .accounts({ petAsset, pet, owner })
-                .rpc();
-        },
-        onSuccess: invalidateProgramQueries,
-    });
-
     /**
      * Breed via Switchboard On-Demand VRF (commit + reveal), matching the EVM Chainlink flow.
      * For cross-owner breeding, pass `parent2AssetKey` and `parent2Owner`; for same-wallet
@@ -237,7 +224,6 @@ export const usePetActions = () => {
         transferPet,
         withdrawStudFees,
         syncMetadata,
-        setOpenToChallenges,
         breedPets,
         breedSubPhase,
         walletPublicKey: signingWallet?.publicKey ?? null,
