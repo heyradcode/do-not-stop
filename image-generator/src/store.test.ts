@@ -15,8 +15,39 @@ import {
 const DNA = 79_34_05_61_88_13_42_07n;
 const PET = { dna: DNA, rarity: 3 };
 
+/**
+ * Golden keys, in the spirit of contracts/test-vectors. The key derivation is the
+ * one thing here that must never change by accident: every already-generated
+ * image lives at its key, so a different derivation orphans all of them at once
+ * and every pet silently gets new art. Nothing else in this service has a blast
+ * radius like that.
+ *
+ * A test that only checks the derivation agrees with itself cannot catch this. If
+ * someone folds the prompt, model, or seed into the key, or reorders the fields,
+ * or changes the hash, the values below change and this fails.
+ *
+ * If a change here is deliberate, it is an ART_VERSION bump, not a fixture edit.
+ */
+const GOLDEN_KEYS = [
+    { label: 'evm pet with a species', input: { dna: DNA, rarity: 3, speciesId: 6 }, digest: '4b68af84a72af579b544a0d97291be5b' },
+    { label: 'pet with no species', input: { dna: DNA, rarity: 3 }, digest: 'f513a1e17201ca8337de1388dd4a409b' },
+    { label: 'rarity 0 clamped to 1', input: { dna: 1n, rarity: 0 }, digest: '1fe50b215bac6ba2b8537ad88c089a3b' },
+] as const;
+
 describe('petArtDigest', () => {
-    it('keys on art identity, not on the prompt', () => {
+    it.each(GOLDEN_KEYS)('pins the key for $label', ({ input, digest }) => {
+        expect(petArtDigest(input)).toBe(digest);
+    });
+
+    it('puts the image and its manifest at the same digest', () => {
+        expect(petImageKey(GOLDEN_KEYS[0].input)).toBe(`art/v1/${GOLDEN_KEYS[0].digest}.png`);
+        expect(petManifestKey(GOLDEN_KEYS[0].input)).toBe(`art/v1/${GOLDEN_KEYS[0].digest}.json`);
+    });
+
+    // The prompt is deliberately absent from the key: any wording tweak in
+    // prompt.ts would otherwise be a cache miss and brand-new art for a pet
+    // somebody already owns.
+    it('depends only on identity, so the prompt cannot reach it', () => {
         expect(petArtDigest(PET)).toBe(petArtDigest({ dna: DNA, rarity: 3 }));
     });
 

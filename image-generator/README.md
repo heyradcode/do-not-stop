@@ -172,6 +172,13 @@ keeps its art however much the prompt table later evolves. Pets with identical
 dna, rarity, and species are identical by construction, so they share a key and
 one generation covers both.
 
+The derivation is pinned by golden key fixtures in `src/store.test.ts`, in the
+spirit of `contracts/test-vectors`. It has the largest blast radius in the
+service: every generated image lives at its key, so any change orphans all of
+them at once and every pet silently gets new art. A test that only checks the
+derivation agrees with itself cannot catch that, so the expected digests are
+written down. A deliberate change is an `ART_VERSION` bump, not a fixture edit.
+
 Regenerating art for existing pets is therefore an explicit decision: bump
 `ART_VERSION` in `src/store.ts`. Keys are namespaced by version, so old art stays
 readable and a bump can be rolled back. Every owner sees their pet change, which
