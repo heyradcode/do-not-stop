@@ -11,7 +11,11 @@
  * `contracts/test-vectors/battle.json`. Agreeing with it makes this port correct
  * transitively, without importing anything at build time.
  *
- * Skipped when the monorepo is absent, so the service still tests standalone.
+ * Skipped when the monorepo is absent, so the service still tests standalone. The
+ * specifier is assembled at runtime rather than written as a literal: tsc resolves
+ * a literal dynamic import, so a static path would make `pnpm typecheck` fail
+ * wherever the monorepo is not checked out, which is exactly the isolation this
+ * package is meant to keep.
  */
 
 import { existsSync } from 'node:fs';
@@ -21,13 +25,22 @@ import { digitPair } from './traits.js';
 
 const SHARED_DNA = join('..', 'shared', 'src', 'utils', 'combat', 'dna.ts');
 
+interface DnaPort {
+    digitPair: (dna: bigint, pairIdx: number) => bigint;
+}
+
+/** Resolved to an absolute file URL against this file, so the path is right at
+ *  runtime while staying a plain string to tsc; see the note above. */
+const loadSharedPort = async (): Promise<DnaPort> => {
+    const specifier = new URL('../../shared/src/utils/combat/dna.ts', import.meta.url).href;
+    return (await import(/* @vite-ignore */ specifier)) as DnaPort;
+};
+
 const describeIfPresent = existsSync(SHARED_DNA) ? describe : describe.skip;
 
 describeIfPresent('digitPair vs the golden-vector-checked port', () => {
     it('agrees across every pair index, for DNA of every shape', async () => {
-        const shared = (await import('../../shared/src/utils/combat/dna.js')) as {
-            digitPair: (dna: bigint, pairIdx: number) => bigint;
-        };
+        const shared = await loadSharedPort();
 
         const samples = [
             0n,
@@ -51,9 +64,7 @@ describeIfPresent('digitPair vs the golden-vector-checked port', () => {
     });
 
     it('agrees across a sweep, not just hand-picked values', async () => {
-        const shared = (await import('../../shared/src/utils/combat/dna.js')) as {
-            digitPair: (dna: bigint, pairIdx: number) => bigint;
-        };
+        const shared = await loadSharedPort();
 
         for (let i = 0n; i < 500n; i++) {
             const dna = (i * 7_919_000_000_037n) % 10_000_000_000_000_000n;

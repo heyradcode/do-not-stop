@@ -2,6 +2,7 @@
     "name": "image-generator",
     "version": "0.0.1",
     "private": true,
+    "packageManager": "pnpm@9.15.9",
     "description": "Standalone microservice that renders deterministic pet NFT art (SVG) and ERC-721 metadata from a pet's on-chain DNA.",
     "license": "SEE LICENSE IN ../LICENSE",
     "type": "module",

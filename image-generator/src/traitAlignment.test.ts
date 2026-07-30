@@ -43,37 +43,39 @@ const BODY_FOR_SKILL: readonly [skill: string, body: string][] = [
     ['Bloodlust', 'Fanged'],
 ];
 
-describeIf(SKILLS)('body silhouettes vs the skill archetypes', () => {
-    const source = readFileSync(SKILLS, 'utf8');
-    const skills = [...source.matchAll(/name:\s*'([A-Za-z]+)'/g)].map((m) => m[1]!);
+// Read inside the tests, never in a describe body: vitest evaluates the body of a
+// skipped describe, so a top-level read throws where the monorepo is absent and
+// the skip never gets a chance to apply.
+const readSkills = (): string[] =>
+    [...readFileSync(SKILLS, 'utf8').matchAll(/name:\s*'([A-Za-z]+)'/g)].map((m) => m[1]!);
 
+const readElements = () => /const elements = \[([^\]]+)\]/.exec(readFileSync(PET_CARD, 'utf8'));
+
+describeIf(SKILLS)('body silhouettes vs the skill archetypes', () => {
     it('found the archetype list', () => {
-        expect(skills.length).toBeGreaterThan(4);
+        expect(readSkills().length).toBeGreaterThan(4);
     });
 
     it('has one silhouette per archetype', () => {
-        expect(BODY_NAMES).toHaveLength(skills.length);
+        expect(BODY_NAMES).toHaveLength(readSkills().length);
     });
 
     // Both are indexed by speciesId % 8, so position is the whole contract.
     it('pairs each silhouette with the archetype at the same index', () => {
-        expect(skills).toEqual(BODY_FOR_SKILL.map(([skill]) => skill));
+        expect(readSkills()).toEqual(BODY_FOR_SKILL.map(([skill]) => skill));
         expect([...BODY_NAMES]).toEqual(BODY_FOR_SKILL.map(([, body]) => body));
     });
 });
 
 describeIf(PET_CARD)('element names vs the game element wheel', () => {
-    const source = readFileSync(PET_CARD, 'utf8');
-    const match = /const elements = \[([^\]]+)\]/.exec(source);
-
     it('found the element list', () => {
-        expect(match).not.toBeNull();
+        expect(readElements()).not.toBeNull();
     });
 
     // Order is the palette: element 1 must mean the same thing in both places, or
     // a pet's metadata would name one element while the app names another.
     it('is the same list in the same order', () => {
-        const theirs = match![1]!.split(',').map((s) => s.trim().replace(/'/g, ''));
+        const theirs = readElements()![1]!.split(',').map((s) => s.trim().replace(/'/g, ''));
         const capitalised = theirs.map((name) => name[0]!.toUpperCase() + name.slice(1));
 
         expect([...ELEMENT_NAMES]).toEqual(capitalised);

@@ -51,25 +51,31 @@ const ourFields = FIELD_SIZES.slice(1).map(([name, bytes]) => [name, bytes] as [
 
 const describeIf = (path: string) => (existsSync(path) ? describe : describe.skip);
 
-describeIf(IDL_PATH)('PetAccount layout vs the Anchor IDL', () => {
+// Read inside the tests, never in a describe body: vitest evaluates the body of a
+// skipped describe, so a top-level readFileSync throws where the file is absent
+// and the skip never gets a chance to apply.
+const readIdl = () => {
     const idl = JSON.parse(readFileSync(IDL_PATH, 'utf8')) as {
         accounts?: { name: string; discriminator: number[] }[];
         types?: { name: string; type: { fields: { name: string; type: IdlType }[] } }[];
     };
     const fields = idl.types?.find((t) => t.name === 'PetAccount')?.type.fields ?? [];
-    const idlLayout = fields.map((f) => [f.name, widthOf(f.type)] as [string, number]);
+    return { idl, layout: fields.map((f) => [f.name, widthOf(f.type)] as [string, number]) };
+};
+
+describeIf(IDL_PATH)('PetAccount layout vs the Anchor IDL', () => {
 
     // Guards the guard: an empty layout would agree with anything.
     it('found the account in the IDL', () => {
-        expect(idlLayout.length).toBeGreaterThan(20);
+        expect(readIdl().layout.length).toBeGreaterThan(20);
     });
 
     it('has the same fields, in the same order, at the same widths', () => {
-        expect(ourFields).toEqual(idlLayout);
+        expect(ourFields).toEqual(readIdl().layout);
     });
 
     it('totals the same account size once the discriminator is added', () => {
-        const total = idlLayout.reduce((sum, [, bytes]) => sum + bytes, 0);
+        const total = readIdl().layout.reduce((sum, [, bytes]) => sum + bytes, 0);
         expect(PET_ACCOUNT_SPACE).toBe(total + 8);
     });
 
@@ -77,35 +83,39 @@ describeIf(IDL_PATH)('PetAccount layout vs the Anchor IDL', () => {
     // anywhere. If that convention were wrong, every real account would fail the
     // discriminator check and Solana would never serve a single pet.
     it('computes the discriminator Anchor generated', () => {
-        const expected = idl.accounts?.find((a) => a.name === 'PetAccount')?.discriminator;
+        const expected = readIdl().idl.accounts?.find((a) => a.name === 'PetAccount')?.discriminator;
         expect(expected).toBeDefined();
         expect([...petAccountDiscriminator()]).toEqual(expected);
     });
 });
 
-describeIf(PET_RS)('PetAccount layout vs pet.rs', () => {
+/** Same reason as readIdl: never read at describe level. */
+const readRustLayout = (): [string, number][] => {
     const toCamel = (name: string): string =>
         name.replace(/^_+/, '').replace(/_([a-z])/g, (_full, c: string) => c.toUpperCase());
 
     const source = readFileSync(PET_RS, 'utf8');
     const body = source.slice(source.indexOf('pub struct PetAccount {'), source.indexOf('impl PetAccount'));
 
-    const rustLayout: [string, number][] = [];
+    const layout: [string, number][] = [];
     for (const line of body.split('\n')) {
         const match = /^\s*pub\s+(\w+):\s*([^,]+),/.exec(line);
         if (!match) continue;
         const type = match[2]!.trim().replace('PetAccount::MAX_NAME_LEN', '32');
         const array = /^\[u8;\s*(\d+)\]$/.exec(type);
-        rustLayout.push([toCamel(match[1]!), array ? Number(array[1]) : widthOf(type)]);
+        layout.push([toCamel(match[1]!), array ? Number(array[1]) : widthOf(type)]);
     }
+    return layout;
+};
 
+describeIf(PET_RS)('PetAccount layout vs pet.rs', () => {
     it('found the struct in the source', () => {
-        expect(rustLayout.length).toBeGreaterThan(20);
+        expect(readRustLayout().length).toBeGreaterThan(20);
     });
 
     // Disagreement here means the checked-in IDL no longer matches the program
     // source, so this service would decode for a program that is not deployed.
     it('matches the current Rust struct too, so the IDL is not stale', () => {
-        expect(ourFields).toEqual(rustLayout);
+        expect(ourFields).toEqual(readRustLayout());
     });
 });

@@ -6,13 +6,7 @@
     "extends": "./tsconfig.json",
     "compilerOptions": {
         "noEmit": true,
-        "types": ["node"],
-        // Widened past ./src because digitPair.test.ts deliberately imports a
-        // sibling package's port to check this service's copy against it. Nothing
-        // is emitted from this config, so rootDir only has to be wide enough to
-        // contain the program. The build config keeps ./src, so production code
-        // still cannot reach outside the package.
-        "rootDir": ".."
+        "types": ["node"]
     },
     "include": ["src/**/*"],
     "exclude": ["node_modules", "dist"]
