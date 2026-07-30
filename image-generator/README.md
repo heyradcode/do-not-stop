@@ -83,6 +83,24 @@ not disturb another:
 | `build` | HP gene (pair 1) | 0-99 body girth |
 | `spark` | INT gene (pair 4) | 0-99 eye/aura intensity |
 
+### Known: the app displays a different element than the metadata
+
+`element` here follows `DnaLib.sol`, the contract's own derivation and the one
+combat uses: `digitPair(dna, 0) % 6`, i.e. `(dna % 100) % 6`. The frontend's
+`getPetElement` / `getPetClass` in `shared/src/utils/ethereum/petCard.ts` use
+`dna % 6` instead. **Those disagree for roughly two thirds of DNA values**
+(1332/2000 across a sweep), so a pet whose metadata reads `Element: Water` can
+show in the app as "Cosmic Owl".
+
+This predates the service and was not introduced by it; those helpers look like
+v1 synthetic fallbacks, alongside `getGeneration`, which the pet card already
+prefers a real on-chain field over. Nothing here changes them, because aligning
+them would change the displayed class of every existing pet, which is a product
+decision rather than a refactor. Flagged so it is chosen rather than discovered.
+
+If they are aligned, the contract derivation is the one to keep: it is on-chain,
+it drives combat, and the art is generated from it.
+
 Cosmetic pair 7 decomposes exactly (5 x 4 x 5 = 100), so all 100 of its values
 map to a distinct pattern/eye/marking combination. Pair 6 is already spent on
 species at mint time (`PetCore._resolveSpecies`), so the HP and INT genes supply
