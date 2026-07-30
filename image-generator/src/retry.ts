@@ -67,6 +67,41 @@ export const withRetry = async <T>(fn: () => Promise<T>, options: RetryOptions):
     throw lastError;
 };
 
+export class DeadlineExceeded extends Error {
+    constructor(readonly ms: number) {
+        super(`Deadline of ${ms}ms exceeded`);
+        this.name = 'DeadlineExceeded';
+    }
+}
+
+/**
+ * Rejects if `work` has not settled within `ms`, WITHOUT cancelling it.
+ *
+ * That distinction is the point. Generation is paid for and, once started, runs
+ * to completion and lands in the store whether or not anyone is still waiting
+ * (see pipeline.ts). So giving up on the *response* costs nothing: the caller
+ * stops holding a connection open, the work finishes anyway, and the next
+ * request for that pet is a cache hit. Cancelling would be the wasteful choice.
+ */
+export const withDeadline = async <T>(
+    work: Promise<T>,
+    ms: number,
+    setTimer: typeof setTimeout = setTimeout,
+): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_resolve, reject) => {
+        timer = setTimer(() => reject(new DeadlineExceeded(ms)), ms);
+    });
+
+    try {
+        return await Promise.race([work, deadline]);
+    } finally {
+        // Cleared either way, so a fast response does not keep the process alive
+        // waiting on a timer that can no longer matter.
+        if (timer) clearTimeout(timer);
+    }
+};
+
 /**
  * Counting semaphore. Queued callers run FIFO as slots free up.
  *

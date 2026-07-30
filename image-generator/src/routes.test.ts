@@ -168,6 +168,52 @@ describe('GET /image/:chain/:tokenId.png', () => {
         expect(parse<{ error: string }>(response.body).error).toContain('quota exceeded');
     });
 
+    // A cold gallery would otherwise hold a connection open for minutes while its
+    // generation waits behind the concurrency limit.
+    it('answers 503 with Retry-After when generation outruns the response deadline', async () => {
+        const store = new MemoryImageStore();
+        const response = await handleRequest(
+            deps({
+                store,
+                responseTimeoutMs: 10,
+                generate: (async () => {
+                    await new Promise((r) => setTimeout(r, 60));
+                    return Buffer.from('slow-bytes');
+                }) as unknown as NonNullable<PipelineDeps['generate']>,
+            }),
+            'GET',
+            '/image/evm/7.png',
+        );
+
+        expect(response.status).toBe(503);
+        expect(response.headers['retry-after']).toBe('30');
+        expect(response.headers['cache-control']).toBe('no-store');
+    });
+
+    // The reason bounding the response is free: the inference was paid for and
+    // still completes, so nothing is wasted and the next request is a hit.
+    it('lets the abandoned generation finish and land in the store', async () => {
+        const store = new MemoryImageStore();
+        const d = deps({
+            store,
+            responseTimeoutMs: 10,
+            generate: (async () => {
+                await new Promise((r) => setTimeout(r, 40));
+                return Buffer.from('slow-bytes');
+            }) as unknown as NonNullable<PipelineDeps['generate']>,
+        });
+
+        expect((await handleRequest(d, 'GET', '/image/evm/7.png')).status).toBe(503);
+
+        await new Promise((r) => setTimeout(r, 80));
+        expect((await store.get(petImageKey(PET)))?.bytes.toString()).toBe('slow-bytes');
+
+        // And the retry the client was told to make is now a cache hit.
+        const retry = await handleRequest(d, 'GET', '/image/evm/7.png');
+        expect(retry.status).toBe(200);
+        expect(retry.headers['x-art-cache']).toBe('hit');
+    });
+
     it('does not treat a query string as part of the route', async () => {
         // server.ts strips the query before routing; the path itself must not match
         // with one attached, or ?v=2 would 404 instead of serving the pet.

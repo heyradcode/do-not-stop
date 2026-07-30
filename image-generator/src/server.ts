@@ -65,6 +65,7 @@ export const buildDeps = async (): Promise<{ deps: RouteDeps; port: number; stor
             reader,
             limiter: createLimiter(config.maxConcurrent),
             publicBaseUrl: server.publicBaseUrl,
+            responseTimeoutMs: server.responseTimeoutMs,
             ...(server.externalUrlTemplate ? { externalUrlTemplate: server.externalUrlTemplate } : {}),
         },
         port: server.port,

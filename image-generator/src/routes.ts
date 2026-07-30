@@ -15,6 +15,7 @@ import { UnknownPetError, UnsupportedChainError } from './chain.js';
 import { buildPetMetadata } from './metadata.js';
 import { getOrCreatePetImage, type PipelineDeps } from './pipeline.js';
 import { checkReadiness } from './readiness.js';
+import { DeadlineExceeded, withDeadline } from './retry.js';
 import { ChainNotConfiguredError } from './readerRouter.js';
 import { ConfigError } from './config.js';
 import { WorkersAiError } from './workersAi.js';
@@ -25,6 +26,9 @@ export interface RouteDeps extends PipelineDeps {
     publicBaseUrl: string;
     /** Optional per-pet game URL template, `{chain}` and `{tokenId}` substituted. */
     externalUrlTemplate?: string;
+    /** How long an image request waits for generation before giving up on the
+     *  response. Generation itself is never cancelled. */
+    responseTimeoutMs?: number;
 }
 
 export interface RouteResponse {
@@ -36,6 +40,15 @@ export interface RouteResponse {
 /** Art is immutable once written, so it can be cached forever by every layer.
  *  Metadata carries level and win/loss, which change, so it gets a short TTL. */
 const IMMUTABLE = 'public, max-age=31536000, immutable';
+
+/**
+ * A cold gallery asks for every pet at once, and each miss is a generation
+ * queued behind the concurrency limit, so the last caller can wait minutes with a
+ * connection open. Browsers and proxies give up long before that. Bounding the
+ * response is free because the generation continues regardless and lands in the
+ * store, making the next request a hit.
+ */
+const DEFAULT_RESPONSE_TIMEOUT_MS = 25_000;
 const SHORT_LIVED = 'public, max-age=60';
 const NO_STORE = 'no-store';
 
@@ -104,14 +117,14 @@ export const handleRequest = async (
 const serveImage = async (deps: RouteDeps, chain: string, tokenId: string): Promise<RouteResponse> => {
     try {
         const pet = await deps.reader.read(chain, tokenId);
-        const result = await getOrCreatePetImage(deps, {
+        const result = await withDeadline(getOrCreatePetImage(deps, {
             dna: pet.dna,
             rarity: pet.rarity,
             // Omitted, not passed as undefined: a chain that assigns no species
             // must fall back to DNA pair 6, and the cache key distinguishes the
             // two cases.
             ...(pet.speciesId === undefined ? {} : { speciesId: pet.speciesId }),
-        });
+        }), deps.responseTimeoutMs ?? DEFAULT_RESPONSE_TIMEOUT_MS);
 
         // With a public bucket the bytes never need to pass through this service.
         if (result.url) {
@@ -158,6 +171,21 @@ const errorResponse = (error: unknown): RouteResponse => {
     // problem, not a caller one, so 501 rather than 400.
     if (error instanceof ChainNotConfiguredError) return json(501, { error: error.message });
     if (error instanceof ConfigError) return json(500, { error: error.message });
+    // Still being generated. 503 + Retry-After rather than an error: nothing is
+    // wrong, the image simply is not ready yet, and it will be shortly.
+    if (error instanceof DeadlineExceeded) {
+        return {
+            status: 503,
+            headers: {
+                'content-type': 'application/json; charset=utf-8',
+                'cache-control': NO_STORE,
+                'retry-after': '30',
+            },
+            body: Buffer.from(JSON.stringify({
+                error: 'Image is still generating; retry shortly',
+            }, null, 2)),
+        };
+    }
     if (error instanceof WorkersAiError) {
         // Upstream generation failure. 502 keeps it distinguishable from a bad
         // request, and nothing was cached, so a retry can succeed.

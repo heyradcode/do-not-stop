@@ -54,6 +54,13 @@ const PetArt: React.FC<PetArtProps> = ({ pet }) => {
             <img
                 src={url}
                 alt={pet.name}
+                // A gallery mounts every card at once, and on a cold cache each
+                // miss is a generation queued behind the service's concurrency
+                // limit. Lazy loading means only pets actually on screen ask for
+                // art, which is the difference between a handful of requests and
+                // one per pet in the collection.
+                loading="lazy"
+                decoding="async"
                 onLoad={() => setLoaded(true)}
                 onError={() => setFailed(true)}
                 style={{

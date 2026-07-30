@@ -179,6 +179,18 @@ once. Three things keep that from turning into N failures.
   request was never billed); a 5xx may have been billed, which is the honest cost.
 - **Bounded total spend.** Nonexistent pets are rejected before generation, so the
   lifetime inference count is bounded by the number of minted pets, not by traffic.
+- **Bounded response time** (`IMAGE_RESPONSE_TIMEOUT_MS`, default 25s). Past that
+  the request answers 503 with `Retry-After` instead of holding the connection.
+  The generation is *not* cancelled: it finishes and lands in the store, so the
+  retry is a cache hit and the inference already paid for is not wasted. Without
+  this, a cold gallery of 50 pets leaves its last caller waiting ~150s, and a
+  single request can hang for `CF_TIMEOUT_MS x CF_MAX_ATTEMPTS` (~3 minutes),
+  which browsers and proxies abandon anyway.
+
+The client side matters too: pet images are lazy-loaded, so a gallery requests art
+only for pets actually on screen rather than one per pet in the collection. Run
+`pnpm warm` before pointing anything at a fresh deployment and none of this
+arises, because every request is a hit.
 
 Concurrent first-ever requests for the same pet are collapsed into one
 generation, so a pet's page open in two tabs bills one inference rather than two.

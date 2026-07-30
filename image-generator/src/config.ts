@@ -116,6 +116,9 @@ export interface ServerConfig {
     publicBaseUrl: string;
     /** Per-pet game URL template; `{chain}` and `{tokenId}` are substituted. */
     externalUrlTemplate?: string;
+    /** How long an image request waits before answering 503 and letting the
+     *  generation finish in the background. */
+    responseTimeoutMs: number;
     evm: {
         rpcUrl: string;
         petCoreAddress: string;
@@ -146,6 +149,7 @@ export const loadServerConfig = (): ServerConfig => {
         // Defaults to localhost so `pnpm dev` works with no config; production
         // must set this or metadata will hand marketplaces unreachable image URLs.
         publicBaseUrl: process.env.PUBLIC_BASE_URL || `http://localhost:${port}`,
+        responseTimeoutMs: readNumber('IMAGE_RESPONSE_TIMEOUT_MS', 25_000),
         ...(externalUrlTemplate ? { externalUrlTemplate } : {}),
         evm: {
             rpcUrl: readRequired('EVM_RPC_URL'),
