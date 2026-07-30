@@ -49,13 +49,17 @@ describe('buildRequestBody', () => {
         });
     });
 
-    it('omits SDXL-only fields and caps steps for flux', () => {
+    it('sends flux only its documented input, and caps steps', () => {
         const body = buildRequestBody(
             config({ model: '@cf/black-forest-labs/flux-1-schnell', steps: 20 }),
             SPEC,
         );
 
-        expect(body).toEqual({ prompt: SPEC.prompt, steps: 8, seed: SPEC.seed });
+        // Anything outside flux's schema risks a 400, which is non-retryable and
+        // would fail every request. Seed is excluded for that reason, so flux
+        // output is not re-derivable from DNA.
+        expect(body).toEqual({ prompt: SPEC.prompt, steps: 8 });
+        expect(body).not.toHaveProperty('seed');
         expect(body).not.toHaveProperty('negative_prompt');
         expect(body).not.toHaveProperty('width');
     });
@@ -166,6 +170,19 @@ describe('generateImage retrying', () => {
         const fetchImpl = flaky(99, { status: 429 });
         await expect(generateImage(config(), SPEC, fetchImpl, instantRetry(3))).rejects.toThrow(/429/);
         expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(3);
+    });
+
+    // Regression: attempts used to be read into config and never passed on, so
+    // CF_MAX_ATTEMPTS was a documented env var that did nothing.
+    it('honours config.attempts when the caller passes no retry options', async () => {
+        const fetchImpl = flaky(99, { status: 429 });
+        const started = Date.now();
+
+        await expect(generateImage(config({ attempts: 1 }), SPEC, fetchImpl)).rejects.toThrow(/429/);
+
+        expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(1);
+        // attempts: 1 also means no backoff sleep, so this returns immediately.
+        expect(Date.now() - started).toBeLessThan(400);
     });
 
     it('waits the Retry-After the upstream asked for', async () => {

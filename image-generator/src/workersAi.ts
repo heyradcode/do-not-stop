@@ -59,9 +59,13 @@ const parseRetryAfter = (header: string | null): number | undefined => {
 
 export const buildRequestBody = (config: WorkersAiConfig, spec: PetPromptSpec): Record<string, unknown> => {
     if (isFlux(config.model)) {
-        // flux-1-schnell caps steps well below SDXL's range and takes no
-        // negative prompt or explicit size.
-        return { prompt: spec.prompt, steps: Math.min(config.steps, 8), seed: spec.seed };
+        // flux-1-schnell's documented input is prompt plus steps (capped well
+        // below SDXL's range), and nothing else. Seed is deliberately NOT sent:
+        // it is not in that schema, and a model that rejects unknown fields
+        // answers 400, which is non-retryable and would fail every request. The
+        // cost is that flux output cannot be re-derived from DNA, which is
+        // precisely why SDXL-Lightning is the default.
+        return { prompt: spec.prompt, steps: Math.min(config.steps, 8) };
     }
     return {
         prompt: spec.prompt,
@@ -148,7 +152,10 @@ export const generateImage = async (
     config: WorkersAiConfig,
     spec: PetPromptSpec,
     fetchImpl: typeof fetch = fetch,
-    retry: RetryOptions = DEFAULT_RETRY,
+    // Defaulted from config rather than left as DEFAULT_RETRY: callers pass the
+    // config anyway, and threading attempts separately is how CF_MAX_ATTEMPTS
+    // ends up read, stored, and silently ignored.
+    retry: RetryOptions = { ...DEFAULT_RETRY, attempts: config.attempts },
 ): Promise<Buffer> =>
     withRetry(() => attemptGenerate(config, spec, fetchImpl), {
         ...retry,

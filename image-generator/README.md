@@ -194,8 +194,10 @@ Default is `@cf/bytedance/stable-diffusion-xl-lightning`. It takes an explicit
 `seed`, so a pet's image is re-derivable from its DNA, and it is tuned for 4-8
 steps, which keeps free-allocation usage low.
 `@cf/black-forest-labs/flux-1-schnell` also works via `CF_IMAGE_MODEL`: it
-returns base64 in a JSON envelope instead of raw PNG bytes and rejects SDXL's
-extra knobs, and the client handles both. No LLM is involved anywhere; prompts
+returns base64 in a JSON envelope instead of raw PNG bytes, and the client handles
+both. Flux is sent only `prompt` and `steps`, its documented input: anything
+outside that schema risks a 400, which is non-retryable and would fail every
+request. So flux output cannot be re-derived from DNA, only recovered from cache. No LLM is involved anywhere; prompts
 come from a lookup table, because an LLM would add nondeterminism and a second
 inference cost to something a table does exactly.
 
