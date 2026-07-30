@@ -292,8 +292,40 @@ describe('routing', () => {
         expect((await handleRequest(deps(), 'DELETE', '/health')).status).toBe(405);
     });
 
-    it('allows HEAD, which marketplaces use to probe images', async () => {
-        expect((await handleRequest(deps(), 'HEAD', '/image/evm/7.png')).status).toBe(200);
+    // Marketplaces and link previewers probe image URLs with HEAD. Generating for
+    // a probe would bill an inference for something nobody is looking at yet, in
+    // a burst that bypasses both the client's lazy loading and the rule that
+    // metadata never generates. A HEAD is not a fetch of the image.
+    it('never generates for a HEAD probe, reporting not-ready instead', async () => {
+        const generate = vi.fn(async () => Buffer.from('png-bytes'));
+        const d = deps({ generate: generate as unknown as NonNullable<PipelineDeps['generate']> });
+
+        const response = await handleRequest(d, 'HEAD', '/image/evm/7.png');
+
+        expect(response.status).toBe(503);
+        expect(response.headers['retry-after']).toBe('30');
+        expect(generate).not.toHaveBeenCalled();
+    });
+
+    it('answers HEAD with real image headers once the art exists', async () => {
+        const d = deps();
+        await handleRequest(d, 'GET', '/image/evm/7.png'); // generates
+
+        const response = await handleRequest(d, 'HEAD', '/image/evm/7.png');
+
+        expect(response.status).toBe(200);
+        expect(response.headers['content-type']).toBe('image/png');
+        expect(response.headers['content-length']).toBe(String('png-bytes'.length));
+    });
+
+    it('still answers 404 to a HEAD for a pet that was never minted', async () => {
+        // The existence read is cheap and still runs; only generation is skipped.
+        const response = await handleRequest(
+            deps({ reader: reader(new UnknownPetError('999')) }),
+            'HEAD',
+            '/image/evm/999.png',
+        );
+        expect(response.status).toBe(404);
     });
 
     it('404s structurally wrong paths', async () => {

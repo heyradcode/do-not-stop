@@ -14,6 +14,7 @@ import type { PetReader } from './chain.js';
 import { UnknownPetError, UnsupportedChainError } from './chain.js';
 import { buildPetMetadata } from './metadata.js';
 import { getOrCreatePetImage, type PipelineDeps } from './pipeline.js';
+import { petImageKey } from './store.js';
 import { checkReadiness } from './readiness.js';
 import { DeadlineExceeded, withDeadline } from './retry.js';
 import { ChainNotConfiguredError } from './readerRouter.js';
@@ -106,7 +107,7 @@ export const handleRequest = async (
     }
 
     const image = IMAGE_ROUTE.exec(path);
-    if (image) return await serveImage(deps, image[1]!, image[2]!);
+    if (image) return await serveImage(deps, image[1]!, image[2]!, method === 'HEAD');
 
     const metadata = METADATA_ROUTE.exec(path);
     if (metadata) return await serveMetadata(deps, metadata[1]!, metadata[2]!);
@@ -114,17 +115,35 @@ export const handleRequest = async (
     return json(404, { error: 'Not found' });
 };
 
-const serveImage = async (deps: RouteDeps, chain: string, tokenId: string): Promise<RouteResponse> => {
+const serveImage = async (
+    deps: RouteDeps,
+    chain: string,
+    tokenId: string,
+    probeOnly: boolean,
+): Promise<RouteResponse> => {
     try {
         const pet = await deps.reader.read(chain, tokenId);
-        const result = await withDeadline(getOrCreatePetImage(deps, {
+        const input = {
             dna: pet.dna,
             rarity: pet.rarity,
-            // Omitted, not passed as undefined: a chain that assigns no species
-            // must fall back to DNA pair 6, and the cache key distinguishes the
-            // two cases.
             ...(pet.speciesId === undefined ? {} : { speciesId: pet.speciesId }),
-        }), deps.responseTimeoutMs ?? DEFAULT_RESPONSE_TIMEOUT_MS);
+        };
+
+        // HEAD reports whether art is ready; it never generates. Marketplaces and
+        // link previewers probe image URLs, and generating for a probe would bill
+        // an inference for something nobody is looking at yet, in a burst that
+        // bypasses both the client's lazy loading and the rule that metadata
+        // never generates. The pet-existence read above still runs, so an
+        // unminted token still answers 404.
+        if (probeOnly) {
+            const cached = await deps.store.get(petImageKey(input));
+            return cached ? png(cached.bytes, true) : notReady();
+        }
+
+        const result = await withDeadline(
+            getOrCreatePetImage(deps, input),
+            deps.responseTimeoutMs ?? DEFAULT_RESPONSE_TIMEOUT_MS,
+        );
 
         // With a public bucket the bytes never need to pass through this service.
         if (result.url) {
@@ -164,6 +183,18 @@ const serveMetadata = async (deps: RouteDeps, chain: string, tokenId: string): P
     }
 };
 
+/** Art exists in principle but has not been generated yet. Not an error: the
+ *  caller should come back, which Retry-After tells it to do. */
+const notReady = (): RouteResponse => ({
+    status: 503,
+    headers: {
+        'content-type': 'application/json; charset=utf-8',
+        'cache-control': NO_STORE,
+        'retry-after': '30',
+    },
+    body: Buffer.from(JSON.stringify({ error: 'Image is not generated yet; retry shortly' }, null, 2)),
+});
+
 const errorResponse = (error: unknown): RouteResponse => {
     if (error instanceof UnknownPetError) return json(404, { error: error.message });
     if (error instanceof UnsupportedChainError) return json(400, { error: error.message });
@@ -173,19 +204,7 @@ const errorResponse = (error: unknown): RouteResponse => {
     if (error instanceof ConfigError) return json(500, { error: error.message });
     // Still being generated. 503 + Retry-After rather than an error: nothing is
     // wrong, the image simply is not ready yet, and it will be shortly.
-    if (error instanceof DeadlineExceeded) {
-        return {
-            status: 503,
-            headers: {
-                'content-type': 'application/json; charset=utf-8',
-                'cache-control': NO_STORE,
-                'retry-after': '30',
-            },
-            body: Buffer.from(JSON.stringify({
-                error: 'Image is still generating; retry shortly',
-            }, null, 2)),
-        };
-    }
+    if (error instanceof DeadlineExceeded) return notReady();
     if (error instanceof WorkersAiError) {
         // Upstream generation failure. 502 keeps it distinguishable from a bad
         // request, and nothing was cached, so a retry can succeed.
