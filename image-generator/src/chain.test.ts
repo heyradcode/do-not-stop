@@ -81,10 +81,10 @@ describe('PET_CORE_ABI', () => {
 describe('EvmPetReader', () => {
     it('reads getPet and projects the fields art and metadata need', async () => {
         const c = client(PET);
-        const pet = await new EvmPetReader(CONFIG, c).read('evm', 7n);
+        const pet = await new EvmPetReader(CONFIG, c).read('evm', '7');
 
         expect(pet).toEqual({
-            tokenId: 7n,
+            tokenId: '7',
             name: 'Sparky',
             dna: PET.dna,
             rarity: 3,
@@ -106,32 +106,42 @@ describe('EvmPetReader', () => {
     // permanently cache art for a pet that does not exist.
     it('rejects a tokenId beyond totalPets, which getPet answers with a zero struct', async () => {
         const reader = new EvmPetReader(CONFIG, client(ZERO_PET, 10n));
-        await expect(reader.read('evm', 11n)).rejects.toThrow(UnknownPetError);
+        await expect(reader.read('evm', '11')).rejects.toThrow(UnknownPetError);
     });
 
     it('rejects tokenId 0, which PetCore never mints', async () => {
         const reader = new EvmPetReader(CONFIG, client(ZERO_PET, 10n));
-        await expect(reader.read('evm', 0n)).rejects.toThrow(UnknownPetError);
+        await expect(reader.read('evm', '0')).rejects.toThrow(UnknownPetError);
     });
 
     it('rejects an in-range record with rarity 0, which no mint path produces', async () => {
         const reader = new EvmPetReader(CONFIG, client(ZERO_PET, 10n));
-        await expect(reader.read('evm', 5n)).rejects.toThrow(UnknownPetError);
+        await expect(reader.read('evm', '5')).rejects.toThrow(UnknownPetError);
     });
 
     it('accepts the last minted id', async () => {
         const reader = new EvmPetReader(CONFIG, client(PET, 7n));
-        await expect(reader.read('evm', 7n)).resolves.toMatchObject({ tokenId: 7n });
+        await expect(reader.read('evm', '7')).resolves.toMatchObject({ tokenId: '7' });
+    });
+
+    it('rejects an identifier that is not a decimal id, without calling the chain', async () => {
+        const c = client(PET);
+        const reader = new EvmPetReader(CONFIG, c);
+
+        // A base58 Solana asset routed at /image/evm/... must not reach the RPC.
+        await expect(reader.read('evm', 'So11111111111111111111111111111111111111112'))
+            .rejects.toThrow(UnknownPetError);
+        expect(vi.mocked(c.readContract)).not.toHaveBeenCalled();
     });
 
     it('propagates transport failures instead of reporting a missing pet', async () => {
         const reader = new EvmPetReader(CONFIG, clientRejecting(new Error('fetch failed: ECONNREFUSED')));
-        await expect(reader.read('evm', 1n)).rejects.toThrow(/ECONNREFUSED/);
+        await expect(reader.read('evm', '1')).rejects.toThrow(/ECONNREFUSED/);
     });
 
     it('rejects chains it cannot read rather than guessing', async () => {
         const reader = new EvmPetReader(CONFIG, client(PET));
-        await expect(reader.read('solana', 1n)).rejects.toThrow(UnsupportedChainError);
+        await expect(reader.read('solana', '1')).rejects.toThrow(UnsupportedChainError);
     });
 });
 

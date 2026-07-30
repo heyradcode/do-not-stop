@@ -13,6 +13,10 @@ export interface WorkersAiConfig {
     /** Diffusion steps. Lightning-class models are tuned for 4-8. */
     steps: number;
     timeoutMs: number;
+    /** Total attempts per image, including the first. 1 disables retrying. */
+    attempts: number;
+    /** Simultaneous generations allowed. Bursty crawls are the normal case. */
+    maxConcurrent: number;
 }
 
 const DEFAULTS = {
@@ -23,6 +27,10 @@ const DEFAULTS = {
     size: 1024,
     steps: 8,
     timeoutMs: 60_000,
+    attempts: 3,
+    // Low on purpose: the free allocation is small, and a queue behind two
+    // in-flight generations drains fast enough that no caller notices.
+    maxConcurrent: 2,
 } as const;
 
 class ConfigError extends Error {}
@@ -52,6 +60,8 @@ export const loadWorkersAiConfig = (): WorkersAiConfig => ({
     size: readNumber('CF_IMAGE_SIZE', DEFAULTS.size),
     steps: readNumber('CF_IMAGE_STEPS', DEFAULTS.steps),
     timeoutMs: readNumber('CF_TIMEOUT_MS', DEFAULTS.timeoutMs),
+    attempts: readNumber('CF_MAX_ATTEMPTS', DEFAULTS.attempts),
+    maxConcurrent: readNumber('CF_MAX_CONCURRENT', DEFAULTS.maxConcurrent),
 });
 
 /** Which ImageStore backs the service. `memory` never persists, so it is only

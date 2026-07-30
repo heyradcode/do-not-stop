@@ -3,6 +3,7 @@ import { UnknownPetError, UnsupportedChainError, type OnChainPet, type PetReader
 import type { WorkersAiConfig } from './config.js';
 import type { PetMetadata } from './metadata.js';
 import type { PipelineDeps } from './pipeline.js';
+import { ChainNotConfiguredError } from './readerRouter.js';
 import { handleRequest, type RouteDeps } from './routes.js';
 import { MemoryImageStore, petImageKey } from './store.js';
 import { WorkersAiError } from './workersAi.js';
@@ -14,10 +15,12 @@ const CONFIG: WorkersAiConfig = {
     size: 1024,
     steps: 8,
     timeoutMs: 5_000,
+    attempts: 1,
+    maxConcurrent: 2,
 };
 
 const PET: OnChainPet = {
-    tokenId: 7n,
+    tokenId: '7',
     name: 'Sparky',
     dna: 79_34_05_61_88_13_42_07n,
     rarity: 3,
@@ -38,7 +41,7 @@ const reader = (pet: OnChainPet | Error = PET): PetReader => ({
 const deps = (overrides: Partial<RouteDeps> = {}): RouteDeps => ({
     config: CONFIG,
     store: new MemoryImageStore(),
-    generate: (async () => Buffer.from('png-bytes')) as unknown as PipelineDeps['generate'],
+    generate: (async () => Buffer.from('png-bytes')) as unknown as NonNullable<PipelineDeps['generate']>,
     reader: reader(),
     publicBaseUrl: 'https://art.example.com',
     ...overrides,
@@ -72,7 +75,7 @@ describe('GET /image/:chain/:tokenId.png', () => {
 
     it('reports a cache hit on the second request without regenerating', async () => {
         const generate = vi.fn(async () => Buffer.from('png-bytes'));
-        const d = deps({ generate: generate as unknown as PipelineDeps['generate'] });
+        const d = deps({ generate: generate as unknown as NonNullable<PipelineDeps['generate']> });
 
         await handleRequest(d, 'GET', '/image/evm/7.png');
         const second = await handleRequest(d, 'GET', '/image/evm/7.png');
@@ -96,7 +99,7 @@ describe('GET /image/:chain/:tokenId.png', () => {
 
     it('answers 404 for a pet that was never minted', async () => {
         const response = await handleRequest(
-            deps({ reader: reader(new UnknownPetError(999n)) }),
+            deps({ reader: reader(new UnknownPetError('999')) }),
             'GET',
             '/image/evm/999.png',
         );
@@ -119,8 +122,8 @@ describe('GET /image/:chain/:tokenId.png', () => {
         const response = await handleRequest(
             deps({
                 generate: (async () => {
-                    throw new WorkersAiError('quota exceeded', 429);
-                }) as unknown as PipelineDeps['generate'],
+                    throw new WorkersAiError('quota exceeded', { status: 429 });
+                }) as unknown as NonNullable<PipelineDeps['generate']>,
             }),
             'GET',
             '/image/evm/7.png',
@@ -157,7 +160,7 @@ describe('GET /metadata/:chain/:tokenId', () => {
 
     it('does not generate the image, so indexing a collection costs nothing', async () => {
         const generate = vi.fn(async () => Buffer.from('png-bytes'));
-        await handleRequest(deps({ generate: generate as unknown as PipelineDeps['generate'] }), 'GET', '/metadata/evm/7');
+        await handleRequest(deps({ generate: generate as unknown as NonNullable<PipelineDeps['generate']> }), 'GET', '/metadata/evm/7');
 
         expect(generate).not.toHaveBeenCalled();
     });
@@ -194,7 +197,7 @@ describe('GET /metadata/:chain/:tokenId', () => {
 
     it('answers 404 for a pet that was never minted', async () => {
         const response = await handleRequest(
-            deps({ reader: reader(new UnknownPetError(999n)) }),
+            deps({ reader: reader(new UnknownPetError('999')) }),
             'GET',
             '/metadata/evm/999',
         );
@@ -212,16 +215,46 @@ describe('routing', () => {
         expect((await handleRequest(deps(), 'HEAD', '/image/evm/7.png')).status).toBe(200);
     });
 
-    it('404s unknown paths and malformed token ids', async () => {
+    it('404s structurally wrong paths', async () => {
         for (const path of [
             '/nope',
-            '/image/evm/7',
-            '/image/evm/abc.png',
-            '/image/evm/-1.png',
-            '/metadata/evm/1.5',
-            '/metadata/evm',
+            '/image/evm/7', // no .png
+            '/image/evm/-1.png', // hyphen is not an identifier character
+            '/metadata/evm/1.5', // nor is a dot
+            '/metadata/evm', // no identifier at all
+            `/image/evm/${'9'.repeat(89)}.png`, // longer than any real identifier
         ]) {
             expect((await handleRequest(deps(), 'GET', path)).status).toBe(404);
         }
+    });
+
+    // Whether an identifier is *valid* is the reader's call, not the route's: the
+    // route cannot know that decimal means EVM and base58 means Solana. So
+    // /image/evm/abc.png matches here and the reader rejects it, which is why this
+    // asserts against a reader rather than against the pattern (EvmPetReader's own
+    // rejection of non-decimal ids is covered in chain.test.ts).
+    it('leaves identifier validity to the reader, surfacing its 404', async () => {
+        const notFound = deps({ reader: reader(new UnknownPetError('abc')) });
+
+        expect((await handleRequest(notFound, 'GET', '/image/evm/abc.png')).status).toBe(404);
+        expect((await handleRequest(notFound, 'GET', '/metadata/evm/abc')).status).toBe(404);
+    });
+
+    it('accepts a base58 identifier, so a non-EVM chain can be added without touching the route', async () => {
+        // Every character class that matters: digits, upper, lower, mixed.
+        for (const id of ['7', '10', '1000000', 'So11111111111111111111111111111111111111112']) {
+            expect((await handleRequest(deps(), 'GET', `/image/evm/${id}.png`)).status).toBe(200);
+        }
+    });
+
+    it('answers 501 for a real chain this deployment has no reader for', async () => {
+        const response = await handleRequest(
+            deps({ reader: reader(new ChainNotConfiguredError('solana')) }),
+            'GET',
+            '/image/solana/So11111111111111111111111111111111111111112.png',
+        );
+
+        expect(response.status).toBe(501);
+        expect(parse<{ error: string }>(response.body).error).toContain('not configured');
     });
 });

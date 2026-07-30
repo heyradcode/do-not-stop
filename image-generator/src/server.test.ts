@@ -9,7 +9,7 @@ import { createRequestListener } from './server.js';
 import { MemoryImageStore } from './store.js';
 
 const PET: OnChainPet = {
-    tokenId: 7n,
+    tokenId: '7',
     name: 'Sparky',
     dna: 79_34_05_61_88_13_42_07n,
     rarity: 3,
@@ -27,6 +27,8 @@ const CONFIG: WorkersAiConfig = {
     size: 1024,
     steps: 8,
     timeoutMs: 5_000,
+    attempts: 1,
+    maxConcurrent: 2,
 };
 
 const reader: PetReader = { read: async () => PET };
@@ -34,7 +36,7 @@ const reader: PetReader = { read: async () => PET };
 const deps: RouteDeps = {
     config: CONFIG,
     store: new MemoryImageStore(),
-    generate: (async () => Buffer.from([0x89, 0x50, 0x4e, 0x47])) as unknown as PipelineDeps['generate'],
+    generate: (async () => Buffer.from([0x89, 0x50, 0x4e, 0x47])) as unknown as NonNullable<PipelineDeps['generate']>,
     reader,
     publicBaseUrl: 'https://art.example.com',
 };

@@ -14,6 +14,8 @@ const CONFIG: WorkersAiConfig = {
     size: 1024,
     steps: 8,
     timeoutMs: 5_000,
+    attempts: 1,
+    maxConcurrent: 2,
 };
 
 /** Diffusion is not reproducible, so the fake returns different bytes each call:
@@ -22,10 +24,10 @@ const CONFIG: WorkersAiConfig = {
 const fakeGenerator = () => {
     let calls = 0;
     const generate = vi.fn(async () => Buffer.from(`image-${++calls}`));
-    return { generate: generate as unknown as PipelineDeps['generate'], calls: () => generate.mock.calls.length };
+    return { generate: generate as unknown as NonNullable<PipelineDeps['generate']>, calls: () => generate.mock.calls.length };
 };
 
-const deps = (store: ImageStore, generate: PipelineDeps['generate']): PipelineDeps => ({
+const deps = (store: ImageStore, generate: NonNullable<PipelineDeps['generate']>): PipelineDeps => ({
     config: CONFIG,
     store,
     generate,
@@ -112,7 +114,7 @@ describe('getOrCreatePetImage', () => {
             .fn()
             .mockRejectedValueOnce(new Error('workers ai down'))
             .mockResolvedValueOnce(Buffer.from('recovered'));
-        const d = deps(store, generate as unknown as PipelineDeps['generate']);
+        const d = deps(store, generate as unknown as NonNullable<PipelineDeps['generate']>);
 
         await expect(getOrCreatePetImage(d, PET)).rejects.toThrow('workers ai down');
 
@@ -125,7 +127,7 @@ describe('getOrCreatePetImage', () => {
         const generate = vi.fn().mockRejectedValue(new Error('nope'));
 
         await expect(
-            getOrCreatePetImage(deps(store, generate as unknown as PipelineDeps['generate']), PET),
+            getOrCreatePetImage(deps(store, generate as unknown as NonNullable<PipelineDeps['generate']>), PET),
         ).rejects.toThrow('nope');
         expect(store.size).toBe(0);
     });

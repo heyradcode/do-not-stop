@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { WorkersAiConfig } from './config.js';
 import { buildPetPrompt } from './prompt.js';
 import { derivePetVisualTraits } from './traits.js';
+import type { RetryOptions } from './retry.js';
 import { WorkersAiError, buildRequestBody, generateImage } from './workersAi.js';
 
 const DNA = 79_34_05_61_88_13_42_07n;
@@ -14,12 +15,26 @@ const config = (overrides: Partial<WorkersAiConfig> = {}): WorkersAiConfig => ({
     size: 1024,
     steps: 8,
     timeoutMs: 5_000,
+    attempts: 3,
+    maxConcurrent: 2,
     ...overrides,
 });
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
-const respond = (body: BodyInit, init: ResponseInit): typeof fetch =>
+/** Most cases assert one attempt's behaviour; retrying is exercised separately
+ *  below (and in retry.test.ts) with a fake clock, so no test really sleeps. */
+const NO_RETRY: RetryOptions = { attempts: 1, baseDelayMs: 0, maxDelayMs: 0 };
+
+const instantRetry = (attempts: number): RetryOptions => ({
+    attempts,
+    baseDelayMs: 10,
+    maxDelayMs: 10,
+    sleep: async () => {},
+    onRetry: () => {},
+});
+
+const respond = (body: string | Buffer, init: ResponseInit): typeof fetch =>
     vi.fn(async () => new Response(body, init)) as unknown as typeof fetch;
 
 describe('buildRequestBody', () => {
@@ -49,7 +64,7 @@ describe('buildRequestBody', () => {
 describe('generateImage', () => {
     it('posts to the account/model run endpoint with the bearer token', async () => {
         const fetchImpl = respond(PNG, { headers: { 'content-type': 'image/png' } });
-        await generateImage(config(), SPEC, fetchImpl);
+        await generateImage(config(), SPEC, fetchImpl, NO_RETRY);
 
         const [url, init] = vi.mocked(fetchImpl).mock.calls[0]!;
         expect(url).toBe(
@@ -81,10 +96,10 @@ describe('generateImage', () => {
     });
 
     it('reports the status and body on an HTTP error', async () => {
-        const fetchImpl = respond('quota exceeded', { status: 429, headers: { 'content-type': 'text/plain' } });
+        const fetchImpl = respond('bad request', { status: 400, headers: { 'content-type': 'text/plain' } });
 
-        await expect(generateImage(config(), SPEC, fetchImpl)).rejects.toThrow(WorkersAiError);
-        await expect(generateImage(config(), SPEC, fetchImpl)).rejects.toThrow(/429.*quota exceeded/s);
+        await expect(generateImage(config(), SPEC, fetchImpl, NO_RETRY)).rejects.toThrow(WorkersAiError);
+        await expect(generateImage(config(), SPEC, fetchImpl, NO_RETRY)).rejects.toThrow(/400.*bad request/s);
     });
 
     it('reports Cloudflare-level failures that arrive with HTTP 200', async () => {
@@ -93,7 +108,7 @@ describe('generateImage', () => {
             { headers: { 'content-type': 'application/json' } },
         );
 
-        await expect(generateImage(config(), SPEC, fetchImpl)).rejects.toThrow(/Account limited/);
+        await expect(generateImage(config(), SPEC, fetchImpl, NO_RETRY)).rejects.toThrow(/Account limited/);
     });
 
     it('rejects a success envelope with no image', async () => {
@@ -101,6 +116,70 @@ describe('generateImage', () => {
             headers: { 'content-type': 'application/json' },
         });
 
-        await expect(generateImage(config(), SPEC, fetchImpl)).rejects.toThrow(/no image payload/);
+        await expect(generateImage(config(), SPEC, fetchImpl, NO_RETRY)).rejects.toThrow(/no image payload/);
+    });
+});
+
+describe('generateImage retrying', () => {
+    /** Fails the first `failures` calls with `init`, then serves a PNG. */
+    const flaky = (failures: number, init: ResponseInit): typeof fetch => {
+        let calls = 0;
+        return vi.fn(async () =>
+            ++calls <= failures
+                ? new Response('rate limited', init)
+                : new Response(PNG, { headers: { 'content-type': 'image/png' } })) as unknown as typeof fetch;
+    };
+
+    it('retries a 429 and returns the eventual image', async () => {
+        const fetchImpl = flaky(2, { status: 429 });
+        const bytes = await generateImage(config(), SPEC, fetchImpl, instantRetry(3));
+
+        expect(bytes.equals(PNG)).toBe(true);
+        expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(3);
+    });
+
+    it('retries a 5xx', async () => {
+        const fetchImpl = flaky(1, { status: 503 });
+        await generateImage(config(), SPEC, fetchImpl, instantRetry(2));
+        expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not retry a 4xx other than 429, since the request itself is wrong', async () => {
+        const fetchImpl = flaky(1, { status: 422 });
+        await expect(generateImage(config(), SPEC, fetchImpl, instantRetry(3))).rejects.toThrow(/422/);
+        expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(1);
+    });
+
+    it('retries a transport failure, which never produced an image', async () => {
+        let calls = 0;
+        const fetchImpl = vi.fn(async () => {
+            if (++calls === 1) throw new TypeError('fetch failed');
+            return new Response(PNG, { headers: { 'content-type': 'image/png' } });
+        }) as unknown as typeof fetch;
+
+        const bytes = await generateImage(config(), SPEC, fetchImpl, instantRetry(2));
+        expect(bytes.equals(PNG)).toBe(true);
+        expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(2);
+    });
+
+    it('gives up after the configured attempts and surfaces the last error', async () => {
+        const fetchImpl = flaky(99, { status: 429 });
+        await expect(generateImage(config(), SPEC, fetchImpl, instantRetry(3))).rejects.toThrow(/429/);
+        expect(vi.mocked(fetchImpl)).toHaveBeenCalledTimes(3);
+    });
+
+    it('waits the Retry-After the upstream asked for', async () => {
+        const delays: number[] = [];
+        const fetchImpl = flaky(1, { status: 429, headers: { 'retry-after': '3' } });
+
+        await generateImage(config(), SPEC, fetchImpl, {
+            attempts: 2,
+            baseDelayMs: 10,
+            maxDelayMs: 60_000,
+            sleep: async (ms) => { delays.push(ms); },
+            onRetry: () => {},
+        });
+
+        expect(delays).toEqual([3_000]);
     });
 });

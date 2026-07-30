@@ -6,6 +6,8 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { EvmPetReader, parsePetCoreAddress } from './chain.js';
 import { loadServerConfig, loadStoreSelection, loadWorkersAiConfig } from './config.js';
+import { createReaderRouter } from './readerRouter.js';
+import { createLimiter } from './retry.js';
 import { handleRequest, type RouteDeps } from './routes.js';
 import { createStore, describeStore } from './storeFactory.js';
 
@@ -39,32 +41,38 @@ export const createRequestListener = (deps: RouteDeps) =>
         }
     };
 
-export const buildDeps = async (): Promise<{ deps: RouteDeps; port: number; store: string }> => {
+export const buildDeps = async (): Promise<{ deps: RouteDeps; port: number; store: string; chains: string[] }> => {
     const server = loadServerConfig();
     const config = loadWorkersAiConfig();
     const selection = loadStoreSelection();
     const store = await createStore(selection);
 
-    const reader = new EvmPetReader({
+    const evm = new EvmPetReader({
         rpcUrl: server.evm.rpcUrl,
         petCoreAddress: parsePetCoreAddress(server.evm.petCoreAddress),
     });
+    // Only EVM has a reader today. The router is still here because it is what
+    // turns an unconfigured chain into a clear 501 instead of a crash, and it is
+    // where a second reader plugs in.
+    const reader = createReaderRouter({ evm });
 
     return {
         deps: {
             config,
             store,
             reader,
+            limiter: createLimiter(config.maxConcurrent),
             publicBaseUrl: server.publicBaseUrl,
             ...(server.externalUrlTemplate ? { externalUrlTemplate: server.externalUrlTemplate } : {}),
         },
         port: server.port,
         store: describeStore(selection),
+        chains: ['evm'],
     };
 };
 
 export const start = async (): Promise<Server> => {
-    const { deps, port, store } = await buildDeps();
+    const { deps, port, store, chains } = await buildDeps();
     const server = createServer(createRequestListener(deps));
 
     await new Promise<void>((resolve) => server.listen(port, resolve));
@@ -72,6 +80,7 @@ export const start = async (): Promise<Server> => {
     console.log(`  store   ${store}`);
     console.log(`  model   ${deps.config.model}`);
     console.log(`  base    ${deps.publicBaseUrl}`);
+    console.log(`  chains  ${chains.join(', ')}`);
 
     // Stop accepting connections and let the process end once in-flight requests
     // drain; a generation can take tens of seconds and cutting it off wastes an

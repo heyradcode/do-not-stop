@@ -8,9 +8,10 @@
  * pet and then caches that mistake forever (see store.ts). The contract is the
  * only source that cannot be behind.
  *
- * EVM only for now. Solana pets are Metaplex Core assets read through a
- * different client entirely, so `chain` is part of the route from the start and
- * `solana` returns an explicit unsupported error rather than pretending.
+ * EVM only. Solana pets are Metaplex Core assets, addressed by asset pubkey and
+ * read through an entirely different client, so `chain` is in the route from the
+ * start and anything but `evm` returns an explicit unsupported error rather than
+ * pretending. See readerRouter.ts for where a second reader plugs in.
  */
 
 import { createPublicClient, getAddress, http, type Address, type PublicClient } from 'viem';
@@ -63,7 +64,7 @@ export const SUPPORTED_CHAINS = ['evm'] as const;
 export type SupportedChain = (typeof SUPPORTED_CHAINS)[number];
 
 export class UnknownPetError extends Error {
-    constructor(readonly tokenId: bigint) {
+    constructor(readonly tokenId: bigint | string) {
         super(`Pet ${tokenId} does not exist`);
         this.name = 'UnknownPetError';
     }
@@ -84,19 +85,30 @@ export interface EvmChainConfig {
 /** The subset of a pet that art derivation needs, plus the name and level the
  *  metadata document shows. */
 export interface OnChainPet {
-    tokenId: bigint;
+    /** As it appeared in the route. A string rather than a bigint because pet
+     *  identifiers are chain-specific: decimal on EVM, but a base58 pubkey on
+     *  Solana, so one shape has to cover both. */
+    tokenId: string;
     name: string;
     dna: bigint;
     rarity: number;
-    speciesId: number;
+    /** Absent when the chain does not assign one; the art derivation then falls
+     *  back to DNA pair 6. */
+    speciesId?: number;
     level: number;
     generation: number;
     winCount: number;
     lossCount: number;
 }
 
+/**
+ * Each chain identifies pets differently, so the raw route segment is passed
+ * through unparsed and every reader validates its own format. An identifier a
+ * reader cannot parse is an UnknownPetError, the same as one that parses but was
+ * never minted, because both mean there is no such pet to draw.
+ */
 export interface PetReader {
-    read(chain: string, tokenId: bigint): Promise<OnChainPet>;
+    read(chain: string, tokenId: string): Promise<OnChainPet>;
 }
 
 export const createEvmClient = (config: EvmChainConfig): PublicClient =>
@@ -117,9 +129,12 @@ export class EvmPetReader implements PetReader {
      * `petId > 0 && petId <= _petCount`. Both calls are issued in parallel, so
      * the check costs a second eth_call but no extra latency.
      */
-    async read(chain: string, tokenId: bigint): Promise<OnChainPet> {
+    async read(chain: string, rawTokenId: string): Promise<OnChainPet> {
         if (chain !== 'evm') throw new UnsupportedChainError(chain);
-        if (tokenId === 0n) throw new UnknownPetError(tokenId);
+
+        const tokenId = parseTokenId(rawTokenId);
+        // Not a decimal id at all, or zero, which PetCore never mints.
+        if (tokenId === null || tokenId === 0n) throw new UnknownPetError(rawTokenId);
 
         const contract = { address: this.config.petCoreAddress, abi: PET_CORE_ABI } as const;
         const [pet, totalPets] = await Promise.all([
@@ -136,7 +151,7 @@ export class EvmPetReader implements PetReader {
         if (pet.rarity === 0) throw new UnknownPetError(tokenId);
 
         return {
-            tokenId,
+            tokenId: tokenId.toString(),
             name: pet.name,
             dna: pet.dna,
             rarity: pet.rarity,

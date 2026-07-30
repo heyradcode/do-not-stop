@@ -10,9 +10,10 @@
  */
 
 import type { PetReader } from './chain.js';
-import { UnknownPetError, UnsupportedChainError, parseTokenId } from './chain.js';
+import { UnknownPetError, UnsupportedChainError } from './chain.js';
 import { buildPetMetadata } from './metadata.js';
 import { getOrCreatePetImage, type PipelineDeps } from './pipeline.js';
+import { ChainNotConfiguredError } from './readerRouter.js';
 import { ConfigError } from './config.js';
 import { WorkersAiError } from './workersAi.js';
 
@@ -54,8 +55,13 @@ const png = (bytes: Buffer, cached: boolean): RouteResponse => ({
     body: bytes,
 });
 
-const IMAGE_ROUTE = /^\/image\/([a-z0-9-]+)\/(\d{1,78})\.png$/;
-const METADATA_ROUTE = /^\/metadata\/([a-z0-9-]+)\/(\d{1,78})$/;
+// The identifier is chain-specific (decimal on EVM, a base58 Core asset pubkey on
+// Solana), so the route accepts alphanumerics and the reader rejects what it cannot
+// parse. Deliberately NOT the base58 alphabet, which excludes "0" and would 404
+// every EVM pet whose id contains one. Bounded at 88 characters, the longest a
+// base58 pubkey gets, so nothing absurd reaches a reader.
+const IMAGE_ROUTE = /^\/image\/([a-z0-9-]+)\/([0-9A-Za-z]{1,88})\.png$/;
+const METADATA_ROUTE = /^\/metadata\/([a-z0-9-]+)\/([0-9A-Za-z]{1,88})$/;
 
 export const handleRequest = async (
     deps: RouteDeps,
@@ -83,16 +89,16 @@ export const handleRequest = async (
     return json(404, { error: 'Not found' });
 };
 
-const serveImage = async (deps: RouteDeps, chain: string, rawTokenId: string): Promise<RouteResponse> => {
-    const tokenId = parseTokenId(rawTokenId);
-    if (tokenId === null) return json(400, { error: 'Invalid tokenId' });
-
+const serveImage = async (deps: RouteDeps, chain: string, tokenId: string): Promise<RouteResponse> => {
     try {
         const pet = await deps.reader.read(chain, tokenId);
         const result = await getOrCreatePetImage(deps, {
             dna: pet.dna,
             rarity: pet.rarity,
-            speciesId: pet.speciesId,
+            // Omitted, not passed as undefined: a chain that assigns no species
+            // must fall back to DNA pair 6, and the cache key distinguishes the
+            // two cases.
+            ...(pet.speciesId === undefined ? {} : { speciesId: pet.speciesId }),
         });
 
         // With a public bucket the bytes never need to pass through this service.
@@ -109,10 +115,7 @@ const serveImage = async (deps: RouteDeps, chain: string, rawTokenId: string): P
     }
 };
 
-const serveMetadata = async (deps: RouteDeps, chain: string, rawTokenId: string): Promise<RouteResponse> => {
-    const tokenId = parseTokenId(rawTokenId);
-    if (tokenId === null) return json(400, { error: 'Invalid tokenId' });
-
+const serveMetadata = async (deps: RouteDeps, chain: string, tokenId: string): Promise<RouteResponse> => {
     try {
         const pet = await deps.reader.read(chain, tokenId);
         const base = deps.publicBaseUrl.replace(/\/+$/, '');
@@ -122,7 +125,7 @@ const serveMetadata = async (deps: RouteDeps, chain: string, rawTokenId: string)
                 ? {
                     externalUrl: deps.externalUrlTemplate
                         .replace('{chain}', chain)
-                        .replace('{tokenId}', String(tokenId)),
+                        .replace('{tokenId}', tokenId),
                 }
                 : {}),
         });
@@ -139,6 +142,9 @@ const serveMetadata = async (deps: RouteDeps, chain: string, rawTokenId: string)
 const errorResponse = (error: unknown): RouteResponse => {
     if (error instanceof UnknownPetError) return json(404, { error: error.message });
     if (error instanceof UnsupportedChainError) return json(400, { error: error.message });
+    // A real chain this deployment just has no credentials for: an operator
+    // problem, not a caller one, so 501 rather than 400.
+    if (error instanceof ChainNotConfiguredError) return json(501, { error: error.message });
     if (error instanceof ConfigError) return json(500, { error: error.message });
     if (error instanceof WorkersAiError) {
         // Upstream generation failure. 502 keeps it distinguishable from a bad

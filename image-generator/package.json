@@ -14,6 +14,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "build": "tsc",
+        "typecheck": "tsc -p tsconfig.test.json",
         "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
         "start": "node dist/main.js",
         "generate": "tsx --env-file-if-exists=.env src/cli.ts"

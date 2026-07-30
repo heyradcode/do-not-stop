@@ -38,7 +38,7 @@ export const buildPetMetadata = (pet: OnChainPet, options: MetadataOptions): Pet
     const traits = derivePetVisualTraits({
         dna: pet.dna,
         rarity: pet.rarity,
-        speciesId: pet.speciesId,
+        ...(pet.speciesId === undefined ? {} : { speciesId: pet.speciesId }),
     });
 
     const attributes: MetadataAttribute[] = [

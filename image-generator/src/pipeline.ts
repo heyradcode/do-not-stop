@@ -15,6 +15,7 @@
 
 import type { WorkersAiConfig } from './config.js';
 import { buildPetPrompt, summarisePet } from './prompt.js';
+import type { Limiter } from './retry.js';
 import type { ArtManifest, ImageStore, StoredObject } from './store.js';
 import { ART_VERSION, encodeManifest, petImageKey, petManifestKey } from './store.js';
 import { derivePetVisualTraits, type PetArtInput } from './traits.js';
@@ -26,6 +27,9 @@ export interface PipelineDeps {
     /** Injected for tests; defaults to the real Workers AI call. */
     generate?: typeof generateImage;
     now?: () => Date;
+    /** Bounds simultaneous generations. Without one, a marketplace crawling a
+     *  collection's images turns into N concurrent Workers AI calls. */
+    limiter?: Limiter;
 }
 
 export interface PetImageResult extends StoredObject {
@@ -66,7 +70,11 @@ const generateAndStore = async (
     const spec = buildPetPrompt(traits, input.dna);
     const generate = deps.generate ?? generateImage;
 
-    const bytes = await generate(deps.config, spec);
+    // Queued rather than shed when the limiter is full: a caller waiting a few
+    // seconds beats telling them their pet has no image.
+    const bytes = deps.limiter
+        ? await deps.limiter.run(() => generate(deps.config, spec))
+        : await generate(deps.config, spec);
     const object: StoredObject = { bytes, contentType: 'image/png' };
 
     const manifest: ArtManifest = {

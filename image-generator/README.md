@@ -42,8 +42,14 @@ Built incrementally. Done so far:
 - [x] HTTP surface and ERC-721 metadata (`src/routes.ts`, `src/metadata.ts`)
 - [x] Deployment: `Dockerfile`, plus the Render block in Deployment below
 - [x] `PetCore.tokenURI` can be pointed here (owner-settable base URI)
+- [x] Burst handling: retry with backoff, bounded concurrency (`src/retry.ts`)
+- [x] Chain-agnostic routing, ready for a second reader (`src/readerRouter.ts`)
 - [ ] A live generation run: no real image has been produced yet
-- [ ] Solana pets (Metaplex Core assets, a different client entirely)
+- [ ] A Solana reader. Pets are addressed by their Metaplex Core asset pubkey
+      (`PetAccount` PDA seeds are `[b"pet", asset]`) and `species_id` is `0` until
+      species pools land there, which must be treated as *unset* or every Solana
+      pet gets the same body. Undecided: whether to take a `@solana/web3.js`
+      dependency or hand-roll the JSON-RPC call and account decode.
 
 The Workers AI and R2 request/response shapes are written against Cloudflare's
 documented contracts and covered by mocked tests only. The first live
@@ -78,9 +84,16 @@ the remaining per-pet variation. Art reads DNA and never feeds back into combat.
 | `GET /image/:chain/:tokenId.png` | The pet's art. Generates on first request, cached forever after. 302s to the bucket when `R2_PUBLIC_BASE_URL` is set |
 | `GET /metadata/:chain/:tokenId` | ERC-721 metadata, what `tokenURI` should point at |
 
-`:chain` is `evm` today. Solana pets are Metaplex Core assets read through a
-different client, so the segment is in the route from the start and `solana`
-returns an explicit 400 rather than pretending.
+`:chain` is `evm` today, but the routing is chain-agnostic: identifiers pass
+through as strings and each reader validates its own format, because a pet id is
+decimal on EVM and a base58 Core asset pubkey on Solana. `createReaderRouter` is
+where a second reader plugs in, and it separates two failures worth keeping apart:
+an unimplemented chain is a permanent 400, while a supported chain this deployment
+has no credentials for is a 501, an operator problem rather than a caller one.
+
+One trap in that identifier pattern: it accepts alphanumerics rather than the
+base58 alphabet, because base58 excludes `0` and would 404 every EVM pet whose id
+contains one.
 
 **Metadata never triggers generation.** A marketplace indexing a whole
 collection hits every metadata URL at once; if that generated images it would
@@ -127,6 +140,23 @@ Each image is written alongside a JSON manifest recording the traits, model,
 prompt, seed, and timestamp that produced it. Once a model version moves on, that
 manifest is the only record of how a given pet came to look the way it does.
 
+## Burst behaviour
+
+Image generation is a paid, rate-limited upstream, and the natural access pattern
+is bursty: a marketplace loading a collection's images arrives as N requests at
+once. Three things keep that from turning into N failures.
+
+- **Bounded concurrency** (`CF_MAX_CONCURRENT`, default 2). Excess callers queue
+  rather than fail, because waiting a few seconds beats being told a pet has no
+  image. Deliberately low: the free allocation is small and the queue drains fast.
+- **Retry with backoff** (`CF_MAX_ATTEMPTS`, default 3) on 429 and 5xx, honouring
+  `Retry-After` when the upstream sends one, capped so a hostile value cannot pin a
+  request open. A 4xx other than 429 is not retried: the request itself is wrong,
+  so another attempt buys the same error. Retrying a 429 is free (a rejected
+  request was never billed); a 5xx may have been billed, which is the honest cost.
+- **Bounded total spend.** Nonexistent pets are rejected before generation, so the
+  lifetime inference count is bounded by the number of minted pets, not by traffic.
+
 Concurrent first-ever requests for the same pet are collapsed into one
 generation, so a pet's page open in two tabs bills one inference rather than two.
 The dedupe is per process; with several instances the race is still possible, and
@@ -146,6 +176,7 @@ pnpm install --ignore-workspace
 pnpm test          # vitest
 pnpm lint          # eslint
 pnpm build         # tsc -> dist/
+pnpm typecheck     # tsc including the specs, which build/ excludes
 pnpm dev           # watch mode on :8787
 pnpm start         # run the built server
 
