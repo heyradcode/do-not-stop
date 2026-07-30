@@ -84,7 +84,7 @@ generic breed/battle/market clone.
 8. **Pet stories** — reuses the dialogue-generation infra; the narrative hub other features can
    optionally plug into.
 9. **Image generator** — independent of everything else; feeds marketplace/story visuals
-   whenever it lands.
+   whenever it lands. **Built out of order, ahead of tiers 1-3; see §9.**
 10. **Agentic AI pets** — needs dialogue infra maturity and real product iteration to avoid
     feeling gimmicky.
 
@@ -660,6 +660,33 @@ generate-once-vs-freshness tradeoff `BattleDialogue` already made in favor of "g
 ---
 
 ## 9. Image generator system for pet NFTs
+
+> **Built.** This section is kept as the original proposal; `image-generator/` is the
+> implementation and its README is authoritative. What shipped diverges from the
+> recommendation below in several deliberate ways, recorded here so they are not
+> mistaken for drift:
+>
+> - **Generative AI, not procedural.** The design below argued for procedural SVG
+>   layering. The build uses Cloudflare Workers AI (SDXL-Lightning by default),
+>   chosen for art quality. The objection the proposal raised is real and was
+>   answered rather than ignored: diffusion output is *not* reproducible from DNA
+>   across model versions, so an image is generated once and written to immutable
+>   storage keyed on `(dna, rarity, speciesId)`, and regeneration is an explicit
+>   `ART_VERSION` bump. DNA -> traits -> prompt stays exact integer math; only the
+>   last step is non-deterministic.
+> - **R2, not IPFS/Arweave.** Same Cloudflare account as the model, no egress fees.
+>   The store is a two-method interface, so an IPFS pin can be added without
+>   touching the pipeline.
+> - **A standalone service, not a library.** `image-generator/` is deliberately not
+>   a pnpm workspace member; see CLAUDE.md.
+> - **Cosmetic digits alone were not enough.** Pair 6 is already spent on species at
+>   mint time and pair 7 gives only 100 looks, so the HP and INT genes also nudge
+>   proportions. Art reads DNA and never feeds back into combat.
+> - **Cross-chain parity, as flagged below, did surface** — but as a Solana-specific
+>   rule rather than a golden vector: `species_id` is `0` there until species pools
+>   land, and must be read as *unset* or every Solana pet gets one silhouette. No
+>   trait-vector fixture exists, because the derivation lives in one TypeScript
+>   implementation rather than being ported per chain.
 
 **Goal.** Unique visual art per pet instead of static per-rarity/species art.
 

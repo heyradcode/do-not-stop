@@ -33,7 +33,7 @@ Full per-package lint/test/build matrix and single-test syntax: see [CLAUDE.md](
 ## Where To Look
 
 - Behavioral guidelines and full architecture: [CLAUDE.md](./CLAUDE.md)
-- Data flow and component map: [docs/architecture.md](./docs/architecture.md)
+- Data flow and component map: [CLAUDE.md](./CLAUDE.md#architecture) (`docs/architecture.md` is referenced in places but does not exist)
 - Test suite conventions: [docs/testing.md](./docs/testing.md)
 - Backend API surface: [backend/API.md](./backend/API.md)
 - Indexer internals: [indexer-go/README.md](./indexer-go/README.md)
