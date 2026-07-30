@@ -274,10 +274,14 @@ Two properties matter more than speed:
   through a paid batch is the worst outcome, since the work already done is fine.
   Failures are listed individually, not just counted, and the process exits
   non-zero so a script can retry.
-- **Runs are resumable by construction.** The store is checked before any
+- **Runs are resumable by construction.** The pipeline checks the store before any
   inference, so re-running after a partial failure pays only for what is still
   missing. Ids past the current supply count as "not minted", not as errors,
   because warming past the end is routine.
+- **Pets are warmed `CF_MAX_CONCURRENT` at a time**, the same budget a live
+  instance generates with, rather than one after another: a large collection at a
+  few seconds an image would otherwise take most of a day. Progress streams as
+  pets finish, while the final summary stays in id order.
 
 `--dry-run` still reads the chain and checks the cache, so it reports exactly
 which pets would be generated. Use it to size a run before paying for it.

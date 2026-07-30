@@ -141,6 +141,57 @@ describe('warmPets', () => {
         expect(summary).toMatchObject({ cached: 1, wouldGenerate: 2 });
     });
 
+    // Walking one pet at a time ignores the configured generation budget: a large
+    // collection would take many times longer than the service can actually go.
+    it('warms several pets at once, up to the configured budget', async () => {
+        let live = 0;
+        let peak = 0;
+        const generate = vi.fn(async () => {
+            live++;
+            peak = Math.max(peak, live);
+            await new Promise((r) => setTimeout(r, 10));
+            live--;
+            return Buffer.from('png');
+        });
+        const d = {
+            ...deps(new MemoryImageStore(), reader(['1', '2', '3', '4', '5', '6'])),
+            generate: generate as unknown as NonNullable<PipelineDeps['generate']>,
+        };
+
+        await warmPets(d, { chain: 'evm', from: 1, to: 6, concurrency: 3 });
+
+        expect(generate).toHaveBeenCalledTimes(6);
+        expect(peak).toBe(3);
+    });
+
+    it('never exceeds the requested concurrency', async () => {
+        let live = 0;
+        let peak = 0;
+        const generate = vi.fn(async () => {
+            live++;
+            peak = Math.max(peak, live);
+            await new Promise((r) => setTimeout(r, 5));
+            live--;
+            return Buffer.from('png');
+        });
+        const d = {
+            ...deps(new MemoryImageStore(), reader(['1', '2', '3', '4', '5', '6'])),
+            generate: generate as unknown as NonNullable<PipelineDeps['generate']>,
+        };
+
+        await warmPets(d, { chain: 'evm', from: 1, to: 6, concurrency: 1 });
+        expect(peak).toBe(1);
+    });
+
+    // Progress streams as pets finish, but the summary is what gets reported at
+    // the end, and out-of-order ids there would make a long run hard to read.
+    it('keeps the summary in id order however completion interleaves', async () => {
+        const d = deps(new MemoryImageStore(), reader(['1', '2', '3', '4', '5']));
+        const summary = await warmPets(d, { chain: 'evm', from: 1, to: 5, concurrency: 5 });
+
+        expect(summary.events.map((e) => e.tokenId)).toEqual(['1', '2', '3', '4', '5']);
+    });
+
     it('streams progress as it goes', async () => {
         const events: string[] = [];
         await warmPets(deps(), {

@@ -21,6 +21,7 @@
 import type { PetReader } from './chain.js';
 import { UnknownPetError } from './chain.js';
 import { getOrCreatePetImage, type PipelineDeps } from './pipeline.js';
+import { createLimiter } from './retry.js';
 import { petImageKey } from './store.js';
 
 export interface WarmOptions {
@@ -30,6 +31,10 @@ export interface WarmOptions {
     to: number;
     /** Report what would happen without generating anything. */
     dryRun?: boolean;
+    /** Pets in flight at once. Defaults to the service's own generation budget,
+     *  CF_MAX_CONCURRENT, so warming uses exactly the capacity a live instance
+     *  would. */
+    concurrency?: number;
     onProgress?: (event: WarmEvent) => void;
 }
 
@@ -67,11 +72,28 @@ export const warmPets = async (deps: WarmDeps, options: WarmOptions): Promise<Wa
         events: [],
     };
 
-    for (let id = options.from; id <= options.to; id++) {
-        const tokenId = String(id);
-        summary.total++;
+    const ids: string[] = [];
+    for (let id = options.from; id <= options.to; id++) ids.push(String(id));
 
+    // Walking one pet at a time ignores the generation budget the service is
+    // configured for: a 10k collection at a few seconds an image takes most of a
+    // day serially. The pipeline's own limiter still caps concurrent inferences,
+    // so this pool controls how many pets are in flight, not how much is billed
+    // at once.
+    const limiter = createLimiter(options.concurrency ?? deps.config.maxConcurrent);
+
+    // warmOne never throws: a failure is an event, so one bad pet cannot reject
+    // the batch and abandon the pets after it.
+    const events = await Promise.all(ids.map((tokenId) => limiter.run(async () => {
         const event = await warmOne(deps, options, tokenId);
+        // Streamed as it completes, so a long run shows progress. Order follows
+        // completion, while the summary below stays in id order.
+        options.onProgress?.(event);
+        return event;
+    })));
+
+    for (const event of events) {
+        summary.total++;
         summary.events.push(event);
 
         switch (event.outcome) {
@@ -81,8 +103,6 @@ export const warmPets = async (deps: WarmDeps, options: WarmOptions): Promise<Wa
             case 'missing': summary.missing++; break;
             case 'failed': summary.failed++; break;
         }
-
-        options.onProgress?.(event);
     }
 
     return summary;
