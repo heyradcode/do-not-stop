@@ -185,6 +185,55 @@ describe('generateImage retrying', () => {
         expect(Date.now() - started).toBeLessThan(400);
     });
 
+    it('accepts a Retry-After given as an HTTP date, not just seconds', async () => {
+        const delays: number[] = [];
+        const when = new Date(Date.now() + 4_000).toUTCString();
+        const fetchImpl = flaky(1, { status: 503, headers: { 'retry-after': when } });
+
+        await generateImage(config(), SPEC, fetchImpl, {
+            attempts: 2,
+            baseDelayMs: 10,
+            maxDelayMs: 60_000,
+            sleep: async (ms) => { delays.push(ms); },
+            onRetry: () => {},
+        });
+
+        // Second resolution, so allow a little slack around the 4s target.
+        expect(delays[0]).toBeGreaterThan(2_000);
+        expect(delays[0]).toBeLessThanOrEqual(4_000);
+    });
+
+    it('ignores a Retry-After date already in the past instead of waiting negatively', async () => {
+        const delays: number[] = [];
+        const past = new Date(Date.now() - 60_000).toUTCString();
+        const fetchImpl = flaky(1, { status: 503, headers: { 'retry-after': past } });
+
+        await generateImage(config(), SPEC, fetchImpl, {
+            attempts: 2,
+            baseDelayMs: 10,
+            maxDelayMs: 60_000,
+            sleep: async (ms) => { delays.push(ms); },
+            onRetry: () => {},
+        });
+
+        expect(delays).toEqual([0]);
+    });
+
+    it('falls back to backoff when Retry-After is unparseable', async () => {
+        const delays: number[] = [];
+        const fetchImpl = flaky(1, { status: 429, headers: { 'retry-after': 'soon-ish' } });
+
+        await generateImage(config(), SPEC, fetchImpl, {
+            attempts: 2,
+            baseDelayMs: 250,
+            maxDelayMs: 60_000,
+            sleep: async (ms) => { delays.push(ms); },
+            onRetry: () => {},
+        });
+
+        expect(delays).toEqual([250]);
+    });
+
     it('waits the Retry-After the upstream asked for', async () => {
         const delays: number[] = [];
         const fetchImpl = flaky(1, { status: 429, headers: { 'retry-after': '3' } });

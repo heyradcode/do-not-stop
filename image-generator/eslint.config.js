@@ -14,7 +14,13 @@ export default tseslint.config(
         },
         rules: {
             'no-unused-vars': 'off',
-            '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+            // ignoreRestSiblings covers `const { drop: _x, ...rest } = obj`, which is
+            // how a property gets omitted under exactOptionalPropertyTypes, where
+            // setting it to undefined is not the same thing.
+            '@typescript-eslint/no-unused-vars': [
+                'error',
+                { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+            ],
             'prefer-const': 'error',
             // Matches the shared package's formatting rules so code moving
             // between here and the rest of the monorepo reads the same.

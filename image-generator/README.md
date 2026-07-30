@@ -46,6 +46,7 @@ Built incrementally. Done so far:
 - [x] Chain-agnostic routing, ready for a second reader (`src/readerRouter.ts`)
 - [x] Solana reader, dependency-free (`src/solana.ts`, `src/base58.ts`)
 - [x] Collection warming with dry-run and resumability (`src/warm.ts`)
+- [x] CI and coverage (`.github/workflows/image-generator.yml`)
 - [ ] A live generation run: no real image has been produced yet
 - [ ] Solana verified against a real cluster: the decode is covered by fixtures
       only, since there is no validator in the environment this was written in
@@ -182,6 +183,7 @@ pnpm test          # vitest
 pnpm lint          # eslint
 pnpm build         # tsc -> dist/
 pnpm typecheck     # tsc including the specs, which build/ excludes
+pnpm test:coverage # vitest --coverage
 pnpm dev           # watch mode on :8787
 pnpm start         # run the built server
 
