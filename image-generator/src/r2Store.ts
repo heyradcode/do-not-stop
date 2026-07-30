@@ -22,6 +22,12 @@ export interface R2Config {
     bucket: string;
     /** Public bucket or custom-domain base URL, when one is configured. */
     publicBaseUrl?: string;
+    /**
+     * Overrides the account endpoint. Without this the R2 path in the shipped
+     * binary cannot be exercised anywhere but production, since the hostname is
+     * derived from the account id. Also lets any S3-compatible store stand in.
+     */
+    endpoint?: string;
 }
 
 /** R2 ignores the region but the S3 client requires one. */
@@ -30,11 +36,15 @@ const R2_REGION = 'auto';
 export const createR2Client = (config: R2Config): S3Client =>
     new S3Client({
         region: R2_REGION,
-        endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+        endpoint: config.endpoint ?? `https://${config.accountId}.r2.cloudflarestorage.com`,
         credentials: {
             accessKeyId: config.accessKeyId,
             secretAccessKey: config.secretAccessKey,
         },
+        // R2 is addressed virtual-hosted style, bucket as a subdomain of the
+        // account endpoint. A custom endpoint is a host that has no such
+        // subdomains, so it gets /bucket/key instead.
+        forcePathStyle: config.endpoint !== undefined,
     });
 
 export class R2ImageStore implements ImageStore {

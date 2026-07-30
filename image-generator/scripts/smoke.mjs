@@ -93,7 +93,30 @@ const main = async () => {
         });
     });
 
+    // Stands in for R2 so the binary's production store path actually runs.
+    const bucket = new Map();
+    const s3 = createServer((req, res) => {
+        const chunks = [];
+        req.on('data', (c) => chunks.push(c));
+        req.on('end', () => {
+            const key = new URL(req.url, 'http://x').pathname.replace('/pet-art/', '');
+            if (req.method === 'PUT') {
+                bucket.set(key, Buffer.concat(chunks));
+                res.writeHead(200); res.end(); return;
+            }
+            const found = bucket.get(key);
+            if (!found) {
+                res.writeHead(404, { 'content-type': 'application/xml' });
+                res.end('<?xml version="1.0"?><Error><Code>NoSuchKey</Code><Message>no</Message></Error>');
+                return;
+            }
+            res.writeHead(200, { 'content-type': 'image/png' });
+            res.end(found);
+        });
+    });
+
     const aiPort = await listen(ai);
+    const s3Port = await listen(s3);
     const rpcPort = await listen(rpc);
     const artRoot = await mkdtemp(join(tmpdir(), 'smoke-art-'));
     const port = 8931;
@@ -212,9 +235,55 @@ const main = async () => {
         const solana = await warm(['--chain=solana', '--from=1', '--to=3']);
         check('warming solana by id range fails', solana.code, 1);
         check('and says why', /not addressed by number/.test(solana.out), true);
+        // Production runs on R2, and until now only the filesystem store had ever
+        // booted: a mistake in the r2 branch of storeFactory or its config would
+        // have surfaced for the first time in production.
+        console.log('\nr2 store:');
+        const r2Env = {
+            ...childEnv,
+            PORT: String(port + 1),
+            PUBLIC_BASE_URL: `http://127.0.0.1:${port + 1}`,
+            IMAGE_STORE: 'r2',
+            R2_BUCKET: 'pet-art',
+            R2_ACCESS_KEY_ID: 'key',
+            R2_SECRET_ACCESS_KEY: 'secret',
+            R2_ENDPOINT: `http://127.0.0.1:${s3Port}`,
+            R2_PUBLIC_BASE_URL: 'https://cdn.example',
+        };
+        const r2Server = spawn(process.execPath, ['dist/main.js'], { env: r2Env, stdio: ['ignore', 'pipe', 'pipe'] });
+        const r2Logs = [];
+        r2Server.stdout.on('data', (d) => r2Logs.push(String(d)));
+        r2Server.stderr.on('data', (d) => r2Logs.push(String(d)));
+        const r2Base = `http://127.0.0.1:${port + 1}`;
+
+        try {
+            let alive = false;
+            for (let i = 0; i < 60 && !alive; i++) {
+                try { await fetch(`${r2Base}/health`); alive = true; } catch { await new Promise((r) => setTimeout(r, 100)); }
+            }
+            check('boots on the r2 store', alive, true);
+            if (!alive) console.log(r2Logs.join(''));
+
+            check('readiness reaches the bucket', (await fetch(`${r2Base}/ready`)).status, 200);
+
+            const before = generations;
+            // Redirect rather than proxy: with a public bucket the bytes never
+            // pass through the service.
+            const img = await fetch(`${r2Base}/image/evm/5.png`, { redirect: 'manual' });
+            check('image 302s to the public bucket', img.status, 302);
+            check('and points at the configured domain', (img.headers.get('location') ?? '').startsWith('https://cdn.example/art/v1/'), true);
+            check('generated once into the bucket', generations - before, 1);
+            check('bucket holds the image and its manifest', bucket.size, 2);
+
+            const again = await fetch(`${r2Base}/image/evm/5.png`, { redirect: 'manual' });
+            check('second request still redirects', again.status, 302);
+            check('and bills nothing more', generations - before, 1);
+        } finally {
+            r2Server.kill();
+        }
     } finally {
         server.kill();
-        await Promise.all([shut(ai), shut(rpc)]);
+        await Promise.all([shut(ai), shut(rpc), shut(s3)]);
         await rm(artRoot, { recursive: true, force: true });
     }
 

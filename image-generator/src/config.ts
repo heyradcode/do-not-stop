@@ -86,6 +86,7 @@ export interface StoreSelection {
         secretAccessKey: string;
         bucket: string;
         publicBaseUrl?: string;
+        endpoint?: string;
     };
 }
 
@@ -103,6 +104,7 @@ export const loadStoreSelection = (fallback: StoreKind = 'r2'): StoreSelection =
     if (raw !== 'r2') return { kind: raw, root };
 
     const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL;
+    const endpoint = process.env.R2_ENDPOINT;
     return {
         kind: raw,
         root,
@@ -112,6 +114,7 @@ export const loadStoreSelection = (fallback: StoreKind = 'r2'): StoreSelection =
             secretAccessKey: readRequired('R2_SECRET_ACCESS_KEY'),
             bucket: readRequired('R2_BUCKET'),
             ...(publicBaseUrl ? { publicBaseUrl } : {}),
+            ...(endpoint ? { endpoint } : {}),
         },
     };
 };

@@ -21,7 +21,10 @@
  */
 
 /** Body archetypes, indexed to match the game's 8 passive skill archetypes
- *  (body = speciesId % 8), so a pet's silhouette reads as its skill. */
+ *  (body = speciesId % 8), so a pet's silhouette reads as its skill. The pairing
+ *  is checked against shared/src/utils/pets/skills.ts in traitAlignment.test.ts:
+ *  a reorder on either side would otherwise draw a Phoenix with the Tank skill
+ *  and fail nothing. */
 export const BODY_NAMES = [
     'Bulwark',
     'Shelled',
@@ -39,7 +42,9 @@ export const EYE_NAMES = ['Round', 'Sharp', 'Sleepy', 'Blazing'] as const;
 
 export const MARKING_NAMES = ['None', 'Mask', 'Blaze', 'Cheeks', 'Crown'] as const;
 
-/** Element order matches DnaLib's element wheel. */
+/** Element order matches DnaLib's element wheel, and is checked against the
+ *  game's own list in traitAlignment.test.ts: the index decides both the palette
+ *  and the Element trait, so the two must name element 1 the same thing. */
 export const ELEMENT_NAMES = ['Fire', 'Water', 'Electric', 'Nature', 'Shadow', 'Cosmic'] as const;
 
 export const RARITY_NAMES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'] as const;

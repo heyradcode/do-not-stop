@@ -59,9 +59,12 @@ AWS SDK against a fake S3 endpoint), and Workers AI (through real `fetch` agains
 a fake Cloudflare endpoint) all run over real sockets, and `pnpm smoke` boots the
 built `dist/main.js` against those fakes and walks the routes a client uses.
 
-`CF_API_BASE` is what makes that possible: it overrides the Workers AI endpoint,
-so the shipped binary can be driven without credentials, and a Cloudflare-compatible
-gateway can be put in front in production.
+`CF_API_BASE` and `R2_ENDPOINT` are what make that possible: they override the
+Workers AI and R2 endpoints, so the shipped binary can be driven without
+credentials. Both have production uses too, a Cloudflare-compatible gateway and
+any S3-compatible store. `pnpm smoke` boots the binary twice, once on the
+filesystem store and once on R2, because production runs the R2 path and only the
+filesystem one had ever actually started.
 
 What none of it can tell you is whether Cloudflare and R2 *accept* these requests.
 The request-shape tests spell out exactly what would be sent, so it can be compared
