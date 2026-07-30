@@ -45,6 +45,7 @@ Built incrementally. Done so far:
 - [x] Burst handling: retry with backoff, bounded concurrency (`src/retry.ts`)
 - [x] Chain-agnostic routing, ready for a second reader (`src/readerRouter.ts`)
 - [x] Solana reader, dependency-free (`src/solana.ts`, `src/base58.ts`)
+- [x] Collection warming with dry-run and resumability (`src/warm.ts`)
 - [ ] A live generation run: no real image has been produced yet
 - [ ] Solana verified against a real cluster: the decode is covered by fixtures
       only, since there is no validator in the environment this was written in
@@ -186,7 +187,38 @@ pnpm generate --dna=7934056188134207 --rarity=3 --out=pet.png
 # Defaults to the filesystem store, so running the same pet twice serves the
 # second from cache and bills nothing. --store=memory forces a fresh inference.
 pnpm generate --dna=7934056188134207 --rarity=3 --store=memory
+
+# Pre-generate a whole collection (see Warming below).
+pnpm warm --from=1 --to=200 --dry-run
+pnpm warm --from=1 --to=200
 ```
+
+## Warming
+
+Art is generated on first fetch, so the first marketplace crawl after `tokenURI`
+starts resolving here hits a cold cache: every image at once, all of them misses.
+`pnpm warm` walks an id range ahead of time and turns that into cache hits, with
+the spend somewhere it can be watched.
+
+```bash
+pnpm warm --from=1 --to=200 --dry-run   # reads the chain, generates nothing
+pnpm warm --from=1 --to=200
+```
+
+Two properties matter more than speed:
+
+- **One pet's failure does not stop the run.** A gap in the range, an RPC hiccup,
+  a pet that was burned: each is recorded and the walk continues. Aborting midway
+  through a paid batch is the worst outcome, since the work already done is fine.
+  Failures are listed individually, not just counted, and the process exits
+  non-zero so a script can retry.
+- **Runs are resumable by construction.** The store is checked before any
+  inference, so re-running after a partial failure pays only for what is still
+  missing. Ids past the current supply count as "not minted", not as errors,
+  because warming past the end is routine.
+
+`--dry-run` still reads the chain and checks the cache, so it reports exactly
+which pets would be generated. Use it to size a run before paying for it.
 
 ## Model choice
 
