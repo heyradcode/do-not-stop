@@ -15,7 +15,7 @@ import "./DnaLib.sol";
  *      Storage layout must be append-only from this point forward.
  */
 contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeable {
-    string public constant VERSION = "1.0.0";
+    string public constant VERSION = "1.1.0";
 
     event NewPet(uint256 indexed petId, string name, uint256 dna, uint8 rarity);
     event PetLevelUp(uint256 indexed petId, uint32 newLevel);
@@ -27,6 +27,7 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     event CallerAuthorized(address indexed caller);
     event CallerRevoked(address indexed caller);
     event GameConfigUpdated(address config);
+    event BaseTokenUriUpdated(string baseUri);
 
     struct Pet {
         string name;
@@ -67,6 +68,10 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     uint256 public constant DNA_MODULUS = 10 ** DNA_DIGITS;
     uint256 public constant NAME_CHANGE_LEVEL = 2;
 
+    /// @dev Used by tokenURI until an owner calls setBaseTokenUri. Preserves the
+    ///      exact pre-upgrade return value so an upgrade alone changes nothing.
+    string public constant DEFAULT_BASE_TOKEN_URI = "https://api.cryptopets.io/metadata/";
+
     uint256 private _petCount;
     mapping(uint256 => Pet)   private _pets;
     mapping(address => bool)  public  authorizedCallers;
@@ -77,8 +82,15 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     mapping(uint256 => MarriageProposalData)  public marriageProposal;     // keyed by petIdA
     mapping(uint256 => uint256)               public marriageCooldownUntil; // petId => timestamp
 
-    // Reserve 42 slots: 8 declared above (through marriageCooldownUntil) + 42 gap = 50 for PetCore's scope.
-    uint256[42] private __gap;
+    // Base URI tokenURI() prefixes onto the token id. Empty until an owner sets it,
+    // in which case tokenURI falls back to DEFAULT_BASE_TOKEN_URI so an upgraded
+    // proxy behaves exactly as it did before the setter existed.
+    string private _baseTokenUri;
+
+    // Reserve 41 slots: 9 declared above (through _baseTokenUri) + 41 gap = 50 for PetCore's scope.
+    // A new variable takes one slot off the gap rather than being appended after it,
+    // which is what keeps every later contract's layout unchanged.
+    uint256[41] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
 
@@ -127,6 +139,22 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
         require(gameConfig_ != address(0), "Zero address");
         gameConfig = GameConfig(gameConfig_);
         emit GameConfigUpdated(gameConfig_);
+    }
+
+    /// @notice Point tokenURI at a metadata service. The token id is appended verbatim,
+    ///         so baseUri must include whatever separator it needs — a trailing "/" for
+    ///         "https://art.example.com/metadata/evm/", or a trailing "=" for a
+    ///         query-style base. Not validated here: a wrong value is visible in the
+    ///         next tokenURI read and fixed by calling this again.
+    /// @dev    Setting "" restores DEFAULT_BASE_TOKEN_URI.
+    function setBaseTokenUri(string calldata baseUri) external onlyOwner {
+        _baseTokenUri = baseUri;
+        emit BaseTokenUriUpdated(baseUri);
+    }
+
+    /// @notice The base tokenURI actually in effect, including the default fallback.
+    function baseTokenUri() public view returns (string memory) {
+        return bytes(_baseTokenUri).length == 0 ? DEFAULT_BASE_TOKEN_URI : _baseTokenUri;
     }
 
     // ─── caller authorization ─────────────────────────────────────────────────
@@ -463,9 +491,7 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         require(_exists(tokenId), "Token does not exist");
-        return string(
-            abi.encodePacked("https://api.cryptopets.io/metadata/", _toString(tokenId))
-        );
+        return string(abi.encodePacked(baseTokenUri(), _toString(tokenId)));
     }
 
     function _beforeTokenTransfer(

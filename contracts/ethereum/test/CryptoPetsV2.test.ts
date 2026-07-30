@@ -1680,4 +1680,105 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
             assert.equal(decodeRevertReason(error), "No stud fees to withdraw");
         }
     });
+
+    // ─── tokenURI base (image-generator service) ──────────────────────────────
+
+    it("Should default tokenURI to the pre-upgrade base until an owner sets one", async function () {
+        const { petCore } = await deployV2();
+        const [deployer] = await viem.getWalletClients();
+
+        await petCore.write.createPet(["Pet", 1234567890123456n, 1, 0, 0n, 0n], { account: deployer.account });
+        await petCore.write.mintTo([deployer.account.address, 1n], { account: deployer.account });
+
+        // An upgrade alone must not change what marketplaces already read.
+        assert.equal(await petCore.read.baseTokenUri(), "https://api.cryptopets.io/metadata/");
+        assert.equal(await petCore.read.tokenURI([1n]), "https://api.cryptopets.io/metadata/1");
+    });
+
+    it("Should let the owner point tokenURI at the metadata service", async function () {
+        const { petCore } = await deployV2();
+        const [deployer, addr1] = await viem.getWalletClients();
+
+        await petCore.write.createPet(["Pet", 1234567890123456n, 1, 0, 0n, 0n], { account: deployer.account });
+        await petCore.write.mintTo([deployer.account.address, 1n], { account: deployer.account });
+
+        const base = "https://art.cryptopets.io/metadata/evm/";
+        const hash = await petCore.write.setBaseTokenUri([base], { account: deployer.account });
+
+        assert.equal(await petCore.read.tokenURI([1n]), `${base}1`);
+
+        const receipt = await (await viem.getPublicClient()).getTransactionReceipt({ hash });
+        const events = parseEventLogs({ abi: petCore.abi, logs: receipt.logs, eventName: "BaseTokenUriUpdated" });
+        assert.equal(events.length, 1);
+        assert.equal(events[0].args.baseUri, base);
+
+        try {
+            await petCore.write.setBaseTokenUri(["https://evil.example/"], { account: addr1.account });
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert.equal(decodeRevertReason(error), "Ownable: caller is not the owner");
+        }
+    });
+
+    it("Should append the token id verbatim, so a query-style base works too", async function () {
+        const { petCore } = await deployV2();
+        const [deployer] = await viem.getWalletClients();
+
+        await petCore.write.createPet(["Pet", 1234567890123456n, 1, 0, 0n, 0n], { account: deployer.account });
+        await petCore.write.mintTo([deployer.account.address, 1n], { account: deployer.account });
+
+        await petCore.write.setBaseTokenUri(["https://art.example/meta?id="], { account: deployer.account });
+        assert.equal(await petCore.read.tokenURI([1n]), "https://art.example/meta?id=1");
+
+        // Clearing restores the default rather than yielding a bare token id.
+        await petCore.write.setBaseTokenUri([""], { account: deployer.account });
+        assert.equal(await petCore.read.tokenURI([1n]), "https://api.cryptopets.io/metadata/1");
+    });
+
+    it("Should still revert tokenURI for a token that was never minted", async function () {
+        const { petCore } = await deployV2();
+        const [deployer] = await viem.getWalletClients();
+
+        await petCore.write.setBaseTokenUri(["https://art.example/"], { account: deployer.account });
+
+        try {
+            await petCore.read.tokenURI([999n]);
+            assert.fail("Expected revert");
+        } catch (error: unknown) {
+            assert.equal(decodeRevertReason(error), "Token does not exist");
+        }
+    });
+
+    // _baseTokenUri took a slot off __gap rather than being appended after it. If
+    // that slot had overlapped an existing variable, pet data written before the
+    // write would read back corrupted — so assert both survive each other.
+    it("Should not let the new base-URI slot collide with existing pet storage", async function () {
+        const { petCore, gameLogic, config } = await deployV2();
+        const [deployer] = await viem.getWalletClients();
+
+        await petCore.write.createPet(["Pet", 1234567890123456n, 3, 0, 0n, 0n], { account: deployer.account });
+        await petCore.write.mintTo([deployer.account.address, 1n], { account: deployer.account });
+
+        const before = await petCore.read.getPet([1n]);
+
+        // A long string spills past its own slot into keccak-derived storage; if the
+        // layout were wrong this is what would trample a neighbouring variable.
+        await petCore.write.setBaseTokenUri([`https://art.example/${"x".repeat(200)}/`], {
+            account: deployer.account,
+        });
+
+        const after = await petCore.read.getPet([1n]);
+        assert.equal(after.dna, before.dna);
+        assert.equal(after.rarity, before.rarity);
+        assert.equal(after.name, before.name);
+        assert.equal(after.speciesId, before.speciesId);
+        assert.equal(await petCore.read.totalPets(), 1n);
+
+        // The variables declared immediately before _baseTokenUri, which a
+        // mis-sized gap would be most likely to overwrite.
+        assert.equal(await petCore.read.authorizedCallers([gameLogic.address]), true);
+        assert.equal((await petCore.read.gameConfig()).toLowerCase(), config.address.toLowerCase());
+        assert.equal(await petCore.read.marriageCooldownUntil([1n]), 0n);
+        assert.equal((await petCore.read.owner()).toLowerCase(), deployer.account.address.toLowerCase());
+    });
 });

@@ -41,7 +41,8 @@ Built incrementally. Done so far:
 - [x] On-chain reads: tokenId -> dna/rarity/speciesId (`src/chain.ts`)
 - [x] HTTP surface and ERC-721 metadata (`src/routes.ts`, `src/metadata.ts`)
 - [x] Deployment: `Dockerfile`, plus the Render block in Deployment below
-- [ ] Point `PetCore.tokenURI` at this service (needs a contract change)
+- [x] `PetCore.tokenURI` can be pointed here (owner-settable base URI)
+- [ ] A live generation run: no real image has been produced yet
 - [ ] Solana pets (Metaplex Core assets, a different client entirely)
 
 The Workers AI and R2 request/response shapes are written against Cloudflare's
@@ -238,13 +239,32 @@ runtime (no `node:http`, no S3 client) and a rewrite of the server and store
 layers. Worth doing if this service grows, not worth it to ship the first
 version.
 
-### Not done yet: pointing tokenURI here
+### Pointing tokenURI here
 
-`PetCore.tokenURI` currently hardcodes `https://api.cryptopets.io/metadata/`,
-which does not resolve. Until it points at this service's
-`/metadata/evm/:tokenId`, nothing on-chain references the art. That is a contract
-change (`contracts/ethereum`, MIT-licensed, and `GameConfig` is not behind a
-proxy — see CLAUDE.md), so it belongs on its own branch.
+`PetCore.tokenURI` used to hardcode `https://api.cryptopets.io/metadata/`, which
+does not resolve. It now prefixes an owner-settable base, so it can point at this
+service. This is the one change outside `image-generator/`
+(`contracts/ethereum/src/PetCore.sol` plus `scripts/upgrade-pet-core.ts`).
+
+An upgrade alone changes nothing: with no base set, `tokenURI` returns exactly its
+old value via `DEFAULT_BASE_TOKEN_URI`. Pointing it here is a separate owner call,
+so the two steps verify independently and the URI can move later without
+redeploying.
+
+```bash
+# Upgrade the implementation and point tokenURI at this service in one run.
+pnpm --prefix contracts/ethereum exec tsx scripts/upgrade-pet-core.ts \
+    --network=base-sepolia --base-uri=https://art.cryptopets.io/metadata/evm/
+
+# Or change only the URI later, with no redeploy.
+pnpm --prefix contracts/ethereum exec tsx scripts/upgrade-pet-core.ts \
+    --network=base-sepolia --skip-upgrade --base-uri=https://art.cryptopets.io/metadata/evm/
+```
+
+The token id is appended verbatim, so the base must end with its own separator
+(`/`, or `=` for a query-style base). The script warns when it does not, rather
+than refusing, since a wrong value is visible in the next `tokenURI` read and
+fixed by re-running.
 
 ## License
 
