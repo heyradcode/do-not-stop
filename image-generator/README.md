@@ -170,6 +170,12 @@ Run from this directory. The service is deliberately *not* a member of the root
 monorepo root and installs that instead, leaving this package with no
 `node_modules`. `pnpm --filter` from the repo root does not reach it either.
 
+That isolation has one cost worth knowing: the root `pnpm lint` and `pnpm test`
+aggregates, and the Coverage workflow, all skip this package. `.github/workflows/
+image-generator.yml` is what actually runs its suite, on Node 22 to match the
+Dockerfile, and it also builds the image and checks the container reports missing
+configuration rather than crashing.
+
 ```bash
 pnpm install --ignore-workspace
 pnpm test          # vitest
