@@ -66,6 +66,12 @@ jobs:
         if: always()
         run: pnpm build
 
+      # Boots dist/main.js against fake upstreams and walks the real routes.
+      # Covers env parsing, buildDeps, and store construction, which only run in
+      # a real process and so pass every unit test while failing at deploy.
+      - name: Smoke
+        run: pnpm smoke
+
   # The image is the one artifact that cannot be verified on a machine without
   # Docker, which is where this service was written. Build only, no push.
   docker:

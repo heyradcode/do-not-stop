@@ -33,6 +33,7 @@ const CONFIG: WorkersAiConfig = {
     accountId: 'acct',
     apiToken: 'token',
     model: '@cf/bytedance/stable-diffusion-xl-lightning',
+    apiBase: 'https://api.cloudflare.com/client/v4/accounts',
     size: 1024,
     steps: 8,
     timeoutMs: 5_000,
@@ -52,7 +53,12 @@ const listen = async (server: Server): Promise<string> => {
 };
 
 afterEach(async () => {
-    await Promise.all(servers.splice(0).map((s) => new Promise<void>((r) => s.close(() => r()))));
+    // closeAllConnections first: close() alone waits for open sockets, and a test
+    // that deliberately hangs a request would hold teardown until the socket dies.
+    await Promise.all(servers.splice(0).map((s) => new Promise<void>((resolve) => {
+        s.closeAllConnections();
+        s.close(() => resolve());
+    })));
 });
 
 /** Collects request bodies so a test can assert what actually went on the wire. */

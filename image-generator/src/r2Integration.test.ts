@@ -34,7 +34,12 @@ const s3Error = (code: string) =>
 const servers: Server[] = [];
 
 afterEach(async () => {
-    await Promise.all(servers.splice(0).map((s) => new Promise<void>((r) => s.close(() => r()))));
+    // closeAllConnections first: close() alone waits for open sockets, and a test
+    // that deliberately hangs a request would hold teardown until the socket dies.
+    await Promise.all(servers.splice(0).map((s) => new Promise<void>((resolve) => {
+        s.closeAllConnections();
+        s.close(() => resolve());
+    })));
 });
 
 interface Recorded {

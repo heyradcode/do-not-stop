@@ -19,8 +19,6 @@ import type { WorkersAiConfig } from './config.js';
 import type { PetPromptSpec } from './prompt.js';
 import { DEFAULT_RETRY, withRetry, type RetryOptions } from './retry.js';
 
-const API_BASE = 'https://api.cloudflare.com/client/v4/accounts';
-
 /** Flux ignores (and rejects) the SDXL-only knobs, so the request body is built
  *  per model family. Both families take `prompt` and `steps`. */
 const isFlux = (model: string): boolean => model.includes('flux');
@@ -92,7 +90,7 @@ const attemptGenerate = async (
     spec: PetPromptSpec,
     fetchImpl: typeof fetch,
 ): Promise<Buffer> => {
-    const url = `${API_BASE}/${config.accountId}/ai/run/${config.model}`;
+    const url = `${config.apiBase}/${config.accountId}/ai/run/${config.model}`;
 
     let response: Response;
     try {

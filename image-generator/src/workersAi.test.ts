@@ -12,6 +12,7 @@ const config = (overrides: Partial<WorkersAiConfig> = {}): WorkersAiConfig => ({
     accountId: 'acct123',
     apiToken: 'token123',
     model: '@cf/bytedance/stable-diffusion-xl-lightning',
+    apiBase: 'https://api.cloudflare.com/client/v4/accounts',
     size: 1024,
     steps: 8,
     timeoutMs: 5_000,

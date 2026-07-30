@@ -7,9 +7,12 @@ export default tseslint.config(
     js.configs.recommended,
     ...tseslint.configs.recommended,
     {
-        files: ['**/*.ts'],
+        // .mjs too: the smoke script is plain ESM and would otherwise be linted
+        // without node globals, flagging console and process as undefined.
+        files: ['**/*.ts', '**/*.mjs'],
         languageOptions: {
             ecmaVersion: 'latest',
+            sourceType: 'module',
             globals: { ...globals.node },
         },
         rules: {

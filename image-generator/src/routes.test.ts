@@ -12,6 +12,7 @@ const CONFIG: WorkersAiConfig = {
     accountId: 'acct',
     apiToken: 'token',
     model: '@cf/bytedance/stable-diffusion-xl-lightning',
+    apiBase: 'https://api.cloudflare.com/client/v4/accounts',
     size: 1024,
     steps: 8,
     timeoutMs: 5_000,

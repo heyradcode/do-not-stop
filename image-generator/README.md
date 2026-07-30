@@ -48,13 +48,24 @@ Built incrementally. Done so far:
 - [x] Collection warming with dry-run and resumability (`src/warm.ts`)
 - [x] CI and coverage (`.github/workflows/image-generator.yml`)
 - [x] Readiness probe that exercises the store and RPC (`src/readiness.ts`)
+- [x] Integration tests against fake chain RPCs, a fake S3, and a fake Workers AI
+- [x] `pnpm smoke`: boots the built server against fake upstreams end to end
 - [ ] A live generation run: no real image has been produced yet
 - [ ] Solana verified against a real cluster: the decode is covered by fixtures
       only, since there is no validator in the environment this was written in
 
-The Workers AI and R2 request/response shapes are written against Cloudflare's
-documented contracts and covered by mocked tests only. The first live
-`pnpm generate` against a real bucket is what actually validates them.
+Every upstream that can be faked locally now is. Chain RPCs, R2 (through the real
+AWS SDK against a fake S3 endpoint), and Workers AI (through real `fetch` against
+a fake Cloudflare endpoint) all run over real sockets, and `pnpm smoke` boots the
+built `dist/main.js` against those fakes and walks the routes a client uses.
+
+`CF_API_BASE` is what makes that possible: it overrides the Workers AI endpoint,
+so the shipped binary can be driven without credentials, and a Cloudflare-compatible
+gateway can be put in front in production.
+
+What none of it can tell you is whether Cloudflare and R2 *accept* these requests.
+The request-shape tests spell out exactly what would be sent, so it can be compared
+against Cloudflare's docs; a live `pnpm generate` settles it.
 
 ## Traits
 
@@ -219,6 +230,7 @@ pnpm lint          # eslint
 pnpm build         # tsc -> dist/
 pnpm typecheck     # tsc including the specs, which build/ excludes
 pnpm test:coverage # vitest --coverage
+pnpm build && pnpm smoke   # boot dist/main.js against fake upstreams
 pnpm dev           # watch mode on :8787
 pnpm start         # run the built server
 

@@ -8,6 +8,10 @@ export interface WorkersAiConfig {
     apiToken: string;
     /** Workers AI model id, e.g. @cf/bytedance/stable-diffusion-xl-lightning. */
     model: string;
+    /** Account-run endpoint base. Overridable so the built server can be driven
+     *  against a fake endpoint without credentials, and so a Cloudflare-compatible
+     *  gateway can be put in front. */
+    apiBase: string;
     /** Square output edge in pixels. */
     size: number;
     /** Diffusion steps. Lightning-class models are tuned for 4-8. */
@@ -24,6 +28,7 @@ const DEFAULTS = {
     // explicit seed, which is what lets a pet's image be re-derived from its
     // DNA instead of only recovered from cache.
     model: '@cf/bytedance/stable-diffusion-xl-lightning',
+    apiBase: 'https://api.cloudflare.com/client/v4/accounts',
     size: 1024,
     steps: 8,
     timeoutMs: 60_000,
@@ -57,6 +62,7 @@ export const loadWorkersAiConfig = (): WorkersAiConfig => ({
     accountId: readRequired('CF_ACCOUNT_ID'),
     apiToken: readRequired('CF_API_TOKEN'),
     model: process.env.CF_IMAGE_MODEL || DEFAULTS.model,
+    apiBase: process.env.CF_API_BASE || DEFAULTS.apiBase,
     size: readNumber('CF_IMAGE_SIZE', DEFAULTS.size),
     steps: readNumber('CF_IMAGE_STEPS', DEFAULTS.steps),
     timeoutMs: readNumber('CF_TIMEOUT_MS', DEFAULTS.timeoutMs),
