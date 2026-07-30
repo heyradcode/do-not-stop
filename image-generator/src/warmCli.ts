@@ -8,7 +8,7 @@
 
 import { ConfigError } from './config.js';
 import { buildDeps } from './server.js';
-import { formatSummary, warmPets } from './warm.js';
+import { ChainNotEnumerableError, formatSummary, warmPets } from './warm.js';
 
 const arg = (name: string): string | undefined =>
     process.argv.slice(2).find((a) => a.startsWith(`--${name}=`))?.split('=').slice(1).join('=');
@@ -67,6 +67,6 @@ const main = async (): Promise<void> => {
 };
 
 main().catch((error: unknown) => {
-    console.error(error instanceof ConfigError ? error.message : error);
+    console.error(error instanceof ConfigError || error instanceof ChainNotEnumerableError ? error.message : error);
     process.exitCode = 1;
 });

@@ -206,6 +206,12 @@ const main = async () => {
         const past = await warm(['--from=20', '--to=22']);
         check('past the supply is not an error', past.code, 0);
         check('past the supply counts as unminted', /not minted\s+3/.test(past.out), true);
+
+        // Solana pets are not numbered, so an id range names nothing. Refusing
+        // beats reporting a tidy "not minted" summary and exiting 0.
+        const solana = await warm(['--chain=solana', '--from=1', '--to=3']);
+        check('warming solana by id range fails', solana.code, 1);
+        check('and says why', /not addressed by number/.test(solana.out), true);
     } finally {
         server.kill();
         await Promise.all([shut(ai), shut(rpc)]);

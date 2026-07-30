@@ -286,6 +286,12 @@ Two properties matter more than speed:
 `--dry-run` still reads the chain and checks the cache, so it reports exactly
 which pets would be generated. Use it to size a run before paying for it.
 
+**Warming is EVM-only, and says so.** Solana pets are addressed by Metaplex Core
+asset pubkey, so an id range names nothing there; `--chain=solana` is refused
+rather than walking ids that every reader rejects, which would report a tidy
+"not minted" summary and exit 0 having warmed nothing. Warm a Solana collection
+by requesting its image URLs directly.
+
 ## Model choice
 
 Default is `@cf/bytedance/stable-diffusion-xl-lightning`. It takes an explicit

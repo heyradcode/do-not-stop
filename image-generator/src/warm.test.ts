@@ -3,7 +3,7 @@ import { UnknownPetError, type OnChainPet, type PetReader } from './chain.js';
 import type { WorkersAiConfig } from './config.js';
 import type { PipelineDeps } from './pipeline.js';
 import { MemoryImageStore, petImageKey } from './store.js';
-import { formatSummary, warmPets, type WarmDeps } from './warm.js';
+import { ChainNotEnumerableError, formatSummary, warmPets, type WarmDeps } from './warm.js';
 
 const CONFIG: WorkersAiConfig = {
     accountId: 'acct',
@@ -202,6 +202,26 @@ describe('warmPets', () => {
         });
 
         expect(events).toEqual(['1:generated', '2:generated']);
+    });
+
+    // Warming Solana by id range reported a tidy "not minted" summary and exited
+    // 0 having warmed nothing: an operator would read that as "the collection is
+    // fine" right before a launch with an entirely cold cache.
+    it('refuses a chain whose pets are not addressed by number', async () => {
+        const d = deps();
+
+        await expect(warmPets(d, { chain: 'solana', from: 1, to: 5 }))
+            .rejects.toThrow(ChainNotEnumerableError);
+        await expect(warmPets(d, { chain: 'solana', from: 1, to: 5 }))
+            .rejects.toThrow(/not addressed by number/);
+    });
+
+    it('refuses before reading the chain or generating anything', async () => {
+        const d = deps();
+        await warmPets(d, { chain: 'solana', from: 1, to: 5 }).catch(() => undefined);
+
+        expect(vi.mocked(d.reader.read)).not.toHaveBeenCalled();
+        expect(vi.mocked(d.generate as unknown as ReturnType<typeof vi.fn>)).not.toHaveBeenCalled();
     });
 
     it('handles an empty range without touching the chain', async () => {

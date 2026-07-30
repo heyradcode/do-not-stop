@@ -24,6 +24,26 @@ import { getOrCreatePetImage, type PipelineDeps } from './pipeline.js';
 import { createLimiter } from './retry.js';
 import { petImageKey } from './store.js';
 
+/**
+ * Chains an id range can enumerate. Solana is deliberately absent: pets there are
+ * addressed by Metaplex Core asset pubkey, so a numeric range names nothing, and
+ * every id would be rejected by the reader before the network. Warming it that way
+ * reports a tidy "not minted" summary and exits 0 having done nothing, which is
+ * worse than refusing.
+ */
+export const ENUMERABLE_CHAINS = ['evm'] as const;
+
+export class ChainNotEnumerableError extends Error {
+    constructor(chain: string) {
+        super(
+            `Cannot warm "${chain}" by id range: its pets are not addressed by number.`
+            + ` Enumerable chains: ${ENUMERABLE_CHAINS.join(', ')}.`
+            + ' Warm a Solana collection by requesting its image URLs directly.',
+        );
+        this.name = 'ChainNotEnumerableError';
+    }
+}
+
 export interface WarmOptions {
     chain: string;
     /** Inclusive id range. EVM only: Solana pets are not enumerable by number. */
@@ -71,6 +91,12 @@ export const warmPets = async (deps: WarmDeps, options: WarmOptions): Promise<Wa
         failed: 0,
         events: [],
     };
+
+    // Refuse before doing anything: a chain whose pets are not numbered would
+    // report every id as unminted and exit 0, which reads as "nothing to do".
+    if (!(ENUMERABLE_CHAINS as readonly string[]).includes(options.chain)) {
+        throw new ChainNotEnumerableError(options.chain);
+    }
 
     const ids: string[] = [];
     for (let id = options.from; id <= options.to; id++) ids.push(String(id));
