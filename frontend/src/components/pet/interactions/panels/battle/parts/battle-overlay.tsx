@@ -3,7 +3,6 @@ import clsx from 'clsx';
 import {
     extract,
     getLifePercent,
-    getPetAvatar,
     getPetSkill,
     getRarityColor,
     getRarityName,
@@ -17,6 +16,7 @@ import BattleDialogue from '../battle-dialogue';
 import type { BattleOutcome, MechanicalLogLine } from '../types';
 import styles from '../index.module.css';
 import vsClashImage from '@assets/images/background/vs.png';
+import PetArt from '@components/pet/pet-art';
 
 export type BattleOverlayProps = {
     open: boolean;
@@ -242,8 +242,8 @@ const BattleOverlay: React.FC<BattleOverlayProps> = ({
 
     const fighterHp = liveHp1Percent ?? (fighter ? getLifePercent(fighter) : 100);
     const enemyHp = liveHp2Percent ?? (opponent ? getLifePercent(opponent) : 100);
-    const fighterAvatar = fighter ? getPetAvatar(fighter.dna) : '❓';
-    const enemyAvatar = opponent ? getPetAvatar(opponent.dna) : '❓';
+    const fighterAvatar = fighter ? <PetArt pet={fighter} /> : '❓';
+    const enemyAvatar = opponent ? <PetArt pet={opponent} /> : '❓';
     const fighterAttrs = fighter ? extract(fighter.dna, fighter.rarity, fighter.level) : null;
     const enemyAttrs = opponent ? extract(opponent.dna, opponent.rarity, opponent.level) : null;
     // The decorative attack flashes are ambient filler for "a fight is happening" — they

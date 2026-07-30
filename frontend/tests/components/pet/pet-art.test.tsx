@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { fireEvent } from '@testing-library/dom';
 import type { Pet } from '@shared/core';
 
@@ -30,6 +30,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    // Explicit, and before resetModules: each test re-imports the component to
+    // pick up a fresh env stub, which yields a second React instance. The shared
+    // cleanup in tests/setup.ts then cannot unmount the tree, and renders pile up
+    // in one document until a query finds two images.
+    cleanup();
     vi.unstubAllEnvs();
     vi.resetModules();
 });
