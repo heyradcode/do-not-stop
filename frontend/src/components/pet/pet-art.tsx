@@ -48,9 +48,15 @@ const PetArt: React.FC<PetArtProps> = ({ pet }) => {
 
     if (!url || failed) return <>{emoji}</>;
 
+    // The emoji and the image share one grid cell, so they stack without a
+    // wrapper that reserves its own space, and swapping them causes no layout
+    // shift. The image is hidden with opacity rather than `display: none`
+    // specifically because it must keep a layout box: `loading="lazy"` defers
+    // until the element nears the viewport, and an element with no box has
+    // nothing to intersect, so hiding it that way risks never loading it at all.
     return (
-        <>
-            {loaded ? null : emoji}
+        <span style={{ display: 'grid', placeItems: 'center', lineHeight: 1 }}>
+            {loaded ? null : <span style={{ gridArea: '1 / 1' }}>{emoji}</span>}
             <img
                 src={url}
                 alt={pet.name}
@@ -64,13 +70,14 @@ const PetArt: React.FC<PetArtProps> = ({ pet }) => {
                 onLoad={() => setLoaded(true)}
                 onError={() => setFailed(true)}
                 style={{
+                    gridArea: '1 / 1',
                     width: '1em',
                     height: '1em',
                     objectFit: 'contain',
-                    display: loaded ? 'block' : 'none',
+                    opacity: loaded ? 1 : 0,
                 }}
             />
-        </>
+        </span>
     );
 };
 

@@ -44,7 +44,7 @@ describe('PetArt', () => {
         const PetArt = await loadPetArt();
         render(<PetArt pet={pet()} />);
 
-        expect(screen.getByRole('img', { hidden: true })).toHaveAttribute('src', `${SERVICE}/image/evm/7.png`);
+        expect(screen.getByRole('img')).toHaveAttribute('src', `${SERVICE}/image/evm/7.png`);
     });
 
     it('addresses a Solana pet by its Core asset pubkey, as the service expects', async () => {
@@ -52,7 +52,7 @@ describe('PetArt', () => {
         const asset = 'So11111111111111111111111111111111111111112';
         render(<PetArt pet={pet({ chain: 'solana', assetKey: asset })} />);
 
-        expect(screen.getByRole('img', { hidden: true })).toHaveAttribute('src', `${SERVICE}/image/solana/${asset}.png`);
+        expect(screen.getByRole('img')).toHaveAttribute('src', `${SERVICE}/image/solana/${asset}.png`);
     });
 
     // Progressive enhancement: nothing configured means nothing changes.
@@ -61,7 +61,7 @@ describe('PetArt', () => {
         const PetArt = await loadPetArt();
         render(<PetArt pet={pet()} />);
 
-        expect(screen.queryByRole('img', { hidden: true })).toBeNull();
+        expect(screen.queryByRole('img')).toBeNull();
         expect(screen.getByText('🦉')).toBeInTheDocument(); // dna % 6 == 5
     });
 
@@ -69,7 +69,7 @@ describe('PetArt', () => {
         const PetArt = await loadPetArt();
         render(<PetArt pet={pet({ chain: 'solana', assetKey: undefined })} />);
 
-        expect(screen.queryByRole('img', { hidden: true })).toBeNull();
+        expect(screen.queryByRole('img')).toBeNull();
     });
 
     // Art is generated on demand, so the first request for a pet can take
@@ -79,19 +79,32 @@ describe('PetArt', () => {
         render(<PetArt pet={pet()} />);
 
         expect(screen.getByText('🦉')).toBeInTheDocument();
-        expect(screen.getByRole('img', { hidden: true })).toHaveStyle({ display: 'none' });
+        expect(screen.getByRole('img')).toHaveStyle({ opacity: '0' });
 
-        fireEvent.load(screen.getByRole('img', { hidden: true }));
+        fireEvent.load(screen.getByRole('img'));
         expect(screen.queryByText('🦉')).toBeNull();
+        expect(screen.getByRole('img')).toHaveStyle({ opacity: '1' });
+    });
+
+    // loading="lazy" defers until the element nears the viewport, so the image
+    // must keep a layout box while hidden. display:none would leave nothing to
+    // intersect, and the image could never load at all.
+    it('hides the loading image with opacity, never display:none', async () => {
+        const PetArt = await loadPetArt();
+        render(<PetArt pet={pet()} />);
+
+        const image = screen.getByRole('img');
+        expect(image).toHaveAttribute('loading', 'lazy');
+        expect(image).not.toHaveStyle({ display: 'none' });
     });
 
     it('falls back to the emoji when the image fails, rather than showing a broken frame', async () => {
         const PetArt = await loadPetArt();
         render(<PetArt pet={pet()} />);
 
-        fireEvent.error(screen.getByRole('img', { hidden: true }));
+        fireEvent.error(screen.getByRole('img'));
 
-        expect(screen.queryByRole('img', { hidden: true })).toBeNull();
+        expect(screen.queryByRole('img')).toBeNull();
         expect(screen.getByText('🦉')).toBeInTheDocument();
     });
 
@@ -100,13 +113,13 @@ describe('PetArt', () => {
         const PetArt = await loadPetArt();
         render(<PetArt pet={pet()} />);
 
-        expect(screen.getByRole('img', { hidden: true })).toHaveAttribute('src', `${SERVICE}/image/evm/7.png`);
+        expect(screen.getByRole('img')).toHaveAttribute('src', `${SERVICE}/image/evm/7.png`);
     });
 
     it('labels the image with the pet name, so the card is readable to a screen reader', async () => {
         const PetArt = await loadPetArt();
         render(<PetArt pet={pet({ name: 'Ada' })} />);
 
-        expect(screen.getByRole('img', { hidden: true })).toHaveAttribute('alt', 'Ada');
+        expect(screen.getByRole('img')).toHaveAttribute('alt', 'Ada');
     });
 });
