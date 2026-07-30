@@ -44,12 +44,10 @@ Built incrementally. Done so far:
 - [x] `PetCore.tokenURI` can be pointed here (owner-settable base URI)
 - [x] Burst handling: retry with backoff, bounded concurrency (`src/retry.ts`)
 - [x] Chain-agnostic routing, ready for a second reader (`src/readerRouter.ts`)
+- [x] Solana reader, dependency-free (`src/solana.ts`, `src/base58.ts`)
 - [ ] A live generation run: no real image has been produced yet
-- [ ] A Solana reader. Pets are addressed by their Metaplex Core asset pubkey
-      (`PetAccount` PDA seeds are `[b"pet", asset]`) and `species_id` is `0` until
-      species pools land there, which must be treated as *unset* or every Solana
-      pet gets the same body. Undecided: whether to take a `@solana/web3.js`
-      dependency or hand-roll the JSON-RPC call and account decode.
+- [ ] Solana verified against a real cluster: the decode is covered by fixtures
+      only, since there is no validator in the environment this was written in
 
 The Workers AI and R2 request/response shapes are written against Cloudflare's
 documented contracts and covered by mocked tests only. The first live
@@ -84,12 +82,12 @@ the remaining per-pet variation. Art reads DNA and never feeds back into combat.
 | `GET /image/:chain/:tokenId.png` | The pet's art. Generates on first request, cached forever after. 302s to the bucket when `R2_PUBLIC_BASE_URL` is set |
 | `GET /metadata/:chain/:tokenId` | ERC-721 metadata, what `tokenURI` should point at |
 
-`:chain` is `evm` today, but the routing is chain-agnostic: identifiers pass
-through as strings and each reader validates its own format, because a pet id is
-decimal on EVM and a base58 Core asset pubkey on Solana. `createReaderRouter` is
-where a second reader plugs in, and it separates two failures worth keeping apart:
-an unimplemented chain is a permanent 400, while a supported chain this deployment
-has no credentials for is a 501, an operator problem rather than a caller one.
+`:chain` is `evm` or `solana`. Identifiers pass through as strings and each reader
+validates its own format, because a pet id is decimal on EVM and a base58 Core
+asset pubkey on Solana: `/metadata/solana/<asset-pubkey>`. `createReaderRouter`
+separates two failures worth keeping apart: an unimplemented chain is a permanent
+400, while a supported chain this deployment has no credentials for is a 501, an
+operator problem rather than a caller one.
 
 One trap in that identifier pattern: it accepts alphanumerics rather than the
 base58 alphabet, because base58 excludes `0` and would 404 every EVM pet whose id

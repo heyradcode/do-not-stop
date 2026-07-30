@@ -8,10 +8,9 @@
  * pet and then caches that mistake forever (see store.ts). The contract is the
  * only source that cannot be behind.
  *
- * EVM only. Solana pets are Metaplex Core assets, addressed by asset pubkey and
- * read through an entirely different client, so `chain` is in the route from the
- * start and anything but `evm` returns an explicit unsupported error rather than
- * pretending. See readerRouter.ts for where a second reader plugs in.
+ * EVM only in this file. Solana pets are addressed by Metaplex Core asset pubkey
+ * and read over a different protocol entirely, so they live in solana.ts behind
+ * the same PetReader interface, and readerRouter.ts dispatches between them.
  */
 
 import { createPublicClient, getAddress, http, type Address, type PublicClient } from 'viem';
@@ -60,7 +59,7 @@ export const PET_CORE_ABI = [
     },
 ] as const;
 
-export const SUPPORTED_CHAINS = ['evm'] as const;
+export const SUPPORTED_CHAINS = ['evm', 'solana'] as const;
 export type SupportedChain = (typeof SUPPORTED_CHAINS)[number];
 
 export class UnknownPetError extends Error {

@@ -120,11 +120,26 @@ export interface ServerConfig {
         rpcUrl: string;
         petCoreAddress: string;
     };
+    /** Absent when this deployment serves EVM only, which is supported. */
+    solana?: {
+        rpcUrl: string;
+        programId: string;
+    };
 }
 
 export const loadServerConfig = (): ServerConfig => {
     const port = readNumber('PORT', 8787);
     const externalUrlTemplate = process.env.EXTERNAL_URL_TEMPLATE;
+
+    // Solana is opt-in: both vars or neither. Half-configured is a typo rather
+    // than an intention, so it fails at boot instead of 501-ing per request.
+    const solanaRpcUrl = process.env.SOLANA_RPC_URL;
+    const solanaProgramId = process.env.SOLANA_PROGRAM_ID;
+    if (Boolean(solanaRpcUrl) !== Boolean(solanaProgramId)) {
+        throw new ConfigError(
+            'SOLANA_RPC_URL and SOLANA_PROGRAM_ID must be set together, or both left unset',
+        );
+    }
 
     return {
         port,
@@ -136,6 +151,9 @@ export const loadServerConfig = (): ServerConfig => {
             rpcUrl: readRequired('EVM_RPC_URL'),
             petCoreAddress: readRequired('PETCORE_ADDRESS'),
         },
+        ...(solanaRpcUrl && solanaProgramId
+            ? { solana: { rpcUrl: solanaRpcUrl, programId: solanaProgramId } }
+            : {}),
     };
 };
 

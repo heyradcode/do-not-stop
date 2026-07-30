@@ -51,10 +51,12 @@ export const buildDeps = async (): Promise<{ deps: RouteDeps; port: number; stor
         rpcUrl: server.evm.rpcUrl,
         petCoreAddress: parsePetCoreAddress(server.evm.petCoreAddress),
     });
-    // Only EVM has a reader today. The router is still here because it is what
-    // turns an unconfigured chain into a clear 501 instead of a crash, and it is
-    // where a second reader plugs in.
-    const reader = createReaderRouter({ evm });
+    // Imported lazily so an EVM-only deployment never loads the Solana module.
+    const solana = server.solana
+        ? new (await import('./solana.js')).SolanaPetReader(server.solana)
+        : undefined;
+
+    const reader = createReaderRouter({ evm, ...(solana ? { solana } : {}) });
 
     return {
         deps: {
@@ -67,7 +69,7 @@ export const buildDeps = async (): Promise<{ deps: RouteDeps; port: number; stor
         },
         port: server.port,
         store: describeStore(selection),
-        chains: ['evm'],
+        chains: solana ? ['evm', 'solana'] : ['evm (solana not configured)'],
     };
 };
 
