@@ -34,7 +34,7 @@ describe('checkReadiness', () => {
         const report = await checkReadiness({ store: new MemoryImageStore(), reader: okReader() });
 
         expect(report.ready).toBe(true);
-        expect(report.checks.map((c) => c.name)).toEqual(['store', 'chain']);
+        expect(report.checks.map((c) => c.name)).toEqual(['store', 'chain:evm']);
         expect(report.checks.every((c) => c.ok)).toBe(true);
     });
 
@@ -47,7 +47,7 @@ describe('checkReadiness', () => {
         });
 
         expect(report.ready).toBe(true);
-        expect(statusOf(report, 'chain')?.ok).toBe(true);
+        expect(statusOf(report, 'chain:evm')?.ok).toBe(true);
     });
 
     it('is not ready when the RPC is unreachable', async () => {
@@ -57,8 +57,8 @@ describe('checkReadiness', () => {
         });
 
         expect(report.ready).toBe(false);
-        expect(statusOf(report, 'chain')).toMatchObject({ ok: false });
-        expect(statusOf(report, 'chain')?.error).toContain('ECONNREFUSED');
+        expect(statusOf(report, 'chain:evm')).toMatchObject({ ok: false });
+        expect(statusOf(report, 'chain:evm')?.error).toContain('ECONNREFUSED');
         // The store was fine; a readiness report has to say which half broke.
         expect(statusOf(report, 'store')?.ok).toBe(true);
     });
@@ -73,7 +73,7 @@ describe('checkReadiness', () => {
 
         expect(report.ready).toBe(false);
         expect(statusOf(report, 'store')?.error).toContain('AccessDenied');
-        expect(statusOf(report, 'chain')?.ok).toBe(true);
+        expect(statusOf(report, 'chain:evm')?.ok).toBe(true);
     });
 
     it('reports both failures rather than stopping at the first', async () => {
@@ -94,18 +94,57 @@ describe('checkReadiness', () => {
         expect(spy).toHaveBeenCalledWith('health/probe');
     });
 
-    it('probes the configured chain', async () => {
-        const reader = okReader();
-        await checkReadiness({ store: new MemoryImageStore(), reader, probeChain: 'solana' });
-
-        expect(vi.mocked(reader.read)).toHaveBeenCalledWith('solana', '1');
-    });
-
     it('defaults to evm, which every deployment configures', async () => {
         const reader = okReader();
-        await checkReadiness({ store: new MemoryImageStore(), reader });
+        const report = await checkReadiness({ store: new MemoryImageStore(), reader });
 
         expect(vi.mocked(reader.read)).toHaveBeenCalledWith('evm', '1');
+        expect(report.checks.map((c) => c.name)).toEqual(['store', 'chain:evm']);
+    });
+
+    // Checking one chain while serving two lets a deployment whose second RPC is
+    // unreachable pass readiness and then fail every request for that chain.
+    it('probes every configured chain, not just the first', async () => {
+        const reader = okReader();
+        const report = await checkReadiness({
+            store: new MemoryImageStore(),
+            reader,
+            probeChains: ['evm', 'solana'],
+        });
+
+        expect(report.checks.map((c) => c.name)).toEqual(['store', 'chain:evm', 'chain:solana']);
+        expect(vi.mocked(reader.read)).toHaveBeenCalledTimes(2);
+    });
+
+    // A Solana id is a base58 pubkey; '1' is not one, so the reader would reject
+    // it before the network and the probe would prove nothing.
+    it('probes Solana with a real pubkey so the request reaches the cluster', async () => {
+        const reader = okReader();
+        await checkReadiness({ store: new MemoryImageStore(), reader, probeChains: ['solana'] });
+
+        const [chain, tokenId] = vi.mocked(reader.read).mock.calls[0]!;
+        expect(chain).toBe('solana');
+        expect(tokenId).toBe('11111111111111111111111111111111');
+        expect(tokenId).toHaveLength(32);
+    });
+
+    it('is not ready when one chain of two is down', async () => {
+        const reader: PetReader = {
+            read: vi.fn(async (chain: string) => {
+                if (chain === 'solana') throw new Error('getProgramAccounts is disabled');
+                return PET;
+            }),
+        };
+
+        const report = await checkReadiness({
+            store: new MemoryImageStore(),
+            reader,
+            probeChains: ['evm', 'solana'],
+        });
+
+        expect(report.ready).toBe(false);
+        expect(report.checks.find((c) => c.name === 'chain:evm')?.ok).toBe(true);
+        expect(report.checks.find((c) => c.name === 'chain:solana')?.ok).toBe(false);
     });
 
     it('times each dependency separately', async () => {

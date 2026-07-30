@@ -23,8 +23,14 @@ import type { ImageStore } from './store.js';
 const PROBE_KEY = 'health/probe';
 
 /** Any minted collection has id 1; if it does not, UnknownPetError still proves
- *  the RPC answered, which is all this checks. */
-const PROBE_TOKEN_ID = '1';
+ *  the RPC answered, which is all this checks. On Solana an id is a base58 asset
+ *  pubkey, so '1' is not one: the reader rejects it before the network, which
+ *  would prove nothing. The system-program address is a real pubkey that no pet
+ *  will ever be, so it reaches the RPC and comes back as "no such pet". */
+const PROBE_TOKEN_ID: Record<string, string> = {
+    evm: '1',
+    solana: '11111111111111111111111111111111',
+};
 
 export interface DependencyStatus {
     name: string;
@@ -42,8 +48,11 @@ export interface ReadinessReport {
 export interface ReadinessDeps {
     store: ImageStore;
     reader: PetReader;
-    /** Chain to probe. Defaults to evm, the only one every deployment configures. */
-    probeChain?: string;
+    /** Every chain this deployment serves. All are probed: readiness claims the
+     *  instance can serve an image, and checking only one chain would let a
+     *  deployment whose second RPC is unreachable pass and then fail every
+     *  request for that chain. */
+    probeChains?: string[];
 }
 
 const timed = async (name: string, probe: () => Promise<void>): Promise<DependencyStatus> => {
@@ -62,8 +71,10 @@ const timed = async (name: string, probe: () => Promise<void>): Promise<Dependen
 };
 
 export const checkReadiness = async (deps: ReadinessDeps): Promise<ReadinessReport> => {
+    const chains = deps.probeChains?.length ? deps.probeChains : ['evm'];
+
     // Run together: a readiness probe should not take store-latency plus
-    // rpc-latency when it can take the larger of the two.
+    // rpc-latency, nor one chain after another, when it can take the slowest.
     const checks = await Promise.all([
         timed('store', async () => {
             // ImageStore.get must return null for a miss rather than throwing, so
@@ -71,15 +82,15 @@ export const checkReadiness = async (deps: ReadinessDeps): Promise<ReadinessRepo
             // missing bucket, an unreachable endpoint.
             await deps.store.get(PROBE_KEY);
         }),
-        timed('chain', async () => {
+        ...chains.map((chain) => timed(`chain:${chain}`, async () => {
             try {
-                await deps.reader.read(deps.probeChain ?? 'evm', PROBE_TOKEN_ID);
+                await deps.reader.read(chain, PROBE_TOKEN_ID[chain] ?? '1');
             } catch (error) {
                 // The RPC answered, which is the whole question.
                 if (error instanceof UnknownPetError) return;
                 throw error;
             }
-        }),
+        })),
     ]);
 
     return { ready: checks.every((check) => check.ok), checks };

@@ -30,6 +30,8 @@ export interface RouteDeps extends PipelineDeps {
     /** How long an image request waits for generation before giving up on the
      *  response. Generation itself is never cancelled. */
     responseTimeoutMs?: number;
+    /** Chains this deployment serves, all probed by /ready. */
+    probeChains?: string[];
 }
 
 export interface RouteResponse {

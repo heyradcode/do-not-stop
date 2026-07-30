@@ -57,12 +57,14 @@ export const buildDeps = async (): Promise<{ deps: RouteDeps; port: number; stor
         : undefined;
 
     const reader = createReaderRouter({ evm, ...(solana ? { solana } : {}) });
+    const chains = solana ? ['evm', 'solana'] : ['evm'];
 
     return {
         deps: {
             config,
             store,
             reader,
+            probeChains: chains,
             limiter: createLimiter(config.maxConcurrent),
             publicBaseUrl: server.publicBaseUrl,
             responseTimeoutMs: server.responseTimeoutMs,
@@ -70,7 +72,7 @@ export const buildDeps = async (): Promise<{ deps: RouteDeps; port: number; stor
         },
         port: server.port,
         store: describeStore(selection),
-        chains: solana ? ['evm', 'solana'] : ['evm (solana not configured)'],
+        chains,
     };
 };
 

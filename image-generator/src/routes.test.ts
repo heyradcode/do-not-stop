@@ -83,7 +83,7 @@ describe('GET /ready', () => {
         expect(response.status).toBe(503);
         const report = parse<{ ready: boolean; checks: { name: string; ok: boolean }[] }>(response.body);
         expect(report.ready).toBe(false);
-        expect(report.checks.find((c) => c.name === 'chain')?.ok).toBe(false);
+        expect(report.checks.find((c) => c.name === 'chain:evm')?.ok).toBe(false);
     });
 
     it('is never cached, unlike the image routes', async () => {

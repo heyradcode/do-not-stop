@@ -93,7 +93,7 @@ the remaining per-pet variation. Art reads DNA and never feeds back into combat.
 | Route | Purpose |
 | --- | --- |
 | `GET /health` | Liveness. Touches nothing external and always answers 200 while the process runs |
-| `GET /ready` | Readiness. Actually exercises the store and the chain RPC; 503 with a per-dependency breakdown if either is broken |
+| `GET /ready` | Readiness. Actually exercises the store and *every* configured chain RPC; 503 with a per-dependency breakdown naming what broke |
 | `GET /image/:chain/:tokenId.png` | The pet's art. Generates on first request, cached forever after. 302s to the bucket when `R2_PUBLIC_BASE_URL` is set |
 | `GET /metadata/:chain/:tokenId` | ERC-721 metadata, what `tokenURI` should point at |
 
@@ -144,6 +144,13 @@ by proving both dependencies that otherwise break a deploy silently:
 The chain probe reads a real token id and counts "no such pet" as success: any
 answer proves the RPC is reachable and the contract address decodes, and that is
 cheaper than requiring a pet that exists. Only a transport failure is unready.
+
+**Every configured chain is probed, not just the first.** Checking one while
+serving two would let a deployment whose Solana provider blocks
+`getProgramAccounts` pass readiness and then fail every Solana request. Each chain
+gets an identifier it will actually accept: a decimal id on EVM, and on Solana the
+system-program pubkey, since `'1'` is not base58 and the reader would reject it
+before the network, proving nothing.
 
 **Point the platform's health check at `/health`, and check `/ready` yourself
 after deploying.** Wiring a platform probe to `/ready` sounds stricter but means an
