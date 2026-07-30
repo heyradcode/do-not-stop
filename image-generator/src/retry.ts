@@ -83,14 +83,10 @@ export class DeadlineExceeded extends Error {
  * stops holding a connection open, the work finishes anyway, and the next
  * request for that pet is a cache hit. Cancelling would be the wasteful choice.
  */
-export const withDeadline = async <T>(
-    work: Promise<T>,
-    ms: number,
-    setTimer: typeof setTimeout = setTimeout,
-): Promise<T> => {
+export const withDeadline = async <T>(work: Promise<T>, ms: number): Promise<T> => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_resolve, reject) => {
-        timer = setTimer(() => reject(new DeadlineExceeded(ms)), ms);
+        timer = setTimeout(() => reject(new DeadlineExceeded(ms)), ms);
     });
 
     try {

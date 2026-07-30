@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_RETRY, createLimiter, withRetry, type RetryOptions } from './retry.js';
+import {
+    DEFAULT_RETRY,
+    DeadlineExceeded,
+    createLimiter,
+    withDeadline,
+    withRetry,
+    type RetryOptions,
+} from './retry.js';
 
 /** Collects the delays instead of waiting them out. */
 const fakeClock = () => {
@@ -104,6 +111,52 @@ describe('withRetry', () => {
         expect(onRetry).toHaveBeenCalledTimes(1);
         expect(onRetry.mock.calls[0]![0]).toBe(1);
         expect(onRetry.mock.calls[0]![1]).toBe(500);
+    });
+});
+
+describe('withDeadline', () => {
+    it('returns the value when the work finishes in time', async () => {
+        await expect(withDeadline(Promise.resolve('done'), 50)).resolves.toBe('done');
+    });
+
+    it('propagates a failure that happens before the deadline', async () => {
+        await expect(withDeadline(Promise.reject(new Error('boom')), 50)).rejects.toThrow('boom');
+    });
+
+    it('rejects with DeadlineExceeded once the deadline passes', async () => {
+        const slow = new Promise((resolve) => setTimeout(resolve, 100));
+        await expect(withDeadline(slow, 10)).rejects.toThrow(DeadlineExceeded);
+    });
+
+    // The whole point: the response is abandoned, the work is not. Cancelling
+    // would throw away an inference that has already been paid for.
+    it('lets abandoned work run to completion', async () => {
+        let finished = false;
+        const work = new Promise<string>((resolve) => setTimeout(() => {
+            finished = true;
+            resolve('late');
+        }, 40));
+
+        await expect(withDeadline(work, 10)).rejects.toThrow(DeadlineExceeded);
+        expect(finished).toBe(false);
+
+        await expect(work).resolves.toBe('late');
+        expect(finished).toBe(true);
+    });
+
+    // Abandoned work that fails later must not become an unhandled rejection:
+    // node's default for one is to terminate the process, which would turn a
+    // single slow generation into an outage.
+    it('does not leave an unhandled rejection when abandoned work fails later', async () => {
+        const work = new Promise((_resolve, reject) => {
+            setTimeout(() => reject(new Error('failed after the deadline')), 20);
+        });
+
+        await expect(withDeadline(work, 5)).rejects.toThrow(DeadlineExceeded);
+
+        // Wait past the late failure. Vitest fails the run on an unhandled
+        // rejection, so reaching the end of this test is the assertion.
+        await new Promise((resolve) => setTimeout(resolve, 60));
     });
 });
 
