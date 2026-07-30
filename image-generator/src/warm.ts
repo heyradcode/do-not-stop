@@ -97,11 +97,19 @@ const warmOne = async (deps: WarmDeps, options: WarmOptions, tokenId: string): P
             ...(pet.speciesId === undefined ? {} : { speciesId: pet.speciesId }),
         };
 
-        // Checked before generating so a re-run after a partial failure pays only
-        // for what is still missing.
-        if (await deps.store.get(petImageKey(input))) return { tokenId, outcome: 'cached' };
-        if (options.dryRun) return { tokenId, outcome: 'would-generate' };
+        // Dry runs need their own store lookup, since nothing else is going to
+        // ask. A real run does not: getOrCreatePetImage checks the store before
+        // generating and reports whether it hit, so a pre-check here would be a
+        // second read of the same key for every pet, which against R2 is a
+        // network round-trip per pet in the collection.
+        if (options.dryRun) {
+            return await deps.store.get(petImageKey(input))
+                ? { tokenId, outcome: 'cached' }
+                : { tokenId, outcome: 'would-generate' };
+        }
 
+        // Resumable by construction: the pipeline pays only for what is missing,
+        // so re-running after a partial failure costs nothing for what succeeded.
         const result = await getOrCreatePetImage(deps, input);
         return { tokenId, outcome: result.cached ? 'cached' : 'generated' };
     } catch (error) {
