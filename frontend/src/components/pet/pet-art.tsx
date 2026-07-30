@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getPetAvatar, type Pet } from '@shared/core';
 
 /**
@@ -19,7 +19,18 @@ import { getPetAvatar, type Pet } from '@shared/core';
  * changes anywhere.
  */
 
-const SERVICE_URL: string | undefined = import.meta.env.VITE_IMAGE_SERVICE_URL;
+/**
+ * How long to wait before the single retry, matching the `Retry-After: 30` the
+ * service sends when a pet's art is still generating.
+ *
+ * An <img> reports only that it failed, never why, so a 503 that means "come back
+ * shortly" is indistinguishable from a 404 that never will be. One retry is the
+ * cheap way to cover the first: without it the very first viewer of a cold pet
+ * sees the emoji until they reload the page, even though the art finished
+ * seconds later. One is also the limit: a gallery of genuinely broken images
+ * should not retry forever.
+ */
+const RETRY_AFTER_MS = 30_000;
 
 /**
  * Pets are addressed differently per chain, matching the service's routes:
@@ -27,12 +38,18 @@ const SERVICE_URL: string | undefined = import.meta.env.VITE_IMAGE_SERVICE_URL;
  * without an assetKey has nothing to look up, so it keeps the emoji.
  */
 export const petArtUrl = (pet: Pick<Pet, 'id' | 'chain' | 'assetKey'>): string | null => {
-    if (!SERVICE_URL) return null;
+    // Read here rather than at module scope. Vite substitutes import.meta.env at
+    // build time either way, so this costs nothing, and it means a test can stub
+    // the variable without re-importing the module: doing that per test forced
+    // vi.resetModules() and a dynamic import, which under a full parallel run was
+    // slow enough to hit the default timeout and fail at random.
+    const serviceUrl: string | undefined = import.meta.env.VITE_IMAGE_SERVICE_URL;
+    if (!serviceUrl) return null;
 
     const identifier = pet.chain === 'solana' ? pet.assetKey : pet.id;
     if (!identifier) return null;
 
-    return `${SERVICE_URL.replace(/\/+$/, '')}/image/${pet.chain}/${identifier}.png`;
+    return `${serviceUrl.replace(/\/+$/, '')}/image/${pet.chain}/${identifier}.png`;
 };
 
 type PetArtProps = {
@@ -42,9 +59,23 @@ type PetArtProps = {
 const PetArt: React.FC<PetArtProps> = ({ pet }) => {
     const [failed, setFailed] = useState(false);
     const [loaded, setLoaded] = useState(false);
+    const [attempt, setAttempt] = useState(0);
+    const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+    // Cleared on unmount so a gallery that scrolls away does not leave timers
+    // behind, and React never sets state on an unmounted component.
+    useEffect(() => () => clearTimeout(timer.current), []);
 
     const url = petArtUrl(pet);
     const emoji = getPetAvatar(pet.dna);
+
+    const onError = () => {
+        if (attempt > 0) {
+            setFailed(true);
+            return;
+        }
+        timer.current = setTimeout(() => setAttempt(1), RETRY_AFTER_MS);
+    };
 
     if (!url || failed) return <>{emoji}</>;
 
@@ -58,6 +89,10 @@ const PetArt: React.FC<PetArtProps> = ({ pet }) => {
         <span style={{ display: 'grid', placeItems: 'center', lineHeight: 1 }}>
             {loaded ? null : <span style={{ gridArea: '1 / 1' }}>{emoji}</span>}
             <img
+                // Remounts for the retry: reusing the element with an unchanged
+                // src would not refetch. The 503 is sent no-store, so the browser
+                // has nothing cached to serve instead.
+                key={attempt}
                 src={url}
                 alt={pet.name}
                 // A gallery mounts every card at once, and on a cold cache each
@@ -68,7 +103,7 @@ const PetArt: React.FC<PetArtProps> = ({ pet }) => {
                 loading="lazy"
                 decoding="async"
                 onLoad={() => setLoaded(true)}
-                onError={() => setFailed(true)}
+                onError={onError}
                 style={{
                     gridArea: '1 / 1',
                     width: '1em',

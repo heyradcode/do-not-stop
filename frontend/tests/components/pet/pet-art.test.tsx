@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { fireEvent } from '@testing-library/dom';
 import type { Pet } from '@shared/core';
+import PetArt from '@components/pet/pet-art';
 
 const SERVICE = 'https://art.example.com';
 
@@ -18,25 +19,18 @@ const pet = (overrides: Partial<Pet> = {}): Pet => ({
     ...overrides,
 } as Pet);
 
-/** The module reads the env var at import time, so each case needs a fresh
- *  import after stubbing. */
-const loadPetArt = async () => {
-    vi.resetModules();
-    return (await import('@components/pet/pet-art')).default;
-};
+// petArtUrl reads the env var per call, so stubbing it needs no module reload:
+// re-importing per test forced resetModules and a dynamic import, which under a
+// full parallel run was slow enough to time out at random.
+const loadPetArt = async () => PetArt;
 
 beforeEach(() => {
     vi.stubEnv('VITE_IMAGE_SERVICE_URL', SERVICE);
 });
 
 afterEach(() => {
-    // Explicit, and before resetModules: each test re-imports the component to
-    // pick up a fresh env stub, which yields a second React instance. The shared
-    // cleanup in tests/setup.ts then cannot unmount the tree, and renders pile up
-    // in one document until a query finds two images.
     cleanup();
     vi.unstubAllEnvs();
-    vi.resetModules();
 });
 
 describe('PetArt', () => {
@@ -98,14 +92,45 @@ describe('PetArt', () => {
         expect(image).not.toHaveStyle({ display: 'none' });
     });
 
-    it('falls back to the emoji when the image fails, rather than showing a broken frame', async () => {
-        const PetArt = await loadPetArt();
-        render(<PetArt pet={pet()} />);
+    // The service answers 503 with Retry-After while a pet's art generates, but an
+    // <img> only reports that it failed. Retrying once covers the first viewer of
+    // a cold pet, who would otherwise see the emoji until they reloaded.
+    it('retries once before giving up, matching the service Retry-After', async () => {
+        vi.useFakeTimers();
+        try {
+            const PetArt = await loadPetArt();
+            render(<PetArt pet={pet()} />);
 
-        fireEvent.error(screen.getByRole('img'));
+            fireEvent.error(screen.getByRole('img'));
+            // Still trying: the emoji shows, but the image has not been abandoned.
+            expect(screen.getByRole('img')).toBeInTheDocument();
 
-        expect(screen.queryByRole('img')).toBeNull();
-        expect(screen.getByText('🦉')).toBeInTheDocument();
+            act(() => { vi.advanceTimersByTime(30_000); });
+            expect(screen.getByRole('img')).toBeInTheDocument();
+
+            // Second failure is final; a broken image must not retry forever.
+            fireEvent.error(screen.getByRole('img'));
+            expect(screen.queryByRole('img')).toBeNull();
+            expect(screen.getByText('🦉')).toBeInTheDocument();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('does not leave a timer behind when unmounted mid-retry', async () => {
+        vi.useFakeTimers();
+        try {
+            const PetArt = await loadPetArt();
+            const { unmount } = render(<PetArt pet={pet()} />);
+
+            fireEvent.error(screen.getByRole('img'));
+            unmount();
+
+            // A gallery scrolling away must not fire state updates afterwards.
+            expect(() => act(() => { vi.advanceTimersByTime(60_000); })).not.toThrow();
+        } finally {
+            vi.useRealTimers();
+        }
     });
 
     it('tolerates a trailing slash on the configured URL', async () => {
