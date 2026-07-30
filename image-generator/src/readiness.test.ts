@@ -152,15 +152,26 @@ describe('checkReadiness', () => {
         for (const check of report.checks) expect(check.ms).toBeGreaterThanOrEqual(0);
     });
 
+    // Asserted by counting overlap rather than by elapsed time: a wall-clock
+    // bound near the work's own duration is exactly the assertion that fails at
+    // random once the machine is busy.
     it('runs the probes concurrently, not one after the other', async () => {
-        const slow = <T>(value: T) => new Promise<T>((r) => setTimeout(() => r(value), 60));
-        const store: ImageStore = { get: async () => slow(null), put: async () => {} };
-        const reader: PetReader = { read: async () => slow(PET) };
+        let live = 0;
+        let peak = 0;
+        const overlapping = async <T>(value: T): Promise<T> => {
+            live++;
+            peak = Math.max(peak, live);
+            await new Promise((r) => setTimeout(r, 10));
+            live--;
+            return value;
+        };
 
-        const started = Date.now();
-        await checkReadiness({ store, reader });
+        const store: ImageStore = { get: () => overlapping(null), put: async () => {} };
+        const reader: PetReader = { read: () => overlapping(PET) };
 
-        // Sequential would be ~120ms; allow slack but not a doubling.
-        expect(Date.now() - started).toBeLessThan(110);
+        await checkReadiness({ store, reader, probeChains: ['evm', 'solana'] });
+
+        // Store plus both chains, all in flight together. Sequential would peak at 1.
+        expect(peak).toBe(3);
     });
 });
