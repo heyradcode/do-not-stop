@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.art/
+*.png
+.env
+.env.local
+*.md
+Dockerfile
+.dockerignore
+
+# Specs are excluded from the tsc build anyway; keep them out of the context.
+src/**/*.test.ts
+eslint.config.js
+

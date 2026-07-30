@@ -40,7 +40,7 @@ Built incrementally. Done so far:
 - [x] Generate-once pipeline with in-flight dedupe (`src/pipeline.ts`)
 - [x] On-chain reads: tokenId -> dna/rarity/speciesId (`src/chain.ts`)
 - [x] HTTP surface and ERC-721 metadata (`src/routes.ts`, `src/metadata.ts`)
-- [ ] Deployment (Dockerfile / Render service)
+- [x] Deployment: `Dockerfile`, plus the Render block in Deployment below
 - [ ] Point `PetCore.tokenURI` at this service (needs a contract change)
 - [ ] Solana pets (Metaplex Core assets, a different client entirely)
 
@@ -168,6 +168,83 @@ returns base64 in a JSON envelope instead of raw PNG bytes and rejects SDXL's
 extra knobs, and the client handles both. No LLM is involved anywhere; prompts
 come from a lookup table, because an LLM would add nondeterminism and a second
 inference cost to something a table does exactly.
+
+## Deployment
+
+The `Dockerfile` builds from this directory alone, with no monorepo context. That
+falls out of the service not being a workspace member: its lockfile is
+self-contained, so the image is small and the build cannot break because another
+package changed.
+
+```bash
+docker build -t image-generator .
+docker run --rm -p 8787:8787 --env-file .env image-generator
+```
+
+Set `IMAGE_STORE=r2` in production. The container runs unprivileged and needs no
+writable volume, which is only true because R2 is the store; the filesystem store
+would need one.
+
+The commands the image runs are verified against the built output: `node
+dist/main.js` boots, the `HEALTHCHECK` probe returns 0, `--frozen-lockfile`
+resolves, the compiled JS imports nothing outside `dependencies` (so the `--prod`
+runtime stage is complete), and `SIGTERM` stops the listener and exits without
+lingering handles. The image build itself is unverified: there is no Docker on the
+machine this was written on, so alpine and layer specifics need one real
+`docker build`.
+
+### Render
+
+Render reads only the repo-root `render.yaml`, so this block is documented here
+rather than left as inert config in this directory. Adding it is the one edit
+outside `image-generator/`, deliberately deferred so this branch stays isolated:
+
+```yaml
+  - type: web
+    name: do-not-stop-image-generator
+    runtime: node
+    plan: free
+    rootDir: image-generator
+    # --ignore-workspace: this package is not a pnpm workspace member and has
+    # its own lockfile, so the monorepo root must not be resolved here.
+    buildCommand: |
+      export PNPM_PREFIX="$HOME/.npm-global"
+      export PATH="$PNPM_PREFIX/bin:$PATH"
+      npm install -g --prefix "$PNPM_PREFIX" pnpm@9.15.9
+      pnpm install --ignore-workspace --frozen-lockfile && pnpm build
+    startCommand: node dist/main.js
+    healthCheckPath: /health
+    envVars:
+      - key: PUBLIC_BASE_URL
+        sync: false     # must match the service's own URL
+      - key: IMAGE_STORE
+        value: r2
+      # Set in the dashboard, not here: CF_ACCOUNT_ID, CF_API_TOKEN, R2_BUCKET,
+      # R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, EVM_RPC_URL, PETCORE_ADDRESS.
+```
+
+Two notes carried over from the existing blueprint: do not set
+`NODE_ENV=production` in `buildCommand`, since it skips the TypeScript
+devDependency the build needs, and free web services sleep when idle. Sleeping is
+harmless here as long as `IMAGE_STORE=r2`, because art already generated survives
+in the bucket; a service that slept on the `filesystem` store would wake up and
+regenerate.
+
+### Why not Cloudflare Workers
+
+Workers would remove both credentials: Workers AI and R2 are available as
+bindings rather than as authenticated HTTP APIs. It would also mean a different
+runtime (no `node:http`, no S3 client) and a rewrite of the server and store
+layers. Worth doing if this service grows, not worth it to ship the first
+version.
+
+### Not done yet: pointing tokenURI here
+
+`PetCore.tokenURI` currently hardcodes `https://api.cryptopets.io/metadata/`,
+which does not resolve. Until it points at this service's
+`/metadata/evm/:tokenId`, nothing on-chain references the art. That is a contract
+change (`contracts/ethereum`, MIT-licensed, and `GameConfig` is not behind a
+proxy — see CLAUDE.md), so it belongs on its own branch.
 
 ## License
 
