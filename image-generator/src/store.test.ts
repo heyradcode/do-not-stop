@@ -90,8 +90,25 @@ describe('FilesystemImageStore', () => {
     });
 
     it('refuses keys that escape the store root', async () => {
-        await expect(
-            store.put('../escaped.png', { bytes: Buffer.from('x'), contentType: 'image/png' }),
-        ).rejects.toThrow(/outside the store root/);
+        const object = { bytes: Buffer.from('x'), contentType: 'image/png' };
+
+        for (const key of [
+            '../escaped.png',
+            '../../escaped.png',
+            // A sibling directory whose name merely starts with the root's name.
+            // A startsWith(root) check passes these, which is the whole point:
+            // for a root of ".../art", "../artifacts/x" resolves outside it but
+            // still shares the prefix.
+            `../${'art'}ifacts/escaped.png`,
+            '../art-backup/escaped.png',
+        ]) {
+            await expect(store.put(key, object)).rejects.toThrow(/outside the store root/);
+            await expect(store.get(key)).rejects.toThrow(/outside the store root/);
+        }
+    });
+
+    it('still allows ordinary nested keys', async () => {
+        const object = { bytes: Buffer.from('x'), contentType: 'image/png' };
+        await expect(store.put('art/v1/deep/nested.png', object)).resolves.toBeUndefined();
     });
 });

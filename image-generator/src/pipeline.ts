@@ -42,7 +42,23 @@ export interface PetImageResult extends StoredObject {
     summary: string;
 }
 
-const inFlight = new Map<string, Promise<PetImageResult>>();
+/**
+ * In-flight generations, scoped per store rather than held in one module-level
+ * map. The key alone does not identify the work: two stores asked for the same
+ * pet are two separate generations, and a global map would hand the second
+ * caller a promise that writes somewhere it cannot read. Production runs a single
+ * store, but tests build many, and a WeakMap costs nothing to get right.
+ */
+const inFlightByStore = new WeakMap<ImageStore, Map<string, Promise<PetImageResult>>>();
+
+const inFlightFor = (store: ImageStore): Map<string, Promise<PetImageResult>> => {
+    let map = inFlightByStore.get(store);
+    if (!map) {
+        map = new Map();
+        inFlightByStore.set(store, map);
+    }
+    return map;
+};
 
 export const getOrCreatePetImage = async (
     deps: PipelineDeps,
@@ -53,6 +69,7 @@ export const getOrCreatePetImage = async (
     const cached = await deps.store.get(key);
     if (cached) return describe(deps, key, cached, true, input);
 
+    const inFlight = inFlightFor(deps.store);
     const pending = inFlight.get(key);
     if (pending) return pending;
 

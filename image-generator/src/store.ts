@@ -18,7 +18,7 @@
 
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import type { PetArtInput } from './traits.js';
 import { clampRarity } from './traits.js';
 
@@ -109,10 +109,16 @@ export class FilesystemImageStore implements ImageStore {
     constructor(private readonly root: string) {}
 
     private path(key: string): string {
-        const full = resolve(join(this.root, key));
-        // Keys are internally generated, but a path-traversal guard is cheap and
-        // this is the one place a key reaches the filesystem.
-        if (!full.startsWith(resolve(this.root))) {
+        const root = resolve(this.root);
+        const full = resolve(join(root, key));
+
+        // Keys are internally generated, but this is the one place a key reaches
+        // the filesystem, so it is worth guarding properly. Compared via relative()
+        // rather than startsWith(root): a bare prefix test passes for sibling
+        // directories that merely share a name prefix, so a root of ".../art"
+        // would happily accept "../artifacts/x.png".
+        const rel = relative(root, full);
+        if (rel.startsWith('..') || isAbsolute(rel)) {
             throw new Error(`Refusing to resolve key outside the store root: ${key}`);
         }
         return full;

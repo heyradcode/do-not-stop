@@ -95,6 +95,25 @@ describe('getOrCreatePetImage', () => {
         for (const result of results) expect(result.bytes.toString()).toBe('image-1');
     });
 
+    it('does not share in-flight work between two stores', async () => {
+        // The dedupe key alone does not identify the work: handing store B the
+        // promise that writes into store A would leave B permanently empty while
+        // reporting success.
+        const storeA = new MemoryImageStore();
+        const storeB = new MemoryImageStore();
+        const fake = fakeGenerator();
+
+        const [a, b] = await Promise.all([
+            getOrCreatePetImage(deps(storeA, fake.generate), PET),
+            getOrCreatePetImage(deps(storeB, fake.generate), PET),
+        ]);
+
+        expect(fake.calls()).toBe(2);
+        expect(a.bytes.equals(b.bytes)).toBe(false);
+        expect(await storeA.get(petImageKey(PET))).not.toBeNull();
+        expect(await storeB.get(petImageKey(PET))).not.toBeNull();
+    });
+
     it('still generates separately for different pets', async () => {
         const store = new MemoryImageStore();
         const fake = fakeGenerator();
