@@ -47,6 +47,7 @@ Built incrementally. Done so far:
 - [x] Solana reader, dependency-free (`src/solana.ts`, `src/base58.ts`)
 - [x] Collection warming with dry-run and resumability (`src/warm.ts`)
 - [x] CI and coverage (`.github/workflows/image-generator.yml`)
+- [x] Readiness probe that exercises the store and RPC (`src/readiness.ts`)
 - [ ] A live generation run: no real image has been produced yet
 - [ ] Solana verified against a real cluster: the decode is covered by fixtures
       only, since there is no validator in the environment this was written in
@@ -80,7 +81,8 @@ the remaining per-pet variation. Art reads DNA and never feeds back into combat.
 
 | Route | Purpose |
 | --- | --- |
-| `GET /health` | Store and model in use |
+| `GET /health` | Liveness. Touches nothing external and always answers 200 while the process runs |
+| `GET /ready` | Readiness. Actually exercises the store and the chain RPC; 503 with a per-dependency breakdown if either is broken |
 | `GET /image/:chain/:tokenId.png` | The pet's art. Generates on first request, cached forever after. 302s to the bucket when `R2_PUBLIC_BASE_URL` is set |
 | `GET /metadata/:chain/:tokenId` | ERC-721 metadata, what `tokenURI` should point at |
 
@@ -115,6 +117,27 @@ latency.
 
 Status codes are deliberately distinguishable: 404 unminted pet, 400 bad chain or
 token id, 502 Workers AI failure (nothing was cached, so a retry can succeed).
+
+### Liveness vs readiness
+
+They answer different questions, and conflating them causes the failure each is
+meant to prevent. `/health` says the process is running: it makes no external
+call, so a platform that restarts unhealthy instances never restarts one over a
+transient upstream blip. `/ready` says this instance can actually serve an image,
+by proving both dependencies that otherwise break a deploy silently:
+
+- **The store.** Wrong R2 credentials or a missing bucket boot perfectly well and
+  fail on the first image, long after the deploy was declared good.
+- **The chain RPC.** A bad URL is invisible until a request needs it.
+
+The chain probe reads a real token id and counts "no such pet" as success: any
+answer proves the RPC is reachable and the contract address decodes, and that is
+cheaper than requiring a pet that exists. Only a transport failure is unready.
+
+**Point the platform's health check at `/health`, and check `/ready` yourself
+after deploying.** Wiring a platform probe to `/ready` sounds stricter but means an
+upstream blip can cycle a service that is otherwise fine; the deploy-time
+validation is better done once, deliberately, than continuously.
 
 ## Storage
 
@@ -285,6 +308,8 @@ outside `image-generator/`, deliberately deferred so this branch stays isolated:
       npm install -g --prefix "$PNPM_PREFIX" pnpm@9.15.9
       pnpm install --ignore-workspace --frozen-lockfile && pnpm build
     startCommand: node dist/main.js
+    # /health, not /ready: a platform probe on /ready lets an upstream blip cycle
+    # an otherwise healthy service. Check /ready once after deploying instead.
     healthCheckPath: /health
     envVars:
       - key: PUBLIC_BASE_URL

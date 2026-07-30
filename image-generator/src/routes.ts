@@ -4,7 +4,8 @@
  * a socket; server.ts does the socket wiring and nothing else.
  *
  * Routes:
- *   GET /health
+ *   GET /health                        liveness: process is up, touches nothing
+ *   GET /ready                         readiness: store and RPC actually work
  *   GET /image/:chain/:tokenId.png     the pet's art (generated once, then cached)
  *   GET /metadata/:chain/:tokenId      ERC-721 metadata, what tokenURI points at
  */
@@ -13,6 +14,7 @@ import type { PetReader } from './chain.js';
 import { UnknownPetError, UnsupportedChainError } from './chain.js';
 import { buildPetMetadata } from './metadata.js';
 import { getOrCreatePetImage, type PipelineDeps } from './pipeline.js';
+import { checkReadiness } from './readiness.js';
 import { ChainNotConfiguredError } from './readerRouter.js';
 import { ConfigError } from './config.js';
 import { WorkersAiError } from './workersAi.js';
@@ -72,12 +74,22 @@ export const handleRequest = async (
         return json(405, { error: 'Method not allowed' });
     }
 
+    // Liveness: deliberately touches nothing external, so a platform that
+    // restarts unhealthy instances never restarts one over an upstream blip.
     if (path === '/health' || path === '/') {
         return json(200, {
             status: 'ok',
             store: deps.store.constructor?.name ?? 'unknown',
             model: deps.config.model,
         });
+    }
+
+    // Readiness: proves this instance can actually serve an image. 503 on failure
+    // so a deploy with bad credentials is caught at deploy time rather than by the
+    // first user.
+    if (path === '/ready') {
+        const report = await checkReadiness(deps);
+        return json(report.ready ? 200 : 503, report);
     }
 
     const image = IMAGE_ROUTE.exec(path);

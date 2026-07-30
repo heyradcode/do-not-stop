@@ -62,6 +62,41 @@ describe('GET /health', () => {
     });
 });
 
+describe('GET /ready', () => {
+    it('answers 200 when the dependencies respond', async () => {
+        const response = await handleRequest(deps(), 'GET', '/ready');
+
+        expect(response.status).toBe(200);
+        expect(parse<{ ready: boolean }>(response.body).ready).toBe(true);
+    });
+
+    // A deploy with bad credentials must fail its readiness gate rather than
+    // going live and 500-ing on the first image.
+    it('answers 503 and names the failing dependency', async () => {
+        const response = await handleRequest(
+            deps({ reader: reader(new Error('fetch failed: ECONNREFUSED')) }),
+            'GET',
+            '/ready',
+        );
+
+        expect(response.status).toBe(503);
+        const report = parse<{ ready: boolean; checks: { name: string; ok: boolean }[] }>(response.body);
+        expect(report.ready).toBe(false);
+        expect(report.checks.find((c) => c.name === 'chain')?.ok).toBe(false);
+    });
+
+    it('is never cached, unlike the image routes', async () => {
+        expect((await handleRequest(deps(), 'GET', '/ready')).headers['cache-control']).toBe('no-store');
+    });
+
+    // Liveness must not depend on anything external, or a platform that restarts
+    // unhealthy instances would restart them over an upstream blip.
+    it('does not affect /health, which stays up when a dependency is down', async () => {
+        const broken = deps({ reader: reader(new Error('ECONNREFUSED')) });
+        expect((await handleRequest(broken, 'GET', '/health')).status).toBe(200);
+    });
+});
+
 describe('GET /image/:chain/:tokenId.png', () => {
     it('generates on first request and serves bytes with an immutable cache header', async () => {
         const response = await handleRequest(deps(), 'GET', '/image/evm/7.png');
