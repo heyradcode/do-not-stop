@@ -20,7 +20,10 @@
         "deploy:visualize": "pnpm hh ignition visualize ignition/modules/CryptoPetsV2Live.ts",
         "upgrade:game-logic": "tsx scripts/upgrade-game-logic.ts",
         "upgrade:game-logic:sepolia": "tsx scripts/upgrade-game-logic.ts --network=sepolia",
-        "upgrade:game-logic:base-sepolia": "tsx scripts/upgrade-game-logic.ts --network=base-sepolia"
+        "upgrade:game-logic:base-sepolia": "tsx scripts/upgrade-game-logic.ts --network=base-sepolia",
+        "upgrade:pet-core": "tsx scripts/upgrade-pet-core.ts",
+        "upgrade:pet-core:sepolia": "tsx scripts/upgrade-pet-core.ts --network=sepolia",
+        "upgrade:pet-core:base-sepolia": "tsx scripts/upgrade-pet-core.ts --network=base-sepolia"
     },
     "devDependencies": {
         "@cryptopets/protocol": "workspace:*",

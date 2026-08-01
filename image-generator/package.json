@@ -1,0 +1,41 @@
+{
+    "name": "image-generator",
+    "version": "0.0.1",
+    "private": true,
+    "packageManager": "pnpm@9.15.9",
+    "description": "Standalone microservice that renders deterministic pet NFT art (SVG) and ERC-721 metadata from a pet's on-chain DNA.",
+    "license": "SEE LICENSE IN ../LICENSE",
+    "type": "module",
+    "engines": {
+        "node": ">=20"
+    },
+    "scripts": {
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage",
+        "build": "tsc",
+        "typecheck": "tsc -p tsconfig.test.json",
+        "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+        "start": "node dist/main.js",
+        "generate": "tsx --env-file-if-exists=.env src/cli.ts",
+        "warm": "tsx --env-file-if-exists=.env src/warmCli.ts",
+        "smoke": "pnpm build && node scripts/smoke.mjs"
+    },
+    "dependencies": {
+        "@aws-sdk/client-s3": "^3.1098.0",
+        "viem": "^2.55.10"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.36.0",
+        "@types/node": "^22.10.0",
+        "@vitest/coverage-v8": "^4.1.8",
+        "eslint": "^9.36.0",
+        "globals": "^16.4.0",
+        "tsx": "^4.19.0",
+        "typescript": "^5.9.0",
+        "typescript-eslint": "^8.44.0",
+        "vitest": "^4.1.8"
+    }
+}

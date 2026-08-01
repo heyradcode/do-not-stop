@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+
+# Local filesystem image store and CLI output.
+.art/
+*.png

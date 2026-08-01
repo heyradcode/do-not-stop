@@ -1,0 +1,13 @@
+// Typechecks the specs too. tsconfig.json excludes them so they stay out of
+// dist/, which meant nothing typechecked them at all: a spec could reference a
+// field that no longer exists and only vitest's esbuild (which strips types
+// without checking them) would ever see it.
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "types": ["node"]
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+}

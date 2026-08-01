@@ -4,7 +4,7 @@ Root coordination contract for AI and human contributors in this repo. Detailed 
 
 ## Scope
 
-- Applies to the whole monorepo: `frontend/`, `backend/`, `mobile/`, `website/`, `shared/`, `contracts/ethereum/`, `contracts/solana/`, `indexer-go/`, `proto/`.
+- Applies to the whole monorepo: `frontend/`, `backend/`, `mobile/`, `website/`, `shared/`, `contracts/ethereum/`, `contracts/solana/`, `indexer-go/`, `proto/`, `image-generator/`.
 - No nested `AGENTS.md` files exist yet. If one is added under a package, it may tighten rules for that subtree but must not relax the rules here.
 
 Normative language: `MUST`/`MUST NOT` are mandatory. `SHOULD`/`SHOULD NOT` are expected by default; deviations should be explained in the PR. `MAY` is optional.
@@ -15,7 +15,8 @@ Normative language: `MUST`/`MUST NOT` are mandatory. `SHOULD`/`SHOULD NOT` are e
 - `MUST` keep the two **live** combat ports in step with each other and with the golden vectors: `protocol/src/combat/` (the canonical engine, re-exported from `shared/src/utils/combat` for existing importers) and `indexer-go/internal/combat/` (the independent verifier). Changing one without the other re-breaks the circuit breaker in §F, whose whole value is that the two were written to disagree if either drifts. This covers XP and level progression too (`protocol/src/combat/xp.ts`, validated against `contracts/test-vectors/xp.json`), so an XP or decay change is a both-ports change. `indexer-go/internal/combat/xp.go` still covers the formula and the decay but not level-up.
 - `MUST NOT` edit `contracts/test-vectors/{battle,xp}.json` to make a failing test pass — this holds more strongly now, not less. The vectors are the only mechanical link left between the frozen ports and the live ones. A live port that fails them has drifted away from the rules real battles were settled under.
 - `MUST NOT` assume the `ChainAdapter` interface (`shared/src/hooks/adapters/`) covers more than pet-action mutations and reads. It is a real, shared interface (`useEvmAdapter`/`useSolanaAdapter` both implement it) and every public pet-action hook consumes it chain-blind, but the low-level chain wiring in `frontend/src/chains/{ethereum,solana}/`, the async battle/breed VRF flows, and the combat simulator remain intentionally separate per chain. See CLAUDE.md's cross-chain interfaces section for the exact boundary.
-- `MUST` match the license of the package being edited when adding new files: `contracts/ethereum`, `contracts/solana`, `indexer-go`, `proto`, `protocol`, and `verifier` are MIT; everything else is PolyForm Noncommercial 1.0.0 (root `LICENSE`). See the table in `README.md`. `protocol` is MIT on purpose (third parties have to be able to replay signed battle receipts), so it `MUST NOT` import from a PolyForm package; a test in that package enforces it. `verifier` is MIT for the same reason and depends on nothing but `protocol`.
+- `MUST` match the license of the package being edited when adding new files: `contracts/ethereum`, `contracts/solana`, `indexer-go`, `proto`, `protocol`, and `verifier` are MIT; everything else, `image-generator` included, is PolyForm Noncommercial 1.0.0 (root `LICENSE`). See the table in `README.md`. `protocol` is MIT on purpose (third parties have to be able to replay signed battle receipts), so it `MUST NOT` import from a PolyForm package; a test in that package enforces it. `verifier` is MIT for the same reason and depends on nothing but `protocol`.
+- `MUST NOT` assume the root `pnpm lint` / `pnpm test` cover `image-generator`, and `MUST NOT` verify it with `pnpm --filter image-generator <script>`. It is not a pnpm workspace member, so that command prints `No projects matched the filters` **and exits 0**: it reports success having run nothing. Run its scripts from `image-generator/` instead. It keeps its own lockfile, installs with `pnpm install --ignore-workspace`, and is checked by its own CI workflow.
 - `MUST NOT` treat the v1 contract gaps documented in `contracts/plan-contract-upgrade.md` (no battle authorization, the `changeDna` cheat, client-supplied Solana starter-pet DNA) as bugs to silently patch. They are the known baseline the v2 rewrite is designed around.
 - `MUST` run the smallest scoped lint/test/build command for the package you touched (see Command Baseline below), not a full monorepo run, unless the change is broad.
 - `SHOULD NOT` trust `DEVELOPMENT.md`, `contracts/ethereum/README.md`, or the root `eth:deploy` / `eth:vrf:watch` scripts at face value. Several reference commands removed in a past refactor; see CLAUDE.md's Commands section for what is actually current.
@@ -33,7 +34,7 @@ Full per-package lint/test/build matrix and single-test syntax: see [CLAUDE.md](
 ## Where To Look
 
 - Behavioral guidelines and full architecture: [CLAUDE.md](./CLAUDE.md)
-- Data flow and component map: [docs/architecture.md](./docs/architecture.md)
+- Data flow and component map: [CLAUDE.md](./CLAUDE.md#architecture) (`docs/architecture.md` is referenced in places but does not exist)
 - Test suite conventions: [docs/testing.md](./docs/testing.md)
 - Backend API surface: [backend/API.md](./backend/API.md)
 - Indexer internals: [indexer-go/README.md](./indexer-go/README.md)

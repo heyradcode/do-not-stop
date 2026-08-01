@@ -3,7 +3,6 @@ import clsx from 'clsx';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import {
-    getPetAvatar,
     getPetClass,
     getReadyPetsUnified,
     getXpNumbers,
@@ -20,6 +19,7 @@ import { Tones } from '@constants/tones';
 import SyncMetadataButton from './sync-metadata-button';
 import PetShowcase from '../_shared/pet-showcase';
 import styles from './index.module.css';
+import PetArt from '@components/pet/pet-art';
 
 export type LevelUpPanelProps = {
     isStandaloneView?: boolean;
@@ -110,7 +110,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 )}
 
                 {selectedPetObj && (
-                    <PetShowcase avatar={getPetAvatar(selectedPetObj.dna)} accent="violet">
+                    <PetShowcase avatar={<PetArt pet={selectedPetObj} />} accent="violet">
                         <div className={styles.name}>{selectedPetObj.name}</div>
                         <div className={styles.petClass}>{getPetClass(selectedPetObj.dna)}</div>
                         <div className={styles.transition}>
