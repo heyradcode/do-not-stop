@@ -10,6 +10,7 @@
  *   SUBGRAPH_START_BLOCK=12345678     # the v2 deploy block (the indexer reindexes from here)
  *   PETCORE_ADDRESS=0x...             # PetCore proxy
  *   GAMELOGIC_ADDRESS=0x...           # GameLogic proxy
+ *   IGNITION_DEPLOYMENT_ID=name       # deployment dir to read, when not the default chain-<id>
  *
  * The v2 stack (PetCore + GameLogic) is two UUPS proxies — index the proxy
  * addresses, not the implementations. See ignition/modules/CryptoPetsV2Live.ts.
@@ -62,16 +63,22 @@ function copyAbi(contractName, destName = contractName) {
 }
 
 // Reads a proxy address from the ignition deployment for the given module key.
+//
+// A chain can hold several deployments. `chain-<id>` is only the default one, and on a
+// chain that has been redeployed under an explicit --deployment-id it is the superseded
+// stack — indexing those addresses yields a subgraph that syncs a dead contract and
+// reports no error. IGNITION_DEPLOYMENT_ID selects the directory in that case.
 function loadIgnitionAddress(network, key) {
     const chainIds = { sepolia: 11155111, mainnet: 1, base: 8453, 'base-sepolia': 84532, localhost: 31337, hardhat: 31337 };
     const chainId = chainIds[network];
     if (!chainId) return null;
 
+    const deploymentDir = process.env.IGNITION_DEPLOYMENT_ID?.trim() || `chain-${chainId}`;
     const deployedPath = path.join(
         CONTRACTS_DIR,
         'ignition',
         'deployments',
-        `chain-${chainId}`,
+        deploymentDir,
         'deployed_addresses.json'
     );
     if (!fs.existsSync(deployedPath)) return null;
