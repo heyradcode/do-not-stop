@@ -2,7 +2,6 @@ import React from 'react';
 import clsx from 'clsx';
 import {
     getLifePercent,
-    getPetAvatar,
     getPetClass,
     getPetProperties,
     getRarityColor,
@@ -13,6 +12,7 @@ import {
 } from '@shared/core';
 import BreedDnaCenter from './breed-dna-center';
 import styles from '../index.module.css';
+import PetArt from '@components/pet/pet-art';
 
 type BreedParentsPreviewProps = {
     petA: Pet | null;
@@ -93,7 +93,7 @@ const ParentCard: React.FC<{ pet: Pet | null; side: 'a' | 'b' }> = ({ pet, side 
                 {pet.breedCount != null && (
                     <div className={styles.parentBred}>{pet.breedCount} bred</div>
                 )}
-                <span className={styles.parentAvatar}>{getPetAvatar(pet.dna)}</span>
+                <span className={styles.parentAvatar}><PetArt pet={pet} /></span>
             </div>
 
             <div className={styles.parentBody}>

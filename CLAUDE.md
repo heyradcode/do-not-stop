@@ -56,7 +56,7 @@ pnpm lint:fix
 pnpm test                    # equals contracts/ethereum test (Hardhat/Mocha), NOT a full monorepo test run
 pnpm build                   # compile contracts + build backend + frontend + website
 ```
-**`pnpm lint` and `pnpm test` do not cover every package.** `backend` has no lint script at all, and neither `backend` nor `contracts/ethereum` are in the root `lint` aggregate. Run per-package commands below when touching those.
+**`pnpm lint` and `pnpm test` do not cover every package.** `backend` has no lint script at all, and neither `backend` nor `contracts/ethereum` are in the root `lint` aggregate. `image-generator` is not in *any* root aggregate and is not even a workspace member; it has its own lockfile and its own CI workflow. Do not reach for `pnpm --filter image-generator <script>` either: it prints `No projects matched the filters` **and exits 0**, so it reports success having run nothing. Run per-package commands below when touching those.
 
 ### Per-package commands
 | Package | lint | test | build | single test |
@@ -69,6 +69,9 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | `contracts/ethereum` | *(none)* | `pnpm --prefix contracts/ethereum test` (`pnpm hh test`) | `pnpm compile` (`pnpm hh compile --force`) | `pnpm --prefix contracts/ethereum hh test test/<File>.test.ts` |
 | `contracts/solana/cryptopets` | n/a | Anchor test suite (see package README) | `anchor build` | n/a |
 | `indexer-go` | `go vet ./...` | `go test ./...` (unit only; Postgres tests are gated on `TEST_DATABASE_URL` and **truncate tables**, scratch DB only) | `go build -o bin/indexer ./cmd/indexer` | `go test ./internal/combat -run TestName` |
+| `image-generator` | `pnpm lint` (from that dir) | `pnpm test` (vitest) | `pnpm build` (`tsc`), plus `pnpm typecheck` for the specs | `pnpm test <path>` |
+
+> `image-generator` runs from its own directory and installs with `pnpm install --ignore-workspace`. Two traps: a plain `pnpm install` there walks up to the monorepo root and installs *that*, leaving the package with no `node_modules`; and `pnpm --filter image-generator <script>` from the root exits 0 without running anything, since the filter matches no workspace project. Its suite runs in `.github/workflows/image-generator.yml`, not the Coverage workflow.
 
 `*_test:coverage` scripts exist for frontend/backend/shared (`vitest run --coverage`); CI runs these in `.github/workflows/coverage.yml` and posts a combined PR comment. Coverage requires `@vitest/coverage-v8` to match the installed `vitest` major version, or coverage collection breaks repo-wide.
 
@@ -86,11 +89,12 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | `contracts/solana/cryptopets` | Rust, Anchor | Solana programs |
 | `shared` (`@shared/core`) | TypeScript | Common utils/types/hooks, consumed as raw TS (no build step), shared by frontend + mobile |
 | `proto` | Protobuf/Buf | gRPC contract (`GameDataService`) between `indexer-go` and `backend` |
+| `image-generator` | Node.js, TypeScript, Cloudflare Workers AI, R2 | Standalone service rendering pet NFT art + ERC-721 metadata. **Not a pnpm workspace member** (see below) |
 
 ### Data flow
-On-chain events (EVM via subgraph watermark polling, Solana via WebSocket push + backfill) are mirrored into Prisma-owned Postgres (`pet_roster`, `battle_history`) by **two parallel indexers**: the backend's built-in Node `RosterIndexer`, and the optional Go `indexer-go`. The Node indexer is the source of truth in local dev; `indexer-go` is promotable later and can additionally stream settled battles straight to the backend over gRPC (`StreamLiveBattles`, defined in `proto/cryptopets.proto`). If `indexer-go` is down, the backend circuit-breaks back to reading Postgres directly (`ROSTER_READ_SOURCE` env var controls `grpc` vs `postgres`). Frontend, mobile, and website all talk to the backend via REST + GraphQL; none of them read chain state directly. See `docs/architecture.md`, `backend/API.md`, `indexer-go/README.md`.
+On-chain events (EVM via subgraph watermark polling, Solana via WebSocket push + backfill) are mirrored into Prisma-owned Postgres (`pet_roster`, `battle_history`) by **two parallel indexers**: the backend's built-in Node `RosterIndexer`, and the optional Go `indexer-go`. The Node indexer is the source of truth in local dev; `indexer-go` is promotable later and can additionally stream settled battles straight to the backend over gRPC (`StreamLiveBattles`, defined in `proto/cryptopets.proto`). If `indexer-go` is down, the backend circuit-breaks back to reading Postgres directly (`ROSTER_READ_SOURCE` env var controls `grpc` vs `postgres`). Frontend, mobile, and website all talk to the backend via REST + GraphQL; none of them read chain state directly. The one thing outside that path is pet art: the frontend requests images straight from `image-generator` (`VITE_IMAGE_SERVICE_URL`), which reads `PetCore` over RPC itself rather than trusting the indexer, because a stale `dna` there would not render an outdated pet but a *different* one, and cache that permanently. Art is optional by construction: unset the variable, or let the service be down, and pets fall back to their emoji avatars. See `backend/API.md`, `indexer-go/README.md`, `image-generator/README.md`.
 
-Note: `docs/README.md` and `docs/architecture.md` link to `indexer-go/ARCHITECTURE.md`, which doesn't exist. The real doc is `indexer-go/README.md`.
+Note: two dangling doc links. `docs/architecture.md` does not exist, though `docs/README.md` and `AGENTS.md` both point at it; the component map and data flow live in this file's Architecture section instead. `docs/README.md` also links to `indexer-go/ARCHITECTURE.md`, which does not exist either; the real doc is `indexer-go/README.md`.
 
 ### Cross-chain interfaces: one thin adapter layer, plus logic that stays deliberately separate
 `shared/src/hooks/adapters/` (`ChainAdapter` in `types.ts`) is a real, shared TypeScript interface. `useEvmAdapter` and `useSolanaAdapter` both implement it, `useChainAdapter` returns whichever is active, and every public pet-action hook (`useCreatePet`, `useLevelUpPet`, `useTrainPet`, `useRenamePet`, `useTransferPet`, `useBattlePets`, `useBreedPets`, the pet-list read) consumes it chain-blind. Check `adapters/types.ts` before assuming this doesn't exist.
@@ -151,4 +155,4 @@ See `docs/testing.md` for the full per-package suite table. Test work is expecte
 
 ## Licensing
 
-This monorepo has split licensing; see the table in `README.md`. `contracts/ethereum`, `contracts/solana`, `indexer-go`, and `proto` are MIT; everything else (`frontend`, `backend`, `mobile`, `website`, `shared`) is PolyForm Noncommercial 1.0.0 (root `LICENSE`). Match the license of whichever package you're editing when adding new files.
+This monorepo has split licensing; see the table in `README.md`. `contracts/ethereum`, `contracts/solana`, `indexer-go`, and `proto` are MIT; everything else (`frontend`, `backend`, `mobile`, `website`, `shared`, `image-generator`) is PolyForm Noncommercial 1.0.0 (root `LICENSE`). Match the license of whichever package you're editing when adding new files.

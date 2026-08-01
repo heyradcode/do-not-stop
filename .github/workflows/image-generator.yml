@@ -1,0 +1,92 @@
+name: Image generator
+
+# The service is deliberately not a pnpm workspace member (see
+# image-generator/README.md), so the root `pnpm lint` / `pnpm test` aggregates and
+# the Coverage workflow do not reach it. Without this workflow nothing runs its
+# suite at all.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'image-generator/**'
+      - '.github/workflows/image-generator.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'image-generator/**'
+      - '.github/workflows/image-generator.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: image-generator-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: image-generator
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches the Dockerfile rather than the repo's other workflows: this is
+          # the runtime the service actually ships on.
+          node-version: 22
+          cache: pnpm
+          # Its own lockfile, not the monorepo root's.
+          cache-dependency-path: image-generator/pnpm-lock.yaml
+
+      # --ignore-workspace, or pnpm walks up to the monorepo root and installs
+      # that instead, leaving this package with no node_modules.
+      - name: Install
+        run: pnpm install --ignore-workspace --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      # Separate from build: tsconfig.json excludes specs so they stay out of
+      # dist/, which means `build` alone never typechecks them.
+      - name: Typecheck
+        if: always()
+        run: pnpm typecheck
+
+      - name: Test
+        if: always()
+        run: pnpm test
+
+      - name: Build
+        if: always()
+        run: pnpm build
+
+      # Boots dist/main.js against fake upstreams and walks the real routes.
+      # Covers env parsing, buildDeps, and store construction, which only run in
+      # a real process and so pass every unit test while failing at deploy.
+      - name: Smoke
+        run: pnpm smoke
+
+  # The image is the one artifact that cannot be verified on a machine without
+  # Docker, which is where this service was written. Build only, no push.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t image-generator:ci .
+
+      # Proves the entrypoint starts and fails on its own terms rather than
+      # crashing: with no configuration it must report the missing variable.
+      - name: Container reports missing configuration cleanly
+        run: |
+          output=$(docker run --rm image-generator:ci 2>&1 || true)
+          echo "$output"
+          echo "$output" | grep -q "is required" \
+            || { echo "expected a configuration error, got the above"; exit 1; }

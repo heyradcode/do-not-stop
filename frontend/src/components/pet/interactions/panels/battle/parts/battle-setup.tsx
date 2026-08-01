@@ -2,7 +2,6 @@ import React from 'react';
 import clsx from 'clsx';
 import {
     getLifePercent,
-    getPetAvatar,
     getPetClass,
     getPetProperties,
     getRarityColor,
@@ -19,6 +18,7 @@ import PendingBattleNotice from './pending-battle-notice';
 import OpenToChallengesToggle from './open-to-challenges-toggle';
 import { opponentKey, shortAddress } from '../battle-utils';
 import styles from '../index.module.css';
+import PetArt from '@components/pet/pet-art';
 
 export type BattleSetupProps = {
     isStandaloneView: boolean;
@@ -78,7 +78,7 @@ const CombatantCard: React.FC<{
         <div className={clsx(styles.combatantCard, side === 'rival' && styles.combatantCardRival)}>
             <div className={styles.combatantCardAvatarWrap}>
                 <span className={styles.combatantCardAvatar} aria-hidden>
-                    {getPetAvatar(pet.dna)}
+                    <PetArt pet={pet} />
                 </span>
             </div>
             <div className={styles.combatantCardName}>{pet.name}</div>

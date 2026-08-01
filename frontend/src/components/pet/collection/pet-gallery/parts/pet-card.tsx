@@ -3,7 +3,6 @@ import clsx from 'clsx';
 import {
     getGeneration,
     getLifePercent,
-    getPetAvatar,
     getPetClass,
     getPetProperties,
     getPetSkill,
@@ -15,6 +14,7 @@ import {
 } from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { BattleIcon, SendIcon } from '@components/ui/icon';
+import PetArt from '@components/pet/pet-art';
 import type { PetCooldownStatus } from '@hooks/usePetCooldowns';
 import styles from '../index.module.css';
 
@@ -65,7 +65,7 @@ const PetCard: React.FC<PetCardProps> = ({ pet, cooldown, onBattle, onSendClick 
                         {skill.name}
                     </div>
                 ) : null}
-                <div className={styles.avatar}>{getPetAvatar(pet.dna)}</div>
+                <div className={styles.avatar}><PetArt pet={pet} /></div>
             </div>
 
             <div className={styles.info}>

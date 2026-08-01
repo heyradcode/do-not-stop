@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import {
-    getPetAvatar,
     getPetClass,
     getReadyPetsUnified,
     getXpNumbers,
@@ -17,6 +16,7 @@ import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 import styles from './index.module.css';
+import PetArt from '@components/pet/pet-art';
 
 export type TrainPanelProps = {
     isStandaloneView?: boolean;
@@ -97,7 +97,7 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                         <div className={styles.visual}>
                             <span className={styles.level}>Lv.{selectedPetObj.level}</span>
                             <span className={styles.avatar}>
-                                {getPetAvatar(selectedPetObj.dna)}
+                                <PetArt pet={selectedPetObj} />
                             </span>
                         </div>
                         <div className={styles.body}>

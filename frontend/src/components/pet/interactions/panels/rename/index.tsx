@@ -3,7 +3,6 @@ import clsx from 'clsx';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import {
-    getPetAvatar,
     getPetClass,
     getReadyPetsUnified,
     useChainCapabilities,
@@ -16,6 +15,7 @@ import Icon, { CheckIcon, QuillIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
 import PetShowcase from '../_shared/pet-showcase';
 import styles from './index.module.css';
+import PetArt from '@components/pet/pet-art';
 
 const MAX_NAME_LEN = 20;
 
@@ -113,7 +113,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 )}
 
                 {selectedPetObj && (
-                    <PetShowcase avatar={getPetAvatar(selectedPetObj.dna)} accent="cyan">
+                    <PetShowcase avatar={<PetArt pet={selectedPetObj} />} accent="cyan">
                         <div
                             className={styles.preview}
                             style={
