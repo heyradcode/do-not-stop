@@ -112,7 +112,7 @@ async function deployToNetwork(networkName: string): Promise<void> {
     try {
         execSync(deployCmd, { stdio: 'inherit', env: ignitionEnv });
         console.log(`✅ ${networkName} deployed.`);
-        await injectContractAddresses(network);
+        await injectContractAddresses(network, deploymentId);
     } catch (error) {
         console.error(
             `❌ Deploy to ${networkName} failed:`,
@@ -122,13 +122,17 @@ async function deployToNetwork(networkName: string): Promise<void> {
     }
 }
 
-async function injectContractAddresses(network: NetworkSpec): Promise<void> {
+async function injectContractAddresses(network: NetworkSpec, deploymentId?: string): Promise<void> {
     try {
+        // Must read back the deployment we just wrote, not `chain-<id>`. With an explicit
+        // --deployment-id those are different directories, and the default one holds the
+        // stack this deploy exists to replace — injecting from it would point the frontend
+        // at the dead pre-2.0.0 proxies while reporting success.
         const deployedAddressesPath = join(
             process.cwd(),
             'ignition',
             'deployments',
-            `chain-${network.chainId}`,
+            deploymentId ?? `chain-${network.chainId}`,
             'deployed_addresses.json'
         );
 
