@@ -5,6 +5,7 @@ import {
     LevelUpIcon,
     MarriageIcon,
     QuillIcon,
+    ShieldIcon,
     TrainIcon,
 } from '@components/ui/icon';
 
@@ -15,7 +16,8 @@ export type InteractionAction =
     | 'levelup'
     | 'train'
     | 'marriage'
-    | 'changename';
+    | 'changename'
+    | 'defense';
 
 export type StandaloneInteractionHeader = {
     Icon: ComponentType<{ size?: number | string }>;
@@ -43,6 +45,11 @@ export const STANDALONE_INTERACTION_HEADERS: Record<
         sub: 'Marry two pets to unlock cross-owner breeding',
     },
     changename: { Icon: QuillIcon, label: 'Rename Pet', sub: "Change your pet's name" },
+    defense: {
+        Icon: ShieldIcon,
+        label: 'Allow Challenges',
+        sub: 'Let others battle your pets while you are away',
+    },
 };
 
 /** Dashboard home (idle gallery). */
@@ -55,3 +62,4 @@ export const LEVELUP_PATH = '/levelup';
 export const TRAIN_PATH = '/train';
 export const MARRIAGE_PATH = '/marriage';
 export const RENAME_PATH = '/rename';
+export const DEFENSE_PATH = '/defense';

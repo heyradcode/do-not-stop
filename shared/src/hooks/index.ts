@@ -76,6 +76,10 @@ export {
     type SubmitBattleIntentVars,
 } from './useSubmitBattleIntent';
 export {
+    useDefenseAuthorization,
+    type GrantDefenseVars,
+} from './useDefenseAuthorization';
+export {
     battleStateQueryKey,
     useBackendBattle,
     useStoredBattleEvidence,

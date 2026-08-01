@@ -1,0 +1,43 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+   Defence-consent panel — pet checklist plus the terms being signed (emerald accent).
+   Shared chrome (.interface/.picker/.field/.action-controls) stays global in interactions.css. */
+.petList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid rgb(52 211 153 / 22%);
+    background: var(--cp-surface);
+}
+
+.petRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.empty {
+    margin: 0;
+    opacity: 0.7;
+}
+
+/* The window and cap are fixed rather than editable: this is the one prompt where the
+   owner decides who may challenge them, so it states the terms plainly instead of
+   offering knobs nobody asked for. */
+.terms {
+    margin: 14px 0 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    opacity: 0.75;
+}
+
+.error {
+    margin: 10px 0 0;
+    color: rgb(251 113 133);
+    font-size: 0.85rem;
+}
