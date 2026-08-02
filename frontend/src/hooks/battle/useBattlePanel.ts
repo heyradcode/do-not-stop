@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
     getReadyPetsUnified,
+    isBattleRejection,
     useChainCapabilities,
     useBattlePets,
     useBattleTaunts,
@@ -217,7 +218,13 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     });
 
     // Receipt errors are folded into `battle.error` by the chain adapter.
-    usePetErrorToast(battle.error, null, validationError, BATTLE_FAIL_MESSAGE);
+    //
+    // A server refusal goes in through the validation slot rather than the mutation one:
+    // `usePetError` returns a validation message verbatim, while a mutation error is run
+    // through the chain adapter's parser, which rewrites anything it does not recognise
+    // into a generic "Transaction failed" and loses the reason the server gave.
+    const rejectionMessage = isBattleRejection(battle.error) ? battle.error.message : null;
+    usePetErrorToast(battle.error, null, validationError ?? rejectionMessage, BATTLE_FAIL_MESSAGE);
 
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
     // Chain-blind: a battle is seeded from a committed drand round on either chain, so

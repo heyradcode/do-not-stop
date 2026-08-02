@@ -40,6 +40,8 @@ const pets = [{ id: 'p1', name: 'Rex', level: 3, winCount: 1, lossCount: 0, chai
 const opponents = [{ id: 'opp1', name: 'Blaze', owner: '0xopp', level: 2 }];
 
 vi.mock('@shared/core', () => ({
+    isBattleRejection: (e: unknown) =>
+        typeof e === 'object' && e !== null && (e as { isBattleRejection?: unknown }).isBattleRejection === true,
     getReadyPetsUnified: (p: { id: string }[]) => p.map((x) => ({ id: x.id, pet: x })),
     useChainCapabilities: () => ({ activeKind: 'evm', randomness: { provider: 'vrf' } }),
     usePetList: () => ({ pets, refetch: vi.fn(), isLoading: false }),

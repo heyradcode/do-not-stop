@@ -66,8 +66,8 @@ const accountsFor = (data: Buffer) => [{ account: { data: [data.toString('base64
 describe('PetAccount layout', () => {
     // Pinned against contracts/solana/.../state/pet.rs's PetAccount::SPACE. If
     // this fails the Rust struct changed, and every offset below it has moved.
-    it('totals the 224 bytes the Rust SPACE constant declares', () => {
-        expect(PET_ACCOUNT_SPACE).toBe(224);
+    it('totals the 223 bytes the Rust SPACE constant declares', () => {
+        expect(PET_ACCOUNT_SPACE).toBe(223);
     });
 
     it('places the fields the decoder reads where the Rust struct puts them', () => {
@@ -77,8 +77,8 @@ describe('PetAccount layout', () => {
         expect(OFFSET.dna).toBe(44);
         expect(OFFSET.rarity).toBe(52);
         expect(OFFSET.name).toBe(69);
-        expect(OFFSET.speciesId).toBe(138);
-        expect(OFFSET.asset).toBe(184);
+        expect(OFFSET.speciesId).toBe(137);
+        expect(OFFSET.asset).toBe(183);
     });
 
     it('transcribes every field, so no gap is silently skipped', () => {
@@ -143,8 +143,8 @@ describe('SolanaPetReader', () => {
         expect(body.method).toBe('getProgramAccounts');
         expect(body.params[0]).toBe(PROGRAM);
         expect(body.params[1].filters).toEqual([
-            { dataSize: 224 },
-            { memcmp: { offset: 184, bytes: ASSET } },
+            { dataSize: 223 },
+            { memcmp: { offset: 183, bytes: ASSET } },
         ]);
     });
 

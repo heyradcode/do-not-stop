@@ -118,6 +118,18 @@ export async function loadPersistedSigningKeys(): Promise<void> {
     for (const key of stored) {
         if (key.keyId !== active?.keyId) {
             rotatedKeys.push(key);
+            continue;
+        }
+        // Adopt the persisted `notBefore` for the active key. `configureSigner` stamps it
+        // with the current time, because a brand new key really does become valid now — but
+        // on every restart after the first that is a *later* time than the key actually
+        // started signing, and `persistSigningKey` deliberately never overwrites the stored
+        // one. Publishing the in-memory value instead would move the key's validity window
+        // forward on each boot, and every receipt signed before that restart would fail the
+        // operator-signature check for anyone verifying against the published list: not
+        // invalid, unverifiable, which is exactly what §H exists to prevent.
+        if (backend && key.notBefore < active.notBefore) {
+            backend = { ...backend, key: { ...backend.key, notBefore: key.notBefore } };
         }
     }
 }

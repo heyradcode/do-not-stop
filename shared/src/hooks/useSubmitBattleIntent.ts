@@ -9,6 +9,7 @@ import { useSignTypedData } from 'wagmi';
 
 import { getSolanaAuthSigner } from '../auth/solanaAuthStore';
 import { useApiClient } from '../contexts/ApiClientContext';
+import { toBattleRejection } from '../utils/battleFailureMessage';
 import { saveBattleEvidence, type BattleEvidence } from '../utils/battleEvidence';
 import { normalizeSolanaSignatureToBase58 } from '../utils/solana/signatureAuthCodec';
 
@@ -119,7 +120,11 @@ export function useSubmitBattleIntent() {
 
                 return accepted;
             } catch (err) {
-                setError(err instanceof Error ? err : new Error(String(err)));
+                // Both controllers answer with a precise reason. Surfacing it here rather
+                // than letting the raw Axios error through is what lets the UI say which
+                // of a dozen refusals happened — they are otherwise indistinguishable.
+                const rejection = toBattleRejection(err);
+                setError(rejection ?? (err instanceof Error ? err : new Error(String(err))));
                 return null;
             } finally {
                 setIsPending(false);

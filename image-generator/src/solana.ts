@@ -52,7 +52,6 @@ export const FIELD_SIZES: readonly (readonly [name: string, bytes: number])[] = 
     ['bump', 1],
     ['name', 32],
     ['nameLen', 1],
-    ['openToChallenges', 1],
     ['xp', 4],
     ['lastOpponentId', 4],
     ['sameOpponentStreak', 1],

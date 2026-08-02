@@ -1,4 +1,5 @@
 export * from './battleEvidence';
+export * from './battleFailureMessage';
 export * from './common';
 export * from './ethereum';
 export * from './solana';
