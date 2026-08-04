@@ -36,6 +36,7 @@ vi.mock('@hooks/battle/useResultDialogue', () => ({ useResultDialogue: () => res
 const battle = { mutate: vi.fn(), clearErrors: vi.fn(), isPending: false, isConfirming: false, error: null, hash: undefined as string | undefined, phase: null, liveReplay: null as null | { result: { firstWins: boolean }; log: unknown[]; startHp1: bigint; startHp2: bigint }, lifecycle: { phase: 'idle' } };
 const taunts = { generate: vi.fn(), reset: vi.fn(), isLoading: false, turns: [] as unknown[] };
 const createRoom = vi.fn().mockResolvedValue(null);
+const refetchOpponents = vi.fn();
 let capturedOnSuccess: ((r: unknown) => void) | undefined;
 /** Options the hook handed `useBattlePets` on the latest render. */
 let capturedBattleOptions: { roomId?: string | null; roomSocketUrl?: string } | undefined;
@@ -50,6 +51,12 @@ vi.mock('@shared/core', () => ({
     setTokenSuccessCallback: vi.fn(),
     isBattleRejection: (e: unknown) =>
         typeof e === 'object' && e !== null && (e as { isBattleRejection?: unknown }).isBattleRejection === true,
+    // Mirrors the real predicate: the three refusals that mean the defender's owner
+    // is not willing, as opposed to a band/cap refusal about this attacker or today.
+    isConsentFailure: (e: unknown) => {
+        const code = (e as { code?: string } | null)?.code;
+        return code === 'no-authorization' || code === 'pet-not-covered' || code === 'revoked';
+    },
     getReadyPetsUnified: (p: { id: string }[]) => p.map((x) => ({ id: x.id, pet: x })),
     useChainCapabilities: () => ({ activeKind: 'evm', randomness: { provider: 'vrf' } }),
     usePetList: () => ({ pets, refetch: vi.fn(), isLoading: false }),
@@ -60,7 +67,9 @@ vi.mock('@shared/core', () => ({
     },
     useBattleTaunts: () => taunts,
     useCreateBattleRoom: () => ({ createRoom, isLoading: false }),
-    useOpponents: () => ({ opponents, isLoading: false, isFetching: false, refetch: vi.fn() }),
+    // Stable identity, matching react-query's own refetch — and so the consent-failure
+    // effect below can be asserted on across renders.
+    useOpponents: () => ({ opponents, isLoading: false, isFetching: false, refetch: refetchOpponents }),
     useWinEstimate: () => ({ winProbability: null, isLoading: false, samples: null }),
 }));
 
@@ -201,6 +210,58 @@ describe('useBattlePanel', () => {
         const { result: result2 } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         // Fresh render with error set — overlay starts closed since showResult=false and error present.
         expect(result2.current.overlay.open).toBe(false);
+    });
+
+    it('drops the opponent and re-reads the list on a consent failure', async () => {
+        // The narrow race the server-side filter cannot close: the grant died between
+        // the list being built and the battle being accepted. Re-reading removes the
+        // opponent, and clearing the selection stops the player re-picking it.
+        const rejection = Object.assign(new Error('not allowed'), {
+            isBattleRejection: true,
+            code: 'no-authorization',
+        });
+        const { result, rerender } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+        expect(result.current.setup.selectedOpponentKey).toBe('0xopp:opp1');
+
+        battle.error = rejection as unknown as null;
+        await act(async () => { rerender(); });
+
+        expect(result.current.setup.selectedOpponentKey).toBe('');
+        expect(refetchOpponents).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-reads the list once per failure, not on every render', async () => {
+        // Clearing the selection re-renders. This only stays a single refetch while
+        // both effect deps keep a stable identity, which is what `useOpponents`
+        // returning react-query's own `refetch` buys — so it is worth pinning.
+        const rejection = Object.assign(new Error('revoked'), {
+            isBattleRejection: true,
+            code: 'revoked',
+        });
+        battle.error = rejection as unknown as null;
+        const { rerender } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        await act(async () => { rerender(); });
+        await act(async () => { rerender(); });
+
+        expect(refetchOpponents).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the opponent selected when the refusal is not about consent', async () => {
+        // A band or cap refusal is about this attacker or today, not the opponent's
+        // willingness — dropping them from the list over it would be wrong.
+        const rejection = Object.assign(new Error('too low level'), {
+            isBattleRejection: true,
+            code: 'attacker-level-below-band',
+        });
+        const { result, rerender } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+
+        battle.error = rejection as unknown as null;
+        await act(async () => { rerender(); });
+
+        expect(result.current.setup.selectedOpponentKey).toBe('0xopp:opp1');
+        expect(refetchOpponents).not.toHaveBeenCalled();
     });
 
     it('hashHint is null when provider is not switchboard', () => {

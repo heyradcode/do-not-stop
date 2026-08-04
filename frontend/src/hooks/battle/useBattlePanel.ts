@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
     getReadyPetsUnified,
     isBattleRejection,
+    isConsentFailure,
     useChainCapabilities,
     useBattlePets,
     useBattleTaunts,
@@ -401,6 +402,22 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
             taunts.reset();
         }
     }, [taunts, battle.error, showResult]);
+
+    // A consent failure means this opponent's owner has no standing authorization
+    // covering the fight (§D) — they never granted one, revoked it, or scoped it to
+    // other pets. Matchmaking already excludes all three server-side, so this is the
+    // narrow race where the grant died between the list being built and the battle
+    // being accepted. Re-reading the list drops the opponent, and clearing the
+    // selection stops the player re-picking the one choice that cannot succeed.
+    //
+    // Deliberately not every rejection: a level-band or daily-cap refusal is about
+    // this attacker or today, not the opponent's willingness, and dropping them from
+    // the list over it would be wrong.
+    useEffect(() => {
+        if (!isConsentFailure(battle.error)) return;
+        setSelectedOpponent('');
+        void refetchOpponents();
+    }, [battle.error, refetchOpponents]);
 
     // Once the tx hash exists, retain it as the stable battleId for the result
     // read. EVM clears battle.hash on receipt completion, so capture it here.
