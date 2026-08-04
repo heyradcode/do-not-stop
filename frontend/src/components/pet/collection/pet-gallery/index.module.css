@@ -217,15 +217,11 @@
     display: flex;
     flex-direction: column;
 
-    /* Tracks the taller `.visual` above so the floor still sits just under the
-       card's own content rather than leaving a gap below the actions. */
-    min-height: 330px;
+    /* Height follows content. No min-height and no overflow clip: the art panel
+       below scales with the card's width, so the total height depends on how
+       wide the column ended up, and pinning either end of that just cut the
+       actions off the bottom. */
     border-radius: 12px;
-
-    /* Backstop for the rounded corners: the sizing rules below are what keep
-       content inside the card, this only makes a future regression clip rather
-       than spill over the border. */
-    overflow: hidden;
     border: 1px solid rgb(101 131 255 / 22%);
     background: var(--cp-surface);
     box-shadow: 0 4px 20px rgb(0 0 0 / 45%);
@@ -251,11 +247,11 @@
 .visual {
     position: relative;
 
-    /* Sized for the generated art, which is square. Cards are ~230px wide, so a
-       130px frame cropped roughly half the height off a cover-fitted image and
-       cut the pet in two. 180px keeps the crop shallow while still leaving the
-       card's stats above the fold. */
-    height: 180px;
+    /* Scales with the card instead of a fixed height, so the art keeps its
+       proportion at any column width. 4:3 against square art crops a little off
+       the top and bottom, which is shallow enough to keep the pet intact while
+       still leaving the stats above the fold. */
+    aspect-ratio: 4 / 3;
     flex-shrink: 0;
     display: flex;
     align-items: center;
