@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import type { Pet } from '@shared/core';
 import { neon, neonGlow } from '../theme/neon';
+import PetArt from './PetArt';
 
 type Props = {
     pets: Pet[];
@@ -108,6 +109,16 @@ export default function PetList({
                 return (
                     <View key={id !== undefined ? id.toString() : `pet-${index}`} style={styles.card}>
                         <View style={styles.cardHeader}>
+                            {/*
+                              * Addressed from petIds, not pet.id: these pets come
+                              * straight off the EVM PetCore read, whose tuple carries
+                              * no id or chain of its own. The id lives alongside in
+                              * petIds, and this screen is EVM-only, so both are known
+                              * here even though the pet object does not carry them.
+                              */}
+                            <PetArt
+                                pet={{ id: id?.toString() ?? '', chain: 'evm', dna: pet.dna }}
+                            />
                             <Text style={styles.petName}>{pet.name}</Text>
                             <View style={[styles.rarityBadge, { borderColor: rarityColor }]}>
                                 <Text style={[styles.rarityText, { color: rarityColor }]}>
@@ -172,6 +183,7 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: neon.text,
         flex: 1,
+        marginLeft: 10,
     },
     rarityBadge: {
         borderWidth: 1,

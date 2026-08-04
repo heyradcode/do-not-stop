@@ -24,7 +24,20 @@ by the number of pets rather than by traffic.
 
 It shares no code with `backend`, `frontend`, or `shared`, and nothing in the
 monorepo imports it. That is deliberate: the service is deployable and testable
-on its own, and work here does not touch files other branches are editing. The
+on its own, and work here does not touch files other branches are editing.
+Clients depend on its *routes*, never its code: `petArtUrl` in `@shared/core`
+builds the URL, and `VITE_IMAGE_SERVICE_URL` / `IMAGE_SERVICE_URL` point at it.
+
+That isolation has a cost this service already paid once. `PET_CORE_ABI` in
+`src/chain.ts` is a hand-copied transcription of `PetCore.Pet`, and when the
+retired battle fields left that struct, nothing here noticed: the fixtures
+encoded the same stale layout the reader decoded, so the suite agreed with
+itself while every live EVM read threw. `src/chain.test.ts` now transcribes the
+struct independently of the fixture, which is the only guard available without
+importing from the contracts package. Re-check it against
+`contracts/ethereum/src/PetCore.sol` whenever that struct changes.
+
+The
 one thing it re-implements is `digitPair` (two-digit decimal slicing of DNA,
 canonically `contracts/ethereum/src/DnaLib.sol`); it is not combat math, so
 there is no golden-vector obligation and nothing to drift.
@@ -50,7 +63,14 @@ Built incrementally. Done so far:
 - [x] Readiness probe that exercises the store and RPC (`src/readiness.ts`)
 - [x] Integration tests against fake chain RPCs, a fake S3, and a fake Workers AI
 - [x] `pnpm smoke`: boots the built server against fake upstreams end to end
-- [ ] A live generation run: no real image has been produced yet
+- [x] Clients wired up: `frontend` and `mobile` both render pet art from here
+- [x] Verified against live Base Sepolia and Solana devnet: `/ready` passes all
+      three checks and `/metadata/evm/1` returns a real pet
+- [ ] A live generation run: no real image has been produced yet. Everything up
+      to the Workers AI call is confirmed working against the real chain; with a
+      placeholder token `/image/evm/1.png` answers 502 (the generation call
+      being rejected) and an unminted id answers 404 before spending anything.
+      Real `CF_ACCOUNT_ID` / `CF_API_TOKEN` are the only thing still missing
 - [ ] Solana verified against a real cluster: the decode is covered by fixtures
       only, since there is no validator in the environment this was written in
 
@@ -359,9 +379,9 @@ machine this was written on, so alpine and layer specifics need one real
 
 ### Render
 
-Render reads only the repo-root `render.yaml`, so this block is documented here
-rather than left as inert config in this directory. Adding it is the one edit
-outside `image-generator/`, deliberately deferred so this branch stays isolated:
+Render reads only the repo-root `render.yaml`, and the
+`do-not-stop-image-generator` block now lives there. It is reproduced here
+because this is where the reasoning behind it belongs:
 
 ```yaml
   - type: web

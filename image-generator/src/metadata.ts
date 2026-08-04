@@ -45,8 +45,15 @@ export const buildPetMetadata = (pet: OnChainPet, options: MetadataOptions): Pet
         ...describePetVisualTraits(traits).map((t) => ({ trait_type: t.trait, value: t.value })),
         { trait_type: 'Level', value: pet.level, display_type: 'number' },
         { trait_type: 'Generation', value: pet.generation, display_type: 'number' },
-        { trait_type: 'Wins', value: pet.winCount, display_type: 'number' },
-        { trait_type: 'Losses', value: pet.lossCount, display_type: 'number' },
+        // Only for chains that still keep a battle record on chain. Emitting 0-0
+        // for a chain that stopped writing one would state a record as fact when
+        // the real one lives in the backend and is not readable from here.
+        ...(pet.winCount === undefined
+            ? []
+            : [{ trait_type: 'Wins', value: pet.winCount, display_type: 'number' } as const]),
+        ...(pet.lossCount === undefined
+            ? []
+            : [{ trait_type: 'Losses', value: pet.lossCount, display_type: 'number' } as const]),
     ];
 
     return {

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getPetAvatar, type Pet } from '@shared/core';
+import { getPetAvatar, petArtUrl as buildPetArtUrl, type Pet } from '@shared/core';
 
 /**
  * A pet's generated art, falling back to its emoji avatar.
@@ -33,24 +33,16 @@ import { getPetAvatar, type Pet } from '@shared/core';
 const RETRY_AFTER_MS = 30_000;
 
 /**
- * Pets are addressed differently per chain, matching the service's routes:
- * a numeric id on EVM, the Metaplex Core asset pubkey on Solana. A Solana pet
- * without an assetKey has nothing to look up, so it keeps the emoji.
+ * The route shape lives in `@shared/core` so the mobile app addresses pets the
+ * same way; only the environment read is web-specific.
  */
-export const petArtUrl = (pet: Pick<Pet, 'id' | 'chain' | 'assetKey'>): string | null => {
+export const petArtUrl = (pet: Pick<Pet, 'id' | 'chain' | 'assetKey'>): string | null =>
     // Read here rather than at module scope. Vite substitutes import.meta.env at
     // build time either way, so this costs nothing, and it means a test can stub
     // the variable without re-importing the module: doing that per test forced
     // vi.resetModules() and a dynamic import, which under a full parallel run was
     // slow enough to hit the default timeout and fail at random.
-    const serviceUrl: string | undefined = import.meta.env.VITE_IMAGE_SERVICE_URL;
-    if (!serviceUrl) return null;
-
-    const identifier = pet.chain === 'solana' ? pet.assetKey : pet.id;
-    if (!identifier) return null;
-
-    return `${serviceUrl.replace(/\/+$/, '')}/image/${pet.chain}/${identifier}.png`;
-};
+    buildPetArtUrl(pet, import.meta.env.VITE_IMAGE_SERVICE_URL);
 
 type PetArtProps = {
     pet: Pick<Pet, 'id' | 'chain' | 'assetKey' | 'dna' | 'name'>;

@@ -18,7 +18,14 @@ import { createPublicClient, getAddress, http, type Address, type PublicClient }
 /** Minimal ABI. Only getPet is needed, but the Pet struct must be spelled out
  *  in full: viem decodes the returned tuple positionally, so an abbreviated
  *  component list would silently misalign dna with some other field.
- *  Mirrors contracts/ethereum/src/PetCore.sol's Pet struct. */
+ *  Mirrors contracts/ethereum/src/PetCore.sol's Pet struct.
+ *
+ *  Battle state is deliberately absent. `winCount`, `lossCount`,
+ *  `lastOpponentId` and `sameOpponentStreak` left this struct when per-battle
+ *  on-chain settlement was retired, and the live record moved to the backend's
+ *  `pet_battle_progress`. A stale copy of them here is not a missing attribute
+ *  but a decode failure: viem reads the tuple positionally, so four extra
+ *  components run off the end of the returned data and every EVM read throws. */
 export const PET_CORE_ABI = [
     {
         type: 'function',
@@ -33,8 +40,6 @@ export const PET_CORE_ABI = [
                     { name: 'dna', type: 'uint256' },
                     { name: 'level', type: 'uint32' },
                     { name: 'readyTime', type: 'uint32' },
-                    { name: 'winCount', type: 'uint16' },
-                    { name: 'lossCount', type: 'uint16' },
                     { name: 'rarity', type: 'uint8' },
                     { name: 'xp', type: 'uint32' },
                     { name: 'generation', type: 'uint8' },
@@ -44,8 +49,6 @@ export const PET_CORE_ABI = [
                     { name: 'speciesId', type: 'uint16' },
                     { name: 'parent1Id', type: 'uint256' },
                     { name: 'parent2Id', type: 'uint256' },
-                    { name: 'lastOpponentId', type: 'uint256' },
-                    { name: 'sameOpponentStreak', type: 'uint8' },
                 ],
             },
         ],
@@ -96,8 +99,12 @@ export interface OnChainPet {
     speciesId?: number;
     level: number;
     generation: number;
-    winCount: number;
-    lossCount: number;
+    /** Absent on chains that no longer carry a battle record on chain. EVM
+     *  dropped both when per-battle settlement was retired; Solana's account
+     *  layout still has them. Metadata omits the attributes when absent rather
+     *  than reporting a 0-0 record the chain never claimed. */
+    winCount?: number;
+    lossCount?: number;
 }
 
 /**
@@ -157,8 +164,6 @@ export class EvmPetReader implements PetReader {
             speciesId: pet.speciesId,
             level: pet.level,
             generation: pet.generation,
-            winCount: pet.winCount,
-            lossCount: pet.lossCount,
         };
     }
 }

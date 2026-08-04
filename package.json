@@ -6,11 +6,12 @@
   "packageManager": "pnpm@9.15.9",
   "type": "module",
   "scripts": {
-    "install:all": "pnpm install && pnpm --prefix frontend install && pnpm --prefix website install && pnpm --prefix backend install && pnpm --prefix mobile install && pnpm --prefix contracts/ethereum install",
+    "install:all": "pnpm install && pnpm --prefix frontend install && pnpm --prefix website install && pnpm --prefix backend install && pnpm --prefix mobile install && pnpm --prefix contracts/ethereum install && pnpm --prefix image-generator install --ignore-workspace",
     "dev:fe": "pnpm --prefix frontend dev",
     "dev:web": "pnpm --prefix website dev",
     "dev:be": "pnpm --prefix backend dev",
     "dev:mobile": "pnpm --prefix mobile start",
+    "dev:art": "pnpm --prefix image-generator dev",
     "eth:node": "pnpm --prefix contracts/ethereum node",
     "eth:deploy": "pnpm --prefix contracts/ethereum deploy:inject",
     "eth:vrf:watch": "pnpm --prefix contracts/ethereum vrf:watch",

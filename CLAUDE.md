@@ -33,12 +33,13 @@ Run from repo root unless noted. Package manager is **pnpm** (`packageManager: p
 ### Install / dev
 ```bash
 pnpm install                 # root only
-pnpm install:all             # root + frontend + website + backend + mobile + contracts/ethereum
+pnpm install:all             # root + frontend + website + backend + mobile + contracts/ethereum + image-generator
 pnpm dev                     # backend + frontend (concurrent)
 pnpm dev:fe                  # frontend only
 pnpm dev:be                  # backend only
 pnpm dev:mobile              # mobile only
 pnpm dev:web                 # website only
+pnpm dev:art                 # image-generator only (pet art, :8787)
 pnpm eth:node                # local Hardhat network
 pnpm eth:deploy              # deploy contracts to it
 pnpm sol:docker               # start Solana validator (docker-compose)
@@ -47,6 +48,8 @@ pnpm fe:eth:local            # HH node + deploy + VRF watcher + backend + fronte
 pnpm mobile:eth:local        # same, with mobile instead of frontend
 pnpm fe:sol:local            # backend + frontend + Solana docker/ngrok, concurrently
 ```
+> `pnpm dev:art` is deliberately not folded into `pnpm dev` or the `fe:*:local` stacks. Those run under `concurrently --kill-others-on-fail`, and the image service exits at boot when `CF_ACCOUNT_ID`/`CF_API_TOKEN` are unset, which would take the whole stack down over an optional dependency. Run it in its own terminal when you want art.
+
 > `pnpm eth:deploy` and `pnpm eth:vrf:watch` currently reference `deploy:inject` and `vrf:watch` scripts that **no longer exist** in `contracts/ethereum/package.json` (that package was refactored to `scripts/deploy.ts` plus Hardhat Ignition). If these fail, deploy directly with `pnpm --prefix contracts/ethereum deploy` (or `deploy:sepolia` / `deploy:base-sepolia`) instead of chasing the root wrapper script. `DEVELOPMENT.md` and `contracts/ethereum/README.md` also document a few commands (`pnpm clean`, `pnpm vrf:watch`, and an older "start everything" meaning of `pnpm dev`) that don't match the current root scripts, so treat those docs as partially stale and trust `package.json` scripts blocks over prose.
 
 ### Lint / test / build (root aggregates)
@@ -96,7 +99,7 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | `image-generator` | Node.js, TypeScript, Cloudflare Workers AI, R2 | Standalone service rendering pet NFT art + ERC-721 metadata. **Not a pnpm workspace member** (see below) |
 
 ### Data flow
-On-chain pet state (EVM via subgraph watermark polling, Solana via WebSocket push + backfill) is mirrored into Prisma-owned Postgres (`pet_roster`) by **`indexer-go`, which is the only indexer**. The backend's built-in Node `RosterIndexer` no longer exists — nothing in `backend/src` indexes chain state, so a local stack that needs a populated roster has to run `indexer-go`. `battle_history` is not indexed at all: the backend writes it from its own signed receipts. `indexer-go` also answers pet-state reads and win estimates over gRPC; if it is down the backend falls back to reading Postgres directly (`ROSTER_READ_SOURCE` controls `grpc` vs `postgres`, and matchmaking always reads Postgres). Frontend, mobile, and website all talk to the backend via REST + GraphQL; none of them read chain state directly. The one thing outside that path is pet art: the frontend requests images straight from `image-generator` (`VITE_IMAGE_SERVICE_URL`), which reads `PetCore` over RPC itself rather than trusting the indexer, because a stale `dna` there would not render an outdated pet but a *different* one, and cache that permanently. Art is optional by construction: unset the variable, or let the service be down, and pets fall back to their emoji avatars. See `docs/architecture.md`, `backend/API.md`, `indexer-go/README.md`, `image-generator/README.md`.
+On-chain pet state (EVM via subgraph watermark polling, Solana via WebSocket push + backfill) is mirrored into Prisma-owned Postgres (`pet_roster`) by **`indexer-go`, which is the only indexer**. The backend's built-in Node `RosterIndexer` no longer exists — nothing in `backend/src` indexes chain state, so a local stack that needs a populated roster has to run `indexer-go`. `battle_history` is not indexed at all: the backend writes it from its own signed receipts. `indexer-go` also answers pet-state reads and win estimates over gRPC; if it is down the backend falls back to reading Postgres directly (`ROSTER_READ_SOURCE` controls `grpc` vs `postgres`, and matchmaking always reads Postgres). Frontend, mobile, and website all talk to the backend via REST + GraphQL; none of them read chain state directly. The one thing outside that path is pet art: the frontend and mobile app request images straight from `image-generator` (`VITE_IMAGE_SERVICE_URL` / mobile's `IMAGE_SERVICE_URL`), which reads `PetCore` over RPC itself rather than trusting the indexer, because a stale `dna` there would not render an outdated pet but a *different* one, and cache that permanently. Both clients build the URL with `petArtUrl` from `@shared/core`, so the route shape (numeric id on EVM, Core asset pubkey on Solana) is written down once; only the environment read is per-platform. Art is optional by construction: unset the variable, or let the service be down, and pets fall back to their emoji avatars. Note the service transcribes `PetCore.Pet` by hand in `src/chain.ts` rather than importing an ABI, so a change to that struct silently breaks every EVM read here until it is copied across. See `docs/architecture.md`, `backend/API.md`, `indexer-go/README.md`, `image-generator/README.md`.
 
 Note: two dangling doc links. `docs/architecture.md` does not exist, though `docs/README.md` and `AGENTS.md` both point at it; the component map and data flow live in this file's Architecture section instead. `docs/README.md` also links to `indexer-go/ARCHITECTURE.md`, which does not exist either; the real doc is `indexer-go/README.md`.
 

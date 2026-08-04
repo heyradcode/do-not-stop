@@ -20,8 +20,6 @@ const PET = {
     dna: 79_34_05_61_88_13_42_07n,
     level: 4,
     readyTime: 0,
-    winCount: 3,
-    lossCount: 1,
     rarity: 3,
     xp: 120,
     generation: 1,
@@ -31,8 +29,6 @@ const PET = {
     speciesId: 6,
     parent1Id: 0n,
     parent2Id: 0n,
-    lastOpponentId: 0n,
-    sameOpponentStreak: 0,
 };
 
 /** getPet and totalPets go through the same readContract; dispatch on which. */
@@ -52,29 +48,39 @@ const ZERO_PET = {
     name: '',
     dna: 0n,
     level: 0,
-    winCount: 0,
-    lossCount: 0,
     rarity: 0,
     speciesId: 0,
     generation: 0,
 };
 
 describe('PET_CORE_ABI', () => {
-    it('spells out the full Pet struct so the tuple decodes positionally', () => {
-        // A missing component would silently shift dna onto another field, which
-        // would cache the wrong art forever.
+    // These expectations are transcribed from contracts/ethereum/src/PetCore.sol.
+    // Writing them out rather than deriving them from PET is the point: a test
+    // that checks the ABI against a fixture built from the same assumption
+    // agrees with itself no matter how far both have drifted from the contract.
+    // That is exactly how the retired battle fields (winCount, lossCount,
+    // lastOpponentId, sameOpponentStreak) survived here after PetCore dropped
+    // them, failing every live EVM read while the suite stayed green.
+    it('matches the Pet struct field for field, in order', () => {
+        // A wrong component list does not lose one attribute: viem decodes the
+        // tuple positionally, so it shifts dna onto another field and caches the
+        // wrong art forever, or runs off the end and throws.
         const components = PET_CORE_ABI[0].outputs[0]!.components;
-        expect(components).toHaveLength(17);
-        expect(components.map((c) => c.name).slice(0, 7)).toEqual([
-            'name',
-            'dna',
-            'level',
-            'readyTime',
-            'winCount',
-            'lossCount',
-            'rarity',
+        expect(components.map((c) => `${c.name}:${c.type}`)).toEqual([
+            'name:string',
+            'dna:uint256',
+            'level:uint32',
+            'readyTime:uint32',
+            'rarity:uint8',
+            'xp:uint32',
+            'generation:uint8',
+            'breedCount:uint8',
+            'breedReadyAt:uint32',
+            'trainReadyAt:uint32',
+            'speciesId:uint16',
+            'parent1Id:uint256',
+            'parent2Id:uint256',
         ]);
-        expect(components[12]!.name).toBe('speciesId');
     });
 });
 
@@ -91,8 +97,6 @@ describe('EvmPetReader', () => {
             speciesId: 6,
             level: 4,
             generation: 1,
-            winCount: 3,
-            lossCount: 1,
         });
         expect(vi.mocked(c.readContract).mock.calls[0]![0]).toMatchObject({
             address: CONFIG.petCoreAddress,

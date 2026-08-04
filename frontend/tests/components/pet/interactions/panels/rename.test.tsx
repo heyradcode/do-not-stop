@@ -30,6 +30,8 @@ const capabilities = { renameMinLevel: 1, isConnected: true };
 
 vi.mock('@shared/core', () => ({
     getPetAvatar: () => '🐉',
+    // No art service in these tests: PetArt renders the emoji alone.
+    petArtUrl: () => null,
     getPetClass: () => 'Warrior',
     getXpNumbers: () => ({ xpCurrent: 10, xpMax: 100 }),
     getXpPercent: () => 10,
