@@ -4,11 +4,13 @@ import { act, renderHook } from '@testing-library/react';
 const mocks = vi.hoisted(() => ({
     navigate: vi.fn(),
     locationState: null as { petId?: string } | null,
+    params: {} as { roomId?: string },
 }));
 
 vi.mock('react-router-dom', () => ({
     useNavigate: () => mocks.navigate,
     useLocation: () => ({ state: mocks.locationState }),
+    useParams: () => mocks.params,
 }));
 vi.mock('@constants/interactionRoutes', () => ({ DASHBOARD_HOME: '/dashboard', BATTLE_PATH: '/battle' }));
 vi.mock('@hooks/usePetError', () => ({ formatTxHashHint: vi.fn(() => null) }));
@@ -35,18 +37,25 @@ const battle = { mutate: vi.fn(), clearErrors: vi.fn(), isPending: false, isConf
 const taunts = { generate: vi.fn(), reset: vi.fn(), isLoading: false, turns: [] as unknown[] };
 const createRoom = vi.fn().mockResolvedValue(null);
 let capturedOnSuccess: ((r: unknown) => void) | undefined;
+/** Options the hook handed `useBattlePets` on the latest render. */
+let capturedBattleOptions: { roomId?: string | null; roomSocketUrl?: string } | undefined;
 
 const pets = [{ id: 'p1', name: 'Rex', level: 3, winCount: 1, lossCount: 0, chain: 'evm', readyAt: 0n }];
 const opponents = [{ id: 'opp1', name: 'Blaze', owner: '0xopp', level: 2 }];
 
 vi.mock('@shared/core', () => ({
+    // `src/config.ts` calls both of these at import time, and the hook now imports it
+    // for BATTLE_ROOM_WS_URL. Stubs, not behaviour under test.
+    setStorageAdapter: vi.fn(),
+    setTokenSuccessCallback: vi.fn(),
     isBattleRejection: (e: unknown) =>
         typeof e === 'object' && e !== null && (e as { isBattleRejection?: unknown }).isBattleRejection === true,
     getReadyPetsUnified: (p: { id: string }[]) => p.map((x) => ({ id: x.id, pet: x })),
     useChainCapabilities: () => ({ activeKind: 'evm', randomness: { provider: 'vrf' } }),
     usePetList: () => ({ pets, refetch: vi.fn(), isLoading: false }),
-    useBattlePets: (opts: { onSuccess?: (r: unknown) => void }) => {
+    useBattlePets: (opts: { onSuccess?: (r: unknown) => void; roomId?: string | null; roomSocketUrl?: string }) => {
         capturedOnSuccess = opts?.onSuccess;
+        capturedBattleOptions = opts;
         return battle;
     },
     useBattleTaunts: () => taunts,
@@ -62,7 +71,9 @@ beforeEach(() => {
     Object.assign(battle, { isPending: false, isConfirming: false, error: null, hash: undefined, phase: null, liveReplay: null });
     Object.assign(taunts, { isLoading: false, turns: [] });
     mocks.locationState = null;
+    mocks.params = {};
     capturedOnSuccess = undefined;
+    capturedBattleOptions = undefined;
 });
 
 describe('useBattlePanel', () => {
@@ -115,16 +126,35 @@ describe('useBattlePanel', () => {
         expect(mocks.navigate).toHaveBeenCalledWith('/battle/room-123', { replace: true });
     });
 
-    it('still starts the battle (no navigate) when room creation fails', async () => {
+    it('still starts the battle when room creation fails, clearing any stale room', async () => {
+        // The room in the URL is what gets sent to `accept`, so a previous battle's room
+        // left there would push this battle's updates to the wrong spectators. Failing to
+        // mint means no room, and the URL has to say so.
+        mocks.params = { roomId: 'room-from-a-previous-battle' };
         createRoom.mockResolvedValueOnce(null);
         const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         act(() => { result.current.setup.onSelectFighter('p1'); });
         act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
         await act(async () => { result.current.setup.onBattle(); });
 
-        expect(mocks.navigate).not.toHaveBeenCalled();
+        expect(mocks.navigate).toHaveBeenCalledWith('/battle', { replace: true });
         expect(result.current.overlay.open).toBe(true);
         expect(taunts.generate).toHaveBeenCalled();
+    });
+
+    it('passes the room from the URL to useBattlePets, with the socket endpoint', () => {
+        // Without this the room is only ever cosmetic: `accept` never records it, so the
+        // backend notifies nobody and this client falls back to polling.
+        mocks.params = { roomId: 'room-123' };
+        renderHook(() => useBattlePanel({ isStandaloneView: false }));
+
+        expect(capturedBattleOptions?.roomId).toBe('room-123');
+        expect(capturedBattleOptions?.roomSocketUrl).toMatch(/^wss?:\/\/.*\/ws\/battle-room$/);
+    });
+
+    it('passes a null room when the URL carries none', () => {
+        renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        expect(capturedBattleOptions?.roomId).toBeNull();
     });
 
     it('holds off opening the overlay/generating taunts until room creation settles', () => {

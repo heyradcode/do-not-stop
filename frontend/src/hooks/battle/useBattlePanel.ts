@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
     getReadyPetsUnified,
     isBattleRejection,
@@ -14,6 +14,7 @@ import {
     type BattleResolvedResult,
     type SimOutcome,
 } from '@shared/core';
+import { BATTLE_ROOM_WS_URL } from '../../config';
 import { BATTLE_PATH, DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { formatTxHashHint } from '@hooks/usePetError';
 import { usePetErrorToast } from '@hooks/usePetErrorToast';
@@ -73,6 +74,11 @@ export interface UseBattlePanel {
 export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBattlePanel => {
     const navigate = useNavigate();
     const location = useLocation();
+    // The room this battle is being watched through (§J). The URL is the source of
+    // truth rather than a second piece of state: it is what handleBattle sets when
+    // the room is minted, what a spectator opens, and what survives a reload — all
+    // three have to agree, and duplicating it in state is how they stop agreeing.
+    const { roomId = null } = useParams<{ roomId?: string }>();
     const capabilities = useChainCapabilities();
     const { pets, refetch } = usePetList();
     // Pre-select the pet the player clicked "Battle" on from its gallery card
@@ -145,7 +151,15 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         [outcome, refetch, refetchOpponents],
     );
 
-    const battle = useBattlePets({ onSuccess: handleSuccess });
+    // The room is passed here, not just put in the URL: `accept` records it on the
+    // ledger row, which is what makes the backend notify that room on every state
+    // change. Without it the socket has nothing to join and this client falls back
+    // to polling, while spectators holding the link are never told anything at all.
+    const battle = useBattlePets({
+        onSuccess: handleSuccess,
+        roomId,
+        roomSocketUrl: BATTLE_ROOM_WS_URL,
+    });
     liveReplayRef.current = battle.liveReplay;
 
     // Deliberately not gated on overlayOpen: the animation must keep progressing
@@ -281,8 +295,11 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
             chain: activeChainKind,
             attackerPetId: selectedFighter.id,
             defenderPetId: opponent.id,
-        }).then((roomId) => {
-            if (roomId) navigate(`${BATTLE_PATH}/${roomId}`, { replace: true });
+        }).then((mintedRoomId) => {
+            // Navigate either way. On failure that clears a previous battle's room from
+            // the URL, which would otherwise be handed to this battle's accept call and
+            // push its updates to a room full of the wrong spectators.
+            navigate(mintedRoomId ? `${BATTLE_PATH}/${mintedRoomId}` : BATTLE_PATH, { replace: true });
 
             setOverlayOpen(true);
             const personas = {
