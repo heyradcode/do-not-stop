@@ -80,6 +80,20 @@ describe('overlayRosterPet', () => {
         expect(overlayRosterPet(newborn, progress).readyAt).toBe(9_000n);
     });
 
+    it('takes the greater level when paid on-chain upgrades moved ahead of the row', () => {
+        // The row is seeded at first battle and battles stopped writing chain level,
+        // but train()/levelUp() are live paid actions. A pet that battled at level 1
+        // and was then levelled to 20 on chain must not keep fighting — or being
+        // displayed and matchmade — as level 1.
+        const upgraded = { ...chainPet, level: 20 };
+
+        expect(overlayRosterPet(upgraded, progress).level).toBe(20);
+    });
+
+    it('keeps the backend level when battles moved ahead of the chain', () => {
+        expect(overlayRosterPet(chainPet, progress).level).toBe(12);
+    });
+
     it('does not mutate the pet it was given', () => {
         overlayRosterPet(chainPet, progress);
 

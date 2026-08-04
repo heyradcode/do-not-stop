@@ -72,6 +72,19 @@ async function getOrInitProgress(
 
     const existing = await prisma.petBattleProgress.findUnique({ where: key });
     if (existing) {
+        // Adopt a higher on-chain level before fighting. Battles stopped writing chain
+        // level (§L Phase 6), but paid train()/levelUp() did not retire, so the roster
+        // can move ahead of a row seeded at first battle — and a snapshot built from the
+        // stale row would have the pet fight as if those purchases never happened.
+        // Persisted (not just read as a max) because this level goes into the signed
+        // snapshot, and the receipt's progression must replay from the same number the
+        // fight was computed at. Backend xp is kept: it counts toward the next level's
+        // threshold, which only grows with the adopted level, so no clamp is needed.
+        // The write is idempotent under a concurrent-accept race — both setters
+        // compute the same max from the same roster row.
+        if (seed.level > existing.level) {
+            return prisma.petBattleProgress.update({ where: key, data: { level: seed.level } });
+        }
         return existing;
     }
 

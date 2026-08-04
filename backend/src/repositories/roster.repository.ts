@@ -83,12 +83,16 @@ export async function findReadyOpponents(
     const deploymentId = servedDeploymentId();
     const skip = params.page * params.pageSize;
 
-    // COALESCE, not a merge of individual columns: a progress row supplies all four
-    // progression values or none of them, matching `overlayRosterPet`.
+    // COALESCE for xp/win/loss: a progress row supplies those wholesale, matching
+    // `overlayRosterPet`. Level and ready_at instead MERGE — GREATEST — because both
+    // systems keep writing them: battles raise the row, while paid on-chain
+    // train()/levelUp() raise the roster (and breeding still writes ready_at). A
+    // COALESCE on level would band and order a battled pet at its stale row level,
+    // hiding every level its owner has bought since its first fight.
     const [rows, counted] = await Promise.all([
         prisma.$queryRaw<PetRosterRow[]>`
             SELECT r.chain, r.pet_id AS "petId", r.owner, r.name, r.rarity, r.dna,
-                   COALESCE(p.level, r.level) AS level,
+                   GREATEST(r.level, COALESCE(p.level, 0)) AS level,
                    COALESCE(p.xp, r.xp) AS xp,
                    COALESCE(p.win_count, r.win_count) AS "winCount",
                    COALESCE(p.loss_count, r.loss_count) AS "lossCount",
@@ -105,8 +109,8 @@ export async function findReadyOpponents(
             WHERE r.chain = ${params.chain}
               AND r.owner <> ${params.excludeOwner}
               AND GREATEST(r.ready_at, COALESCE(p.ready_at, 0::bigint)) <= ${nowSeconds}
-              AND COALESCE(p.level, r.level) >= ${params.minLevel}
-            ORDER BY COALESCE(p.level, r.level) ASC, r.pet_id ASC
+              AND GREATEST(r.level, COALESCE(p.level, 0)) >= ${params.minLevel}
+            ORDER BY GREATEST(r.level, COALESCE(p.level, 0)) ASC, r.pet_id ASC
             LIMIT ${params.pageSize} OFFSET ${skip}
         `,
         prisma.$queryRaw<{ total: bigint }[]>`
@@ -119,7 +123,7 @@ export async function findReadyOpponents(
             WHERE r.chain = ${params.chain}
               AND r.owner <> ${params.excludeOwner}
               AND GREATEST(r.ready_at, COALESCE(p.ready_at, 0::bigint)) <= ${nowSeconds}
-              AND COALESCE(p.level, r.level) >= ${params.minLevel}
+              AND GREATEST(r.level, COALESCE(p.level, 0)) >= ${params.minLevel}
         `,
     ]);
 

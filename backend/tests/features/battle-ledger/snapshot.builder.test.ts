@@ -7,7 +7,7 @@ vi.mock('@config/env', () => ({
 vi.mock('@config/prisma', () => ({
     prisma: {
         petRoster: { findUnique: vi.fn() },
-        petBattleProgress: { findUnique: vi.fn(), create: vi.fn() },
+        petBattleProgress: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     },
 }));
 
@@ -109,6 +109,56 @@ describe('merging roster and progress', () => {
                 },
             },
         });
+    });
+});
+
+describe('paid on-chain upgrades after the first battle', () => {
+    it('adopts a higher on-chain level into the row before fighting', async () => {
+        // The row was seeded at first battle, then the owner paid train()/levelUp() on
+        // chain. The snapshot must carry the bought level — and persist it, because the
+        // receipt's progression replays from the signed snapshot.
+        vi.mocked(prisma.petRoster.findUnique).mockResolvedValue(ROSTER_ROW as never); // level 40
+        vi.mocked(prisma.petBattleProgress.findUnique).mockResolvedValue({
+            level: 5,
+            xp: 80,
+            lastOpponentId: '7',
+            streak: 1,
+            readyAt: 0n,
+        } as never);
+        vi.mocked(prisma.petBattleProgress.update).mockResolvedValue({
+            level: 40,
+            xp: 80,
+            lastOpponentId: '7',
+            streak: 1,
+            readyAt: 0n,
+        } as never);
+
+        const snapshot = await buildPetSnapshot('eip155:84532', '1');
+
+        expect(prisma.petBattleProgress.update).toHaveBeenCalledWith({
+            where: expect.anything(),
+            data: { level: 40 },
+        });
+        expect(snapshot!.level).toBe(40);
+        // Backend xp and streak survive the adoption; only the level moves.
+        expect(snapshot!.xp).toBe(80);
+        expect(snapshot!.streak).toBe(1);
+    });
+
+    it('leaves the row alone when backend battles are already ahead of the chain', async () => {
+        vi.mocked(prisma.petRoster.findUnique).mockResolvedValue(ROSTER_ROW as never); // level 40
+        vi.mocked(prisma.petBattleProgress.findUnique).mockResolvedValue({
+            level: 45,
+            xp: 10,
+            lastOpponentId: '0',
+            streak: 0,
+            readyAt: 0n,
+        } as never);
+
+        const snapshot = await buildPetSnapshot('eip155:84532', '1');
+
+        expect(prisma.petBattleProgress.update).not.toHaveBeenCalled();
+        expect(snapshot!.level).toBe(45);
     });
 });
 

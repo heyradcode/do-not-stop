@@ -80,17 +80,19 @@ describe('findReadyOpponents', () => {
         expect(result.rows[0].readyAt).toBe(0n);
     });
 
-    it('bands and orders on the merged level, not the frozen on-chain one', async () => {
+    it('bands and orders on the merged level, taking the greater of the two sources', async () => {
         // The whole point of doing this in SQL: a pet that climbed through backend battles
-        // must be banded at the level it actually reached.
+        // must be banded at the level it actually reached — and one whose owner paid for
+        // on-chain train/level-up after its first battle must not be banded at the stale
+        // row level either. GREATEST, mirroring the ready_at merge, loses neither.
         mockJoinQuery([], 0);
 
         await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 3, page: 0, pageSize: 10 });
 
         const sql = sqlOfCall(0);
-        expect(sql).toContain('COALESCE(p.level, r.level) >=');
-        expect(sql).toContain('ORDER BY COALESCE(p.level, r.level) ASC');
-        expect(sql).not.toMatch(/WHERE[\s\S]*r\.level >=/);
+        expect(sql).toContain('GREATEST(r.level, COALESCE(p.level, 0)) >=');
+        expect(sql).toContain('ORDER BY GREATEST(r.level, COALESCE(p.level, 0)) ASC');
+        expect(sql).not.toMatch(/WHERE[\s\S]*COALESCE\(p\.level, r\.level\) >=/);
     });
 
     it('filters on the later of the two cooldowns', async () => {
@@ -112,7 +114,7 @@ describe('findReadyOpponents', () => {
         const page = sqlOfCall(0);
         const count = sqlOfCall(1);
         for (const clause of [
-            'COALESCE(p.level, r.level) >=',
+            'GREATEST(r.level, COALESCE(p.level, 0)) >=',
             'GREATEST(r.ready_at, COALESCE(p.ready_at, 0::bigint)) <=',
             'r.owner <>',
         ]) {
