@@ -191,7 +191,12 @@
     min-height: 0;
     overflow-y: auto;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    /* `min(230px, 100%)`, not a bare 230px: a minmax floor is a hard floor, so
+       a track stays 230px wide even when the grid itself is narrower, and the
+       cards overflow their container instead of shrinking. That is why the
+       Battle and Send buttons spilled once the side panel expanded and squeezed
+       this column. The min() caps the floor at the available width. */
+    grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr));
     gap: 14px;
     align-content: start;
     padding-bottom: 4px;
@@ -216,6 +221,11 @@
        card's own content rather than leaving a gap below the actions. */
     min-height: 330px;
     border-radius: 12px;
+
+    /* Backstop for the rounded corners: the sizing rules below are what keep
+       content inside the card, this only makes a future regression clip rather
+       than spill over the border. */
+    overflow: hidden;
     border: 1px solid rgb(101 131 255 / 22%);
     background: var(--cp-surface);
     box-shadow: 0 4px 20px rgb(0 0 0 / 45%);
@@ -334,18 +344,30 @@
     gap: 8px;
 }
 
+/* The name block yields to the fixed-width HP pill instead of pushing it out:
+   a flex item will not shrink past its own content unless told to. */
+.head > div:first-child {
+    min-width: 0;
+}
+
 .name {
     font-family: var(--cp-title-font);
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.4px;
     color: #f6f3ff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .petClass {
     font-size: 10px;
     color: rgb(195 210 255 / 50%);
     margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .hp {
@@ -444,6 +466,10 @@
     border-radius: 4px;
     padding: 5px 4px;
     text-align: center;
+
+    /* Four equal tracks only stay equal if each may shrink past its content. */
+    min-width: 0;
+    overflow: hidden;
 }
 
 .tileLabel {
@@ -488,11 +514,17 @@
 
 .battleBtn {
     flex: 1;
+
+    /* Without this the button refuses to shrink below its own label, so in a
+       narrow card it pushes Send past the card's edge. */
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 8px;
+    padding: 8px 6px;
     border-radius: 5px;
     font-size: 11px;
     font-weight: 700;
