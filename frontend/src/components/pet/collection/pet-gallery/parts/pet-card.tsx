@@ -65,7 +65,7 @@ const PetCard: React.FC<PetCardProps> = ({ pet, cooldown, onBattle, onSendClick 
                         {skill.name}
                     </div>
                 ) : null}
-                <div className={styles.avatar}><PetArt pet={pet} /></div>
+                <div className={styles.avatar}><PetArt pet={pet} fill /></div>
             </div>
 
             <div className={styles.info}>

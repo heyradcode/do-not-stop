@@ -46,9 +46,18 @@ export const petArtUrl = (pet: Pick<Pet, 'id' | 'chain' | 'assetKey'>): string |
 
 type PetArtProps = {
     pet: Pick<Pet, 'id' | 'chain' | 'assetKey' | 'dna' | 'name'>;
+    /**
+     * Cover the nearest positioned ancestor instead of sizing to 1em.
+     *
+     * Only the image breaks out; the emoji stays inline and keeps whatever
+     * font-size and animation the caller already gave it. That split is the
+     * point: a card wants art bleeding to its edges, but an emoji stretched
+     * to the same box would just be a huge glyph on a large empty field.
+     */
+    fill?: boolean;
 };
 
-const PetArt: React.FC<PetArtProps> = ({ pet }) => {
+const PetArt: React.FC<PetArtProps> = ({ pet, fill = false }) => {
     const [failed, setFailed] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [attempt, setAttempt] = useState(0);
@@ -96,13 +105,28 @@ const PetArt: React.FC<PetArtProps> = ({ pet }) => {
                 decoding="async"
                 onLoad={() => setLoaded(true)}
                 onError={onError}
-                style={{
-                    gridArea: '1 / 1',
-                    width: '1em',
-                    height: '1em',
-                    objectFit: 'contain',
-                    opacity: loaded ? 1 : 0,
-                }}
+                style={
+                    fill
+                        ? {
+                              position: 'absolute',
+                              inset: 0,
+                              width: '100%',
+                              height: '100%',
+                              // cover, not contain: the art is square and the frame
+                              // is wider than it is tall, so contain would letterbox
+                              // it down to the frame's height and end up barely
+                              // larger than the emoji it replaced.
+                              objectFit: 'cover',
+                              opacity: loaded ? 1 : 0,
+                          }
+                        : {
+                              gridArea: '1 / 1',
+                              width: '1em',
+                              height: '1em',
+                              objectFit: 'contain',
+                              opacity: loaded ? 1 : 0,
+                          }
+                }
             />
         </span>
     );

@@ -147,4 +147,45 @@ describe('PetArt', () => {
 
         expect(screen.getByRole('img')).toHaveAttribute('alt', 'Ada');
     });
+
+    describe('fill', () => {
+        it('sizes to 1em by default, inheriting the surrounding avatar font-size', async () => {
+            const PetArt = await loadPetArt();
+            render(<PetArt pet={pet()} />);
+
+            expect(screen.getByRole('img')).toHaveStyle({ width: '1em', height: '1em' });
+        });
+
+        it('covers the positioned ancestor when filling', async () => {
+            const PetArt = await loadPetArt();
+            render(<PetArt pet={pet()} fill />);
+
+            expect(screen.getByRole('img')).toHaveStyle({
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+            });
+        });
+
+        it('still falls back to the emoji when filling and the image fails', async () => {
+            // Filling changes only the image. A pet whose art never loads must
+            // still get its emoji, at the caller's font-size rather than
+            // stretched across the frame the art would have covered.
+            vi.useFakeTimers();
+            try {
+                const PetArt = await loadPetArt();
+                render(<PetArt pet={pet()} fill />);
+
+                fireEvent.error(screen.getByRole('img'));
+                act(() => { vi.advanceTimersByTime(30_000); });
+                fireEvent.error(screen.getByRole('img'));
+
+                expect(screen.queryByRole('img')).toBeNull();
+                expect(screen.getByText('🦉')).toBeInTheDocument();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+    });
 });

@@ -80,17 +80,21 @@ export function usePolledContractEvent({
                 // one. A chunk that throws leaves the blocks it covered unread and
                 // retries next tick, but everything already read stays read, so a
                 // transient error costs one interval instead of stranding the watch.
-                while (!cancelled && fromBlock <= latest) {
-                    const end = fromBlock + MAX_BLOCK_SPAN - 1n;
+                // `cursor` carries the narrowing the loop would otherwise lose,
+                // since `fromBlock` is a reassigned closure variable.
+                let cursor: bigint = fromBlock;
+                while (!cancelled && cursor <= latest) {
+                    const end = cursor + MAX_BLOCK_SPAN - 1n;
                     const toBlock = end < latest ? end : latest;
                     const logs = await publicClient.getContractEvents({
                         address,
                         abi,
                         eventName: eventName as never,
-                        fromBlock,
+                        fromBlock: cursor,
                         toBlock,
                     });
-                    fromBlock = toBlock + 1n;
+                    cursor = toBlock + 1n;
+                    fromBlock = cursor;
                     if (!cancelled && logs.length > 0) onLogsRef.current(logs);
                 }
             } catch {
