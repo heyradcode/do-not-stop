@@ -1,3 +1,6 @@
+import { hashRuleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
+import { Prisma } from '@generated/prisma/client';
+
 import { prisma } from '@config/prisma';
 import { tryGrpcGetPetState } from '@grpc-client/rosterReads';
 import { mapRosterRowToRosterPet, type PetRosterRow } from './roster.mapping';
@@ -70,6 +73,20 @@ export interface FindOpponentsParams {
  *    reads here keep theirs: they return chain truth and are merged by the caller.
  *  - When this deployment serves no chain of `params.chain`'s family there is no
  *    progression to join, so the plain roster query below is exactly right.
+ *
+ * It also drops pets whose owner has granted no standing defence consent (§D).
+ * Without that filter matchmaking offers opponents that `acceptBattle` will always
+ * refuse with 403 `no-authorization` — and it refuses *after* the attacker has
+ * signed the intent, so the player pays a wallet prompt to learn the fight was
+ * never possible.
+ *
+ * The filter is deliberately weaker than `authorizationCovers`, which stays the
+ * only thing that authorizes a battle. It checks what does not depend on the
+ * attacker (a live, unrevoked, in-window grant covering this pet under the current
+ * ruleset) and leaves the level band and the daily cap to accept time, where the
+ * attacker is known. So it can still list a pet that then refuses this particular
+ * challenger — it can never list one that refuses everybody. Narrowing only:
+ * nothing here can permit a battle the protocol rule would not.
  */
 export async function findReadyOpponents(
     params: FindOpponentsParams
@@ -81,7 +98,33 @@ export async function findReadyOpponents(
     }
 
     const deploymentId = servedDeploymentId();
+    const rulesetHash = hashRuleset(SOURCE_DEFAULT_RULESET);
     const skip = params.page * params.pageSize;
+
+    // `normalizeAccount` lowercases EVM addresses and leaves base58 Solana pubkeys
+    // alone, so only the EVM side is folded — indexer-go is not guaranteed to write
+    // the roster in the same case. Folding base58 too could match two distinct
+    // pubkeys and list a pet whose owner never consented.
+    const ownerMatch =
+        params.chain === 'evm'
+            ? Prisma.sql`LOWER(r.owner) = a.defender_owner`
+            : Prisma.sql`r.owner = a.defender_owner`;
+
+    // A live grant covering this pet, under the ruleset battles are currently settled
+    // under. Level band and daily cap are not here on purpose — see the header.
+    const hasConsent = Prisma.sql`
+        EXISTS (
+            SELECT 1 FROM defense_authorization a
+            WHERE a.chain_id = ${chainId}
+              AND a.deployment_id = ${deploymentId}
+              AND a.ruleset_hash = ${rulesetHash}
+              AND a.revoked_at IS NULL
+              AND a.not_before <= ${nowSeconds}
+              AND a.expires_at > ${nowSeconds}
+              AND ${ownerMatch}
+              AND (a.all_pets OR a.pet_ids @> to_jsonb(r.pet_id))
+        )
+    `;
 
     // COALESCE for xp/win/loss: a progress row supplies those wholesale, matching
     // `overlayRosterPet`. Level and ready_at instead MERGE — GREATEST — because both
@@ -110,6 +153,7 @@ export async function findReadyOpponents(
               AND r.owner <> ${params.excludeOwner}
               AND GREATEST(r.ready_at, COALESCE(p.ready_at, 0::bigint)) <= ${nowSeconds}
               AND GREATEST(r.level, COALESCE(p.level, 0)) >= ${params.minLevel}
+              AND ${hasConsent}
             ORDER BY GREATEST(r.level, COALESCE(p.level, 0)) ASC, r.pet_id ASC
             LIMIT ${params.pageSize} OFFSET ${skip}
         `,
@@ -124,6 +168,7 @@ export async function findReadyOpponents(
               AND r.owner <> ${params.excludeOwner}
               AND GREATEST(r.ready_at, COALESCE(p.ready_at, 0::bigint)) <= ${nowSeconds}
               AND GREATEST(r.level, COALESCE(p.level, 0)) >= ${params.minLevel}
+              AND ${hasConsent}
         `,
     ]);
 

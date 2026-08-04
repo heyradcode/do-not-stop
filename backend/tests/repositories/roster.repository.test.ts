@@ -58,6 +58,22 @@ function sqlOfCall(index: number): string {
     return template.join(' ? ').replace(/\s+/g, ' ');
 }
 
+/**
+ * The SQL of any `Prisma.Sql` fragments interpolated into the nth call.
+ *
+ * `sqlOfCall` only sees the literal chunks; a nested fragment arrives as a value, so
+ * the consent clause is invisible to it. `$queryRaw` is mocked, so the nesting is
+ * never flattened and the fragments are still separate objects here.
+ */
+function fragmentsOfCall(index: number): string {
+    const [, ...values] = vi.mocked(prisma.$queryRaw).mock.calls[index] as unknown as [string[], ...unknown[]];
+    return values
+        .filter((value): value is { sql: string } => typeof (value as { sql?: unknown })?.sql === 'string')
+        .map((fragment) => fragment.sql)
+        .join(' ')
+        .replace(/\s+/g, ' ');
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
     servedChainIdForFamily.mockReturnValue('eip155:31337');
@@ -121,6 +137,60 @@ describe('findReadyOpponents', () => {
             expect(page).toContain(clause);
             expect(count).toContain(clause);
         }
+    });
+
+    it('drops pets whose owner granted no live defence consent', async () => {
+        // Without this the list offers opponents `acceptBattle` always refuses with 403
+        // no-authorization — and it refuses after the attacker has signed, so the player
+        // pays a wallet prompt to find out the fight was never possible.
+        mockJoinQuery([], 0);
+
+        await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 0, page: 0, pageSize: 10 });
+
+        const consent = fragmentsOfCall(0);
+        expect(consent).toContain('EXISTS');
+        expect(consent).toContain('defense_authorization');
+        expect(consent).toContain('a.revoked_at IS NULL');
+        expect(consent).toContain('a.all_pets OR a.pet_ids @>');
+    });
+
+    it('leaves the level band and daily cap to accept time', async () => {
+        // `authorizationCovers` stays the only thing that authorizes a battle. Both of
+        // these depend on the attacker, who is not known when the list is built, so
+        // reimplementing them here could only diverge from the protocol rule.
+        mockJoinQuery([], 0);
+
+        await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 0, page: 0, pageSize: 10 });
+
+        const consent = fragmentsOfCall(0);
+        expect(consent).not.toContain('min_level');
+        expect(consent).not.toContain('max_level');
+        expect(consent).not.toContain('max_battles_per_day');
+    });
+
+    it('folds owner case on EVM only', async () => {
+        // normalizeAccount lowercases EVM addresses and leaves base58 alone; folding a
+        // base58 pubkey could match a different owner entirely.
+        mockJoinQuery([], 0);
+        await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 0, page: 0, pageSize: 10 });
+        expect(fragmentsOfCall(0)).toContain('LOWER(r.owner) = a.defender_owner');
+
+        vi.clearAllMocks();
+        servedChainIdForFamily.mockReturnValue('solana:devnet');
+        mockJoinQuery([], 0);
+        await findReadyOpponents({ chain: 'solana', excludeOwner: 'Bhp', minLevel: 0, page: 0, pageSize: 10 });
+        const solana = fragmentsOfCall(0);
+        expect(solana).toContain('r.owner = a.defender_owner');
+        expect(solana).not.toContain('LOWER(');
+    });
+
+    it('counts consent with the same clause it pages with', async () => {
+        // A count that ignored consent would page past the end of the real result.
+        mockJoinQuery([], 0);
+
+        await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 0, page: 0, pageSize: 10 });
+
+        expect(fragmentsOfCall(1)).toContain('defense_authorization');
     });
 
     it('falls back to the plain roster query for an unserved chain family', async () => {
