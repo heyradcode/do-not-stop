@@ -90,7 +90,17 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
         settleSentRef.current = true;
         settle.writeContract(
             { address: evm.gameLogic.address, abi: evm.gameLogic.abi, functionName: 'settleMint', args: [id], gas: EVM_GAS_LIMITS.settleMint, chainId: evm.chainId },
-            { onError: (e) => console.error('[settleMint]', e) },
+            {
+                onError: (e) => {
+                    // Re-arm. The flag exists to stop one reveal sending two settles,
+                    // not to make a rejected or reverted settle permanent: settleMint
+                    // is permissionless and retryable by design, and the request stays
+                    // pending on chain until it lands. Leaving it set stranded the
+                    // flow with the mint fee already spent and no way to finish it.
+                    settleSentRef.current = false;
+                    console.error('[settleMint]', e);
+                },
+            },
         );
     }, [evm?.gameLogic.address, evm?.gameLogic.abi, evm?.chainId, settle]);
 

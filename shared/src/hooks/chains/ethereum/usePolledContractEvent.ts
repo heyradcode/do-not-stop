@@ -4,6 +4,22 @@ import type { Abi, Address, Log } from 'viem';
 
 const DEFAULT_POLLING_INTERVAL_MS = 4_000;
 
+/**
+ * Widest span asked for in one `eth_getLogs`. Public RPCs cap this — Base
+ * Sepolia's default endpoint (which is what `wagmi.ts` configures, via
+ * `chain.rpcUrls.default`) rejects anything wider with "Invalid parameters",
+ * not with a partial result.
+ *
+ * The cap is why the range is walked in chunks rather than queried in one
+ * span. A single failed poll used to leave `fromBlock` where it was, so the
+ * window grew by roughly one interval's worth of blocks every tick; once it
+ * crossed the cap, every subsequent poll failed for the same reason and the
+ * watcher never delivered another log. That is silent: the caller sees no
+ * error, just an event that never arrives, so a mint waiting on Entropy's
+ * `Revealed` would sit at "Awaiting randomness..." forever.
+ */
+const MAX_BLOCK_SPAN = 450n;
+
 export interface UsePolledContractEventParams {
     address?: Address;
     abi: Abi;
@@ -60,18 +76,25 @@ export function usePolledContractEvent({
                     fromBlock = latest + 1n;
                     return;
                 }
-                if (latest < fromBlock) return;
-                const logs = await publicClient.getContractEvents({
-                    address,
-                    abi,
-                    eventName: eventName as never,
-                    fromBlock,
-                    toBlock: latest,
-                });
-                fromBlock = latest + 1n;
-                if (!cancelled && logs.length > 0) onLogsRef.current(logs);
+                // Walk the backlog in capped chunks, committing progress after each
+                // one. A chunk that throws leaves the blocks it covered unread and
+                // retries next tick, but everything already read stays read, so a
+                // transient error costs one interval instead of stranding the watch.
+                while (!cancelled && fromBlock <= latest) {
+                    const end = fromBlock + MAX_BLOCK_SPAN - 1n;
+                    const toBlock = end < latest ? end : latest;
+                    const logs = await publicClient.getContractEvents({
+                        address,
+                        abi,
+                        eventName: eventName as never,
+                        fromBlock,
+                        toBlock,
+                    });
+                    fromBlock = toBlock + 1n;
+                    if (!cancelled && logs.length > 0) onLogsRef.current(logs);
+                }
             } catch {
-                // Transient RPC error — try again next tick.
+                // Transient RPC error — resume from the first unread block next tick.
             } finally {
                 inFlight = false;
             }
