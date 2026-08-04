@@ -44,7 +44,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Hardhat 3 needs >= 22.10. It calls `.flatMap` on the iterator from
+          # `Map.values()`, which is an Iterator Helpers method that does not exist
+          # before Node 22, so `compile` dies with a TypeError rather than a version
+          # check. Do not drop this back to 20 to match the other workflows.
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
