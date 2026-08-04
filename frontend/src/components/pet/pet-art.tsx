@@ -53,11 +53,23 @@ type PetArtProps = {
      * font-size and animation the caller already gave it. That split is the
      * point: a card wants art bleeding to its edges, but an emoji stretched
      * to the same box would just be a huge glyph on a large empty field.
+     *
+     * The frame is the nearest ancestor that establishes a containing block, so
+     * with `fill` the caller must put any `filter`, `transform` or animated
+     * transform on the emoji (see `emojiClassName`) rather than on a wrapper
+     * around this component. All three make an element a containing block for
+     * absolutely positioned descendants, which silently traps the image at the
+     * wrapper's size instead of the frame's.
      */
     fill?: boolean;
+    /**
+     * Applied to the emoji fallback only, so decoration meant for the glyph
+     * (size, glow, float) does not land on the art. See `fill`.
+     */
+    emojiClassName?: string;
 };
 
-const PetArt: React.FC<PetArtProps> = ({ pet, fill = false }) => {
+const PetArt: React.FC<PetArtProps> = ({ pet, fill = false, emojiClassName }) => {
     const [failed, setFailed] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [attempt, setAttempt] = useState(0);
@@ -78,7 +90,11 @@ const PetArt: React.FC<PetArtProps> = ({ pet, fill = false }) => {
         timer.current = setTimeout(() => setAttempt(1), RETRY_AFTER_MS);
     };
 
-    if (!url || failed) return <>{emoji}</>;
+    // Bare text when the caller has no class for it, so the many callers that
+    // style an ancestor instead keep exactly the DOM they had.
+    const emojiNode = emojiClassName ? <span className={emojiClassName}>{emoji}</span> : emoji;
+
+    if (!url || failed) return <>{emojiNode}</>;
 
     // The emoji and the image share one grid cell, so they stack without a
     // wrapper that reserves its own space, and swapping them causes no layout
@@ -88,7 +104,7 @@ const PetArt: React.FC<PetArtProps> = ({ pet, fill = false }) => {
     // nothing to intersect, so hiding it that way risks never loading it at all.
     return (
         <span style={{ display: 'grid', placeItems: 'center', lineHeight: 1 }}>
-            {loaded ? null : <span style={{ gridArea: '1 / 1' }}>{emoji}</span>}
+            {loaded ? null : <span style={{ gridArea: '1 / 1' }}>{emojiNode}</span>}
             <img
                 // Remounts for the retry: reusing the element with an unchanged
                 // src would not refetch. The 503 is sent no-store, so the browser

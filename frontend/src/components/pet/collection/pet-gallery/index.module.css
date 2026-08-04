@@ -255,11 +255,13 @@
     border-bottom: 1px solid rgb(101 131 255 / 12%);
 }
 
-/* Holds the emoji fallback only. The generated image is taken out of flow by
-   PetArt's `fill` and covers `.visual` instead, so the float animation and glow
-   here apply to the emoji and never to the art, which would show seams at the
-   frame's edges as it moved. */
+/* The emoji fallback itself, not a wrapper around the art.
+   `filter` and the transform `cp-float` animates both make an element a
+   containing block for absolutely positioned descendants, so while this sat
+   around PetArt it captured the filling image and held it at emoji size — the
+   art never reached the frame. Keep this on the glyph only. */
 .avatar {
+    display: inline-block;
     font-size: 3.4rem;
     line-height: 1;
     animation: cp-float 3.8s ease-in-out infinite;

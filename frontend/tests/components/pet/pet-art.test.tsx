@@ -168,6 +168,19 @@ describe('PetArt', () => {
             });
         });
 
+        it('puts the caller class on the emoji, not on a wrapper around the image', async () => {
+            // The trap this guards: `.avatar` carries a drop-shadow and an
+            // animated transform. Both make an element a containing block for
+            // absolutely positioned descendants, so wrapping PetArt in it
+            // trapped the filling image at emoji size and the art never reached
+            // the frame. The class has to land on the glyph.
+            const PetArt = await loadPetArt();
+            render(<PetArt pet={pet()} fill emojiClassName="avatar-cls" />);
+
+            expect(screen.getByText('🦉')).toHaveClass('avatar-cls');
+            expect(screen.getByRole('img').closest('.avatar-cls')).toBeNull();
+        });
+
         it('still falls back to the emoji when filling and the image fails', async () => {
             // Filling changes only the image. A pet whose art never loads must
             // still get its emoji, at the caller's font-size rather than

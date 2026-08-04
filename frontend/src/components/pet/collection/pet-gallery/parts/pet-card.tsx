@@ -65,7 +65,11 @@ const PetCard: React.FC<PetCardProps> = ({ pet, cooldown, onBattle, onSendClick 
                         {skill.name}
                     </div>
                 ) : null}
-                <div className={styles.avatar}><PetArt pet={pet} fill /></div>
+                {/* Not wrapped in `.avatar`: that class carries a drop-shadow and
+                    an animated transform, either of which would become the
+                    containing block for the filling image and pin it to the
+                    emoji's size. It goes on the emoji itself instead. */}
+                <PetArt pet={pet} fill emojiClassName={styles.avatar} />
             </div>
 
             <div className={styles.info}>
