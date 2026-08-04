@@ -4,7 +4,7 @@ use crate::{
     errors::ErrorCode,
     state::{
         GlobalState, MAX_BASE_MINT_FEE_LAMPORTS, MAX_BATTLE_COOLDOWN_SECONDS,
-        MAX_BATTLE_FEE_LAMPORTS, MAX_BREED_COOLDOWN_BASE_SECONDS, MAX_BREED_FEE_LAMPORTS,
+        MAX_BREED_COOLDOWN_BASE_SECONDS, MAX_BREED_FEE_LAMPORTS,
         MAX_GENERATION_CAP, MAX_LEVEL_UP_FEE_LAMPORTS, MAX_MARRIAGE_COOLDOWN_SECONDS,
         MAX_NEWBORN_COOLDOWN_SECONDS, MAX_PROPOSAL_TTL_SECONDS, MAX_RANDOMNESS_EXPIRY_SLOTS,
         MAX_STUD_FEE_LAMPORTS, MAX_TRAIN_COOLDOWN_SECONDS, MAX_TRAIN_FEE_LAMPORTS, MAX_TRAIN_XP,
@@ -42,12 +42,6 @@ pub fn set_max_level(ctx: Context<SetConfig>, value: u16) -> Result<()> {
     require!(value > 0, ErrorCode::InvalidMaxLevel);
     ctx.accounts.global_state.max_level = value;
     emit!(MaxLevelUpdated { value });
-    Ok(())
-}
-
-pub fn set_level_band_width(ctx: Context<SetConfig>, value: u16) -> Result<()> {
-    ctx.accounts.global_state.level_band_width = value;
-    emit!(LevelBandWidthUpdated { value });
     Ok(())
 }
 
@@ -135,15 +129,6 @@ pub fn set_breed_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()>
     Ok(())
 }
 
-/// Mirrors EVM `GameConfig.setBattleFee`: fee charged by `commit_battle`, funding the
-/// settle keeper's `settle_battle` transaction.
-pub fn set_battle_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
-    require!(value <= MAX_BATTLE_FEE_LAMPORTS, ErrorCode::InvalidBattleFee);
-    ctx.accounts.global_state.battle_fee_lamports = value;
-    emit!(BattleFeeUpdated { value });
-    Ok(())
-}
-
 /// Mirrors EVM `GameConfig.setStudFee` (plan §4.4): fee paid by the proposer's spouse's
 /// owner to the proposer when breeding across a marriage.
 pub fn set_stud_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
@@ -198,11 +183,6 @@ pub struct MaxLevelUpdated {
 }
 
 #[event]
-pub struct LevelBandWidthUpdated {
-    pub value: u16,
-}
-
-#[event]
 pub struct GenerationCapUpdated {
     pub value: u8,
 }
@@ -245,11 +225,6 @@ pub struct TrainXpUpdated {
 
 #[event]
 pub struct BreedFeeUpdated {
-    pub value: u64,
-}
-
-#[event]
-pub struct BattleFeeUpdated {
     pub value: u64,
 }
 

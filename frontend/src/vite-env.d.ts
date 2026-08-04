@@ -10,12 +10,10 @@ interface ImportMetaEnv {
     readonly VITE_EVM_CHAIN_ID?: string;
     /** v2 PetCore UUPS proxy address (ERC-721 storage, mint, level/XP, marriage). */
     readonly VITE_PETCORE_ADDRESS?: string;
-    /** v2 GameLogic UUPS proxy address (async battle/breed/train + VRF). */
+    /** v2 GameLogic UUPS proxy address (async breed/mint + entropy). */
     readonly VITE_GAMELOGIC_ADDRESS?: string;
     /** v2 GameConfig address (tunable fees / cooldowns / XP-curve / skill params). */
     readonly VITE_GAMECONFIG_ADDRESS?: string;
-    /** v2 CombatSim address (pure combat simulation lib). */
-    readonly VITE_COMBATSIM_ADDRESS?: string;
     /** Target cluster for CryptoPets / wallet flows (e.g. `devnet`, `mainnet-beta`, `localnet`). */
     readonly VITE_SOLANA_CLUSTER?: string;
     /** Deployed CryptoPets program id (public key). */

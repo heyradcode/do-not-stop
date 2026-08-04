@@ -279,268 +279,6 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         }
     });
 
-    it("Should battle via entropy request->store->settle", async function () {
-        const { petCore, gameLogic, entropy, config } = await deployV2();
-        const publicClient = await viem.getPublicClient();
-        const testClient   = await viem.getTestClient();
-        const [, addr1, addr2] = await viem.getWalletClients();
-
-        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
-        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs");
-
-        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
-        await testClient.mine({ blocks: 1 });
-
-        // Step 1: request
-        const reqHash = await gameLogic.write.requestBattle([1n, 2n], {
-            account: addr1.account, value: await battleValue(entropy, config)
-        });
-        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
-        const reqLogs = parseEventLogs({
-            abi: gameLogic.abi,
-            logs: reqReceipt.logs,
-            eventName: "BattleRandomnessRequested",
-            strict: false
-        });
-        const requestId = reqLogs[0].args.requestId;
-        assert(requestId != null, "No BattleRandomnessRequested event emitted");
-
-        // Step 2: entropy fulfills
-        await revealEntropy(entropy, requestId, addr1.account);
-
-        // Step 3: settle
-        const settleHash = await gameLogic.write.settleBattle([requestId], {
-            account: addr1.account
-        });
-        const settleReceipt = await publicClient.waitForTransactionReceipt({ hash: settleHash });
-        const settleLogs = parseEventLogs({
-            abi: gameLogic.abi,
-            logs: settleReceipt.logs,
-            eventName: "BattleResolved",
-            strict: false
-        });
-        assert.equal(settleLogs.length, 1, "Expected BattleResolved event");
-
-        // One pet won, one lost
-        const [, win1, loss1] = await petCore.read.getPetStats([1n]);
-        const [, win2, loss2] = await petCore.read.getPetStats([2n]);
-        assert.equal(win1 + loss1 + win2 + loss2, 2);
-
-        // Both pets receive XP: winner +100, loser +25 (level 1 vs 1 → xpMult = 100%)
-        const pet1 = await petCore.read.getPet([1n]);
-        const pet2 = await petCore.read.getPet([2n]);
-        const [winner, loser] = win1 > 0 ? [pet1, pet2] : [pet2, pet1];
-        // winner XP = 100 (or levelled up: 100 xp, threshold = 100 * 1 = 100, so exactly levels up)
-        assert(winner.xp === 0 && winner.level === 2 || winner.xp === 100, "Winner XP/level wrong");
-        // loser XP = 25
-        assert.equal(loser.xp, 25);
-    });
-
-    it("Should snapshot battle sim inputs at requestBattle so leveling a pet before settle can't change the outcome", async function () {
-        // Threat model (plan-realtime-battle-ux.md / plan-realtime-battle-impl.md Phase 1):
-        // settleBattle used to read pet stats live, and nothing blocks a pet's level from
-        // changing while a battle is pending, so a player who saw they'd lose could
-        // front-run settle with a level-up to flip the result. requestBattle now snapshots
-        // sim inputs; settleBattle must sim from that frozen snapshot regardless of what
-        // happens to the pets afterward.
-        const { petCore, gameLogic, entropy, config } = await deployV2();
-        const publicClient = await viem.getPublicClient();
-        const testClient   = await viem.getTestClient();
-        const [, addr1, addr2] = await viem.getWalletClients();
-
-        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
-        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs");
-
-        const levelUpFee = await config.read.levelUpFee();
-        async function levelUpTo(petId: bigint, account: any, targetLevel: number) {
-            for (let level = 1; level < targetLevel; level++) {
-                const diff = BigInt(level - 1);
-                const fee = levelUpFee * (100n + diff * diff) / 100n;
-                await petCore.write.levelUp([petId], { account, value: fee });
-            }
-        }
-
-        // Pet 2 is clearly stronger before the battle is even requested — dna is identical
-        // between the two starters here (same mocked reveal), so this is a pure level gap.
-        await levelUpTo(2n, addr2.account, 15);
-
-        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
-        await testClient.mine({ blocks: 1 });
-
-        // Step 1: request — the snapshot is captured here (pet1 level 1, pet2 level 15).
-        const reqHash = await gameLogic.write.requestBattle([1n, 2n], {
-            account: addr1.account, value: await battleValue(entropy, config)
-        });
-        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
-        const requestId = parseEventLogs({
-            abi: gameLogic.abi, logs: reqReceipt.logs, eventName: "BattleRandomnessRequested", strict: false
-        })[0].args.requestId;
-        assert(requestId != null, "No BattleRandomnessRequested event emitted");
-
-        const snapshotAtRequest = await gameLogic.read.getBattleRequest([requestId]);
-        assert.equal(snapshotAtRequest.snapshotted, true);
-        assert.equal(snapshotAtRequest.level1, 1);
-        assert.equal(snapshotAtRequest.level2, 15);
-
-        // Step 2: front-run — level pet 1 up well past pet 2 *after* requesting, *before*
-        // settling. Nothing in GameLogic blocks this while a battle is pending; that gap is
-        // exactly what the snapshot neutralizes.
-        await levelUpTo(1n, addr1.account, 30);
-        const pet1AfterLevelUp = await petCore.read.getPet([1n]);
-        assert.equal(pet1AfterLevelUp.level, 30, "pet1 should have leveled up well past pet2 before settle");
-
-        // Step 3: entropy fulfills. Snapshot fields must still read the pre-level-up values.
-        await revealEntropy(entropy, requestId, addr1.account);
-        const snapshotAtSettle = await gameLogic.read.getBattleRequest([requestId]);
-        assert.equal(snapshotAtSettle.level1, 1, "snapshot level must stay frozen at 1 despite the level-up");
-        assert.equal(snapshotAtSettle.fulfilled, true);
-
-        // Independently compute what settleBattle must produce from the frozen snapshot,
-        // and — as a sanity check that this test actually exercises the race — what it
-        // would have produced had it (wrongly) read pet 1's post-level-up live state instead.
-        const combatSim = await viem.getContractAt("CombatSim", await config.read.combatSim());
-        const sc = await config.read.getSkillConfig();
-        const skill1 = Number(snapshotAtSettle.speciesId1) % 8;
-        const skill2 = Number(snapshotAtSettle.speciesId2) % 8;
-
-        const expectedFromSnapshot = await combatSim.read.simulate([
-            snapshotAtSettle.dna1, Number(snapshotAtSettle.rarity1), Number(snapshotAtSettle.level1), skill1,
-            snapshotAtSettle.dna2, Number(snapshotAtSettle.rarity2), Number(snapshotAtSettle.level2), skill2,
-            snapshotAtSettle.randomness, sc,
-        ]);
-        const expectedFromLiveState = await combatSim.read.simulate([
-            snapshotAtSettle.dna1, Number(snapshotAtSettle.rarity1), Number(pet1AfterLevelUp.level), skill1,
-            snapshotAtSettle.dna2, Number(snapshotAtSettle.rarity2), Number(snapshotAtSettle.level2), skill2,
-            snapshotAtSettle.randomness, sc,
-        ]);
-        assert.equal(
-            expectedFromSnapshot.firstWins, false,
-            "test setup sanity check: pet2 should win at the snapshot's levels (1 vs 15)"
-        );
-        assert.equal(
-            expectedFromLiveState.firstWins, true,
-            "test setup sanity check: pet1 should win if settle wrongly used live state (30 vs 15)"
-        );
-
-        // Step 4: settle. The on-chain result must match the frozen snapshot (pet2 wins),
-        // not the post-level-up live state (which would have pet1 win instead).
-        const settleHash = await gameLogic.write.settleBattle([requestId], { account: addr1.account });
-        const settleReceipt = await publicClient.waitForTransactionReceipt({ hash: settleHash });
-        const resolved = parseEventLogs({
-            abi: gameLogic.abi, logs: settleReceipt.logs, eventName: "BattleResolved", strict: false
-        })[0].args;
-
-        assert.equal(resolved.firstWins, false, "on-chain result must honor the frozen snapshot, not the live-leveled pet1");
-        assert.equal(resolved.winnerId, 2n);
-        assert.equal(resolved.loserId, 1n);
-        assert.equal(resolved.rounds, expectedFromSnapshot.rounds);
-        assert.equal(resolved.winnerHpRemaining, expectedFromSnapshot.winnerHpRemaining);
-        // XP uses the snapshot levels too (winner=15, loser=1): xpMult clamps the winner's
-        // share to 0 (beating a foe 14 levels below is worth nothing, anti-seal-clubbing),
-        // while the loser's share doubles to its 200%-clamp for "punching up" (plan §3.4).
-        // First-ever meeting between these two pets, so same-opponent decay is 0 either way.
-        assert.equal(resolved.xpWin, 0, "winner (level-15 snapshot) beating a level-1 foe earns 0 xp");
-        assert.equal(resolved.xpLoss, 50, "loser (level-1 snapshot) punching up 14 levels earns the 200%-clamped 50 xp");
-    });
-
-    it("Should reject requestBattle with insufficient battle fee", async function () {
-        const { petCore, gameLogic, entropy, config } = await deployV2();
-        const testClient = await viem.getTestClient();
-        const [, addr1, addr2] = await viem.getWalletClients();
-
-        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
-        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs");
-
-        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
-        await testClient.mine({ blocks: 1 });
-
-        const short = (await battleValue(entropy, config)) - 1n; // one wei short of battle + entropy
-        try {
-            await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account, value: short });
-            assert.fail("Expected revert");
-        } catch (error: unknown) {
-            assert((error as Error).message.includes("Insufficient battle/entropy fee"));
-        }
-    });
-
-    it("Should return a zeroed record from getBattleRequest for an unknown/settled requestId", async function () {
-        const { gameLogic } = await deployV2();
-        const empty = await gameLogic.read.getBattleRequest([999999n]);
-        assert.equal(empty.requester, "0x0000000000000000000000000000000000000000");
-        assert.equal(empty.snapshotted, false);
-    });
-
-    it("Should reject battle between pets owned by the same address", async function () {
-        const { petCore, gameLogic } = await deployV2();
-        const testClient = await viem.getTestClient();
-        const [deployer] = await viem.getWalletClients();
-
-        // deployer (owner) creates and mints two pets to themselves
-        await petCore.write.createPet(["PetA", 1234567890123456n, 1, 0, 0n, 0n], { account: deployer.account });
-        await petCore.write.mintTo([deployer.account.address, 1n], { account: deployer.account });
-        await petCore.write.createPet(["PetB", 9876543210987654n, 1, 0, 0n, 0n], { account: deployer.account });
-        await petCore.write.mintTo([deployer.account.address, 2n], { account: deployer.account });
-
-        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
-        await testClient.mine({ blocks: 1 });
-
-        try {
-            await gameLogic.write.requestBattle([1n, 2n], { account: deployer.account });
-            assert.fail("Expected revert");
-        } catch (error: unknown) {
-            assert((error as Error).message.includes("Can't fight own pet"));
-        }
-    });
-
-    it("Should reject battle with a pet the caller does not own", async function () {
-        const { petCore, gameLogic, entropy, config } = await deployV2();
-        const testClient = await viem.getTestClient();
-        const [, addr1, addr2] = await viem.getWalletClients();
-
-        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
-        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs");
-
-        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
-        await testClient.mine({ blocks: 1 });
-
-        try {
-            await gameLogic.write.requestBattle([1n, 2n], { account: addr2.account });
-            assert.fail("Expected revert");
-        } catch (error: unknown) {
-            assert((error as Error).message.includes("Not the owner of this pet"));
-        }
-    });
-
-    it("Should reject requestBattle when the level gap exceeds levelBandWidth", async function () {
-        const { petCore, gameLogic, entropy, config } = await deployV2();
-        const testClient = await viem.getTestClient();
-        const [deployer, addr1, addr2] = await viem.getWalletClients();
-
-        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Strong");
-        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Weak");
-
-        // Level pet 1 up to level 12 (11 level-ups from level 1), one addXp call per level
-        // since add_xp/addXp applies at most one level-up per call (plan §3.4).
-        for (let level = 1; level < 12; level++) {
-            await petCore.write.addXp([1n, BigInt(100 * level)], { account: deployer.account });
-        }
-        const pet1 = await petCore.read.getPet([1n]);
-        assert.equal(pet1.level, 12);
-
-        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
-        await testClient.mine({ blocks: 1 });
-
-        // Default levelBandWidth (100) tolerates an 11-level gap; tighten it to 10.
-        await config.write.setLevelBandWidth([10], { account: deployer.account });
-
-        try {
-            await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
-            assert.fail("Expected revert");
-        } catch (error: unknown) {
-            assert((error as Error).message.includes("Level gap too large"));
-        }
-    });
-
     it("Should pause and block actions", async function () {
         const { petCore, gameLogic, entropy, config } = await deployV2();
         const [deployer, addr1] = await viem.getWalletClients();
@@ -564,7 +302,7 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(await petCore.read.totalPets(), 1n);
     });
 
-    it("Pause drill (GameLogic): blocks battle/breed/train but leaves withdrawals callable", async function () {
+    it("Pause drill (GameLogic): blocks breed/train but leaves withdrawals callable", async function () {
         const { petCore, gameLogic, entropy, config } = await deployV2();
         const [deployer, addr1, addr2] = await viem.getWalletClients();
 
@@ -577,13 +315,6 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         // so they revert with "Pausable: paused" regardless of cooldowns/fees.
         try {
             await gameLogic.write.train([1n], { account: addr1.account });
-            assert.fail("Expected revert while paused");
-        } catch (error: unknown) {
-            assert((error as Error).message.includes("Pausable: paused"));
-        }
-
-        try {
-            await gameLogic.write.requestBattle([1n, 2n], { account: addr1.account });
             assert.fail("Expected revert while paused");
         } catch (error: unknown) {
             assert((error as Error).message.includes("Pausable: paused"));
@@ -850,51 +581,6 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(rec2.status, "success");
     });
 
-    it("Should cancel a pending battle request before fulfillment", async function () {
-        const { petCore, gameLogic, entropy, config } = await deployV2();
-        const publicClient = await viem.getPublicClient();
-        const testClient   = await viem.getTestClient();
-        const [, addr1, addr2] = await viem.getWalletClients();
-
-        await mintStarter(petCore, gameLogic, entropy, config, addr1, "Mine");
-        await mintStarter(petCore, gameLogic, entropy, config, addr2, "Theirs");
-
-        await testClient.increaseTime({ seconds: 901 }); // > battleCooldown (900s)
-        await testClient.mine({ blocks: 1 });
-
-        const battleFee = await config.read.battleFee();
-        const reqHash = await gameLogic.write.requestBattle([1n, 2n], {
-            account: addr1.account, value: await battleValue(entropy, config)
-        });
-        const reqReceipt = await publicClient.waitForTransactionReceipt({ hash: reqHash });
-        const reqLogs = parseEventLogs({
-            abi: gameLogic.abi,
-            logs: reqReceipt.logs,
-            eventName: "BattleRandomnessRequested",
-            strict: false
-        });
-        const requestId = reqLogs[0].args.requestId;
-
-        // Pets are locked
-        assert.equal(await gameLogic.read.petBattleRequestId([1n]), requestId);
-
-        // Cancel frees the lock and refunds the escrowed battle fee
-        const balanceBefore = await publicClient.getBalance({ address: addr1.account.address });
-        const cancelHash = await gameLogic.write.cancelBattle([requestId], { account: addr1.account });
-        const cancelReceipt = await publicClient.waitForTransactionReceipt({ hash: cancelHash });
-        const gasCost = cancelReceipt.gasUsed * cancelReceipt.effectiveGasPrice;
-        const balanceAfter = await publicClient.getBalance({ address: addr1.account.address });
-        assert.equal(balanceAfter, balanceBefore - gasCost + battleFee, "battleFee must be refunded on cancel");
-        assert.equal(await gameLogic.read.petBattleRequestId([1n]), 0n);
-
-        // Pets can be re-requested
-        const reqHash2 = await gameLogic.write.requestBattle([1n, 2n], {
-            account: addr1.account, value: await battleValue(entropy, config)
-        });
-        const rec2 = await publicClient.waitForTransactionReceipt({ hash: reqHash2 });
-        assert.equal(rec2.status, "success");
-    });
-
     it("Should train a pet: pay level-scaled fee, receive XP, trigger train cooldown", async function () {
         const { petCore, gameLogic, entropy, config } = await deployV2();
         const testClient = await viem.getTestClient();
@@ -991,16 +677,16 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
 
         // Offspring is pet 3
         const newborn = await petCore.read.getPet([3n]);
-        const battleCooldown = await config.read.battleCooldown();    // 5s
         const newbornCooldown = await config.read.newbornCooldown();  // 60s
 
-        // newborn readyTime should be further in future than battleCooldown would give
-        // (i.e. readyTime > block.timestamp + battleCooldown)
+        // A starter mints with readyTime 0 (battles no longer set it, §L Phase 6), so a
+        // newborn's cooldown is visible as a readyTime in the future at all.
         assert(
-            newborn.readyTime > BigInt(Math.floor(Date.now() / 1000)) + battleCooldown,
-            "Newborn should have newborn cooldown, not just battle cooldown"
+            newborn.readyTime > BigInt(Math.floor(Date.now() / 1000)),
+            "Newborn should carry the newborn cooldown"
         );
-        // Pet is not ready for battle immediately
+        // Pet is not ready for battle immediately. The backend honours this through the
+        // indexed pet_roster.ready_at, so newborns stay barred from backend battles too.
         assert.equal(await petCore.read.isReady([3n]), false);
 
         // After newborn cooldown elapses, pet becomes battle-ready
@@ -1193,67 +879,19 @@ describe("CryptoPetsV2 (UUPS proxies)", async function () {
         assert.equal(pet.speciesId, 0, "speciesId should be 0 when the rarity tier's pool size is 0");
     });
 
-    it("Should expose default skill config values via getSkillConfig()", async function () {
+    it("Should expose the default skill balance values", async function () {
+        // getSkillConfig() went with CombatSim (it returned that contract's struct). The
+        // individual tunables remain, so the defaults are still pinned here.
         const { config } = await deployV2();
-        const sc = await config.read.getSkillConfig();
 
-        assert.equal(sc.tankHpMult, 120);
-        assert.equal(sc.shellDefMult, 125);
-        assert.equal(sc.swiftCritBonus, 50);
-        assert.equal(sc.cunningCritCap, 4000);
-        assert.equal(sc.furyDmgMult, 130);
-        assert.equal(sc.furyHpThreshold, 3000);
-        assert.equal(sc.sageMdefMult, 125);
-        assert.equal(sc.bloodlustBps, 150);
-    });
-
-    it("Should apply the Tank skill's pre-battle HP bonus in CombatSim.simulate", async function () {
-        const { config } = await deployV2();
-        const combatSim = await viem.getContractAt("CombatSim", await config.read.combatSim());
-        const sc = await config.read.getSkillConfig();
-
-        const dna1 = 1234567890123456n; // level-50 attacker, far stronger than dna2
-        const dna2 = 9876543210987654n; // level-1 defender
-        const seed = 42n;
-        const NO_SKILL = 99; // sentinel: matches none of the 0-7 archetype branches
-
-        const withTank = await combatSim.read.simulate([
-            dna1, 1, 50, 0,        // pet1: rarity 1, level 50, Tank
-            dna2, 1, 1, NO_SKILL,  // pet2: rarity 1, level 1, no skill
-            seed, sc,
-        ]);
-        const withoutTank = await combatSim.read.simulate([
-            dna1, 1, 50, NO_SKILL,
-            dna2, 1, 1, NO_SKILL,
-            seed, sc,
-        ]);
-
-        assert.equal(withTank.firstWins, true, "pet1 should win regardless of Tank");
-        assert.equal(withoutTank.firstWins, true, "pet1 should win regardless of Tank");
-        assert(
-            withTank.winnerHpRemaining > withoutTank.winnerHpRemaining,
-            "Tank's +20% starting HP should leave more HP remaining after an identical fight"
-        );
-    });
-
-    it("Should run CombatSim.simulate without reverting for every skill archetype (0-7)", async function () {
-        const { config } = await deployV2();
-        const combatSim = await viem.getContractAt("CombatSim", await config.read.combatSim());
-        const sc = await config.read.getSkillConfig();
-
-        const dna1 = 1234567890123456n;
-        const dna2 = 9876543210987654n;
-
-        for (let skill = 0; skill < 8; skill++) {
-            const result = await combatSim.read.simulate([
-                dna1, 3, 20, skill,
-                dna2, 3, 20, skill,
-                BigInt(skill) + 1n,
-                sc,
-            ]);
-            assert(result.rounds >= 1 && result.rounds <= 30, `skill ${skill}: rounds in range`);
-            assert(result.winnerHpRemaining <= 65535, `skill ${skill}: winnerHpRemaining within uint16`);
-        }
+        assert.equal(await config.read.tankHpMult(), 120);
+        assert.equal(await config.read.shellDefMult(), 125);
+        assert.equal(await config.read.swiftCritBonus(), 50);
+        assert.equal(await config.read.cunningCritCap(), 4000);
+        assert.equal(await config.read.furyDmgMult(), 130);
+        assert.equal(await config.read.furyHpThreshold(), 3000);
+        assert.equal(await config.read.sageMdefMult(), 125);
+        assert.equal(await config.read.bloodlustBps(), 150);
     });
 
     const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";

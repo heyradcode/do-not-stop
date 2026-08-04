@@ -59,8 +59,12 @@ export const env = {
     },
 
     /**
-     * indexer-go gRPC link (StreamLiveBattles — chain-truth battle pushes).
-     * Optional: unset = feature off, the webhook/poll paths still work.
+     * indexer-go gRPC link (pet-state reads and win estimates). Optional: unset = those
+     * fall back to Postgres and to "odds unavailable" respectively.
+     *
+     * No longer carries battles. `StreamLiveBattles` pushed chain-truth settle events,
+     * which stopped existing with on-chain battles (§L Phase 6); the backend's own signed
+     * receipt is the record now, and the RPC is gone from the proto contract.
      */
     indexerGrpc: {
         /** e.g. localhost:50051. */
@@ -70,10 +74,13 @@ export const env = {
     },
 
     /**
-     * Where roster reads (matchmaking) are answered: 'grpc' = indexer-go's
-     * RAM cache with automatic Prisma fallback; 'postgres' (default) = Prisma
-     * only. The instant kill switch for the milestone 8 read path — flip back
-     * without redeploying indexer-go.
+     * Where roster reads are answered: 'grpc' = indexer-go's RAM cache with automatic
+     * Prisma fallback; 'postgres' (default) = Prisma only. The instant kill switch for the
+     * milestone 8 read path — flip back without redeploying indexer-go.
+     *
+     * No longer covers matchmaking. `findReadyOpponents` filters and bands on merged
+     * backend progression, which the cache has no view of, so it always reads Postgres
+     * regardless of this setting. Pet-detail reads still honour it.
      */
     rosterReadSource:
         process.env.ROSTER_READ_SOURCE?.trim().toLowerCase() === 'grpc' ? 'grpc' : 'postgres',
@@ -96,10 +103,6 @@ export const env = {
             : undefined) as `0x${string}` | undefined,
         chainId: process.env.KEEPER_CHAIN_ID ? Number(process.env.KEEPER_CHAIN_ID) : undefined,
         gameLogicAddress: process.env.KEEPER_GAME_LOGIC_ADDRESS?.trim() as `0x${string}` | undefined,
-        /** Optional: enables the live-battle-socket feature (push a computed sim to the
-         *  frontend over WebSocket the moment entropy reveals). Unset = feature just
-         *  doesn't broadcast; settling itself is unaffected. */
-        gameConfigAddress: process.env.KEEPER_GAME_CONFIG_ADDRESS?.trim() as `0x${string}` | undefined,
         backfillBlocks: BigInt(process.env.KEEPER_BACKFILL_BLOCKS?.trim() || '5000'),
         /** Local dev only: also acts as the Entropy provider (MockEntropy.mockReveal),
          *  replacing the old removed vrf-fulfill-watcher.ts for the entropy flow. Refuse
@@ -112,20 +115,130 @@ export const env = {
     },
 
     /**
-     * Solana settle keeper (docs/plan-realtime-battle-solana.md Workstream S2): settles
-     * `commit_battle` requests from this wallet once Switchboard On-Demand reveals their
-     * randomness. Battle only — settle_breed/settle_mint still need the player's own
-     * signature (their Metaplex Core mint CPI requires a real payer signature; see the
-     * plan doc). Off unless KEEPER_SOLANA_ENABLED=true; all three fields below are
-     * required once it is (checked at startSolanaSettleKeeperFeature() time so a
-     * misconfigured keeper logs and no-ops rather than crashing the server on boot).
+     * Backend-authoritative battles (docs/plan-backend-battle-architecture.md).
+     *
+     * Every wallet-signed object binds `chainId` and `deploymentId`, and that binding only
+     * stops a replay if this server refuses payloads naming a different one. Both values are
+     * configured rather than inferred: a deployment id has no on-chain source, and reading it
+     * from the database would make it whatever the data happened to say.
+     *
+     * `BATTLE_DEPLOYMENT_ID` must differ between environments, or a staging signature is a
+     * valid production signature. The default is deliberately a local-only value, so a
+     * production deployment that forgets to set it rejects everything rather than silently
+     * sharing staging's identity.
      */
-    solanaSettleKeeper: {
-        enabled: process.env.KEEPER_SOLANA_ENABLED?.trim().toLowerCase() === 'true',
-        rpcUrl: process.env.KEEPER_SOLANA_RPC_URL?.trim() || undefined,
-        /** JSON array string (solana-keygen file format), e.g. "[12,34,...]". */
-        keypairJson: process.env.KEEPER_SOLANA_KEYPAIR?.trim() || undefined,
-        programId: process.env.KEEPER_SOLANA_PROGRAM_ID?.trim() || undefined,
-        pollIntervalMs: Number(process.env.KEEPER_SOLANA_POLL_INTERVAL_MS?.trim() || '5000'),
+    battle: {
+        /**
+         * Backend-authoritative battle mode (§L Phase 3).
+         *
+         * Off by default, and deliberately a separate switch from the on-chain path rather
+         * than a replacement for it: Phase 3 runs both side by side, and the on-chain flow
+         * has to keep working untouched whether this is on or not. With it off the write
+         * routes refuse, the worker does not start, and no signer is required — a
+         * deployment that never turns this on should not need a signing key at all.
+         *
+         * "Rewardless" is not a setting. Receipts carry no transferable reward at any
+         * setting; that arrives with the batch registry in Group I.
+         */
+        enabled: process.env.BATTLE_BACKEND_MODE_ENABLED?.trim().toLowerCase() === 'true',
+        deploymentId: process.env.BATTLE_DEPLOYMENT_ID?.trim() || 'local-dev',
+        /** Comma-separated protocol chain ids, e.g. `eip155:84532,solana:devnet`. */
+        chainIds: (process.env.BATTLE_CHAIN_IDS?.trim() || 'eip155:31337,solana:localnet')
+            .split(',')
+            .map((id) => id.trim())
+            .filter((id) => id.length > 0),
+        /**
+         * drand quicknet endpoints, tried in order.
+         *
+         * Several by default because a battle waiting on a committed round cannot be moved to
+         * a different round if one endpoint is down (§E): the only options are to keep trying
+         * or to forfeit, so redundancy here directly reduces forfeits. Every response is BLS
+         * verified against the pinned key regardless of which endpoint answered, so an
+         * untrustworthy mirror cannot do worse than fail.
+         */
+        drandUrls: (
+            process.env.BATTLE_DRAND_URLS?.trim() ||
+            'https://api.drand.sh,https://api2.drand.sh,https://api3.drand.sh'
+        )
+            .split(',')
+            .map((url) => url.trim().replace(/\/$/, ''))
+            .filter((url) => url.length > 0),
+        drandTimeoutMs: Number(process.env.BATTLE_DRAND_TIMEOUT_MS?.trim() || '4000'),
+        /**
+         * How long a battle waits on its committed round before forfeiting (§E). Measured from
+         * when the round was *due* to publish, not from acceptance, since a couple of rounds'
+         * offset is expected delay, not an outage. Long enough that ordinary drand jitter never
+         * forfeits a battle; short enough that a genuine outage does not leave pets locked
+         * indefinitely. Default: 300s (100 quicknet rounds).
+         */
+        forfeitAfterSeconds: Number(process.env.BATTLE_FORFEIT_AFTER_SECONDS?.trim() || '300'),
+        /** How often the compute worker polls the outbox for due messages, in ms. */
+        workerPollIntervalMs: Number(process.env.BATTLE_WORKER_POLL_INTERVAL_MS?.trim() || '2000'),
+        /** Messages claimed per poll, per topic. */
+        workerBatchSize: Number(process.env.BATTLE_WORKER_BATCH_SIZE?.trim() || '10'),
+        /**
+         * Post-battle cooldown, applied to both pets after a signed receipt
+         * (§C's `pet_battle_progress`, distinct from the indexed `pet_roster.ready_at`,
+         * which breeding still writes).
+         *
+         * 900s carries over from the retired on-chain `GameConfig.battleCooldown`, which
+         * no longer exists (§L Phase 6) — it is kept as a sane starting value rather than
+         * an arbitrary one, and is now free to change independently.
+         */
+        cooldownSeconds: Number(process.env.BATTLE_COOLDOWN_SECONDS?.trim() || '900'),
+        /**
+         * Smallest run of published receipts worth anchoring (§I).
+         *
+         * A batch costs one transaction regardless of how many receipts it covers, so tiny
+         * batches spend gas to amortise nothing. The default is deliberately low for a
+         * quiet deployment rather than tuned: the right cadence depends on real battle
+         * volume and gas price, which §L Phase 4 says to set from what the rewardless
+         * launch actually shows, not from a guess made here.
+         */
+        batchMinSize: Number(process.env.BATTLE_BATCH_MIN_SIZE?.trim() || '1'),
+        /** Most receipts in one batch. Bounds proof length and the anchoring transaction. */
+        batchMaxSize: Number(process.env.BATTLE_BATCH_MAX_SIZE?.trim() || '1000'),
+        /**
+         * Anchoring batch roots in `BattleBatchRegistry` (§I).
+         *
+         * All four are required together; with any missing, batches are still built and
+         * their receipts are still signed and public, they are simply not anchored. That
+         * degradation is the right one: anchoring proves publication, not honesty, so
+         * losing it costs immutability rather than correctness.
+         */
+        anchorRpcUrl: process.env.BATTLE_ANCHOR_RPC_URL?.trim() || undefined,
+        anchorPrivateKey: (process.env.BATTLE_ANCHOR_PRIVATE_KEY?.trim()
+            ? (process.env.BATTLE_ANCHOR_PRIVATE_KEY.trim().startsWith('0x')
+                ? process.env.BATTLE_ANCHOR_PRIVATE_KEY.trim()
+                : `0x${process.env.BATTLE_ANCHOR_PRIVATE_KEY.trim()}`)
+            : undefined) as `0x${string}` | undefined,
+        anchorRegistryAddress: process.env.BATTLE_ANCHOR_REGISTRY_ADDRESS?.trim() || undefined,
+        anchorChainId: process.env.BATTLE_ANCHOR_CHAIN_ID ? Number(process.env.BATTLE_ANCHOR_CHAIN_ID) : undefined,
+        /** How often to build and anchor. Latency only — both halves are idempotent. */
+        anchorIntervalMs: Number(process.env.BATTLE_ANCHOR_INTERVAL_MS?.trim() || '60000'),
+    },
+
+    /**
+     * The battle signer (§G). Separate from `battle` because these are credentials, and keeping
+     * them in their own block makes it obvious which config is sensitive.
+     *
+     * Production must use a KMS: `BATTLE_SIGNER_PRIVATE_KEY` is refused when NODE_ENV is
+     * production, so a deployment cannot quietly fall back to an in-process key.
+     *
+     * `requiredAttesters` is what makes §F's circuit breaker unbypassable: a receipt cannot be
+     * signed unless every listed implementation has attested to that exact receipt hash. Add
+     * `go-verifier` once the independent verifier is wired up; until then the single-attester
+     * default means only the TypeScript engine's agreement is enforced.
+     */
+    battleSigner: {
+        keyId: process.env.BATTLE_SIGNER_KEY_ID?.trim() || 'battle-signer-dev',
+        /** Dev and test only. Ignored (and refused) in production. */
+        privateKey: process.env.BATTLE_SIGNER_PRIVATE_KEY?.trim() || undefined,
+        /** e.g. `aws-kms` or `gcp-kms`. Unset locally; required in production. */
+        kmsProvider: process.env.BATTLE_SIGNER_KMS_PROVIDER?.trim() || undefined,
+        requiredAttesters: (process.env.BATTLE_SIGNER_REQUIRED_ATTESTERS?.trim() || 'typescript-engine')
+            .split(',')
+            .map((name) => name.trim())
+            .filter((name) => name.length > 0),
     },
 } as const;

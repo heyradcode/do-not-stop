@@ -1,0 +1,45 @@
+{
+  "description": "Real drand data, fetched 2026-07-26, used to test beacon verification against the live network's own output rather than against values this repo produced. Chain info from https://api.drand.sh/v2/beacons/{quicknet,default}/info; signatures from /v2/beacons/quicknet/rounds/{n}; the `randomness` values come from drand's v1 endpoint (https://api.drand.sh/<chainHash>/public/<round>), which publishes them directly, so they independently pin our sha256(signature) derivation instead of restating it.",
+  "quicknet": {
+    "info": {
+      "public_key": "83cf0f2896adee7eb8b5f01fcad3912212c437e0073e911fb90022d3e760183c8c4b450b6a0a6c3ac6a5776a2d1064510d1fec758c921cc22b0e17e63aaf4bcb5ed66304de9cf809bd274ca73bab4af5a6e9c76a4bc09e76eae8991ef5ece45a",
+      "period": 3,
+      "genesis_time": 1692803367,
+      "chain_hash": "52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
+      "scheme": "bls-unchained-g1-rfc9380",
+      "beacon_id": "quicknet"
+    },
+    "rounds": [
+      {
+        "round": 1,
+        "signature": "b55e7cb2d5c613ee0b2e28d6750aabbb78c39dcc96bd9d38c2c2e12198df95571de8e8e402a0cc48871c7089a2b3af4b",
+        "randomness": "1466a6cd24e327188770752f6134001c64d6efcc590ccc26b721611ad96f165a"
+      },
+      {
+        "round": 1000,
+        "signature": "b44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39",
+        "randomness": "fe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd"
+      },
+      {
+        "round": 21000000,
+        "signature": "971cbe88adc436f6411fd26d51887ede7ba144264cd05edec6645b5e170a7702d16082947a85d89c89cb47cd8eb7d817",
+        "randomness": "36ecd957580ee415f951370e2a5e13273be97de9072418aaf14d38242979e3c1"
+      }
+    ]
+  },
+  "chainedChain": {
+    "note": "The original drand mainnet chain. Chained scheme, 30s period, G1 public key and G2 signatures, so nothing about it is compatible with quicknet. Present so tests can prove an unpinned chain is refused rather than mis-verified.",
+    "info": {
+      "public_key": "868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31",
+      "period": 30,
+      "genesis_time": 1595431050,
+      "chain_hash": "8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce",
+      "scheme": "pedersen-bls-chained",
+      "beacon_id": "default"
+    },
+    "round": {
+      "round": 1000000,
+      "signature": "87e355169c4410a8ad6d3e7f5094b2122932c1062f603e6628aba2e4cb54f46c3bf1083c3537cd3b99e8296784f46fb40e090961cf9634f02c7dc2a96b69fc3c03735bc419962780a71245b72f81882cf6bb9c961bcf32da5624993bb747c9e5"
+    }
+  }
+}

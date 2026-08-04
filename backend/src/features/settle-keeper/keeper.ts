@@ -9,7 +9,7 @@ import {
     type PublicClient,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { ENTROPY_ABI, GAME_CONFIG_ABI, GAME_LOGIC_ABI } from './abi';
+import { ENTROPY_ABI, GAME_LOGIC_ABI } from './abi';
 import {
     buildPendingMap,
     isSettledEvent,
@@ -19,20 +19,16 @@ import {
     type TrackedRequestType,
 } from './requests';
 import { createSubmitter } from './submitter';
-import { broadcastLiveBattle } from '@ws/liveBattleSocket';
-import { simulate, encodeSimOutcome } from '@shared/core/node';
 
 export interface SettleKeeperConfig {
     rpcUrl: string;
     privateKey: `0x${string}`;
     chainId: number;
     gameLogicAddress: Address;
-    /** Optional: enables the live-battle-socket broadcast (see its call site). */
-    gameConfigAddress?: Address | undefined;
     backfillBlocks: bigint;
     /** Local-dev only: also act as the Entropy provider, auto-revealing every
-     *  tracked request against MockEntropy so battles/breeds/mints actually
-     *  progress without a human calling mockReveal by hand. */
+     *  tracked request against MockEntropy so breeds/mints actually progress
+     *  without a human calling mockReveal by hand. */
     mockReveal: boolean;
 }
 
@@ -47,8 +43,8 @@ const MAX_LOG_RANGE_BLOCKS = 2000n;
 const POLL_INTERVAL_MS = 4_000;
 
 /** Below this, settle txs (~800k gas, see SETTLE_GAS_LIMIT) risk failing outright on an
- *  unfunded keeper wallet — nothing tops the wallet up automatically (see GameConfig.battleFee
- *  doc comment in CLAUDE.md), so this is just a loud, periodic reminder to do it manually. */
+ *  unfunded keeper wallet — nothing tops the wallet up automatically, so this is just a
+ *  loud, periodic reminder to do it manually from `withdraw()` proceeds. */
 const MIN_BALANCE_WEI = 20_000_000_000_000_000n; // 0.02 ETH
 const BALANCE_CHECK_INTERVAL_MS = 10 * 60_000;
 
@@ -135,7 +131,7 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
     const publicClient = createPublicClient({ chain, transport });
     const walletClient = createWalletClient({ account, chain, transport });
 
-    const submitter = createSubmitter(publicClient, walletClient, config.gameLogicAddress, config.chainId);
+    const submitter = createSubmitter(publicClient, walletClient, config.gameLogicAddress);
     const pending = new Map<bigint, TrackedRequestType>();
 
     function track(requestId: bigint, type: TrackedRequestType): void {
@@ -148,59 +144,6 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
         const type = pending.get(requestId);
         if (!type) return;
         void submitter.submit(settleFunctionFor(type), requestId);
-    }
-
-    // Live-battle-socket (docs/plan-realtime-battle-ux.md): runs the identical sim
-    // CombatSim.settleBattle will use and pushes it to any connected frontend the moment
-    // entropy reveals, so the live animation doesn't depend on the client's own (unreliable
-    // — see pollContractEvents above) RPC event watching. Best-effort and non-fatal: settling
-    // itself does not depend on this succeeding.
-    async function broadcastBattleLiveSim(requestId: bigint, seed: bigint): Promise<void> {
-        if (!config.gameConfigAddress) return;
-        try {
-            const [request, skillConfig] = await Promise.all([
-                publicClient.readContract({
-                    address: config.gameLogicAddress,
-                    abi: GAME_LOGIC_ABI,
-                    functionName: 'getBattleRequest',
-                    args: [requestId],
-                }),
-                publicClient.readContract({
-                    address: config.gameConfigAddress,
-                    abi: GAME_CONFIG_ABI,
-                    functionName: 'getSkillConfig',
-                }),
-            ]);
-            const req = request as {
-                snapshotted: boolean;
-                dna1: bigint;
-                dna2: bigint;
-                level1: number;
-                level2: number;
-                rarity1: number;
-                rarity2: number;
-                speciesId1: number;
-                speciesId2: number;
-            };
-            if (!req.snapshotted) return; // request predates the Phase 1 snapshot upgrade
-
-            const outcome = simulate(
-                req.dna1, req.rarity1, req.level1, req.speciesId1 % 8,
-                req.dna2, req.rarity2, req.level2, req.speciesId2 % 8,
-                seed, skillConfig as never,
-            );
-            broadcastLiveBattle({
-                type: 'live',
-                chainId: config.chainId,
-                requestId: requestId.toString(),
-                outcome: encodeSimOutcome(outcome),
-            });
-        } catch (err) {
-            console.error(
-                `[settle-keeper] live-battle-socket sim failed for request ${requestId}: ` +
-                    `${(err as Error).message.split('\n')[0]}`,
-            );
-        }
     }
 
     // Backfill: catch up on anything requested-but-not-settled while this keeper (or its
@@ -295,7 +238,6 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                 const caller = log.args.caller as string | undefined;
                 const sequenceNumber = log.args.sequenceNumber as bigint | undefined;
                 const callbackFailed = log.args.callbackFailed as boolean | undefined;
-                const randomNumber = log.args.randomNumber as `0x${string}` | undefined;
                 if (caller?.toLowerCase() !== config.gameLogicAddress.toLowerCase()) continue;
                 if (sequenceNumber == null) continue;
                 if (callbackFailed) {
@@ -304,9 +246,6 @@ export async function startKeeper(config: SettleKeeperConfig): Promise<SettleKee
                             'randomness was not stored, skipping',
                     );
                     continue;
-                }
-                if (randomNumber != null && pending.get(sequenceNumber) === 'battle') {
-                    void broadcastBattleLiveSim(sequenceNumber, BigInt(randomNumber));
                 }
                 trySettle(sequenceNumber);
             }

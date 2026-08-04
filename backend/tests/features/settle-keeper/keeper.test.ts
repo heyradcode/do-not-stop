@@ -85,12 +85,12 @@ afterEach(() => {
 
 describe('startKeeper', () => {
     it('backfills still-pending requests on startup and attempts to settle them', async () => {
-        backfillLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 7n } }];
+        backfillLogs = [{ eventName: 'BreedRandomnessRequested', args: { requestId: 7n } }];
 
         const handle = await startKeeper(baseConfig);
         await flush();
 
-        expect(submit).toHaveBeenCalledWith('settleBattle', 7n);
+        expect(submit).toHaveBeenCalledWith('settleBreed', 7n);
         handle.stop();
     });
 
@@ -100,7 +100,7 @@ describe('startKeeper', () => {
         // hiccup, gas spike, momentarily low balance), nothing would retry it without
         // this sweep. A still-tracked (never untracked) request should keep getting
         // re-attempted on a timer regardless of what triggered the first attempt.
-        backfillLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 7n } }];
+        backfillLogs = [{ eventName: 'BreedRandomnessRequested', args: { requestId: 7n } }];
 
         const handle = await startKeeper(baseConfig);
         await flush();
@@ -116,14 +116,14 @@ describe('startKeeper', () => {
     });
 
     it('stops re-attempting a request once it is settled (untracked)', async () => {
-        backfillLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 7n } }];
+        backfillLogs = [{ eventName: 'BreedRandomnessRequested', args: { requestId: 7n } }];
         const handle = await startKeeper(baseConfig);
         await flush();
         submit.mockClear();
 
         // The settlement lands on the live watch (by us or anyone else) — untracks it.
         currentBlock = 101n;
-        gameLogicLiveLogs = [{ eventName: 'BattleResolved', args: { requestId: 7n } }];
+        gameLogicLiveLogs = [{ eventName: 'BreedSettled', args: { requestId: 7n } }];
         await vi.advanceTimersByTimeAsync(4_000);
         submit.mockClear();
 
@@ -135,8 +135,8 @@ describe('startKeeper', () => {
 
     it('does not resettle a backfilled request whose settlement is also in the backfill window', async () => {
         backfillLogs = [
-            { eventName: 'BattleRandomnessRequested', args: { requestId: 7n } },
-            { eventName: 'BattleResolved', args: { requestId: 7n } },
+            { eventName: 'BreedRandomnessRequested', args: { requestId: 7n } },
+            { eventName: 'BreedSettled', args: { requestId: 7n } },
         ];
 
         const handle = await startKeeper(baseConfig);
@@ -148,7 +148,7 @@ describe('startKeeper', () => {
 
     it('warns when a still-pending backfilled request sits near the oldest edge of the backfill window', async () => {
         // backfillBlocks=50n, currentBlock=100n -> window is [50n, 100n], staleness edge at 55n.
-        backfillLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 7n }, blockNumber: 52n }];
+        backfillLogs = [{ eventName: 'BreedRandomnessRequested', args: { requestId: 7n }, blockNumber: 52n }];
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
         const handle = await startKeeper(baseConfig);
@@ -160,7 +160,7 @@ describe('startKeeper', () => {
     });
 
     it('does not warn when a still-pending backfilled request is well inside the backfill window', async () => {
-        backfillLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 7n }, blockNumber: 90n }];
+        backfillLogs = [{ eventName: 'BreedRandomnessRequested', args: { requestId: 7n }, blockNumber: 90n }];
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
         const handle = await startKeeper(baseConfig);
@@ -176,18 +176,18 @@ describe('startKeeper', () => {
         await flush();
         submit.mockClear();
 
-        // A new block arrives with a fresh battle request and, in the same window, its
+        // A new block arrives with a fresh breed request and, in the same window, its
         // entropy reveal — mirrors the real sequence (request confirms, then some blocks
         // later Pyth's callback lands).
         currentBlock = 101n;
-        gameLogicLiveLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 9n } }];
+        gameLogicLiveLogs = [{ eventName: 'BreedRandomnessRequested', args: { requestId: 9n } }];
         entropyLiveLogs = [
             { eventName: 'Revealed', args: { caller: GAME_LOGIC, sequenceNumber: 9n, callbackFailed: false, randomNumber: '0x01' } },
         ];
 
         await vi.advanceTimersByTimeAsync(4_000);
 
-        expect(submit).toHaveBeenCalledWith('settleBattle', 9n);
+        expect(submit).toHaveBeenCalledWith('settleBreed', 9n);
         handle.stop();
     });
 
@@ -198,7 +198,7 @@ describe('startKeeper', () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
         currentBlock = 101n;
-        gameLogicLiveLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 11n } }];
+        gameLogicLiveLogs = [{ eventName: 'BreedRandomnessRequested', args: { requestId: 11n } }];
         entropyLiveLogs = [
             { eventName: 'Revealed', args: { caller: GAME_LOGIC, sequenceNumber: 11n, callbackFailed: true } },
         ];
@@ -212,13 +212,13 @@ describe('startKeeper', () => {
     });
 
     it('untracks a request once its settlement is observed on the live watch, so a later reveal is a no-op', async () => {
-        backfillLogs = [{ eventName: 'BattleRandomnessRequested', args: { requestId: 7n } }];
+        backfillLogs = [{ eventName: 'BreedRandomnessRequested', args: { requestId: 7n } }];
         const handle = await startKeeper(baseConfig);
         await flush();
         submit.mockClear();
 
         currentBlock = 101n;
-        gameLogicLiveLogs = [{ eventName: 'BattleResolved', args: { requestId: 7n } }];
+        gameLogicLiveLogs = [{ eventName: 'BreedSettled', args: { requestId: 7n } }];
         await vi.advanceTimersByTimeAsync(4_000);
 
         currentBlock = 102n;

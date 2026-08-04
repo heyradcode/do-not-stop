@@ -1,6 +1,6 @@
 // Package metrics is a minimal Prometheus-text-format registry for the
 // handful of signals the runbook watches: pipeline throughput per chain,
-// flush health, reconnects, per-chain version lag, cache and stream state.
+// flush health, reconnects, per-chain version lag, and cache state.
 // Hand-rolled on purpose — a few atomics beat pulling in client_golang for
 // a free-tier worker, and the exposition format is trivially stable.
 package metrics
@@ -45,7 +45,6 @@ func (c *series) snapshot() map[string]int64 {
 
 var (
 	rosterUpdates = newSeries() // by chain
-	battles       = newSeries() // by chain
 	flushes       = newSeries()
 	flushRows     = newSeries()
 	flushErrors   = newSeries()
@@ -54,18 +53,15 @@ var (
 
 	cacheSize         atomic.Int64
 	cacheWarm         atomic.Int64
-	streamSubscribers atomic.Int64
 )
 
 func RosterUpdate(chain string)             { rosterUpdates.get(chain).Add(1) }
-func Battle(chain string)                   { battles.get(chain).Add(1) }
 func Flush(rows int)                        { flushes.get("").Add(1); flushRows.get("").Add(int64(rows)) }
 func FlushError()                           { flushErrors.get("").Add(1) }
 func WSReconnect()                          { wsReconnects.get("").Add(1) }
 func SetLastVersion(chain string, v uint64) { lastVersion.get(chain).Store(int64(v)) }
 func SetCacheSize(n int)                    { cacheSize.Store(int64(n)) }
 func SetCacheWarm(warm bool)                { cacheWarm.Store(b2i(warm)) }
-func SetStreamSubscribers(n int)            { streamSubscribers.Store(int64(n)) }
 
 func b2i(b bool) int64 {
 	if b {
@@ -81,8 +77,6 @@ func Handler() http.HandlerFunc {
 
 		writeLabelled(w, "indexer_roster_updates_total", "counter",
 			"Roster updates emitted into the pipeline", rosterUpdates)
-		writeLabelled(w, "indexer_battles_total", "counter",
-			"Settled battles emitted into the pipeline", battles)
 		writeLabelled(w, "indexer_flushes_total", "counter",
 			"Successful roster batch flushes", flushes)
 		writeLabelled(w, "indexer_flush_rows_total", "counter",
@@ -96,7 +90,6 @@ func Handler() http.HandlerFunc {
 
 		writeGauge(w, "indexer_cache_pets", "Pets held in the roster read cache", cacheSize.Load())
 		writeGauge(w, "indexer_cache_warm", "1 when the read cache serves traffic", cacheWarm.Load())
-		writeGauge(w, "indexer_stream_subscribers", "Live StreamLiveBattles consumers", streamSubscribers.Load())
 	}
 }
 

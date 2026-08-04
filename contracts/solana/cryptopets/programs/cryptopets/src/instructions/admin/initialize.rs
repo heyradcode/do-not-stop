@@ -2,9 +2,8 @@ use crate::{
     errors::ErrorCode,
     state::{
         GlobalState, PetAccount, CURRENT_ACCOUNT_VERSION, DEFAULT_BASE_MINT_FEE_LAMPORTS,
-        DEFAULT_BATTLE_COOLDOWN_SECONDS, DEFAULT_BATTLE_FEE_LAMPORTS,
-        DEFAULT_BREED_COOLDOWN_BASE_SECONDS,
-        DEFAULT_BREED_FEE_LAMPORTS, DEFAULT_GENERATION_CAP, DEFAULT_LEVEL_BAND_WIDTH,
+        DEFAULT_BATTLE_COOLDOWN_SECONDS, DEFAULT_BREED_COOLDOWN_BASE_SECONDS,
+        DEFAULT_BREED_FEE_LAMPORTS, DEFAULT_GENERATION_CAP,
         DEFAULT_MARRIAGE_COOLDOWN_SECONDS, DEFAULT_MAX_LEVEL, DEFAULT_NEWBORN_COOLDOWN_SECONDS,
         DEFAULT_POOL_SIZE, DEFAULT_PROPOSAL_TTL_SECONDS, DEFAULT_RANDOMNESS_EXPIRY_SLOTS,
         DEFAULT_STUD_FEE_LAMPORTS, DEFAULT_TRAIN_COOLDOWN_SECONDS, DEFAULT_TRAIN_FEE_LAMPORTS,
@@ -22,7 +21,6 @@ pub fn handler(ctx: Context<Initialize>, level_up_fee_lamports: u64) -> Result<(
     global_state.battle_cooldown_seconds = DEFAULT_BATTLE_COOLDOWN_SECONDS;
     global_state.randomness_expiry_slots = DEFAULT_RANDOMNESS_EXPIRY_SLOTS;
     global_state.max_level = DEFAULT_MAX_LEVEL;
-    global_state.level_band_width = DEFAULT_LEVEL_BAND_WIDTH;
     global_state.generation_cap = DEFAULT_GENERATION_CAP;
     global_state.breed_cooldown_base_seconds = DEFAULT_BREED_COOLDOWN_BASE_SECONDS;
     global_state.newborn_cooldown_seconds = DEFAULT_NEWBORN_COOLDOWN_SECONDS;
@@ -32,7 +30,6 @@ pub fn handler(ctx: Context<Initialize>, level_up_fee_lamports: u64) -> Result<(
     global_state.train_cooldown_seconds = DEFAULT_TRAIN_COOLDOWN_SECONDS;
     global_state.train_xp = DEFAULT_TRAIN_XP;
     global_state.breed_fee_lamports = DEFAULT_BREED_FEE_LAMPORTS;
-    global_state.battle_fee_lamports = DEFAULT_BATTLE_FEE_LAMPORTS;
     global_state.stud_fee_lamports = DEFAULT_STUD_FEE_LAMPORTS;
     global_state.marriage_cooldown_seconds = DEFAULT_MARRIAGE_COOLDOWN_SECONDS;
     global_state.proposal_ttl_seconds = DEFAULT_PROPOSAL_TTL_SECONDS;

@@ -120,8 +120,8 @@ describe('solana, over a real socket', () => {
 
         expect(calls[0]!.method).toBe('getProgramAccounts');
         expect((calls[0]!.params[1] as { filters: unknown }).filters).toEqual([
-            { dataSize: 224 },
-            { memcmp: { offset: 184, bytes: ASSET } },
+            { dataSize: 223 },
+            { memcmp: { offset: 183, bytes: ASSET } },
         ]);
     });
 

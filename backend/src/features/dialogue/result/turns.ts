@@ -37,9 +37,9 @@ export async function generateTurns(
             buildRivalry(chain, attackerId, defenderId, excludeBattleId),
             opts?.banterOverride ?? buildBanter(chain, attackerId, defenderId, excludeBattleId),
         ]);
-        // How this specific battle went, when the stream has settled it (synchronous,
-        // in-memory) — colors the result reactions without changing the fixed outcome.
-        const intensity = buildBattleIntensity(chain, input.battleId || undefined);
+        // How this specific battle went, per its signed receipt — colors the result
+        // reactions without changing the fixed outcome.
+        const intensity = await buildBattleIntensity(chain, input.battleId || undefined);
 
         const turns = await requestDialogue(input, attacker, defender, rivalry, banter, intensity);
 

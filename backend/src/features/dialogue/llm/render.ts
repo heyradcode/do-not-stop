@@ -1,5 +1,4 @@
 import type { HeadToHead, RecentForm } from '@repositories/history.repository';
-import type { SettledBattle } from '@grpc-client/battleStream';
 import type { DialogueTurn } from '../dialogue.types';
 
 /** A blowout ends fast; a nail-biter drags. These bound the round-count flavor. */
@@ -52,7 +51,15 @@ export function buildBanterContext(turns: DialogueTurn[]): string {
  * block already fixes that; this only colors how hard-won it was. Returns '' when
  * there's nothing meaningful to say (all defaults / a v1 row).
  */
-export function buildBattleSummaryContext(settled: SettledBattle): string {
+/** Just the fields this renders; any row carrying them will do. */
+export interface BattleSummary {
+    rounds: number;
+    winnerHpRemaining: number;
+    xpWin: number;
+    xpLoss: number;
+}
+
+export function buildBattleSummaryContext(settled: BattleSummary): string {
     const intensity =
         settled.rounds <= 0
             ? ''

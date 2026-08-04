@@ -5,6 +5,11 @@
         "moduleResolution": "node",
         "ignoreDeprecations": "5.0",
         "paths": {
+            // `@cryptopets/protocol` is deliberately absent here. Like `@shared/core`, it
+            // resolves through the workspace symlink in node_modules, which keeps TypeScript
+            // treating it as an external module rather than a project source file outside
+            // `rootDir`. A `paths` entry pointing at ../protocol/src makes every file in it a
+            // TS6059 error. Runtime resolution is handled by register-path-aliases.
             "@config/*": [
                 "./src/config/*"
             ],

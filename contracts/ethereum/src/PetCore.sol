@@ -12,10 +12,12 @@ import "./DnaLib.sol";
  * @title PetCore
  * @dev UUPS-upgradeable ERC-721 that owns all pet data (DNA, stats, lineage, cooldowns).
  *      Exposes mutator methods callable only by the authorized GameLogic proxy (or owner).
- *      Storage layout must be append-only from this point forward.
+ *      Storage layout is append-only from 2.0.0 forward. 2.0.0 itself is not: it drops the
+ *      retired battle members from `Pet`, which re-lays out every entry in the `_pets`
+ *      mapping, so an existing proxy cannot be upgraded onto it. It is a fresh deployment.
  */
 contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeable {
-    string public constant VERSION = "1.1.0";
+    string public constant VERSION = "2.0.0";
 
     event NewPet(uint256 indexed petId, string name, uint256 dna, uint8 rarity);
     event PetLevelUp(uint256 indexed petId, uint32 newLevel);
@@ -29,13 +31,19 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     event GameConfigUpdated(address config);
     event BaseTokenUriUpdated(string baseUri);
 
+    /// @dev No battle record here. Win/loss counts and the same-opponent decay state
+    ///      (`lastOpponentId`, `sameOpponentStreak`) lived on this struct when battles settled
+    ///      on chain; they are gone as of §L Phase 6, because nothing would ever write them
+    ///      again. A pet's battle record lives in the backend's `pet_battle_progress`.
+    ///
+    ///      `readyTime` stays. Breeding writes it (`setCooldown` applies `newbornCooldown` to
+    ///      offspring) and the backend honours it through the indexed `pet_roster.ready_at`,
+    ///      so a newborn is still barred from fighting. Only battles stopped setting it.
     struct Pet {
         string name;
         uint256 dna;
         uint32 level;
         uint32 readyTime;
-        uint16 winCount;
-        uint16 lossCount;
         uint8  rarity;
         uint32 xp;           // XP toward next level; auto-levels at 100 * currentLevel
         uint8  generation;   // 0 = starter; N = N breeding events from starters
@@ -45,8 +53,6 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
         uint16 speciesId;    // resolved at mint from DNA + rarity tier (plan §3.7)
         uint256 parent1Id;   // 0 for gen-0 pets
         uint256 parent2Id;   // 0 for gen-0 pets
-        uint256 lastOpponentId;    // 0 = no battles yet (plan §3.4 same-opponent decay)
-        uint8   sameOpponentStreak; // consecutive battles vs lastOpponentId; halves XP each time
     }
 
     // Marriage record (plan §4.4): written for both pets at accept time (mutual).
@@ -186,10 +192,6 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
         _mint(to, tokenId);
     }
 
-    function triggerCooldown(uint256 petId) external onlyAuthorized entryExists(petId) {
-        _pets[petId].readyTime = _deadline(gameConfig.battleCooldown());
-    }
-
     // Set the breed-specific cooldown (does NOT touch the battle readyTime).
     function triggerBreedCooldown(
         uint256 petId,
@@ -206,10 +208,6 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     // Set the train-specific cooldown.
     function triggerTrainCooldown(uint256 petId) external onlyAuthorized entryExists(petId) {
         _pets[petId].trainReadyAt = _deadline(gameConfig.trainCooldown());
-    }
-
-    function updateBattleStats(uint256 petId, bool won) external onlyAuthorized entryExists(petId) {
-        if (won) { _pets[petId].winCount++; } else { _pets[petId].lossCount++; }
     }
 
     function addXp(uint256 petId, uint32 amount) external onlyAuthorized entryExists(petId) {
@@ -234,25 +232,6 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     ///      starter mint settles, so the escalating mint fee tracks successful mints.
     function incrementWalletMintCount(address account) external onlyAuthorized {
         walletMintCount[account]++;
-    }
-
-    // Same-opponent decay (plan §3.4): tracks consecutive battles against `opponentId` and
-    // returns the XP-halving shift to apply (0 = full XP, 1 = half, 2 = quarter, ...).
-    // Facing a different opponent resets the streak to 0.
-    function recordBattleOpponent(
-        uint256 petId,
-        uint256 opponentId
-    ) external onlyAuthorized entryExists(petId) returns (uint8 decayShift) {
-        Pet storage p = _pets[petId];
-        if (p.lastOpponentId == opponentId) {
-            if (p.sameOpponentStreak < type(uint8).max) {
-                p.sameOpponentStreak++;
-            }
-        } else {
-            p.lastOpponentId = opponentId;
-            p.sameOpponentStreak = 0;
-        }
-        decayShift = p.sameOpponentStreak;
     }
 
     // ─── user-facing functions ────────────────────────────────────────────────
@@ -466,9 +445,9 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
 
     function getPetStats(
         uint256 petId
-    ) external view entryExists(petId) returns (uint32, uint16, uint16, uint8) {
+    ) external view entryExists(petId) returns (uint32 level, uint8 rarity) {
         Pet memory p = _pets[petId];
-        return (p.level, p.winCount, p.lossCount, p.rarity);
+        return (p.level, p.rarity);
     }
 
     function getBreedInfo(
@@ -521,9 +500,7 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
             name:         name_,
             dna:          dna,
             level:        1,
-            readyTime:    _deadline(gameConfig.battleCooldown()),
-            winCount:     0,
-            lossCount:    0,
+            readyTime:    0,  // battle-ready immediately; only breeding sets this now
             rarity:       rarity,
             xp:           0,
             generation:   generation,
@@ -532,9 +509,7 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
             trainReadyAt: 0,  // train-ready immediately
             speciesId:    _resolveSpecies(dna, rarity),
             parent1Id:    parent1Id,
-            parent2Id:    parent2Id,
-            lastOpponentId:     0,
-            sameOpponentStreak: 0
+            parent2Id:    parent2Id
         });
         emit NewPet(newId, name_, dna, rarity);
         return newId;

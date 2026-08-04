@@ -7,6 +7,7 @@ const src = (p: string) => resolve(__dirname, 'src', p);
 export default defineConfig({
     resolve: {
         alias: {
+            '@cryptopets/protocol': resolve(__dirname, '../protocol/src/index.ts'),
             '@config': src('config'),
             '@routes': src('routes'),
             '@features': src('features'),

@@ -19,11 +19,7 @@ const (
 // Run maintains the subscription session forever: dial, subscribe, catch up,
 // stream; on any failure, back off and start over. Returns nil only when ctx
 // ends.
-func (ix *Indexer) Run(
-	ctx context.Context,
-	roster chan<- indexer.RosterUpdate,
-	battles chan<- indexer.BattleEvent,
-) error {
+func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) error {
 	attempt := 0
 	for {
 		if ctx.Err() != nil {
@@ -43,7 +39,7 @@ func (ix *Indexer) Run(
 			continue
 		}
 
-		subscribed, err := ix.session(ctx, conn, roster, battles)
+		subscribed, err := ix.session(ctx, conn, roster)
 		_ = conn.Close()
 		if ctx.Err() != nil {
 			return nil
@@ -67,14 +63,12 @@ func (ix *Indexer) session(
 	ctx context.Context,
 	conn wsConn,
 	roster chan<- indexer.RosterUpdate,
-	battles chan<- indexer.BattleEvent,
 ) (subscribed bool, err error) {
 	if err := ix.subscribe(conn); err != nil {
 		return false, fmt.Errorf("subscribe: %w", err)
 	}
 
-	// Catch-up before streaming: a full account scan covers roster gaps, the
-	// signature sweep covers battles settled while disconnected.
+	// Catch-up before streaming: a full account scan covers roster gaps.
 	if scanned, err := ix.Scan(ctx, roster); err != nil {
 		if ctx.Err() != nil {
 			return true, nil
@@ -82,9 +76,6 @@ func (ix *Indexer) session(
 		slog.Error("solana catch-up scan failed; reconciliation will cover", "err", err)
 	} else {
 		slog.Info("solana catch-up scan complete", "scanned", scanned)
-	}
-	if err := ix.backfillBattles(ctx, battles); err != nil && ctx.Err() == nil {
-		slog.Error("solana battle backfill failed", "err", err)
 	}
 
 	msgs := make(chan []byte)
@@ -120,13 +111,16 @@ func (ix *Indexer) session(
 				slog.Info("solana reconciliation scan", "scanned", scanned)
 			}
 		case msg := <-msgs:
-			ix.handleMessage(ctx, msg, roster, battles)
+			ix.handleMessage(ctx, msg, roster)
 		}
 	}
 }
 
-// subscribe issues both subscriptions. Request ids are only used to tell
+// subscribe issues the roster subscription. The request id is only used to tell
 // confirmations apart from notifications later; dispatch is by method name.
+//
+// There is no logsSubscribe any more: it existed to catch settle_battle's BattleResolved
+// event, and battles are no longer settled on chain (§L Phase 6).
 func (ix *Indexer) subscribe(conn wsConn) error {
 	programSub := map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "programSubscribe",
@@ -139,17 +133,7 @@ func (ix *Indexer) subscribe(conn wsConn) error {
 			},
 		}},
 	}
-	logsSub := map[string]any{
-		"jsonrpc": "2.0", "id": 2, "method": "logsSubscribe",
-		"params": []any{
-			map[string]any{"mentions": []string{ix.cfg.ProgramID}},
-			map[string]any{"commitment": "confirmed"},
-		},
-	}
-	if err := conn.WriteJSON(programSub); err != nil {
-		return err
-	}
-	return conn.WriteJSON(logsSub)
+	return conn.WriteJSON(programSub)
 }
 
 // sleepBackoff waits min(base·2^attempt, cap) + jitter; false means ctx ended.

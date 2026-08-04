@@ -21,8 +21,16 @@ function fieldsOf(typeName: string): Record<string, { type: string }> {
 describe('GraphQL schema — Query surface', () => {
     const query = fieldsOf('Query');
 
-    it('exposes opponents, pet, searchPets, allPets, and winEstimate', () => {
-        expect(Object.keys(query).sort()).toEqual(['allPets', 'opponents', 'pet', 'searchPets', 'winEstimate']);
+    it('exposes opponents, pet, searchPets, allPets, battleProgress, and winEstimate', () => {
+        expect(Object.keys(query).sort()).toEqual([
+            'allPets', 'battleProgress', 'opponents', 'pet', 'searchPets', 'winEstimate',
+        ]);
+    });
+
+    it('returns a non-null list of PetBattleProgress from battleProgress', () => {
+        // Non-null list, but pets without a backend record are simply absent from it —
+        // absence is the signal that chain state is the whole truth for that pet.
+        expect(query.battleProgress?.type).toBe('[PetBattleProgress!]!');
     });
 
     it('returns a non-null OpponentsPage from opponents', () => {

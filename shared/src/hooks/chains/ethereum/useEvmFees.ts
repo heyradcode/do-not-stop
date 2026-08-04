@@ -23,9 +23,6 @@ export interface EvmFees {
     levelUpFee?: bigint;
     /** GameConfig.breedFee() — same-owner breed fee (stud fee is v2.1/marriage). */
     breedFee?: bigint;
-    /** GameConfig.battleFee() — funds the settle keeper's settleBattle gas; added to
-     *  entropyFee when calling requestBattle. */
-    battleFee?: bigint;
     /** GameConfig.trainFee() — base train fee, scaled by level on-chain. */
     trainFee?: bigint;
     /** GameConfig.studFee() — added to breedFee for cross-owner (married) breeding. */
@@ -59,7 +56,6 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
     const { data: baseMintFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'baseMintFee', chainId, query: cfgQuery });
     const { data: levelUpFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'levelUpFee', chainId, query: cfgQuery });
     const { data: breedFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'breedFee', chainId, query: cfgQuery });
-    const { data: battleFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'battleFee', chainId, query: cfgQuery });
     const { data: trainFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'trainFee', chainId, query: cfgQuery });
     const { data: studFee } = useReadContract({ address: gameConfig, abi: gameConfigAbi, functionName: 'studFee', chainId, query: cfgQuery });
 
@@ -100,12 +96,11 @@ export const useEvmFees = (enabled: boolean): EvmFees => {
             baseMintFee: base,
             levelUpFee: levelUpFee as bigint | undefined,
             breedFee: breedFee as bigint | undefined,
-            battleFee: battleFee as bigint | undefined,
             trainFee: trainFee as bigint | undefined,
             studFee: studFee as bigint | undefined,
             walletMintCount: mintCount,
             nextMintFee,
             entropyFee: entropyFeeRaw as bigint | undefined,
         };
-    }, [baseMintFee, levelUpFee, breedFee, battleFee, trainFee, studFee, walletMintCount, entropyFeeRaw]);
+    }, [baseMintFee, levelUpFee, breedFee, trainFee, studFee, walletMintCount, entropyFeeRaw]);
 };

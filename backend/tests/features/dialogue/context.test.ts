@@ -3,13 +3,10 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 vi.mock('@repositories/history.repository', () => ({
     getHeadToHead: vi.fn().mockResolvedValue({ wins: 0, losses: 0 }),
     getRecentForm: vi.fn().mockResolvedValue([]),
+    getBattleSummary: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('@repositories/conversation.repository', () => ({
     getRecentBanter: vi.fn().mockResolvedValue([]),
-}));
-vi.mock('../../../src/grpc/battleStream', () => ({
-    getChainSettledBattle: vi.fn().mockReturnValue(null),
-    getChainSettledWinner: vi.fn().mockReturnValue(null),
 }));
 vi.mock('../../../src/features/dialogue/llm/render', () => ({
     buildBanterContext: vi.fn().mockReturnValue('banter-ctx'),
@@ -18,12 +15,12 @@ vi.mock('../../../src/features/dialogue/llm/render', () => ({
 }));
 
 import { buildBanter, buildRivalry, buildBattleIntensity } from '../../../src/features/dialogue/context';
-import { getChainSettledBattle } from '../../../src/grpc/battleStream';
+import { getBattleSummary } from '@repositories/history.repository';
 import { getRecentBanter } from '@repositories/conversation.repository';
 
 beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getChainSettledBattle).mockReturnValue(null);
+    vi.mocked(getBattleSummary).mockResolvedValue(null);
     vi.mocked(getRecentBanter).mockResolvedValue([]);
 });
 
@@ -66,19 +63,24 @@ describe('buildRivalry', () => {
 });
 
 describe('buildBattleIntensity', () => {
-    it('returns empty string when battleId is missing', () => {
-        expect(buildBattleIntensity('evm', undefined)).toBe('');
+    it('returns empty string when battleId is missing', async () => {
+        await expect(buildBattleIntensity('evm', undefined)).resolves.toBe('');
+        expect(getBattleSummary).not.toHaveBeenCalled();
     });
 
-    it('returns empty string when battle stream has no record', () => {
-        expect(buildBattleIntensity('evm', 'battle1')).toBe('');
+    it('returns empty string when the battle is not on record', async () => {
+        await expect(buildBattleIntensity('evm', 'battle1')).resolves.toBe('');
     });
 
-    it('returns summary when battle is settled on-chain', () => {
-        vi.mocked(getChainSettledBattle).mockReturnValue({
-            winnerPet: 'p1', loserPet: 'p2', foughtAt: 0, seed: 0n,
+    it('renders the summary recorded from the receipt', async () => {
+        vi.mocked(getBattleSummary).mockResolvedValue({
             rounds: 5, winnerHpRemaining: 10, xpWin: 20, xpLoss: 5,
-        } as never);
-        expect(buildBattleIntensity('evm', 'battle1')).toBe('summary-ctx');
+        });
+        await expect(buildBattleIntensity('evm', 'battle1')).resolves.toBe('summary-ctx');
+    });
+
+    it('degrades to no intensity when the lookup fails, rather than failing generation', async () => {
+        vi.mocked(getBattleSummary).mockRejectedValue(new Error('db down'));
+        await expect(buildBattleIntensity('evm', 'battle1')).resolves.toBe('');
     });
 });

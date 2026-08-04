@@ -1,115 +1,55 @@
-import { describe, expect, it } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import type { Pet } from '@shared/core';
+import { describe, expect, it } from 'vitest';
 
 import { useBattleOutcome } from '@hooks/battle/useBattleOutcome';
 
-// Minimal Pet — the hook only reads id/winCount/lossCount/level.
-const fighter = (over: Partial<Pet> = {}): Pet =>
-    ({ id: 'p1', winCount: 0, lossCount: 0, level: 1, ...over }) as Pet;
-
-type Props = { pets: Pet[]; selectedPet1: string; petsLoading: boolean };
-const initial: Props = { pets: [fighter()], selectedPet1: 'p1', petsLoading: false };
-
-/** Snapshot the starting stats and arm outcome detection. */
-const arm = (result: { current: ReturnType<typeof useBattleOutcome> }) => {
-    act(() => {
-        result.current.snapshotFighterStats(fighter());
-    });
-    act(() => {
-        result.current.markPendingOutcome();
-    });
-};
-
+/**
+ * The outcome now comes entirely from the verified receipt's progression delta. The old
+ * stats-diff path is gone: backend battles never move on-chain win/loss counters, so
+ * comparing refreshed chain stats could only ever wait forever.
+ */
 describe('useBattleOutcome', () => {
     it('starts with no outcome', () => {
-        const { result } = renderHook((props: Props) => useBattleOutcome(props), {
-            initialProps: initial,
-        });
+        const { result } = renderHook(() => useBattleOutcome());
         expect(result.current.battleOutcome).toBeNull();
     });
 
-    it('resolves a victory when the win count increases', () => {
-        const { result, rerender } = renderHook((props: Props) => useBattleOutcome(props), {
-            initialProps: initial,
-        });
-        arm(result);
+    it('resolves a victory from the receipt', () => {
+        const { result } = renderHook(() => useBattleOutcome());
 
-        rerender({ ...initial, pets: [fighter({ winCount: 1 })] });
+        act(() => result.current.applyResolvedOutcome(true, false));
 
         expect(result.current.battleOutcome).toEqual({ result: 'victory', leveledUp: false });
     });
 
-    it('resolves a defeat when the loss count increases', () => {
-        const { result, rerender } = renderHook((props: Props) => useBattleOutcome(props), {
-            initialProps: initial,
-        });
-        arm(result);
+    it('resolves a defeat from the receipt', () => {
+        const { result } = renderHook(() => useBattleOutcome());
 
-        rerender({ ...initial, pets: [fighter({ lossCount: 1 })] });
+        act(() => result.current.applyResolvedOutcome(false, false));
 
         expect(result.current.battleOutcome).toEqual({ result: 'defeat', leveledUp: false });
     });
 
-    it('flags a level-up alongside the result', () => {
-        const { result, rerender } = renderHook((props: Props) => useBattleOutcome(props), {
-            initialProps: initial,
-        });
-        arm(result);
+    it('carries a level-up through from the receipt rather than inferring it', () => {
+        const { result } = renderHook(() => useBattleOutcome());
 
-        rerender({ ...initial, pets: [fighter({ winCount: 1, level: 2 })] });
+        act(() => result.current.applyResolvedOutcome(true, true));
 
         expect(result.current.battleOutcome).toEqual({ result: 'victory', leveledUp: true });
     });
 
-    it('waits while the stats have not refreshed yet', () => {
-        const { result, rerender } = renderHook((props: Props) => useBattleOutcome(props), {
-            initialProps: initial,
-        });
-        arm(result);
-
-        // Same win/loss as the snapshot — nothing to resolve.
-        rerender({ ...initial, pets: [fighter({ level: 2 })] });
-
-        expect(result.current.battleOutcome).toBeNull();
-    });
-
-    it('does not resolve while pets are still loading', () => {
-        const { result, rerender } = renderHook((props: Props) => useBattleOutcome(props), {
-            initialProps: initial,
-        });
-        arm(result);
-
-        rerender({ ...initial, pets: [fighter({ winCount: 1 })], petsLoading: true });
-
-        expect(result.current.battleOutcome).toBeNull();
-    });
-
-    it('clearSnapshot prevents any resolution', () => {
-        const { result, rerender } = renderHook((props: Props) => useBattleOutcome(props), {
-            initialProps: initial,
-        });
-        arm(result);
-        act(() => {
-            result.current.clearSnapshot();
-        });
-
-        rerender({ ...initial, pets: [fighter({ winCount: 1 })] });
-
-        expect(result.current.battleOutcome).toBeNull();
+    it('resolves immediately, without waiting on an indexer', () => {
+        // The receipt is self-contained, so there is nothing to wait for.
+        const { result } = renderHook(() => useBattleOutcome());
+        act(() => result.current.applyResolvedOutcome(true, false));
+        expect(result.current.battleOutcome).not.toBeNull();
     });
 
     it('resetOutcome clears a resolved outcome', () => {
-        const { result, rerender } = renderHook((props: Props) => useBattleOutcome(props), {
-            initialProps: initial,
-        });
-        arm(result);
-        rerender({ ...initial, pets: [fighter({ winCount: 1 })] });
-        expect(result.current.battleOutcome).not.toBeNull();
+        const { result } = renderHook(() => useBattleOutcome());
+        act(() => result.current.applyResolvedOutcome(true, true));
 
-        act(() => {
-            result.current.resetOutcome();
-        });
+        act(() => result.current.resetOutcome());
 
         expect(result.current.battleOutcome).toBeNull();
     });

@@ -1,7 +1,7 @@
-// Package store is the single ordered writer: every RosterUpdate and
-// BattleEvent from every chain adapter funnels through one goroutine into
-// batched, version-guarded Postgres writes. Concurrency lives upstream
-// (decode, fetch) — ordering and idempotency are enforced here.
+// Package store is the single ordered writer: every RosterUpdate from every chain
+// adapter funnels through one goroutine into batched, version-guarded Postgres
+// writes. Concurrency lives upstream (decode, fetch) — ordering and idempotency
+// are enforced here.
 package store
 
 import (
@@ -27,7 +27,6 @@ const (
 // is unit-testable without Postgres; pgFlusher is the real implementation.
 type flusher interface {
 	FlushRoster(ctx context.Context, batch []indexer.RosterUpdate) error
-	InsertBattles(ctx context.Context, events []indexer.BattleEvent) error
 }
 
 type petKey struct {
@@ -48,8 +47,7 @@ type Writer struct {
 	// Pending state is owned exclusively by the Run goroutine.
 	// pendingRoster coalesces by pet — only the highest version survives —
 	// so a flush failure can never grow memory past the roster size.
-	pendingRoster  map[petKey]indexer.RosterUpdate
-	pendingBattles []indexer.BattleEvent
+	pendingRoster map[petKey]indexer.RosterUpdate
 }
 
 func NewWriter(f flusher) *Writer {
@@ -61,13 +59,9 @@ func NewWriter(f flusher) *Writer {
 	}
 }
 
-// Run drains both channels until ctx is done, then performs a final flush on
+// Run drains the roster channel until ctx is done, then performs a final flush on
 // a fresh deadline so in-flight batches survive shutdown.
-func (w *Writer) Run(
-	ctx context.Context,
-	roster <-chan indexer.RosterUpdate,
-	battles <-chan indexer.BattleEvent,
-) error {
+func (w *Writer) Run(ctx context.Context, roster <-chan indexer.RosterUpdate) error {
 	ticker := time.NewTicker(w.flushEvery)
 	defer ticker.Stop()
 
@@ -76,7 +70,7 @@ func (w *Writer) Run(
 		case <-ctx.Done():
 			drainCtx, cancel := context.WithTimeout(context.Background(), drainTimeout)
 			defer cancel()
-			w.flushAll(drainCtx)
+			w.flushRoster(drainCtx)
 			return nil
 
 		case u := <-roster:
@@ -85,12 +79,8 @@ func (w *Writer) Run(
 				w.flushRoster(ctx)
 			}
 
-		case b := <-battles:
-			w.pendingBattles = append(w.pendingBattles, b)
-			w.flushBattles(ctx)
-
 		case <-ticker.C:
-			w.flushAll(ctx)
+			w.flushRoster(ctx)
 		}
 	}
 }
@@ -129,20 +119,3 @@ func (w *Writer) flushRoster(ctx context.Context) {
 	clear(w.pendingRoster)
 }
 
-// flushBattles attempts to insert all pending battles. ON CONFLICT DO NOTHING
-// downstream makes retries harmless.
-func (w *Writer) flushBattles(ctx context.Context) {
-	if len(w.pendingBattles) == 0 {
-		return
-	}
-	if err := w.flusher.InsertBattles(ctx, w.pendingBattles); err != nil {
-		slog.Error("battle insert failed; retained for retry", "events", len(w.pendingBattles), "err", err)
-		return
-	}
-	w.pendingBattles = w.pendingBattles[:0]
-}
-
-func (w *Writer) flushAll(ctx context.Context) {
-	w.flushRoster(ctx)
-	w.flushBattles(ctx)
-}

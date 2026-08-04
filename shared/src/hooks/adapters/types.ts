@@ -1,5 +1,4 @@
 import type { Pet } from '../../types/pet';
-import type { BattleResolvedResult } from '../../types/battle';
 
 export type TxPhase =
     | 'idle'
@@ -36,7 +35,11 @@ export interface ChainCapabilities {
     randomness: {
         /** null when no chain is active (disconnected). */
         provider: 'chainlink' | 'switchboard' | null;
-        appliesTo: ('battle' | 'breed')[];
+        /**
+         * Which flows still draw randomness from the chain. Battles never do: they are
+         * seeded from a committed drand round by the backend (§E), on either chain.
+         */
+        appliesTo: 'breed'[];
     };
     explorerTxUrl(hash: string): string | null;
     parseError(error: unknown, fallback: string): { message: string; isUserRejection: boolean; isContractError: boolean };
@@ -64,7 +67,6 @@ export interface ChainAdapter {
     trainPet:    AdapterMutation<{ petId: string }>;
     renamePet:   AdapterMutation<{ petId: string; name: string }>;
     transferPet: AdapterMutation<{ petId: string; to: string }>;
-    battlePets:  AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, BattleResolvedResult | null>;
     // crossOwner adds the stud fee (EVM married cross-owner breeding); ignored on Solana.
     breedPets:   AdapterMutation<{ parentId1: string; parentId2: string; name: string; crossOwner?: boolean }>;
 }

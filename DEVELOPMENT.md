@@ -60,11 +60,13 @@ do-not-stop/
 └── scripts/            # Deployment automation
 ```
 
-The Go indexer mirrors the backend's `RosterIndexer` (EVM subgraph polling +
-Solana WebSocket push) into `pet_roster`/`battle_history`, and streams settled
-battles to the backend over gRPC (`StreamLiveBattles`). Build/test/runbook:
-`indexer-go/README.md`. It is optional in local dev — the Node indexers cover
-everything until promotion.
+The Go indexer (EVM subgraph polling + Solana WebSocket push) fills `pet_roster`
+and serves pet-state reads and win estimates to the backend over gRPC. It does
+not touch `battle_history`, which the backend writes from signed receipts.
+Build/test/runbook: `indexer-go/README.md`.
+
+It is **not** optional if you need a populated roster: the backend's own
+`RosterIndexer` is gone, so nothing else writes `pet_roster`.
 
 ## Development Workflow
 

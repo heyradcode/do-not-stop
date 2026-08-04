@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/radcrew/do-not-stop/indexer-go/internal/battlebus"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/config"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/grpcsrv"
 	"github.com/radcrew/do-not-stop/indexer-go/internal/indexer"
@@ -42,13 +41,8 @@ func run() error {
 	}
 
 	roster := make(chan indexer.RosterUpdate, 256)
-	adapterBattles := make(chan indexer.BattleEvent, 64) // adapters → tee
-	writerBattles := make(chan indexer.BattleEvent, 64)  // tee → storage
 
-	bus := battlebus.New()
-	go teeBattles(ctx, bus, adapterBattles, writerBattles)
-
-	st, err := startStorage(ctx, cfg, roster, writerBattles)
+	st, err := startStorage(ctx, cfg, roster)
 	if err != nil {
 		return err
 	}
@@ -56,7 +50,7 @@ func run() error {
 
 	grpcErr := make(chan error, 1)
 	go func() {
-		if err := grpcsrv.New(bus, st.replayer, st.rosterCache).Serve(ctx, cfg.GRPCAddr); err != nil {
+		if err := grpcsrv.New(st.rosterCache).Serve(ctx, cfg.GRPCAddr); err != nil {
 			grpcErr <- err
 		}
 	}()
@@ -66,7 +60,7 @@ func run() error {
 		wg.Add(1)
 		go func(a indexer.ChainIndexer) {
 			defer wg.Done()
-			if err := a.Run(ctx, roster, adapterBattles); err != nil {
+			if err := a.Run(ctx, roster); err != nil {
 				slog.Error("adapter exited", "chain", a.Chain(), "err", err)
 			}
 		}(adapter)
@@ -117,31 +111,6 @@ func run() error {
 	}
 	slog.Info("indexer-go stopped")
 	return nil
-}
-
-// teeBattles forwards every settled battle to storage AND to gRPC
-// subscribers. The bus never blocks (slow consumers are dropped to
-// reconnect+replay), so publishing ahead of the storage send is safe.
-func teeBattles(
-	ctx context.Context,
-	bus *battlebus.Bus,
-	in <-chan indexer.BattleEvent,
-	out chan<- indexer.BattleEvent,
-) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case b := <-in:
-			metrics.Battle(b.Chain)
-			bus.Publish(b)
-			select {
-			case out <- b:
-			case <-ctx.Done():
-				return
-			}
-		}
-	}
 }
 
 func healthMux() *http.ServeMux {

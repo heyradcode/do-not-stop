@@ -17,11 +17,10 @@ vi.mock('../../../../src/features/dialogue/result/turns', () => ({
     ensureResultCoverage: vi.fn((_t: DialogueTurn[]) => _t),
 }));
 vi.mock('../../../../src/features/dialogue/recording', () => ({
-    recordBattleHistory: vi.fn().mockResolvedValue(undefined),
     recordResultLines: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock('../../../../src/grpc/battleStream', () => ({
-    getChainSettledWinner: vi.fn().mockReturnValue(null),
+vi.mock('@repositories/history.repository', () => ({
+    getSettledWinner: vi.fn().mockResolvedValue(null),
 }));
 vi.mock('@typings/pregen', () => ({
     matchupKey: vi.fn((_chain: string, a: string, b: string) => `${a}-${b}`),
@@ -88,10 +87,10 @@ describe('getOrGenerateDialogue', () => {
         expect(result.turns).toBe(defenderWins);
     });
 
-    it('rejects when client-reported winner contradicts chain truth', async () => {
-        const { getChainSettledWinner } = await import('../../../../src/grpc/battleStream');
-        // chain says p2 (defender) won, but input claims attacker (p1) — must reject.
-        vi.mocked(getChainSettledWinner).mockReturnValue('p2');
+    it('rejects when the client-reported winner contradicts the recorded result', async () => {
+        const { getSettledWinner } = await import('@repositories/history.repository');
+        // The receipt-written record says p2 (defender) won; the client claims p1.
+        vi.mocked(getSettledWinner).mockResolvedValue('p2');
 
         await expect(getOrGenerateDialogue(input)).rejects.toThrow(ChainTruthMismatchError);
         expect(generateTurns).not.toHaveBeenCalled();

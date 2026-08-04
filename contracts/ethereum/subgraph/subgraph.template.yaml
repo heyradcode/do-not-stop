@@ -1,6 +1,6 @@
 # Template — `scripts/prepare-subgraph.mjs` fills {{...}} and writes subgraph.yaml.
 # Two v2 data sources: the PetCore proxy (pet lifecycle + marriage) and the
-# GameLogic proxy (battle/breed/train). Both share src/mapping.ts and both
+# GameLogic proxy (breed/mint/train). Both share src/mapping.ts and both
 # carry the PetCore ABI so handlers can read full pet state via getPet().
 specVersion: 1.0.0
 schema:
@@ -49,8 +49,6 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - Pet
-        - Battle
-        - BattleRequest
         - BreedRequest
       abis:
         - name: GameLogic
@@ -58,10 +56,6 @@ dataSources:
         - name: PetCore
           file: ./abis/PetCore.json
       eventHandlers:
-        - event: BattleRandomnessRequested(indexed address,indexed uint256,uint256,uint256)
-          handler: handleBattleRequested
-        - event: BattleResolved(indexed uint256,indexed uint256,indexed uint256,uint256,bool,uint8,uint16,uint32,uint32)
-          handler: handleBattleResolved
         - event: BreedRandomnessRequested(indexed address,indexed uint256,uint256,uint256)
           handler: handleBreedRequested
         - event: BreedSettled(indexed address,indexed uint256,indexed uint256,address)

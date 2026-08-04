@@ -1,101 +1,181 @@
-import { useCallback, useRef } from 'react';
-import { useChainAdapter } from './adapters/useChainAdapter';
-import { useTxSuccess } from './useTxSuccess';
-import { useEvmBattleFlow } from './chains/ethereum/useEvmBattleFlow';
-import { useLiveBattleReplaySolana } from './chains/solana/useLiveBattleReplaySolana';
+import { useCallback, useMemo, useRef, useState } from 'react';
+
+import type { BattleReceipt } from '@cryptopets/protocol';
+
 import type { BattleResolvedResult } from '../types/battle';
+
+import { useBackendBattle } from './useBackendBattle';
+import { useSubmitBattleIntent } from './useSubmitBattleIntent';
+import { useVerifiedBattleReceipt } from './useVerifiedBattleReceipt';
+
+/**
+ * Starting a battle and following it to a verified result (§D, §E, §J).
+ *
+ * Battles are resolved by the backend, not on chain, so this no longer goes through the
+ * chain adapter: there is nothing chain-specific left about running a fight. The wallet
+ * still signs — the intent is what authorizes the battle (§D) — but no transaction is sent
+ * and no gas is paid.
+ *
+ * What this returns is deliberately the same shape as the on-chain version, so the battle
+ * UI keeps working: a `mutate`, a phase, a `liveReplay` to animate, and an `onSuccess`
+ * carrying the resolved outcome.
+ *
+ * One thing genuinely changed, and it is the point of the design: `liveReplay` and the
+ * authoritative result are now the *same computation*. The old flow animated a local
+ * prediction and reconciled it against the chain afterwards; here the client verifies the
+ * signed receipt and replays that, so what is animated is what the receipt commits to, or
+ * nothing is animated at all.
+ */
 
 export interface BattlePetsArgs {
     /** Attacker — must be a pet the caller owns. */
     petId1: string;
     /** Defender — may belong to another player. */
     petId2: string;
-    /**
-     * Owner of the defender pet. Required for cross-owner Solana battles (used to
-     * derive the defender pet PDA). Ignored on EVM, where `petId2` is a global id.
-     */
+    /** Owner of the defender pet. The intent binds both owners (§D). */
     defenderOwner?: string;
 }
 
 export type UseBattlePetsOptions = {
-    /** Fires once the battle is settled on-chain (EVM: BattleResolved; Solana: confirm). */
-    onSuccess?: (result: BattleResolvedResult | null) => void;
+    /**
+     * Fires once, when the receipt is signed and has verified locally.
+     *
+     * Never fires with a null result: an unverified receipt is simply not surfaced.
+     */
+    onSuccess?: (result: BattleResolvedResult) => void;
+    /** Room to follow for push updates, and the socket to reach it on. */
+    roomId?: string | null;
+    roomSocketUrl?: string | undefined;
 };
 
+/** Where a battle is, in the vocabulary the existing UI already speaks. */
+export type BackendBattlePhase =
+    | 'idle'
+    | 'requesting'
+    | 'awaiting-vrf'
+    | 'resolving'
+    | 'resolved'
+    | 'error';
+
+const TERMINAL_FAILURES = new Set(['rejected', 'forfeited', 'verification_failed', 'signing_failed']);
+
 export const useBattlePets = (options?: UseBattlePetsOptions) => {
-    const adapter = useChainAdapter();
-    const { battlePets } = adapter;
-    const isEvm = adapter.kind === 'evm';
+    const { submit, isPending: isSubmitting, error: submitError } = useSubmitBattleIntent();
+    const [battleId, setBattleId] = useState<string | null>(null);
 
     const onSuccessRef = useRef(options?.onSuccess);
     onSuccessRef.current = options?.onSuccess;
 
-    // EVM: v2 battle is async (request → VRF → settle → BattleResolved). Success
-    // is event-driven, not receipt-driven, so the request hash feeds the flow
-    // and onSuccess fires only once the battle is actually resolved on-chain.
-    const battleFlow = useEvmBattleFlow({
-        requestHash: isEvm ? (battlePets.lifecycle.hash as `0x${string}` | undefined) : undefined,
-        enabled: isEvm,
-        onResolved: (result) => onSuccessRef.current?.(result),
+    const battle = useBackendBattle(battleId, {
+        roomId: options?.roomId ?? null,
+        roomSocketUrl: options?.roomSocketUrl,
     });
 
-    // Solana: no async request/settle state machine like EVM's, so live
-    // replay is derived independently by polling for a pending battleRequest
-    // (see useLiveBattleReplaySolana's header comment for why, and its
-    // verification caveat).
-    const solanaLiveReplay = useLiveBattleReplaySolana(!isEvm);
+    // Only fetched once a receipt exists. Verification runs locally and gates the
+    // animation: an unverified receipt yields no outcome, so nothing is shown.
+    const hasReceipt = battle.data ? battle.isSettled && !TERMINAL_FAILURES.has(battle.data.state) : false;
+    const verified = useVerifiedBattleReceipt(hasReceipt ? battleId : null);
 
-    // Solana: success fires from the mutateAsync return value (BattleResolvedResult | null).
-    // useTxSuccess is kept as a fallback only — the ref prevents double-firing.
-    const solanaBattleFiredRef = useRef(false);
-    useTxSuccess(battlePets.lifecycle, useCallback(() => {
-        if (!isEvm && !solanaBattleFiredRef.current) onSuccessRef.current?.(null);
-        solanaBattleFiredRef.current = false;
-    }, [isEvm]));
+    const result = useMemo(
+        () => (verified.data?.verified ? toResolvedResult(verified.data.receipt) : null),
+        [verified.data],
+    );
 
-    const mutate = async (args: BattlePetsArgs) => {
-        battleFlow.reset();
-        solanaBattleFiredRef.current = false;
-        try {
-            const result = await battlePets.mutateAsync({
-                petId1: args.petId1,
-                petId2: args.petId2,
-                defenderOwner: args.defenderOwner,
+    // Fired exactly once per battle, when the verified result first lands.
+    const firedForRef = useRef<string | null>(null);
+    if (result && battleId && firedForRef.current !== battleId) {
+        firedForRef.current = battleId;
+        onSuccessRef.current?.(result);
+    }
+
+    const mutate = useCallback(
+        async (args: BattlePetsArgs) => {
+            setBattleId(null);
+            firedForRef.current = null;
+            const accepted = await submit({
+                attackerPetId: args.petId1,
+                defenderPetId: args.petId2,
+                defenderOwner: args.defenderOwner ?? '',
+                ...(options?.roomId ? { roomId: options.roomId } : {}),
             });
-            if (!isEvm) {
-                solanaBattleFiredRef.current = true;
-                onSuccessRef.current?.(result ?? null);
-            }
-        } catch {
-            // error tracked in battlePets.lifecycle.error
-        }
-    };
+            if (accepted) setBattleId(accepted.battleId);
+        },
+        [submit, options?.roomId],
+    );
 
     const reset = useCallback(() => {
-        battleFlow.reset();
-        battlePets.lifecycle.reset();
-    }, [battleFlow, battlePets.lifecycle]);
+        setBattleId(null);
+        firedForRef.current = null;
+    }, []);
 
-    // On EVM the arena must stay "fighting" through VRF + settle, not just the
-    // request tx, so fold the async flow's active state into isPending.
-    const isPending = battlePets.isPending || (isEvm && battleFlow.isActive);
+    const phase = derivePhase(isSubmitting, battle.data?.state, Boolean(result), Boolean(submitError));
+    const error = submitError ?? (battle.error as Error | null) ?? (verified.error as Error | null) ?? null;
 
     return {
         mutate,
-        isPending,
-        isConfirming: battlePets.lifecycle.phase === 'confirming' || (isEvm && battleFlow.phase === 'settling'),
-        isAwaitingVrf: isEvm ? battleFlow.phase === 'awaiting-vrf' : battlePets.lifecycle.phase === 'awaiting-vrf',
-        phase: isEvm ? battleFlow.phase : (battlePets.lifecycle.phase === 'awaiting-vrf' ? 'awaiting-vrf' : undefined),
-        result: battleFlow.result,
-        /** Client-side live-replay outcome, presentation only — see
-         *  useEvmBattleFlow's liveReplay doc (EVM) and
-         *  useLiveBattleReplaySolana's header doc (Solana, incl. its
-         *  verification caveat) for how each chain derives this. */
-        liveReplay: isEvm ? battleFlow.liveReplay : solanaLiveReplay,
+        isPending: isSubmitting || (battleId !== null && !result && phase !== 'error'),
+        isConfirming: phase === 'resolving',
+        /** Waiting on the committed drand round — the backend-mode analogue of VRF. */
+        isAwaitingVrf: phase === 'awaiting-vrf',
+        phase,
+        result,
+        /**
+         * The client's own replay of the verified receipt. Present only once every check
+         * passed, so the UI can never animate a fight the receipt does not commit to.
+         */
+        liveReplay: verified.data?.outcome ?? null,
         reset,
         clearErrors: reset,
-        hash: battlePets.lifecycle.hash,
-        error: battlePets.lifecycle.error ?? battleFlow.error,
-        lifecycle: battlePets.lifecycle,
+        /** The battle id, which replaces the transaction hash as this battle's identifier. */
+        hash: battleId ?? undefined,
+        error,
+        /** Kept for the shared, phase-driven <TransactionStatus/> contract. */
+        lifecycle: {
+            phase: phase === 'resolved' ? ('success' as const) : phase === 'error' ? ('error' as const) : ('confirming' as const),
+            hash: battleId ?? undefined,
+            error,
+            reset,
+        },
+        /** Every local check and its verdict, so a UI can show *why* a result is trusted. */
+        checks: verified.data?.checks ?? [],
     };
 };
+
+function derivePhase(
+    isSubmitting: boolean,
+    state: string | undefined,
+    hasResult: boolean,
+    hasSubmitError: boolean,
+): BackendBattlePhase {
+    if (hasSubmitError) return 'error';
+    if (isSubmitting) return 'requesting';
+    if (hasResult) return 'resolved';
+    if (!state) return 'idle';
+    if (TERMINAL_FAILURES.has(state)) return 'error';
+    // `committed`/`seeded` is the wait for the drand round this battle was committed to,
+    // which is the same shape of wait the old flow called `awaiting-vrf`.
+    if (state === 'accepted' || state === 'committed' || state === 'seeded') return 'awaiting-vrf';
+    return 'resolving';
+}
+
+/**
+ * Maps a verified receipt onto the result shape the UI already renders.
+ *
+ * `requestId` is zero: there is no on-chain request behind a backend battle, and inventing
+ * an identifier that looked like one would invite treating it as a chain reference.
+ */
+function toResolvedResult(receipt: BattleReceipt): BattleResolvedResult {
+    const attackerWon = receipt.result.attackerWon;
+    return {
+        requestId: 0n,
+        winnerId: attackerWon ? receipt.snapshot.attacker.petId : receipt.snapshot.defender.petId,
+        loserId: attackerWon ? receipt.snapshot.defender.petId : receipt.snapshot.attacker.petId,
+        vrfSeed: BigInt(receipt.seed),
+        firstWins: attackerWon,
+        rounds: receipt.result.rounds,
+        winnerHpRemaining: receipt.result.winnerHpRemaining,
+        xpWin: attackerWon ? receipt.progression.attacker.xpAwarded : receipt.progression.defender.xpAwarded,
+        xpLoss: attackerWon ? receipt.progression.defender.xpAwarded : receipt.progression.attacker.xpAwarded,
+        attackerLeveledUp: receipt.progression.attacker.leveledUp,
+    };
+}

@@ -30,21 +30,3 @@ func petToProto(u indexer.RosterUpdate) *pb.PetResponse {
 		Asset:        u.Asset,
 	}
 }
-
-func battleToProto(e indexer.BattleEvent) *pb.BattleEvent {
-	return &pb.BattleEvent{
-		Chain:             e.Chain,
-		BattleId:          e.BattleID,
-		AttackerPet:       e.Attacker,
-		DefenderPet:       e.Defender,
-		WinnerPet:         e.WinnerPetID,
-		Version:           e.Version,
-		FoughtAt:          e.FoughtAt,
-		LoserPet:          e.LoserPetID,
-		Seed:              e.Seed,
-		Rounds:            e.Rounds,
-		WinnerHpRemaining: e.WinnerHpRemaining,
-		XpWin:             e.XPWin,
-		XpLoss:            e.XPLoss,
-	}
-}

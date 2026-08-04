@@ -1,9 +1,12 @@
 import { findReadyOpponents, getAllPets, getPetById, searchPets, type RosterPet } from '@repositories/roster.repository';
+import { findBattleProgress, withBattleProgress } from '@repositories/battleProgress.overlay';
 import { tryGrpcEstimateWin } from '@grpc-client/estimateWin';
 import { isSupportedChain, SUPPORTED_CHAINS } from '@typings/chain';
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
+/** Upper bound on pet ids per battleProgress call. */
+const MAX_PROGRESS_PET_IDS = 200;
 /** Upper bound on requested sim seeds — keeps a single call from pinning indexer-go. */
 const MAX_WIN_SAMPLES = 10_000;
 
@@ -12,6 +15,11 @@ interface OpponentsArgs {
     minLevel?: number | null;
     page?: number | null;
     pageSize?: number | null;
+}
+
+interface BattleProgressArgs {
+    chain: string;
+    petIds: string[];
 }
 
 interface WinEstimateArgs {
@@ -76,6 +84,8 @@ export const rootValue = {
             pageSize,
         });
 
+        // No overlay here: unlike the other pet reads, `findReadyOpponents` filters, bands
+        // and orders on level and cooldown, so it merges progression in the query itself.
         return {
             opponents: rows.map(toOpponentPet),
             total,
@@ -91,7 +101,7 @@ export const rootValue = {
 
         const limit = Math.min(20, Math.max(1, args.limit ?? 10));
         const rows = await searchPets({ chain: args.chain, query: args.query, limit });
-        return rows.map(toOpponentPet);
+        return (await withBattleProgress(args.chain, rows)).map(toOpponentPet);
     },
 
     allPets: async (args: AllPetsArgs) => {
@@ -100,7 +110,7 @@ export const rootValue = {
         }
         const limit = Math.min(500, Math.max(1, args.limit ?? 200));
         const rows = await getAllPets(args.chain, limit);
-        return rows.map(toOpponentPet);
+        return (await withBattleProgress(args.chain, rows)).map(toOpponentPet);
     },
 
     pet: async (args: PetArgs) => {
@@ -109,7 +119,26 @@ export const rootValue = {
         }
 
         const row = await getPetById(args.chain, args.id);
-        return row ? toOpponentPet(row) : null;
+        if (!row) return null;
+        const [overlaid] = await withBattleProgress(args.chain, [row]);
+        return toOpponentPet(overlaid ?? row);
+    },
+
+    battleProgress: async (args: BattleProgressArgs) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        // Bounded so one call cannot ask for the whole table. A player's own roster is
+        // far below this; anything larger is not a pet list.
+        const petIds = args.petIds.slice(0, MAX_PROGRESS_PET_IDS);
+        const rows = await findBattleProgress(args.chain, petIds);
+
+        return rows.map(({ petId: id, readyAt, ...rest }) => ({
+            id,
+            ...rest,
+            readyAt: Number(readyAt),
+        }));
     },
 
     winEstimate: async (args: WinEstimateArgs) => {

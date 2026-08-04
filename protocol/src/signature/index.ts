@@ -1,0 +1,1 @@
+export { recoverAddress } from './address';

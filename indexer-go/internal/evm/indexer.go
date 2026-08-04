@@ -93,14 +93,14 @@ func (ix *Indexer) sync(ctx context.Context, roster chan<- indexer.RosterUpdate)
 	return ix.emit(ctx, roster, pets)
 }
 
-// Run scans once to prime the watermark, then polls incrementally — pets and
-// battles on the same ticker. Transient subgraph errors are logged and
-// retried on the next tick.
-func (ix *Indexer) Run(
-	ctx context.Context,
-	roster chan<- indexer.RosterUpdate,
-	battles chan<- indexer.BattleEvent,
-) error {
+// Run scans once to prime the watermark, then polls incrementally. Transient
+// subgraph errors are logged and retried on the next tick.
+//
+// Battles are no longer ingested (§L Phase 6): GameLogic has no requestBattle /
+// settleBattle and the subgraph no longer emits a Battle entity, so there is nothing on
+// chain left to index. `battle_history` is written by the backend from its own signed
+// receipts now, so this indexer carries no battle path at all.
+func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) error {
 	if scanned, err := ix.Scan(ctx, roster); err != nil {
 		if ctx.Err() != nil {
 			return nil
@@ -109,7 +109,6 @@ func (ix *Indexer) Run(
 	} else {
 		slog.Info("evm scan complete", "scanned", scanned, "watermark", ix.watermark)
 	}
-	ix.tickBattles(ctx, battles)
 
 	ticker := time.NewTicker(ix.poll)
 	defer ticker.Stop()
@@ -128,8 +127,7 @@ func (ix *Indexer) Run(
 			case synced > 0:
 				slog.Info("evm sync", "synced", synced, "watermark", ix.watermark)
 			}
-			ix.tickBattles(ctx, battles)
-		}
+				}
 	}
 }
 

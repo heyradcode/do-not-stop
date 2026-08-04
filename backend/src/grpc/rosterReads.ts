@@ -2,16 +2,19 @@ import * as grpc from '@grpc/grpc-js';
 import { env } from '@config/env';
 import { loadGameDataService } from './gameData';
 import { createCircuitBreaker } from './circuitBreaker';
-import type { FindOpponentsParams, RosterPet } from '@repositories/roster.repository';
+import type { RosterPet } from '@repositories/roster.repository';
 import { mapPetWireToRosterPet, type PetWire } from '@repositories/roster.mapping';
 import type { Chain } from '@typings/chain';
 
 /**
- * gRPC-backed roster reads from indexer-go's write-through cache. Fail-open by
- * contract: every error, timeout, or UNAVAILABLE returns null and the caller
- * falls back to Prisma — killing indexer-go must never take reads down. A
- * small circuit breaker stops a dead Go process from adding the deadline to
- * every read.
+ * gRPC-backed roster reads from indexer-go's write-through cache. Fail-open by contract:
+ * every error, timeout, or UNAVAILABLE returns null and the caller falls back to Prisma —
+ * killing indexer-go must never take reads down. A small circuit breaker stops a dead Go
+ * process from adding the deadline to every read.
+ *
+ * Only the single-pet read is left. Matchmaking stopped using the cache when it began
+ * banding on backend progression (`roster.repository.ts`), which the cache cannot see, so
+ * `ListReadyOpponents` was dropped from the proto contract entirely.
  */
 
 /** Per-call deadline. The cache answers from RAM; anything slower is a fault. */
@@ -21,17 +24,7 @@ const BREAKER_THRESHOLD = 3;
 /** How long an open breaker skips gRPC before probing again. */
 const BREAKER_COOLDOWN_MS = 30_000;
 
-interface OpponentsWire {
-    pets: PetWire[];
-    total: number;
-}
-
 type RosterClient = grpc.Client & {
-    listReadyOpponents(
-        request: Record<string, unknown>,
-        options: grpc.CallOptions,
-        callback: (err: grpc.ServiceError | null, res: OpponentsWire) => void,
-    ): void;
     getPetState(
         request: Record<string, unknown>,
         options: grpc.CallOptions,
@@ -58,48 +51,9 @@ function getClient(): RosterClient | null {
 }
 
 /**
- * Matchmaking read via indexer-go. Returns null whenever Prisma should answer
- * instead (feature off, breaker open, timeout, any error).
- */
-export function tryGrpcFindReadyOpponents(
-    params: FindOpponentsParams,
-): Promise<{ rows: RosterPet[]; total: number } | null> {
-    if (env.rosterReadSource !== 'grpc' || !breaker.allows()) return Promise.resolve(null);
-    const rosterClient = getClient();
-    if (!rosterClient) return Promise.resolve(null);
-
-    return new Promise((resolve) => {
-        const deadline = new Date(Date.now() + DEADLINE_MS);
-        rosterClient.listReadyOpponents(
-            {
-                chain: params.chain,
-                excludeOwner: params.excludeOwner,
-                minLevel: params.minLevel,
-                page: params.page,
-                pageSize: params.pageSize,
-            },
-            { deadline },
-            (err, res) => {
-                if (err) {
-                    breaker.recordFailure(err.message);
-                    resolve(null);
-                    return;
-                }
-                breaker.recordSuccess();
-                resolve({
-                    rows: res.pets.map(mapPetWireToRosterPet),
-                    total: res.total,
-                });
-            },
-        );
-    });
-}
-
-/**
- * Single-pet read via indexer-go (pet-detail). Same fail-open contract as the
- * matchmaking read: returns null whenever Prisma should answer instead (feature
- * off, breaker open, timeout, any error) or when the cache has no such pet (an
- * empty row — distinguished by the absent id).
+ * Single-pet read via indexer-go (pet-detail). Fail-open: returns null whenever Prisma
+ * should answer instead (feature off, breaker open, timeout, any error) or when the cache
+ * has no such pet (an empty row — distinguished by the absent id).
  */
 export function tryGrpcGetPetState(chain: Chain, petId: string): Promise<RosterPet | null> {
     if (env.rosterReadSource !== 'grpc' || !breaker.allows()) return Promise.resolve(null);

@@ -36,7 +36,6 @@ const fees = {
     trainFee: 3n,
     breedFee: 4n,
     studFee: 5n,
-    battleFee: 1n,
     entropyFee: 0n,
 };
 const config: {
@@ -163,17 +162,6 @@ describe('useEvmAdapter', () => {
 
     it('maps GameLogic mutations to their v2 contract calls', async () => {
         const { result } = renderHook(() => useEvmAdapter({ enabled: true }));
-
-        await result.current.battlePets.mutateAsync({ petId1: '1', petId2: '2' });
-        expect(write.writeContractAsync).toHaveBeenCalledWith(
-            expect.objectContaining({
-                address: '0x2222222222222222222222222222222222222222',
-                functionName: 'requestBattle',
-                args: [1n, 2n],
-                value: 1n,
-                gas: 800000n,
-            }),
-        );
 
         await result.current.breedPets.mutateAsync({ parentId1: '1', parentId2: '2', name: 'Baby' });
         expect(write.writeContractAsync).toHaveBeenCalledWith(

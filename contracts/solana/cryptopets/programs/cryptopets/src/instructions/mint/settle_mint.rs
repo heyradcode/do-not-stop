@@ -60,7 +60,6 @@ pub fn handler(ctx: Context<SettleMint>) -> Result<()> {
     pet.loss_count = 0;
     pet.version = CURRENT_ACCOUNT_VERSION;
     pet.bump = ctx.bumps.pet;
-    pet.open_to_challenges = true;
     pet.set_name(&mint_request.name())?;
 
     pet.generation = 0;

@@ -43,8 +43,12 @@ const config: HardhatUserConfig = {
     // `ignition deploy` always compiles with the "production" profile, which
     // by default drops viaIR/optimizer settings from a flat `version` +
     // `settings` config (only the compiler version carries over). Define
-    // both profiles explicitly so contracts that need viaIR (e.g.
-    // CombatSim's "stack too deep") compile under `ignition deploy` too.
+    // both profiles explicitly so the two stay identical.
+    //
+    // viaIR was originally required by CombatSim's "stack too deep"; with that
+    // contract gone the remaining sources compile without it. It stays on as an
+    // optimizer choice, not a workaround — turning it off is a real bytecode and
+    // gas change, so it belongs to a deployment decision rather than a cleanup.
     profiles: {
       default: {
         version: "0.8.24",

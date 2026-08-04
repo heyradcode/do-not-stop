@@ -91,6 +91,45 @@
       "anonymous": false,
       "inputs": [
         {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "CallerAuthorized",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "caller",
+          "type": "address"
+        }
+      ],
+      "name": "CallerRevoked",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "config",
+          "type": "address"
+        }
+      ],
+      "name": "GameConfigUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
           "indexed": false,
           "internalType": "uint8",
           "name": "version",
@@ -374,6 +413,19 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "VERSION",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
         }
       ],
       "stateMutability": "view",
@@ -708,16 +760,6 @@
               "type": "uint32"
             },
             {
-              "internalType": "uint16",
-              "name": "winCount",
-              "type": "uint16"
-            },
-            {
-              "internalType": "uint16",
-              "name": "lossCount",
-              "type": "uint16"
-            },
-            {
               "internalType": "uint8",
               "name": "rarity",
               "type": "uint8"
@@ -761,19 +803,9 @@
               "internalType": "uint256",
               "name": "parent2Id",
               "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "lastOpponentId",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint8",
-              "name": "sameOpponentStreak",
-              "type": "uint8"
             }
           ],
-          "internalType": "struct PetCoreV1.Pet",
+          "internalType": "struct PetCore.Pet",
           "name": "",
           "type": "tuple"
         }
@@ -793,22 +825,12 @@
       "outputs": [
         {
           "internalType": "uint32",
-          "name": "",
+          "name": "level",
           "type": "uint32"
         },
         {
-          "internalType": "uint16",
-          "name": "",
-          "type": "uint16"
-        },
-        {
-          "internalType": "uint16",
-          "name": "",
-          "type": "uint16"
-        },
-        {
           "internalType": "uint8",
-          "name": "",
+          "name": "rarity",
           "type": "uint8"
         }
       ],
@@ -824,6 +846,19 @@
         }
       ],
       "name": "incrementBreedCount",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "incrementWalletMintCount",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -968,19 +1003,6 @@
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "petId",
-          "type": "uint256"
-        }
-      ],
-      "name": "levelUpInternal",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
           "name": "",
           "type": "uint256"
         }
@@ -1047,19 +1069,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "string",
-          "name": "name_",
-          "type": "string"
-        }
-      ],
-      "name": "mintStarter",
-      "outputs": [],
-      "stateMutability": "payable",
       "type": "function"
     },
     {
@@ -1177,30 +1186,6 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "petId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "opponentId",
-          "type": "uint256"
-        }
-      ],
-      "name": "recordBattleOpponent",
-      "outputs": [
-        {
-          "internalType": "uint8",
-          "name": "decayShift",
-          "type": "uint8"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
       "inputs": [],
       "name": "renounceOwnership",
       "outputs": [],
@@ -1303,6 +1288,19 @@
         }
       ],
       "name": "setCooldown",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "gameConfig_",
+          "type": "address"
+        }
+      ],
+      "name": "setGameConfig",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1433,19 +1431,6 @@
           "type": "uint256"
         }
       ],
-      "name": "triggerCooldown",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "petId",
-          "type": "uint256"
-        }
-      ],
       "name": "triggerTrainCooldown",
       "outputs": [],
       "stateMutability": "nonpayable",
@@ -1454,24 +1439,6 @@
     {
       "inputs": [],
       "name": "unpause",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "petId",
-          "type": "uint256"
-        },
-        {
-          "internalType": "bool",
-          "name": "won",
-          "type": "bool"
-        }
-      ],
-      "name": "updateBattleStats",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

@@ -4,11 +4,13 @@ import { act, renderHook } from '@testing-library/react';
 const mocks = vi.hoisted(() => ({
     navigate: vi.fn(),
     locationState: null as { petId?: string } | null,
+    params: {} as { roomId?: string },
 }));
 
 vi.mock('react-router-dom', () => ({
     useNavigate: () => mocks.navigate,
     useLocation: () => ({ state: mocks.locationState }),
+    useParams: () => mocks.params,
 }));
 vi.mock('@constants/interactionRoutes', () => ({ DASHBOARD_HOME: '/dashboard', BATTLE_PATH: '/battle' }));
 vi.mock('@hooks/usePetError', () => ({ formatTxHashHint: vi.fn(() => null) }));
@@ -25,7 +27,7 @@ vi.mock('@components/pet/interactions/panels/battle/battle-utils', () => ({
     toDialoguePet: (p: { id: string; name: string }) => ({ petId: p.id, name: p.name }),
 }));
 
-const battleOutcome = { battleOutcome: null as null | object, markPendingOutcome: vi.fn(), applyResolvedOutcome: vi.fn(), resetOutcome: vi.fn(), clearSnapshot: vi.fn(), snapshotFighterStats: vi.fn() };
+const battleOutcome = { battleOutcome: null as null | object, applyResolvedOutcome: vi.fn(), resetOutcome: vi.fn() };
 vi.mock('@hooks/battle/useBattleOutcome', () => ({ useBattleOutcome: () => battleOutcome }));
 
 const resultDialogue = { resultTurns: [], dialogueLoading: false, attackerName: '', defenderName: '', markResultDialogueDone: vi.fn(), resultDialogueDone: false, resetResultDialogue: vi.fn() };
@@ -34,23 +36,40 @@ vi.mock('@hooks/battle/useResultDialogue', () => ({ useResultDialogue: () => res
 const battle = { mutate: vi.fn(), clearErrors: vi.fn(), isPending: false, isConfirming: false, error: null, hash: undefined as string | undefined, phase: null, liveReplay: null as null | { result: { firstWins: boolean }; log: unknown[]; startHp1: bigint; startHp2: bigint }, lifecycle: { phase: 'idle' } };
 const taunts = { generate: vi.fn(), reset: vi.fn(), isLoading: false, turns: [] as unknown[] };
 const createRoom = vi.fn().mockResolvedValue(null);
+const refetchOpponents = vi.fn();
 let capturedOnSuccess: ((r: unknown) => void) | undefined;
+/** Options the hook handed `useBattlePets` on the latest render. */
+let capturedBattleOptions: { roomId?: string | null; roomSocketUrl?: string } | undefined;
 
 const pets = [{ id: 'p1', name: 'Rex', level: 3, winCount: 1, lossCount: 0, chain: 'evm', readyAt: 0n }];
 const opponents = [{ id: 'opp1', name: 'Blaze', owner: '0xopp', level: 2 }];
 
 vi.mock('@shared/core', () => ({
+    // `src/config.ts` calls both of these at import time, and the hook now imports it
+    // for BATTLE_ROOM_WS_URL. Stubs, not behaviour under test.
+    setStorageAdapter: vi.fn(),
+    setTokenSuccessCallback: vi.fn(),
+    isBattleRejection: (e: unknown) =>
+        typeof e === 'object' && e !== null && (e as { isBattleRejection?: unknown }).isBattleRejection === true,
+    // Mirrors the real predicate: the three refusals that mean the defender's owner
+    // is not willing, as opposed to a band/cap refusal about this attacker or today.
+    isConsentFailure: (e: unknown) => {
+        const code = (e as { code?: string } | null)?.code;
+        return code === 'no-authorization' || code === 'pet-not-covered' || code === 'revoked';
+    },
     getReadyPetsUnified: (p: { id: string }[]) => p.map((x) => ({ id: x.id, pet: x })),
     useChainCapabilities: () => ({ activeKind: 'evm', randomness: { provider: 'vrf' } }),
     usePetList: () => ({ pets, refetch: vi.fn(), isLoading: false }),
-    useBattlePets: (opts: { onSuccess?: (r: unknown) => void }) => {
+    useBattlePets: (opts: { onSuccess?: (r: unknown) => void; roomId?: string | null; roomSocketUrl?: string }) => {
         capturedOnSuccess = opts?.onSuccess;
+        capturedBattleOptions = opts;
         return battle;
     },
     useBattleTaunts: () => taunts,
     useCreateBattleRoom: () => ({ createRoom, isLoading: false }),
-    useOpponents: () => ({ opponents, isLoading: false, isFetching: false, refetch: vi.fn() }),
-    usePendingBattle: () => ({ isPending: false }),
+    // Stable identity, matching react-query's own refetch — and so the consent-failure
+    // effect below can be asserted on across renders.
+    useOpponents: () => ({ opponents, isLoading: false, isFetching: false, refetch: refetchOpponents }),
     useWinEstimate: () => ({ winProbability: null, isLoading: false, samples: null }),
 }));
 
@@ -61,7 +80,9 @@ beforeEach(() => {
     Object.assign(battle, { isPending: false, isConfirming: false, error: null, hash: undefined, phase: null, liveReplay: null });
     Object.assign(taunts, { isLoading: false, turns: [] });
     mocks.locationState = null;
+    mocks.params = {};
     capturedOnSuccess = undefined;
+    capturedBattleOptions = undefined;
 });
 
 describe('useBattlePanel', () => {
@@ -114,16 +135,35 @@ describe('useBattlePanel', () => {
         expect(mocks.navigate).toHaveBeenCalledWith('/battle/room-123', { replace: true });
     });
 
-    it('still starts the battle (no navigate) when room creation fails', async () => {
+    it('still starts the battle when room creation fails, clearing any stale room', async () => {
+        // The room in the URL is what gets sent to `accept`, so a previous battle's room
+        // left there would push this battle's updates to the wrong spectators. Failing to
+        // mint means no room, and the URL has to say so.
+        mocks.params = { roomId: 'room-from-a-previous-battle' };
         createRoom.mockResolvedValueOnce(null);
         const { result } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         act(() => { result.current.setup.onSelectFighter('p1'); });
         act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
         await act(async () => { result.current.setup.onBattle(); });
 
-        expect(mocks.navigate).not.toHaveBeenCalled();
+        expect(mocks.navigate).toHaveBeenCalledWith('/battle', { replace: true });
         expect(result.current.overlay.open).toBe(true);
         expect(taunts.generate).toHaveBeenCalled();
+    });
+
+    it('passes the room from the URL to useBattlePets, with the socket endpoint', () => {
+        // Without this the room is only ever cosmetic: `accept` never records it, so the
+        // backend notifies nobody and this client falls back to polling.
+        mocks.params = { roomId: 'room-123' };
+        renderHook(() => useBattlePanel({ isStandaloneView: false }));
+
+        expect(capturedBattleOptions?.roomId).toBe('room-123');
+        expect(capturedBattleOptions?.roomSocketUrl).toMatch(/^wss?:\/\/.*\/ws\/battle-room$/);
+    });
+
+    it('passes a null room when the URL carries none', () => {
+        renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        expect(capturedBattleOptions?.roomId).toBeNull();
     });
 
     it('holds off opening the overlay/generating taunts until room creation settles', () => {
@@ -150,16 +190,11 @@ describe('useBattlePanel', () => {
         expect(result.current.overlay.open).toBe(false);
     });
 
-    it('handleSuccess marks pending outcome and refetches', () => {
+    it('handleSuccess applies the verified receipt outcome and refetches', () => {
         renderHook(() => useBattlePanel({ isStandaloneView: false }));
-        act(() => { capturedOnSuccess?.(null); });
-        expect(battleOutcome.markPendingOutcome).toHaveBeenCalled();
-    });
-
-    it('handleSuccess applies resolved outcome when result is provided', () => {
-        renderHook(() => useBattlePanel({ isStandaloneView: false }));
-        act(() => { capturedOnSuccess?.({ firstWins: true }); });
-        expect(battleOutcome.applyResolvedOutcome).toHaveBeenCalledWith(true);
+        act(() => { capturedOnSuccess?.({ firstWins: true, attackerLeveledUp: true }); });
+        // Both values come from the receipt; nothing is inferred from refreshed chain stats.
+        expect(battleOutcome.applyResolvedOutcome).toHaveBeenCalledWith(true, true);
     });
 
     it('overlay.open closes when battle.error is set after battle starts', async () => {
@@ -175,6 +210,58 @@ describe('useBattlePanel', () => {
         const { result: result2 } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
         // Fresh render with error set — overlay starts closed since showResult=false and error present.
         expect(result2.current.overlay.open).toBe(false);
+    });
+
+    it('drops the opponent and re-reads the list on a consent failure', async () => {
+        // The narrow race the server-side filter cannot close: the grant died between
+        // the list being built and the battle being accepted. Re-reading removes the
+        // opponent, and clearing the selection stops the player re-picking it.
+        const rejection = Object.assign(new Error('not allowed'), {
+            isBattleRejection: true,
+            code: 'no-authorization',
+        });
+        const { result, rerender } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+        expect(result.current.setup.selectedOpponentKey).toBe('0xopp:opp1');
+
+        battle.error = rejection as unknown as null;
+        await act(async () => { rerender(); });
+
+        expect(result.current.setup.selectedOpponentKey).toBe('');
+        expect(refetchOpponents).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-reads the list once per failure, not on every render', async () => {
+        // Clearing the selection re-renders. This only stays a single refetch while
+        // both effect deps keep a stable identity, which is what `useOpponents`
+        // returning react-query's own `refetch` buys — so it is worth pinning.
+        const rejection = Object.assign(new Error('revoked'), {
+            isBattleRejection: true,
+            code: 'revoked',
+        });
+        battle.error = rejection as unknown as null;
+        const { rerender } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        await act(async () => { rerender(); });
+        await act(async () => { rerender(); });
+
+        expect(refetchOpponents).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the opponent selected when the refusal is not about consent', async () => {
+        // A band or cap refusal is about this attacker or today, not the opponent's
+        // willingness — dropping them from the list over it would be wrong.
+        const rejection = Object.assign(new Error('too low level'), {
+            isBattleRejection: true,
+            code: 'attacker-level-below-band',
+        });
+        const { result, rerender } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+        act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+
+        battle.error = rejection as unknown as null;
+        await act(async () => { rerender(); });
+
+        expect(result.current.setup.selectedOpponentKey).toBe('0xopp:opp1');
+        expect(refetchOpponents).not.toHaveBeenCalled();
     });
 
     it('hashHint is null when provider is not switchboard', () => {
@@ -256,10 +343,10 @@ describe('useBattlePanel', () => {
 
             expect(errorSpy).toHaveBeenCalledWith(
                 expect.stringContaining('mismatch'),
-                expect.objectContaining({ onChain: { firstWins: false }, local: { firstWins: true } }),
+                expect.objectContaining({ receipt: { firstWins: false }, local: { firstWins: true } }),
             );
-            // The on-chain result must still be applied as authoritative despite the mismatch.
-            expect(battleOutcome.applyResolvedOutcome).toHaveBeenCalledWith(false);
+            // The receipt must still be applied as authoritative despite the mismatch.
+            expect(battleOutcome.applyResolvedOutcome).toHaveBeenCalledWith(false, undefined);
             // Result card doesn't appear immediately — the notice holds it briefly.
             expect(result.current.overlay.showResult).toBe(false);
 

@@ -17,10 +17,12 @@ type Pet @entity(immutable: false) {
 
   level: Int!
   rarity: Int!
-  winCount: Int!
-  lossCount: Int!
 
-  "Unix seconds the pet is next BATTLE-ready (Pet.readyTime)."
+  """
+  Unix seconds the pet is next battle-ready (Pet.readyTime). Only breeding writes it
+  now — a newborn is barred from fighting until its cooldown expires — but the backend
+  still honours it before accepting a battle intent.
+  """
   readyAt: BigInt!
 
   "Block timestamp of the last update (the per-pet version indexer-go resumes from)."
@@ -44,47 +46,6 @@ type Pet @entity(immutable: false) {
   breedReadyAt: BigInt!
   "Unix seconds the pet is next train-ready."
   trainReadyAt: BigInt!
-}
-
-# One row per settled battle. On EVM the attacker/defender come from
-# BattleRandomnessRequested and the result from BattleResolved; the two are
-# joined by requestId (see BattleRequest below). Consumed by indexer-go's
-# battle polling into battle_history and the StreamLiveBattles gRPC feed.
-type Battle @entity(immutable: true) {
-  "txHash-logIndex of the BattleResolved log — matches battle_history.battle_id."
-  id: ID!
-
-  "Attacker pet id as a string (BattleRandomnessRequested.petId1), matching Pet.id."
-  attacker: String!
-  "Defender pet id as a string (BattleRandomnessRequested.petId2)."
-  defender: String!
-
-  "Absolute winner pet id — head-to-head stays correct across role swaps."
-  winnerPetId: String!
-  "Absolute loser pet id."
-  loserPetId: String!
-
-  # ─── v2 round-based combat sim outputs (plan §3.3) ─────────────────────────
-  "uint256 VRF seed; indexer-go normalizes it to 0x-hex for cross-chain replay."
-  seed: BigInt!
-  rounds: Int!
-  winnerHpRemaining: Int!
-  xpWin: Int!
-  xpLoss: Int!
-
-  "Block timestamp of the settle (unix seconds) — the per-chain version cursor."
-  foughtAt: BigInt!
-}
-
-# Internal join record: BattleRandomnessRequested carries attacker/defender
-# keyed by requestId, but BattleResolved (which carries the outcome) only
-# carries winner/loser. We persist the request so the resolve handler can
-# recover attacker/defender. Not queried by indexer-go.
-type BattleRequest @entity(immutable: false) {
-  "requestId as a string."
-  id: ID!
-  petId1: BigInt!
-  petId2: BigInt!
 }
 
 # Internal join record for breeding: BreedSettled carries only the childId, so

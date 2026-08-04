@@ -81,13 +81,38 @@ async function deployToNetwork(networkName: string): Promise<void> {
         JSON.stringify({ CryptoPetsV2Live: { entropyAddress: entropy.entropyAddress } }, null, 2)
     );
 
-    const deployCmd = `pnpm hh ignition deploy ignition/modules/CryptoPetsV2Live.ts --network ${network.name} --parameters ${paramsPath}`;
+    // Ignition keys deployment state by id, defaulting to `chain-<id>`. Re-running against
+    // an existing one RECONCILES with it: futures already deployed are kept, so the old
+    // proxies survive. That is wrong for the 2.0.0 contracts, whose storage layout is
+    // deliberately breaking (see GameLogic/PetCore) — reusing a proxy from before would
+    // leave it pointing at an implementation that reads its slots differently.
+    //
+    // So warn loudly and let the operator pass an explicit id, rather than guessing which
+    // they meant.
+    const deploymentId = process.argv.find((a) => a.startsWith('--deployment-id='))?.split('=')[1];
+    const existingDeployment = join(process.cwd(), 'ignition', 'deployments', `chain-${network.chainId}`);
+    if (!deploymentId && existsSync(existingDeployment)) {
+        console.warn(
+            `\n⚠️  A deployment already exists for chain ${network.chainId}.\n` +
+            `   Ignition reconciles against it and keeps the existing proxies.\n` +
+            `   The 2.0.0 contracts change storage layout and are NOT upgrade-compatible,\n` +
+            `   so an existing proxy must not be reused.\n\n` +
+            `   For a fresh stack: pnpm deploy:${network.name} --deployment-id=<name>\n`
+        );
+    }
+
+    const deployCmd = [
+        'pnpm hh ignition deploy ignition/modules/CryptoPetsV2Live.ts',
+        `--network ${network.name}`,
+        `--parameters ${paramsPath}`,
+        ...(deploymentId ? [`--deployment-id ${deploymentId}`] : []),
+    ].join(' ');
 
     console.log(`\n🚀 Deploying to ${networkName} (chain ${network.chainId})...`);
     try {
         execSync(deployCmd, { stdio: 'inherit', env: ignitionEnv });
         console.log(`✅ ${networkName} deployed.`);
-        await injectContractAddresses(network);
+        await injectContractAddresses(network, deploymentId);
     } catch (error) {
         console.error(
             `❌ Deploy to ${networkName} failed:`,
@@ -97,13 +122,17 @@ async function deployToNetwork(networkName: string): Promise<void> {
     }
 }
 
-async function injectContractAddresses(network: NetworkSpec): Promise<void> {
+async function injectContractAddresses(network: NetworkSpec, deploymentId?: string): Promise<void> {
     try {
+        // Must read back the deployment we just wrote, not `chain-<id>`. With an explicit
+        // --deployment-id those are different directories, and the default one holds the
+        // stack this deploy exists to replace — injecting from it would point the frontend
+        // at the dead pre-2.0.0 proxies while reporting success.
         const deployedAddressesPath = join(
             process.cwd(),
             'ignition',
             'deployments',
-            `chain-${network.chainId}`,
+            deploymentId ?? `chain-${network.chainId}`,
             'deployed_addresses.json'
         );
 
@@ -117,7 +146,8 @@ async function injectContractAddresses(network: NetworkSpec): Promise<void> {
         const petCoreAddress    = deployedAddresses['CryptoPetsV2Live#PetCoreProxy']   as string | undefined;
         const gameLogicAddress  = deployedAddresses['CryptoPetsV2Live#GameLogicProxy'] as string | undefined;
         const gameConfigAddress = deployedAddresses['CryptoPetsV2Live#GameConfig']     as string | undefined;
-        const combatSimAddress  = deployedAddresses['CryptoPetsV2Live#CombatSim']      as string | undefined;
+        const batchRegistryAddress = deployedAddresses['CryptoPetsV2Live#BattleBatchRegistry']    as string | undefined;
+        const rewardDistributorAddress = deployedAddresses['CryptoPetsV2Live#SeasonRewardDistributor'] as string | undefined;
 
         if (!petCoreAddress) {
             console.error('❌ PetCore proxy not found in deployed_addresses.json');
@@ -127,7 +157,15 @@ async function injectContractAddresses(network: NetworkSpec): Promise<void> {
         console.log(`📝 PetCore:    ${petCoreAddress}`);
         console.log(`📝 GameLogic:  ${gameLogicAddress  ?? '(not found)'}`);
         console.log(`📝 GameConfig: ${gameConfigAddress ?? '(not found)'}`);
-        console.log(`📝 CombatSim:  ${combatSimAddress  ?? '(not found)'}`);
+        console.log(`📝 BattleBatchRegistry:     ${batchRegistryAddress      ?? '(not found)'}`);
+        console.log(`📝 SeasonRewardDistributor: ${rewardDistributorAddress  ?? '(not found)'}`);
+
+        // These two are read by the backend, not the frontend, so they are printed for the
+        // operator to copy rather than written into frontend/.env.local.
+        if (batchRegistryAddress) {
+            console.log(`
+   backend/.env: BATTLE_ANCHOR_REGISTRY_ADDRESS=${batchRegistryAddress}`);
+        }
 
         const frontendEnvLocalPath = join(process.cwd(), '..', '..', 'frontend', '.env.local');
 
@@ -142,12 +180,15 @@ async function injectContractAddresses(network: NetworkSpec): Promise<void> {
             else           { lines.push(`${key}=${value}`); }
         }
 
-        const lines = envContent.split('\n').filter((l) => !l.startsWith('VITE_VRF_COORDINATOR='));
+        // Drop vars for contracts this stack no longer deploys, so an existing .env.local
+        // does not keep pointing the frontend at a dead address: VITE_VRF_COORDINATOR from
+        // the Chainlink era, VITE_COMBATSIM_ADDRESS since battles left the chain (§L Phase 6).
+        const STALE_ENV_KEYS = ['VITE_VRF_COORDINATOR=', 'VITE_COMBATSIM_ADDRESS='];
+        const lines = envContent.split('\n').filter((l) => !STALE_ENV_KEYS.some((k) => l.startsWith(k)));
 
         upsertEnvLine(lines, 'VITE_PETCORE_ADDRESS', petCoreAddress);
         if (gameLogicAddress)  upsertEnvLine(lines, 'VITE_GAMELOGIC_ADDRESS',  gameLogicAddress);
         if (gameConfigAddress) upsertEnvLine(lines, 'VITE_GAMECONFIG_ADDRESS', gameConfigAddress);
-        if (combatSimAddress)  upsertEnvLine(lines, 'VITE_COMBATSIM_ADDRESS',  combatSimAddress);
 
         if (!lines.some((l) => l.startsWith('VITE_API_URL='))) {
             lines.push('VITE_API_URL=http://localhost:3001');

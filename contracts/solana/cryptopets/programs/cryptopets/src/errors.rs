@@ -1,5 +1,8 @@
 use anchor_lang::prelude::*;
 
+/// Note: `#[error_code]` numbers these sequentially from 6000, so removing a variant
+/// renumbers every one after it. The battle-request variants were dropped when the
+/// on-chain battle path was retired (§L Phase 6), which shifted the codes below them.
 #[error_code]
 pub enum ErrorCode {
     #[msg("Pet name exceeds max length")]
@@ -10,8 +13,6 @@ pub enum ErrorCode {
     Paused,
     #[msg("Pet is on cooldown")]
     PetNotReady,
-    #[msg("Cannot battle the same pet")]
-    CannotBattleSelf,
     #[msg("Cannot breed a pet with itself")]
     CannotBreedSelf,
     #[msg("Arithmetic overflow")]
@@ -22,10 +23,6 @@ pub enum ErrorCode {
     BreedRequestAlreadyPending,
     #[msg("No pending breed request for this wallet")]
     BreedRequestNotFound,
-    #[msg("Battle request already pending for this wallet")]
-    BattleRequestAlreadyPending,
-    #[msg("No pending battle request for this wallet")]
-    BattleRequestNotFound,
     #[msg("Invalid Switchboard randomness account")]
     InvalidRandomnessAccount,
     #[msg("Switchboard randomness has expired")]
@@ -44,16 +41,10 @@ pub enum ErrorCode {
     InvalidRandomnessExpirySlots,
     #[msg("Switchboard randomness has not yet expired")]
     RandomnessNotExpired,
-    #[msg("Defender pet is not open to challenges")]
-    DefenderNotOpenToChallenges,
     #[msg("Max level must be greater than zero")]
     InvalidMaxLevel,
     #[msg("Pet has already reached the max level")]
     MaxLevelReached,
-    #[msg("Battle participants must have different owners")]
-    CannotBattleSameOwner,
-    #[msg("Level gap between pets exceeds the allowed band")]
-    LevelGapTooLarge,
     #[msg("Generation cap must be greater than zero")]
     InvalidGenerationCap,
     #[msg("Breed cooldown base exceeds the maximum allowed")]
@@ -78,8 +69,6 @@ pub enum ErrorCode {
     PetNotTrainReady,
     #[msg("Breed fee exceeds the maximum allowed")]
     InvalidBreedFee,
-    #[msg("Battle fee exceeds the maximum allowed")]
-    InvalidBattleFee,
     #[msg("Stud fee exceeds the maximum allowed")]
     InvalidStudFee,
     #[msg("Marriage cooldown exceeds the maximum allowed")]

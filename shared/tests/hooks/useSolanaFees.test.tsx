@@ -38,7 +38,6 @@ const globalStateData = {
     breedFeeLamports:    10_000_000,
     trainFeeLamports:    10_000_000,
     studFeeLamports:     20_000_000,
-    battleFeeLamports:    5_000_000,
 };
 const playerProfileData = { mintCount: 2 };
 
@@ -80,7 +79,6 @@ describe('useSolanaFees', () => {
         expect(result.current.breedFeeLamports).toBe(10_000_000n);
         expect(result.current.trainFeeLamports).toBe(10_000_000n);
         expect(result.current.studFeeLamports).toBe(20_000_000n);
-        expect(result.current.battleFeeLamports).toBe(5_000_000n);
     });
 
     it('computes nextMintFeeLamports as baseMintFee << min(mintCount, 7)', async () => {

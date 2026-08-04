@@ -140,7 +140,7 @@ const SKILL_EMOJI: Record<string, string> = {
  * One fighter's HUD plate: name/level, a glowing HP gauge, rarity/skill-archetype
  * ("personality" — same terminology as the pet-gallery card)/record pills, and the
  * DNA-derived combat stats (plan §3.1 — pure function of dna/rarity/level, same
- * values CombatSim.simulate uses; no chain read needed). `pet` accepts an
+ * values the combat engine simulates from; no chain read needed). `pet` accepts an
  * OpponentPet too since it structurally extends Pet.
  */
 const FighterPlate: React.FC<{

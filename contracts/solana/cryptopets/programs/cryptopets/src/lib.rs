@@ -33,27 +33,12 @@ pub mod cryptopets {
         transfer_pet::handler(ctx)
     }
 
-    pub fn set_open_to_challenges(ctx: Context<SetOpenToChallenges>, value: bool) -> Result<()> {
-        set_open_to_challenges::handler(ctx, value)
-    }
-
     pub fn pause(ctx: Context<Pause>) -> Result<()> {
         pause::handler(ctx)
     }
 
     pub fn unpause(ctx: Context<Unpause>) -> Result<()> {
         unpause::handler(ctx)
-    }
-
-    pub fn commit_battle(
-        ctx: Context<CommitBattle>,
-        randomness_account: Pubkey,
-    ) -> Result<()> {
-        commit_battle::handler(ctx, randomness_account)
-    }
-
-    pub fn settle_battle(ctx: Context<SettleBattle>) -> Result<()> {
-        settle_battle::handler(ctx)
     }
 
     pub fn commit_breed(
@@ -88,10 +73,6 @@ pub mod cryptopets {
         sync_metadata::handler(ctx)
     }
 
-    pub fn cancel_battle(ctx: Context<CancelBattle>) -> Result<()> {
-        cancel_battle::handler(ctx)
-    }
-
     pub fn cancel_breed(ctx: Context<CancelBreed>) -> Result<()> {
         cancel_breed::handler(ctx)
     }
@@ -110,10 +91,6 @@ pub mod cryptopets {
 
     pub fn set_max_level(ctx: Context<SetConfig>, value: u16) -> Result<()> {
         config::set_max_level(ctx, value)
-    }
-
-    pub fn set_level_band_width(ctx: Context<SetConfig>, value: u16) -> Result<()> {
-        config::set_level_band_width(ctx, value)
     }
 
     pub fn set_generation_cap(ctx: Context<SetConfig>, value: u8) -> Result<()> {
@@ -150,10 +127,6 @@ pub mod cryptopets {
 
     pub fn set_breed_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
         config::set_breed_fee_lamports(ctx, value)
-    }
-
-    pub fn set_battle_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {
-        config::set_battle_fee_lamports(ctx, value)
     }
 
     pub fn set_stud_fee_lamports(ctx: Context<SetConfig>, value: u64) -> Result<()> {

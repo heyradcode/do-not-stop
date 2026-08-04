@@ -13,7 +13,6 @@
 //   battleCooldownSeconds   — cooldown between battles (default: 5)
 //   trainCooldownSeconds    — cooldown between trains (default: 60)
 //   trainXp                 — XP granted per train (default: 100)
-//   levelBandWidth          — max level gap between battle participants (default: 100)
 //   maxLevel                — hard level cap (default: 100)
 //   generationCap           — max breeding generation (default: 20)
 //   newbornCooldownSeconds  — post-breed battle lockout (default: 60)
@@ -37,7 +36,6 @@ const KEY_TO_INSTRUCTION: Record<string, string> = {
   battleCooldownSeconds: "setBattleCooldownSeconds",
   trainCooldownSeconds: "setTrainCooldownSeconds",
   trainXp: "setTrainXp",
-  levelBandWidth: "setLevelBandWidth",
   maxLevel: "setMaxLevel",
   generationCap: "setGenerationCap",
   newbornCooldownSeconds: "setNewbornCooldownSeconds",

@@ -43,13 +43,15 @@ services:
   # Deployed as a web service (not a worker) so it stays on the free plan —
   # /healthz answers Render's checks and /metrics rides the same port via the
   # PORT env convention. Trade-off: free web services sleep when idle; the
-  # reconnect/backfill machinery is designed to recover the gap on wake, and
-  # the Node indexers remain the source of truth until promotion anyway.
+  # reconnect/backfill machinery is designed to recover the gap on wake.
   #
-  # gRPC (StreamLiveBattles / roster reads) between the two services needs
+  # This is the ONLY writer of pet_roster — the backend has no indexer — so an
+  # idle-sleeping instance means a stale roster, not a redundant one.
+  #
+  # gRPC (pet-state reads / win estimates) between the two services needs
   # private networking; if unavailable on this plan, leave INDEXER_GRPC_ADDR
-  # unset on the API service — indexing still works, the database is the
-  # contract. Do not copy localhost:50051 from a local .env onto the API.
+  # unset on the API service — the backend reads the database directly and
+  # matchmaking always does. Do not copy localhost:50051 from a local .env.
   # Set indexer connection env vars in the dashboard:
   #   DATABASE_URL, EVM_SUBGRAPH_URL, SOLANA_WS_URL, SOLANA_RPC_URL,
   #   SOLANA_PROGRAM_ID — and at promotion: ROSTER_CACHE_ENABLED=true.

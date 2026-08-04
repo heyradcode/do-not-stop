@@ -1,0 +1,27 @@
+{
+    // Typecheck-only config (`pnpm typecheck`), same shape as `protocol`'s. Consumed as raw
+    // TypeScript for now (see the package README for why): no build step in this step, no
+    // "bin" wiring yet either — that is packaging work for whenever this actually ships to
+    // someone outside the monorepo, not part of the scaffold.
+    "compilerOptions": {
+        "target": "ES2022",
+        "lib": ["ES2022"],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "types": ["vitest/globals", "node"],
+        "noEmit": true,
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "skipLibCheck": true,
+        "verbatimModuleSyntax": true,
+        "isolatedModules": true
+    },
+    "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
+}

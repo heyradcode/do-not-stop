@@ -1,96 +1,237 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const battlePets = {
-    mutateAsync: vi.fn().mockResolvedValue(undefined),
-    isPending: false,
-    lifecycle: { phase: 'idle', hash: '0xhash', error: null as Error | null, reset: vi.fn() },
-};
-const adapter = { battlePets };
+const submit = vi.hoisted(() => vi.fn());
+const submitState = vi.hoisted(() => ({ isPending: false, error: null as Error | null }));
+const backendBattle = vi.hoisted(() => ({
+    current: { data: undefined as unknown, isSettled: false, error: null as Error | null },
+}));
+const verified = vi.hoisted(() => ({
+    current: { data: undefined as unknown, error: null as Error | null },
+}));
 
-let txSuccessArgs: [unknown, () => void] | undefined;
-vi.mock('../../src/hooks/adapters/useChainAdapter', () => ({ useChainAdapter: () => adapter }));
-vi.mock('../../src/hooks/useTxSuccess', () => ({
-    useTxSuccess: (lifecycle: unknown, cb: () => void) => {
-        txSuccessArgs = [lifecycle, cb];
-    },
+vi.mock('../../src/hooks/useSubmitBattleIntent', () => ({
+    useSubmitBattleIntent: () => ({ submit, isPending: submitState.isPending, error: submitState.error }),
 }));
-// EVM-only async battle flow; stub it so the hook stays chain-agnostic here.
-vi.mock('../../src/hooks/chains/ethereum/useEvmBattleFlow', () => ({
-    useEvmBattleFlow: () => ({ reset: vi.fn() }),
+vi.mock('../../src/hooks/useBackendBattle', () => ({
+    useBackendBattle: () => backendBattle.current,
 }));
-// Solana-only live replay; stub it out here to avoid pulling in the real
-// @switchboard-xyz/on-demand SDK (its own tests live alongside the hook).
-vi.mock('../../src/hooks/chains/solana/useLiveBattleReplaySolana', () => ({
-    useLiveBattleReplaySolana: () => null,
+vi.mock('../../src/hooks/useVerifiedBattleReceipt', () => ({
+    useVerifiedBattleReceipt: () => verified.current,
 }));
 
 import { useBattlePets } from '../../src/hooks/useBattlePets';
 
+const ACCEPTED = { battleId: 'btl_0001' };
+
+/** A receipt shaped as the protocol types it, with the attacker winning by default. */
+function receipt(attackerWon = true) {
+    return {
+        seed: `0x${'0'.repeat(63)}5`,
+        result: { attackerWon, rounds: 7, winnerHpRemaining: 42 },
+        snapshot: { attacker: { petId: 1n }, defender: { petId: 2n } },
+        progression: {
+            attacker: { xpAwarded: attackerWon ? 100 : 25 },
+            defender: { xpAwarded: attackerWon ? 25 : 100 },
+        },
+    };
+}
+
+function settledWith(state: string) {
+    return { data: { state }, isSettled: true, error: null };
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
-    battlePets.isPending = false;
-    battlePets.lifecycle.phase = 'idle';
-    battlePets.lifecycle.error = null;
+    submitState.isPending = false;
+    submitState.error = null;
+    backendBattle.current = { data: undefined, isSettled: false, error: null };
+    verified.current = { data: undefined, error: null };
+    submit.mockResolvedValue(ACCEPTED);
 });
 
-describe('useBattlePets', () => {
-    it('maps args to the adapter mutation', async () => {
+describe('starting a battle', () => {
+    it('submits a signed intent rather than sending a transaction', async () => {
         const { result } = renderHook(() => useBattlePets());
 
         await act(async () => {
-            await result.current.mutate({ petId1: 'a', petId2: 'b', defenderOwner: '0xowner' });
+            await result.current.mutate({ petId1: '1', petId2: '2', defenderOwner: '0xdef' });
         });
 
-        expect(battlePets.mutateAsync).toHaveBeenCalledWith({
-            petId1: 'a',
-            petId2: 'b',
-            defenderOwner: '0xowner',
+        expect(submit).toHaveBeenCalledWith({
+            attackerPetId: '1',
+            defenderPetId: '2',
+            defenderOwner: '0xdef',
         });
     });
 
-    it('swallows mutation errors (tracked on the lifecycle instead)', async () => {
-        battlePets.mutateAsync.mockRejectedValueOnce(new Error('boom'));
+    it('passes the room through so spectators follow along', async () => {
+        const { result } = renderHook(() => useBattlePets({ roomId: 'room_1' }));
+
+        await act(async () => {
+            await result.current.mutate({ petId1: '1', petId2: '2' });
+        });
+
+        expect(submit).toHaveBeenCalledWith(expect.objectContaining({ roomId: 'room_1' }));
+    });
+
+    it('reports the battle id as the identifier, in place of a tx hash', async () => {
+        const { result } = renderHook(() => useBattlePets());
+        await act(async () => {
+            await result.current.mutate({ petId1: '1', petId2: '2' });
+        });
+
+        expect(result.current.hash).toBe('btl_0001');
+    });
+
+    it('stays idle when the submission was refused', async () => {
+        submit.mockResolvedValue(null);
         const { result } = renderHook(() => useBattlePets());
 
         await act(async () => {
-            await expect(
-                result.current.mutate({ petId1: 'a', petId2: 'b' }),
-            ).resolves.toBeUndefined();
+            await result.current.mutate({ petId1: '1', petId2: '2' });
+        });
+
+        expect(result.current.hash).toBeUndefined();
+        expect(result.current.phase).toBe('idle');
+    });
+});
+
+describe('phases', () => {
+    it.each([
+        ['committed', 'awaiting-vrf'],
+        ['seeded', 'awaiting-vrf'],
+        ['computed', 'resolving'],
+        ['verified', 'resolving'],
+        ['verification_failed', 'error'],
+        ['forfeited', 'error'],
+        ['rejected', 'error'],
+    ])('maps %s to %s', (state, expected) => {
+        backendBattle.current = { data: { state }, isSettled: false, error: null };
+        const { result } = renderHook(() => useBattlePets());
+        expect(result.current.phase).toBe(expected);
+    });
+
+    it('treats the wait for the committed drand round as awaiting-vrf', () => {
+        // The backend-mode analogue of the old VRF wait, so the existing UI copy
+        // ("Awaiting randomness…") stays accurate.
+        backendBattle.current = { data: { state: 'committed' }, isSettled: false, error: null };
+        const { result } = renderHook(() => useBattlePets());
+        expect(result.current.isAwaitingVrf).toBe(true);
+    });
+
+    it('reports error when the submission itself failed', () => {
+        submitState.error = new Error('daily-cap-reached');
+        const { result } = renderHook(() => useBattlePets());
+        expect(result.current.phase).toBe('error');
+        expect(result.current.error?.message).toBe('daily-cap-reached');
+    });
+});
+
+describe('the verified result', () => {
+    it('produces no outcome until every check passes', () => {
+        // The whole point: an unverified receipt animates nothing.
+        backendBattle.current = settledWith('signed');
+        verified.current = { data: { verified: false, receipt: receipt(), outcome: null, checks: [] }, error: null };
+
+        const { result } = renderHook(() => useBattlePets());
+
+        expect(result.current.result).toBeNull();
+        expect(result.current.liveReplay).toBeNull();
+    });
+
+    it('maps a verified receipt onto the result the UI renders', () => {
+        backendBattle.current = settledWith('signed');
+        verified.current = {
+            data: { verified: true, receipt: receipt(true), outcome: { log: [] }, checks: [] },
+            error: null,
+        };
+
+        const { result } = renderHook(() => useBattlePets());
+
+        expect(result.current.result).toEqual({
+            requestId: 0n,
+            winnerId: 1n,
+            loserId: 2n,
+            vrfSeed: 5n,
+            firstWins: true,
+            rounds: 7,
+            winnerHpRemaining: 42,
+            xpWin: 100,
+            xpLoss: 25,
         });
     });
 
-    it('reflects lifecycle state', () => {
-        battlePets.isPending = true;
-        battlePets.lifecycle.phase = 'confirming';
-        battlePets.lifecycle.error = new Error('x');
+    it('swaps winner and loser when the defender won', () => {
+        backendBattle.current = settledWith('signed');
+        verified.current = {
+            data: { verified: true, receipt: receipt(false), outcome: { log: [] }, checks: [] },
+            error: null,
+        };
 
         const { result } = renderHook(() => useBattlePets());
-        expect(result.current.isPending).toBe(true);
-        expect(result.current.isConfirming).toBe(true);
-        expect(result.current.hash).toBe('0xhash');
-        expect(result.current.error?.message).toBe('x');
+
+        expect(result.current.result).toMatchObject({ firstWins: false, winnerId: 2n, loserId: 1n, xpWin: 100 });
     });
 
-    it('reset and clearErrors both reset the lifecycle', () => {
+    it('animates the verified replay, which is the same computation as the result', () => {
+        backendBattle.current = settledWith('signed');
+        const outcome = { log: [{ round: 1 }] };
+        verified.current = { data: { verified: true, receipt: receipt(), outcome, checks: [] }, error: null };
+
         const { result } = renderHook(() => useBattlePets());
 
-        act(() => {
-            result.current.reset();
-            result.current.clearErrors();
-        });
-
-        expect(battlePets.lifecycle.reset).toHaveBeenCalledTimes(2);
+        expect(result.current.liveReplay).toBe(outcome);
+        expect(result.current.phase).toBe('resolved');
     });
 
-    it('wires onSuccess through useTxSuccess', () => {
+    it('fires onSuccess once when the verified result lands', async () => {
         const onSuccess = vi.fn();
-        renderHook(() => useBattlePets({ onSuccess }));
+        backendBattle.current = settledWith('signed');
+        verified.current = {
+            data: { verified: true, receipt: receipt(), outcome: { log: [] }, checks: [] },
+            error: null,
+        };
 
-        expect(txSuccessArgs?.[0]).toBe(battlePets.lifecycle);
-        // Invoking the notify callback should fan out to the latest onSuccess.
-        act(() => txSuccessArgs?.[1]());
-        expect(onSuccess).toHaveBeenCalledOnce();
+        const { result, rerender } = renderHook(() => useBattlePets({ onSuccess }));
+        await act(async () => {
+            await result.current.mutate({ petId1: '1', petId2: '2' });
+        });
+        rerender();
+        rerender();
+
+        expect(onSuccess).toHaveBeenCalledTimes(1);
+        expect(onSuccess).toHaveBeenCalledWith(expect.objectContaining({ firstWins: true }));
+    });
+
+    it('exposes the individual checks, so a UI can show why a result is trusted', () => {
+        backendBattle.current = settledWith('signed');
+        const checks = [{ check: 'beacon-signature', ok: true }];
+        verified.current = { data: { verified: true, receipt: receipt(), outcome: { log: [] }, checks }, error: null };
+
+        const { result } = renderHook(() => useBattlePets());
+
+        expect(result.current.checks).toBe(checks);
+    });
+});
+
+describe('reset', () => {
+    it('clears the battle so a new one can start', async () => {
+        const { result } = renderHook(() => useBattlePets());
+        await act(async () => {
+            await result.current.mutate({ petId1: '1', petId2: '2' });
+        });
+        expect(result.current.hash).toBe('btl_0001');
+
+        act(() => result.current.reset());
+
+        expect(result.current.hash).toBeUndefined();
+        expect(result.current.phase).toBe('idle');
+    });
+
+    it('clearErrors is the same reset', () => {
+        const { result } = renderHook(() => useBattlePets());
+        expect(result.current.clearErrors).toBe(result.current.reset);
     });
 });

@@ -5,8 +5,6 @@ export interface EvmRawPet {
     dna: bigint;
     level: number | bigint;
     readyTime: bigint;
-    winCount: number | bigint;
-    lossCount: number | bigint;
     rarity: number | bigint;
     // v2 fields (PetCore getPet); optional for back-compat with v1 reads.
     xp?: number | bigint;
@@ -28,8 +26,11 @@ export const mapEvmPet = (raw: EvmRawPet, tokenId: bigint): Pet => {
         dna: BigInt(raw.dna),
         level: Number(raw.level),
         rarity: Number(raw.rarity),
-        winCount: Number(raw.winCount),
-        lossCount: Number(raw.lossCount),
+        // PetCore carries no battle record (§L Phase 6). A pet's real win/loss comes from
+        // the backend, merged over this by `useBattleProgress`; zero here means "no backend
+        // record yet", which is exactly true for a pet that has never fought.
+        winCount: 0,
+        lossCount: 0,
         readyAt: Number(raw.readyTime),
         xp: num(raw.xp),
         generation: num(raw.generation),

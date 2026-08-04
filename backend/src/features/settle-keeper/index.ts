@@ -2,14 +2,14 @@ import { env } from '@config/env';
 import { startKeeper, type SettleKeeperHandle } from './keeper';
 
 /**
- * Settles GameLogic battle/breed/mint requests from a backend-held wallet the
- * moment Pyth Entropy reveals, so the player never has to send the second
- * (settle) transaction themselves. See docs/plan-realtime-battle-ux.md and
- * docs/plan-realtime-battle-impl.md Phase 2.
+ * Settles GameLogic breed/mint requests from a backend-held wallet the moment
+ * Pyth Entropy reveals, so the player never has to send the second (settle)
+ * transaction themselves. See docs/plan-realtime-battle-ux.md and
+ * docs/plan-realtime-battle-impl.md Phase 2 for the original design; battles no
+ * longer take this path at all (§L Phase 6), breed and mint still do.
  *
- * Off unless KEEPER_ENABLED=true, mirroring the indexer-go gRPC stream
- * (src/grpc/battleStream.ts): the feature simply doesn't start rather than
- * failing, so local dev / CI without a configured keeper wallet is unaffected.
+ * Off unless KEEPER_ENABLED=true: the feature simply doesn't start rather than failing,
+ * so local dev / CI without a configured keeper wallet is unaffected.
  */
 
 let handle: SettleKeeperHandle | null = null;
@@ -20,8 +20,7 @@ export function startSettleKeeper(): void {
         return;
     }
 
-    const { rpcUrl, privateKey, chainId, gameLogicAddress, gameConfigAddress, backfillBlocks, mockReveal } =
-        env.settleKeeper;
+    const { rpcUrl, privateKey, chainId, gameLogicAddress, backfillBlocks, mockReveal } = env.settleKeeper;
     if (!rpcUrl || !privateKey || !chainId || !gameLogicAddress) {
         console.error(
             '[settle-keeper] KEEPER_ENABLED=true but KEEPER_RPC_URL / KEEPER_PRIVATE_KEY / ' +
@@ -29,14 +28,7 @@ export function startSettleKeeper(): void {
         );
         return;
     }
-    if (!gameConfigAddress) {
-        console.log(
-            '[settle-keeper] KEEPER_GAME_CONFIG_ADDRESS not set; live-battle-socket broadcast disabled ' +
-                '(settling itself is unaffected)',
-        );
-    }
-
-    startKeeper({ rpcUrl, privateKey, chainId, gameLogicAddress, gameConfigAddress, backfillBlocks, mockReveal })
+    startKeeper({ rpcUrl, privateKey, chainId, gameLogicAddress, backfillBlocks, mockReveal })
         .then((h) => { handle = h; })
         .catch((err) => console.error(`[settle-keeper] failed to start: ${(err as Error).message}`));
 }

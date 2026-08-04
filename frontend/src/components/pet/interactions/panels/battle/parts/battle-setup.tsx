@@ -14,8 +14,6 @@ import {
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import Icon, { BattleIcon } from '@components/ui/icon';
-import PendingBattleNotice from './pending-battle-notice';
-import OpenToChallengesToggle from './open-to-challenges-toggle';
 import { opponentKey, shortAddress } from '../battle-utils';
 import styles from '../index.module.css';
 import PetArt from '@components/pet/pet-art';
@@ -250,19 +248,6 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                     />
                 </div>
             </div>
-
-            <PendingBattleNotice
-                petId={selectedPet1}
-                label={selectedFighter?.name}
-                checkSolana
-            />
-            {opponent ? (
-                <PendingBattleNotice petId={opponent.id} label={opponent.name} />
-            ) : null}
-            <OpenToChallengesToggle
-                petId={selectedPet1}
-                currentValue={selectedFighter?.openToChallenges}
-            />
 
             <div className={styles.actions}>
                 <AuthActionButton tone="magenta" onClick={onBattle} disabled={battleDisabled}>

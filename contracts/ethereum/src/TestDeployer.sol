@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import "./GameConfig.sol";
-import "./CombatSim.sol";
 import "./PetCore.sol";
 import "./GameLogic.sol";
 
@@ -30,7 +29,6 @@ contract TestDeployer {
     address    public immutable entropy;
 
     GameConfig   public immutable config;
-    CombatSim  public immutable combatSim;
     PetCore    public immutable petCore;    // proxy, typed as impl for convenience
     GameLogic  public immutable gameLogic;  // proxy, typed as impl for convenience
 
@@ -40,8 +38,6 @@ contract TestDeployer {
 
         // ── config & sim ──────────────────────────────────────────────────────
         config    = new GameConfig(address(this));
-        combatSim = new CombatSim();
-        config.setCombatSim(address(combatSim));
 
         // ── PetCore proxy — owner starts as address(this) for wiring ────────
         PetCore petCoreImpl = new PetCore();

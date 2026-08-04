@@ -8,13 +8,15 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "prisma generate && tsc && node scripts/copy-proto.cjs && node scripts/bundle-shared-node.cjs",
+    "build": "prisma generate && tsc && node scripts/copy-proto.cjs && node scripts/bundle-shared-node.cjs && node scripts/bundle-protocol.cjs",
     "start": "node dist/src/server.js",
     "dev": "nodemon",
     "clean": "rm -rf dist",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:status": "prisma migrate status",
+    "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "db:push": "prisma db push",
     "test": "vitest run",
@@ -24,7 +26,10 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.68",
     "@coral-xyz/anchor": "^0.32.0",
+    "@cryptopets/protocol": "workspace:*",
     "@grpc/grpc-js": "^1.14.4",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0",
     "@grpc/proto-loader": "^0.8.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",

@@ -6,7 +6,6 @@ const reads: Record<string, bigint | undefined> = {
     baseMintFee: 100n,
     levelUpFee: 5n,
     breedFee: 7n,
-    battleFee: 6n,
     trainFee: 3n,
     studFee: 9n,
     walletMintCount: 2n,
@@ -29,7 +28,7 @@ import { useEvmFees } from '../../src/hooks/chains/ethereum/useEvmFees';
 
 beforeEach(() => {
     account.address = '0xabc';
-    Object.assign(reads, { baseMintFee: 100n, levelUpFee: 5n, breedFee: 7n, battleFee: 6n, trainFee: 3n, studFee: 9n, walletMintCount: 2n });
+    Object.assign(reads, { baseMintFee: 100n, levelUpFee: 5n, breedFee: 7n, trainFee: 3n, studFee: 9n, walletMintCount: 2n });
 });
 
 describe('useEvmFees', () => {
@@ -39,7 +38,6 @@ describe('useEvmFees', () => {
         expect(result.current.baseMintFee).toBe(100n);
         expect(result.current.levelUpFee).toBe(5n);
         expect(result.current.breedFee).toBe(7n);
-        expect(result.current.battleFee).toBe(6n);
         expect(result.current.trainFee).toBe(3n);
         expect(result.current.studFee).toBe(9n);
         expect(result.current.walletMintCount).toBe(2n);

@@ -39,12 +39,11 @@ func runScanOnce(cfg *config.Config) error {
 	defer pg.Close()
 
 	roster := make(chan indexer.RosterUpdate, 256)
-	battles := make(chan indexer.BattleEvent, 64)
 	writerCtx, stopWriter := context.WithCancel(ctx)
 	writerDone := make(chan struct{})
 	go func() {
 		defer close(writerDone)
-		if err := store.NewWriter(pg).Run(writerCtx, roster, battles); err != nil {
+		if err := store.NewWriter(pg).Run(writerCtx, roster); err != nil {
 			slog.Error("writer exited", "err", err)
 		}
 	}()

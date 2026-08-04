@@ -3,8 +3,8 @@ import { buildPersona } from '../llm/persona';
 import { generateTurns, ensureResultCoverage } from './turns';
 import { getPregenStore } from '@repositories/pregen.repository';
 import { matchupKey } from '@typings/pregen';
-import { recordBattleHistory, recordResultLines } from '../recording';
-import { getChainSettledWinner } from '@grpc-client/battleStream';
+import { recordResultLines } from '../recording';
+import { getSettledWinner } from '@repositories/history.repository';
 import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from '../dialogue.types';
 
 /**
@@ -13,7 +13,7 @@ import type { DialogueResult, DialogueTurn, GenerateDialogueInput } from '../dia
  * The chain decides the winner; we only narrate toward it (see AI_BATTLE_DIALOGUE.md).
  */
 export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promise<DialogueResult> {
-    verifyAgainstChainTruth(input);
+    await verifyAgainstRecordedResult(input);
 
     // Build personas before the cache check so we can supplement cached turns too.
     const attacker = buildPersona(input.attacker);
@@ -37,31 +37,39 @@ export async function getOrGenerateDialogue(input: GenerateDialogueInput): Promi
     return finalizeDialogue(input, turns, model);
 }
 
-/** Thrown by {@link verifyAgainstChainTruth} when the battle stream has already seen this
- *  battle settle on-chain with a different winner than the client is claiming. */
+/** Thrown by {@link verifyAgainstRecordedResult} when this battle is already on record with
+ *  a different winner than the client is claiming. */
 export class ChainTruthMismatchError extends Error {
     constructor(public readonly chainWinner: string) {
-        super(`client-reported winner contradicts chain truth (${chainWinner})`);
+        super(`client-reported winner contradicts the signed result (${chainWinner})`);
         this.name = 'ChainTruthMismatchError';
     }
 }
 
 /**
- * When the battle stream has seen this battle settle on-chain, the client-reported
- * winner must match. Chain truth is the actual authority here — a mismatch means the
- * client is either buggy or forging a result, and letting it through would poison
- * `battle_history` and the cached dialogue via the idempotent first-write-wins cache
- * in {@link finalizeDialogue}. No-op when the stream is off or the battle hasn't been
- * seen yet (the common case — the stream lags settlement).
+ * The client-reported winner must match the one on record.
+ *
+ * The record is `battle_history`, written by the battle worker from the signed receipt —
+ * so this compares the client's claim against what was actually signed, where it used to
+ * compare against an on-chain settle event seen by the indexer stream.
+ *
+ * A mismatch means the client is buggy or forging, and letting it through would poison the
+ * cached dialogue via the first-write-wins cache in {@link finalizeDialogue}. It can no
+ * longer poison `battle_history` itself: this path stopped writing that table when the
+ * worker took it over.
+ *
+ * No-op when the battle is not on record. That is permissive by design — dialogue may be
+ * requested before the receipt commits — and it is why this guard protects the dialogue
+ * cache rather than the battle record.
  */
-function verifyAgainstChainTruth(input: GenerateDialogueInput): void {
+async function verifyAgainstRecordedResult(input: GenerateDialogueInput): Promise<void> {
     if (!input.battleId) return;
-    const chainWinner = getChainSettledWinner(input.chain, input.battleId);
-    if (!chainWinner) return;
+    const recordedWinner = await getSettledWinner(input.chain, input.battleId);
+    if (!recordedWinner) return;
 
     const claimed = input.winner === 'attacker' ? input.attacker.petId : input.defender.petId;
-    if (claimed !== chainWinner) {
-        throw new ChainTruthMismatchError(chainWinner);
+    if (claimed !== recordedWinner) {
+        throw new ChainTruthMismatchError(recordedWinner);
     }
 }
 
@@ -82,18 +90,17 @@ async function consumePregen(
 }
 
 /**
- * Persist a settled battle's dialogue and return the response. Records the battle
- * to history (for future rivalry context) and appends the result lines to the
- * rolling transcript — both idempotent and best-effort, never blocking the
- * response. Shared by the on-demand and pre-generated paths.
+ * Persist a settled battle's dialogue and return the response, appending the result lines
+ * to the rolling transcript — idempotent and best-effort, never blocking the response.
+ * Shared by the on-demand and pre-generated paths.
+ *
+ * No `battle_history` write: the battle worker records that from the receipt.
  */
 async function finalizeDialogue(
     input: GenerateDialogueInput,
     turns: DialogueTurn[],
     model: string,
 ): Promise<DialogueResult> {
-    await recordBattleHistory(input);
-
     await saveDialogue({
         chain: input.chain,
         battleId: input.battleId,

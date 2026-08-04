@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
     getReadyPetsUnified,
+    isBattleRejection,
+    isConsentFailure,
     useChainCapabilities,
     useBattlePets,
     useBattleTaunts,
     useCreateBattleRoom,
     useOpponents,
     usePetList,
-    usePendingBattle,
     useWinEstimate,
     type TxLifecycle,
     type BattleResolvedResult,
     type SimOutcome,
 } from '@shared/core';
+import { BATTLE_ROOM_WS_URL } from '../../config';
 import { BATTLE_PATH, DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { formatTxHashHint } from '@hooks/usePetError';
 import { usePetErrorToast } from '@hooks/usePetErrorToast';
@@ -64,18 +66,22 @@ export interface UseBattlePanel {
  * in their own hooks (`useBattleOutcome`, `useResultDialogue`) and are
  * composed below.
  *
- * No rematch action: GameLogic.sol's settleBattle puts both participants on a
- * 900s battleCooldown (contracts/ethereum/src/GameConfig.sol) regardless of
- * outcome, so the exact pairing that just fought can never legally re-battle
- * immediately after a result — a same-opponent "Rematch" button would always
- * fail with a cooldown error. Players re-battle by picking a fresh opponent
- * from the setup screen instead.
+ * No rematch action: publishing a receipt puts both participants on a cooldown
+ * (`BATTLE_COOLDOWN_SECONDS`, 900s by default) regardless of outcome, so the exact
+ * pairing that just fought can never legally re-battle immediately after a result —
+ * a same-opponent "Rematch" button would always be rejected. Players re-battle by
+ * picking a fresh opponent from the setup screen instead.
  */
 export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBattlePanel => {
     const navigate = useNavigate();
     const location = useLocation();
+    // The room this battle is being watched through (§J). The URL is the source of
+    // truth rather than a second piece of state: it is what handleBattle sets when
+    // the room is minted, what a spectator opens, and what survives a reload — all
+    // three have to agree, and duplicating it in state is how they stop agreeing.
+    const { roomId = null } = useParams<{ roomId?: string }>();
     const capabilities = useChainCapabilities();
-    const { pets, refetch, isLoading: petsLoading } = usePetList();
+    const { pets, refetch } = usePetList();
     // Pre-select the pet the player clicked "Battle" on from its gallery card
     // (navigate(BATTLE_PATH, { state: { petId } })) — falls back to unselected
     // for the generic nav entry, which carries no state. Only read once, on
@@ -110,7 +116,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const pendingBattleStartRef = useRef(false);
     // Latest live-replay outcome, read by handleSuccess (defined before `battle`
     // exists) for the mismatch check. Assigned during render each time `battle`
-    // updates, mirroring the onResolvedRef pattern in useEvmBattleFlow.
+    // updates, keeping the callback identity stable across renders.
     const liveReplayRef = useRef<SimOutcome | null>(null);
 
     const activeChainKind = capabilities.activeKind;
@@ -120,25 +126,22 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         refetch: refetchOpponents,
     } = useOpponents({ chain: activeChainKind });
 
-    // Outcome detection (snapshot diff against refreshed on-chain stats).
-    const outcome = useBattleOutcome({ pets, selectedPet1, petsLoading });
+    // Victory/defeat and level-up, both read straight off the verified receipt.
+    const outcome = useBattleOutcome();
 
     const handleSuccess = useCallback(
-        (result: BattleResolvedResult | null) => {
+        (result: BattleResolvedResult) => {
             setValidationError(null);
-            outcome.markPendingOutcome();
-            // EVM: BattleResolved is authoritative — petId1 is the player's pet, so
-            // firstWins is the player's verdict. Solana resolves via the stat diff.
-            if (result) {
-                outcome.applyResolvedOutcome(result.firstWins);
-                const local = liveReplayRef.current?.result;
-                if (local && local.firstWins !== result.firstWins) {
-                    console.error('[battle] live-replay mismatch — on-chain result is authoritative', {
-                        onChain: result,
-                        local,
-                    });
-                    setMismatchNotice(true);
-                }
+            // The verified receipt is authoritative — petId1 is the player's pet, so
+            // firstWins is the player's verdict on either chain.
+            outcome.applyResolvedOutcome(result.firstWins, result.attackerLeveledUp);
+            const local = liveReplayRef.current?.result;
+            if (local && local.firstWins !== result.firstWins) {
+                console.error('[battle] live-replay mismatch — the signed receipt is authoritative', {
+                    receipt: result,
+                    local,
+                });
+                setMismatchNotice(true);
             }
             // Result display gates on the live animation finishing too (or the
             // mismatch notice, if one fired) — see the effect below.
@@ -149,7 +152,15 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         [outcome, refetch, refetchOpponents],
     );
 
-    const battle = useBattlePets({ onSuccess: handleSuccess });
+    // The room is passed here, not just put in the URL: `accept` records it on the
+    // ledger row, which is what makes the backend notify that room on every state
+    // change. Without it the socket has nothing to join and this client falls back
+    // to polling, while spectators holding the link are never told anything at all.
+    const battle = useBattlePets({
+        onSuccess: handleSuccess,
+        roomId,
+        roomSocketUrl: BATTLE_ROOM_WS_URL,
+    });
     liveReplayRef.current = battle.liveReplay;
 
     // Deliberately not gated on overlayOpen: the animation must keep progressing
@@ -203,12 +214,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     );
     const fighterLevel = selectedFighter?.level ?? null;
 
-    // An unresolved battle on either pet makes requestBattle revert ("Battle
-    // pending for pet"); block the new battle until it's settled/cancelled
-    // (the PendingBattleNotice in the setup view drives that).
-    const fighterPending = usePendingBattle(selectedPet1 || undefined);
-    const opponentPending = usePendingBattle(opponent?.id);
-    const hasPendingBattle = fighterPending.isPending || opponentPending.isPending;
     const sortedOpponents = useMemo(
         () => sortOpponentsByMatch(opponents, fighterLevel),
         [opponents, fighterLevel],
@@ -228,27 +233,28 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     });
 
     // Receipt errors are folded into `battle.error` by the chain adapter.
-    usePetErrorToast(battle.error, null, validationError, BATTLE_FAIL_MESSAGE);
+    //
+    // A server refusal goes in through the validation slot rather than the mutation one:
+    // `usePetError` returns a validation message verbatim, while a mutation error is run
+    // through the chain adapter's parser, which rewrites anything it does not recognise
+    // into a generic "Transaction failed" and loses the reason the server gave.
+    const rejectionMessage = isBattleRejection(battle.error) ? battle.error.message : null;
+    usePetErrorToast(battle.error, null, validationError ?? rejectionMessage, BATTLE_FAIL_MESSAGE);
 
-    const usesSwitchboardVrf = capabilities.randomness.provider === 'switchboard';
     const canRandomMatch = Boolean(selectedFighter) && opponents.length > 0 && !opponentsLoading;
-    const subtitle = usesSwitchboardVrf
-        ? 'Pick your fighter and an opponent (Switchboard VRF)'
-        : 'Pick your fighter and an opponent';
-    const pendingLabel = usesSwitchboardVrf ? 'Generating randomness…' : 'Starting Battle...';
-    // Fall back to the retained battle id: the lifecycle auto-resets (hash
-    // cleared) once the battle settles, but the hint should keep showing.
-    const hashHint = usesSwitchboardVrf
-        ? formatTxHashHint(battle.hash ?? settledBattleId ?? undefined)
-        : null;
+    // Chain-blind: a battle is seeded from a committed drand round on either chain, so
+    // there is no per-chain VRF provider to name here any more.
+    const subtitle = 'Pick your fighter and an opponent';
+    const pendingLabel = 'Starting Battle...';
+    // The battle id, shown so a player can look their receipt up later. Falls back to the
+    // retained id: `battle.hash` clears once the battle settles, the hint should not.
+    const hashHint = formatTxHashHint(battle.hash ?? settledBattleId ?? undefined);
 
     const startBattle = useCallback(() => {
         if (!selectedPet1 || !opponent) {
             setValidationError(VALIDATION_MESSAGE);
             return false;
         }
-
-        if (selectedFighter) outcome.snapshotFighterStats(selectedFighter);
 
         setValidationError(null);
         void battle.mutate({
@@ -257,7 +263,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
             defenderOwner: opponent.owner,
         });
         return true;
-    }, [battle, opponent, selectedFighter, selectedPet1, outcome]);
+    }, [battle, opponent, selectedPet1]);
 
     // Start Battle: generate AI pre-fight taunts, then hold the wallet prompt until
     // they finish playing (handleTauntsComplete / the empty-taunts fallback effect
@@ -290,8 +296,11 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
             chain: activeChainKind,
             attackerPetId: selectedFighter.id,
             defenderPetId: opponent.id,
-        }).then((roomId) => {
-            if (roomId) navigate(`${BATTLE_PATH}/${roomId}`, { replace: true });
+        }).then((mintedRoomId) => {
+            // Navigate either way. On failure that clears a previous battle's room from
+            // the URL, which would otherwise be handed to this battle's accept call and
+            // push its updates to a room full of the wrong spectators.
+            navigate(mintedRoomId ? `${BATTLE_PATH}/${mintedRoomId}` : BATTLE_PATH, { replace: true });
 
             setOverlayOpen(true);
             const personas = {
@@ -348,7 +357,6 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         taunts.reset();
         setValidationError(null);
         outcome.resetOutcome();
-        outcome.clearSnapshot();
         setSelectedPet1('');
         setSelectedOpponent('');
         navigate(DASHBOARD_HOME);
@@ -395,6 +403,22 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         }
     }, [taunts, battle.error, showResult]);
 
+    // A consent failure means this opponent's owner has no standing authorization
+    // covering the fight (§D) — they never granted one, revoked it, or scoped it to
+    // other pets. Matchmaking already excludes all three server-side, so this is the
+    // narrow race where the grant died between the list being built and the battle
+    // being accepted. Re-reading the list drops the opponent, and clearing the
+    // selection stops the player re-picking the one choice that cannot succeed.
+    //
+    // Deliberately not every rejection: a level-band or daily-cap refusal is about
+    // this attacker or today, not the opponent's willingness, and dropping them from
+    // the list over it would be wrong.
+    useEffect(() => {
+        if (!isConsentFailure(battle.error)) return;
+        setSelectedOpponent('');
+        void refetchOpponents();
+    }, [battle.error, refetchOpponents]);
+
     // Once the tx hash exists, retain it as the stable battleId for the result
     // read. EVM clears battle.hash on receipt completion, so capture it here.
     // Result dialogue was already pre-generated at taunt time (matchup-keyed), so
@@ -419,17 +443,13 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         : hasResolvedEvent && !animation.done
         ? 'Result in — playing out the fight…'
         : !hasResolvedEvent && animation.done && battle.liveReplay
-        ? 'Finalizing on-chain…'
+        ? 'Finalizing…'
         : battle.phase === 'awaiting-vrf'
         ? 'Awaiting randomness…'
-        : battle.phase === 'awaiting-settle'
-        ? 'Settling the battle…'
-        : battle.phase === 'settling'
-        ? 'Settling the battle…'
         : battle.phase === 'resolving'
         ? 'Resolving the outcome…'
         : battle.isConfirming
-        ? 'Confirming on-chain…'
+        ? 'Verifying the receipt…'
         : battle.isPending
         ? 'Awaiting your wallet…'
         : null;
@@ -450,8 +470,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         overlayOpen ||
         !selectedPet1 ||
         !selectedOpponent ||
-        showResult ||
-        hasPendingBattle;
+        showResult;
     const randomMatchDisabled = !canRandomMatch || battle.isPending || showResult;
 
     const fighterDisplayName = selectedFighter?.name ?? 'Your pet';

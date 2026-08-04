@@ -15,7 +15,6 @@ import (
 type fakeFlusher struct {
 	mu          sync.Mutex
 	rosterCalls [][]indexer.RosterUpdate
-	battleCalls [][]indexer.BattleEvent
 	fail        bool
 }
 
@@ -29,15 +28,6 @@ func (f *fakeFlusher) FlushRoster(_ context.Context, batch []indexer.RosterUpdat
 	return nil
 }
 
-func (f *fakeFlusher) InsertBattles(_ context.Context, events []indexer.BattleEvent) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.fail {
-		return errors.New("insert refused")
-	}
-	f.battleCalls = append(f.battleCalls, append([]indexer.BattleEvent(nil), events...))
-	return nil
-}
 
 func (f *fakeFlusher) setFail(v bool) {
 	f.mu.Lock()
@@ -55,15 +45,6 @@ func (f *fakeFlusher) allRosterRows() []indexer.RosterUpdate {
 	return all
 }
 
-func (f *fakeFlusher) allBattles() []indexer.BattleEvent {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	var all []indexer.BattleEvent
-	for _, c := range f.battleCalls {
-		all = append(all, c...)
-	}
-	return all
-}
 
 func update(petID string, version uint64, level uint32) indexer.RosterUpdate {
 	return indexer.RosterUpdate{Chain: "evm", PetID: petID, Level: level, Version: version}
@@ -71,19 +52,18 @@ func update(petID string, version uint64, level uint32) indexer.RosterUpdate {
 
 // runWriter starts the writer and returns channels plus a stop function that
 // cancels and waits for the final drain.
-func runWriter(t *testing.T, w *Writer) (chan indexer.RosterUpdate, chan indexer.BattleEvent, func()) {
+func runWriter(t *testing.T, w *Writer) (chan indexer.RosterUpdate, func()) {
 	t.Helper()
 	roster := make(chan indexer.RosterUpdate, 256)
-	battles := make(chan indexer.BattleEvent, 64)
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		if err := w.Run(ctx, roster, battles); err != nil {
+		if err := w.Run(ctx, roster); err != nil {
 			t.Errorf("Run: %v", err)
 		}
 	}()
-	return roster, battles, func() {
+	return roster, func() {
 		cancel()
 		select {
 		case <-done:
@@ -99,7 +79,7 @@ func TestFlushesWhenBatchSizeReached(t *testing.T) {
 	w.batchSize = 3
 	w.flushEvery = time.Hour // ticker out of the picture
 
-	roster, _, stop := runWriter(t, w)
+	roster, stop := runWriter(t, w)
 	defer stop()
 
 	for i := 0; i < 3; i++ {
@@ -114,7 +94,7 @@ func TestFlushesOnTicker(t *testing.T) {
 	w := NewWriter(f)
 	w.flushEvery = 10 * time.Millisecond
 
-	roster, _, stop := runWriter(t, w)
+	roster, stop := runWriter(t, w)
 	defer stop()
 
 	roster <- update("1", 1, 1)
@@ -151,7 +131,7 @@ func TestFailedFlushRetainsAndRetries(t *testing.T) {
 	w := NewWriter(f)
 	w.flushEvery = 10 * time.Millisecond
 
-	roster, _, stop := runWriter(t, w)
+	roster, stop := runWriter(t, w)
 	defer stop()
 
 	roster <- update("1", 1, 1)
@@ -164,29 +144,17 @@ func TestFailedFlushRetainsAndRetries(t *testing.T) {
 	testutil.WaitFor(t, "retry after failure clears", func() bool { return len(f.allRosterRows()) == 1 })
 }
 
-func TestBattlesInsertImmediately(t *testing.T) {
-	f := &fakeFlusher{}
-	w := NewWriter(f)
-	w.flushEvery = time.Hour
-
-	_, battles, stop := runWriter(t, w)
-	defer stop()
-
-	battles <- indexer.BattleEvent{Chain: "solana", BattleID: "sig1"}
-	testutil.WaitFor(t, "immediate battle insert", func() bool { return len(f.allBattles()) == 1 })
-}
 
 func TestFinalDrainOnShutdown(t *testing.T) {
 	f := &fakeFlusher{}
 	w := NewWriter(f)
 	w.flushEvery = time.Hour
 
-	roster, battles, stop := runWriter(t, w)
+	roster, stop := runWriter(t, w)
 	roster <- update("1", 1, 1)
-	battles <- indexer.BattleEvent{Chain: "evm", BattleID: "0xdead-1"}
 
-	// Give the loop a moment to buffer both, then cancel before any flush.
-	testutil.WaitFor(t, "events buffered", func() bool {
+	// Give the loop a moment to buffer it, then cancel before any flush.
+	testutil.WaitFor(t, "update buffered", func() bool {
 		return len(f.allRosterRows()) == 0 // nothing flushed yet — buffered only
 	})
 	time.Sleep(20 * time.Millisecond)
@@ -194,8 +162,5 @@ func TestFinalDrainOnShutdown(t *testing.T) {
 
 	if got := len(f.allRosterRows()); got != 1 {
 		t.Errorf("final drain flushed %d roster rows, want 1", got)
-	}
-	if got := len(f.allBattles()); got != 1 {
-		t.Errorf("final drain flushed %d battles, want 1", got)
 	}
 }

@@ -8,7 +8,6 @@ import { mapSolanaPet, type SolanaPetAccountRow } from '../../utils/pets/mapSola
 import { formatSolanaActionError } from '../../utils/solana';
 import { fetchAssetByPetId, fetchMarriageOwnerSnapshot } from '../../utils/solana/accountClient';
 import type { Pet } from '../../types/pet';
-import type { BattleResolvedResult } from '../../types/battle';
 import type { ChainAdapter, AdapterMutation, TxLifecycle, TxPhase, ChainCapabilities } from './types';
 
 export const SOLANA_CAPABILITIES: ChainCapabilities = {
@@ -20,7 +19,7 @@ export const SOLANA_CAPABILITIES: ChainCapabilities = {
     },
     levelUpFee: null,
     renameMinLevel: 1,
-    randomness: { provider: 'switchboard', appliesTo: ['battle', 'breed'] },
+    randomness: { provider: 'switchboard', appliesTo: ['breed'] },
     explorerTxUrl: () => null,
     parseError: (err, fallback) => {
         const message = formatSolanaActionError(err, fallback);
@@ -140,26 +139,6 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         isPending: actions.transferPet.isPending,
     };
 
-    const battleLc = useMemo<TxLifecycle>(
-        () => toVrfLc(actions.battlePets, actions.battleSubPhase),
-        [actions.battlePets, actions.battleSubPhase],
-    );
-
-    const battlePets: AdapterMutation<{ petId1: string; petId2: string; defenderOwner?: string }, BattleResolvedResult | null> = {
-        async mutateAsync({ petId1, petId2, defenderOwner }) {
-            const { sig, firstWins } = await actions.battlePets.mutateAsync({
-                attackerPetId: Number(petId1),
-                defenderPetId: Number(petId2),
-                attackerAssetKey: requireAssetKey(petId1),
-                ...(defenderOwner ? { defenderOwner } : {}),
-            });
-            if (firstWins === null) return null;
-            return { firstWins, sig, requestId: 0n, winnerId: 0n, loserId: 0n, vrfSeed: 0n, rounds: 0, winnerHpRemaining: 0, xpWin: 0, xpLoss: 0 };
-        },
-        lifecycle: battleLc,
-        isPending: actions.battlePets.isPending,
-    };
-
     const breedLc = useMemo<TxLifecycle>(
         () => toVrfLc(actions.breedPets, actions.breedSubPhase),
         [actions.breedPets, actions.breedSubPhase],
@@ -222,8 +201,7 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         levelUpPet,
         trainPet,
         renamePet,
-        transferPet,
-        battlePets,
+        transferPet,
         breedPets,
     };
 };

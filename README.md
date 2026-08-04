@@ -74,7 +74,7 @@ This monorepo uses two licenses depending on the package:
 
 | Package(s) | License |
 | --- | --- |
-| `contracts/ethereum`, `contracts/solana`, `indexer-go`, `proto` | [MIT](./contracts/LICENSE) — fully permissive |
+| `contracts/ethereum`, `contracts/solana`, `indexer-go`, `proto`, `protocol`, `verifier` | [MIT](./contracts/LICENSE) — fully permissive |
 | `frontend`, `backend`, `mobile`, `website`, `shared` (and anything else) | [PolyForm Noncommercial 1.0.0](./LICENSE) — free for any noncommercial purpose; commercial use requires permission |
 
 Each package's `package.json` / `go.mod` directory points at the license that

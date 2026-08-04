@@ -7,15 +7,11 @@ export { usePetsContract } from './chains/ethereum/usePetsContract';
 export { useFees, type UnifiedFees } from './useFees';
 export { useEvmFees, type EvmFees } from './chains/ethereum/useEvmFees';
 export { useSolanaFees, type SolanaFees } from './chains/solana/useSolanaFees';
-// Manual recovery for an interrupted async battle (settle / cancel a pending request).
-export { usePendingBattle, type PendingBattle } from './chains/ethereum/usePendingBattle';
+// Manual recovery for an interrupted async breed (settle / cancel a pending request).
 export { usePendingBreed, type PendingBreed } from './chains/ethereum/usePendingBreed';
 export { useBreedRelationCheck, type BreedRelationCheck } from './chains/ethereum/useBreedRelationCheck';
 // Solana pending VRF requests — auto-resumes on next action; cancel available after randomness expiry.
-export { usePendingSolanaBattle, type PendingSolanaBattle } from './chains/solana/usePendingSolanaBattle';
 export { usePendingSolanaBreed, type PendingSolanaBreed } from './chains/solana/usePendingSolanaBreed';
-// Solana defender-consent toggle (openToChallenges). No-op on EVM.
-export { useSetOpenToChallenges, type UseSetOpenToChallengesResult } from './useSetOpenToChallenges';
 // Solana NFT metadata sync — re-publishes on-chain state to Metaplex Core attributes. No-op on EVM.
 export { useSyncMetadata, type UseSyncMetadataResult } from './useSyncMetadata';
 // Solana stud fee earnings: balance query + withdraw_stud_fees action.
@@ -28,6 +24,9 @@ export { useActiveChain, type ActiveChain } from './useActiveChain';
 export { useChainCapabilities, type ChainContext } from './useChainCapabilities';
 export type { TxLifecycle, TxPhase, ChainCapabilities } from './adapters/types';
 export { usePetList, type PetListResult } from './usePetList';
+// Backend battle progression. usePetList already applies it to a player's own pets;
+// exported for anything reading pets from the chain by another route.
+export { useBattleProgress, mergeBattleProgress } from './useBattleProgress';
 export {
     useCreatePet,
     type CreatePetArgs,
@@ -68,5 +67,34 @@ export {
 } from './useBattleDialogue';
 export { useBattleTaunts, type GenerateTauntsVars } from './useBattleTaunts';
 export { useCreateBattleRoom, type CreateRoomVars } from './useCreateBattleRoom';
+// Backend-authoritative battles (docs/plan-backend-battle-architecture.md §D, §E, §J).
+export { BATTLE_CONFIG_QUERY_KEY, useBattleConfig, type BattleConfig } from './useBattleConfig';
+export { useBattleMode, type BattleMode, type BattleModeState } from './useBattleMode';
+export {
+    useSubmitBattleIntent,
+    type AcceptedBattle,
+    type SubmitBattleIntentVars,
+} from './useSubmitBattleIntent';
+export {
+    useDefenseAuthorization,
+    type GrantDefenseVars,
+} from './useDefenseAuthorization';
+export {
+    battleStateQueryKey,
+    useBackendBattle,
+    useStoredBattleEvidence,
+    type BattleStateSummary,
+    type UseBackendBattleOptions,
+} from './useBackendBattle';
+export {
+    useBattleRoomSocket,
+    type BattleRoomNotification,
+    type UseBattleRoomSocketOptions,
+} from './useBattleRoomSocket';
+export {
+    useVerifiedBattleReceipt,
+    verifiedReceiptQueryKey,
+    type VerifiedBattleReceipt,
+} from './useVerifiedBattleReceipt';
 export { usePetError, type PetError } from './usePetError';
 export { useTxError, type TxError } from './useTxError';

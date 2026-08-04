@@ -104,7 +104,6 @@ pub fn handler(ctx: Context<SettleBreed>) -> Result<()> {
     child.loss_count = 0;
     child.version = CURRENT_ACCOUNT_VERSION;
     child.bump = ctx.bumps.child;
-    child.open_to_challenges = true;
     child.set_name(&breed_request.name())?;
 
     // Phase 3 lineage (plan §4.2): record parentage and generation. The child starts

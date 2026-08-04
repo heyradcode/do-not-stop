@@ -4,14 +4,12 @@
 //! exactly as it did when this directory was flat — no IDL or call-site impact.
 
 pub mod admin;
-pub mod battle;
 pub mod breeding;
 pub mod marriage;
 pub mod mint;
 pub mod pet;
 
 pub use admin::*;
-pub use battle::*;
 pub use breeding::*;
 pub use marriage::*;
 pub use mint::*;
