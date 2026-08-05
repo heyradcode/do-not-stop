@@ -8,7 +8,7 @@
 const path = require('node:path');
 const esbuild = require('esbuild');
 
-const entry = path.resolve(__dirname, '../../../shared/src/node.ts');
+const entry = path.resolve(__dirname, '../../shared/src/node.ts');
 const outfile = path.resolve(__dirname, '../dist/shared-node.cjs');
 
 /**
@@ -17,7 +17,7 @@ const outfile = path.resolve(__dirname, '../dist/shared-node.cjs');
  * `packages: 'external'` would externalize it on name alone, so point the
  * specifier at the source file and let esbuild pull it in.
  */
-const protocolEntry = path.resolve(__dirname, '../../../protocol/src/index.ts');
+const protocolEntry = path.resolve(__dirname, '../../protocol/src/index.ts');
 
 esbuild
     .build({

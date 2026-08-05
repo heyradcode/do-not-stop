@@ -3,7 +3,7 @@
 # Vercel project builds frontend (which depends on @shared/core) from this root.
 mobile/
 contracts/
-services/backend/
+backend/
 **/.next/
 **/dist/
 **/.turbo/

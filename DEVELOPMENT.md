@@ -90,13 +90,13 @@ It is **not** optional if you need a populated roster: the backend's own
 ## Configuration Files
 
 - **Frontend:** `frontend/vite.config.ts`
-- **Backend:** `services/backend/src/server.ts`
+- **Backend:** `backend/src/server.ts`
 - **Ethereum:** `contracts/ethereum/hardhat.config.ts`
 - **Solana:** `contracts/solana/docker-compose.yml`
 
 ## Environment Variables
 
-### Backend (`services/backend/.env`)
+### Backend (`backend/.env`)
 ```bash
 JWT_SECRET=your-super-secret-jwt-key-here
 PORT=3001

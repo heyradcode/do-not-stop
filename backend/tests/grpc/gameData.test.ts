@@ -9,7 +9,7 @@ import { resolveProtoPath } from '../../src/grpc/gameData';
 
 describe('resolveProtoPath', () => {
     it('finds proto/cryptopets.proto from the monorepo root cwd', () => {
-        const repoRoot = path.resolve(__dirname, '../../../..');
+        const repoRoot = path.resolve(__dirname, '../../..');
         const prev = process.cwd();
         process.chdir(repoRoot);
         try {
@@ -19,13 +19,13 @@ describe('resolveProtoPath', () => {
         }
     });
 
-    it('finds ../../proto/cryptopets.proto when cwd is services/backend/', () => {
+    it('finds ../proto/cryptopets.proto when cwd is backend/', () => {
         const backendRoot = path.resolve(__dirname, '../..');
         const prev = process.cwd();
         process.chdir(backendRoot);
         try {
             expect(resolveProtoPath()).toBe(
-                path.resolve(backendRoot, '..', '..', 'proto', 'cryptopets.proto'),
+                path.resolve(backendRoot, '..', 'proto', 'cryptopets.proto'),
             );
         } finally {
             process.chdir(prev);

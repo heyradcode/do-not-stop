@@ -51,7 +51,7 @@ pnpm dev
 ### Manual Setup
 1. **Install dependencies**:
    ```bash
-   cd services/backend
+   cd backend
    pnpm install
    ```
 

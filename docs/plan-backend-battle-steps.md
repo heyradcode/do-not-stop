@@ -177,14 +177,14 @@ Phase 3.5 becomes the end state, and the KMS provider.
   `BattleReceipt`, `BattleBatch`, `BattleRuleset`, `PetBattleProgress`, `BattleOutbox`. Unique
   constraint on the wallet idempotency nonce. `BattleHistory` is untouched, since the on-chain path
   keeps running.
-- Files: `services/backend/prisma/schema.prisma`, `services/backend/prisma/migrations/*`.
+- Files: `backend/prisma/schema.prisma`, `backend/prisma/migrations/*`.
 - Verify: `pnpm --filter backend build` and a migration applied against a scratch database.
 - Commit: `feat(backend): add battle ledger, commitment, receipt, and progress models`
 
 ### Step 18: ledger state machine
 - Scope: the §J transition table as code, with every transition idempotent and each one writing its
   outbox message in the same transaction. Deterministic pet lock ordering. No HTTP surface yet.
-- Files: `services/backend/src/features/battle-ledger/{state.ts,transitions.ts,outbox.ts,index.ts}`, tests.
+- Files: `backend/src/features/battle-ledger/{state.ts,transitions.ts,outbox.ts,index.ts}`, tests.
 - Verify: `pnpm --filter backend test`
 - Commit: `feat(backend): add transactional battle ledger state machine and outbox`
 
@@ -192,7 +192,7 @@ Phase 3.5 becomes the end state, and the KMS provider.
 - Scope: verify an EIP-712 or Solana-signed `BattleIntent`, check finalized attacker ownership,
   consume the nonce, reject expiry and cross-deployment replay, create the ledger row in `accepted`.
   A JWT can carry the request but never authorizes another wallet's battle.
-- Files: `services/backend/src/features/battle-ledger/intent.service.ts`, `services/backend/src/routes/battle.ts`,
+- Files: `backend/src/features/battle-ledger/intent.service.ts`, `backend/src/routes/battle.ts`,
   tests.
 - Verify: `pnpm --filter backend test`
 - Commit: `feat(backend): accept wallet-signed battle intents`
@@ -200,7 +200,7 @@ Phase 3.5 becomes the end state, and the KMS provider.
 ### Step 20: standing defender consent
 - Scope: store, verify, and revoke `DefenseAuthorization`. Level band, daily battle cap, immediate
   revocation with its timestamp available to receipts.
-- Files: `services/backend/src/features/battle-ledger/consent.service.ts`, routes, tests.
+- Files: `backend/src/features/battle-ledger/consent.service.ts`, routes, tests.
 - Verify: `pnpm --filter backend test`
 - Commit: `feat(backend): add standing defender consent with immediate revocation`
 
@@ -212,7 +212,7 @@ Phase 3.5 becomes the end state, and the KMS provider.
 - Scope: fetch quicknet rounds, verify with the `protocol/` verifier, cache verified rounds, retry
   the same committed round indefinitely (§E), never substitute a known round. Metrics for fetch
   delay.
-- Files: `services/backend/src/features/battle-randomness/*`, tests with a stubbed HTTP transport.
+- Files: `backend/src/features/battle-randomness/*`, tests with a stubbed HTTP transport.
 - Verify: `pnpm --filter backend test`
 - Commit: `feat(backend): add verified drand quicknet round client with same-round retry`
 
@@ -220,7 +220,7 @@ Phase 3.5 becomes the end state, and the KMS provider.
 - Scope: signer interface accepting only the exact commitment and receipt schemas, digest-only
   signing, KMS adapter plus a local dev adapter, key registry with validity periods including
   rotated-out keys. No generic signing endpoint, ever.
-- Files: `services/backend/src/features/battle-signer/*`, tests.
+- Files: `backend/src/features/battle-signer/*`, tests.
 - Verify: `pnpm --filter backend test`
 - Commit: `feat(backend): add schema-restricted KMS signer for commitments and receipts`
 
@@ -228,7 +228,7 @@ Phase 3.5 becomes the end state, and the KMS provider.
 - Scope: the one ordering that can never be relaxed. On acceptance: snapshot both pets, pick
   `currentRound + 2`, persist, sign the `BattleCommitment`, and return it synchronously in the accept
   response. Alert when accept succeeds but commitment delivery fails.
-- Files: `services/backend/src/features/battle-ledger/accept.service.ts`, integration test asserting the
+- Files: `backend/src/features/battle-ledger/accept.service.ts`, integration test asserting the
   commitment is signed and returned before the committed round exists.
 - Verify: `pnpm --filter backend test`
 - Commit: `feat(backend): sign and deliver battle commitment before the drand round publishes`
@@ -236,7 +236,7 @@ Phase 3.5 becomes the end state, and the KMS provider.
 ### Step 24: seeded and computed worker
 - Scope: worker driving `committed` to `seeded` to `computed`. Verify the beacon, derive the seed,
   run `protocol/` combat plus progression, persist the combat log and its hash.
-- Files: `services/backend/src/features/battle-worker/*`, tests.
+- Files: `backend/src/features/battle-worker/*`, tests.
 - Verify: `pnpm --filter backend test`
 - Commit: `feat(backend): compute battles from verified drand seeds in a worker`
 
@@ -246,7 +246,7 @@ Phase 3.5 becomes the end state, and the KMS provider.
   progression delta, or combat-log hash stops signing for that ruleset, alerts, and retains both
   outputs. Never silently prefer one implementation.
 - Files: `services/indexer-go/internal/combat/verify.go`, `services/indexer-go/internal/grpcsrv/*` (or an HTTP
-  endpoint), `proto/cryptopets.proto` if gRPC, `services/backend/src/features/battle-worker/verify.ts`.
+  endpoint), `proto/cryptopets.proto` if gRPC, `backend/src/features/battle-worker/verify.ts`.
 - Verify: `cd services/indexer-go && go vet ./... && go test ./internal/combat` and `pnpm --filter backend test`
 - Commit: `feat(indexer-go): verify backend battle results independently before signing`
 
@@ -254,7 +254,7 @@ Phase 3.5 becomes the end state, and the KMS provider.
 - Scope: `verified` to `signed` to `published`. Append to the global chain and both per-pet chains
   inside one transaction, update `PetBattleProgress`. A duplicate battle id with a different payload
   raises a security alert and is never an upsert.
-- Files: `services/backend/src/features/battle-ledger/receipt.service.ts`, tests including a concurrency test.
+- Files: `backend/src/features/battle-ledger/receipt.service.ts`, tests including a concurrency test.
 - Verify: `pnpm --filter backend test`
 - Commit: `feat(backend): sign battle receipts and append global and per-pet hash chains`
 
@@ -266,22 +266,22 @@ Phase 3.5 becomes the end state, and the KMS provider.
 - Scope: battle state by id, signed commitment, signed receipt, combat log, active signing keys,
   active rulesets, verify-receipt. Authoritative and re-fetchable, since the WebSocket stops being
   trusted in Step 29.
-- Files: `services/backend/src/routes/battle.ts`, `services/backend/src/graphql/*`, `services/backend/API.md`, tests.
+- Files: `backend/src/routes/battle.ts`, `backend/src/graphql/*`, `backend/API.md`, tests.
 - Verify: `pnpm --filter backend test`
 - Commit: `feat(backend): expose battle state, commitment, receipt, and key endpoints`
 
 ### Step 28: public receipt corpus
 - Scope: paginated export by pet, by wallet, and by sequence range, with no authentication, so
   replay needs no special access (§H item 3).
-- Files: `services/backend/src/routes/receipts.ts`, tests.
+- Files: `backend/src/routes/receipts.ts`, tests.
 - Verify: `pnpm --filter backend test`
 - Commit: `feat(backend): publish a paginated public receipt corpus`
 
 ### Step 29: scope the WebSocket per room
-- Scope: `services/backend/src/ws/liveBattleSocket.ts` stops broadcasting globally, since the payload now
+- Scope: `backend/src/ws/liveBattleSocket.ts` stops broadcasting globally, since the payload now
   carries full combat logs. Subscriptions scope to the existing `BattleRoom`. Notification only,
   never authoritative.
-- Files: `services/backend/src/ws/liveBattleSocket.ts`, `services/backend/src/features/battle-room/*`, frontend and
+- Files: `backend/src/ws/liveBattleSocket.ts`, `backend/src/features/battle-room/*`, frontend and
   mobile subscribe calls, tests.
 - Verify: `pnpm --filter backend test && pnpm --filter frontend test`
 - Commit: `refactor(backend): scope live battle socket per room and make it notification-only`
@@ -340,7 +340,7 @@ Phase 3.5 becomes the end state, and the KMS provider.
 - Scope: recompute every settled on-chain battle through the `protocol/` engine and the Go verifier,
   compare against `BattleResolved`, record mismatches. On-chain battles keep running unchanged. Stop
   condition: zero deterministic mismatch over the agreed observation window.
-- Files: `services/backend/src/features/battle-shadow/*`, metrics, tests.
+- Files: `backend/src/features/battle-shadow/*`, metrics, tests.
 - Verify: `pnpm --filter backend test`, then the observation window itself.
 - Commit: `feat(backend): shadow-compute settled on-chain battles against the backend engine`
 
@@ -348,7 +348,7 @@ Phase 3.5 becomes the end state, and the KMS provider.
 - Scope: backend battle mode behind a flag, alongside the on-chain mode. Off-chain XP, rating, and
   cooldown stored distinctly from NFT state. Signed commitments and receipts, no transferable
   reward. Recovery, replay, key-rotation, and incident drills documented and run.
-- Files: `services/backend/src/features/battle-*`, `services/backend/env.example`, frontend mode switch,
+- Files: `backend/src/features/battle-*`, `backend/env.example`, frontend mode switch,
   `docs/runbook-backend-battles.md`.
 - Verify: `pnpm --filter backend test && pnpm --filter frontend test`
 - Commit: `feat: launch rewardless backend battle mode behind a flag`

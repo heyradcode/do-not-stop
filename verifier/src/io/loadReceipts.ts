@@ -7,7 +7,7 @@ import { firstString, isRecord, requireString } from './util';
 /**
  * Loads one or more signed receipts from a local file path or an `http(s)` URL.
  *
- * Accepts every shape the backend actually serves (`services/backend/API.md`): a single receipt
+ * Accepts every shape the backend actually serves (`backend/API.md`): a single receipt
  * (`GET /api/battle/:battleId/receipt`, `{ hash, signature, signingKeyId, payload }`), a
  * corpus page (`GET /api/receipts/...`, `{ receipts: [...], nextCursor }`), or a bare
  * array of receipt entries — including one saved to a local file by hand.

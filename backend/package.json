@@ -2,7 +2,7 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "Cryptopets backend: Web3 auth, dialogue LLM, and gRPC/GraphQL game-data APIs",
-  "license": "SEE LICENSE IN ../../LICENSE",
+  "license": "SEE LICENSE IN ../LICENSE",
   "main": "dist/src/server.js",
   "engines": {
     "node": ">=20"

@@ -233,7 +233,7 @@ gone. `foughtAt` is unix seconds.
 
 ### Settle keeper
 
-`services/backend/src/features/settle-keeper/` settles EVM `GameLogic` **breed and mint**
+`backend/src/features/settle-keeper/` settles EVM `GameLogic` **breed and mint**
 requests (the `requestX` → Pyth Entropy reveals → `settleX` flow) from a
 backend-held wallet once entropy reveals, so the player only signs the request
 transaction — `settleX` is permissionless and needed no special authorization,
@@ -247,7 +247,7 @@ mode; battles run through the backend-authoritative path below.
 
 ### Backend-authoritative battles (v2)
 
-`services/backend/src/routes/battle.ts` — the workflow described in
+`backend/src/routes/battle.ts` — the workflow described in
 `docs/plan-backend-battle-architecture.md`. Submission and consent require a JWT
 (the wallet signature inside the body is what actually authorizes the action,
 per §D); the reads below require nothing, because every value they return is
@@ -298,14 +298,14 @@ battle only has a `roomId` if it was accepted with one (`POST
 body); a battle accepted without one still runs through every state normally,
 it just has no spectator link to push a notification through.
 
-This is a second, separate socket from `services/backend/src/ws/liveBattleSocket.ts`,
+This is a second, separate socket from `backend/src/ws/liveBattleSocket.ts`,
 not a change to it — that socket keeps broadcasting globally, which remains
 correct for the legacy on-chain settle-keeper flow it carries (chain-derived
 data, filtered client-side by `(chainId, requestId)`).
 
 ### Public receipt corpus (v2)
 
-`services/backend/src/routes/receipts.ts` — the paginated export §H item 3 calls for.
+`backend/src/routes/receipts.ts` — the paginated export §H item 3 calls for.
 No authentication on any route here, deliberately: public replay only works if
 anyone can *get* the receipts to replay, not just verify a signature over one
 they already have. Every route is cursor-paginated; a response's
@@ -336,7 +336,7 @@ old key published. Rows are never deleted: dropping a key would make its receipt
 
 ### Reward seasons (v2)
 
-`services/backend/src/routes/rewards.ts` — the claim-proof half of §I. Unauthenticated, like the
+`backend/src/routes/rewards.ts` — the claim-proof half of §I. Unauthenticated, like the
 receipt corpus: a claim proof only ever pays the wallet bound inside its leaf, so publishing
 one lets a third party sponsor someone's gas rather than take their reward.
 

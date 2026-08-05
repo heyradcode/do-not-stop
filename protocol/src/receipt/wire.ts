@@ -7,7 +7,7 @@ import type { BattleReceipt } from './types';
  * JSON wire form of a `BattleReceipt`: identical shape, except the bigint fields (pet id,
  * dna, last-opponent id, source version) travel as decimal strings, since JSON has no
  * bigint type. This is exactly what the backend's public receipt endpoints actually serve —
- * `services/backend/src/features/battle-worker/sign.worker.ts` stores the receipt through a
+ * `backend/src/features/battle-worker/sign.worker.ts` stores the receipt through a
  * `JSON.stringify(receipt, bigint -> string)` replacer, and the read/corpus routes hand that
  * stored payload back unchanged.
  *

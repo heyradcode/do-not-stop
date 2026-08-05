@@ -11,7 +11,7 @@
 const path = require('node:path');
 const esbuild = require('esbuild');
 
-const entry = path.resolve(__dirname, '../../../protocol/src/index.ts');
+const entry = path.resolve(__dirname, '../../protocol/src/index.ts');
 const outfile = path.resolve(__dirname, '../dist/protocol.cjs');
 
 esbuild

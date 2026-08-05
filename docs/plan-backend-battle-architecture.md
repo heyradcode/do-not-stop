@@ -578,7 +578,7 @@ Because the receipt carries every input, any third party can recompute the fight
    needs no special access.
 4. **Published signing keys** with validity periods, including rotated-out keys.
 
-Licensing note: outsiders are expected to run this, so it cannot live under `services/backend/` (PolyForm
+Licensing note: outsiders are expected to run this, so it cannot live under `backend/` (PolyForm
 Noncommercial). See §K.
 
 ## §I. Merkle batches and reward claims
@@ -664,7 +664,7 @@ Requirements:
 
 ### The WebSocket
 
-`services/backend/src/ws/liveBattleSocket.ts` currently broadcasts every message to every connected client,
+`backend/src/ws/liveBattleSocket.ts` currently broadcasts every message to every connected client,
 deliberately, because clients filter by `(chainId, requestId)` themselves and the payload was
 chain-derived data anyone could read anyway.
 
@@ -757,7 +757,7 @@ Update `docs/plan-future-features-roadmap.md` on acceptance:
 PolyForm Noncommercial.
 
 - Root registry and claim contracts land in `contracts/ethereum`, so MIT, no action needed.
-- **The standalone public verifier (§H) cannot live under `services/backend/`.** A verifier outsiders are
+- **The standalone public verifier (§H) cannot live under `backend/`.** A verifier outsiders are
   expected to run must be licensed so they can run it. Decide its home before writing it: an MIT
   top-level package such as `verifier/`, or extend the MIT Go combat package in `indexer-go`.
 

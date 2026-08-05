@@ -10,11 +10,11 @@ decisions a human should make before implementation starts. Nothing here is comm
 it as a starting point for per-feature implementation plans in the style of
 `plan-realtime-battle-impl.md`.
 
-Grounded against the repo as of this writing: `services/backend/prisma/schema.prisma` (existing
+Grounded against the repo as of this writing: `backend/prisma/schema.prisma` (existing
 `PetRoster`, `BattleHistory`, `BattleRoom`, `BattleDialogue`, `BattleConversation` models),
 `shared/src/hooks/adapters/types.ts` (the `ChainAdapter` interface), `contracts/ethereum/src/`
 (`PetCore.sol`, `GameLogic.sol`, `GameConfig.sol`, `CombatSim.sol`, `DnaLib.sol`),
-`services/backend/src/ws/liveBattleSocket.ts` (the one existing WebSocket channel), and
+`backend/src/ws/liveBattleSocket.ts` (the one existing WebSocket channel), and
 `services/indexer-go/internal/`. No inventory, marketplace, token, quest, or chat surface exists yet on
 either chain or in the backend — all eleven features are net-new, not extensions of something
 half-built. Two doc comments in `schema.prisma` reference `PVP_BATTLE.md` and
@@ -49,7 +49,7 @@ Second, the four-port rule stays a `MUST` in `AGENTS.md` until the legacy on-cha
 retires, so any change to *existing* combat math still updates all four ports until then.
 
 **The settle-keeper pattern is reusable, but it is legacy for battle execution.**
-`services/backend/src/features/settle-keeper/` (EVM) and `settle-keeper-solana/` established: async VRF
+`backend/src/features/settle-keeper/` (EVM) and `settle-keeper-solana/` established: async VRF
 request → provider reveal → permissionless settle → a backend hot wallet sends the settle tx so the
 player isn't stuck with two signatures, with a player-side fallback timer if the keeper is down.
 That shape is still right for any feature whose outcome must land in chain state, such as gacha
@@ -275,8 +275,8 @@ most obviously-scoped version of "social features" rather than open-ended chat w
 
 **This is the cheapest feature in the whole doc.** It's the only one that touches no contract on
 either chain and needs no new indexer asset type. The backend already runs a WebSocket server
-(`services/backend/src/ws/liveBattleSocket.ts`) and already authenticates connections via the existing
-nonce → signature → JWT flow (`services/backend/src/features/auth/`) — a chat channel is a second use of
+(`backend/src/ws/liveBattleSocket.ts`) and already authenticates connections via the existing
+nonce → signature → JWT flow (`backend/src/features/auth/`) — a chat channel is a second use of
 both, not new infrastructure. Player identity is just the authenticated wallet address, same as
 everywhere else in the backend.
 
@@ -345,7 +345,7 @@ poll interval + subgraph indexing time); Solana is WebSocket push + backfill. Th
 gRPC streaming path (`StreamLiveBattles`), a read-source circuit breaker (`ROSTER_READ_SOURCE`:
 `grpc` vs `postgres`), and an optional write-through cache (`ROSTER_CACHE_ENABLED`) that's only
 coherent while `indexer-go` is the sole writer (must stay off during shadow-mode dual-indexer
-operation). The backend already has `services/backend/src/ws/liveBattleSocket.ts` pushing live battle
+operation). The backend already has `backend/src/ws/liveBattleSocket.ts` pushing live battle
 updates to the frontend.
 
 **What "perfect" realistically means here:**
@@ -667,10 +667,10 @@ but are currently just data: `generation`, `parent1Id`/`parent2Id`, `spouseId`, 
 context — into functionality a player actually experiences, instead of decorative data.
 
 **Design — reuse the dialogue infra, don't parallel it.** The dialogue feature already
-establishes the right pattern: `services/backend/src/features/dialogue/` generates text via Claude, caches
+establishes the right pattern: `backend/src/features/dialogue/` generates text via Claude, caches
 it per key so it's billed and generated exactly once (`BattleDialogue`), and keeps an append-only
 transcript for continuity (`BattleConversation`, keyed by fighter pair, already reused across
-multiple battles between the same two pets). A new `services/backend/src/features/pet-story/` should sit
+multiple battles between the same two pets). A new `backend/src/features/pet-story/` should sit
 on the same foundation rather than standing up a second generation pipeline.
 
 **Story as the narrative hub other systems pull from.** This is the feature the user wants "other
@@ -808,12 +808,12 @@ an assumption that both chains agree by construction.
 **Goal.** Pets with persistent personality that can propose or take autonomous actions, building
 on the existing AI battle-dialogue feature.
 
-**What already exists:** `services/backend/src/features/dialogue/` generates battle banter via Claude,
+**What already exists:** `backend/src/features/dialogue/` generates battle banter via Claude,
 cached generate-once per battle (`BattleDialogue`) plus an append-only per-fighter-pair transcript
 for narrative continuity (`BattleConversation`), gated so a given battle's dialogue is billed at
 most once. This is the seed to build on rather than a parallel system to invent.
 
-**Design.** A new `services/backend/src/features/pet-agent/` service giving each pet a persistent
+**Design.** A new `backend/src/features/pet-agent/` service giving each pet a persistent
 personality profile and journal, using the Claude API's tool-use loop (Tool Runner or a manual
 loop — see the `claude-api` skill for current SDK shape) restricted to a narrow, explicitly-scoped
 tool set: propose a training session, suggest a rename, propose a breeding match. Custody must

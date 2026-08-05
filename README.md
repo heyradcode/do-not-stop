@@ -10,7 +10,7 @@ This is a monorepo containing multiple interconnected projects:
 
 ### Applications
 - **[Frontend](./frontend)** - React + Vite web application with wallet integration
-- **[Backend](./services/backend)** - Node.js + Express API server
+- **[Backend](./backend)** - Node.js + Express API server
 - **[Mobile](./mobile)** - React Native cross-platform mobile app
 - **[Website](./website)** - Next.js marketing/documentation site
 
@@ -75,7 +75,7 @@ This monorepo uses two licenses depending on the package:
 | Package(s) | License |
 | --- | --- |
 | `contracts/ethereum`, `contracts/solana`, `services/indexer-go`, `proto`, `protocol`, `verifier` | [MIT](./contracts/LICENSE) — fully permissive |
-| `frontend`, `services/backend`, `mobile`, `website`, `shared` (and anything else) | [PolyForm Noncommercial 1.0.0](./LICENSE) — free for any noncommercial purpose; commercial use requires permission |
+| `frontend`, `backend`, `mobile`, `website`, `shared` (and anything else) | [PolyForm Noncommercial 1.0.0](./LICENSE) — free for any noncommercial purpose; commercial use requires permission |
 
 Each package's `package.json` / `go.mod` directory points at the license that
 applies to it. For commercial licensing of the app layer, contact

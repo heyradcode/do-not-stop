@@ -9,7 +9,7 @@ const root = __dirname;
  * Local `tsx src/server.ts` falls back to the raw shared entry (tsx can load .ts).
  */
 const sharedNodeBundle = path.join(root, '..', 'shared-node.cjs');
-const sharedNodeDev = path.join(root, '..', '..', '..', 'shared', 'src', 'node.ts');
+const sharedNodeDev = path.join(root, '..', '..', 'shared', 'src', 'node.ts');
 const sharedNode = fs.existsSync(sharedNodeBundle) ? sharedNodeBundle : sharedNodeDev;
 
 /**
@@ -18,7 +18,7 @@ const sharedNode = fs.existsSync(sharedNodeBundle) ? sharedNodeBundle : sharedNo
  * Without this the compiled output would `require` a .ts entry point.
  */
 const protocolBundle = path.join(root, '..', 'protocol.cjs');
-const protocolDev = path.join(root, '..', '..', '..', 'protocol', 'src', 'index.ts');
+const protocolDev = path.join(root, '..', '..', 'protocol', 'src', 'index.ts');
 const protocolEntry = fs.existsSync(protocolBundle) ? protocolBundle : protocolDev;
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports

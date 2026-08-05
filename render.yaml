@@ -1,7 +1,7 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 #
 # IMPORTANT: Leave "Root Directory" empty in the Render dashboard (monorepo root).
-# Do NOT set Root Directory to `services/backend` — the pnpm lockfile lives at the repo root.
+# Do NOT set Root Directory to `backend` — the pnpm lockfile lives at the repo root.
 #
 # After deploy, set VITE_API_URL on the frontend to your Render service URL.
 
@@ -22,15 +22,15 @@ services:
       npm install -g --prefix "$PNPM_PREFIX" pnpm@9.15.9
       HUSKY=0 pnpm install --frozen-lockfile --prod=false --filter backend... && pnpm --filter backend build
     # Start node directly so runtime never invokes the corepack pnpm shim.
-    # @shared/core/node is bundled to services/backend/dist/shared-node.cjs at build time.
-    startCommand: NODE_ENV=production node services/backend/dist/src/server.js
+    # @shared/core/node is bundled to backend/dist/shared-node.cjs at build time.
+    startCommand: NODE_ENV=production node backend/dist/src/server.js
     healthCheckPath: /api/health
     envVars:
       - key: HUSKY
         value: "0"
       - key: JWT_SECRET
         generateValue: true
-      # Proto is copied to services/backend/dist/proto at build; this override is a belt-and-suspenders
+      # Proto is copied to backend/dist/proto at build; this override is a belt-and-suspenders
       # path from the monorepo-root cwd used by startCommand.
       - key: INDEXER_PROTO_PATH
         value: proto/cryptopets.proto

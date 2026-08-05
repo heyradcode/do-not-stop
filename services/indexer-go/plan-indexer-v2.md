@@ -9,7 +9,7 @@ combat sim to Go for pre-fight win estimates, and widening the gRPC contract —
 the downstream "Phase 5 (core)" work in the contract plan's §9.1.
 
 Scope: `services/indexer-go/internal/*`, `proto/cryptopets.proto`, and the matching
-Prisma migration in `services/backend/prisma` (schema is **Prisma-owned** — indexer-go
+Prisma migration in `backend/prisma` (schema is **Prisma-owned** — indexer-go
 does DML only, never DDL). It does **not** cover backend repositories or
 frontend; those consume what this plan produces.
 
@@ -41,10 +41,10 @@ field-and-decode expansion, not a redesign.
 
 ---
 
-## 2. Prerequisite — Prisma migration (do first, in `services/backend/`)
+## 2. Prerequisite — Prisma migration (do first, in `backend/`)
 
 The writer only does DML; every new column must exist before indexer-go can
-write it. Coordinate one migration in `services/backend/prisma/schema.prisma`:
+write it. Coordinate one migration in `backend/prisma/schema.prisma`:
 
 - `pet_roster`: add `xp INT`, `generation INT`, `parent1_id`, `parent2_id`
   (string, nullable), `breed_count INT`, `species_id INT`, `spouse_id` (string,
@@ -56,7 +56,7 @@ write it. Coordinate one migration in `services/backend/prisma/schema.prisma`:
   (`chain, pet_a_id, pet_b_id, owner_a, owner_b, status, since`), optionally
   `breed_history`.
 
-Run `npx prisma migrate dev` from `services/backend/` **before** pointing indexer-go at
+Run `npx prisma migrate dev` from `backend/` **before** pointing indexer-go at
 the DB. Update `README.md`'s "Prereq migrations" line. All new columns
 nullable / defaulted so the v1 Node indexer keeps writing during shadow mode.
 
@@ -222,7 +222,7 @@ v2.1 ships. The `asset` field added in Phase 1 is the forward hook.
 
 | File | Change |
 | --- | --- |
-| `services/backend/prisma/schema.prisma` | new `pet_roster` / `battle_history` columns; migration (prerequisite §2) |
+| `backend/prisma/schema.prisma` | new `pet_roster` / `battle_history` columns; migration (prerequisite §2) |
 | `internal/indexer/types.go` | widen `RosterUpdate` + `BattleEvent` |
 | `internal/solana/idl/cryptopets.json` | refresh from v2 anchor build |
 | `internal/solana/decode.go` | new `PetAccount` fields; `BattleResolved` discriminator + Borsh body |

@@ -35,13 +35,13 @@ connection settings is skipped, so adapters roll out independently.
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | Postgres (schema owned by `services/backend/prisma` — run migrations there first) |
+| `DATABASE_URL` | Postgres (schema owned by `backend/prisma` — run migrations there first) |
 | `EVM_SUBGRAPH_URL` | The Graph query endpoint (needs the `Pet` entity deployed) |
 | `SOLANA_WS_URL` / `SOLANA_RPC_URL` / `SOLANA_PROGRAM_ID` | Helius endpoints + program id |
 | `GRPC_ADDR` | GameDataService bind address (default `localhost:50051`) |
 | `EVM_POLL_INTERVAL` / `RECONCILE_INTERVAL` | pull tick / reconciliation scan |
 
-Prereq migrations (from `services/backend/`): `npx prisma migrate dev`. Beyond
+Prereq migrations (from `backend/`): `npx prisma migrate dev`. Beyond
 `pet_roster.last_version` / `battle_history.version`, the v2 schema adds the
 roster fields (`xp`, `generation`, `parent1_id`/`parent2_id`, `breed_count`,
 `species_id`, `spouse_id`, `breed_ready_at`, `train_ready_at`, `asset`) and the
@@ -111,7 +111,7 @@ the whole delta, not just the XP formula `xp.go` already covered).
 This is release safety, not a trust boundary — see
 `docs/plan-backend-battle-architecture.md` §F's "what the Go verifier is for"
 before reusing it as anything stronger. The backend
-(`services/backend/src/features/battle-worker/verify.worker.ts`) calls it, converts the
+(`backend/src/features/battle-worker/verify.worker.ts`) calls it, converts the
 structured log back into `@cryptopets/protocol`'s `SimOutcome` shape, and hashes
 it with the *real* canonical encoder — Go never reimplements that encoding
 itself, so the only question this check answers is whether the two engines

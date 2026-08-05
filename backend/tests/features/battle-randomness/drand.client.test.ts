@@ -37,7 +37,7 @@ interface Fixture {
 }
 const here = dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'));
 const fixture = JSON.parse(
-    readFileSync(join(here, '../../../../../protocol/tests/fixtures/drand.json'), 'utf8'),
+    readFileSync(join(here, '../../../../protocol/tests/fixtures/drand.json'), 'utf8'),
 ) as Fixture;
 
 const ROUND_1000 = fixture.quicknet.rounds.find((r) => r.round === 1000)!;

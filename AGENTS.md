@@ -4,7 +4,7 @@ Root coordination contract for AI and human contributors in this repo. Detailed 
 
 ## Scope
 
-- Applies to the whole monorepo: `frontend/`, `services/backend/`, `mobile/`, `website/`, `shared/`, `contracts/ethereum/`, `contracts/solana/`, `services/indexer-go/`, `proto/`, `services/image-generator/`.
+- Applies to the whole monorepo: `frontend/`, `backend/`, `mobile/`, `website/`, `shared/`, `contracts/ethereum/`, `contracts/solana/`, `services/indexer-go/`, `proto/`, `services/image-generator/`.
 - No nested `AGENTS.md` files exist yet. If one is added under a package, it may tighten rules for that subtree but must not relax the rules here.
 
 Normative language: `MUST`/`MUST NOT` are mandatory. `SHOULD`/`SHOULD NOT` are expected by default; deviations should be explained in the PR. `MAY` is optional.
@@ -36,7 +36,7 @@ Full per-package lint/test/build matrix and single-test syntax: see [CLAUDE.md](
 - Behavioral guidelines and full architecture: [CLAUDE.md](./CLAUDE.md)
 - Data flow and component map: [CLAUDE.md](./CLAUDE.md#architecture) (`docs/architecture.md` is referenced in places but does not exist)
 - Test suite conventions: [docs/testing.md](./docs/testing.md)
-- Backend API surface: [services/backend/API.md](./services/backend/API.md)
+- Backend API surface: [backend/API.md](./backend/API.md)
 - Indexer internals: [services/indexer-go/README.md](./services/indexer-go/README.md)
 - Contract v1-to-v2 migration plan: [contracts/plan-contract-upgrade.md](./contracts/plan-contract-upgrade.md)
 - Contribution workflow: [CONTRIBUTING.md](./CONTRIBUTING.md)

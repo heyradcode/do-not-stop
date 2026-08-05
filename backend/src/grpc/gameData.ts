@@ -28,14 +28,14 @@ export function resolveProtoPath(): string {
     candidates.push(
         // Copied next to the compiled output by `pnpm --filter backend build`
         path.resolve(__dirname, '../../proto/cryptopets.proto'),
-        // Monorepo proto/ from services/backend/dist/src/grpc
-        path.resolve(__dirname, '../../../../../proto/cryptopets.proto'),
-        // Monorepo proto/ from services/backend/src/grpc (tsx / vitest)
+        // Monorepo proto/ from backend/dist/src/grpc
         path.resolve(__dirname, '../../../../proto/cryptopets.proto'),
+        // Monorepo proto/ from backend/src/grpc (tsx / vitest)
+        path.resolve(__dirname, '../../../proto/cryptopets.proto'),
         // cwd = monorepo root (Render startCommand)
         path.resolve(process.cwd(), 'proto', 'cryptopets.proto'),
-        // cwd = services/backend/
-        path.resolve(process.cwd(), '..', '..', 'proto', 'cryptopets.proto'),
+        // cwd = backend/
+        path.resolve(process.cwd(), '..', 'proto', 'cryptopets.proto'),
     );
 
     for (const candidate of candidates) {
