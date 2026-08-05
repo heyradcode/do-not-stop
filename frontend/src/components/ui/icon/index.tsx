@@ -17,7 +17,15 @@ import {
     GiSpellBook,
     GiUpgrade,
 } from 'react-icons/gi';
-import { IoCheckmarkSharp, IoClose, IoCopy, IoPauseSharp, IoWarning } from 'react-icons/io5';
+import {
+    IoCheckmarkSharp,
+    IoClose,
+    IoCopy,
+    IoPauseSharp,
+    IoPin,
+    IoPinOutline,
+    IoWarning,
+} from 'react-icons/io5';
 import clsx from 'clsx';
 import { type Tone } from '@constants/tones';
 import styles from './index.module.css';
@@ -101,5 +109,7 @@ export {
     IoClose as CloseIcon,
     IoCopy as CopyIcon,
     IoPauseSharp as PauseIcon,
+    IoPin as PinFilledIcon,
+    IoPinOutline as PinIcon,
     IoWarning as WarningIcon,
 };

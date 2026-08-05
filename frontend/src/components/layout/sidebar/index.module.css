@@ -19,10 +19,70 @@
 }
 
 .sidebar:hover,
-.sidebar:focus-within {
+.sidebar:focus-within,
+.sidebar.isPinned {
     --label-opacity: 1;
     width: var(--cp-shell-sidebar-expanded);
     min-width: var(--cp-shell-sidebar-expanded);
+}
+
+/* Brand and pin share the header strip. The pin sits outside the brand button
+   because it is a separate action: nesting it would make the whole row one
+   control, and clicking the pin would also navigate home. */
+.brandRow {
+    display: flex;
+    align-items: center;
+    height: var(--cp-shell-header-height);
+    border-bottom: 1px solid rgb(101 131 255 / 10%);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.brandRow .brand {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border-bottom: none;
+}
+
+/* The row owns the divider now; without this the brand's own hover rule paints
+   a second line directly on top of it. */
+.brandRow .brand:hover {
+    border-bottom-color: transparent;
+}
+
+.pin {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    margin-right: 10px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: rgb(125 214 255 / 55%);
+    cursor: pointer;
+    transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+
+    /* Fades with the labels: in the collapsed rail there is no room for it, and
+       a pin the user cannot see is one they cannot mis-click either. Hovering
+       the rail expands it, which is when the control becomes reachable. */
+    opacity: var(--label-opacity);
+}
+
+.pin:hover {
+    color: var(--cp-cyan);
+    background: rgb(125 214 255 / 10%);
+    border-color: rgb(125 214 255 / 28%);
+}
+
+.pin[aria-pressed='true'] {
+    color: var(--cp-cyan);
+    border-color: rgb(125 214 255 / 34%);
+    background: rgb(125 214 255 / 12%);
 }
 
 /* Labels fade with the rail; kept out of layout flow width so text doesn't wrap */
