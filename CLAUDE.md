@@ -59,7 +59,7 @@ pnpm lint:fix
 pnpm test                    # equals contracts/ethereum test (Hardhat/Mocha), NOT a full monorepo test run
 pnpm build                   # compile contracts + build backend + frontend + website
 ```
-**`pnpm lint` and `pnpm test` do not cover every package.** `contracts/ethereum` has no lint script and is not in the root `lint` aggregate. `image-generator` is not in *any* root aggregate and is not even a workspace member; it has its own lockfile and its own CI workflow. Do not reach for `pnpm --filter image-generator <script>` either: it prints `No projects matched the filters` **and exits 0**, so it reports success having run nothing. Run per-package commands below when touching those.
+**`pnpm lint` and `pnpm test` do not cover every package.** `image-generator` is not in *any* root aggregate and is not even a workspace member; it has its own lockfile and its own CI workflow. Do not reach for `pnpm --filter image-generator <script>` either: it prints `No projects matched the filters` **and exits 0**, so it reports success having run nothing. Run per-package commands below when touching those.
 
 ### Per-package commands
 | Package | lint | test | build | single test |
@@ -71,12 +71,14 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | `verifier` (`@cryptopets/verifier`) | `pnpm --filter @cryptopets/verifier lint` | `pnpm --filter @cryptopets/verifier test` (vitest) | *(none, consumed as raw TS; `typecheck` runs `tsc --noEmit`)* | same vitest pattern |
 | `mobile` | `pnpm --filter mobile lint` | `pnpm --filter mobile test` (jest) | *(none, RN, use `android`/`ios` scripts)* | `pnpm --filter mobile exec jest <path>` or `-t "<name>"` |
 | `website` | `pnpm --filter website lint` (`next lint`) | *(no test script)* | `pnpm --filter website build` | n/a |
-| `contracts/ethereum` | *(none)* | `pnpm --prefix contracts/ethereum test` (`pnpm hh test`) | `pnpm compile` (`pnpm hh compile --force`) | `pnpm --prefix contracts/ethereum hh test test/<File>.test.ts` |
+| `contracts/ethereum` | `pnpm --filter ethereum lint` (solhint, security rules only) | `pnpm --prefix contracts/ethereum test` (`pnpm hh test`) | `pnpm compile` (`pnpm hh compile --force`) | `pnpm --prefix contracts/ethereum hh test test/<File>.test.ts` |
 | `contracts/solana/cryptopets` | n/a | Anchor test suite (see package README) | `anchor build` | n/a |
 | `services/indexer-go` | `go vet ./...` | `go test ./...` (unit only; Postgres tests are gated on `TEST_DATABASE_URL` and **truncate tables**, scratch DB only) | `go build -o bin/indexer ./cmd/indexer` | `go test ./internal/combat -run TestName` |
 | `services/image-generator` | `pnpm lint` (from that dir) | `pnpm test` (vitest) | `pnpm build` (`tsc`), plus `pnpm typecheck` for the specs | `pnpm test <path>` |
 
 > `services/image-generator` runs from its own directory and installs with `pnpm install --ignore-workspace`. Two traps: a plain `pnpm install` there walks up to the monorepo root and installs *that*, leaving the package with no `node_modules`; and `pnpm --filter image-generator <script>` from the root exits 0 without running anything, since the filter matches no workspace project. Its suite runs in `.github/workflows/image-generator.yml`, not the Coverage workflow.
+
+> `contracts/ethereum`'s solhint config (`.solhint.json`) lists **security rules only** and deliberately does not extend `solhint:recommended`. The recommended set reports 595 problems on this source: 382 are missing natspec tags, and most of the remainder are gas-style opinions (`gas-custom-errors`, `gas-indexed-events`) that would change revert data and the event ABI on deployed, upgradeable contracts, breaking the subgraph and every test asserting a reason string. Those are product decisions, not lint fixes. `not-rely-on-time` is also omitted: all 16 of its findings are `block.timestamp` gating a cooldown, breeding window, season boundary, or batch stamp, which are hour- and day-scale against roughly 15s of miner drift. The rules that remain all pass today, so a failure is a real regression rather than pre-existing debt. Solhint's config parser rejects unknown top-level keys, so this rationale cannot live in the file itself.
 
 `*_test:coverage` scripts exist for frontend/backend/shared (`vitest run --coverage`); CI runs these in `.github/workflows/coverage.yml` and posts a combined PR comment. Coverage requires `@vitest/coverage-v8` to match the installed `vitest` major version, or coverage collection breaks repo-wide.
 

@@ -28,7 +28,7 @@
         "test": "pnpm --prefix contracts/ethereum test",
         "build": "pnpm compile && pnpm --prefix backend build && pnpm --prefix frontend build && pnpm --prefix website build",
         "build:backend": "pnpm --filter backend build",
-        "lint": "pnpm --filter frontend lint:check && pnpm --filter backend lint && pnpm --filter @cryptopets/protocol lint && pnpm --filter @cryptopets/verifier lint && pnpm --filter @shared/core lint && pnpm --filter website lint && pnpm --filter mobile lint",
+        "lint": "pnpm --filter frontend lint:check && pnpm --filter backend lint && pnpm --filter @cryptopets/protocol lint && pnpm --filter @cryptopets/verifier lint && pnpm --filter @shared/core lint && pnpm --filter website lint && pnpm --filter mobile lint && pnpm --filter ethereum lint",
         "lint:fix": "pnpm --filter frontend lint:fix && pnpm --filter backend lint:fix && pnpm --filter @cryptopets/protocol lint:fix && pnpm --filter @cryptopets/verifier lint:fix && pnpm --filter @shared/core lint:fix && pnpm --filter website lint:fix && pnpm --filter mobile lint:fix",
         "eslint": "pnpm lint",
         "prepare": "husky"

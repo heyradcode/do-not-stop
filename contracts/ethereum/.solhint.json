@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "avoid-call-value": "error",
+    "avoid-low-level-calls": "error",
+    "avoid-sha3": "error",
+    "avoid-suicide": "error",
+    "avoid-throw": "error",
+    "avoid-tx-origin": "error",
+    "check-send-result": "error",
+    "multiple-sends": "error",
+    "no-complex-fallback": "error",
+    "no-inline-assembly": "error",
+    "reentrancy": "error",
+    "state-visibility": "error",
+    "func-visibility": ["error", { "ignoreConstructors": true }],
+    "compiler-version": ["error", "^0.8.24"]
+  }
+}
