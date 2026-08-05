@@ -44,7 +44,10 @@ CI runs `vercel pull` / `vercel deploy` from the monorepo root so `pnpm-lock.yam
 | `VERCEL_WEBSITE_PROJECT_ID` | Secret | This website project’s ID |
 | `NEXT_PUBLIC_APP_URL` | Variable | Public URL of the `frontend` app |
 
-Workflow: [`.github/workflows/website.yml`](../.github/workflows/website.yml)
+Workflow: none. `.github/workflows/website.yml` was removed in 49c5e63, and the
+secrets table above plus the triggers below describe that workflow. They have
+not been revisited since, so confirm how this actually deploys before relying on
+them.
 
 - **PRs** → Vercel preview + comment with URL  
 - **push to `main`** → production deploy (when `website/` or lockfile changes)

@@ -3,7 +3,7 @@
 Standalone microservice that renders pet NFT art. A pet's DNA is decoded into
 visual traits, those traits build a fixed prompt, and Cloudflare Workers AI
 turns the prompt into an image. See
-[`docs/plan-future-features-roadmap.md`](../docs/plan-future-features-roadmap.md) §9
+[`docs/plan-future-features-roadmap.md`](../../docs/plan-future-features-roadmap.md) §9
 for the design rationale.
 
 ## The one hard constraint: generate once, then never again
@@ -453,5 +453,5 @@ fixed by re-running.
 
 ## License
 
-PolyForm Noncommercial 1.0.0, the root [`LICENSE`](../LICENSE), same as every
+PolyForm Noncommercial 1.0.0, the root [`LICENSE`](../../LICENSE), same as every
 non-contract package in this repo.

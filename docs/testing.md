@@ -16,7 +16,7 @@ own suite with the toolchain native to its stack.
 
 > Postgres-backed Go tests are env-gated and TRUNCATE tables — point
 > `TEST_DATABASE_URL` at a scratch DB only. See
-> [services/indexer-go/README.md](../indexer-go/README.md).
+> [services/indexer-go/README.md](../services/indexer-go/README.md).
 
 > `@cryptopets/protocol`'s suite includes `tests/combat/goldenVectors.test.ts`, which
 > consumes `contracts/test-vectors/battle.json` directly — the same file

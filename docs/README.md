@@ -5,7 +5,7 @@ package-specific docs live next to their code and are linked below.
 
 ## Start here
 
-- [Architecture overview](./architecture.md) — how the services fit together
+- [Architecture overview](../CLAUDE.md#architecture) — how the services fit together
 - [Testing strategy](./testing.md) — how tests and coverage are organized
 - [Development guide](../DEVELOPMENT.md) — setup, commands, env vars, local chains
 
@@ -14,7 +14,7 @@ package-specific docs live next to their code and are linked below.
 | Area | Doc |
 | --- | --- |
 | Backend API | [backend/API.md](../backend/API.md), [backend/README.md](../backend/README.md) |
-| Go indexer | [services/indexer-go/ARCHITECTURE.md](../indexer-go/ARCHITECTURE.md), [services/indexer-go/README.md](../indexer-go/README.md) |
+| Go indexer | [services/indexer-go/README.md](../services/indexer-go/README.md) |
 | Contract upgrade plan | [contracts/plan-contract-upgrade.md](../contracts/plan-contract-upgrade.md) |
 | gRPC contract | [proto/cryptopets.proto](../proto/cryptopets.proto) |
 

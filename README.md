@@ -23,8 +23,9 @@ This is a monorepo containing multiple interconnected projects:
 
 ## 📖 Documentation
 
-See [docs/](./docs) for architecture, testing strategy, and an index of all
-package-level docs. Start with [docs/architecture.md](./docs/architecture.md).
+See [docs/](./docs) for testing strategy and an index of all package-level docs.
+The component map and data flow live in
+[CLAUDE.md](./CLAUDE.md#architecture).
 
 ## 🛠️ Development
 
