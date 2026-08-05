@@ -4,7 +4,7 @@ export { setTokenSuccessCallback } from './chains/ethereum/useVerifySignature';
 export { usePetsContract } from './chains/ethereum/usePetsContract';
 // v2 fee schedule readers — EVM reads GameConfig, Solana reads GlobalState PDA.
 // useFees is the unified chain-neutral interface; useEvmFees/useSolanaFees are low-level.
-export { useFees, type UnifiedFees } from './useFees';
+export { useFees, type UnifiedFees } from './session/useFees';
 export { useEvmFees, type EvmFees } from './chains/ethereum/useEvmFees';
 export { useSolanaFees, type SolanaFees } from './chains/solana/useSolanaFees';
 // Manual recovery for an interrupted async breed (settle / cancel a pending request).
@@ -13,50 +13,50 @@ export { useBreedRelationCheck, type BreedRelationCheck } from './chains/ethereu
 // Solana pending VRF requests — auto-resumes on next action; cancel available after randomness expiry.
 export { usePendingSolanaBreed, type PendingSolanaBreed } from './chains/solana/usePendingSolanaBreed';
 // Solana NFT metadata sync — re-publishes on-chain state to Metaplex Core attributes. No-op on EVM.
-export { useSyncMetadata, type UseSyncMetadataResult } from './useSyncMetadata';
+export { useSyncMetadata, type UseSyncMetadataResult } from './pets/useSyncMetadata';
 // Solana stud fee earnings: balance query + withdraw_stud_fees action.
-export { useStudFees, type UseStudFeesResult } from './useStudFees';
+export { useStudFees, type UseStudFeesResult } from './marriage/useStudFees';
 // v2.1 marriage: write actions + per-pet marriage state (EVM + Solana).
-export { useMarriage, type MarriageAction } from './useMarriage';
-export { useMarriageInfo, type MarriageInfo } from './useMarriageInfo';
+export { useMarriage, type MarriageAction } from './marriage/useMarriage';
+export { useMarriageInfo, type MarriageInfo } from './marriage/useMarriageInfo';
 
-export { useActiveChain, type ActiveChain } from './useActiveChain';
-export { useChainCapabilities, type ChainContext } from './useChainCapabilities';
+export { useActiveChain, type ActiveChain } from './session/useActiveChain';
+export { useChainCapabilities, type ChainContext } from './session/useChainCapabilities';
 export type { TxLifecycle, TxPhase, ChainCapabilities } from './adapters/types';
-export { usePetList, type PetListResult } from './usePetList';
+export { usePetList, type PetListResult } from './pets/usePetList';
 // Backend battle progression. usePetList already applies it to a player's own pets;
 // exported for anything reading pets from the chain by another route.
-export { useBattleProgress, mergeBattleProgress } from './useBattleProgress';
+export { useBattleProgress, mergeBattleProgress } from './battle/useBattleProgress';
 export {
     useCreatePet,
     type CreatePetArgs,
     type PetMutationOptions,
     type PetMutationResult,
-} from './useCreatePet';
-export { useLevelUpPet, type LevelUpPetArgs } from './useLevelUpPet';
-export { useTrainPet, type TrainPetArgs } from './useTrainPet';
-export { useRenamePet, type RenamePetArgs } from './useRenamePet';
+} from './pets/useCreatePet';
+export { useLevelUpPet, type LevelUpPetArgs } from './pets/useLevelUpPet';
+export { useTrainPet, type TrainPetArgs } from './pets/useTrainPet';
+export { useRenamePet, type RenamePetArgs } from './pets/useRenamePet';
 export {
     useBattlePets,
     type BattlePetsArgs,
     type UseBattlePetsOptions,
-} from './useBattlePets';
+} from './battle/useBattlePets';
 export {
     useBreedPets,
     type BreedPetsArgs,
     type UseBreedPetsOptions,
-} from './useBreedPets';
-export { useTransferPet, type TransferPetArgs } from './useTransferPet';
-export { useOpponents, type UseOpponentsOptions } from './useOpponents';
-export { useSearchPets, type UseSearchPetsOptions, type SearchPetsResult } from './useSearchPets';
-export { useAllPets, type UseAllPetsOptions } from './useAllPets';
+} from './pets/useBreedPets';
+export { useTransferPet, type TransferPetArgs } from './pets/useTransferPet';
+export { useOpponents, type UseOpponentsOptions } from './battle/useOpponents';
+export { useSearchPets, type UseSearchPetsOptions, type SearchPetsResult } from './pets/useSearchPets';
+export { useAllPets, type UseAllPetsOptions } from './pets/useAllPets';
 export {
     useSpousePet,
     type UseSpousePetOptions,
     type SpousePetResult,
-} from './useSpousePet';
-export { useIncomingProposals, type IncomingProposal } from './useIncomingProposals';
-export { useWinEstimate, type WinEstimateResult } from './useWinEstimate';
+} from './pets/useSpousePet';
+export { useIncomingProposals, type IncomingProposal } from './marriage/useIncomingProposals';
+export { useWinEstimate, type WinEstimateResult } from './battle/useWinEstimate';
 export {
     useBattleDialogue,
     type UseBattleDialogueOptions,
@@ -64,37 +64,37 @@ export {
     type DialoguePetInput,
     type DialogueSpeaker,
     type DialoguePhase,
-} from './useBattleDialogue';
-export { useBattleTaunts, type GenerateTauntsVars } from './useBattleTaunts';
-export { useCreateBattleRoom, type CreateRoomVars } from './useCreateBattleRoom';
+} from './battle/useBattleDialogue';
+export { useBattleTaunts, type GenerateTauntsVars } from './battle/useBattleTaunts';
+export { useCreateBattleRoom, type CreateRoomVars } from './battle/useCreateBattleRoom';
 // Backend-authoritative battles (docs/plan-backend-battle-architecture.md §D, §E, §J).
-export { BATTLE_CONFIG_QUERY_KEY, useBattleConfig, type BattleConfig } from './useBattleConfig';
-export { useBattleMode, type BattleMode, type BattleModeState } from './useBattleMode';
+export { BATTLE_CONFIG_QUERY_KEY, useBattleConfig, type BattleConfig } from './battle/useBattleConfig';
+export { useBattleMode, type BattleMode, type BattleModeState } from './battle/useBattleMode';
 export {
     useSubmitBattleIntent,
     type AcceptedBattle,
     type SubmitBattleIntentVars,
-} from './useSubmitBattleIntent';
+} from './battle/useSubmitBattleIntent';
 export {
     useDefenseAuthorization,
     type GrantDefenseVars,
-} from './useDefenseAuthorization';
+} from './battle/useDefenseAuthorization';
 export {
     battleStateQueryKey,
     useBackendBattle,
     useStoredBattleEvidence,
     type BattleStateSummary,
     type UseBackendBattleOptions,
-} from './useBackendBattle';
+} from './battle/useBackendBattle';
 export {
     useBattleRoomSocket,
     type BattleRoomNotification,
     type UseBattleRoomSocketOptions,
-} from './useBattleRoomSocket';
+} from './battle/useBattleRoomSocket';
 export {
     useVerifiedBattleReceipt,
     verifiedReceiptQueryKey,
     type VerifiedBattleReceipt,
-} from './useVerifiedBattleReceipt';
-export { usePetError, type PetError } from './usePetError';
-export { useTxError, type TxError } from './useTxError';
+} from './battle/useVerifiedBattleReceipt';
+export { usePetError, type PetError } from './tx/usePetError';
+export { useTxError, type TxError } from './tx/useTxError';

@@ -8,7 +8,7 @@ vi.mock('../../src/contexts/ApiClientContext', () => ({ useApiClient: () => apiC
 let token: string | null = 'tok';
 vi.mock('../../src/api', () => ({ getStorageAdapter: () => ({ getToken: async () => token }) }));
 
-import { useBattleTaunts, type GenerateTauntsVars } from '../../src/hooks/useBattleTaunts';
+import { useBattleTaunts, type GenerateTauntsVars } from '../../src/hooks/battle/useBattleTaunts';
 
 const vars = {
     chain: 'evm',

@@ -14,7 +14,7 @@ vi.mock('../../src/contexts/ApiClientContext', () => ({
     useApiClient: () => apiClient,
 }));
 
-import { useNonce } from '../../src/hooks/useNonce';
+import { useNonce } from '../../src/hooks/session/useNonce';
 
 const makeWrapper = () => {
     const client = new QueryClient({

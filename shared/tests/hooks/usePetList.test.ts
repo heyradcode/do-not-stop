@@ -13,16 +13,16 @@ vi.mock('../../src/hooks/adapters/useChainAdapter', () => ({
 }));
 
 const activeChain = { kind: 'evm' as 'evm' | 'solana' | 'none' };
-vi.mock('../../src/hooks/useActiveChain', () => ({
+vi.mock('../../src/hooks/session/useActiveChain', () => ({
     useActiveChain: () => activeChain,
 }));
 
 const useBattleProgress = vi.fn((_chain: unknown, list: Pet[]) => list);
-vi.mock('../../src/hooks/useBattleProgress', () => ({
+vi.mock('../../src/hooks/battle/useBattleProgress', () => ({
     useBattleProgress: (chain: unknown, list: Pet[]) => useBattleProgress(chain, list),
 }));
 
-import { usePetList } from '../../src/hooks/usePetList';
+import { usePetList } from '../../src/hooks/pets/usePetList';
 
 const pet = {
     id: '1',

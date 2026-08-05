@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useTxSuccess } from '../../src/hooks/useTxSuccess';
+import { useTxSuccess } from '../../src/hooks/tx/useTxSuccess';
 import type { TxLifecycle } from '../../src/hooks/adapters/types';
 
 const makeLifecycle = (

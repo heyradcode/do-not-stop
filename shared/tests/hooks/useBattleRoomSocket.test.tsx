@@ -2,7 +2,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useBattleRoomSocket } from '../../src/hooks/useBattleRoomSocket';
+import { useBattleRoomSocket } from '../../src/hooks/battle/useBattleRoomSocket';
 
 /**
  * A controllable WebSocket stand-in. Real sockets cannot be driven deterministically, and

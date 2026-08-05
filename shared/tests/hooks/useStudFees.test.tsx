@@ -39,7 +39,7 @@ vi.mock('../../src/utils/solana/pdas', () => ({
     studFeeAccountPda: () => stubPda,
 }));
 
-import { useStudFees } from '../../src/hooks/useStudFees';
+import { useStudFees } from '../../src/hooks/marriage/useStudFees';
 
 function wrapper({ children }: { children: React.ReactNode }) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });

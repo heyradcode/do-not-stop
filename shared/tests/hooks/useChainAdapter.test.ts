@@ -6,7 +6,7 @@ const solanaAdapter = { kind: 'solana', marker: 'solana-adapter' };
 const useEvmAdapter = vi.fn(() => evmAdapter);
 const useSolanaAdapter = vi.fn(() => solanaAdapter);
 
-vi.mock('../../src/hooks/useActiveChain', () => ({
+vi.mock('../../src/hooks/session/useActiveChain', () => ({
     useActiveChain: () => activeChain,
 }));
 vi.mock('../../src/hooks/adapters/useEvmAdapter', () => ({
