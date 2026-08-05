@@ -44,7 +44,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22, not the 20 most workflows use: `pnpm build` starts with the contracts
+          # compile, and Hardhat 3 needs >= 22.10. It calls `.flatMap` on the iterator
+          # from `Map.values()`, an Iterator Helpers method absent before Node 22, so
+          # `compile` dies with a TypeError rather than a version check. Same reason
+          # parity.yml pins 22.
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
