@@ -13,7 +13,7 @@ import ReactTestRenderer from 'react-test-renderer';
 
 const passthrough = ({children}: {children?: React.ReactNode}) => <>{children}</>;
 
-jest.mock('@reown/appkit-react-native', () => ({AppKitProvider: passthrough}));
+jest.mock('@reown/appkit-react-native', () => ({AppKitProvider: passthrough, AppKit: () => null}));
 jest.mock('wagmi', () => ({WagmiProvider: passthrough}));
 jest.mock('@tanstack/react-query', () => ({QueryClientProvider: passthrough}));
 jest.mock('@shared/core', () => ({
@@ -26,7 +26,8 @@ jest.mock('../src/AppKitConfig', () => ({appKit: {}, wagmiConfig: {}}));
 jest.mock('../src/solana/SolanaAppKitAnchorBridge', () => ({
   SolanaAppKitAnchorBridge: passthrough,
 }));
-jest.mock('../src/AppContent.tsx', () => () => null);
+jest.mock('@react-navigation/native', () => ({NavigationContainer: passthrough}));
+jest.mock('../src/navigation/RootNavigator', () => ({RootNavigator: () => null}));
 // Reaches AsyncStorage (a native module) at import time, just to read API_URL.
 jest.mock('../config', () => ({API_URL: 'http://localhost:3001'}));
 

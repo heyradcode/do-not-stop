@@ -10,6 +10,12 @@ import React from 'react';
 import { Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 
+// The viewport measures a bottom inset, which needs a SafeAreaProvider and a real
+// frame. Neither is what these tests are about.
+jest.mock('react-native-safe-area-context', () => ({
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
 const mockUsePetError = jest.fn();
 const mockUseTxError = jest.fn();
 jest.mock('@shared/core', () => ({

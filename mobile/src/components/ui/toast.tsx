@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { neon, neonGlow } from '../../theme/neon';
 
@@ -9,9 +10,8 @@ import { neon, neonGlow } from '../../theme/neon';
  * `useTxErrorToast` port across unchanged.
  *
  * Rendered as an absolutely positioned overlay rather than a portal, since RN has
- * no document to portal into. It sits outside `SafeAreaProvider` (matching
- * frontend's provider order, where `ToastProvider` wraps the router), so the
- * bottom offset is a fixed inset rather than a measured one.
+ * no document to portal into. The bottom offset clears both the safe area and the
+ * tab bar, so a toast never lands under either.
  */
 export type ToastTone = 'error' | 'info' | 'success';
 
@@ -44,9 +44,13 @@ const TONE_COLOR: Record<ToastTone, string> = {
 /** Stands in for `crypto.randomUUID`, which RN does not provide. */
 let nextToastId = 0;
 
+/** Roughly a bottom tab bar, so a toast does not sit on top of the tabs. */
+const TAB_BAR_CLEARANCE = 64;
+
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [toasts, setToasts] = useState<ToastRecord[]>([]);
     const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+    const insets = useSafeAreaInsets();
 
     const dismiss = useCallback((id: string) => {
         setToasts((current) => current.filter((toast) => toast.id !== id));
@@ -84,7 +88,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         <ToastContext.Provider value={value}>
             {children}
             {toasts.length > 0 && (
-                <View style={styles.viewport} pointerEvents="box-none">
+                <View
+                    style={[styles.viewport, { bottom: insets.bottom + TAB_BAR_CLEARANCE }]}
+                    pointerEvents="box-none"
+                >
                     {toasts.map((toast) => {
                         const color = TONE_COLOR[toast.tone ?? 'error'];
                         return (
@@ -124,7 +131,6 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 16,
         right: 16,
-        bottom: 32,
     },
     toast: {
         flexDirection: 'row',

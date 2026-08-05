@@ -9,6 +9,19 @@ import { Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { NavigationContainer } from '@react-navigation/native';
 
+const mockIsConnected = jest.fn(() => true);
+jest.mock('wagmi', () => ({ useAccount: () => ({ isConnected: mockIsConnected() }) }));
+
+// The screens behind the gate are the app's real ones; each pulls in the chain
+// adapter and the API client, which is not what a navigator smoke test is for.
+jest.mock('../src/screens/GalleryScreen', () => () => null);
+jest.mock('../src/components/AppHeader', () => () => null);
+jest.mock('../src/screens/LandingScreen', () => {
+    const { Text: RNText } = jest.requireActual('react-native');
+    const React_ = jest.requireActual('react');
+    return () => React_.createElement(RNText, null, 'Connect your wallet');
+});
+
 import { RootNavigator } from '../src/navigation/RootNavigator';
 import { STACK_TITLES, TAB_ITEMS } from '../src/navigation/routes';
 
@@ -23,6 +36,10 @@ const render = async () => {
     });
     return tree;
 };
+
+beforeEach(() => {
+    mockIsConnected.mockReturnValue(true);
+});
 
 const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
     tree.root
@@ -77,21 +94,40 @@ describe('RootNavigator', () => {
         });
     });
 
-    it('exposes every route to navigation', async () => {
-        let container!: ReactTestRenderer.ReactTestRenderer;
+    const routeNames = async (connected: boolean) => {
+        mockIsConnected.mockReturnValue(connected);
         const ref = React.createRef<React.ComponentRef<typeof NavigationContainer>>();
         await ReactTestRenderer.act(() => {
-            container = ReactTestRenderer.create(
+            ReactTestRenderer.create(
                 <NavigationContainer ref={ref}>
                     <RootNavigator />
                 </NavigationContainer>,
             );
         });
+        return ref.current?.getRootState().routeNames ?? [];
+    };
 
-        const names = ref.current?.getRootState().routeNames ?? [];
-        expect(names).toEqual(
-            expect.arrayContaining(['Landing', 'Main', 'Marriage', 'Rename', 'Defense']),
+    it('exposes every in-app route once connected', async () => {
+        expect(await routeNames(true)).toEqual(
+            expect.arrayContaining(['Main', 'Marriage', 'Rename', 'Defense']),
         );
-        expect(container).toBeTruthy();
+    });
+
+    it('shows only Landing while disconnected', async () => {
+        // Registered conditionally, not redirected to: with Main absent there is no
+        // window where a tab screen renders against a disconnected wallet.
+        expect(await routeNames(false)).toEqual(['Landing']);
+    });
+
+    it('leaves no back route into Landing once connected', async () => {
+        // The point of the conditional split: reconnecting must not leave a stale
+        // Landing entry on the stack for the back gesture to return to.
+        expect(await routeNames(true)).not.toContain('Landing');
+    });
+
+    it('renders the landing screen while disconnected', async () => {
+        mockIsConnected.mockReturnValue(false);
+        const tree = await render();
+        expect(textOf(tree)).toContain('Connect your wallet');
     });
 });
