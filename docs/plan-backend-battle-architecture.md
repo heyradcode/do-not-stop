@@ -439,7 +439,7 @@ the snapshot hash, the beacon proof, the derived seed, and the result plus comba
 This is real work on the critical path, not a checklist item.
 
 `protocol/src/combat/` today implements fight math only. There is no `xp.ts`. XP lives solely in
-`indexer-go/internal/combat/xp.go`, and it depends on stateful inputs the current client cannot see:
+`services/indexer-go/internal/combat/xp.go`, and it depends on stateful inputs the current client cannot see:
 `lastOpponentId` and same-opponent streak decay (`xp.go:32-41`). That is exactly why the TS port
 stopped at fight math.
 
@@ -457,7 +457,7 @@ meaningful `progressionDelta`.
 
 ### What the Go verifier is for
 
-Before signing, `indexer-go/internal/combat/` independently recomputes the result. TypeScript and Go
+Before signing, `services/indexer-go/internal/combat/` independently recomputes the result. TypeScript and Go
 must match exactly on winner, round count, winner HP remaining, XP/progression delta, and
 combat-log hash. Any mismatch stops receipt signing for that ruleset, alerts operators, retains both
 outputs and all inputs, and never silently prefers one implementation.
@@ -734,7 +734,7 @@ when the legacy on-chain path actually retires, not at acceptance.
 
 **Done (Step 40).** The amendment split the four ports rather than loosening the rule: `CombatSim.sol`
 and `combat.rs` are now `MUST NOT` change — frozen, because the battles they settled are permanent
-records that must stay replayable — while `protocol/src/combat/` and `indexer-go/internal/combat/`
+records that must stay replayable — while `protocol/src/combat/` and `services/indexer-go/internal/combat/`
 are `MUST` change together, since §F's circuit breaker depends on the two being independent. All four
 golden-vector suites keep running: the frozen pair proves the vectors still describe what settled on
 chain, the live pair proves the current engine has not drifted from it.

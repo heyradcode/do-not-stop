@@ -138,12 +138,12 @@ Phase 3.5 becomes the end state, and the KMS provider.
 - Commit: `feat(protocol): add battle commitment schema, hashing, and chain link`
 
 ### Step 13: XP and progression port
-- Scope: build order step 5, and the §F workstream. Port `indexer-go/internal/combat/xp.go` to
+- Scope: build order step 5, and the §F workstream. Port `services/indexer-go/internal/combat/xp.go` to
   `protocol/src/combat/xp.ts`, reading streak state from the snapshot rather than chain state.
   Produce a `progressionDelta` (xp, level, streak, rating inputs) as a pure function.
 - Files: `protocol/src/combat/xp.ts`, `contracts/test-vectors/protocol-progression.json`,
   `protocol/tests/combat/xp.test.ts` (runs the existing `contracts/test-vectors/xp.json` too).
-- Verify: `pnpm --filter @cryptopets/protocol test` and `cd indexer-go && go test ./internal/combat`
+- Verify: `pnpm --filter @cryptopets/protocol test` and `cd services/indexer-go && go test ./internal/combat`
 - Commit: `feat(protocol): port XP and progression math to TypeScript with golden vectors`
 
 ### Step 14: ruleset versioning
@@ -245,9 +245,9 @@ Phase 3.5 becomes the end state, and the KMS provider.
   existing combat and xp packages, exposed to the backend. Mismatch on winner, rounds, winner HP,
   progression delta, or combat-log hash stops signing for that ruleset, alerts, and retains both
   outputs. Never silently prefer one implementation.
-- Files: `indexer-go/internal/combat/verify.go`, `indexer-go/internal/grpcsrv/*` (or an HTTP
+- Files: `services/indexer-go/internal/combat/verify.go`, `services/indexer-go/internal/grpcsrv/*` (or an HTTP
   endpoint), `proto/cryptopets.proto` if gRPC, `backend/src/features/battle-worker/verify.ts`.
-- Verify: `cd indexer-go && go vet ./... && go test ./internal/combat` and `pnpm --filter backend test`
+- Verify: `cd services/indexer-go && go vet ./... && go test ./internal/combat` and `pnpm --filter backend test`
 - Commit: `feat(indexer-go): verify backend battle results independently before signing`
 
 ### Step 26: sign the receipt and append the hash chains
@@ -377,7 +377,7 @@ caps, and claim shape depend on what shadow mode and the rewardless launch actua
 - Commit: `docs: retire per-battle settlement and amend the four-port combat rule`
 - **Done.** The rule was split rather than relaxed: `CombatSim.sol` and `combat.rs` became
   `MUST NOT` change (frozen, so the battles they settled stay replayable), while
-  `protocol/src/combat/` and `indexer-go/internal/combat/` stay `MUST` change together, since
+  `protocol/src/combat/` and `services/indexer-go/internal/combat/` stay `MUST` change together, since
   §F's circuit breaker only works while those two are independent. All four golden-vector
   suites keep running. The settle keepers stay deployable so in-flight requests can drain
   rather than being stranded, and breed/mint still settle on chain — only battles retired.

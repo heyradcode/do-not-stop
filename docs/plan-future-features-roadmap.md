@@ -15,7 +15,7 @@ Grounded against the repo as of this writing: `backend/prisma/schema.prisma` (ex
 `shared/src/hooks/adapters/types.ts` (the `ChainAdapter` interface), `contracts/ethereum/src/`
 (`PetCore.sol`, `GameLogic.sol`, `GameConfig.sol`, `CombatSim.sol`, `DnaLib.sol`),
 `backend/src/ws/liveBattleSocket.ts` (the one existing WebSocket channel), and
-`indexer-go/internal/`. No inventory, marketplace, token, quest, or chat surface exists yet on
+`services/indexer-go/internal/`. No inventory, marketplace, token, quest, or chat surface exists yet on
 either chain or in the backend — all eleven features are net-new, not extensions of something
 half-built. Two doc comments in `schema.prisma` reference `PVP_BATTLE.md` and
 `AI_BATTLE_DIALOGUE.md` as design docs; neither file exists in the repo today, so treat those
@@ -29,7 +29,7 @@ names as historical pointers, not sources to read.
 new files must carry the license header matching whichever package they land in.
 
 **The chain-parity discipline extends past combat.** `CombatSim.sol` / `combat.rs` /
-`indexer-go/internal/combat` / `protocol/src/combat` are kept in sync today via golden
+`services/indexer-go/internal/combat` / `protocol/src/combat` are kept in sync today via golden
 vectors (`contracts/test-vectors/{battle,xp}.json`). Any new feature that (a) computes a
 deterministic on-chain outcome and (b) needs a client-side TypeScript port for animation or
 preview inherits the same obligation: if team battles or story-chapter unlocks get a TS replay
@@ -61,7 +61,7 @@ template a new battle mode should copy.
 **Indexer extension pattern.** Every existing on-chain asset type (`PetRoster`, `BattleHistory`)
 follows the same shape: a `(chain, id)` composite primary key, a monotonic `lastVersion` /
 `version` column the upsert guards on (`WHERE last_version <= EXCLUDED.last_version`), and a
-`ChainIndexer`-conforming adapter in `indexer-go/internal/{evm,solana}` plus a mirror path in the
+`ChainIndexer`-conforming adapter in `services/indexer-go/internal/{evm,solana}` plus a mirror path in the
 backend's Node `RosterIndexer`. Items, marketplace listings, and token transfers are all new asset
 types — each needs a new Prisma table shaped this way and a new case in both indexers, not a
 bolt-on to `PetRoster`.
@@ -350,7 +350,7 @@ updates to the frontend.
 
 **What "perfect" realistically means here:**
 - Replace EVM subgraph polling with a direct log-subscription indexer path in
-  `indexer-go/internal/evm` (WS/HTTP log filter on `BattleResolved`/`Transfer`/etc.), keeping
+  `services/indexer-go/internal/evm` (WS/HTTP log filter on `BattleResolved`/`Transfer`/etc.), keeping
   subgraph pull as a backfill/reconciliation fallback rather than the primary path — same
   relationship Solana already has between WS push and backfill.
 - A reconciliation job that periodically diffs Node-indexer state against `indexer-go` state and
@@ -750,7 +750,7 @@ generate-once-vs-freshness tradeoff `BattleDialogue` already made in favor of "g
 
 ## 9. Image generator system for pet NFTs
 
-> **Built.** This section is kept as the original proposal; `image-generator/` is the
+> **Built.** This section is kept as the original proposal; `services/image-generator/` is the
 > implementation and its README is authoritative. What shipped diverges from the
 > recommendation below in several deliberate ways, recorded here so they are not
 > mistaken for drift:
@@ -766,7 +766,7 @@ generate-once-vs-freshness tradeoff `BattleDialogue` already made in favor of "g
 > - **R2, not IPFS/Arweave.** Same Cloudflare account as the model, no egress fees.
 >   The store is a two-method interface, so an IPFS pin can be added without
 >   touching the pipeline.
-> - **A standalone service, not a library.** `image-generator/` is deliberately not
+> - **A standalone service, not a library.** `services/image-generator/` is deliberately not
 >   a pnpm workspace member; see CLAUDE.md.
 > - **Cosmetic digits alone were not enough.** Pair 6 is already spent on species at
 >   mint time and pair 7 gives only 100 looks, so the HP and INT genes also nudge

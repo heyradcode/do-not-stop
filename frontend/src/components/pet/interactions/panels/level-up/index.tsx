@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';

@@ -12,7 +12,7 @@ const socket = vi.hoisted(() => ({
 }));
 
 vi.mock('../../src/contexts/ApiClientContext', () => ({ useApiClient: () => ({ get, post: vi.fn() }) }));
-vi.mock('../../src/hooks/useBattleRoomSocket', () => ({
+vi.mock('../../src/hooks/battle/useBattleRoomSocket', () => ({
     useBattleRoomSocket: (options: { onNotification?: () => void; onReconnect?: () => void }) => {
         socket.onNotification = options.onNotification;
         socket.onReconnect = options.onReconnect;
@@ -21,7 +21,7 @@ vi.mock('../../src/hooks/useBattleRoomSocket', () => ({
 }));
 
 import { setEvidenceStore, saveBattleEvidence, type EvidenceStore } from '../../src/utils/battleEvidence';
-import { useBackendBattle, useStoredBattleEvidence } from '../../src/hooks/useBackendBattle';
+import { useBackendBattle, useStoredBattleEvidence } from '../../src/hooks/battle/useBackendBattle';
 
 function summary(state: string) {
     return {

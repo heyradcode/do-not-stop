@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { getPetAvatar, type Pet } from '@shared/core';
+import { getPetAvatar, petArtUrl as buildPetArtUrl, type Pet } from '@shared/core';
 
 /**
  * A pet's generated art, falling back to its emoji avatar.
@@ -33,30 +33,43 @@ import { getPetAvatar, type Pet } from '@shared/core';
 const RETRY_AFTER_MS = 30_000;
 
 /**
- * Pets are addressed differently per chain, matching the service's routes:
- * a numeric id on EVM, the Metaplex Core asset pubkey on Solana. A Solana pet
- * without an assetKey has nothing to look up, so it keeps the emoji.
+ * The route shape lives in `@shared/core` so the mobile app addresses pets the
+ * same way; only the environment read is web-specific.
  */
-export const petArtUrl = (pet: Pick<Pet, 'id' | 'chain' | 'assetKey'>): string | null => {
+export const petArtUrl = (pet: Pick<Pet, 'id' | 'chain' | 'assetKey'>): string | null =>
     // Read here rather than at module scope. Vite substitutes import.meta.env at
     // build time either way, so this costs nothing, and it means a test can stub
     // the variable without re-importing the module: doing that per test forced
     // vi.resetModules() and a dynamic import, which under a full parallel run was
     // slow enough to hit the default timeout and fail at random.
-    const serviceUrl: string | undefined = import.meta.env.VITE_IMAGE_SERVICE_URL;
-    if (!serviceUrl) return null;
-
-    const identifier = pet.chain === 'solana' ? pet.assetKey : pet.id;
-    if (!identifier) return null;
-
-    return `${serviceUrl.replace(/\/+$/, '')}/image/${pet.chain}/${identifier}.png`;
-};
+    buildPetArtUrl(pet, import.meta.env.VITE_IMAGE_SERVICE_URL);
 
 type PetArtProps = {
     pet: Pick<Pet, 'id' | 'chain' | 'assetKey' | 'dna' | 'name'>;
+    /**
+     * Cover the nearest positioned ancestor instead of sizing to 1em.
+     *
+     * Only the image breaks out; the emoji stays inline and keeps whatever
+     * font-size and animation the caller already gave it. That split is the
+     * point: a card wants art bleeding to its edges, but an emoji stretched
+     * to the same box would just be a huge glyph on a large empty field.
+     *
+     * The frame is the nearest ancestor that establishes a containing block, so
+     * with `fill` the caller must put any `filter`, `transform` or animated
+     * transform on the emoji (see `emojiClassName`) rather than on a wrapper
+     * around this component. All three make an element a containing block for
+     * absolutely positioned descendants, which silently traps the image at the
+     * wrapper's size instead of the frame's.
+     */
+    fill?: boolean;
+    /**
+     * Applied to the emoji fallback only, so decoration meant for the glyph
+     * (size, glow, float) does not land on the art. See `fill`.
+     */
+    emojiClassName?: string;
 };
 
-const PetArt: React.FC<PetArtProps> = ({ pet }) => {
+const PetArt: React.FC<PetArtProps> = ({ pet, fill = false, emojiClassName }) => {
     const [failed, setFailed] = useState(false);
     const [loaded, setLoaded] = useState(false);
     const [attempt, setAttempt] = useState(0);
@@ -77,7 +90,11 @@ const PetArt: React.FC<PetArtProps> = ({ pet }) => {
         timer.current = setTimeout(() => setAttempt(1), RETRY_AFTER_MS);
     };
 
-    if (!url || failed) return <>{emoji}</>;
+    // Bare text when the caller has no class for it, so the many callers that
+    // style an ancestor instead keep exactly the DOM they had.
+    const emojiNode = emojiClassName ? <span className={emojiClassName}>{emoji}</span> : emoji;
+
+    if (!url || failed) return <>{emojiNode}</>;
 
     // The emoji and the image share one grid cell, so they stack without a
     // wrapper that reserves its own space, and swapping them causes no layout
@@ -87,7 +104,7 @@ const PetArt: React.FC<PetArtProps> = ({ pet }) => {
     // nothing to intersect, so hiding it that way risks never loading it at all.
     return (
         <span style={{ display: 'grid', placeItems: 'center', lineHeight: 1 }}>
-            {loaded ? null : <span style={{ gridArea: '1 / 1' }}>{emoji}</span>}
+            {loaded ? null : <span style={{ gridArea: '1 / 1' }}>{emojiNode}</span>}
             <img
                 // Remounts for the retry: reusing the element with an unchanged
                 // src would not refetch. The 503 is sent no-store, so the browser
@@ -104,13 +121,28 @@ const PetArt: React.FC<PetArtProps> = ({ pet }) => {
                 decoding="async"
                 onLoad={() => setLoaded(true)}
                 onError={onError}
-                style={{
-                    gridArea: '1 / 1',
-                    width: '1em',
-                    height: '1em',
-                    objectFit: 'contain',
-                    opacity: loaded ? 1 : 0,
-                }}
+                style={
+                    fill
+                        ? {
+                              position: 'absolute',
+                              inset: 0,
+                              width: '100%',
+                              height: '100%',
+                              // cover, not contain: the art is square and the frame
+                              // is wider than it is tall, so contain would letterbox
+                              // it down to the frame's height and end up barely
+                              // larger than the emoji it replaced.
+                              objectFit: 'cover',
+                              opacity: loaded ? 1 : 0,
+                          }
+                        : {
+                              gridArea: '1 / 1',
+                              width: '1em',
+                              height: '1em',
+                              objectFit: 'contain',
+                              opacity: loaded ? 1 : 0,
+                          }
+                }
             />
         </span>
     );

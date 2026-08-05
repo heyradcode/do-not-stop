@@ -103,13 +103,23 @@
 
 /* Combatant card */
 .combatantCard {
+    position: relative;
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    min-height: 300px;
-    padding: 20px;
+    justify-content: flex-end;
+
+    /* Taller than it was, because the art is now the card rather than a crop
+       inside it, and the overlaid readout only occupies the lower third. */
+    min-height: 360px;
+
+    /* The body owns the padding; the art has to reach the edges. */
+    padding: 0;
+
+    /* Clips the full-bleed art to the rounded corners. Safe here because the
+       overlay sits inside on a card whose floor is well above its content. */
+    overflow: hidden;
     border-radius: 12px;
     background: linear-gradient(180deg, rgb(10 16 32 / 97%), rgb(6 10 22 / 99%));
     border: 1px solid rgb(125 214 255 / 28%);
@@ -121,9 +131,12 @@
     box-shadow: 0 0 28px rgb(255 123 203 / 7%);
 }
 
+/* Restores the padding the filled card gives to its overlay instead, so the
+   "pick a pet" prompt is not flush against a dashed border. */
 .combatantCard.isEmpty {
     align-items: center;
     justify-content: center;
+    padding: 20px;
     border-style: dashed;
     box-shadow: none;
 }
@@ -136,25 +149,47 @@
     color: rgb(195 210 255 / 40%);
 }
 
-.combatantCardAvatarWrap {
-    width: 108px;
-    height: 108px;
-    flex-shrink: 0;
+/* The art layer. Positioned so PetArt's filling image resolves against it, and
+   a grid so the emoji fallback centres in the same space the art would cover. */
+.combatantCardArt {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 50% 40%, rgb(125 214 255 / 14%), transparent 62%), #070e1e;
+}
+
+.combatantCardRival .combatantCardArt {
+    background: radial-gradient(circle at 50% 40%, rgb(255 123 203 / 14%), transparent 62%), #070e1e;
+}
+
+/* Reads up from opaque at the base to clear at the top, so the numbers have a
+   solid ground while the pet's head stays uncovered. */
+.combatantCardScrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to top,
+        rgb(3 7 18 / 96%) 0%,
+        rgb(3 7 18 / 88%) 32%,
+        rgb(3 7 18 / 28%) 64%,
+        rgb(3 7 18 / 0%) 100%
+    );
+}
+
+.combatantCardBody {
+    position: relative;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    border-radius: 14px;
-    background: radial-gradient(circle at 50% 45%, rgb(125 214 255 / 18%), transparent 65%), #070e1e;
-    border: 1px solid rgb(125 214 255 / 14%);
+    gap: 7px;
+    padding: 14px;
 }
 
-.combatantCardRival .combatantCardAvatarWrap {
-    background: radial-gradient(circle at 50% 45%, rgb(255 123 203 / 18%), transparent 65%), #070e1e;
-    border-color: rgb(255 123 203 / 14%);
-}
-
+/* The emoji fallback only — PetArt's image is taken out of flow by `fill` and
+   never inherits this, which is what keeps the float and glow off the art. */
 .combatantCardAvatar {
-    font-size: 4rem;
+    font-size: clamp(4rem, 11vw, 7rem);
     line-height: 1;
     animation: cp-float 3.5s ease-in-out infinite;
     filter: drop-shadow(0 0 22px rgb(125 214 255 / 55%));
@@ -186,19 +221,26 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* One row of four rather than a 2x2 block: the same four numbers in half the
+   height, which is what buys the art the space it now occupies. */
 .combatantCardStats {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 7px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
 }
 
 .combatantStat {
-    background: rgb(5 13 30 / 80%);
+    min-width: 0;
+    background: rgb(5 13 30 / 62%);
     border: 1px solid rgb(125 214 255 / 15%);
     border-radius: 6px;
-    padding: 8px;
+    padding: 6px 3px;
     text-align: center;
+
+    /* Translucent over the art rather than opaque: the tiles should read as
+       laid over the pet, not as holes punched through it. */
+    backdrop-filter: blur(6px);
 }
 
 .combatantCardRival .combatantStat {
@@ -213,7 +255,7 @@
 
 .combatantStatVal {
     font-family: var(--cp-title-font);
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 800;
     color: var(--cp-cyan);
     margin-top: 1px;
@@ -225,7 +267,6 @@
 
 .combatantCardHp {
     width: 100%;
-    margin-top: auto;
 }
 
 .combatantCardHpHead {
@@ -770,8 +811,11 @@
     animation: cp-attack-right 1.6s ease-in-out 1.2s infinite;
 }
 
+/* Clamped rather than fixed: the arena puts two of these plus the 110px clash
+   badge on one row, so a flat 8rem would overflow on a narrow window. The vw
+   term lets them shrink together instead. */
 .sceneAvatar {
-    font-size: 5rem;
+    font-size: clamp(4.5rem, 15vw, 8rem);
     line-height: 1;
     animation: cp-float 3.6s ease-in-out infinite;
 }

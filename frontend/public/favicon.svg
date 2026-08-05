@@ -1,0 +1,46 @@
+<svg
+  width="64"
+  height="64"
+  viewBox="0 0 64 64"
+  fill="none"
+  role="img"
+  aria-label="CryptoPets"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!--
+    Favicon mark: a paw whose pad is a hexagon.
+
+    The paw is what survives 16px and says "pets" with no reading required; the
+    hexagonal pad is the one place the on-chain half of the product shows up.
+    A hexagon also downsamples better than the usual rounded pad, because its
+    straight edges stay straight when the browser resizes it to 16 or 24px.
+
+    Everything is on a 64 grid with toes spaced at least 3 units apart, so the
+    gaps between them survive as roughly a whole pixel at favicon size — the
+    detail a paw mark normally loses first.
+
+    No background tile, so the mark sits on whatever the browser puts behind it.
+    That is why the gradient uses the app's saturated variants rather than its
+    softer surface tints: the pale cyan reads well against a dark panel inside
+    the app, but washes out on a light tab strip with nothing behind it.
+  -->
+  <g transform="translate(0 -2)" fill="url(#cp-mark)">
+    <ellipse cx="13.5" cy="30" rx="4.5" ry="5.8" />
+    <ellipse cx="25.5" cy="20" rx="4.8" ry="6.2" />
+    <ellipse cx="38.5" cy="20" rx="4.8" ry="6.2" />
+    <ellipse cx="50.5" cy="30" rx="4.5" ry="5.8" />
+    <path d="M19 44 L25.5 33.5 H38.5 L45 44 L38.5 54.5 H25.5 Z" />
+  </g>
+
+  <defs>
+    <!-- The app's cyan/violet/magenta run, on the diagonal so the sweep is
+         visible at tab size and not just in the bookmark bar. These are the
+         `-strong` ends of each token (--cp-cyan-strong, --cp-violet-strong,
+         --cp-magenta-strong), which is what holds up unbacked on a light tab. -->
+    <linearGradient id="cp-mark" x1="10" y1="10" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#29a8ff" />
+      <stop offset="55%" stop-color="#8a62ff" />
+      <stop offset="100%" stop-color="#ff6ec4" />
+    </linearGradient>
+  </defs>
+</svg>

@@ -65,12 +65,24 @@ export const useWatchEntropyFulfillment = ({
             const gl = gameLogicRef.current?.toLowerCase();
             if (want == null || !gl) return;
             const typed = logs as unknown as {
-                args: { caller?: string; sequenceNumber?: bigint; randomNumber?: `0x${string}` };
+                args: {
+                    caller?: string;
+                    sequenceNumber?: bigint;
+                    randomNumber?: `0x${string}`;
+                    callbackFailed?: boolean;
+                };
             }[];
             for (const log of typed) {
                 if (log.args.caller?.toLowerCase() !== gl) continue;
                 if (log.args.sequenceNumber !== want) continue;
                 if (log.args.randomNumber == null) continue;
+                // Entropy reveals whether the consumer callback reverted. Only the
+                // callback sets GameLogic's `fulfilled` flag, and settleBreed /
+                // settleMint both require it, so acting on a failed callback
+                // prompts the player for a transaction that reverts with
+                // "Entropy not yet fulfilled". Wait instead: the reveal is not
+                // the same thing as the request being settleable.
+                if (log.args.callbackFailed === true) continue;
                 handlerRef.current?.(want, log.args.randomNumber);
                 return;
             }

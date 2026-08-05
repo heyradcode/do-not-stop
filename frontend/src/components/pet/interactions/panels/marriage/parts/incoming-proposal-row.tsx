@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { formatExpiry, type IncomingProposal } from '@shared/core';
 import NeonButton from '@components/ui/neon-button';
 import styles from '../index.module.css';

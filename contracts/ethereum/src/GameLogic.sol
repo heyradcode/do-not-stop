@@ -27,7 +27,7 @@ import "./DnaLib.sol";
  *      Merkle batch anchored by `BattleBatchRegistry` — so this contract no longer runs the
  *      combat simulator or mutates pet battle state. The Solidity simulator is deleted
  *      outright: it had no on-chain caller left, and the live engines are
- *      `protocol/src/combat/` and `indexer-go/internal/combat/`.
+ *      `protocol/src/combat/` and `services/indexer-go/internal/combat/`.
  */
 contract GameLogic is UUPSUpgradeable, OwnableUpgradeable, PausableUpgradeable, IEntropyConsumer {
 

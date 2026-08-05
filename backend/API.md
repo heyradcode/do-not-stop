@@ -298,10 +298,12 @@ battle only has a `roomId` if it was accepted with one (`POST
 body); a battle accepted without one still runs through every state normally,
 it just has no spectator link to push a notification through.
 
-This is a second, separate socket from `backend/src/ws/liveBattleSocket.ts`,
-not a change to it — that socket keeps broadcasting globally, which remains
-correct for the legacy on-chain settle-keeper flow it carries (chain-derived
-data, filtered client-side by `(chainId, requestId)`).
+This is now the only battle WebSocket. It was added as a second channel
+alongside `backend/src/ws/liveBattleSocket.ts`, which broadcast every message to
+every connected client for the on-chain settle-keeper flow and was filtered
+client-side by `(chainId, requestId)`. That socket was removed once battles
+stopped being resolved from chain state, so there is no longer a second channel
+and nothing left to filter.
 
 ### Public receipt corpus (v2)
 

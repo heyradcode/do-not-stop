@@ -2,7 +2,7 @@
  * XP and level progression, ported from the on-chain implementations:
  * `GameLogic._calcXp` + `PetCore.addXp` + `PetCore.recordBattleOpponent` (Solidity),
  * `game::xp::calc_xp` + `PetAccount::add_xp` + `PetAccount::record_battle_opponent`
- * (Rust), and `indexer-go/internal/combat/xp.go` (Go, which covers the formula and
+ * (Rust), and `services/indexer-go/internal/combat/xp.go` (Go, which covers the formula and
  * the decay but not level-up).
  *
  * Validated against `contracts/test-vectors/xp.json`, the same file Hardhat, Anchor,

@@ -124,7 +124,7 @@ function toWirePet(pet: Record<string, string | number>) {
  * Every field §F requires to match: winner, rounds, winner HP, the combat-log
  * hash (recomputed here from Go's structured log using the same canonical
  * encoder the TypeScript engine's own hash was taken with — see
- * indexer-go/internal/combat/verify.go's doc comment for why Go never
+ * services/indexer-go/internal/combat/verify.go's doc comment for why Go never
  * reimplements that encoding itself), and the full progression delta for both
  * pets.
  */

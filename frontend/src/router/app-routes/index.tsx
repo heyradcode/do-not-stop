@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import Layout from '@components/layout/Layout';
+import RouteLayout from '@components/layout/route-layout';
 
 // Each page is a thin wrapper around one interaction panel with no shared state,
 // so route-level splitting keeps a page's panel code (SVG art, DNA helix, …) out
@@ -29,7 +29,7 @@ const AppRoutes: React.FC = () => {
     return (
         <Suspense fallback={<RouteFallback />}>
             <Routes>
-                <Route element={<Layout />}>
+                <Route element={<RouteLayout />}>
                     <Route path="/main" element={<HomePage />} />
                     <Route path="/breed" element={<BreedPage />} />
                     {/* :roomId is optional — set once Start Battle mints a room id

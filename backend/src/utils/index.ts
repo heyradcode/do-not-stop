@@ -13,6 +13,7 @@ export function createNonce(): string {
 export function sanitizeName(name: string, maxLen = 32, fallback = 'Unnamed'): string {
     return (
         name
+            // eslint-disable-next-line no-control-regex -- stripping control characters is the point
             .replace(/[<>"'\r\n\x00-\x1f]/g, ' ')
             .trim()
             .slice(0, maxLen) || fallback

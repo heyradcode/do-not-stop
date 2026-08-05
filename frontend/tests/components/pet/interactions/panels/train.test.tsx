@@ -35,6 +35,8 @@ const petList = {
 vi.mock('@shared/core', () => ({
     useChainCapabilities: () => ({ isConnected: true }),
     getPetAvatar: () => '🐉',
+    // No art service in these tests: PetArt renders the emoji alone.
+    petArtUrl: () => null,
     getPetClass: () => 'Warrior',
     getXpNumbers: () => ({ xpCurrent: 10, xpMax: 100 }),
     getXpPercent: () => 10,

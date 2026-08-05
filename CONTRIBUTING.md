@@ -18,8 +18,8 @@ pnpm install
 pnpm dev
 ```
 
-For architecture and testing strategy, see [docs/](./docs), starting with
-[docs/architecture.md](./docs/architecture.md).
+For testing strategy see [docs/](./docs); for the component map and data flow
+see [CLAUDE.md](./CLAUDE.md#architecture).
 
 ## Workflow
 

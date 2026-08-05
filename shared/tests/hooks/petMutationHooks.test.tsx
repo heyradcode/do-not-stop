@@ -30,17 +30,17 @@ vi.mock('../../src/hooks/chains/ethereum/useWatchEntropyFulfillment', () => ({ u
 vi.mock('../../src/hooks/adapters/useChainAdapter', () => ({ useChainAdapter: () => adapter }));
 
 let txSuccessRegistry: Array<[unknown, (() => void) | undefined]> = [];
-vi.mock('../../src/hooks/useTxSuccess', () => ({
+vi.mock('../../src/hooks/tx/useTxSuccess', () => ({
     useTxSuccess: (lifecycle: unknown, cb: (() => void) | undefined) => {
         txSuccessRegistry.push([lifecycle, cb]);
     },
 }));
 
-import { useCreatePet } from '../../src/hooks/useCreatePet';
-import { useLevelUpPet } from '../../src/hooks/useLevelUpPet';
-import { useRenamePet } from '../../src/hooks/useRenamePet';
-import { useTransferPet } from '../../src/hooks/useTransferPet';
-import { useTrainPet } from '../../src/hooks/useTrainPet';
+import { useCreatePet } from '../../src/hooks/pets/useCreatePet';
+import { useLevelUpPet } from '../../src/hooks/pets/useLevelUpPet';
+import { useRenamePet } from '../../src/hooks/pets/useRenamePet';
+import { useTransferPet } from '../../src/hooks/pets/useTransferPet';
+import { useTrainPet } from '../../src/hooks/pets/useTrainPet';
 
 beforeEach(() => {
     vi.clearAllMocks();

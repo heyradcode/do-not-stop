@@ -11,17 +11,17 @@ const verified = vi.hoisted(() => ({
     current: { data: undefined as unknown, error: null as Error | null },
 }));
 
-vi.mock('../../src/hooks/useSubmitBattleIntent', () => ({
+vi.mock('../../src/hooks/battle/useSubmitBattleIntent', () => ({
     useSubmitBattleIntent: () => ({ submit, isPending: submitState.isPending, error: submitState.error }),
 }));
-vi.mock('../../src/hooks/useBackendBattle', () => ({
+vi.mock('../../src/hooks/battle/useBackendBattle', () => ({
     useBackendBattle: () => backendBattle.current,
 }));
-vi.mock('../../src/hooks/useVerifiedBattleReceipt', () => ({
+vi.mock('../../src/hooks/battle/useVerifiedBattleReceipt', () => ({
     useVerifiedBattleReceipt: () => verified.current,
 }));
 
-import { useBattlePets } from '../../src/hooks/useBattlePets';
+import { useBattlePets } from '../../src/hooks/battle/useBattlePets';
 
 const ACCEPTED = { battleId: 'btl_0001' };
 

@@ -26,14 +26,14 @@ const solanaSigner = vi.hoisted(() => ({
 const post = vi.hoisted(() => vi.fn());
 const configQuery = vi.hoisted(() => ({ current: undefined as unknown }));
 
-vi.mock('../../src/hooks/useActiveChain', () => ({ useActiveChain: () => chain.current }));
+vi.mock('../../src/hooks/session/useActiveChain', () => ({ useActiveChain: () => chain.current }));
 vi.mock('wagmi', () => ({ useSignTypedData: () => ({ signTypedDataAsync }) }));
 vi.mock('../../src/auth/solanaAuthStore', () => ({ getSolanaAuthSigner: () => solanaSigner.current }));
 vi.mock('../../src/contexts/ApiClientContext', () => ({ useApiClient: () => ({ post, get: vi.fn() }) }));
-vi.mock('../../src/hooks/useBattleConfig', () => ({ useBattleConfig: () => ({ data: configQuery.current }) }));
+vi.mock('../../src/hooks/battle/useBattleConfig', () => ({ useBattleConfig: () => ({ data: configQuery.current }) }));
 
 import { setEvidenceStore, readBattleEvidence, type EvidenceStore } from '../../src/utils/battleEvidence';
-import { useSubmitBattleIntent } from '../../src/hooks/useSubmitBattleIntent';
+import { useSubmitBattleIntent } from '../../src/hooks/battle/useSubmitBattleIntent';
 
 const ACCEPTED = {
     battleId: 'btl_0001',

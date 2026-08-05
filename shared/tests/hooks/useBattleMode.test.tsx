@@ -6,9 +6,9 @@ const configQuery = vi.hoisted(() => ({
     current: { data: undefined as unknown, isLoading: false, isError: false },
 }));
 
-vi.mock('../../src/hooks/useBattleConfig', () => ({ useBattleConfig: () => configQuery.current }));
+vi.mock('../../src/hooks/battle/useBattleConfig', () => ({ useBattleConfig: () => configQuery.current }));
 
-import { useBattleMode } from '../../src/hooks/useBattleMode';
+import { useBattleMode } from '../../src/hooks/battle/useBattleMode';
 
 const CONFIG = {
     enabled: true,

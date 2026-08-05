@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import clsx from 'clsx';
 import { formatExpiry, useMarriageInfo, type Pet } from '@shared/core';
 import { AuthActionButton } from '@components/common';

@@ -21,7 +21,7 @@ vi.mock('../../src/hooks/chains/ethereum/useWatchPetsContract', () => ({ useWatc
 vi.mock('../../src/hooks/chains/ethereum/useWatchEntropyFulfillment', () => ({ useWatchEntropyFulfillment: vi.fn() }));
 vi.mock('../../src/contexts/PetsConfigContext', () => ({ usePetsConfig: () => ({ evm: undefined }) }));
 
-import { useBreedPets } from '../../src/hooks/useBreedPets';
+import { useBreedPets } from '../../src/hooks/pets/useBreedPets';
 
 beforeEach(() => {
     vi.clearAllMocks();
