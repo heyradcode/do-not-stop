@@ -6,7 +6,7 @@
  * anything: traits.test.ts asserts values I computed myself, which agrees with
  * the code by construction.
  *
- * `shared/src/utils/combat/dna.ts` is an independent port that *is* checked
+ * `protocol/src/combat/dna.ts` is an independent port that *is* checked
  * against the Solidity, via the golden vectors in
  * `contracts/test-vectors/battle.json`. Agreeing with it makes this port correct
  * transitively, without importing anything at build time.
@@ -23,7 +23,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { digitPair } from './traits.js';
 
-const SHARED_DNA = join('..', '..', 'shared', 'src', 'utils', 'combat', 'dna.ts');
+const PROTOCOL_DNA = join('..', '..', 'protocol', 'src', 'combat', 'dna.ts');
 
 interface DnaPort {
     digitPair: (dna: bigint, pairIdx: number) => bigint;
@@ -31,16 +31,16 @@ interface DnaPort {
 
 /** Resolved to an absolute file URL against this file, so the path is right at
  *  runtime while staying a plain string to tsc; see the note above. */
-const loadSharedPort = async (): Promise<DnaPort> => {
-    const specifier = new URL('../../../shared/src/utils/combat/dna.ts', import.meta.url).href;
+const loadProtocolPort = async (): Promise<DnaPort> => {
+    const specifier = new URL('../../../protocol/src/combat/dna.ts', import.meta.url).href;
     return (await import(/* @vite-ignore */ specifier)) as DnaPort;
 };
 
-const describeIfPresent = existsSync(SHARED_DNA) ? describe : describe.skip;
+const describeIfPresent = existsSync(PROTOCOL_DNA) ? describe : describe.skip;
 
 describeIfPresent('digitPair vs the golden-vector-checked port', () => {
     it('agrees across every pair index, for DNA of every shape', async () => {
-        const shared = await loadSharedPort();
+        const protocol = await loadProtocolPort();
 
         const samples = [
             0n,
@@ -58,18 +58,18 @@ describeIfPresent('digitPair vs the golden-vector-checked port', () => {
         for (const dna of samples) {
             for (let pair = 0; pair <= 7; pair++) {
                 expect(digitPair(dna, pair), `dna=${dna} pair=${pair}`)
-                    .toBe(shared.digitPair(dna, pair));
+                    .toBe(protocol.digitPair(dna, pair));
             }
         }
     });
 
     it('agrees across a sweep, not just hand-picked values', async () => {
-        const shared = await loadSharedPort();
+        const protocol = await loadProtocolPort();
 
         for (let i = 0n; i < 500n; i++) {
             const dna = (i * 7_919_000_000_037n) % 10_000_000_000_000_000n;
             for (let pair = 0; pair <= 7; pair++) {
-                expect(digitPair(dna, pair)).toBe(shared.digitPair(dna, pair));
+                expect(digitPair(dna, pair)).toBe(protocol.digitPair(dna, pair));
             }
         }
     });
