@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -12,57 +12,40 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
+import type { CreatePetArgs, PetMutationResult } from '@shared/core';
 import { neon, neonGlow } from '../theme/neon';
 
 type Props = {
     visible: boolean;
     onClose: () => void;
-    isContractConfigured: boolean;
-    createRandomPet: (name: string) => void;
-    isWritePending: boolean;
-    writeError: Error | null | undefined;
-    isConfirming: boolean;
-    txHash: `0x${string}` | undefined;
+    createPet: PetMutationResult<CreatePetArgs>;
 };
 
-export default function CreatePetModal({
-    visible,
-    onClose,
-    isContractConfigured,
-    createRandomPet,
-    isWritePending,
-    writeError,
-    isConfirming,
-    txHash,
-}: Props) {
+export default function CreatePetModal({ visible, onClose, createPet }: Props) {
+    const { mutate, isPending, error, hash, isAwaitingFulfillment, isSettling, reset } = createPet;
     const [name, setName] = useState('');
-    const prevTxHash = useRef<typeof txHash>(undefined);
     const { width } = useWindowDimensions();
     const cardWidth = Math.min(400, width - 48);
 
     useEffect(() => {
         if (visible) {
             setName('');
+            reset();
         }
-    }, [visible]);
+    }, [visible, reset]);
 
-    useEffect(() => {
-        if (prevTxHash.current && !txHash) {
-            setName('');
-            onClose();
-        }
-        prevTxHash.current = txHash;
-    }, [txHash, onClose]);
-
-    const busy = isWritePending || isConfirming;
-    const canSubmit = isContractConfigured && name.trim().length > 0 && !busy;
+    // EVM minting spans three waits: the request tx, Pyth Entropy revealing, then
+    // the settle tx. All of them mean "keep the sheet locked and spinning".
+    const busy = isPending || isAwaitingFulfillment === true || isSettling === true;
+    const canSubmit = name.trim().length > 0 && !busy;
 
     const handleSubmit = () => {
         const trimmed = name.trim();
         if (!trimmed) {
             return;
         }
-        createRandomPet(trimmed);
+        // `mutate` captures its own errors into `error`, so it never rejects.
+        mutate({ name: trimmed });
     };
 
     return (
@@ -121,21 +104,25 @@ export default function CreatePetModal({
                                 <View style={styles.buttonInner}>
                                     <ActivityIndicator color={neon.cyan} size="small" style={styles.spinner} />
                                     <Text style={styles.buttonText}>
-                                        {isWritePending ? 'Confirm in wallet…' : 'Confirming…'}
+                                        {isPending
+                                            ? 'Confirm in wallet…'
+                                            : isAwaitingFulfillment
+                                              ? 'Rolling traits…'
+                                              : 'Minting…'}
                                     </Text>
                                 </View>
                             ) : (
                                 <Text style={styles.buttonText}>Create pet</Text>
                             )}
                         </TouchableOpacity>
-                        {writeError ? (
+                        {error ? (
                             <Text style={styles.error}>
-                                {writeError instanceof Error ? writeError.message : String(writeError)}
+                                {error instanceof Error ? error.message : String(error)}
                             </Text>
                         ) : null}
-                        {txHash && !writeError ? (
+                        {hash && !error ? (
                             <Text style={styles.txHint} numberOfLines={1}>
-                                {isConfirming ? 'Transaction submitted…' : 'Done — refreshing list…'}
+                                {busy ? 'Transaction submitted…' : 'Done — refreshing list…'}
                             </Text>
                         ) : null}
                     </View>

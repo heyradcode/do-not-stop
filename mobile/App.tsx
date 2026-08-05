@@ -3,11 +3,12 @@ import "@walletconnect/react-native-compat";
 import { AppKitProvider } from '@reown/appkit-react-native';
 import { WagmiProvider } from 'wagmi';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient, ApiClientProvider, AuthProvider } from '@shared/core';
+import { queryClient, ApiClientProvider, AuthProvider, PetsConfigProvider } from '@shared/core';
 
 import { appKit, wagmiConfig } from './src/AppKitConfig';
 import AppRoot from './src/AppContent.tsx';
 import { API_URL } from './config';
+import { petsContractParams } from './src/petsContractParams';
 import { SolanaAppKitAnchorBridge } from './src/solana/SolanaAppKitAnchorBridge';
 
 export default function App() {
@@ -18,7 +19,9 @@ export default function App() {
           <SolanaAppKitAnchorBridge>
             <ApiClientProvider baseURL={API_URL}>
               <AuthProvider>
-                <AppRoot />
+                <PetsConfigProvider evm={petsContractParams}>
+                  <AppRoot />
+                </PetsConfigProvider>
               </AuthProvider>
             </ApiClientProvider>
           </SolanaAppKitAnchorBridge>

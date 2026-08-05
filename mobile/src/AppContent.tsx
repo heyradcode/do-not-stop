@@ -10,13 +10,12 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppKit } from '@reown/appkit-react-native';
-import { useAuth, usePetsContract } from '@shared/core';
+import { useAuth, useCreatePet, usePetList } from '@shared/core';
 import { useAccount } from 'wagmi';
 import ConnectButton from './components/ConnectButton';
 import EthereumNetworkSwitcher from './components/EthereumNetworkSwitcher';
 import CreatePetModal from './components/CreatePetModal';
 import PetList from './components/PetList';
-import { petsContractParams } from './petsContractParams';
 import { neon, neonGlow } from './theme/neon';
 
 function AppRoot() {
@@ -31,23 +30,32 @@ function AppRoot() {
 function AppContent() {
     const { isAuthenticated } = useAuth();
     const { isConnected } = useAccount();
-    const pets = usePetsContract(petsContractParams);
+    const pets = usePetList();
     const [refreshing, setRefreshing] = useState(false);
     const [createModalVisible, setCreateModalVisible] = useState(false);
     const insets = useSafeAreaInsets();
 
+    const closeCreateModal = useCallback(() => {
+        setCreateModalVisible(false);
+    }, []);
+
+    // EVM minting is two-phase (requestMintStarter, then settleMint once Pyth
+    // Entropy reveals), so the list is only worth re-reading once onSuccess fires.
+    const createPet = useCreatePet({
+        onSuccess: () => {
+            closeCreateModal();
+            pets.refetch();
+        },
+    });
+
     const handleRefreshPets = useCallback(async () => {
         setRefreshing(true);
         try {
-            await pets.refetchPetIds();
+            await pets.refetch();
         } finally {
             setRefreshing(false);
         }
     }, [pets]);
-
-    const closeCreateModal = useCallback(() => {
-        setCreateModalVisible(false);
-    }, []);
 
     return (
         <View style={styles.mainContainer}>
@@ -69,49 +77,38 @@ function AppContent() {
                 isConnected ? (
                     <View style={styles.authenticatedMain}>
                         <Text style={styles.authenticatedText}>Welcome back!</Text>
-                        {pets.isContractConfigured ? (
-                            <View style={styles.actionsRow}>
-                                <TouchableOpacity
-                                    style={styles.createBtn}
-                                    onPress={() => setCreateModalVisible(true)}
-                                    activeOpacity={0.85}
-                                >
-                                    <Text style={styles.createBtnText}>Create</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
-                                    onPress={handleRefreshPets}
-                                    disabled={refreshing}
-                                    activeOpacity={0.85}
-                                >
-                                    {refreshing ? (
-                                        <ActivityIndicator size="small" color={neon.cyan} />
-                                    ) : (
-                                        <Text style={styles.refreshBtnText}>Refresh</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        ) : null}
+                        <View style={styles.actionsRow}>
+                            <TouchableOpacity
+                                style={styles.createBtn}
+                                onPress={() => setCreateModalVisible(true)}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={styles.createBtnText}>Create</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
+                                onPress={handleRefreshPets}
+                                disabled={refreshing}
+                                activeOpacity={0.85}
+                            >
+                                {refreshing ? (
+                                    <ActivityIndicator size="small" color={neon.cyan} />
+                                ) : (
+                                    <Text style={styles.refreshBtnText}>Refresh</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
                         <CreatePetModal
-                            visible={createModalVisible && pets.isContractConfigured}
+                            visible={createModalVisible}
                             onClose={closeCreateModal}
-                            isContractConfigured={pets.isContractConfigured}
-                            createRandomPet={pets.createRandomPet}
-                            isWritePending={pets.isWritePending}
-                            writeError={pets.writeError}
-                            isConfirming={pets.isConfirming}
-                            txHash={pets.txHash}
+                            createPet={createPet}
                         />
                         <PetList
                             pets={pets.pets}
-                            petIds={pets.petIds}
                             isLoading={pets.isLoading}
-                            contractError={pets.contractError}
-                            isContractConfigured={pets.isContractConfigured}
+                            error={pets.error}
                             onRefresh={handleRefreshPets}
                             refreshing={refreshing}
-                            getRarityName={pets.getRarityName}
-                            getRarityColor={pets.getRarityColor}
                         />
                     </View>
                 ) : (

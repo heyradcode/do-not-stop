@@ -20,6 +20,7 @@ jest.mock('@shared/core', () => ({
   queryClient: {},
   ApiClientProvider: passthrough,
   AuthProvider: passthrough,
+  PetsConfigProvider: passthrough,
 }));
 jest.mock('../src/AppKitConfig', () => ({appKit: {}, wagmiConfig: {}}));
 jest.mock('../src/solana/SolanaAppKitAnchorBridge', () => ({

@@ -7,53 +7,26 @@ import {
     Text,
     View,
 } from 'react-native';
-import type { Pet } from '@shared/core';
+import { getRarityColor, getRarityName, type Pet } from '@shared/core';
 import { neon, neonGlow } from '../theme/neon';
 
 type Props = {
     pets: Pet[];
-    petIds: bigint[];
     isLoading: boolean;
-    contractError: Error | null | undefined;
-    isContractConfigured: boolean;
+    error: Error | null;
     onRefresh: () => void;
     refreshing: boolean;
-    getRarityName: (rarity: number) => string;
-    getRarityColor: (rarity: number) => string;
 };
 
-export default function PetList({
-    pets,
-    petIds,
-    isLoading,
-    contractError,
-    isContractConfigured,
-    onRefresh,
-    refreshing,
-    getRarityName,
-    getRarityColor,
-}: Props) {
-    if (!isContractConfigured) {
-        return (
-            <View style={styles.centered}>
-                <Text style={styles.hintTitle}>Contract not configured</Text>
-                <Text style={styles.hintBody}>
-                    Set CONTRACT_ADDRESS in your mobile `.env` to match the deployed CryptoPets address (same as
-                    frontend `VITE_CONTRACT_ADDRESS`), then restart Metro.
-                </Text>
-            </View>
-        );
-    }
-
-    if (contractError) {
-        const message =
-            contractError instanceof Error ? contractError.message : String(contractError);
+export default function PetList({ pets, isLoading, error, onRefresh, refreshing }: Props) {
+    if (error) {
+        const message = error instanceof Error ? error.message : String(error);
         return (
             <View style={styles.centered}>
                 <Text style={styles.errorTitle}>Could not load pets</Text>
                 <Text style={styles.errorBody}>{message}</Text>
                 <Text style={styles.hintBody}>
-                    Check that your wallet network matches the contract (e.g. Hardhat Local for local deploy).
+                    Check that your wallet is on the network the contracts are deployed to.
                 </Text>
             </View>
         );
@@ -102,11 +75,10 @@ export default function PetList({
             }
         >
             <Text style={styles.sectionTitle}>Your pets</Text>
-            {pets.map((pet, index) => {
-                const id = petIds[index];
+            {pets.map((pet) => {
                 const rarityColor = getRarityColor(pet.rarity);
                 return (
-                    <View key={id !== undefined ? id.toString() : `pet-${index}`} style={styles.card}>
+                    <View key={pet.id} style={styles.card}>
                         <View style={styles.cardHeader}>
                             <Text style={styles.petName}>{pet.name}</Text>
                             <View style={[styles.rarityBadge, { borderColor: rarityColor }]}>
@@ -115,7 +87,7 @@ export default function PetList({
                                 </Text>
                             </View>
                         </View>
-                        {id !== undefined && <Text style={styles.meta}>ID #{id.toString()}</Text>}
+                        <Text style={styles.meta}>ID #{pet.id}</Text>
                         <Text style={styles.meta}>Level {pet.level}</Text>
                         <Text style={styles.meta}>
                             W {pet.winCount} · L {pet.lossCount}
