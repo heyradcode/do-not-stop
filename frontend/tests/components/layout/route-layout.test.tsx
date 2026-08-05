@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
 // The shell (sidebar/header/ambient/wallet) is covered by its own components;
-// here we only assert that Layout composes the shell around the routed page and
+// here we only assert that RouteLayout composes the shell around the routed page and
 // the Solana trigger.
 vi.mock('@components/layout/app-shell', () => ({
     default: ({ children }: { children: React.ReactNode }) => (
@@ -14,20 +14,20 @@ vi.mock('@components/wallet/solana-wallet-trigger', () => ({
     default: () => <div data-testid="solana-trigger" />,
 }));
 
-import Layout from '@components/layout/Layout';
+import RouteLayout from '@components/layout/route-layout';
 
 const renderLayout = () =>
     render(
         <MemoryRouter initialEntries={['/']}>
             <Routes>
-                <Route element={<Layout />}>
+                <Route element={<RouteLayout />}>
                     <Route path="/" element={<div data-testid="page" />} />
                 </Route>
             </Routes>
         </MemoryRouter>,
     );
 
-describe('Layout', () => {
+describe('RouteLayout', () => {
     it('wraps the routed page and Solana trigger in the app shell', () => {
         renderLayout();
 
