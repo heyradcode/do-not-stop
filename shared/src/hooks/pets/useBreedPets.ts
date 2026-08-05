@@ -93,14 +93,27 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
     const handleEntropyFulfilled = useCallback((id: bigint) => {
         if (settleSentRef.current || !evm?.gameLogic.address) return;
         settleSentRef.current = true;
-        settle.writeContract({
-            address: evm.gameLogic.address,
-            abi: evm.gameLogic.abi,
-            functionName: 'settleBreed',
-            args: [id],
-            gas: EVM_GAS_LIMITS.settleBreed,
-            chainId: evm.chainId,
-        });
+        settle.writeContract(
+            {
+                address: evm.gameLogic.address,
+                abi: evm.gameLogic.abi,
+                functionName: 'settleBreed',
+                args: [id],
+                gas: EVM_GAS_LIMITS.settleBreed,
+                chainId: evm.chainId,
+            },
+            {
+                onError: (e) => {
+                    // Re-arm. The flag exists to stop one reveal sending two settles,
+                    // not to make a rejected or reverted settle permanent: settleBreed
+                    // is permissionless and retryable by design, and the request stays
+                    // pending on chain until it lands. Leaving it set stranded the
+                    // breed with both fees already spent and no way to finish it.
+                    settleSentRef.current = false;
+                    console.error('[settleBreed]', e);
+                },
+            },
+        );
     }, [evm?.gameLogic.address, evm?.gameLogic.abi, evm?.chainId, settle]);
 
     useWatchEntropyFulfillment({
