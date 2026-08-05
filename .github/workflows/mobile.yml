@@ -1,0 +1,44 @@
+name: Mobile
+
+# `mobile` is the one package with a test script that no workflow ran. Root `pnpm lint`
+# covers its ESLint, and `pnpm build` skips it entirely (React Native builds through the
+# `android`/`ios` scripts), so nothing executed its jest suite. That suite is a single
+# boot smoke test, but it is the only mechanical check that App.tsx's imports still
+# resolve and its provider tree renders, which is exactly what a rename in `shared` or a
+# moved module breaks silently here while every other package stays green.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Deliberately not path-filtered on `mobile/**`. The failure this catches comes
+      # from changing `shared` or a module mobile imports, not from touching mobile
+      # itself, so a filter would skip precisely the run that matters. See the
+      # image-generator workflow for what path filtering has already cost here.
+      - name: Mobile tests
+        run: pnpm --filter mobile test

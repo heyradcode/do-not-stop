@@ -1,0 +1,48 @@
+name: Build
+
+# The only thing that typechecks `frontend`, `backend`, and `website`.
+#
+# None of the three has a `typecheck` script: their type check *is* the build
+# (`tsc -b && vite build`, `tsc`, `next build`). Vitest does not typecheck — esbuild
+# strips types without checking them — so a type error on a path no test executes
+# passes every existing workflow and only surfaces at deploy time. `protocol`,
+# `verifier`, and `image-generator` are covered by their own typecheck steps
+# elsewhere; these three had nothing.
+#
+# Deliberately not path-filtered. The break this catches is usually a change in
+# `shared` or `protocol` landing on a consumer that was not touched, so filtering on
+# the consumer's own paths would skip the run that matters.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Root aggregate: contracts compile, then backend, frontend, and website.
+      # Runs unattended (no secrets) and takes about a minute and a half.
+      - name: Build
+        run: pnpm build
