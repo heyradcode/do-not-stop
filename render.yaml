@@ -1,7 +1,7 @@
 # Render Blueprint — https://render.com/docs/blueprint-spec
 #
 # IMPORTANT: Leave "Root Directory" empty in the Render dashboard (monorepo root).
-# Do NOT set Root Directory to `backend` — the pnpm lockfile lives at the repo root.
+# Do NOT set Root Directory to `services/backend` — the pnpm lockfile lives at the repo root.
 #
 # After deploy, set VITE_API_URL on the frontend to your Render service URL.
 
@@ -22,15 +22,15 @@ services:
       npm install -g --prefix "$PNPM_PREFIX" pnpm@9.15.9
       HUSKY=0 pnpm install --frozen-lockfile --prod=false --filter backend... && pnpm --filter backend build
     # Start node directly so runtime never invokes the corepack pnpm shim.
-    # @shared/core/node is bundled to backend/dist/shared-node.cjs at build time.
-    startCommand: NODE_ENV=production node backend/dist/src/server.js
+    # @shared/core/node is bundled to services/backend/dist/shared-node.cjs at build time.
+    startCommand: NODE_ENV=production node services/backend/dist/src/server.js
     healthCheckPath: /api/health
     envVars:
       - key: HUSKY
         value: "0"
       - key: JWT_SECRET
         generateValue: true
-      # Proto is copied to backend/dist/proto at build; this override is a belt-and-suspenders
+      # Proto is copied to services/backend/dist/proto at build; this override is a belt-and-suspenders
       # path from the monorepo-root cwd used by startCommand.
       - key: INDEXER_PROTO_PATH
         value: proto/cryptopets.proto
@@ -39,7 +39,7 @@ services:
       - key: INDEXER_GRPC_ADDR
         value: ""
 
-  # indexer-go: unified cross-chain indexer (see indexer-go/README.md).
+  # indexer-go: unified cross-chain indexer (see services/indexer-go/README.md).
   # Deployed as a web service (not a worker) so it stays on the free plan —
   # /healthz answers Render's checks and /metrics rides the same port via the
   # PORT env convention. Trade-off: free web services sleep when idle; the
@@ -60,7 +60,7 @@ services:
     name: do-not-stop-indexer
     runtime: go
     plan: free
-    rootDir: indexer-go
+    rootDir: services/indexer-go
     buildCommand: go build -o bin/indexer ./cmd/indexer
     startCommand: ./bin/indexer
     healthCheckPath: /healthz
@@ -68,7 +68,7 @@ services:
       - key: LOG_FORMAT
         value: json
 
-  # image-generator: pet NFT art (see image-generator/README.md).
+  # image-generator: pet NFT art (see services/image-generator/README.md).
   #
   # rootDir is the whole story here: this package is NOT a pnpm workspace member
   # and keeps its own lockfile, so --ignore-workspace stops the install walking
@@ -82,7 +82,7 @@ services:
     name: do-not-stop-image-generator
     runtime: node
     plan: free
-    rootDir: image-generator
+    rootDir: services/image-generator
     # Do not set NODE_ENV=production here — it skips the TypeScript
     # devDependency the build needs. Same corepack workaround as the API service
     # above: install a standalone pnpm rather than touching the read-only shim.

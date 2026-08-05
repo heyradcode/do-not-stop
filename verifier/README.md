@@ -144,7 +144,7 @@ Programmatically, `verifyReceipts(envelopes, trustedKeys, { rulesets })` returns
 as `{ results, ok }`.
 
 `loadReceipts` accepts a local file path or an `http(s)` URL, and any of the shapes
-`backend/API.md` actually serves: a single receipt (`GET /api/battle/:battleId/receipt`), a
+`services/backend/API.md` actually serves: a single receipt (`GET /api/battle/:battleId/receipt`), a
 corpus page (`GET /api/receipts/...`), or a bare array. `loadSigningKeys` accepts
 `GET /api/battle/signing-keys`'s `{ keys: [...] }` shape, or a bare array for a hand-written
 trust file. `loadRulesets` accepts `GET /api/battle/rulesets/:rulesetHash`'s `{ ..., bundle }`

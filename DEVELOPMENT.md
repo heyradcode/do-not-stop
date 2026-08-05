@@ -52,7 +52,7 @@ This starts:
 do-not-stop/
 ├── frontend/           # React + Vite frontend
 ├── backend/            # Node.js + Express + TypeScript
-├── indexer-go/         # Go cross-chain indexer (see indexer-go/README.md)
+├── indexer-go/         # Go cross-chain indexer (see services/indexer-go/README.md)
 ├── proto/              # gRPC contract shared by indexer-go and backend
 ├── contracts/
 │   ├── ethereum/       # Hardhat + Solidity contracts
@@ -63,7 +63,7 @@ do-not-stop/
 The Go indexer (EVM subgraph polling + Solana WebSocket push) fills `pet_roster`
 and serves pet-state reads and win estimates to the backend over gRPC. It does
 not touch `battle_history`, which the backend writes from signed receipts.
-Build/test/runbook: `indexer-go/README.md`.
+Build/test/runbook: `services/indexer-go/README.md`.
 
 It is **not** optional if you need a populated roster: the backend's own
 `RosterIndexer` is gone, so nothing else writes `pet_roster`.
@@ -90,13 +90,13 @@ It is **not** optional if you need a populated roster: the backend's own
 ## Configuration Files
 
 - **Frontend:** `frontend/vite.config.ts`
-- **Backend:** `backend/src/server.ts`
+- **Backend:** `services/backend/src/server.ts`
 - **Ethereum:** `contracts/ethereum/hardhat.config.ts`
 - **Solana:** `contracts/solana/docker-compose.yml`
 
 ## Environment Variables
 
-### Backend (`backend/.env`)
+### Backend (`services/backend/.env`)
 ```bash
 JWT_SECRET=your-super-secret-jwt-key-here
 PORT=3001

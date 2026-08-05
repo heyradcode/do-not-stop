@@ -20,7 +20,7 @@ on this package.
 
 The combat engine moved here from `shared/src/utils/combat/` for the same reason. The identical
 algorithm is already MIT in `contracts/ethereum/src/CombatSim.sol`,
-`contracts/solana/cryptopets`, and `indexer-go/internal/combat`, so this changes the license of a
+`contracts/solana/cryptopets`, and `services/indexer-go/internal/combat`, so this changes the license of a
 fourth copy of published math, not of anything proprietary.
 
 **Rule for new files here:** MIT only, and nothing in this package may import from a PolyForm

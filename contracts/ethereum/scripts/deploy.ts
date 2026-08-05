@@ -164,7 +164,7 @@ async function injectContractAddresses(network: NetworkSpec, deploymentId?: stri
         // operator to copy rather than written into frontend/.env.local.
         if (batchRegistryAddress) {
             console.log(`
-   backend/.env: BATTLE_ANCHOR_REGISTRY_ADDRESS=${batchRegistryAddress}`);
+   services/backend/.env: BATTLE_ANCHOR_REGISTRY_ADDRESS=${batchRegistryAddress}`);
         }
 
         const frontendEnvLocalPath = join(process.cwd(), '..', '..', 'frontend', '.env.local');

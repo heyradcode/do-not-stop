@@ -1,7 +1,7 @@
 packages:
   - 'frontend'
   - 'website'
-  - 'backend'
+  - 'services/backend'
   - 'mobile'
   - 'shared'
   - 'protocol'

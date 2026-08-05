@@ -28,7 +28,7 @@ export function builtInRulesets(): Map<string, Ruleset> {
 /**
  * Loads published bundles from a local file or an `http(s)` URL.
  *
- * Accepts what `backend/API.md` serves from `GET /api/battle/rulesets/:rulesetHash`
+ * Accepts what `services/backend/API.md` serves from `GET /api/battle/rulesets/:rulesetHash`
  * (`{ ..., bundle: {...} }`), a bare bundle object saved to a file by hand, or an array of
  * either.
  */

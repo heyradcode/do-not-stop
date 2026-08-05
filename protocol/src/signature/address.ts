@@ -10,7 +10,7 @@ import { keccak256 } from '../encoding/hash';
  * This exists so the standalone verifier (§H) can check the operator's signature over a
  * receipt without depending on `ethers` or any other PolyForm-licensed package — the
  * verifier's own dependency budget is `@cryptopets/protocol` and nothing else. The signature
- * format matches what `backend/src/features/battle-signer` produces: 65 bytes, `r (32) ||
+ * format matches what `services/backend/src/features/battle-signer` produces: 65 bytes, `r (32) ||
  * s (32) || v (1)` with `v` in `{27, 28}` (legacy, unprefixed — no EIP-155 chain id encoded
  * into `v`, since this signs a receipt/commitment digest directly, never a transaction).
  *

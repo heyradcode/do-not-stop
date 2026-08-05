@@ -1,11 +1,11 @@
-// Shared contract between indexer-go (server) and the Node backend (client).
-// Node loads this file at runtime via @grpc/proto-loader; Go stubs are
-// generated into indexer-go/pb with `buf generate` (see indexer-go/buf.gen.yaml).
+// Shared contract between services/indexer-go (server) and the Node backend (client).
+// Node loads this file at runtime via @grpc/proto-loader; Go stubs are generated into
+// services/indexer-go/pb with `buf generate` (see services/indexer-go/buf.gen.yaml).
 syntax = "proto3";
 
 package cryptopets;
 
-option go_package = "github.com/radcrew/do-not-stop/indexer-go/pb";
+option go_package = "github.com/radcrew/do-not-stop/services/indexer-go/pb";
 
 service GameDataService {
   // RAM read from the write-through roster cache (coherent because

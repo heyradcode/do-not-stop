@@ -2,7 +2,7 @@ import type { WireBattleReceipt } from '@cryptopets/protocol';
 
 /**
  * One signed receipt, exactly as the backend's read/corpus endpoints serve it
- * (`backend/API.md`'s `SignedArtifact` / `ReceiptSummary` shapes): the operator's ECDSA
+ * (`services/backend/API.md`'s `SignedArtifact` / `ReceiptSummary` shapes): the operator's ECDSA
  * signature and the signing key it claims, alongside the receipt payload itself.
  *
  * The signature and `receiptHash` live outside `BattleReceipt` on purpose — the protocol

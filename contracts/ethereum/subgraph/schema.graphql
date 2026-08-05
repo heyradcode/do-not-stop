@@ -1,6 +1,6 @@
 # Pet entities for PvP matchmaking. Field names mirror `pet_roster` and the
 # GraphQL selection set in indexer-go's EVM adapter
-# (indexer-go/internal/evm/client.go) — they MUST stay identical or the indexer
+# (services/indexer-go/internal/evm/client.go) — they MUST stay identical or the indexer
 # silently reads zero values.
 
 type Pet @entity(immutable: false) {

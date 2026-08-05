@@ -13,8 +13,8 @@ package-specific docs live next to their code and are linked below.
 
 | Area | Doc |
 | --- | --- |
-| Backend API | [backend/API.md](../backend/API.md), [backend/README.md](../backend/README.md) |
-| Go indexer | [indexer-go/ARCHITECTURE.md](../indexer-go/ARCHITECTURE.md), [indexer-go/README.md](../indexer-go/README.md) |
+| Backend API | [services/backend/API.md](../backend/API.md), [services/backend/README.md](../backend/README.md) |
+| Go indexer | [services/indexer-go/ARCHITECTURE.md](../indexer-go/ARCHITECTURE.md), [services/indexer-go/README.md](../indexer-go/README.md) |
 | Contract upgrade plan | [contracts/plan-contract-upgrade.md](../contracts/plan-contract-upgrade.md) |
 | gRPC contract | [proto/cryptopets.proto](../proto/cryptopets.proto) |
 

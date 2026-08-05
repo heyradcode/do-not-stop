@@ -11,7 +11,7 @@ everything short of that.
 
 ## The drills are tests, not a checklist
 
-Each drill below is executed by `backend/tests/features/battle-ledger/drills.test.ts`, so it
+Each drill below is executed by `services/backend/tests/features/battle-ledger/drills.test.ts`, so it
 runs on every CI pass rather than being performed once and slowly becoming untrue. A drill
 that only ever lived in this file would describe a system nobody had checked in months.
 

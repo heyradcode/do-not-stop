@@ -439,7 +439,7 @@ the snapshot hash, the beacon proof, the derived seed, and the result plus comba
 This is real work on the critical path, not a checklist item.
 
 `protocol/src/combat/` today implements fight math only. There is no `xp.ts`. XP lives solely in
-`indexer-go/internal/combat/xp.go`, and it depends on stateful inputs the current client cannot see:
+`services/indexer-go/internal/combat/xp.go`, and it depends on stateful inputs the current client cannot see:
 `lastOpponentId` and same-opponent streak decay (`xp.go:32-41`). That is exactly why the TS port
 stopped at fight math.
 
@@ -457,7 +457,7 @@ meaningful `progressionDelta`.
 
 ### What the Go verifier is for
 
-Before signing, `indexer-go/internal/combat/` independently recomputes the result. TypeScript and Go
+Before signing, `services/indexer-go/internal/combat/` independently recomputes the result. TypeScript and Go
 must match exactly on winner, round count, winner HP remaining, XP/progression delta, and
 combat-log hash. Any mismatch stops receipt signing for that ruleset, alerts operators, retains both
 outputs and all inputs, and never silently prefers one implementation.
@@ -578,7 +578,7 @@ Because the receipt carries every input, any third party can recompute the fight
    needs no special access.
 4. **Published signing keys** with validity periods, including rotated-out keys.
 
-Licensing note: outsiders are expected to run this, so it cannot live under `backend/` (PolyForm
+Licensing note: outsiders are expected to run this, so it cannot live under `services/backend/` (PolyForm
 Noncommercial). See §K.
 
 ## §I. Merkle batches and reward claims
@@ -664,7 +664,7 @@ Requirements:
 
 ### The WebSocket
 
-`backend/src/ws/liveBattleSocket.ts` currently broadcasts every message to every connected client,
+`services/backend/src/ws/liveBattleSocket.ts` currently broadcasts every message to every connected client,
 deliberately, because clients filter by `(chainId, requestId)` themselves and the payload was
 chain-derived data anyone could read anyway.
 
@@ -734,7 +734,7 @@ when the legacy on-chain path actually retires, not at acceptance.
 
 **Done (Step 40).** The amendment split the four ports rather than loosening the rule: `CombatSim.sol`
 and `combat.rs` are now `MUST NOT` change — frozen, because the battles they settled are permanent
-records that must stay replayable — while `protocol/src/combat/` and `indexer-go/internal/combat/`
+records that must stay replayable — while `protocol/src/combat/` and `services/indexer-go/internal/combat/`
 are `MUST` change together, since §F's circuit breaker depends on the two being independent. All four
 golden-vector suites keep running: the frozen pair proves the vectors still describe what settled on
 chain, the live pair proves the current engine has not drifted from it.
@@ -757,7 +757,7 @@ Update `docs/plan-future-features-roadmap.md` on acceptance:
 PolyForm Noncommercial.
 
 - Root registry and claim contracts land in `contracts/ethereum`, so MIT, no action needed.
-- **The standalone public verifier (§H) cannot live under `backend/`.** A verifier outsiders are
+- **The standalone public verifier (§H) cannot live under `services/backend/`.** A verifier outsiders are
   expected to run must be licensed so they can run it. Decide its home before writing it: an MIT
   top-level package such as `verifier/`, or extend the MIT Go combat package in `indexer-go`.
 
