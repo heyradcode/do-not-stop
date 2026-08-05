@@ -58,7 +58,6 @@ export interface BattleWorkerHandle {
 export function startBattleWorker(workerId: string): BattleWorkerHandle {
     const timer = setInterval(() => {
         void runBattleWorkerOnce(workerId).catch((error: Error) => {
-            // eslint-disable-next-line no-console
             console.error(`[battle-worker] poll failed: ${error.message}`);
         });
     }, env.battle.workerPollIntervalMs);

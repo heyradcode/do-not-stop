@@ -1,47 +1,47 @@
 {
-  "name": "do-not-stop",
-  "private": true,
-  "version": "0.0.0",
-  "license": "SEE LICENSE IN LICENSE",
-  "packageManager": "pnpm@9.15.9",
-  "type": "module",
-  "scripts": {
-    "install:all": "pnpm install && pnpm --prefix frontend install && pnpm --prefix website install && pnpm --prefix backend install && pnpm --prefix mobile install && pnpm --prefix contracts/ethereum install && pnpm --prefix services/image-generator install --ignore-workspace",
-    "dev:fe": "pnpm --prefix frontend dev",
-    "dev:web": "pnpm --prefix website dev",
-    "dev:be": "pnpm --prefix backend dev",
-    "dev:mobile": "pnpm --prefix mobile start",
-    "dev:art": "pnpm --prefix services/image-generator dev",
-    "eth:node": "pnpm --prefix contracts/ethereum node",
-    "eth:deploy": "pnpm --prefix contracts/ethereum deploy:inject",
-    "eth:vrf:watch": "pnpm --prefix contracts/ethereum vrf:watch",
-    "sol:docker": "docker-compose -f contracts/solana/docker-compose.yml up -d",
-    "sol:inject-ngrok": "pnpm --prefix contracts/solana/cryptopets inject-ngrok",
-    "fe:eth:local": "concurrently --kill-others-on-fail --names \"HH,ETH,VRF,BE,FE\" \"pnpm eth:node\" \"pnpm eth:deploy\" \"pnpm eth:vrf:watch\" \"pnpm dev:be\" \"pnpm dev:fe\"",
-    "mobile:eth:local": "concurrently --kill-others-on-fail --names \"HH,ETH,VRF,BE,MB\" \"pnpm eth:node\" \"pnpm eth:deploy\" \"pnpm eth:vrf:watch\" \"pnpm dev:be\" \"pnpm dev:mobile\"",
-    "fe:sol:local": "concurrently --kill-others-on-fail --names \"BE,FE,SOL\" \"pnpm dev:be\" \"pnpm dev:fe\" \"pnpm sol:docker && pnpm sol:inject-ngrok\"",
-    "dev": "concurrently --kill-others-on-fail --names \"BE,FE\" \"pnpm dev:be\" \"pnpm dev:fe\"",
-    "dev:be:mobile": "concurrently --kill-others-on-fail --names \"BE,MB\" \"pnpm dev:be\" \"pnpm dev:mobile\"",
-    "compile": "pnpm --prefix contracts/ethereum compile",
-    "graph:evm:configure": "pnpm --filter cryptopets-subgraph-evm configure",
-    "graph:evm:build": "pnpm --filter cryptopets-subgraph-evm build",
-    "test": "pnpm --prefix contracts/ethereum test",
-    "build": "pnpm compile && pnpm --prefix backend build && pnpm --prefix frontend build && pnpm --prefix website build",
-    "build:backend": "pnpm --filter backend build",
-    "lint": "pnpm --filter frontend lint:check && pnpm --filter @cryptopets/protocol lint && pnpm --filter @cryptopets/verifier lint && pnpm --filter @shared/core lint && pnpm --filter website lint && pnpm --filter mobile lint",
-    "lint:fix": "pnpm --filter frontend lint:fix && pnpm --filter @cryptopets/protocol lint:fix && pnpm --filter @cryptopets/verifier lint:fix && pnpm --filter @shared/core lint:fix && pnpm --filter website lint:fix && pnpm --filter mobile lint:fix",
-    "eslint": "pnpm lint",
-    "prepare": "husky"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2",
-    "dotenv": "^16.4.5",
-    "husky": "^9.1.7",
-    "tsx": "^4.7.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "valtio": "2.1.8"
+    "name": "do-not-stop",
+    "private": true,
+    "version": "0.0.0",
+    "license": "SEE LICENSE IN LICENSE",
+    "packageManager": "pnpm@9.15.9",
+    "type": "module",
+    "scripts": {
+        "install:all": "pnpm install && pnpm --prefix frontend install && pnpm --prefix website install && pnpm --prefix backend install && pnpm --prefix mobile install && pnpm --prefix contracts/ethereum install && pnpm --prefix services/image-generator install --ignore-workspace",
+        "dev:fe": "pnpm --prefix frontend dev",
+        "dev:web": "pnpm --prefix website dev",
+        "dev:be": "pnpm --prefix backend dev",
+        "dev:mobile": "pnpm --prefix mobile start",
+        "dev:art": "pnpm --prefix services/image-generator dev",
+        "eth:node": "pnpm --prefix contracts/ethereum node",
+        "eth:deploy": "pnpm --prefix contracts/ethereum deploy:inject",
+        "eth:vrf:watch": "pnpm --prefix contracts/ethereum vrf:watch",
+        "sol:docker": "docker-compose -f contracts/solana/docker-compose.yml up -d",
+        "sol:inject-ngrok": "pnpm --prefix contracts/solana/cryptopets inject-ngrok",
+        "fe:eth:local": "concurrently --kill-others-on-fail --names \"HH,ETH,VRF,BE,FE\" \"pnpm eth:node\" \"pnpm eth:deploy\" \"pnpm eth:vrf:watch\" \"pnpm dev:be\" \"pnpm dev:fe\"",
+        "mobile:eth:local": "concurrently --kill-others-on-fail --names \"HH,ETH,VRF,BE,MB\" \"pnpm eth:node\" \"pnpm eth:deploy\" \"pnpm eth:vrf:watch\" \"pnpm dev:be\" \"pnpm dev:mobile\"",
+        "fe:sol:local": "concurrently --kill-others-on-fail --names \"BE,FE,SOL\" \"pnpm dev:be\" \"pnpm dev:fe\" \"pnpm sol:docker && pnpm sol:inject-ngrok\"",
+        "dev": "concurrently --kill-others-on-fail --names \"BE,FE\" \"pnpm dev:be\" \"pnpm dev:fe\"",
+        "dev:be:mobile": "concurrently --kill-others-on-fail --names \"BE,MB\" \"pnpm dev:be\" \"pnpm dev:mobile\"",
+        "compile": "pnpm --prefix contracts/ethereum compile",
+        "graph:evm:configure": "pnpm --filter cryptopets-subgraph-evm configure",
+        "graph:evm:build": "pnpm --filter cryptopets-subgraph-evm build",
+        "test": "pnpm --prefix contracts/ethereum test",
+        "build": "pnpm compile && pnpm --prefix backend build && pnpm --prefix frontend build && pnpm --prefix website build",
+        "build:backend": "pnpm --filter backend build",
+        "lint": "pnpm --filter frontend lint:check && pnpm --filter backend lint && pnpm --filter @cryptopets/protocol lint && pnpm --filter @cryptopets/verifier lint && pnpm --filter @shared/core lint && pnpm --filter website lint && pnpm --filter mobile lint",
+        "lint:fix": "pnpm --filter frontend lint:fix && pnpm --filter backend lint:fix && pnpm --filter @cryptopets/protocol lint:fix && pnpm --filter @cryptopets/verifier lint:fix && pnpm --filter @shared/core lint:fix && pnpm --filter website lint:fix && pnpm --filter mobile lint:fix",
+        "eslint": "pnpm lint",
+        "prepare": "husky"
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2",
+        "dotenv": "^16.4.5",
+        "husky": "^9.1.7",
+        "tsx": "^4.7.0"
+    },
+    "pnpm": {
+        "overrides": {
+            "valtio": "2.1.8"
+        }
     }
-  }
 }

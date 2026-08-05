@@ -59,13 +59,13 @@ pnpm lint:fix
 pnpm test                    # equals contracts/ethereum test (Hardhat/Mocha), NOT a full monorepo test run
 pnpm build                   # compile contracts + build backend + frontend + website
 ```
-**`pnpm lint` and `pnpm test` do not cover every package.** `backend` has no lint script at all, and neither `backend` nor `contracts/ethereum` are in the root `lint` aggregate. `image-generator` is not in *any* root aggregate and is not even a workspace member; it has its own lockfile and its own CI workflow. Do not reach for `pnpm --filter image-generator <script>` either: it prints `No projects matched the filters` **and exits 0**, so it reports success having run nothing. Run per-package commands below when touching those.
+**`pnpm lint` and `pnpm test` do not cover every package.** `contracts/ethereum` has no lint script and is not in the root `lint` aggregate. `image-generator` is not in *any* root aggregate and is not even a workspace member; it has its own lockfile and its own CI workflow. Do not reach for `pnpm --filter image-generator <script>` either: it prints `No projects matched the filters` **and exits 0**, so it reports success having run nothing. Run per-package commands below when touching those.
 
 ### Per-package commands
 | Package | lint | test | build | single test |
 |---|---|---|---|---|
 | `frontend` | `pnpm --filter frontend lint:check` (`eslint . --max-warnings 0` + CSS naming check) | `pnpm --filter frontend test` (vitest) | `pnpm --filter frontend build` (`tsc -b && vite build`) | `pnpm --filter frontend exec vitest run <path>` or `-t "<name>"` |
-| `backend` | *(none)* | `pnpm --filter backend test` (vitest) | `pnpm --filter backend build` (`prisma generate && tsc`) | `pnpm --filter backend exec vitest run <path>` |
+| `backend` | `pnpm --filter backend lint` (`eslint .`) | `pnpm --filter backend test` (vitest) | `pnpm --filter backend build` (`prisma generate && tsc`) | `pnpm --filter backend exec vitest run <path>` |
 | `shared` (`@shared/core`) | `pnpm --filter @shared/core lint` | `pnpm --filter @shared/core test` (vitest) | *(none, consumed as raw TS)* | same vitest pattern |
 | `protocol` (`@cryptopets/protocol`) | `pnpm --filter @cryptopets/protocol lint` | `pnpm --filter @cryptopets/protocol test` (vitest) | *(none, consumed as raw TS; `typecheck` runs `tsc --noEmit`)* | same vitest pattern |
 | `verifier` (`@cryptopets/verifier`) | `pnpm --filter @cryptopets/verifier lint` | `pnpm --filter @cryptopets/verifier test` (vitest) | *(none, consumed as raw TS; `typecheck` runs `tsc --noEmit`)* | same vitest pattern |

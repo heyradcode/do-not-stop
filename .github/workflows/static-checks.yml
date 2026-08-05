@@ -1,0 +1,62 @@
+name: Static checks
+
+# The two whole-repo checks that nothing ran.
+#
+# Lint: the root `pnpm lint` aggregate ran in no workflow. `protocol` and `verifier`
+# are linted by their own workflows, and `image-generator` by its own, but `frontend`,
+# `backend`, `shared`, `website`, and `mobile` were linted only by hand. That includes
+# frontend's custom CSS-naming check (`lint:css`), which AGENTS.md lists under
+# Enforcement.
+#
+# Build: the only thing that typechecks `frontend`, `backend`, and `website`. None of
+# the three has a `typecheck` script — their type check *is* the build (`tsc -b &&
+# vite build`, `tsc`, `next build`) — and vitest does not typecheck, since esbuild
+# strips types without checking them. A type error on a path no test executes passed
+# every existing workflow and surfaced at deploy.
+#
+# One job rather than two: both need the same install, which dominates the runtime.
+# `if: always()` on the build step so a lint failure still reports the build result.
+#
+# Deliberately not path-filtered. These break from a change in `shared` or `protocol`
+# landing on a consumer that was not touched, so filtering on the consumer's own paths
+# would skip the run that matters.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: static-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # frontend (eslint + CSS naming), backend, protocol, verifier, shared,
+      # website, mobile. Not contracts/ethereum, which has no lint script.
+      - name: Lint
+        run: pnpm lint
+
+      # Root aggregate: contracts compile, then backend, frontend, and website.
+      # Runs unattended (no secrets), about a minute and a half.
+      - name: Build
+        if: always()
+        run: pnpm build
