@@ -8,8 +8,13 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAccount } from 'wagmi';
 
 import AppHeader from '../components/AppHeader';
+import BreedScreen from '../screens/BreedScreen';
+import DefenseScreen from '../screens/DefenseScreen';
 import GalleryScreen from '../screens/GalleryScreen';
 import LandingScreen from '../screens/LandingScreen';
+import LevelUpScreen from '../screens/LevelUpScreen';
+import RenameScreen from '../screens/RenameScreen';
+import TrainScreen from '../screens/TrainScreen';
 import { placeholderFor } from '../screens/PlaceholderScreen';
 import { neon } from '../theme/neon';
 import {
@@ -26,15 +31,15 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const TAB_SCREENS: Record<keyof MainTabParamList, React.ComponentType> = {
     Gallery: GalleryScreen,
     Battle: placeholderFor('Battle Arena'),
-    Breed: placeholderFor('Breeding Lab'),
-    LevelUp: placeholderFor('Level Up'),
-    Train: placeholderFor('Training Ground'),
+    Breed: BreedScreen,
+    LevelUp: LevelUpScreen,
+    Train: TrainScreen,
 };
 
 const STACK_SCREENS = {
     Marriage: placeholderFor('Marriage'),
-    Rename: placeholderFor('Rename Pet'),
-    Defense: placeholderFor('Allow Challenges'),
+    Rename: RenameScreen,
+    Defense: DefenseScreen,
 } as const;
 
 /**

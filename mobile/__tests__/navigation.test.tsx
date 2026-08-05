@@ -12,9 +12,16 @@ import { NavigationContainer } from '@react-navigation/native';
 const mockIsConnected = jest.fn(() => true);
 jest.mock('wagmi', () => ({ useAccount: () => ({ isConnected: mockIsConnected() }) }));
 
-// The screens behind the gate are the app's real ones; each pulls in the chain
-// adapter and the API client, which is not what a navigator smoke test is for.
+// The screens behind the gate are the app's real ones; each imports the
+// `@shared/core` barrel, which drags the Solana runtime into jest and fails to
+// parse. Stub every screen the navigator mounts — a new real screen replacing a
+// placeholder is what breaks this suite next.
 jest.mock('../src/screens/GalleryScreen', () => () => null);
+jest.mock('../src/screens/LevelUpScreen', () => () => null);
+jest.mock('../src/screens/TrainScreen', () => () => null);
+jest.mock('../src/screens/RenameScreen', () => () => null);
+jest.mock('../src/screens/DefenseScreen', () => () => null);
+jest.mock('../src/screens/BreedScreen', () => () => null);
 jest.mock('../src/components/AppHeader', () => () => null);
 jest.mock('../src/screens/LandingScreen', () => {
     const { Text: RNText } = jest.requireActual('react-native');
