@@ -9,6 +9,13 @@ declare module '@env' {
      */
     export const EVM_CHAIN_ID: string | undefined;
     /**
+     * v2 contract addresses. Each falls back to the live Sepolia deployment in
+     * `src/chains/ethereum/contracts.ts`, the same one frontend defaults to.
+     */
+    export const PETCORE_ADDRESS: string | undefined;
+    export const GAMELOGIC_ADDRESS: string | undefined;
+    export const GAMECONFIG_ADDRESS: string | undefined;
+    /**
      * Optional Hardhat/Anvil JSON-RPC URL for chain 31337 (e.g. `http://192.168.1.5:8545` on a physical device).
      * If unset: Android emulator uses `10.0.2.2`; iOS simulator uses `127.0.0.1`.
      */
