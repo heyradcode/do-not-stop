@@ -1,6 +1,4 @@
-/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
-   The logo float keyframe (cp-orb-float, used only here) lives in this module so
-   the animation reference and @keyframes hash consistently. */
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`. */
 .sidebar {
     --label-opacity: 0;
     position: relative;
@@ -51,9 +49,13 @@
     border-bottom-color: transparent;
 }
 
+/* Hidden outright while collapsed, not just faded: at rail width there is no
+   room for it, and an invisible button still holds its 44px of the row and
+   crushes whatever shares it. Tabbing into the sidebar trips :focus-within,
+   which expands the rail and brings the pin into the tab order with it. */
 .pin {
+    display: none;
     flex-shrink: 0;
-    display: flex;
     align-items: center;
     justify-content: center;
     width: 34px;
@@ -66,11 +68,12 @@
     color: rgb(125 214 255 / 55%);
     cursor: pointer;
     transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
 
-    /* Fades with the labels: in the collapsed rail there is no room for it, and
-       a pin the user cannot see is one they cannot mis-click either. Hovering
-       the rail expands it, which is when the control becomes reachable. */
-    opacity: var(--label-opacity);
+.sidebar:hover .pin,
+.sidebar:focus-within .pin,
+.sidebar.isPinned .pin {
+    display: flex;
 }
 
 .pin:hover {
@@ -116,13 +119,6 @@
     box-shadow: none;
     border-color: transparent;
     border-bottom-color: rgb(101 131 255 / 10%);
-}
-
-.logo {
-    font-size: 22px;
-    line-height: 1;
-    flex-shrink: 0;
-    animation: cp-orb-float 4s ease-in-out infinite;
 }
 
 .wordmark {
@@ -358,12 +354,3 @@
     }
 }
 
-@keyframes cp-orb-float {
-    0%,
-    100% {
-        transform: translateY(0) rotate(0deg);
-    }
-    50% {
-        transform: translateY(-12px) rotate(4deg);
-    }
-}

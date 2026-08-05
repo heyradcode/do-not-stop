@@ -96,7 +96,11 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     };
 
     const handleClose = () => {
-        if (isInProgress) return; // don't discard an in-flight mint — the fee is already spent
+        // The guard protects a mint that is still in flight, whose fee is already
+        // spent. Once one has settled there is nothing left to protect, and any
+        // in-progress flag still set at that point traps the dialog instead —
+        // neither Done nor the close button does anything. Settled wins.
+        if (!success && isInProgress) return;
         setPetName('');
         setSuccess(null);
         reset();

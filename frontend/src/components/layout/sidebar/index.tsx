@@ -2,7 +2,7 @@ import React from 'react';
 import clsx from 'clsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import Icon, { DragonIcon, PinFilledIcon, PinIcon } from '@components/ui/icon';
+import Icon, { PinFilledIcon, PinIcon } from '@components/ui/icon';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useSidebarPin } from '@hooks/useSidebarPin';
 import { NAV_ITEMS } from './nav-items';
@@ -35,9 +35,6 @@ const Sidebar: React.FC = () => {
                     onClick={() => navigate(DASHBOARD_HOME)}
                     aria-label="Crypto Pets home"
                 >
-                    <span className={styles.logo} aria-hidden>
-                        <Icon as={DragonIcon} tone="violet" glow="strong" noGap />
-                    </span>
                     <span className={styles.wordmark}>CRYPTOPETS</span>
                 </button>
 

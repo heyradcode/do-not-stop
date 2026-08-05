@@ -18,6 +18,8 @@ const createPet = {
 let capturedOnSuccess: (() => void) | undefined;
 const petList = { refetch: vi.fn() };
 const capabilities = { isConnected: true, kind: 'solana' };
+/** The EVM async-mint flags, mutable so a test can leave one stuck on. */
+const asyncFlags = { isAwaitingFulfillment: false, isSettling: false };
 
 vi.mock('@shared/core', () => ({
     useAuth: () => ({
@@ -38,7 +40,7 @@ vi.mock('@shared/core', () => ({
     }),
     useCreatePet: (opts: { onSuccess?: () => void }) => {
         capturedOnSuccess = opts?.onSuccess;
-        return { ...createPet, isAwaitingFulfillment: false, isSettling: false };
+        return { ...createPet, ...asyncFlags };
     },
 }));
 
@@ -53,6 +55,8 @@ beforeEach(() => {
     vi.clearAllMocks();
     capabilities.isConnected = true;
     createPet.isPending = false;
+    asyncFlags.isAwaitingFulfillment = false;
+    asyncFlags.isSettling = false;
 });
 
 describe('CreatePetModal', () => {
@@ -118,6 +122,33 @@ describe('CreatePetModal', () => {
     it('shows a placeholder until the pet exists, since its DNA is not fixed yet', () => {
         renderModal();
         expect(screen.getByText('?')).toBeInTheDocument();
+    });
+
+    // The in-progress guard exists to stop a mid-flight mint being discarded
+    // with its fee spent. Once the pet has settled it protects nothing, and a
+    // flag still set at that point trapped the dialog: neither Done nor the
+    // close button did anything and the pet could not be dismissed.
+    it('still closes after settling when an in-progress flag is stuck on', async () => {
+        const onClose = renderModal();
+        await userEvent.type(screen.getByPlaceholderText('Enter pet name...'), 'Sparky');
+
+        asyncFlags.isSettling = true;
+        act(() => {
+            capturedOnSuccess?.();
+        });
+
+        await userEvent.click(screen.getByRole('button', { name: 'Done' }));
+        expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it('still refuses to close while a mint is genuinely in flight', async () => {
+        // Set before render: the click handler closes over the flags as of the
+        // last render, so flipping one afterwards changes nothing.
+        asyncFlags.isAwaitingFulfillment = true;
+        const onClose = renderModal();
+        await userEvent.click(screen.getByRole('button', { name: 'Close modal' }));
+
+        expect(onClose).not.toHaveBeenCalled();
     });
 
     it('closes and resets via the close button', async () => {
