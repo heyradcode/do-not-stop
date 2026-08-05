@@ -74,40 +74,50 @@ const CombatantCard: React.FC<{
     const hp = getLifePercent(pet);
     return (
         <div className={clsx(styles.combatantCard, side === 'rival' && styles.combatantCardRival)}>
-            <div className={styles.combatantCardAvatarWrap}>
-                <span className={styles.combatantCardAvatar} aria-hidden>
-                    <PetArt pet={pet} />
-                </span>
+            {/* Art fills the card, and the pet's numbers read over it. The
+                emoji class goes on the glyph rather than this wrapper: it
+                carries a drop-shadow and an animated transform, and either
+                would become the containing block for the filling image and
+                pin it to the emoji's size instead of the card's. */}
+            <div className={styles.combatantCardArt}>
+                <PetArt pet={pet} fill emojiClassName={styles.combatantCardAvatar} />
             </div>
-            <div className={styles.combatantCardName}>{pet.name}</div>
-            <div className={styles.combatantCardMeta}>
-                Lv.{pet.level} · {getPetClass(pet.dna)} ·{' '}
-                <span style={{ color: rarityColor }}>{getRarityName(pet.rarity).toUpperCase()}</span>
-            </div>
-            {owner ? <div className={styles.combatantCardOwner}>{owner}</div> : null}
-            <div className={styles.combatantCardStats}>
-                {STAT_KEYS.map((stat) => (
-                    <div className={styles.combatantStat} key={stat.label}>
-                        <div className={styles.combatantStatLabel}>{stat.label}</div>
-                        <div className={styles.combatantStatVal}>{props[stat.key]}</div>
-                    </div>
-                ))}
-            </div>
-            <div className={styles.combatantCardHp}>
-                <div className={styles.combatantCardHpHead}>
-                    <span>HP</span>
-                    <span className={styles.combatantCardHpVal}>{hp}/100</span>
+            {/* Nothing here is legible over arbitrary generated art without it. */}
+            <div className={styles.combatantCardScrim} aria-hidden />
+
+            <div className={styles.combatantCardBody}>
+                <div className={styles.combatantCardName}>{pet.name}</div>
+                <div className={styles.combatantCardMeta}>
+                    Lv.{pet.level} · {getPetClass(pet.dna)} ·{' '}
+                    <span style={{ color: rarityColor }}>
+                        {getRarityName(pet.rarity).toUpperCase()}
+                    </span>
                 </div>
-                <div className={styles.combatantCardHpTrack}>
-                    <div
-                        className={clsx(
-                            styles.combatantCardHpFill,
-                            side === 'fighter'
-                                ? styles.combatantCardHpFillFighter
-                                : styles.combatantCardHpFillRival,
-                        )}
-                        style={{ width: `${hp}%` }}
-                    />
+                {owner ? <div className={styles.combatantCardOwner}>{owner}</div> : null}
+                <div className={styles.combatantCardStats}>
+                    {STAT_KEYS.map((stat) => (
+                        <div className={styles.combatantStat} key={stat.label}>
+                            <div className={styles.combatantStatLabel}>{stat.label}</div>
+                            <div className={styles.combatantStatVal}>{props[stat.key]}</div>
+                        </div>
+                    ))}
+                </div>
+                <div className={styles.combatantCardHp}>
+                    <div className={styles.combatantCardHpHead}>
+                        <span>HP</span>
+                        <span className={styles.combatantCardHpVal}>{hp}/100</span>
+                    </div>
+                    <div className={styles.combatantCardHpTrack}>
+                        <div
+                            className={clsx(
+                                styles.combatantCardHpFill,
+                                side === 'fighter'
+                                    ? styles.combatantCardHpFillFighter
+                                    : styles.combatantCardHpFillRival,
+                            )}
+                            style={{ width: `${hp}%` }}
+                        />
+                    </div>
                 </div>
             </div>
         </div>
