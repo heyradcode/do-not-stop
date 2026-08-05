@@ -87,7 +87,10 @@ describe('CreatePetModal', () => {
         expect(createPet.mutate).toHaveBeenCalledWith({ name: 'Sparky' });
     });
 
-    it('shows success, refetches and closes once settled', async () => {
+    // Art is generated on first request, so closing on settlement would drop the
+    // player back to a card showing an emoji for the next several seconds. The
+    // dialog waits instead, and the player dismisses it.
+    it('shows success and stays open once settled, so the pet can be seen', async () => {
         const onClose = renderModal();
         await userEvent.type(screen.getByPlaceholderText('Enter pet name...'), 'Sparky');
 
@@ -96,7 +99,25 @@ describe('CreatePetModal', () => {
         });
 
         expect(screen.getByText('Pet "Sparky" created successfully!')).toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('closes on Done once the pet has settled', async () => {
+        const onClose = renderModal();
+        await userEvent.type(screen.getByPlaceholderText('Enter pet name...'), 'Sparky');
+
+        act(() => {
+            capturedOnSuccess?.();
+        });
+        await userEvent.click(screen.getByRole('button', { name: 'Done' }));
+
+        expect(createPet.reset).toHaveBeenCalled();
         expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it('shows a placeholder until the pet exists, since its DNA is not fixed yet', () => {
+        renderModal();
+        expect(screen.getByText('?')).toBeInTheDocument();
     });
 
     it('closes and resets via the close button', async () => {

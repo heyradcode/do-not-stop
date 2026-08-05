@@ -34,6 +34,11 @@ export interface PetMutationResult<TArgs> {
     isAwaitingFulfillment?: boolean;
     /** EVM async mint only: true while the settleMint tx is in-flight. */
     isSettling?: boolean;
+    /**
+     * EVM async mint only: the new pet's id, from `MintSettled`, once it lands.
+     * Null until then, and on Solana, whose mint surfaces no identifier.
+     */
+    mintedPetId?: string | null;
 }
 
 /**
@@ -113,21 +118,37 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
     });
 
     const successFiredRef = useRef(false);
-    const handleMintSettled = useCallback(() => {
+    // MintSettled carries the new pet's id, which is the only way to name the
+    // pet that was just minted: DNA is fixed by the reveal, so nothing before
+    // settlement identifies it. The caller needs it to show the pet off.
+    const [mintedPetId, setMintedPetId] = useState<string | null>(null);
+    const handleMintSettled = useCallback((petId?: bigint) => {
         if (successFiredRef.current) return;
         successFiredRef.current = true;
+        if (petId != null) setMintedPetId(petId.toString());
         setPendingRequestId(null);
         onSuccessRef.current?.();
     }, []);
 
     // 4a. Primary: resolve from settle tx receipt (we sent settleMint, so MintSettled is in its logs).
-    const { isSuccess: settleConfirmed } = useWaitForTransactionReceipt({
+    const { data: settleReceipt, isSuccess: settleConfirmed } = useWaitForTransactionReceipt({
         hash: settle.data,
         query: { enabled: !!settle.data },
     });
     useEffect(() => {
-        if (isEvm && settleConfirmed) handleMintSettled();
-    }, [isEvm, settleConfirmed, handleMintSettled]);
+        if (!isEvm || !settleConfirmed) return;
+        let petId: bigint | undefined;
+        try {
+            const logs = parseEventLogs({
+                abi: evm?.gameLogic.abi ?? [],
+                logs: settleReceipt?.logs ?? [],
+                eventName: 'MintSettled',
+                strict: false,
+            }) as unknown as { args: { petId?: bigint } }[];
+            petId = logs[0]?.args.petId;
+        } catch { /* settle landed regardless; the id is a bonus, not a gate */ }
+        handleMintSettled(petId);
+    }, [isEvm, settleConfirmed, settleReceipt, evm?.gameLogic.abi, handleMintSettled]);
 
     // 4b. Secondary: watch MintSettled event (covers a settle sent outside this hook).
     usePolledContractEvent({
@@ -138,8 +159,9 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
         chainId: evm?.chainId,
         onLogs(logs) {
             if (pendingRequestId == null) return;
-            const typed = logs as unknown as { args: { requestId?: bigint } }[];
-            if (typed.some((l) => l.args.requestId === pendingRequestId)) handleMintSettled();
+            const typed = logs as unknown as { args: { requestId?: bigint; petId?: bigint } }[];
+            const mine = typed.find((l) => l.args.requestId === pendingRequestId);
+            if (mine) handleMintSettled(mine.args.petId);
         },
     });
 
@@ -153,6 +175,7 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
     const clearLocalState = useCallback(() => {
         setPendingRequestId(null);
         setPreWriteError(null);
+        setMintedPetId(null);
         settleSentRef.current = false;
         successFiredRef.current = false;
         settle.reset();
@@ -181,5 +204,6 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
         lifecycle: createPet.lifecycle,
         isAwaitingFulfillment: isEvm && pendingRequestId != null,
         isSettling: isEvm && settle.isPending,
+        mintedPetId,
     };
 };

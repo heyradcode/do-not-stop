@@ -8,6 +8,7 @@ import NeonModal from '@components/ui/neon-modal';
 import TransactionStatus from '@components/common/transaction-status';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
+import MintedPetArt from './parts/minted-pet-art';
 import styles from './index.module.css';
 
 interface CreatePetModalProps {
@@ -16,7 +17,7 @@ interface CreatePetModalProps {
 }
 
 const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
-    const { isConnected } = useChainCapabilities();
+    const { isConnected, kind } = useChainCapabilities();
     const queryClient = useQueryClient();
     const notifyError = useNotifyError();
 
@@ -28,15 +29,18 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
     const [success, setSuccess] = useState<string | null>(null);
 
     // Settlement is lifecycle-driven (EVM: receipt confirmed; Solana: resolve).
+    //
+    // The dialog deliberately stays open. The pet's art is generated on first
+    // request, so closing here would drop the player back to a gallery card that
+    // shows an emoji for the next several seconds — they would never see what
+    // they minted. This is the one place worth waiting.
     const handleCreateComplete = () => {
         setSuccess(`Pet "${petName.trim()}" created successfully!`);
-        setPetName('');
         // Bust the entire contract-read cache so the gallery picks up the new pet
         // immediately — avoids stale reads when the wallet's chain differs from
         // the contract's chain (useReadContracts overwrites chainId with the wallet's).
         void queryClient.invalidateQueries({ queryKey: ['readContract'] });
         void queryClient.invalidateQueries({ queryKey: ['readContracts'] });
-        onClose();
     };
 
     const {
@@ -44,6 +48,7 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         isPending,
         isAwaitingFulfillment,
         isSettling,
+        mintedPetId,
         error: hookError,
         reset,
         lifecycle,
@@ -116,6 +121,12 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
             </p>
 
             <div className={styles.form}>
+                {/* `?` until the mint settles, and it is not a placeholder for
+                    missing data: commit-reveal fixes the DNA at the entropy
+                    reveal, so until then nobody — not even the contract — knows
+                    what this pet looks like. */}
+                <MintedPetArt petId={mintedPetId ?? null} chain={kind === 'solana' ? 'solana' : 'evm'} />
+
                 <div className={styles.field}>
                     <label htmlFor="petName">Pet Name</label>
                     <input
@@ -125,21 +136,27 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                         onChange={(e) => setPetName(e.target.value)}
                         placeholder="Enter pet name..."
                         maxLength={20}
-                        disabled={isInProgress}
+                        disabled={isInProgress || Boolean(success)}
                     />
                 </div>
 
-                {mintCost && <p className="mint-cost">Mint cost: {mintCost}</p>}
+                {!success && mintCost && <p className="mint-cost">Mint cost: {mintCost}</p>}
 
-                {/* Creating a pet is fully on-chain (Switchboard VRF + program) and
-                    needs no backend session — gate on wallet connection only, not SIWS auth. */}
-                <NeonButton
-                    tone="cyan"
-                    onClick={handleCreatePet}
-                    disabled={isInProgress || feesLoading || !petName.trim() || !isConnected}
-                >
-                    {buttonLabel}
-                </NeonButton>
+                {success ? (
+                    <NeonButton tone="cyan" onClick={handleClose}>
+                        Done
+                    </NeonButton>
+                ) : (
+                    /* Creating a pet is fully on-chain (Switchboard VRF + program) and
+                       needs no backend session — gate on wallet connection only, not SIWS auth. */
+                    <NeonButton
+                        tone="cyan"
+                        onClick={handleCreatePet}
+                        disabled={isInProgress || feesLoading || !petName.trim() || !isConnected}
+                    >
+                        {buttonLabel}
+                    </NeonButton>
+                )}
 
                 {isAwaitingFulfillment && (
                     <p className="pending-hint">
