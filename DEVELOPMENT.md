@@ -20,12 +20,23 @@ This starts:
 ## Available Commands
 
 ### Development
-- `pnpm dev` - Start everything (Ethereum + Solana + Backend + Frontend)
-- `pnpm dev:no-deploy` - Start everything except contract deployment
-- `pnpm dev:frontend` - Frontend only
-- `pnpm dev:backend` - Backend only
-- `pnpm dev:contracts` - Ethereum contracts only
-- `pnpm dev:solana` - Solana validator only
+- `pnpm dev` - Backend, frontend, image-generator, and indexer-go together
+- `pnpm dev:be` - Backend only (`:3001`)
+- `pnpm dev:fe` - Frontend only (`:5173`)
+- `pnpm dev:art` - Image-generator only (`:8787`)
+- `pnpm dev:idx` - Indexer-go only, hot-reloaded by `air` (health `:8090`, gRPC `:50051`)
+- `pnpm dev:mobile` - React Native metro
+- `pnpm dev:web` - Marketing site
+
+`pnpm dev` runs without `--kill-others-on-fail`: image-generator and indexer-go
+exit at boot when unconfigured, and either one killing the backend and frontend
+would be worse than that service being down. A crash therefore leaves the other
+panes running, so check the `BE` / `FE` / `ART` / `IDX` labels.
+
+`pnpm dev:idx` needs `air` on `PATH`: `go install github.com/air-verse/air@latest`.
+
+Chains are started separately: `pnpm eth:node`, `pnpm sol:docker`. For a full
+local chain plus app stack, see `pnpm fe:eth:local` / `pnpm fe:sol:local`.
 
 ### Building
 - `pnpm build` - Build everything

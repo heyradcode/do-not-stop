@@ -34,12 +34,13 @@ Run from repo root unless noted. Package manager is **pnpm** (`packageManager: p
 ```bash
 pnpm install                 # root only
 pnpm install:all             # root + frontend + website + backend + mobile + contracts/ethereum + image-generator
-pnpm dev                     # backend + frontend (concurrent)
+pnpm dev                     # backend + frontend + image-generator + indexer-go (concurrent)
 pnpm dev:fe                  # frontend only
 pnpm dev:be                  # backend only
 pnpm dev:mobile              # mobile only
 pnpm dev:web                 # website only
 pnpm dev:art                 # image-generator only (pet art, :8787)
+pnpm dev:idx                 # indexer-go only, hot-reloaded by air (health :8090, gRPC :50051)
 pnpm eth:node                # local Hardhat network
 pnpm eth:deploy              # deploy contracts to it
 pnpm sol:docker               # start Solana validator (docker-compose)
@@ -48,7 +49,9 @@ pnpm fe:eth:local            # HH node + deploy + VRF watcher + backend + fronte
 pnpm mobile:eth:local        # same, with mobile instead of frontend
 pnpm fe:sol:local            # backend + frontend + Solana docker/ngrok, concurrently
 ```
-> `pnpm dev:art` is deliberately not folded into `pnpm dev` or the `fe:*:local` stacks. Those run under `concurrently --kill-others-on-fail`, and the image service exits at boot when `CF_ACCOUNT_ID`/`CF_API_TOKEN` are unset, which would take the whole stack down over an optional dependency. Run it in its own terminal when you want art.
+> `pnpm dev` runs four services and, unlike the `fe:*:local` stacks, **deliberately omits `--kill-others-on-fail`**. Two of the four are optional and exit at boot when unconfigured: `image-generator` without `CF_ACCOUNT_ID`/`CF_API_TOKEN`, `indexer-go` without `DATABASE_URL`. Under `--kill-others-on-fail` either one would take the backend and frontend down with it, which is why they used to be left out entirely. Without the flag a misconfigured optional service dies in its own pane and the rest keep running. The cost is that a backend crash no longer tears the stack down either, so read the pane labels (`BE`, `FE`, `ART`, `IDX`). Run `pnpm dev:be` / `dev:fe` / `dev:art` / `dev:idx` individually when you want one.
+>
+> `pnpm dev:idx` needs [`air`](https://github.com/air-verse/air) on `PATH` (`go install github.com/air-verse/air@latest`); config is `services/indexer-go/.air.toml`. It is the only service here without a pnpm script of its own, so the root script `cd`s into the package.
 
 > `pnpm eth:deploy` and `pnpm eth:vrf:watch` currently reference `deploy:inject` and `vrf:watch` scripts that **no longer exist** in `contracts/ethereum/package.json` (that package was refactored to `scripts/deploy.ts` plus Hardhat Ignition). If these fail, deploy directly with `pnpm --prefix contracts/ethereum deploy` (or `deploy:sepolia` / `deploy:base-sepolia`) instead of chasing the root wrapper script. `DEVELOPMENT.md` and `contracts/ethereum/README.md` also document a few commands (`pnpm clean`, `pnpm vrf:watch`, and an older "start everything" meaning of `pnpm dev`) that don't match the current root scripts, so treat those docs as partially stale and trust `package.json` scripts blocks over prose.
 
