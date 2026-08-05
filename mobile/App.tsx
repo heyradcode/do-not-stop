@@ -9,6 +9,7 @@ import { appKit, wagmiConfig } from './src/AppKitConfig';
 import AppRoot from './src/AppContent.tsx';
 import { API_URL } from './config';
 import { petsContractParams } from './src/petsContractParams';
+import { ToastProvider } from './src/components/ui/toast';
 import { SolanaAppKitAnchorBridge } from './src/solana/SolanaAppKitAnchorBridge';
 
 export default function App() {
@@ -20,7 +21,9 @@ export default function App() {
             <ApiClientProvider baseURL={API_URL}>
               <AuthProvider>
                 <PetsConfigProvider evm={petsContractParams}>
-                  <AppRoot />
+                  <ToastProvider>
+                    <AppRoot />
+                  </ToastProvider>
                 </PetsConfigProvider>
               </AuthProvider>
             </ApiClientProvider>
