@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { parseEventLogs } from 'viem';
 import { useChainAdapter } from '../adapters/useChainAdapter';
 import { useTxSuccess } from '../tx/useTxSuccess';
 import { usePetsConfig } from '../../contexts/PetsConfigContext';
-import { useWatchEntropyFulfillment } from '../chains/ethereum/useWatchEntropyFulfillment';
+import { useEvmEntropySettleFlow } from '../chains/ethereum/useEvmEntropySettleFlow';
 import { usePolledContractEvent } from '../chains/ethereum/usePolledContractEvent';
 import { EVM_GAS_LIMITS } from '../chains/ethereum/gasLimits';
 import type { TxLifecycle } from '../adapters/types';
@@ -51,71 +50,24 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
     const { createPet } = adapter;
     const isEvm = adapter.kind === 'evm';
     const { evm } = usePetsConfig();
-    const { address } = useAccount();
 
     const onSuccessRef = useRef(options?.onSuccess);
     onSuccessRef.current = options?.onSuccess;
 
-    const [pendingRequestId, setPendingRequestId] = useState<bigint | null>(null);
     const [preWriteError, setPreWriteError] = useState<Error | null>(null);
     const hash = createPet.lifecycle.hash;
 
-    // 1. Parse MintRequested requestId from the request tx receipt (EVM only).
-    const { data: requestReceipt } = useWaitForTransactionReceipt({
-        hash: isEvm && hash ? (hash as `0x${string}`) : undefined,
+    // Request id parsing, entropy watch, and the settleMint tx all live in the
+    // shared EVM flow; only what settlement *means* stays here.
+    const flow = useEvmEntropySettleFlow({
+        enabled: isEvm,
+        requestHash: hash,
+        requestEventName: 'MintRequested',
+        settleFunctionName: 'settleMint',
+        settleGas: EVM_GAS_LIMITS.settleMint,
+        label: 'settleMint',
     });
-    useEffect(() => {
-        if (!isEvm || !requestReceipt || !address || !evm?.gameLogic.abi) return;
-        try {
-            const logs = parseEventLogs({
-                abi: evm.gameLogic.abi,
-                logs: requestReceipt.logs,
-                eventName: 'MintRequested',
-                strict: false,
-            }) as unknown as { args: { owner?: string; requestId?: bigint } }[];
-            const mine = logs.find((l) => l.args.owner?.toLowerCase() === address.toLowerCase());
-            if (mine?.args.requestId != null) setPendingRequestId(mine.args.requestId);
-        } catch { /* not a mint tx / ABI mismatch */ }
-    }, [isEvm, requestReceipt, address, evm?.gameLogic.abi]);
-
-    // Read the Pyth Entropy contract address from GameLogic (needed for the Revealed watcher).
-    const { data: entropyAddress } = useReadContract({
-        address: evm?.gameLogic.address,
-        abi: evm?.gameLogic.abi ?? [],
-        functionName: 'entropy',
-        chainId: evm?.chainId,
-        query: { enabled: isEvm && Boolean(evm?.gameLogic.address) },
-    });
-
-    // 3. settleMint tx — fired once Entropy reveals.
-    const settle = useWriteContract();
-    const settleSentRef = useRef(false);
-    const handleEntropyFulfilled = useCallback((id: bigint) => {
-        if (settleSentRef.current || !evm?.gameLogic.address) return;
-        settleSentRef.current = true;
-        settle.writeContract(
-            { address: evm.gameLogic.address, abi: evm.gameLogic.abi, functionName: 'settleMint', args: [id], gas: EVM_GAS_LIMITS.settleMint, chainId: evm.chainId },
-            {
-                onError: (e) => {
-                    // Re-arm. The flag exists to stop one reveal sending two settles,
-                    // not to make a rejected or reverted settle permanent: settleMint
-                    // is permissionless and retryable by design, and the request stays
-                    // pending on chain until it lands. Leaving it set stranded the
-                    // flow with the mint fee already spent and no way to finish it.
-                    settleSentRef.current = false;
-                    console.error('[settleMint]', e);
-                },
-            },
-        );
-    }, [evm?.gameLogic.address, evm?.gameLogic.abi, evm?.chainId, settle]);
-
-    // 2. Watch Pyth Entropy `Revealed` (caller = gameLogic, sequenceNumber = requestId).
-    useWatchEntropyFulfillment({
-        entropyAddress: isEvm ? (entropyAddress as `0x${string}` | undefined) : undefined,
-        gameLogicAddress: isEvm ? evm?.gameLogic.address : undefined,
-        requestId: isEvm ? pendingRequestId : null,
-        onFulfilled: handleEntropyFulfilled,
-    });
+    const { pendingRequestId } = flow;
 
     const successFiredRef = useRef(false);
     // MintSettled carries the new pet's id, which is the only way to name the
@@ -126,17 +78,14 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
         if (successFiredRef.current) return;
         successFiredRef.current = true;
         if (petId != null) setMintedPetId(petId.toString());
-        setPendingRequestId(null);
+        flow.clearPending();
         onSuccessRef.current?.();
-    }, []);
+    }, [flow]);
 
     // 4a. Primary: resolve from settle tx receipt (we sent settleMint, so MintSettled is in its logs).
-    const { data: settleReceipt, isSuccess: settleConfirmed } = useWaitForTransactionReceipt({
-        hash: settle.data,
-        query: { enabled: !!settle.data },
-    });
+    const { settleReceipt, settleConfirmed } = flow;
     useEffect(() => {
-        if (!isEvm || !settleConfirmed) return;
+        if (!settleConfirmed) return;
         let petId: bigint | undefined;
         try {
             const logs = parseEventLogs({
@@ -148,7 +97,7 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
             petId = logs[0]?.args.petId;
         } catch { /* settle landed regardless; the id is a bonus, not a gate */ }
         handleMintSettled(petId);
-    }, [isEvm, settleConfirmed, settleReceipt, evm?.gameLogic.abi, handleMintSettled]);
+    }, [settleConfirmed, settleReceipt, evm?.gameLogic.abi, handleMintSettled]);
 
     // 4b. Secondary: watch MintSettled event (covers a settle sent outside this hook).
     usePolledContractEvent({
@@ -173,13 +122,11 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
     // Clear this hook's local request/settle bookkeeping. reset() also resets the
     // adapter lifecycle; mutate() doesn't (it's about to drive a fresh one).
     const clearLocalState = useCallback(() => {
-        setPendingRequestId(null);
+        flow.reset();
         setPreWriteError(null);
         setMintedPetId(null);
-        settleSentRef.current = false;
         successFiredRef.current = false;
-        settle.reset();
-    }, [settle]);
+    }, [flow]);
 
     const reset = useCallback(() => {
         clearLocalState();
@@ -198,12 +145,12 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
             }
         },
         isPending: createPet.isPending,
-        error: createPet.lifecycle.error ?? preWriteError ?? (settle.error as Error | null),
+        error: createPet.lifecycle.error ?? preWriteError ?? flow.settleError,
         hash: createPet.lifecycle.hash,
         reset,
         lifecycle: createPet.lifecycle,
         isAwaitingFulfillment: isEvm && pendingRequestId != null,
-        isSettling: isEvm && settle.isPending,
+        isSettling: flow.isSettling,
         mintedPetId,
     };
 };
