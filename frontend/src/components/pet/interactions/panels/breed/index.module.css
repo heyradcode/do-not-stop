@@ -370,7 +370,15 @@
 }
 
 .parent {
+    position: relative;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+
+    /* The art is the card now rather than a 74px strip above it, so the card
+       needs the height to be one. */
+    min-height: 300px;
     border-radius: 12px;
     overflow: hidden;
     border: 1px solid rgb(120 150 255 / 12%);
@@ -381,11 +389,12 @@
     border-color: rgb(120 150 255 / 12%);
 }
 
+/* No shorter min-height of its own: an empty slot that matched the filled card
+   keeps the two columns level while a parent is still being chosen. */
 .parent.isEmpty {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 128px;
     border-style: dashed;
 }
 
@@ -397,19 +406,33 @@
     color: rgb(195 210 255 / 40%);
 }
 
-/* Avatar panel with rarity / level / bred badges */
-.parentVisual {
-    position: relative;
-    height: 74px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    background: radial-gradient(circle at 50% 45%, rgb(255 207 112 / 12%), transparent 62%);
+/* Art layer, with the rarity / level / bred badges over it.
+   Positioned so PetArt's filling image resolves against it, and a grid so the
+   emoji fallback centres in the same space the art covers. */
+.parentArt {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at 50% 40%, rgb(255 207 112 / 12%), transparent 62%);
 }
 
-.parentB .parentVisual {
-    background: radial-gradient(circle at 50% 45%, rgb(181 140 255 / 12%), transparent 62%);
+.parentB .parentArt {
+    background: radial-gradient(circle at 50% 40%, rgb(181 140 255 / 12%), transparent 62%);
+}
+
+/* Opaque at the base, clear at the top: the readout needs ground to sit on and
+   the pet needs to stay visible above it. */
+.parentScrim {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to top,
+        rgb(3 7 18 / 96%) 0%,
+        rgb(3 7 18 / 88%) 38%,
+        rgb(3 7 18 / 26%) 68%,
+        rgb(3 7 18 / 0%) 100%
+    );
 }
 
 .parentRarity {
@@ -444,10 +467,11 @@
     border-color: rgb(181 140 255 / 32%);
 }
 
+/* Under the level badge rather than bottom-right, which is now the readout. */
 .parentBred {
     position: absolute;
-    bottom: 6px;
-    right: 8px;
+    top: 34px;
+    left: 8px;
     background: rgb(255 207 112 / 12%);
     color: var(--cp-amber);
     border: 1px solid rgb(255 207 112 / 30%);
@@ -463,8 +487,10 @@
     border-color: rgb(181 140 255 / 30%);
 }
 
+/* The emoji fallback only — PetArt's image is taken out of flow by `fill`, so
+   the float and glow here never reach the art. */
 .parentAvatar {
-    font-size: 2.1rem;
+    font-size: clamp(3rem, 9vw, 5rem);
     line-height: 1;
     flex-shrink: 0;
     animation: cp-float 3.5s ease-in-out infinite;
@@ -477,7 +503,8 @@
 }
 
 .parentBody {
-    padding: 8px 12px 9px;
+    position: relative;
+    padding: 10px 12px 11px;
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -499,16 +526,29 @@
     margin-bottom: 2px;
 }
 
+/* One row of four tiles, matching the battle page's combatant card. Four
+   stacked tracks cost four times the height and implied a proportion the raw
+   stat does not have. */
 .parentStats {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 5px;
+    margin-top: 2px;
 }
 
 .parentStat {
+    min-width: 0;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 7px;
+    gap: 1px;
+    padding: 6px 3px;
+    border: 1px solid rgb(120 150 255 / 14%);
+    border-radius: 6px;
+    background: rgb(5 13 30 / 62%);
+
+    /* Laid over the pet rather than punched through it. */
+    backdrop-filter: blur(6px);
 }
 
 .parentStatLabel {
@@ -516,31 +556,14 @@
     font-weight: 700;
     letter-spacing: 0.4px;
     text-transform: uppercase;
-    width: 24px;
-    flex-shrink: 0;
 }
 
 .parentStatValue {
-    font-size: 11px;
+    font-family: var(--cp-title-font);
+    font-size: 14px;
     font-weight: 800;
     color: #f4f2ff;
-    width: 22px;
-    text-align: right;
-    flex-shrink: 0;
-}
-
-.parentStatTrack {
-    flex: 1;
-    height: 5px;
-    background: var(--cp-inset);
-    border-radius: 999px;
-    overflow: hidden;
-}
-
-.parentStatFill {
-    height: 100%;
-    border-radius: 999px;
-    animation: cp-bar-grow 0.7s ease both;
+    font-variant-numeric: tabular-nums;
 }
 
 /* XP / HP meters */
@@ -654,11 +677,6 @@
         stroke-dasharray: 0 251;
     }
 }
-@keyframes cp-bar-grow {
-    from {
-        width: 0;
-    }
-}
 
 /* Local copy of the shared float keyframe (battle/pet-showcase still use the
    global cp-float, so a module reference needs its own scoped copy). */
@@ -688,8 +706,7 @@
     .dnaStrand,
     .dnaNode,
     .dnaCompatArc,
-    .parentAvatar,
-    .parentStatFill {
+    .parentAvatar {
         animation: none;
     }
 }
