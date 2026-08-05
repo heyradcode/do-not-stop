@@ -6,7 +6,7 @@ import { network } from "hardhat";
 import { toFunctionSelector } from "viem";
 
 /**
- * SeasonRewardDistributor (docs/plan-backend-battle-architecture.md §I).
+ * SeasonRewardDistributor (docs/battle-protocol.md §I).
  *
  * Two things are being tested. First, that the Solidity leaf encoding is byte-identical to
  * the protocol's `rewardMerkleLeaf` — if it is not, no proof the backend ever builds will

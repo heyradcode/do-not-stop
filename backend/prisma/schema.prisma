@@ -147,7 +147,7 @@ model BattleConversation {
 }
 
 // ─── Backend-authoritative battles ────────────────────────────────────────────
-// Models for the design in docs/plan-backend-battle-architecture.md. The existing
+// Models for the design in docs/battle-protocol.md. The existing
 // pet_roster / battle_history tables stay exactly as they are: they are projections
 // of on-chain events, and the legacy on-chain battle path keeps writing them.
 // Everything below is the durable workflow for battles the backend resolves itself.
@@ -609,7 +609,7 @@ model BattleSigningKey {
   /// True when this key was retired because it was compromised, rather than routinely
   /// rotated. Persisted rather than derived: "this key may have signed things we did not
   /// authorise" is a fact about history that a restart must not downgrade to an ordinary
-  /// rotation. See docs/runbook-signing-key-compromise.md.
+  /// rotation. See docs/battle-protocol.md Appendix C.
   compromised Boolean @default(false)
 
   firstSeenAt DateTime @default(now()) @map("first_seen_at")

@@ -109,7 +109,7 @@ log (`SimulateWithLog` in `simlog.go`), and the progression delta for both pets
 the whole delta, not just the XP formula `xp.go` already covered).
 
 This is release safety, not a trust boundary — see
-`docs/plan-backend-battle-architecture.md` §F's "what the Go verifier is for"
+`docs/battle-protocol.md` §F's "what the Go verifier is for"
 before reusing it as anything stronger. The backend
 (`backend/src/features/battle-worker/verify.worker.ts`) calls it, converts the
 structured log back into `@cryptopets/protocol`'s `SimOutcome` shape, and hashes

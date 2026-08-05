@@ -7,8 +7,7 @@ NFTs, agentic AI pets, and ERC20 tokenomics — listed here in the recommended d
 (see below), which is also the order the sections appear in below. Each section sketches where
 the feature lands in the existing architecture, what new data model it needs, and the open
 decisions a human should make before implementation starts. Nothing here is committed to; treat
-it as a starting point for per-feature implementation plans in the style of
-`plan-realtime-battle-impl.md`.
+it as a starting point for per-feature implementation plans.
 
 Grounded against the repo as of this writing: `backend/prisma/schema.prisma` (existing
 `PetRoster`, `BattleHistory`, `BattleRoom`, `BattleDialogue`, `BattleConversation` models),
@@ -38,10 +37,10 @@ stay server/backend-computed (leaderboard ranking, quest progress) don't need th
 give something a TS port if the client actually needs to simulate it before the chain confirms.
 
 **Combat authority is moving off-chain, and that reshapes several features below.**
-`docs/plan-backend-battle-architecture.md` is the accepted architecture for battle execution: the
+`docs/battle-protocol.md` is the accepted architecture for battle execution: the
 backend resolves fights from a frozen snapshot against a versioned ruleset, seeds them from a
-pre-committed drand round, and publishes signed receipts anyone can replay
-(`docs/plan-backend-battle-steps.md` sequences the work). Two consequences for this doc. First, a
+pre-committed drand round, and publishes signed receipts anyone can replay. Two consequences
+for this doc. First, a
 *new* combat mechanic is built once, in the canonical TypeScript engine (`protocol/src/combat/`,
 moved out of `shared/src/utils/combat/` into the MIT `protocol` package), with the Go port
 acting as an independent pre-signing verifier rather than a fourth hand-maintained implementation.
@@ -191,7 +190,7 @@ Reading the graph:
   is itself part of the ruleset hash, and a receipt shape that survives replay. Authorization,
   snapshots, seed derivation, signer scope, and reward aggregation are all security-sensitive here.
   Treat this as a feature that inherits the full backend battle threat model
-  (`docs/threat-model-backend-battles.md`), not as a loop around a proven function.
+  (`docs/battle-protocol.md` Appendix A), not as a loop around a proven function.
 - **Inventory is the pivot feature.** It's a parallel asset type to pets (same ownership/indexing
   pattern), the second thing the marketplace can list besides pets, and the default reward
   payload for quests. Everything downstream of it moves faster once it exists — see feature 4
@@ -365,7 +364,7 @@ Both indexers are still live: the Node `RosterIndexer` is the source of truth in
 `indexer-go` is the promotable path, so "dual-indexer" describes the current state, not a leftover.
 What changes is that `indexer-go` picks up a second, unrelated job under backend-resolved combat: it
 becomes the independent pre-signing verifier that recomputes every battle result before a receipt is
-signed (`docs/plan-backend-battle-steps.md` Step 25). That is a release-safety role, not an indexing
+signed (`docs/battle-protocol.md` §F). That is a release-safety role, not an indexing
 role, and it does not depend on which indexer owns roster writes. Worth knowing before promotion,
 because an `indexer-go` outage then blocks receipt signing as well as roster freshness, so the two
 concerns need separate health signals.
@@ -373,7 +372,7 @@ concerns need separate health signals.
 Snapshot inputs are the other connection. Backend battles freeze pet state at acceptance from
 indexed chain state at a recorded source version, so indexer lag and reorg handling stop being
 purely cosmetic: a snapshot taken from an unfinalized write is threat T10 in
-`docs/threat-model-backend-battles.md`. The confirmation-depth work above is a prerequisite for
+`docs/battle-protocol.md` Appendix A. The confirmation-depth work above is a prerequisite for
 that, not an optional polish item.
 
 This feature has little product-design risk — it's operational hardening of a path that already
@@ -423,7 +422,7 @@ checkable. So:
 - Equipment ownership must be verifiable at snapshot time from chain state at a recorded source
   version, exactly like pet ownership. Backend-only equip state that no third party can confirm
   turns every geared receipt into an assertion (threat T13 in
-  `docs/threat-model-backend-battles.md`).
+  `docs/battle-protocol.md` Appendix A).
 - The snapshot carries the resolved modifiers, not a reference to a mutable item row. Unequipping
   after acceptance must not change a committed fight, the same reason pet stats are frozen.
 - `ItemDefinition.effect` becomes part of the ruleset hash if it feeds combat. A rebalance is then a
@@ -824,7 +823,7 @@ a separate explicit decision if ever pursued.
 
 **Memory: build it on the per-pet receipt chain, don't invent a second one.** An agentic pet is
 only interesting if it has continuity, and continuity needs a bounded, ordered view of one pet's
-past. [plan-backend-battle-architecture.md](./plan-backend-battle-architecture.md) §G already
+past. [battle-protocol.md](./battle-protocol.md) §G already
 produces exactly that: every battle receipt links to the previous receipt involving that same pet
 (`attackerProgressPrevReceiptHash` / `defenderProgressPrevReceiptHash`), with `PetBattleProgress`
 holding the head pointer. Walking that link is the retrieval query this feature needs, already

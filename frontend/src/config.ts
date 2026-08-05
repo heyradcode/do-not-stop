@@ -4,7 +4,7 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 /**
  * Per-room notification channel for backend-authoritative battles
- * (`docs/plan-backend-battle-architecture.md` §J).
+ * (`docs/battle-protocol.md` §J).
  *
  * Lives here rather than in `petsContractParams` because it is chain-neutral: backend
  * battles run on both EVM and Solana, while that module is the EVM contract config and

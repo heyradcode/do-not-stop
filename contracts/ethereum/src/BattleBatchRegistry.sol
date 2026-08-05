@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 /**
  * @title BattleBatchRegistry
  * @notice Immutable publication record for batches of backend-resolved battle receipts.
- * @dev docs/plan-backend-battle-architecture.md §I. Deliberately minimal: this contract
+ * @dev docs/battle-protocol.md §I. Deliberately minimal: this contract
  *      stores roots and nothing else. It does not verify proofs, hold funds, or know what
  *      a reward is — the claim path is a separate contract, so the thing every player's
  *      history is anchored against stays small enough to audit in one sitting.

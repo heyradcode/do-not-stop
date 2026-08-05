@@ -1,21 +1,27 @@
-# Backend-authoritative battle architecture
+# The CryptoPets battle protocol
 
-Status: proposed architecture, not an implementation spec.
+Status: implemented and live. This is the specification of the shipped system, not a proposal.
+Where the text describes work as upcoming (§K, §L), read it as the record of how the migration
+was sequenced.
 
-This document has two halves.
+This document has two halves and three appendices.
 
 - **Part 1** explains the whole design in plain words, with no jargon. Read it even if you plan to
   read Part 2. It takes about ten minutes.
 - **Part 2** is the precise specification: field lists, state machines, hash definitions, phases.
   Every section there starts with a one-line plain-words summary, so you can skim.
+- **Appendix A** is the threat model, **B** the operations runbook, **C** the signing-key
+  compromise procedure.
 
 | If you want | Go to |
 |---|---|
-| To understand what we are building and why | Part 1 |
-| To decide whether to approve it | Part 1, then §A trust model |
-| To build it | Part 2 |
-| What to build first | §L implementation order |
-| Unfamiliar word | Glossary at the end |
+| To understand what we built and why | Part 1 |
+| To evaluate the trust assumptions | Part 1, then §A trust model |
+| To implement against it or verify a receipt | Part 2 |
+| To attack it, or to review how we defend it | Appendix A |
+| To operate it, or run a drill | Appendix B |
+| To respond to a suspected key compromise | Appendix C |
+| Unfamiliar word | Glossary at the end of Part 2 |
 
 ---
 
@@ -732,7 +738,7 @@ The four-port combat rule is a `MUST` in `AGENTS.md`, restated in `CLAUDE.md`. I
 roadmap guidance, so accepting this document does not relax it. Amend both files **at Phase 6**,
 when the legacy on-chain path actually retires, not at acceptance.
 
-**Done (Step 40).** The amendment split the four ports rather than loosening the rule: `CombatSim.sol`
+**Done.** The amendment split the four ports rather than loosening the rule: `CombatSim.sol`
 and `combat.rs` are now `MUST NOT` change — frozen, because the battles they settled are permanent
 records that must stay replayable — while `protocol/src/combat/` and `services/indexer-go/internal/combat/`
 are `MUST` change together, since §F's circuit breaker depends on the two being independent. All four
@@ -861,3 +867,666 @@ risk well beyond the battle problem. Not worth introducing solely to reduce comb
 | **Merkle proof** | The short evidence that your receipt was in that pile. |
 | **Nullifier** | A one-time marker preventing a reward from being claimed twice. |
 | **Equivocation** | Signing two conflicting statements about the same battle. Provable cheating. |
+
+---
+
+# Appendix A: threat model
+
+Scope: the backend battle path specified in Part 2 above. The existing on-chain path
+(`GameLogic.sol`, `settle_battle.rs`) keeps its own properties and is not re-analysed here.
+
+This appendix exists because moving battle resolution off-chain moves it inside our trust
+boundary. §A states the trust model in one table; this is the expanded version: who attacks
+what, what stops them, how we notice, and what is left over.
+
+## 1. Assets
+
+| Asset | Why it matters | Authority |
+|---|---|---|
+| Pet and item ownership | Transferable value | Chain |
+| Reward custody and claims | Transferable value | Chain |
+| Battle signing key | Signs commitments and receipts; forgery source | KMS |
+| Root publisher key | Anchors batches on-chain | KMS + multisig |
+| Off-chain progression (XP, rating, streak) | Determines rewards and matchmaking | Backend |
+| Signed receipt corpus | The evidence players hold against us | Backend, published |
+| Commitment sequence | Proves which round each battle was bound to | Backend, delivered to players |
+
+## 2. Actors
+
+| Actor | Assumed capability |
+|---|---|
+| Player | Can sign with their own wallet, replay traffic, script requests, disconnect at will |
+| External attacker | Network position, can hit any public endpoint, no keys |
+| Insider with database access | Read and write Postgres, no KMS signing scope |
+| Insider with signer access | Can request signatures over well-formed commitments and receipts |
+| Dishonest operator | Controls all backend processes, both combat implementations, and the database |
+| drand network | Assumed honest and live; a threshold of nodes would have to collude to bias a round |
+
+The dishonest-operator row is the uncomfortable one and it is deliberate. Most controls below do not
+stop that actor. They make the actor's lies detectable by anyone holding a commitment or a receipt.
+
+## 3. Threats
+
+Each row: what the attacker does, what stops or bounds it, how we notice, what is left.
+
+### T1: randomness reroll after seeing the value
+
+- **Attack.** Operator watches drand, computes the result, dislikes it, and claims the battle was
+  always bound to a later round. Recompute, publish, everything self-consistent.
+- **Control.** Commit before reveal (§E). The round is chosen mechanically as
+  `currentVerifiedRound + 2`, and the signed `BattleCommitment` is returned synchronously in the
+  accept response, before the round exists.
+- **Detection.** A reroll needs a second signature over the same `battleId`. Either player's stored
+  commitment plus the published receipt is a provable equivocation.
+- **Residual.** Only detectable if players keep their commitment. The client persists it to local
+  storage and the endpoint serves it, but a player who never fetched it holds no evidence.
+- **Non-control.** Persisting the chosen round in Postgres proves nothing. It is our database.
+  Merkle anchoring does not help either, because anchoring happens after computation.
+
+### T2: lying about the result
+
+- **Attack.** Publish a receipt whose winner does not follow from its own inputs.
+- **Control.** None preventive. The receipt carries every input, so the result is recomputable.
+- **Detection.** Public replay (§H). Anyone runs the verifier and the check fails.
+- **Residual.** Only caught if someone runs the verifier. That is why it ships in Phase 3 while
+  nothing of value is at stake (Steps 30 to 32), and why we run it in CI against a corpus fixture
+  and monitor it ourselves.
+
+### T3: hiding a battle
+
+- **Attack.** Resolve a battle, dislike the outcome, never publish the receipt.
+- **Control.** None preventive. Receipts are sequenced and hash-chained globally and per pet (§G).
+- **Detection.** A gap breaks the chain. The per-pet chain also means a player who holds their own
+  commitment can show a committed battle with no corresponding receipt.
+- **Residual.** Visible, not impossible. If omission risk becomes unacceptable, §I's delayed
+  direct-receipt claim fallback or an optimistic challenge protocol is the next step.
+
+### T4: signing-key compromise
+
+- **Attack.** Stolen key signs arbitrary commitments and receipts.
+- **Control.** Key in KMS, never in API or worker environments. Signer accepts only the exact
+  commitment and receipt schemas, never a generic state-mutation payload. No asset custody, no
+  withdrawal authority. Separate keys per reward domain. Reward caps bound the economic damage
+  (§I).
+- **Detection.** KMS request logging of every digest and key version. Signer throughput outside
+  expected range. Receipts that exist in the corpus but not in the ledger. Hash-chain forks.
+- **Residual.** Real. Bounded, not eliminated. See
+  Appendix C.
+
+### T5: outcome grinding by submit-and-abandon
+
+- **Attack.** Submit many battles, abandon the ones that seed badly, keep the good ones.
+- **Control.** No player-initiated cancellation after `committed` (§E). Disconnection, tab close,
+  and app kill do not affect resolution. Per-wallet and per-pet rate limits, daily battle caps.
+- **Detection.** Abandonment rate per wallet. Win distribution per wallet against the expected
+  distribution for their matchups.
+- **Residual.** A player can still choose which opponents to fight. That is matchmaking design, not
+  a randomness leak.
+
+### T6: manufactured beacon outage
+
+- **Attack.** Player degrades their own connectivity, or an attacker degrades ours, to escape a
+  battle already seeded against them.
+- **Control.** The committed round is retried indefinitely and never substituted. On a genuine
+  permanent outage past the timeout, the battle ends `forfeited` with no progression change and both
+  pets stay locked for several rounds, so escaping costs more than losing (§E).
+- **Detection.** drand fetch delay metric. Forfeit rate per wallet.
+- **Residual.** A wallet that repeatedly forfeits is a rate-limit and abuse-policy matter.
+
+### T7: intent replay
+
+- **Attack.** Resubmit a captured signed intent to force extra battles.
+- **Control.** `clientNonce` with a unique database constraint, `expiresAt`, and nonce consumption at
+  acceptance (§D).
+- **Detection.** Repeated-nonce alert.
+- **Residual.** None material.
+
+### T8: cross-chain or cross-deployment replay
+
+- **Attack.** Take a signature from staging and use it on production, or across chains.
+- **Control.** Every signed object binds `chainId` and `deploymentId` (§D). Intents,
+  consents, commitments, and receipts all carry both, inside the hashed payload.
+- **Detection.** Domain mismatch is a hard rejection, logged.
+- **Residual.** None material, provided `deploymentId` is genuinely unique per environment.
+
+### T9: forged defender consent
+
+- **Attack.** Battle an unwilling defender, applying cooldown and rating changes to them.
+- **Control.** `DefenseAuthorization` signed by the defender's wallet, bound to `rulesetHash`, with
+  level band, daily cap, validity window, and `revocationNonce`. Every receipt embeds the hash of
+  the authorization it relied on (§D).
+- **Detection.** Receipts referencing an unknown or revoked authorization hash fail public replay.
+- **Residual.** Consent is to a ruleset version, so a rules change invalidates outstanding
+  authorizations by design. Expect a re-consent prompt after every balance patch.
+
+### T10: stale ownership after an NFT transfer
+
+- **Attack.** Battle with a pet already sold, or snapshot a pet mid-transfer.
+- **Control.** Ownership checked at the finalized source version, snapshot records
+  `sourceChainVersions` (§G). Reconciliation job between finalized chain ownership, snapshots,
+  receipts, and claims (§J).
+- **Detection.** Reconciliation mismatch.
+- **Residual.** Reorg depth on the source chain sets the finality wait, which is a latency cost, not
+  a correctness gap.
+
+### T11: concurrent battles with the same pet
+
+- **Attack.** Race two battles for one pet so one snapshot is stale or a cooldown is skipped.
+- **Control.** Both pets locked in deterministic id order inside a serializable transaction.
+  Snapshot persisted before randomness exists.
+- **Detection.** Serialization-failure rate, duplicate-battle-id alert.
+- **Residual.** None material. This is a correctness test target, not a monitoring target.
+
+### T12: duplicate workers
+
+- **Attack.** Two workers process the same transition, double-crediting progression or forking a
+  hash chain.
+- **Control.** Every transition idempotent, at-least-once processing assumed, each transition and its
+  outbox message committed atomically. A duplicate battle id with a different payload is a security
+  alert and never an upsert (§J).
+- **Detection.** Hash-chain discontinuity alert. Duplicate-payload alert.
+- **Residual.** None material.
+
+### T13: forged snapshot inputs
+
+- **Attack.** Inflate a pet's stats, level, or equipment inside the snapshot.
+- **Control.** Snapshot fields derive from indexed chain state at a recorded source version.
+  Progression fields (`xp`, `streak`, `lastOpponentId`) are off-chain, so they are only checkable by
+  replaying that pet's prior receipts, which the per-pet hash chain makes tractable (§G).
+- **Detection.** Public replay walking a pet's chain catches a snapshot that does not follow from the
+  previous receipt's `progressionDelta`.
+- **Residual.** Equipment ownership must be verifiable from chain or from a signed inventory record
+  before equipment affects combat. Until then, keep equipment out of combat inputs.
+
+### T14: combat log leaks outcomes to spectators
+
+- **Attack.** Read the outcome of every resolving battle by connecting to the WebSocket.
+- **Control.** `liveBattleSocket.ts` currently broadcasts every message to every client. That is
+  acceptable for chain-derived data and not acceptable for full combat logs. Subscriptions scope to
+  the existing `BattleRoom` and the socket becomes notification-only (§J).
+- **Detection.** Route-level test asserting no cross-room delivery.
+- **Residual.** Room ids are shareable by design, so a room link is a spectator link.
+
+### T15: commitment accepted but never delivered
+
+- **Attack.** Or, more likely, a bug. Accept succeeds, the player never receives the signed
+  commitment, and the only record of the chosen round is ours. T1 is then undetectable for that
+  battle.
+- **Control.** Commitment signed and returned synchronously in the accept response, and also served
+  from a public endpoint so it is re-fetchable (Steps 23, 27).
+- **Detection.** Dedicated alert on accept-succeeded-without-commitment-delivery (§J).
+- **Residual.** A player who never fetches it still holds no evidence. The public endpoint bounds
+  this to non-malicious loss.
+
+### T16: fraudulent or omitted reward batch
+
+- **Attack.** Anchor a root covering receipts that were never signed, or omit signed receipts from
+  every batch.
+- **Control.** Per-battle, per-wallet, per-batch, and per-season reward caps. One-time claims with
+  nullifiers. Emergency pause. Root publishers behind multisig and timelock. Published
+  receipt-to-root inclusion proofs (§I).
+- **Detection.** Receipt-omission alert past the inclusion SLO. Root-anchor delay alert. Verifier
+  Merkle-inclusion check.
+- **Residual.** An unanchored signed receipt is evidence of operator failure, not an on-chain claim.
+
+### T17: denial of service against popular opponents
+
+- **Attack.** Flood a specific defender to exhaust their daily cap or keep their pets locked.
+- **Control.** Per-wallet and per-pet rate limits, defender daily battle cap set by the defender
+  themselves in their authorization (§D).
+- **Detection.** Per-defender request-rate anomaly.
+- **Residual.** A popular defender's cap is consumed by whoever gets there first. Matchmaking policy,
+  not a cryptographic problem.
+
+### T18: verifier collusion
+
+- **Attack.** The Go verifier does not constrain a dishonest operator, because the same operator runs
+  both processes and both ports descend from `CombatSim.sol`.
+- **Control.** None, and none is claimed. The Go verifier's role is release safety: it catches
+  implementation drift, bad deploys, and transcription bugs, and it hard-stops receipt signing on any
+  mismatch (§F).
+- **Detection.** Engine/verifier mismatch alert with both outputs and all inputs retained.
+- **Residual.** Dishonest computation is caught by public replay (T2), not by this.
+
+### T19: database rollback or restore
+
+- **Attack.** Restore Postgres to an earlier point and lose or rewrite receipts, including via an
+  honest recovery.
+- **Control.** Receipts are append-only and hash-chained, and the corpus is published, so an
+  external copy exists outside the database. Append-only audit events for every transition.
+- **Detection.** Chain discontinuity between the restored database and the published corpus.
+- **Residual.** Recovery procedure must reconcile against the published corpus, not just restore.
+  Point-in-time recovery drills have to include that reconciliation.
+
+### T20: a season nobody can fully claim
+
+- **Attack.** Not an attack so much as a self-inflicted one, which is why it is easy to miss. The
+  reward caps in `SeasonRewardDistributor` are enforced *per claim*, first come first served. Open a
+  season whose total exceeds its season cap, or whose distributor is underfunded, and early claimants
+  are paid in full while the last ones get a revert they did nothing to earn. An entitlement above
+  the per-wallet cap is worse: that wallet can never claim at all, and finds out only by trying.
+- **Control.** `boundsViolations` refuses to open a season unless every entitlement fits the
+  per-wallet cap, the total fits the season cap, and the distributor already holds the full amount.
+  All three are checked before the root is posted, where the answer is still "do not open
+  this season" rather than "some people lost". The check is pure, so candidate caps can be tested
+  before any of them are committed to.
+- **Detection.** Refusal at open time, with every failing reason reported at once. After opening,
+  a claim reverting with `ExceedsSeasonCap` means this check was bypassed.
+- **Residual.** The caps still protect against a *bad* root, which is their real job; this control
+  only stops a *correct* season from being opened in an unpayable state. A distributor drained by
+  some other means after opening reintroduces the same race, so the balance is a precondition rather
+  than a guarantee.
+
+## 4. Invariants
+
+These are the properties tests and alerts exist to defend. Any one of them breaking is an incident,
+not a bug report.
+
+1. A `BattleCommitment` is signed and returned to the player before its committed drand round
+   publishes.
+2. The committed round is never substituted. Retry the same round or forfeit.
+3. A battle that reaches `committed` always resolves. `rejected` exists only before `committed`.
+4. The snapshot is persisted before any randomness for that battle exists.
+5. The seed is derived only from the committed beacon value under the §E derivation. Never from
+   timestamps, uuids, or backend secrets.
+6. A receipt is signed only when the TypeScript engine and the Go verifier agree exactly.
+7. Every receipt links its predecessor in the global chain and in both per-pet chains.
+8. One `battleId` has at most one signed commitment and at most one signed receipt. A conflicting
+   payload is an alert, never an upsert.
+9. The signer accepts only commitment and receipt schemas, and holds no asset authority.
+10. Off-chain XP is never represented as NFT state unless a successful aggregate claim applied it
+    on-chain.
+
+## 5. Accepted residual risk
+
+Stated plainly, because §9 of Part 1 commits to stating it plainly.
+
+- **A stolen signing key can sign lies.** Bounded by key isolation, schema restriction, reward caps,
+  and the runbook. Not eliminated.
+- **We can refuse to publish.** The chains make it visible, not impossible.
+- **The receipt proves what we published, not that we were honest.** Public replay is the control,
+  and it only works if replay actually happens.
+- **The Go verifier does not constrain us**, only our deploys.
+
+## 6. Escalation threshold
+
+This design is proportionate while battle outcomes drive progression and capped, aggregate season
+rewards. It stops being proportionate when a single battle's outcome carries significant transferable
+value, or when reward caps have to be raised beyond what we would accept losing to a key compromise.
+
+At that point the next steps are §M's deferred options: per-battle backend signature verified
+on-chain (Phase 3.5), optimistic settlement with bonded challenges, or proof-based settlement. That
+threshold should be crossed deliberately, with a review, not drifted past by raising caps one
+increment at a time.
+
+---
+
+# Appendix B: operations runbook
+
+Operating the backend battle mode specified above. Covers the drills §L Phase 3 requires
+before the mode carries anything of value: recovery, replay, key rotation, and incident
+response. Key compromise has its own procedure in Appendix C; this one is for everything
+short of that.
+
+## The drills are tests, not a checklist
+
+Each drill below is executed by `backend/tests/features/battle-ledger/drills.test.ts`, so it
+runs on every CI pass rather than being performed once and slowly becoming untrue. A drill
+that only ever lived in this file would describe a system nobody had checked in months.
+
+What the tests cannot cover is the human half — who gets paged, who decides, how long it
+takes. That is what the procedures here are for.
+
+## Turning the mode on and off
+
+`BATTLE_BACKEND_MODE_ENABLED=true` enables it. Off by default.
+
+| Off | On |
+| --- | --- |
+| `POST /api/battle/intents`, `/accept`, `/authorizations` return **503** | accepted |
+| `DELETE /api/battle/authorizations` still works | works |
+| every read route and `/api/receipts/*` still works | works |
+| the outbox worker does not start | runs |
+| no signing key required | required |
+
+**Switching the mode off does not retract anything.** Receipts already issued stay served,
+and the public corpus stays public. That asymmetry is the point: §H's claim is that anyone
+can check what we did, and a feature flag that could un-publish past evidence would turn
+every issued receipt into an assertion. Turning the mode off stops new battles only.
+
+Revocation is ungated for the same class of reason — refusing battles is never the
+dangerous direction, so a defender must be able to withdraw consent even after the mode is
+off.
+
+### Kill switch
+
+Set `BATTLE_BACKEND_MODE_ENABLED=false` and restart. Battles already in flight stop
+advancing (the worker is gone) and stay in whatever state they reached; they resume when
+the mode is turned back on, because state lives in the ledger rather than in the worker.
+Pets stay locked in the meantime — see *Stuck battles* below if that window is long.
+
+## Drill 1: recovery
+
+**Scenario.** A dependency failed long enough that outbox messages exhausted their retries
+and dead-lettered. Battles are parked mid-pipeline.
+
+Dead-lettering is deliberately not automatic-retry exhaustion to be undone by a cron. It
+parks the battle for a person, because a message that failed eight times with exponential
+backoff is usually failing for a reason that retrying will not fix.
+
+**Procedure.**
+
+1. List what is parked: `listDeadLetters()`. Each entry names the `battleId`, the `topic`
+   it died on, and `lastError`.
+2. Group by `lastError`. One shared cause (drand unreachable, indexer-go down, signer
+   unconfigured) is the common case and means one fix.
+3. Fix the cause. Confirm it is actually fixed before requeuing — a requeue against a still
+   broken dependency just burns the retry budget again.
+4. Requeue each message: `requeueDeadLetter(id, new Date())`. Attempts reset so backoff
+   starts fresh. `lastError` is deliberately left in place; a requeue is not evidence the
+   cause is gone.
+5. Watch the battles advance. Anything that dead-letters a second time on the same error is
+   not a transient failure and needs the incident procedure below.
+
+**What is safe about this.** Requeuing cannot double-apply anything. Every worker is
+idempotent on its own transition — each checks the battle's current state and completes the
+message as a no-op if another worker already moved it — so a message that actually
+succeeded before dying is harmless to run again.
+
+## Drill 2: replay
+
+**Scenario.** Confirming that receipts this deployment issued verify independently. Run
+routinely, not only during an incident: the value of a receipt is that someone outside can
+check it, and a claim nobody has ever tested is not worth much.
+
+**Procedure.**
+
+1. Export a corpus: `GET /api/receipts?signingKeyId=<id>` and page through `nextAfter`.
+2. Fetch the published keys: `GET /api/battle/signing-keys`.
+3. Run the standalone verifier over them, from a checkout with no access to this backend:
+   ```bash
+   pnpm --filter @cryptopets/verifier cli -- ./corpus.json --keys ./keys.json
+   ```
+4. Every check must pass and the exit code must be `0`.
+
+The verifier holds its own pinned ruleset bundles, so this works with the backend entirely
+unreachable — which is the situation the drill is really rehearsing.
+
+**If it fails.** A failing check is not automatically our fault: confirm the corpus and key
+list were fetched completely and that the ruleset the receipts name is one the verifier
+holds (`ruleset-unavailable` means it is not). A genuine `combat-replay`,
+`beacon-signature`, or `operator-signature` failure is an incident — go to Drill 4.
+
+## Drill 3: key rotation
+
+**Scenario.** Routine rotation, or a key approaching the end of its validity window. For a
+*compromised* key, stop and use Appendix C instead.
+
+**Procedure.**
+
+1. Provision the new key in the KMS. It never leaves the KMS; the backend holds a reference.
+2. Register the outgoing key as rotated: `registerRotatedKey(descriptor)` with `notAfter`
+   set. It stays published from `GET /api/battle/signing-keys` permanently.
+3. Point the signer at the new key and restart.
+4. Confirm `GET /api/battle/signing-keys` lists **both**, and that a receipt signed under
+   the old key still verifies.
+
+**The rule that matters.** A retired key is never removed from the published list. Receipts
+signed under it must keep verifying forever, and delisting a key silently invalidates every
+receipt it ever signed — a retroactive erasure of evidence, which is exactly what §G's
+validity windows exist to make unnecessary.
+
+**Durability.** The registry is persisted in `battle_signing_key` and reloaded at startup, so
+a rotated key keeps being published across restarts and deploys. Two properties are worth
+knowing during an incident:
+
+- Any key that is not the one currently signing is reported as **rotated**, whatever the row
+  says. Swapping keys without calling `registerRotatedKey` still leaves the old key
+  published — the safe direction to fail in.
+- **`compromised` is sticky.** Once a key is marked compromised it stays marked, and is never
+  reported active again, even if configuration points back at it. "This key may have signed
+  things we did not authorise" is a fact about history that a restart must not quietly
+  downgrade to a routine rotation.
+
+If `registerRotatedKey` logs a persistence failure, the key is published by the running
+process but will not survive a restart. Re-run it once the database is reachable; it is
+idempotent.
+
+## Drill 4: incident
+
+### Engine mismatch (`verification_failed`)
+
+The TypeScript engine and the Go verifier disagreed, so the battle was never signed. This is
+the circuit breaker doing its job.
+
+1. **Do not sign it.** There is no override, deliberately: signing something two engines
+   disagree about is the one action that cannot be walked back.
+2. Read `verificationDetail` on the ledger row. It holds both outputs and the field-level
+   mismatches.
+3. Reproduce offline from the receipt's inputs — the snapshot, seed, and ruleset are all in
+   the row.
+4. Whichever port is wrong, fix that port and rerun the golden vectors. **Never edit the
+   vectors** (`AGENTS.md`).
+5. Affected battles stay `verification_failed`. They are not retried into existence; the
+   honest outcome is that the fight did not resolve.
+
+### Shadow mismatch
+
+Shadow mode (§L Phase 2) says the backend engine disagreed with the chain. Same substance as
+above, with a stronger signal: the chain is the reference implementation. Blocks the Phase 3
+gate until resolved. `shadowSummary()` is the durable record.
+
+### Stuck battles
+
+A battle not advancing is one of: a dead letter (Drill 1), a committed drand round that has
+not published (waits, then forfeits — by design), or a worker that is not running (check the
+mode flag).
+
+Both pets stay locked until the battle reaches `signed` or a terminal state. If a battle is
+genuinely unresolvable, moving it to a terminal state is what releases them; leaving it
+pending indefinitely is worse for the player than a forfeit.
+
+### Drand outage
+
+Committed rounds are never substituted — §E allows only "keep waiting" or "give up". An
+outage past `BATTLE_FORFEIT_AFTER_SECONDS` forfeits affected battles, with no progression
+change. If an outage is ongoing, turn the mode off rather than let battles accumulate
+toward mass forfeiture.
+
+## Drill 5: opening a reward season
+
+**Scenario.** A season's battles are anchored and it is time to pay out. This is the only
+procedure here that moves real value, so it is the one worth rehearsing on a testnet first.
+
+**Procedure.**
+
+1. Confirm the receipts are **anchored**, not merely signed. `buildSeason` only counts
+   anchored receipts, but check the batch backlog is drained rather than discovering a
+   short season afterwards.
+2. Build the season: sequence range, distributor address, token, and rates. The season is
+   written with its rates and range so anyone can recompute the root from the public corpus.
+3. Fund the distributor with at least the season total.
+4. Choose caps and dry-run them with `boundsViolations` before committing to any. It is
+   pure, so this costs nothing and answers "would this season open" directly.
+5. `openSeasonOnChain`. It refuses unless every entitlement fits the per-wallet cap, the
+   total fits the season cap, and the distributor already holds the full amount — and
+   reports every failing reason at once rather than one transaction at a time.
+6. Spot-check a claim proof against the on-chain root before announcing anything.
+
+**The rule that matters.** Caps are enforced per claim, first come first served. A season
+opened over its cap, or underfunded, pays whoever claims first and reverts on whoever claims
+last (threat T20). That is why the bound is checked *before* the root is posted: afterwards,
+the season is immutable and the only remedy is a second season making people whole.
+
+**Sweeping.** `sweepUnclaimed` only works after the claim window closes, so it cannot be
+used to pull funds out from under people still entitled to them.
+
+## Drill 6: a bad season root
+
+**Scenario.** A season was opened with wrong entitlements.
+
+1. **Pause the distributor.** This stops claims without touching battles — the registry and
+   the battle path are separate contracts precisely so one can be halted without the other.
+2. Work out who was overpaid before the pause. Claims are events; the nullifier mapping says
+   who has claimed.
+3. **The season cannot be corrected in place.** `openSeason` refuses to reopen a season, and
+   that refusal is deliberate: a rewritable root would let entitlements change after people
+   had read them. The remedy is a new season that makes the difference up.
+4. Unpause once the replacement is ready, or leave paused and sweep after the window if the
+   season is being abandoned entirely.
+
+**Note on the owner key.** The distributor owner can open seasons, pause, and sweep after
+close. It cannot rewrite an open season, mint, or take funds mid-window. That is the blast
+radius to assume if the key is compromised — and it is why the owner should be a multisig
+behind a timelock (§I) rather than a hot wallet.
+
+## What this mode deliberately does not do
+
+- **No reward inside a receipt.** Receipts carry no `rewardDelta` at any setting, and they
+  never will — rewards are computed *from* anchored receipts into a separate season tree, so
+  a receipt stays a statement about a fight rather than a promise of payment. Nothing pays
+  out until a season is deliberately built, funded, bounded, and opened (Drill 5).
+- **No rating.** There is no rating or matchmaking-score system in this repo yet. §L Phase 3
+  lists "off-chain XP, rating, and cooldown"; XP and cooldown exist in `pet_battle_progress`,
+  stored separately from NFT state. Rating is a game-design decision — what it measures, how
+  it decays, whether it is public — and is not something to invent as a side effect of
+  shipping this mode.
+- **No NFT mutation.** Backend battles never write pet state on chain. Off-chain progression
+  lives in `pet_battle_progress`, keyed separately from `pet_roster`, so the two can never be
+  confused for each other.
+
+---
+
+# Appendix C: signing key compromise runbook
+
+Applies to the KMS keys that sign `BattleCommitment` and `BattleReceipt` objects, and to the
+root publisher key that anchors Merkle batches. See Appendix A, T4 and T16.
+
+Assume compromise means an attacker can produce signatures that verify against a published key. It
+does not mean they can move assets: the battle signing key has no custody and no withdrawal
+authority, and the root publisher sits behind multisig and timelock. That is what buys time here.
+
+**Bias towards pausing.** A false alarm costs players a few hours of battles. A missed compromise
+costs the integrity of every receipt signed in the window.
+
+## Triggers
+
+Any one of these starts this runbook. Do not wait for confirmation of intent.
+
+- KMS audit log shows a signing request the pipeline cannot account for (no matching ledger row, no
+  matching digest).
+- Signer throughput outside expected range, or signing requests from an unexpected principal,
+  network path, or region.
+- A receipt or commitment exists in the public corpus with no corresponding ledger row.
+- Hash-chain fork: two signed receipts claiming the same `previousReceiptHash`, or two commitments for
+  one `battleId`.
+- A player produces a signed commitment or receipt we did not issue.
+- Credential exposure: KMS principal credentials in a log, repo, image, or CI artifact.
+- Cloud provider or KMS vendor notifies us of key or account compromise.
+
+## Roles
+
+| Role | Owns |
+|---|---|
+| Incident lead | Declares the incident, owns the timeline, makes the pause call |
+| Signer owner | KMS policy changes, key disable, rotation |
+| Chain owner | Root registry pause, multisig coordination |
+| Verifier owner | Corpus re-verification, fork analysis |
+| Comms owner | Player-facing status, disclosure |
+
+One person may hold several roles. The pause call is never blocked on availability: if the incident
+lead is unreachable, the signer owner pauses.
+
+## Phase 1: contain (target: 15 minutes)
+
+Order matters. Stop the bleeding on-chain first, because that is the only irreversible surface.
+
+1. **Pause the on-chain surfaces.** Emergency pause on the root registry and the claim contract. No
+   new roots accepted, no claims processed. This is the only step that prevents economic loss.
+2. **Disable the suspect key in KMS.** Deny all signing operations on that key version. Do not delete
+   the key and do not delete its public record, which is needed for later verification.
+3. **Stop receipt signing.** Trip the signer circuit breaker. Battles already `committed` stay in
+   `verified` and are not lost. Battle acceptance also stops, since acceptance requires a signed
+   commitment and an unsigned acceptance would break invariant 1.
+4. **Snapshot evidence.** KMS audit logs, signer access logs, ledger tables, published corpus, and
+   the current chain tips of all three receipt chains. Copy to write-once storage before anything is
+   rotated or restored.
+5. **Freeze deploys.** No code or infrastructure changes to the signer path until Phase 4.
+6. **Declare the incident** and record the suspected compromise window opening time. When unknown,
+   use the earliest plausible time, not the most convenient one.
+
+## Phase 2: assess (target: 4 hours)
+
+Establish the compromise window and what was signed inside it.
+
+1. **Reconcile KMS to ledger.** For every signing request in the window, match the digest to a ledger
+   row. Unmatched digests are forged-signature candidates and define the real window.
+2. **Reconcile corpus to ledger.** Every published receipt and commitment must have a ledger row with
+   the same payload. Extra corpus entries mean forged artifacts were served.
+3. **Run the verifier over the window.** `verifier` over the affected sequence range. Failures split
+   into: signature invalid, beacon invalid, replay mismatch, chain discontinuity. Replay mismatch on
+   an otherwise valid signature is the strongest evidence of forgery, because our pipeline cannot
+   produce it.
+4. **Walk the chains.** Global chain and the per-pet chains for every pet touched in the window. Note
+   every fork point and both branches. A fork with two valid signatures is provable equivocation and
+   must be preserved exactly as found.
+5. **Check batches.** Which anchored roots include window receipts. Which of those had claims against
+   them. Compute worst-case economic exposure against the caps.
+6. **Classify.** Confirmed compromise, suspected, or false alarm. A false alarm exits at Phase 4 with
+   the pause lifted and a post-incident note. Do not skip Phase 4.
+
+## Phase 3: rotate and recover
+
+Only after the window is bounded.
+
+1. **Generate a new key** in a fresh KMS key with a new `signingKeyId`. New credentials, new
+   principal, minimal network path. Never reuse the old principal.
+2. **Publish the key registry update.** New key with its `notBefore`. Old key marked compromised with
+   its validity end set to the window opening time, and **retained**, because historical receipts
+   still verify against it. Never remove a rotated-out key from the registry.
+3. **Publish the compromise window** as a first-class record: `signingKeyId`, window start and end,
+   affected sequence ranges, and the list of receipts we attest to as pipeline-produced. Players and
+   third-party verifiers need this to interpret their own copies.
+4. **Do not re-sign history under the new key.** Re-signing changes nothing about what happened and
+   destroys the evidence trail. Instead publish an attestation list: the receipt hashes we confirm
+   our pipeline produced, signed with the new key. Verifiers then treat an in-window receipt as valid
+   only if it appears in the attestation list.
+5. **Do not renumber sequences.** Gaps and forks stay visible. Continue the chain from the last
+   attested receipt, recording the discontinuity explicitly.
+6. **Handle in-flight battles.** Battles in `verified` at pause time resolve normally under the new
+   key. Battles in `committed` whose round has published resolve normally. Battles whose committed
+   round has passed the beacon timeout become `forfeited` with no progression change.
+7. **Reverse or freeze bad claims.** Claims against forged inclusion stay paused. Nullifiers already
+   consumed cannot be reused, so genuine claimants inside a poisoned batch need a re-issued batch
+   under a new root rather than a retry.
+8. **Lift the pauses** in the reverse of Phase 1: signer, then acceptance, then root registry, then
+   claims. Claims last, because they are the only irreversible surface.
+
+## Phase 4: post-incident
+
+- Timeline with detection latency, containment latency, and every decision point.
+- Which detection fired, and which should have fired first. If detection came from a player, that is
+  the headline finding.
+- Whether reward caps bounded the exposure as designed. If not, lower the caps before resuming.
+- Whether the escalation threshold in Appendix A §6 has been reached.
+- Public disclosure: what was signed, what was attested, what players should check themselves. The
+  design's entire premise is that we publish our homework, so a compromise is disclosed with the same
+  detail we would want if we were the player.
+
+## Never do these
+
+- Delete or unpublish an old public key. Historical verification depends on it.
+- Delete a forged receipt from the corpus without recording it. The fork is the evidence.
+- Re-sign or rewrite historical receipts under the new key.
+- Renumber sequences or repair a chain by regenerating links.
+- Substitute a different drand round for an unresolved battle, even to clear the queue. That breaks
+  invariant 2 and is exactly the behaviour T1 is designed to make impossible.
+- Restore Postgres to a point before the published corpus without reconciling against it (T19).
+
+## Drill
+
+Run this as a live drill in Phase 3, before anything of value is at stake. The drill must
+cover: pause, key disable, evidence snapshot, corpus reconciliation,
+verifier run over a range, rotation with registry publication, attestation-list publication, and
+resumption. Record the wall-clock time of each phase and correct the targets above to what the drill
+actually achieves.

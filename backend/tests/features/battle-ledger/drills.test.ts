@@ -5,7 +5,7 @@ import { ethers } from 'ethers';
 /**
  * The §L Phase 3 drills, executed rather than described.
  *
- * `docs/runbook-backend-battles.md` documents the procedures; this file runs the mechanical
+ * `docs/battle-protocol.md` Appendix B documents the procedures; this file runs the mechanical
  * half of each one on every CI pass, so a drill cannot quietly stop being true between
  * incidents. What is deliberately not here is the human half — who is paged, who decides —
  * which is what the runbook prose is for.

@@ -27,7 +27,7 @@ import type { SigningKeyDescriptor } from './signer.types';
  * later call passes a milder status. Downgrading that flag would quietly turn "this key may
  * have signed things we did not authorise" back into an ordinary rotation, and the whole
  * point of the distinction is that the two demand different responses
- * (docs/runbook-signing-key-compromise.md).
+ * (docs/battle-protocol.md Appendix C).
  */
 export async function persistSigningKey(key: SigningKeyDescriptor): Promise<void> {
     const compromised = key.status === 'compromised';

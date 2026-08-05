@@ -9,7 +9,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 
 /**
  * The per-room, notification-only channel for backend-authoritative battles
- * (docs/plan-backend-battle-architecture.md §J).
+ * (docs/battle-protocol.md §J).
  *
  * It replaced a global-broadcast socket that pushed chain-derived data for the
  * on-chain flow, filtered client-side by `(chainId, requestId)`. Broadcasting was

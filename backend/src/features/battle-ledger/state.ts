@@ -1,7 +1,7 @@
 import { BattleState } from '@generated/prisma/enums';
 
 /**
- * The battle lifecycle from §J of docs/plan-backend-battle-architecture.md, as code.
+ * The battle lifecycle from §J of docs/battle-protocol.md, as code.
  *
  * Two properties are enforced here rather than left to the caller:
  *

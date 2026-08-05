@@ -20,7 +20,7 @@ import type { SignerBackend } from './signer.types';
 export function createKmsSigner(provider: string): SignerBackend {
     throw new Error(
         `KMS signer provider "${provider}" is not implemented. Production signing must use a managed ` +
-            'KMS/HSM key restricted to commitment and receipt digests (docs/plan-backend-battle-architecture.md §G). ' +
+            'KMS/HSM key restricted to commitment and receipt digests (docs/battle-protocol.md §G). ' +
             'Implement an adapter here rather than setting BATTLE_SIGNER_PRIVATE_KEY in production.',
     );
 }

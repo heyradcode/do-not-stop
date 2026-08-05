@@ -9,6 +9,14 @@ package-specific docs live next to their code and are linked below.
 - [Testing strategy](./testing.md) — how tests and coverage are organized
 - [Development guide](../DEVELOPMENT.md) — setup, commands, env vars, local chains
 
+## Cross-cutting docs
+
+| Doc | What it is |
+| --- | --- |
+| [Battle protocol](./battle-protocol.md) | The shipped backend-authoritative battle system. Part 1 plain words, Part 2 spec (§A–§M), Appendix A threat model, B operations runbook, C key-compromise runbook. |
+| [Future features roadmap](./plan-future-features-roadmap.md) | Brainstorm for eleven unbuilt features. Not a build spec. |
+| [Testing](./testing.md) | Per-package suite table and conventions. |
+
 ## Package docs
 
 | Area | Doc |

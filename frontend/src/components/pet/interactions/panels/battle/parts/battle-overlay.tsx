@@ -46,15 +46,15 @@ export type BattleOverlayProps = {
     onBack: () => void;
     fighterName: string;
     opponentName: string;
-    // Live-replay animation (plan-realtime-battle-impl.md Phase 4) — null falls
+    // Live-replay animation — null falls
     // back to the static getLifePercent bars below (Solana, or an EVM deployment
     // with no GameConfig wired up). Presentation only; never the source of the
     // result banner, which always comes from battleOutcome (on-chain).
     liveHp1Percent?: number | null;
     liveHp2Percent?: number | null;
     liveFlourish?: string | null;
-    /** Round-by-round mechanical log (plan-realtime-battle-impl.md Phase 4's strike
-     *  log, formatted) for the bottom log panel. Null — not just empty — when there's
+    /** Round-by-round mechanical log (the strike log, formatted) for the bottom
+     *  log panel. Null — not just empty — when there's
      *  no live-replay feature this deployment (Solana, or an EVM deployment with no
      *  GameConfig wired up), same fallback rule as liveHp1Percent/liveHp2Percent. */
     liveLog?: MechanicalLogLine[] | null;

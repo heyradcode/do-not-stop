@@ -27,7 +27,7 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     // KEEPER_ENABLED is set.
     startSettleKeeper();
 
-    // Backend-authoritative battles (docs/plan-backend-battle-architecture.md §L Phase 3).
+    // Backend-authoritative battles (docs/battle-protocol.md §L Phase 3).
     // Selects the signing backend (refuses an in-process key in production; see
     // @features/battle-signer) and starts the outbox worker that carries accepted battles
     // through to a signed receipt.

@@ -67,7 +67,7 @@ export {
 } from './battle/useBattleDialogue';
 export { useBattleTaunts, type GenerateTauntsVars } from './battle/useBattleTaunts';
 export { useCreateBattleRoom, type CreateRoomVars } from './battle/useCreateBattleRoom';
-// Backend-authoritative battles (docs/plan-backend-battle-architecture.md §D, §E, §J).
+// Backend-authoritative battles (docs/battle-protocol.md §D, §E, §J).
 export { BATTLE_CONFIG_QUERY_KEY, useBattleConfig, type BattleConfig } from './battle/useBattleConfig';
 export { useBattleMode, type BattleMode, type BattleModeState } from './battle/useBattleMode';
 export {

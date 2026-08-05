@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 /**
  * @title CryptoPetsToken
  * @notice The CPET reward token. Fixed supply, minted once at deployment.
- * @dev Funds `SeasonRewardDistributor` (docs/plan-backend-battle-architecture.md §I).
+ * @dev Funds `SeasonRewardDistributor` (docs/battle-protocol.md §I).
  *
  *      **There is no mint function, and no owner.** §I's whole argument is that rewards are
  *      bounded: the distributor caps what one wallet and one season may pay, and those caps

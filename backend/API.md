@@ -238,8 +238,7 @@ requests (the `requestX` → Pyth Entropy reveals → `settleX` flow) from a
 backend-held wallet once entropy reveals, so the player only signs the request
 transaction — `settleX` is permissionless and needed no special authorization,
 it was just being sent from the player's wallet by default. Off unless
-`KEEPER_ENABLED=true`. See `docs/plan-realtime-battle-ux.md` /
-`docs/plan-realtime-battle-impl.md` for the design and threat model.
+`KEEPER_ENABLED=true`.
 
 Battles are **not** settled here any more (§L Phase 6). `requestBattle`/`settleBattle`
 were removed from the contracts entirely, along with the Solana settle keeper and shadow
@@ -248,7 +247,7 @@ mode; battles run through the backend-authoritative path below.
 ### Backend-authoritative battles (v2)
 
 `backend/src/routes/battle.ts` — the workflow described in
-`docs/plan-backend-battle-architecture.md`. Submission and consent require a JWT
+`docs/battle-protocol.md`. Submission and consent require a JWT
 (the wallet signature inside the body is what actually authorizes the action,
 per §D); the reads below require nothing, because every value they return is
 either already public on chain or is itself a signed artifact anyone is meant

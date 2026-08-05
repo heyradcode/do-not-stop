@@ -20,8 +20,8 @@ export const shortAddress = (addr: string) =>
 export const VALIDATION_MESSAGE = 'Please select your pet and an opponent';
 export const BATTLE_FAIL_MESSAGE = 'Failed to start battle. Please try again.';
 /** Shown briefly when the client-side live-replay disagrees with the on-chain
- *  BattleResolved result (plan-realtime-battle-ux.md's reconciliation rule —
- *  the on-chain result always wins; this is presentational, not a real error). */
+ *  BattleResolved result (the on-chain result always wins; this is
+ *  presentational, not a real error). */
 export const MISMATCH_NOTICE_MESSAGE = 'The on-chain referee ruled differently — syncing the true result…';
 
 /** Personas captured at battle start, reused for the settle dialogue read. */

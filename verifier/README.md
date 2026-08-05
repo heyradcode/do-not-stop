@@ -1,9 +1,7 @@
 # @cryptopets/verifier
 
 The standalone public verifier for CryptoPets backend-authoritative battle receipts (§H of
-[docs/plan-backend-battle-architecture.md](../docs/plan-backend-battle-architecture.md)).
-
-Sequencing: [docs/plan-backend-battle-steps.md](../docs/plan-backend-battle-steps.md), Group F.
+[docs/battle-protocol.md](../docs/battle-protocol.md)).
 
 ## Why this exists, and why it is MIT
 
