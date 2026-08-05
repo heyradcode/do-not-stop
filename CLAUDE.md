@@ -110,6 +110,14 @@ Note: there is no `docs/architecture.md` and no `services/indexer-go/ARCHITECTUR
 
 What that adapter does NOT unify: `frontend/src/chains/ethereum/` (wagmi client, in-tree ABI JSONs: `gameConfigAbi.json`, `gameLogicAbi.json`, `petCoreAbi.json`) and `frontend/src/chains/solana/` (Anchor wallet/provider/signer) are still separate, low-level wiring with no shared interface between them, each adapter reaches into its own directly. The async breed and mint randomness flows are also not unified: EVM's Pyth Entropy watch lives in `shared/src/hooks/chains/ethereum/useWatchEntropyFulfillment.ts` and `usePolledContractEvent.ts`, Solana's Switchboard flow in `shared/src/utils/solana/breedWithSwitchboardVrf.ts` and `mintWithSwitchboardVrf.ts`. Battles take neither path as of §L Phase 6: they are drand-seeded and settled by the backend. The combat simulator is not unified either; see the next section. Treat the adapter as a thin, uniform shape over pet-action mutations and reads, not a claim that the underlying chain logic is shared.
 
+### Frontend panels: a controller hook when there's a state machine, direct composition when there isn't
+`frontend/src/components/pet/interactions/panels/` holds two shapes, and which one a panel uses is not about size. The test is whether the panel owns a **multi-step state machine** — a flow with intermediate states the player sits and watches.
+
+- **It does** → a headless controller hook in `frontend/src/hooks/<feature>/`, and the component consumes that single hook and holds **no** `useState`/`useEffect` of its own. `battle` (27-line view over `useBattlePanel`), `breed` (73 over `useBreedPanel`), `marriage` (94 over `useMarriagePanel`). Each of those flows has real intermediate states: request, entropy reveal, settle, result, and for battle a mismatch reconciliation.
+- **It doesn't** → the component composes the shared hooks directly and keeps its form state local. `rename`, `level-up`, `train`, `defense` all open with the same preamble (`useChainCapabilities`, `usePetList`, `useNotifyError`, plus the action hook, plus `useFees` where the action costs money). These are one action over one selected pet; there is no interim state worth modelling.
+
+Do not "fix" `useBattlePanel` for being 555 lines. Its own doc comment records the reasoning: selection and validation are tightly coupled (random-match and battle-start both touch validation), so one controller is the honest seam, and the genuinely separable concerns were already extracted to `useBattleOutcome` and `useResultDialogue`. If it does get touched, the thing worth consolidating is its six `useEffect`s, whose ordering is implicit, not its line count.
+
 ### Combat simulator: one frozen port, two live ones, one set of golden vectors
 The battle/combat logic began as four independent implementations. As of §L Phase 6 they are no longer peers, and the Solidity one is gone:
 
