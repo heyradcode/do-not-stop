@@ -7,8 +7,11 @@ import {
     Text,
     View,
 } from 'react-native';
-import { getRarityColor, getRarityName, type Pet } from '@shared/core';
-import { neon, neonGlow } from '../theme/neon';
+import type { Pet } from '@shared/core';
+
+import PetCard from './PetCard';
+import type { PetCooldownStatus } from '../hooks/usePetCooldowns';
+import { neon } from '../theme/neon';
 
 type Props = {
     pets: Pet[];
@@ -16,9 +19,23 @@ type Props = {
     error: Error | null;
     onRefresh: () => void;
     refreshing: boolean;
+    statusFor: (pet: Pet) => PetCooldownStatus;
+    onBattle: (pet: Pet) => void;
+    onRename: (pet: Pet) => void;
+    onDefend: (pet: Pet) => void;
 };
 
-export default function PetList({ pets, isLoading, error, onRefresh, refreshing }: Props) {
+export default function PetList({
+    pets,
+    isLoading,
+    error,
+    onRefresh,
+    refreshing,
+    statusFor,
+    onBattle,
+    onRename,
+    onDefend,
+}: Props) {
     if (error) {
         const message = error instanceof Error ? error.message : String(error);
         return (
@@ -75,26 +92,16 @@ export default function PetList({ pets, isLoading, error, onRefresh, refreshing 
             }
         >
             <Text style={styles.sectionTitle}>Your pets</Text>
-            {pets.map((pet) => {
-                const rarityColor = getRarityColor(pet.rarity);
-                return (
-                    <View key={pet.id} style={styles.card}>
-                        <View style={styles.cardHeader}>
-                            <Text style={styles.petName}>{pet.name}</Text>
-                            <View style={[styles.rarityBadge, { borderColor: rarityColor }]}>
-                                <Text style={[styles.rarityText, { color: rarityColor }]}>
-                                    {getRarityName(pet.rarity)}
-                                </Text>
-                            </View>
-                        </View>
-                        <Text style={styles.meta}>ID #{pet.id}</Text>
-                        <Text style={styles.meta}>Level {pet.level}</Text>
-                        <Text style={styles.meta}>
-                            W {pet.winCount} · L {pet.lossCount}
-                        </Text>
-                    </View>
-                );
-            })}
+            {pets.map((pet) => (
+                <PetCard
+                    key={pet.id}
+                    pet={pet}
+                    status={statusFor(pet)}
+                    onBattle={() => onBattle(pet)}
+                    onRename={() => onRename(pet)}
+                    onDefend={() => onDefend(pet)}
+                />
+            ))}
         </ScrollView>
     );
 }
@@ -122,43 +129,6 @@ const styles = StyleSheet.create({
         textShadowColor: neon.cyan,
         textShadowOffset: { width: 0, height: 0 },
         textShadowRadius: 8,
-    },
-    card: {
-        backgroundColor: neon.bgCard,
-        borderRadius: 14,
-        padding: 16,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(0, 245, 255, 0.22)',
-        width: '100%',
-        ...neonGlow(neon.cyan, 8, 0.2),
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 8,
-    },
-    petName: {
-        fontSize: 20,
-        fontWeight: '800',
-        color: neon.text,
-        flex: 1,
-    },
-    rarityBadge: {
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-    },
-    rarityText: {
-        fontSize: 12,
-        fontWeight: '600',
-    },
-    meta: {
-        fontSize: 14,
-        color: neon.textMuted,
-        marginTop: 4,
     },
     loadingText: {
         marginTop: 12,

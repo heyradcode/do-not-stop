@@ -1,57 +1,62 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useCreatePet, usePetList } from '@shared/core';
 
 import CreatePetModal from '../components/CreatePetModal';
 import PetList from '../components/PetList';
+import { usePetGallery } from '../hooks/pet-gallery/usePetGallery';
 import { neon, neonGlow } from '../theme/neon';
 
 /**
- * The player's collection. Carried over from the pre-navigation `AppContent`, so
- * it is already on `usePetList` / `useCreatePet`; Phase 4 adds the cooldown and
- * per-pet action surface frontend's pet-gallery has.
+ * The player's collection: a pure view over `usePetGallery`, same split frontend
+ * uses between `pet-gallery/index.tsx` and its hook.
+ *
+ * Frontend's stat strip has a third tile, Global Rank, backed by placeholder data.
+ * It is left out rather than reproduced: a hardcoded "#3" reads as real on a phone
+ * with no surrounding context.
  */
 export default function GalleryScreen() {
-    const pets = usePetList();
-    const [refreshing, setRefreshing] = useState(false);
-    const [createModalVisible, setCreateModalVisible] = useState(false);
-
-    const closeCreateModal = useCallback(() => {
-        setCreateModalVisible(false);
-    }, []);
-
-    // EVM minting is two-phase (requestMintStarter, then settleMint once Pyth
-    // Entropy reveals), so the list is only worth re-reading once onSuccess fires.
-    const createPet = useCreatePet({
-        onSuccess: () => {
-            closeCreateModal();
-            pets.refetch();
-        },
-    });
-
-    const handleRefreshPets = useCallback(async () => {
-        setRefreshing(true);
-        try {
-            await pets.refetch();
-        } finally {
-            setRefreshing(false);
-        }
-    }, [pets]);
+    const {
+        pets,
+        isLoading,
+        error,
+        totalWins,
+        statusFor,
+        refreshing,
+        onRefresh,
+        createPet,
+        createModalOpen,
+        onOpenCreateModal,
+        onCloseCreateModal,
+        onBattle,
+        onRename,
+        onDefend,
+    } = usePetGallery();
 
     return (
         // No outer ScrollView: PetList brings its own scroll and pull-to-refresh.
         <View style={styles.root}>
+            <View style={styles.stats}>
+                <View style={[styles.stat, styles.statCyan]}>
+                    <Text style={styles.statValue}>{pets.length}</Text>
+                    <Text style={styles.statLabel}>Pets</Text>
+                </View>
+                <View style={[styles.stat, styles.statViolet]}>
+                    <Text style={styles.statValue}>{totalWins}</Text>
+                    <Text style={styles.statLabel}>Wins</Text>
+                </View>
+            </View>
+
             <View style={styles.actionsRow}>
                 <TouchableOpacity
                     style={styles.createBtn}
-                    onPress={() => setCreateModalVisible(true)}
+                    onPress={onOpenCreateModal}
                     activeOpacity={0.85}
                 >
                     <Text style={styles.createBtnText}>Create</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]}
-                    onPress={handleRefreshPets}
+                    onPress={onRefresh}
                     disabled={refreshing}
                     activeOpacity={0.85}
                 >
@@ -62,17 +67,23 @@ export default function GalleryScreen() {
                     )}
                 </TouchableOpacity>
             </View>
+
             <CreatePetModal
-                visible={createModalVisible}
-                onClose={closeCreateModal}
+                visible={createModalOpen}
+                onClose={onCloseCreateModal}
                 createPet={createPet}
             />
+
             <PetList
-                pets={pets.pets}
-                isLoading={pets.isLoading}
-                error={pets.error}
-                onRefresh={handleRefreshPets}
+                pets={pets}
+                isLoading={isLoading}
+                error={error}
+                onRefresh={onRefresh}
                 refreshing={refreshing}
+                statusFor={statusFor}
+                onBattle={onBattle}
+                onRename={onRename}
+                onDefend={onDefend}
             />
         </View>
     );
@@ -85,6 +96,39 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 16,
         paddingBottom: 8,
+    },
+    stats: {
+        flexDirection: 'row',
+        marginBottom: 16,
+    },
+    stat: {
+        flex: 1,
+        backgroundColor: neon.bgCard,
+        borderRadius: 12,
+        borderWidth: 1,
+        paddingVertical: 12,
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    statCyan: {
+        borderColor: 'rgba(0, 245, 255, 0.35)',
+        ...neonGlow(neon.cyan, 8, 0.2),
+    },
+    statViolet: {
+        borderColor: 'rgba(192, 132, 252, 0.35)',
+        marginRight: 0,
+        ...neonGlow(neon.purple, 8, 0.2),
+    },
+    statValue: {
+        fontSize: 22,
+        fontWeight: '900',
+        color: neon.text,
+    },
+    statLabel: {
+        fontSize: 12,
+        color: neon.textMuted,
+        marginTop: 2,
+        letterSpacing: 1,
     },
     actionsRow: {
         flexDirection: 'row',

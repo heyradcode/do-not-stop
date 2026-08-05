@@ -10,6 +10,11 @@ module.exports = {
   // node_modules except react-native itself, so importing any of them dies on
   // `export *`. `react-native-*` covers the navigation native peers (screens,
   // safe-area-context) as well as react-native itself.
+  // Deliberately does not list @solana. Reaching it means a test imported the
+  // `@shared/core` barrel, which re-exports the Solana adapter and drags the whole
+  // Solana runtime in; that ends in unparseable .mjs and an unresolvable
+  // `rpc-websockets`, not just a transform gap. Stub the barrel in the test and
+  // require the specific util module instead (see GalleryScreen.test.tsx).
   transformIgnorePatterns: [
     'node_modules/(?!(?:@react-native|react-native|react-native-.*|@react-navigation|wagmi|@wagmi|viem|ox|abitype)/)',
   ],

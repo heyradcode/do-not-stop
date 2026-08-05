@@ -7,21 +7,29 @@
  * than shown disabled: a tab bar has no room to advertise what does not work yet.
  */
 
-/** Screens pushed over the tab shell. `undefined` = takes no params. */
-export type RootStackParamList = {
-    Landing: undefined;
-    Main: undefined;
-    Marriage: undefined;
-    Rename: { petId?: string } | undefined;
-    Defense: { petId?: string } | undefined;
-};
+import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type MainTabParamList = {
     Gallery: undefined;
-    Battle: { roomId?: string } | undefined;
+    /**
+     * `roomId` mirrors frontend's optional `/battle/:roomId?` segment, set once
+     * Start Battle mints a room. `petId` is the pet a Gallery action came in with,
+     * which frontend passes as router state rather than in the path.
+     */
+    Battle: { roomId?: string; petId?: string } | undefined;
     Breed: undefined;
     LevelUp: undefined;
     Train: undefined;
+};
+
+/** Screens pushed over the tab shell. `undefined` = takes no params. */
+export type RootStackParamList = {
+    Landing: undefined;
+    /** `NavigatorScreenParams` is what makes `navigate('Main', { screen, params })` type-check. */
+    Main: NavigatorScreenParams<MainTabParamList> | undefined;
+    Marriage: undefined;
+    Rename: { petId?: string } | undefined;
+    Defense: { petId?: string } | undefined;
 };
 
 export type TabItem = {
