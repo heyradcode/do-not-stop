@@ -64,22 +64,19 @@ beforeEach(() => {
 });
 
 /**
- * Picks a pet from the neon `PetSelect`: a button plus a portalled listbox, so options
- * exist only once it is open and `selectOptions` does not apply.
+ * Picks a pet from `PetPicker`: every pet is a visible tile, so this is one click rather
+ * than opening a menu first.
  */
 async function choosePet(name: string) {
-    await userEvent.click(screen.getByRole('combobox'));
-    await userEvent.click(await screen.findByRole('option', { name: new RegExp(name) }));
+    await userEvent.click(screen.getByRole('radio', { name: new RegExp(name) }));
 }
 
 describe('TrainPanel', () => {
     it('renders the pet selector', async () => {
         render(<TrainPanel />);
-        expect(screen.getByRole('combobox')).toBeInTheDocument();
-
-        await userEvent.click(screen.getByRole('combobox'));
-        expect(await screen.findByRole('option', { name: /Rex/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /Lv 3/ })).toBeInTheDocument();
+        expect(screen.getByRole('radio', { name: /Rex/ })).toBeInTheDocument();
+        expect(screen.getByRole('radio', { name: /Lv 3/ })).toBeInTheDocument();
+        expect(screen.queryByRole('combobox')).toBeNull();
     });
 
     it('disables the Train button when no pet is selected', () => {

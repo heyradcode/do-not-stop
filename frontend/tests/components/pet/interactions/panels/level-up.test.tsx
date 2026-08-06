@@ -61,25 +61,29 @@ beforeEach(() => {
 
 
 /**
- * Picks a pet from the neon `PetSelect`.
- *
- * It is a button plus a portalled listbox rather than a native `<select>`, so
- * `selectOptions` does not apply: options only exist once the popup is open.
+ * Picks a pet from `PetPicker`: every pet is a visible tile, so this is one click on the
+ * tile rather than opening anything.
  */
 async function choosePet(name: string) {
-    await userEvent.click(screen.getByRole('combobox'));
-    await userEvent.click(await screen.findByRole('option', { name: new RegExp(name) }));
+    await userEvent.click(screen.getByRole('radio', { name: new RegExp(name) }));
 }
 
 describe('LevelUpPanel', () => {
-    it('lists the ready pets as options', async () => {
+    it('shows every ready pet as a tile, with no menu to open', () => {
         render(<LevelUpPanel />);
-        await userEvent.click(screen.getByRole('combobox'));
 
-        expect(await screen.findByRole('option', { name: /Alpha/ })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: /Beta/ })).toBeInTheDocument();
-        // The level rides alongside the name rather than being folded into one string.
-        expect(screen.getByRole('option', { name: /Lv 2/ })).toBeInTheDocument();
+        expect(screen.getByRole('radio', { name: /Alpha/ })).toBeInTheDocument();
+        expect(screen.getByRole('radio', { name: /Beta/ })).toBeInTheDocument();
+        expect(screen.getByRole('radio', { name: /Lv 2/ })).toBeInTheDocument();
+        expect(screen.queryByRole('combobox')).toBeNull();
+    });
+
+    it('marks only the chosen pet as selected', async () => {
+        render(<LevelUpPanel />);
+        await choosePet('Beta');
+
+        expect(screen.getByRole('radio', { name: /Beta/ })).toBeChecked();
+        expect(screen.getByRole('radio', { name: /Alpha/ })).not.toBeChecked();
     });
 
     it('labels the button with the fee when one is configured', () => {

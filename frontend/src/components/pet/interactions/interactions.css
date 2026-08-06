@@ -326,11 +326,12 @@
         --tr-art: 10rem;
     }
 
-    /* Roomy enough for the pet column not to feel cramped, but the panel can be very
-       wide and a lone select stretched across it reads as a mistake. */
+    /* The pet tiles auto-fill this width, so it sets how many sit across a row: about
+       five. Left uncapped they would spread over a very wide panel into one long line
+       with the cost note stranded at the far end. */
     .interaction-standalone--levelup .interface .picker,
     .interaction-standalone--train .interface .picker {
-        max-width: 460px;
+        max-width: 620px;
     }
 
     .interaction-standalone--levelup .interface .picker,

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
-import PetSelect from '@components/ui/pet-select';
+import PetPicker from '@components/ui/pet-picker';
 import {
     getPetClass,
     getReadyPetsUnified,
@@ -146,13 +146,13 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
 
                 <div className="picker">
                     <div className="field">
-                        <label htmlFor="train-pet">Select Pet</label>
-                        <PetSelect
-                            id="train-pet"
+                        <span className="field-label">Select Pet</span>
+                        <PetPicker
                             pets={readyPets}
                             value={selectedPet}
                             onChange={setSelectedPet}
-                            placeholder="Select a pet to train"
+                            label="Pet to train"
+                            emptyHint="No pets are ready right now."
                         />
                     </div>
                     {trainCost && <p className="train-cost">Cost: {trainCost}</p>}

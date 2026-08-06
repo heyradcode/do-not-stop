@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
-import PetSelect from '@components/ui/pet-select';
+import PetPicker from '@components/ui/pet-picker';
 import {
     getPetClass,
     getReadyPetsUnified,
@@ -176,13 +176,13 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
 
                 <div className="picker">
                     <div className="field">
-                        <label htmlFor="levelup-pet">Select Pet</label>
-                        <PetSelect
-                            id="levelup-pet"
+                        <span className="field-label">Select Pet</span>
+                        <PetPicker
                             pets={readyPets}
                             value={selectedPet}
                             onChange={setSelectedPet}
-                            placeholder="Select a pet to level up"
+                            label="Pet to level up"
+                            emptyHint="No pets are ready right now."
                         />
                     </div>
                     {levelUpCost && <p className="level-up-cost">Cost: {levelUpCost}</p>}
