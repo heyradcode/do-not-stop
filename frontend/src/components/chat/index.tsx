@@ -117,13 +117,15 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
             </header>
 
             {error ? (
-                <p className={styles.error}>{error.message}</p>
+                <p className={`${styles.placeholder} ${styles.error}`}>{error.message}</p>
             ) : isLoading ? (
                 <div className="loading-container">
                     <div className="loading-spinner" />
                 </div>
             ) : messages.length === 0 ? (
-                <p className={styles.empty}>No messages yet. Say hello.</p>
+                <p className={`${styles.placeholder} ${styles.empty}`}>
+                    No messages yet. Say hello.
+                </p>
             ) : (
                 <ol className={styles.messages}>
                     {messages.map((message) => (

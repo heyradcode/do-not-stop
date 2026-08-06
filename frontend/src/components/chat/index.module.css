@@ -169,11 +169,19 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Pinned to the bottom of the card by the region above it filling, not by absolute
+   positioning. An absolutely positioned bar sits on top of the transcript unless the
+   scroll area reserves exactly its height, and that reservation has to be re-tuned by
+   hand every time the composer's padding, font or error line changes — it silently
+   covers the newest message when it drifts. `flex-shrink: 0` is the part that matters:
+   it keeps the bar at its natural height instead of being squeezed by a long
+   transcript. */
 .composer {
     display: flex;
     gap: 8px;
     padding: 10px 12px;
     border-top: 1px solid rgb(148 163 184 / 12%);
+    flex-shrink: 0;
 }
 
 .composer input {
@@ -202,6 +210,18 @@
 .composer button:disabled {
     opacity: 0.4;
     cursor: default;
+}
+
+/* The transcript's stand-in states. They take the same space the message list would, so
+   the composer stays on the bottom edge whether the thread is loading, empty, or broken
+   — previously these hugged their one line of text and the composer rode up with them. */
+.placeholder {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 
 .empty,
