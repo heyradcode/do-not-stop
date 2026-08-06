@@ -51,11 +51,18 @@ export const TARGET_CHAIN_ID = resolveTargetChainId(EVM_CHAIN_ID);
  * player switch to a network where every contract read silently fails. This is
  * also exactly what the network switcher lists, so the switcher can no longer
  * strand a player somewhere `isSupportedChain` rejects.
+ *
+ * Hardhat appears only when it is the configured chain, not merely in dev. It has
+ * no built-in addresses, and the `.env` overrides that would supply them apply to
+ * `EVM_CHAIN_ID`'s chain alone. Listing it while something else is the target
+ * would offer a switch to a network whose reads quietly resolve against the
+ * target's contracts, which is the same failure the per-chain address map exists
+ * to prevent.
  */
 export const CHAINS: EvmNetworkOption[] = [
     { chain: baseSepolia, name: 'Base Sepolia', symbol: 'ETH', isTestnet: true },
     { chain: sepolia, name: 'Sepolia', symbol: 'ETH', isTestnet: true },
-    ...(__DEV__
+    ...(__DEV__ && TARGET_CHAIN_ID === hardhatLocal.id
         ? [{ chain: hardhatLocal, name: 'Hardhat Local', symbol: 'ETH', isTestnet: true }]
         : []),
 ];

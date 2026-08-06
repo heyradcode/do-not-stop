@@ -14,6 +14,26 @@ import {
     hasEvmDeployment,
     resolveEvmDeployment,
 } from '../src/chains/ethereum/contracts';
+import { CHAINS, TARGET_CHAIN_ID, isSupportedChain } from '../src/constants/ethereumNetworks';
+
+describe('the configured build', () => {
+    it('targets a chain that actually has contracts', () => {
+        // `EVM_CHAIN_ID` is inlined from `.env` at transform time, so a typo or a
+        // chain id copied from another network produces a build where every read
+        // resolves to an undefined address: an empty gallery and no error. This is
+        // the only check that fails loudly instead.
+        expect(hasEvmDeployment(TARGET_CHAIN_ID)).toBe(true);
+        expect(isSupportedChain(TARGET_CHAIN_ID)).toBe(true);
+    });
+
+    it('offers no chain it cannot play on', () => {
+        // The switcher lists CHAINS verbatim, so anything here without addresses
+        // is a switch that silently reads some other chain's contracts.
+        for (const { chain, name } of CHAINS) {
+            expect([name, hasEvmDeployment(chain.id)]).toEqual([name, true]);
+        }
+    });
+});
 
 describe('resolveEvmDeployment', () => {
     it('knows the Sepolia proxies', () => {
