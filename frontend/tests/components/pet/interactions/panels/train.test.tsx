@@ -63,11 +63,23 @@ beforeEach(() => {
     capturedOnSuccess = undefined;
 });
 
+/**
+ * Picks a pet from the neon `PetSelect`: a button plus a portalled listbox, so options
+ * exist only once it is open and `selectOptions` does not apply.
+ */
+async function choosePet(name: string) {
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.click(await screen.findByRole('option', { name: new RegExp(name) }));
+}
+
 describe('TrainPanel', () => {
-    it('renders the pet selector', () => {
+    it('renders the pet selector', async () => {
         render(<TrainPanel />);
         expect(screen.getByRole('combobox')).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: 'Rex (Level 3)' })).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole('combobox'));
+        expect(await screen.findByRole('option', { name: /Rex/ })).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: /Lv 3/ })).toBeInTheDocument();
     });
 
     it('disables the Train button when no pet is selected', () => {
@@ -77,7 +89,7 @@ describe('TrainPanel', () => {
 
     it('calls mutate with the selected pet', async () => {
         render(<TrainPanel />);
-        await userEvent.selectOptions(screen.getByRole('combobox'), '1');
+        await choosePet('Rex');
         await userEvent.click(screen.getByRole('button', { name: /Train/ }));
         expect(train.mutate).toHaveBeenCalledWith({ petId: '1' });
     });
@@ -97,7 +109,7 @@ describe('TrainPanel', () => {
 
     it('shows the train cost when a pet is selected and fee is available', async () => {
         render(<TrainPanel />);
-        await userEvent.selectOptions(screen.getByRole('combobox'), '1');
+        await choosePet('Rex');
         expect(screen.getByText(/Cost:/)).toBeInTheDocument();
     });
 });

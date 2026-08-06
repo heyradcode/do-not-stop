@@ -5,3 +5,5 @@ export { default as Icon } from './icon';
 export { ToastProvider, useToast } from './toast';
 export { default as PetSearchDropdown } from './pet-search-dropdown';
 export type { PetSearchDropdownProps } from './pet-search-dropdown';
+export { default as PetSelect } from './pet-select';
+export type { PetSelectOption, PetSelectProps } from './pet-select';

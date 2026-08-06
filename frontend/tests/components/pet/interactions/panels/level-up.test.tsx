@@ -59,11 +59,27 @@ beforeEach(() => {
     levelUpPet.isPending = false;
 });
 
+
+/**
+ * Picks a pet from the neon `PetSelect`.
+ *
+ * It is a button plus a portalled listbox rather than a native `<select>`, so
+ * `selectOptions` does not apply: options only exist once the popup is open.
+ */
+async function choosePet(name: string) {
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.click(await screen.findByRole('option', { name: new RegExp(name) }));
+}
+
 describe('LevelUpPanel', () => {
-    it('lists the ready pets as options', () => {
+    it('lists the ready pets as options', async () => {
         render(<LevelUpPanel />);
-        expect(screen.getByRole('option', { name: 'Alpha (Level 2)' })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: 'Beta (Level 5)' })).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('combobox'));
+
+        expect(await screen.findByRole('option', { name: /Alpha/ })).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: /Beta/ })).toBeInTheDocument();
+        // The level rides alongside the name rather than being folded into one string.
+        expect(screen.getByRole('option', { name: /Lv 2/ })).toBeInTheDocument();
     });
 
     it('labels the button with the fee when one is configured', () => {
@@ -82,13 +98,13 @@ describe('LevelUpPanel', () => {
         const submit = screen.getByRole('button', { name: 'Level Up' });
         expect(submit).toBeDisabled();
 
-        await userEvent.selectOptions(screen.getByRole('combobox'), '2');
+        await choosePet('Beta');
         expect(submit).toBeEnabled();
     });
 
     it('submits the level-up mutation for the chosen pet', async () => {
         render(<LevelUpPanel />);
-        await userEvent.selectOptions(screen.getByRole('combobox'), '2');
+        await choosePet('Beta');
         await userEvent.click(screen.getByRole('button', { name: 'Level Up' }));
 
         expect(levelUpPet.reset).toHaveBeenCalled();
