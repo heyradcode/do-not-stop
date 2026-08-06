@@ -16,9 +16,17 @@
        as the battle showdown), so every panel shares the uniform slot padding
        rather than a narrow centered cap. `max-height: 100%` bounds the panel to
        the slot so its body scrolls internally instead of the whole panel growing
-       past the header. */
+       past the header.
+
+       `height: 100%` is what makes it *reach* that bound. The panel already declares
+       `flex: 1 1 auto`, but the shell's content slot is a scrollable block rather than
+       a flex container, so that rule is inert and the panel used to size to its
+       content — short screens like rename left a small card stranded in an empty slot,
+       and the height jumped between screens. The percentage resolves against the
+       slot's content box, which lands the panel inside the shell's padding. */
     &.interaction-standalone {
         max-width: 100%;
+        height: 100%;
         max-height: 100%;
     }
 
