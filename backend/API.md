@@ -371,6 +371,32 @@ client-side by `(chainId, requestId)`. That socket was removed once battles
 stopped being resolved from chain state, so there is no longer a second channel
 and nothing left to filter.
 
+### Chat WebSocket (roadmap §2)
+
+```
+ws(s)://<host>/ws/chat?threadId=<threadId>
+```
+
+Notification-only, per-thread. Connecting without a `threadId` closes the socket
+immediately (code `1008`). Every message is the same shape, and carries **no message
+text**:
+
+```json
+{ "type": "thread-updated", "threadId": "c...", "messageId": 42 }
+```
+
+The roadmap assumed chat could reuse an authenticated socket. There isn't one — the
+battle-room channel above joins whoever presents a room id, which is safe there because
+its payload is not content. This channel keeps that posture and gets its safety from the
+same place: it says a thread changed, and the text comes from
+`GET /api/chat/threads/:id/messages`, which authenticates the caller and rechecks the
+marriage. Missing a notification costs latency, never access.
+
+What a listener does learn is timing — that a thread whose id they hold saw activity.
+Thread ids are cuids handed out only by an authenticated read. If v2 opens direct
+messages to strangers, this channel should be authenticated first, with the token in a
+subprotocol rather than the query string, where proxies and access logs would record it.
+
 ### Public receipt corpus (v2)
 
 `backend/src/routes/receipts.ts` — the paginated export §H item 3 calls for.

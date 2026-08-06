@@ -7,6 +7,7 @@ import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { type BattleWorkerHandle, startBattleWorker } from '@features/battle-worker';
 import { startBatchAnchor, stopBatchAnchor } from '@features/battle-anchor';
 import { startBattleRoomSocket, stopBattleRoomSocket } from '@ws/battleRoomSocket';
+import { startChatSocket, stopChatSocket } from '@ws/chatSocket';
 
 let battleWorker: BattleWorkerHandle | undefined;
 
@@ -23,6 +24,10 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     // Notification-only per-room channel for backend-authoritative battles (§J). Always on;
     // a client only gets pushed to if it connected with a roomId it already knows about.
     startBattleRoomSocket(server);
+    // Per-thread notification channel for private chat. Same posture as the battle room:
+    // it says a thread changed and nothing more, so the authenticated read stays the only
+    // thing that decides who sees a message.
+    startChatSocket(server);
     // Settles GameLogic battle/breed/mint requests once entropy reveals. No-op unless
     // KEEPER_ENABLED is set.
     startSettleKeeper();
@@ -77,6 +82,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     battleWorker?.stop();
     stopBatchAnchor();
     stopBattleRoomSocket();
+    stopChatSocket();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
 

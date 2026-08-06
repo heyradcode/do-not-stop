@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
 import type { AuthenticatedRequest } from '@middleware/auth';
+import { notifyChatThread } from '@ws/chatSocket';
 import { authorizeThread, listThreads, readMessages, sendMessage, type ChatDenial } from './chat.service';
 import { ListMessagesSchema, SendMessageSchema } from './chat.schema';
 
@@ -77,7 +78,16 @@ export async function postMessage(req: Request, res: Response): Promise<void> {
     }
 
     try {
-        res.status(201).json({ message: await sendMessage(threadId, caller, body.data.text) });
+        const message = await sendMessage(threadId, caller, body.data.text);
+        // After the write, never instead of it: the message is already durable, so a
+        // failure to notify costs liveness, not the message. Carries no text — see
+        // `chatSocket`.
+        notifyChatThread(threadId, {
+            type: 'thread-updated',
+            threadId,
+            messageId: message.id,
+        });
+        res.status(201).json({ message });
     } catch (err) {
         console.error('[chat] failed to send message:', err);
         res.status(500).json({ error: 'Failed to send message' });

@@ -7,6 +7,7 @@ vi.mock('../../src/features/chat/chat.service', () => ({
     readMessages: vi.fn(),
     sendMessage: vi.fn(),
 }));
+vi.mock('@ws/chatSocket', () => ({ notifyChatThread: vi.fn() }));
 
 import { getMessages, getThreads, postMessage } from '../../src/features/chat/chat.controller';
 import {
@@ -15,6 +16,7 @@ import {
     readMessages,
     sendMessage,
 } from '../../src/features/chat/chat.service';
+import { notifyChatThread } from '@ws/chatSocket';
 
 function makeRes() {
     const res = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
@@ -144,6 +146,31 @@ describe('postMessage', () => {
 
         expect(res.status).toHaveBeenCalledWith(400);
         expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('notifies the thread after the write, carrying the id and no text', async () => {
+        vi.mocked(sendMessage).mockResolvedValue({
+            id: 42,
+            sender: ME,
+            text: 'hello',
+            createdAt: new Date(0),
+        });
+
+        await postMessage(req({ body: { text: 'hello' } }), makeRes());
+
+        expect(notifyChatThread).toHaveBeenCalledWith('t1', {
+            type: 'thread-updated',
+            threadId: 't1',
+            messageId: 42,
+        });
+    });
+
+    it('does not notify when the write was refused', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue({ denial: 'not-married' });
+
+        await postMessage(req({ body: { text: 'hello' } }), makeRes());
+
+        expect(notifyChatThread).not.toHaveBeenCalled();
     });
 
     it('cannot send as another wallet by putting one in the body', async () => {
