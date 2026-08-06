@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     useChainCapabilities,
     useLeaderboard,
     usePlayerLeaderboard,
-    type LeaderboardEntry,
-    type PlayerLeaderboardEntry,
 } from '@shared/core';
 
 import DashboardPanel from '@components/common/dashboard-panel';
@@ -14,6 +12,7 @@ import PetArt from '@components/pet/pet-art';
 import Icon, { TrophyIcon } from '@components/ui/icon';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
+import { sameAccount, shortAddress } from '@utils/address';
 import styles from './index.module.css';
 
 /** Which ranking is showing. Pets is the default: it is the one with a pet in it. */
@@ -25,65 +24,39 @@ function winRate(wins: number, losses: number): number | null {
     return fought === 0 ? null : Math.round((wins / fought) * 100);
 }
 
-/** `0x1234…abcd`, since a full address is longer than the column it sits in. */
-function shortAddress(address: string): string {
-    return address.length > 12 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
-}
-
 /** Medal for the top three, plain number below. Rank is absolute, so this holds on page 2+. */
 function rankBadge(rank: number): string {
     return rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
 }
 
-const PetRow: React.FC<{ entry: LeaderboardEntry; isYou: boolean }> = ({ entry, isYou }) => {
-    const rate = winRate(entry.winCount, entry.lossCount);
+/**
+ * One ranked row. Both boards render the same five tracks — only the avatar, the title
+ * and the sub-line differ — so they share this rather than two near-identical components
+ * that would drift the first time the record column is edited.
+ */
+const Row: React.FC<{
+    rank: number;
+    avatar: ReactNode;
+    title: ReactNode;
+    sub: ReactNode;
+    winCount: number;
+    lossCount: number;
+    isYou: boolean;
+}> = ({ rank, avatar, title, sub, winCount, lossCount, isYou }) => {
+    const rate = winRate(winCount, lossCount);
     return (
         <li className={isYou ? `${styles.row} ${styles.isYou}` : styles.row}>
-            <span className={styles.rank}>{rankBadge(entry.rank)}</span>
+            <span className={styles.rank}>{rankBadge(rank)}</span>
             <span className={styles.avatar} aria-hidden>
-                <PetArt
-                    pet={{
-                        id: entry.id,
-                        chain: entry.chain,
-                        assetKey: entry.asset || undefined,
-                        dna: BigInt(entry.dna),
-                        name: entry.name,
-                    }}
-                />
+                {avatar}
             </span>
             <span className={styles.name}>
-                {entry.name}
-                <span className={styles.sub}>Lv {entry.level}</span>
+                {title}
+                <span className={styles.sub}>{sub}</span>
             </span>
             <span className={styles.record}>
-                <span className={styles.wins}>{entry.winCount}W</span>
-                <span className={styles.losses}>{entry.lossCount}L</span>
-            </span>
-            <span className={styles.rate}>{rate == null ? '—' : `${rate}%`}</span>
-        </li>
-    );
-};
-
-const PlayerRow: React.FC<{ entry: PlayerLeaderboardEntry; isYou: boolean }> = ({
-    entry,
-    isYou,
-}) => {
-    const rate = winRate(entry.winCount, entry.lossCount);
-    return (
-        <li className={isYou ? `${styles.row} ${styles.isYou}` : styles.row}>
-            <span className={styles.rank}>{rankBadge(entry.rank)}</span>
-            <span className={styles.avatar} aria-hidden>
-                👤
-            </span>
-            <span className={styles.name}>
-                {shortAddress(entry.owner)}
-                <span className={styles.sub}>
-                    {entry.petCount} pet{entry.petCount === 1 ? '' : 's'}
-                </span>
-            </span>
-            <span className={styles.record}>
-                <span className={styles.wins}>{entry.winCount}W</span>
-                <span className={styles.losses}>{entry.lossCount}L</span>
+                <span className={styles.wins}>{winCount}W</span>
+                <span className={styles.losses}>{lossCount}L</span>
             </span>
             <span className={styles.rate}>{rate == null ? '—' : `${rate}%`}</span>
         </li>
@@ -138,12 +111,9 @@ const Leaderboard: React.FC = () => {
         );
     }
 
-    // The owner strings the backend grouped by are lowercased on EVM and untouched on
-    // Solana, so compare the same way rather than assuming either case.
-    const you =
-        activeKind === 'evm' ? (walletAddress ?? '').toLowerCase() : (walletAddress ?? '');
-    /** Folding base58 would let two distinct Solana pubkeys read as the same player. */
-    const isYou = (owner: string) => (activeKind === 'evm' ? owner.toLowerCase() === you : owner === you);
+    // `sameAccount` normalizes by address shape, so this needs no chain branch and cannot
+    // merge two Solana pubkeys that differ only in case.
+    const isYou = (owner: string) => sameAccount(owner, walletAddress ?? '');
 
     const showBoard = (next: Board) => {
         setBoard(next);
@@ -195,12 +165,36 @@ const Leaderboard: React.FC = () => {
                     <ol className={styles.list}>
                         {board === 'pets'
                             ? pets.entries.map((entry) => (
-                                  <PetRow key={entry.id} entry={entry} isYou={isYou(entry.owner)} />
+                                  <Row
+                                      key={entry.id}
+                                      rank={entry.rank}
+                                      avatar={
+                                          <PetArt
+                                              pet={{
+                                                  id: entry.id,
+                                                  chain: entry.chain,
+                                                  assetKey: entry.asset || undefined,
+                                                  dna: BigInt(entry.dna),
+                                                  name: entry.name,
+                                              }}
+                                          />
+                                      }
+                                      title={entry.name}
+                                      sub={`Lv ${entry.level}`}
+                                      winCount={entry.winCount}
+                                      lossCount={entry.lossCount}
+                                      isYou={isYou(entry.owner)}
+                                  />
                               ))
                             : players.entries.map((entry) => (
-                                  <PlayerRow
+                                  <Row
                                       key={entry.owner}
-                                      entry={entry}
+                                      rank={entry.rank}
+                                      avatar="👤"
+                                      title={shortAddress(entry.owner)}
+                                      sub={`${entry.petCount} pet${entry.petCount === 1 ? '' : 's'}`}
+                                      winCount={entry.winCount}
+                                      lossCount={entry.lossCount}
                                       isYou={isYou(entry.owner)}
                                   />
                               ))}

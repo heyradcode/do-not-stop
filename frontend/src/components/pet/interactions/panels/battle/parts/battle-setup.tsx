@@ -14,7 +14,8 @@ import {
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import Icon, { BattleIcon } from '@components/ui/icon';
-import { opponentKey, shortAddress } from '../battle-utils';
+import { opponentKey } from '../battle-utils';
+import { shortAddress } from '@utils/address';
 import styles from '../index.module.css';
 import PetArt from '@components/pet/pet-art';
 

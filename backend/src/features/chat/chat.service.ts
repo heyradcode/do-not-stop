@@ -5,6 +5,7 @@ import {
     findMessages,
     findThreadById,
     insertMessage,
+    isMarriedTo,
     openThread,
     type ChatMessageRow,
 } from '@repositories/chat.repository';
@@ -52,13 +53,20 @@ export interface ChatThreadView {
  * A pair with two married pet couples collapses to one thread carrying both pairs,
  * because the conversation is between the owners, not the pets.
  */
-export async function listThreads(caller: string): Promise<ChatThreadView[]> {
+export async function listThreads(rawCaller: string): Promise<ChatThreadView[]> {
+    // Normalized once, here, because the caller is also the thread's participant key: an
+    // unnormalized spelling of the same wallet would open a second thread beside the
+    // first and split the conversation. Production callers arrive normalized from the
+    // JWT; this makes that an invariant of the feature rather than of its callers.
+    const caller = normalizeAccount(rawCaller);
     const marriages = await findMarriedCounterparts(caller);
     if (marriages.length === 0) {
         return [];
     }
 
-    const byCounterpart = new Map<string, ChatThreadView>();
+    // Group first, then open every thread at once. Opening inside the loop made this one
+    // sequential round trip per counterpart on a screen that loads them all together.
+    const byCounterpart = new Map<string, Omit<ChatThreadView, 'threadId'>>();
     for (const marriage of marriages) {
         const counterpart = normalizeAccount(marriage.counterpart);
         const pets = {
@@ -71,19 +79,16 @@ export async function listThreads(caller: string): Promise<ChatThreadView[]> {
         const seen = byCounterpart.get(counterpart);
         if (seen) {
             seen.pets.push(pets);
-            continue;
+        } else {
+            byCounterpart.set(counterpart, { counterpart, pets: [pets], chain: marriage.chain });
         }
-
-        const thread = await openThread(caller, counterpart, MARRIAGE_SCOPE);
-        byCounterpart.set(counterpart, {
-            threadId: thread.id,
-            counterpart,
-            pets: [pets],
-            chain: marriage.chain,
-        });
     }
 
-    return [...byCounterpart.values()];
+    const views = [...byCounterpart.values()];
+    const threadIds = await Promise.all(
+        views.map((view) => openThread(caller, view.counterpart, MARRIAGE_SCOPE))
+    );
+    return views.map((view, index) => ({ ...view, threadId: threadIds[index] as string }));
 }
 
 /** Why a thread request was refused. `null` means it was not. */
@@ -97,27 +102,20 @@ export type ChatDenial = 'not-found' | 'not-a-participant' | 'not-married';
  * the database — deleting it would destroy the history — but stops answering, which is
  * why this returns a reason a caller can distinguish rather than a bare boolean.
  */
-export async function authorizeThread(
-    threadId: string,
-    caller: string
-): Promise<{ denial: ChatDenial } | { denial: null; counterpart: string }> {
+export async function authorizeThread(threadId: string, rawCaller: string): Promise<ChatDenial | null> {
+    const caller = normalizeAccount(rawCaller);
     const thread = await findThreadById(threadId);
     if (!thread) {
-        return { denial: 'not-found' };
+        return 'not-found';
     }
 
     const isParticipant = thread.participantA === caller || thread.participantB === caller;
     if (!isParticipant) {
-        return { denial: 'not-a-participant' };
+        return 'not-a-participant';
     }
 
     const counterpart = thread.participantA === caller ? thread.participantB : thread.participantA;
-    const marriages = await findMarriedCounterparts(caller);
-    const stillMarried = marriages.some(
-        (marriage) => normalizeAccount(marriage.counterpart) === counterpart
-    );
-
-    return stillMarried ? { denial: null, counterpart } : { denial: 'not-married' };
+    return (await isMarriedTo(caller, counterpart)) ? null : 'not-married';
 }
 
 /** A page of messages. Authorization is the caller's job — see `authorizeThread`. */

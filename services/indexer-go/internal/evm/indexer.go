@@ -149,29 +149,32 @@ func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) 
 		reconcileC = reconcileTicker.C
 	}
 
+	// Shared so the clean-shutdown discrimination lives in one place: a cancelled context
+	// surfaces as an error from the in-flight request, and treating that as a failure logs
+	// a spurious error on every shutdown that races a poll. Reports false to stop.
+	report := func(label string, count int, err error) bool {
+		switch {
+		case err != nil && ctx.Err() != nil:
+			return false
+		case err != nil:
+			slog.Error(label+" failed", "err", err)
+		case count > 0:
+			slog.Info(label, "count", count, "watermark", ix.watermark)
+		}
+		return true
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			synced, err := ix.sync(ctx, roster)
-			switch {
-			case err != nil && ctx.Err() != nil:
+			if synced, err := ix.sync(ctx, roster); !report("evm sync", synced, err) {
 				return nil
-			case err != nil:
-				slog.Error("evm sync failed", "err", err)
-			case synced > 0:
-				slog.Info("evm sync", "synced", synced, "watermark", ix.watermark)
 			}
 		case <-reconcileC:
-			scanned, err := ix.Scan(ctx, roster)
-			switch {
-			case err != nil && ctx.Err() != nil:
+			if scanned, err := ix.Scan(ctx, roster); !report("evm reconcile scan", scanned, err) {
 				return nil
-			case err != nil:
-				slog.Error("evm reconcile scan failed", "err", err)
-			default:
-				slog.Info("evm reconcile scan", "scanned", scanned, "watermark", ix.watermark)
 			}
 		}
 	}

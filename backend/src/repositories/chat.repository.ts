@@ -1,7 +1,9 @@
+import { normalizeAccount } from '@cryptopets/protocol';
 import { Prisma } from '@generated/prisma/client';
 
 import { prisma } from '@config/prisma';
-import type { Chain } from '@typings/chain';
+import { ownerKey } from './owner.sql';
+import { chainOfAccount, type Chain } from '@typings/chain';
 
 /**
  * Read/write access for private chat (roadmap §2 v1), plus the marriage lookup that
@@ -25,32 +27,42 @@ export interface MarriedCounterpart {
 }
 
 /**
+ * The roster-side marriage predicate for one caller: their pets, joined to each spouse
+ * pet, excluding pairs they own both sides of.
+ *
+ * A pet married to another of the caller's own pets is a marriage but not a
+ * conversation — there is no second person to talk to.
+ */
+function marriedPairs(caller: string): { chain: Chain; where: Prisma.Sql } {
+    const chain = chainOfAccount(caller);
+    return {
+        chain,
+        where: Prisma.sql`
+            FROM pet_roster p
+            JOIN pet_roster s
+              ON s.chain = p.chain
+             AND s.pet_id = p.spouse_id
+            WHERE p.chain = ${chain}
+              AND ${ownerKey(chain, 'p')} = ${normalizeAccount(caller)}
+              AND p.spouse_id <> '0'
+              AND s.owner <> p.owner
+        `,
+    };
+}
+
+/**
  * Every wallet the caller is currently married to, one row per married pet pair.
  *
- * Two normalization details, both of which decide whether a real marriage is found:
- *
- *  - `owner` in `pet_roster` is written by indexer-go, which is not guaranteed to
- *    match the JWT's case. The caller arrives normalized (EVM lowercased, base58
- *    untouched), so EVM rows are matched folded and Solana rows exactly. Folding
- *    base58 could match a different pubkey, which here would open someone else's
- *    marriage.
- *  - The chain comes from the address shape rather than a parameter. A wallet only
- *    exists on one chain, so asking the caller which chain they meant would let them
- *    ask the wrong one.
- *
- * A pet marries a pet, so an owner pair can appear more than once (two of their pets
- * married to each other's). The caller collapses that into one thread per pair.
+ * The caller is normalized and the chain derived from its shape, so the comparison
+ * matches how indexer-go wrote the roster regardless of the case it used. An owner pair
+ * can appear more than once (two of their pets married to each other's); the caller
+ * collapses that into one thread per pair.
  */
 export async function findMarriedCounterparts(caller: string): Promise<MarriedCounterpart[]> {
     if (!caller) {
         return [];
     }
-
-    const isEvm = /^0x[0-9a-f]{40}$/.test(caller);
-    const ownerMatch = isEvm
-        ? Prisma.sql`LOWER(p.owner) = ${caller}`
-        : Prisma.sql`p.owner = ${caller}`;
-    const chain: Chain = isEvm ? 'evm' : 'solana';
+    const { where } = marriedPairs(caller);
 
     return prisma.$queryRaw<MarriedCounterpart[]>`
         SELECT p.chain,
@@ -59,69 +71,65 @@ export async function findMarriedCounterparts(caller: string): Promise<MarriedCo
                s.pet_id AS "spousePetId",
                s.name   AS "spouseName",
                s.owner  AS counterpart
-        FROM pet_roster p
-        JOIN pet_roster s
-          ON s.chain = p.chain
-         AND s.pet_id = p.spouse_id
-        WHERE p.chain = ${chain}
-          AND ${ownerMatch}
-          AND p.spouse_id <> '0'
-          -- A pet married to another pet of the caller's own is a marriage, but not a
-          -- conversation: there is no second person to talk to.
-          AND s.owner <> p.owner
+        ${where}
         ORDER BY p.pet_id ASC
     `;
 }
 
-/** A thread plus the counterpart, as one participant sees it. */
-export interface ThreadRow {
-    id: string;
-    counterpart: string;
-    createdAt: Date;
+/**
+ * Whether these two wallets currently have a married pet pair.
+ *
+ * The binary form of `findMarriedCounterparts`, for the authorization check that runs on
+ * every message read and send: that path only needs a yes or no, and fetching every
+ * counterpart to filter one out in JavaScript reads more rows the busier a player is.
+ */
+export async function isMarriedTo(caller: string, counterpart: string): Promise<boolean> {
+    if (!caller || !counterpart) {
+        return false;
+    }
+    const { chain, where } = marriedPairs(caller);
+
+    const rows = await prisma.$queryRaw<{ ok: number }[]>`
+        SELECT 1 AS ok
+        ${where}
+          AND ${ownerKey(chain, 's')} = ${normalizeAccount(counterpart)}
+        LIMIT 1
+    `;
+    return rows.length > 0;
 }
 
 /**
- * The thread for a pair, creating it if this is their first.
+ * The thread id for a pair, creating it if this is their first.
  *
  * Participants are stored in lexicographic order, which is what makes the unique
- * constraint mean "one thread per pair" instead of "one per direction" — without it
- * A→B and B→A would be two threads holding half a conversation each.
+ * constraint mean "one thread per pair" instead of "one per direction" — without it A→B
+ * and B→A would be two threads holding half a conversation each.
  *
- * Concurrent first-opens race, so a unique-constraint violation is resolved by reading
- * the winner's row rather than failing: both callers are entitled to the same thread.
+ * An upsert rather than find-then-create: it is one round trip whether or not the thread
+ * exists, and two callers opening the same thread at once resolve to the same row instead
+ * of racing to a unique-constraint violation.
  */
 export async function openThread(
     walletX: string,
     walletY: string,
     scope: string
-): Promise<ThreadRow> {
+): Promise<string> {
     const [participantA, participantB] = walletX < walletY ? [walletX, walletY] : [walletY, walletX];
-    const where = { chat_thread_pair: { participantA, participantB } };
 
-    const existing = await prisma.chatThread.findUnique({ where });
-    if (existing) {
-        return toThreadRow(existing, walletX);
-    }
-
-    try {
-        const created = await prisma.chatThread.create({
-            data: { participantA, participantB, scope },
-        });
-        return toThreadRow(created, walletX);
-    } catch (err) {
-        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-            const winner = await prisma.chatThread.findUniqueOrThrow({ where });
-            return toThreadRow(winner, walletX);
-        }
-        throw err;
-    }
+    const thread = await prisma.chatThread.upsert({
+        where: { chat_thread_pair: { participantA, participantB } },
+        create: { participantA, participantB, scope },
+        update: {},
+        select: { id: true },
+    });
+    return thread.id;
 }
 
 /** The thread by id, or null. Returns participants so the caller can authorize. */
 export function findThreadById(id: string) {
     return prisma.chatThread.findUnique({
         where: { id },
-        select: { id: true, participantA: true, participantB: true, scope: true },
+        select: { id: true, participantA: true, participantB: true },
     });
 }
 
@@ -135,9 +143,9 @@ export interface ChatMessageRow {
 /**
  * A page of messages, oldest first within the page.
  *
- * Paged backwards from `before` (an exclusive message id) because a chat is read from
- * its end: the first page is the newest messages, and older ones load as the reader
- * scrolls up.
+ * Paged backwards from `before` (an exclusive message id) because a chat is read from its
+ * end: the first page is the newest messages, and older ones load as the reader scrolls
+ * up.
  */
 export async function findMessages(
     threadId: string,
@@ -163,15 +171,4 @@ export function insertMessage(
         data: { threadId, sender, text },
         select: { id: true, sender: true, text: true, createdAt: true },
     });
-}
-
-function toThreadRow(
-    thread: { id: string; participantA: string; participantB: string; createdAt: Date },
-    viewer: string
-): ThreadRow {
-    return {
-        id: thread.id,
-        counterpart: thread.participantA === viewer ? thread.participantB : thread.participantA,
-        createdAt: thread.createdAt,
-    };
 }

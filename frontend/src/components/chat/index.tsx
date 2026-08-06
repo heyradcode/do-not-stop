@@ -11,14 +11,10 @@ import DashboardPanel from '@components/common/dashboard-panel';
 import StateCard from '@components/pet/interactions/state-card';
 import Icon, { MarriageIcon } from '@components/ui/icon';
 import { CHAT_WS_URL } from '../../config';
+import { sameAccount, shortAddress } from '@utils/address';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import styles from './index.module.css';
-
-/** `0x1234…abcd` — a full address does not fit the thread list. */
-function shortAddress(address: string): string {
-    return address.length > 12 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
-}
 
 /** The married pets behind a thread, as a one-line reason it exists. */
 function marriageLine(thread: ChatThread): string {
@@ -114,7 +110,7 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
                         <li
                             key={message.id}
                             className={
-                                message.sender.toLowerCase() === me.toLowerCase()
+                                sameAccount(message.sender, me)
                                     ? `${styles.message} ${styles.isMine}`
                                     : styles.message
                             }

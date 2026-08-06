@@ -42,25 +42,40 @@ function mockJoinQuery(rows: unknown[], total: number) {
         .mockResolvedValueOnce([{ total: BigInt(total) }] as never);
 }
 
-/** The SQL text of the nth `$queryRaw` call, whitespace-collapsed for matching. */
-function sqlOfCall(index: number): string {
-    const [template] = vi.mocked(prisma.$queryRaw).mock.calls[index] as unknown as [string[]];
-    return template.join(' ? ').replace(/\s+/g, ' ');
+function callOf(index: number): [string[], ...unknown[]] {
+    return vi.mocked(prisma.$queryRaw).mock.calls[index] as unknown as [string[], ...unknown[]];
 }
 
 /**
- * The SQL of any `Prisma.Sql` fragments interpolated into the nth call.
+ * The full SQL of the nth `$queryRaw` call: literal chunks with any interpolated
+ * `Prisma.Sql` fragment spliced back in.
  *
- * `sqlOfCall` only sees the literal chunks, so the owner key — a nested fragment — is
- * invisible to it. `$queryRaw` is mocked, so the nesting is never flattened.
+ * The queries are assembled from shared fragments (the merge, the filter, the ordering),
+ * and `$queryRaw` is mocked so nothing ever flattens them — a helper that read only the
+ * literal chunks would see none of the logic under test.
  */
-function fragmentsOfCall(index: number): string {
-    const [, ...values] = vi.mocked(prisma.$queryRaw).mock.calls[index] as unknown as [string[], ...unknown[]];
-    return values
-        .filter((value): value is { sql: string } => typeof (value as { sql?: unknown })?.sql === 'string')
-        .map((fragment) => fragment.sql)
-        .join(' ')
+function sqlOfCall(index: number): string {
+    const [template, ...values] = callOf(index);
+    return template
+        .map((chunk, i) => {
+            const value = values[i] as { sql?: unknown } | undefined;
+            return chunk + (typeof value?.sql === 'string' ? value.sql : i < values.length ? ' ? ' : '');
+        })
+        .join('')
         .replace(/\s+/g, ' ');
+}
+
+/**
+ * Every bound parameter of the nth call, including those carried by interpolated
+ * fragments — the join's `chain_id` is one of those, so a helper that only looked at the
+ * outer values would miss it.
+ */
+function paramsOfCall(index: number): unknown[] {
+    const [, ...values] = callOf(index);
+    return values.flatMap((value) => {
+        const fragment = value as { sql?: unknown; values?: unknown[] };
+        return typeof fragment?.sql === 'string' ? (fragment.values ?? []) : [value];
+    });
 }
 
 beforeEach(() => {
@@ -114,24 +129,20 @@ describe('findPetLeaderboard', () => {
         expect(sqlOfCall(1)).toContain(battled);
     });
 
-    it('falls back to chain state for a chain family this deployment does not serve', async () => {
+    // A chain family this deployment does not serve needs no second query: `chain_id = NULL`
+    // never matches, so the join contributes nothing and every COALESCE falls back to the
+    // roster column — which is the chain-state-only ranking, exactly.
+    it('joins on a null chain id for an unserved chain family, falling back to roster values', async () => {
         servedChainIdForFamily.mockReturnValue(null);
-        vi.mocked(prisma.petRoster.findMany).mockResolvedValue([rankedRow] as never);
-        vi.mocked(prisma.petRoster.count).mockResolvedValue(1 as never);
+        mockJoinQuery([rankedRow], 1);
 
         const result = await findPetLeaderboard({ chain: 'solana', page: 0, pageSize: 20 });
 
-        expect(prisma.$queryRaw).not.toHaveBeenCalled();
         expect(result.entries[0].rank).toBe(1);
-
-        const args = vi.mocked(prisma.petRoster.findMany).mock.calls[0][0];
-        expect(args?.orderBy).toEqual([
-            { winCount: 'desc' },
-            { lossCount: 'asc' },
-            { level: 'desc' },
-            { petId: 'asc' },
-        ]);
-        expect(args?.where?.OR).toEqual([{ winCount: { gt: 0 } }, { lossCount: { gt: 0 } }]);
+        expect(sqlOfCall(0)).toContain('LEFT JOIN pet_battle_progress p');
+        expect(paramsOfCall(0)).toContain(null);
+        // No separate roster-only code path exists any more.
+        expect(prisma.petRoster.findMany).not.toHaveBeenCalled();
     });
 });
 
@@ -162,7 +173,7 @@ describe('findPlayerLeaderboard', () => {
 
         await findPlayerLeaderboard({ chain: 'evm', page: 0, pageSize: 20 });
 
-        expect(fragmentsOfCall(0)).toContain('LOWER(r.owner)');
+        expect(sqlOfCall(0)).toContain('LOWER(r.owner)');
     });
 
     it('leaves Solana pubkeys unfolded, since base58 is case-significant', async () => {
@@ -171,9 +182,9 @@ describe('findPlayerLeaderboard', () => {
 
         await findPlayerLeaderboard({ chain: 'solana', page: 0, pageSize: 20 });
 
-        const fragments = fragmentsOfCall(0);
-        expect(fragments).toContain('r.owner');
-        expect(fragments).not.toContain('LOWER(');
+        const sql = sqlOfCall(0);
+        expect(sql).toContain('r.owner');
+        expect(sql).not.toContain('LOWER(');
     });
 
     it('sums the merged record and counts owners, not pets', async () => {
@@ -184,24 +195,11 @@ describe('findPlayerLeaderboard', () => {
         const sql = sqlOfCall(0);
         expect(sql).toContain('SUM(COALESCE(p.win_count, r.win_count))::int');
         expect(sql).toContain('SUM(COALESCE(p.loss_count, r.loss_count))::int');
-        expect(sql).toContain('ORDER BY "winCount" DESC, "lossCount" ASC');
+        expect(sql).toContain('ORDER BY SUM(COALESCE(p.win_count, r.win_count)) DESC');
         // The total counts grouped owners: COUNT(*) over the ungrouped join would count
         // pets, and page the client past the last owner.
         expect(sqlOfCall(1)).toContain('SELECT COUNT(*) AS total FROM (');
         expect(sqlOfCall(1)).toContain('GROUP BY');
-    });
-
-    it('sums frozen roster counters for a chain family this deployment does not serve', async () => {
-        servedChainIdForFamily.mockReturnValue(null);
-        mockJoinQuery([playerRow], 1);
-
-        const result = await findPlayerLeaderboard({ chain: 'solana', page: 0, pageSize: 20 });
-
-        expect(result.entries[0].rank).toBe(1);
-        const sql = sqlOfCall(0);
-        expect(sql).toContain('SUM(r.win_count)::int');
-        expect(sql).not.toContain('pet_battle_progress');
-        expect(sqlOfCall(1)).toContain('COUNT(DISTINCT');
     });
 });
 
@@ -227,18 +225,21 @@ describe('findPlayerRank', () => {
         expect(prisma.$queryRaw).not.toHaveBeenCalled();
     });
 
-    it('ranks with ROW_NUMBER over the ordering the paged board uses', async () => {
-        // The paged board numbers rows `offset + index + 1`; this has to be the same
-        // function, or a player's stated rank would not match where they appear.
+    // The board and the rank are ordered by one shared fragment. If they ever diverged, a
+    // player's stated rank would stop matching where they actually appear.
+    it('ranks with ROW_NUMBER over the same ordering the paged board uses', async () => {
         vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([] as never);
-
         await findPlayerRank('evm', '0xowner');
+        const rankSql = sqlOfCall(0);
 
-        const fragments = fragmentsOfCall(0);
-        expect(fragments).toContain('ROW_NUMBER() OVER (');
-        expect(fragments).toContain('SUM(COALESCE(p.win_count, r.win_count)) DESC');
-        expect(fragments).toContain('SUM(COALESCE(p.loss_count, r.loss_count)) ASC');
-        expect(fragments).toContain('LOWER(r.owner)');
+        vi.mocked(prisma.$queryRaw).mockClear();
+        mockJoinQuery([], 0);
+        await findPlayerLeaderboard({ chain: 'evm', page: 0, pageSize: 20 });
+        const boardSql = sqlOfCall(0);
+
+        const ordering = 'SUM(COALESCE(p.win_count, r.win_count)) DESC, SUM(COALESCE(p.loss_count, r.loss_count)) ASC, LOWER(r.owner) ASC';
+        expect(rankSql).toContain(`ROW_NUMBER() OVER (ORDER BY ${ordering})`);
+        expect(boardSql).toContain(`ORDER BY ${ordering}`);
     });
 
     it('ranks on frozen counters for a chain family this deployment does not serve', async () => {
@@ -247,10 +248,10 @@ describe('findPlayerRank', () => {
 
         await findPlayerRank('solana', 'SoLpubkey');
 
-        const fragments = fragmentsOfCall(0);
-        expect(fragments).toContain('SUM(r.win_count) DESC');
-        expect(fragments).not.toContain('pet_battle_progress');
+        const sql = sqlOfCall(0);
+        expect(sql).toContain('ROW_NUMBER() OVER (');
+        expect(paramsOfCall(0)).toContain(null);
         // base58 stays unfolded here too, for the reason the board folds only EVM.
-        expect(fragments).not.toContain('LOWER(');
+        expect(sql).not.toContain('LOWER(');
     });
 });

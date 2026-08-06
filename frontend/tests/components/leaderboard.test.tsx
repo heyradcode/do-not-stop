@@ -8,6 +8,9 @@ const useLeaderboard = vi.fn();
 const usePlayerLeaderboard = vi.fn();
 
 vi.mock('@shared/core', () => ({
+    // `@utils/address` normalizes through the protocol helper; the real one, since the
+    // EVM-folds/base58-doesn't rule is what several of these assertions are about.
+    normalizeAccount: (value: string) => (/^0x[0-9a-fA-F]{40}$/.test(value) ? value.toLowerCase() : value),
     useChainCapabilities: () => useChainCapabilities(),
     useLeaderboard: (opts: unknown) => useLeaderboard(opts),
     usePlayerLeaderboard: (opts: unknown) => usePlayerLeaderboard(opts),

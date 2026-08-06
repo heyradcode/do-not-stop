@@ -41,9 +41,9 @@ export async function getMessages(req: Request, res: Response): Promise<void> {
     }
 
     const threadId = req.params.id ?? '';
-    const auth = await authorizeThread(threadId, caller);
-    if (auth.denial) {
-        respondToDenial(res, auth.denial);
+    const denial = await authorizeThread(threadId, caller);
+    if (denial) {
+        respondToDenial(res, denial);
         return;
     }
 
@@ -71,9 +71,9 @@ export async function postMessage(req: Request, res: Response): Promise<void> {
     }
 
     const threadId = req.params.id ?? '';
-    const auth = await authorizeThread(threadId, caller);
-    if (auth.denial) {
-        respondToDenial(res, auth.denial);
+    const denial = await authorizeThread(threadId, caller);
+    if (denial) {
+        respondToDenial(res, denial);
         return;
     }
 

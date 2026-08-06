@@ -38,7 +38,7 @@ function req(over: Record<string, unknown> = {}): Request {
 
 beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(authorizeThread).mockResolvedValue({ denial: null, counterpart: '0xthem' });
+    vi.mocked(authorizeThread).mockResolvedValue(null);
 });
 
 describe('getThreads', () => {
@@ -64,7 +64,7 @@ describe('thread authorization', () => {
     // A non-participant must not be able to tell an existing thread id from a made-up
     // one; 403 here would confirm the id for anyone probing.
     it('answers 404, not 403, for a wallet that is not a participant', async () => {
-        vi.mocked(authorizeThread).mockResolvedValue({ denial: 'not-a-participant' });
+        vi.mocked(authorizeThread).mockResolvedValue('not-a-participant');
         const res = makeRes();
 
         await getMessages(req(), res);
@@ -74,7 +74,7 @@ describe('thread authorization', () => {
     });
 
     it('answers 404 for a thread that does not exist', async () => {
-        vi.mocked(authorizeThread).mockResolvedValue({ denial: 'not-found' });
+        vi.mocked(authorizeThread).mockResolvedValue('not-found');
         const res = makeRes();
 
         await getMessages(req(), res);
@@ -84,7 +84,7 @@ describe('thread authorization', () => {
 
     // A participant already knows the thread exists, so an ended marriage can say so.
     it('answers 403 with a reason when the marriage has ended', async () => {
-        vi.mocked(authorizeThread).mockResolvedValue({ denial: 'not-married' });
+        vi.mocked(authorizeThread).mockResolvedValue('not-married');
         const res = makeRes();
 
         await postMessage(req({ body: { text: 'hi' } }), res);
@@ -166,7 +166,7 @@ describe('postMessage', () => {
     });
 
     it('does not notify when the write was refused', async () => {
-        vi.mocked(authorizeThread).mockResolvedValue({ denial: 'not-married' });
+        vi.mocked(authorizeThread).mockResolvedValue('not-married');
 
         await postMessage(req({ body: { text: 'hello' } }), makeRes());
 

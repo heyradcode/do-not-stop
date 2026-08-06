@@ -14,6 +14,7 @@ const aliases = {
     '@pages': 'src/pages',
     '@router': 'src/router',
     '@styles': 'src/styles',
+    '@utils': 'src/utils',
 } as const;
 
 // https://vite.dev/config/

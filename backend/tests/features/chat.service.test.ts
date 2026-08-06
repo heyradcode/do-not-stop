@@ -3,11 +3,13 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 const findMarriedCounterparts = vi.fn();
 const openThread = vi.fn();
 const findThreadById = vi.fn();
+const isMarriedTo = vi.fn();
 
 vi.mock('@repositories/chat.repository', () => ({
     findMarriedCounterparts: (caller: string) => findMarriedCounterparts(caller),
     openThread: (x: string, y: string, scope: string) => openThread(x, y, scope),
     findThreadById: (id: string) => findThreadById(id),
+    isMarriedTo: (a: string, b: string) => isMarriedTo(a, b),
     findMessages: vi.fn(),
     insertMessage: vi.fn(),
 }));
@@ -29,11 +31,8 @@ const marriage = (over: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
     vi.clearAllMocks();
-    openThread.mockImplementation(async (x: string, y: string) => ({
-        id: `thread-${x}-${y}`,
-        counterpart: y,
-        createdAt: new Date(0),
-    }));
+    openThread.mockImplementation(async (x: string, y: string) => `thread-${x}-${y}`);
+    isMarriedTo.mockResolvedValue(true);
 });
 
 describe('listThreads', () => {
@@ -88,7 +87,8 @@ describe('authorizeThread', () => {
         findThreadById.mockResolvedValue(thread);
         findMarriedCounterparts.mockResolvedValue([marriage()]);
 
-        expect(await authorizeThread('t1', ME)).toEqual({ denial: null, counterpart: THEM });
+        expect(await authorizeThread('t1', ME)).toBeNull();
+        expect(isMarriedTo).toHaveBeenCalledWith(ME, THEM);
     });
 
     it('refuses a wallet that is not a participant', async () => {
@@ -96,32 +96,23 @@ describe('authorizeThread', () => {
 
         const result = await authorizeThread('t1', '0x9999999999999999999999999999999999999999');
 
-        expect(result.denial).toBe('not-a-participant');
+        expect(result).toBe('not-a-participant');
         // The marriage is not even consulted: not being in the thread settles it.
-        expect(findMarriedCounterparts).not.toHaveBeenCalled();
+        expect(isMarriedTo).not.toHaveBeenCalled();
     });
 
     // The point of checking live state per request instead of recording it on the
     // thread: a divorce closes the conversation with nothing to revoke.
     it('refuses a participant whose marriage has ended', async () => {
         findThreadById.mockResolvedValue(thread);
-        findMarriedCounterparts.mockResolvedValue([]);
+        isMarriedTo.mockResolvedValue(false);
 
-        expect((await authorizeThread('t1', ME)).denial).toBe('not-married');
-    });
-
-    it('refuses a participant now married to somebody else', async () => {
-        findThreadById.mockResolvedValue(thread);
-        findMarriedCounterparts.mockResolvedValue([
-            marriage({ counterpart: '0x3333333333333333333333333333333333333333' }),
-        ]);
-
-        expect((await authorizeThread('t1', ME)).denial).toBe('not-married');
+        expect(await authorizeThread('t1', ME)).toBe('not-married');
     });
 
     it('reports a missing thread', async () => {
         findThreadById.mockResolvedValue(null);
 
-        expect((await authorizeThread('nope', ME)).denial).toBe('not-found');
+        expect(await authorizeThread('nope', ME)).toBe('not-found');
     });
 });

@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '../../contexts/ApiClientContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useChatThreadSocket } from './useChatThreadSocket';
+import { useChatThreadSocket, type ChatThreadNotification } from './useChatThreadSocket';
 
 export interface ChatMessage {
     id: number;
@@ -69,24 +69,55 @@ export const useChatMessages = ({
         },
     });
 
+    // Rebuilds the key inside rather than closing over the outer array, whose identity
+    // changes every render — that is what previously needed an exhaustive-deps
+    // suppression, and a suppression here would be permanent: this callback is wired to
+    // the socket, the reconnect path and mutation success.
     const refresh = useCallback(() => {
-        void queryClient.invalidateQueries({ queryKey });
-        // `queryKey` is rebuilt each render; its contents are what identify the query.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        void queryClient.invalidateQueries({ queryKey: chatMessagesQueryKey(baseURL, threadId) });
     }, [queryClient, baseURL, threadId]);
+
+    // A frame naming a message already in the cache is the echo of our own send, which
+    // `onSuccess` has already applied — re-reading fifty messages to learn nothing.
+    const onNotification = useCallback(
+        (message: ChatThreadNotification) => {
+            const cached = queryClient.getQueryData<ChatMessage[]>(
+                chatMessagesQueryKey(baseURL, threadId),
+            );
+            if (cached?.some((entry) => entry.id === message.messageId)) return;
+            refresh();
+        },
+        [queryClient, baseURL, threadId, refresh],
+    );
 
     const { connected } = useChatThreadSocket({
         url: socketUrl,
         threadId,
-        onNotification: refresh,
+        onNotification,
         onReconnect: refresh,
     });
 
     const mutation = useMutation({
         mutationFn: async (text: string) => {
-            await apiClient.post(`/api/chat/threads/${threadId}/messages`, { text });
+            const { data } = await apiClient.post<{ message: ChatMessage }>(
+                `/api/chat/threads/${threadId}/messages`,
+                { text },
+            );
+            return data.message;
         },
-        onSuccess: refresh,
+        // Appends the row the server just confirmed rather than invalidating. This is not
+        // an optimistic update — the message exists — so the objection to optimism (a
+        // refused send must not look delivered) does not apply, and it saves a full page
+        // re-read per message sent.
+        onSuccess: (message) => {
+            queryClient.setQueryData<ChatMessage[]>(
+                chatMessagesQueryKey(baseURL, threadId),
+                (previous) =>
+                    previous?.some((entry) => entry.id === message.id)
+                        ? previous
+                        : [...(previous ?? []), message],
+            );
+        },
     });
 
     const send = useCallback(
