@@ -1,10 +1,17 @@
 /* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
    Private chat: thread rail plus one conversation, magenta accent to match marriage. */
+/* Fills the panel body instead of sizing to its content. Every ancestor from the app
+   shell down is already a flex column that owns the viewport height, so the conversation
+   should end at the bottom of the panel's padding rather than at a fixed height with
+   dead space beneath it. `min-height: 0` is what lets the transcript scroll inside
+   rather than pushing the composer past the bottom edge. */
 .layout {
     display: grid;
     grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
     gap: 14px;
-    align-items: start;
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
 }
 
 .threadList {
@@ -14,6 +21,10 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    /* Scrolls on its own so a long thread list cannot stretch the row and push the
+       conversation off the bottom. */
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .threadButton {
@@ -54,7 +65,7 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
-    height: 460px;
+    min-height: 0;
     border-radius: 10px;
     border: 1px solid rgb(148 163 184 / 14%);
     background: var(--cp-surface);
@@ -174,14 +185,18 @@
 }
 
 @media (width <= 720px) {
-    /* The rail becomes a strip above the conversation; two columns leave neither usable. */
+    /* The rail becomes a strip above the conversation; two columns leave neither usable.
+       Rows are declared so the conversation still takes the remaining height rather than
+       splitting it evenly with the strip. */
     .layout {
         grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
     }
 
     .threadList {
         flex-direction: row;
         overflow-x: auto;
+        overflow-y: visible;
     }
 
     .threadButton {

@@ -2,7 +2,9 @@ import { createServer, type Server } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 
-import { notifyChatThread, startChatSocket, stopChatSocket } from '@ws/chatSocket';
+import '@ws/battleRoomSocket'; // registers the other channel, as the real server does
+import { notifyChatThread } from '@ws/chatSocket';
+import { startWsChannels, stopWsChannels } from '@ws/channel';
 
 /**
  * Real server and real clients, because the property under test is delivery over the
@@ -16,7 +18,7 @@ let baseUrl: string;
 
 beforeEach(async () => {
     server = createServer();
-    startChatSocket(server);
+    startWsChannels(server);
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     if (address === null || typeof address === 'string') {
@@ -26,7 +28,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-    stopChatSocket();
+    stopWsChannels();
     await new Promise<void>((resolve) => server.close(() => resolve()));
 });
 
@@ -118,8 +120,17 @@ describe('thread scoping', () => {
 });
 
 describe('connection requirements', () => {
-    it('closes a connection that names no thread', async () => {
+    it('refuses a connection that names no thread', async () => {
+        // Refused at the upgrade, before a WebSocket exists, so this surfaces as a
+        // transport error rather than a close code. Failing here rather than accepting a
+        // subscriber to nothing is the point: the latter looks connected and never
+        // delivers.
         const socket = new WebSocket(baseUrl);
-        expect(await nextClose(socket)).toBe(1008);
+        const outcome = await new Promise<string>((resolve) => {
+            socket.once('open', () => resolve('open'));
+            socket.once('error', () => resolve('refused'));
+            socket.once('close', () => resolve('refused'));
+        });
+        expect(outcome).toBe('refused');
     });
 });
