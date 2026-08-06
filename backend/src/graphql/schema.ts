@@ -54,6 +54,38 @@ export const schema = buildSchema(`
         readyAt: Float!
     }
 
+    """
+    One ranked pet on the leaderboard.
+
+    The battle record is the merged one: pet_battle_progress where a pet has fought a
+    backend battle, the frozen pet_roster counters otherwise — the same rule every
+    other pet read here applies.
+    """
+    type LeaderboardEntry {
+        "1-based position in the full ranking, not within the page."
+        rank: Int!
+        "Pet id as a decimal string."
+        id: String!
+        chain: String!
+        owner: String!
+        name: String!
+        "On-chain DNA serialized as a decimal string."
+        dna: String!
+        level: Int!
+        rarity: Int!
+        winCount: Int!
+        lossCount: Int!
+        "Metaplex Core asset pubkey (Solana only); empty string on EVM."
+        asset: String!
+    }
+
+    type LeaderboardPage {
+        entries: [LeaderboardEntry!]!
+        total: Int!
+        page: Int!
+        pageSize: Int!
+    }
+
     type OpponentsPage {
         opponents: [OpponentPet!]!
         total: Int!
@@ -76,6 +108,17 @@ export const schema = buildSchema(`
             page: Int
             pageSize: Int
         ): OpponentsPage!
+
+        """
+        Pets ranked by battle record: wins descending, then losses ascending (the
+        win-rate tiebreak), then level, then pet id. Pets that have never fought are
+        omitted. Ranks are absolute, so page 2 continues where page 1 stopped.
+        """
+        leaderboard(
+            chain: String!
+            page: Int
+            pageSize: Int
+        ): LeaderboardPage!
 
         """
         Search pets by name prefix or exact numeric ID across the whole roster.

@@ -21,9 +21,9 @@ function fieldsOf(typeName: string): Record<string, { type: string }> {
 describe('GraphQL schema — Query surface', () => {
     const query = fieldsOf('Query');
 
-    it('exposes opponents, pet, searchPets, allPets, battleProgress, and winEstimate', () => {
+    it('exposes opponents, pet, searchPets, allPets, battleProgress, leaderboard, and winEstimate', () => {
         expect(Object.keys(query).sort()).toEqual([
-            'allPets', 'battleProgress', 'opponents', 'pet', 'searchPets', 'winEstimate',
+            'allPets', 'battleProgress', 'leaderboard', 'opponents', 'pet', 'searchPets', 'winEstimate',
         ]);
     });
 
@@ -43,6 +43,25 @@ describe('GraphQL schema — Query surface', () => {
 
     it('returns a nullable WinEstimate (null = odds unavailable)', () => {
         expect(query.winEstimate?.type).toBe('WinEstimate');
+    });
+
+    it('returns a non-null LeaderboardPage from leaderboard', () => {
+        expect(query.leaderboard?.type).toBe('LeaderboardPage!');
+    });
+});
+
+describe('GraphQL schema — LeaderboardEntry', () => {
+    const entry = fieldsOf('LeaderboardEntry');
+
+    it('carries the rank plus the fields a row displays', () => {
+        for (const f of ['rank', 'id', 'chain', 'owner', 'name', 'dna', 'level', 'rarity', 'winCount', 'lossCount', 'asset']) {
+            expect(entry, `missing field ${f}`).toHaveProperty(f);
+        }
+    });
+
+    it('types rank as Int and carries `asset` so Solana rows can address pet art', () => {
+        expect(entry.rank?.type).toBe('Int!');
+        expect(entry.asset?.type).toBe('String!');
     });
 });
 

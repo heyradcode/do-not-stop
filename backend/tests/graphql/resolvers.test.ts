@@ -7,6 +7,9 @@ vi.mock('@repositories/roster.repository', () => ({
 vi.mock('../../src/grpc/estimateWin', () => ({
     tryGrpcEstimateWin: vi.fn(),
 }));
+vi.mock('@repositories/leaderboard.repository', () => ({
+    findPetLeaderboard: vi.fn(),
+}));
 // The overlay's own merge rule is covered in repositories/battleProgress.overlay.test.ts;
 // here it is stubbed to a pass-through so these tests stay about resolver shaping.
 vi.mock('@repositories/battleProgress.overlay', () => ({
@@ -16,6 +19,7 @@ vi.mock('@repositories/battleProgress.overlay', () => ({
 
 import { rootValue } from '../../src/graphql/resolvers';
 import { findReadyOpponents, getPetById } from '@repositories/roster.repository';
+import { findPetLeaderboard } from '@repositories/leaderboard.repository';
 import { tryGrpcEstimateWin } from '../../src/grpc/estimateWin';
 
 const ctx = { caller: '0xcaller' };
@@ -56,6 +60,43 @@ describe('opponents resolver', () => {
         await rootValue.opponents({ chain: 'evm', pageSize: 999 }, ctx);
         const { pageSize } = vi.mocked(findReadyOpponents).mock.calls[0][0];
         expect(pageSize).toBe(50);
+    });
+});
+
+describe('leaderboard resolver', () => {
+    const entry = {
+        rank: 1,
+        chain: 'evm',
+        petId: '42',
+        owner: '0xowner',
+        name: 'Rex',
+        level: 5,
+        rarity: 1,
+        dna: '123',
+        winCount: 3,
+        lossCount: 1,
+        asset: '',
+    };
+
+    it('renames petId to id and passes the page through', async () => {
+        vi.mocked(findPetLeaderboard).mockResolvedValue({ entries: [entry], total: 1 });
+
+        const result = await rootValue.leaderboard({ chain: 'evm', page: 1 }, ctx);
+
+        expect(result.total).toBe(1);
+        expect(result.page).toBe(1);
+        expect(result.entries[0]).toMatchObject({ id: '42', rank: 1 });
+        expect(result.entries[0]).not.toHaveProperty('petId');
+    });
+
+    it('throws for an unsupported chain', async () => {
+        await expect(rootValue.leaderboard({ chain: 'tron' }, ctx)).rejects.toThrow('chain must be one of');
+    });
+
+    it('clamps pageSize to MAX_PAGE_SIZE=50', async () => {
+        vi.mocked(findPetLeaderboard).mockResolvedValue({ entries: [], total: 0 });
+        await rootValue.leaderboard({ chain: 'evm', pageSize: 999 }, ctx);
+        expect(vi.mocked(findPetLeaderboard).mock.calls[0][0].pageSize).toBe(50);
     });
 });
 

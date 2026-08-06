@@ -1,5 +1,6 @@
 import { findReadyOpponents, getAllPets, getPetById, searchPets, type RosterPet } from '@repositories/roster.repository';
 import { findBattleProgress, withBattleProgress } from '@repositories/battleProgress.overlay';
+import { findPetLeaderboard } from '@repositories/leaderboard.repository';
 import { tryGrpcEstimateWin } from '@grpc-client/estimateWin';
 import { isSupportedChain, SUPPORTED_CHAINS } from '@typings/chain';
 
@@ -13,6 +14,12 @@ const MAX_WIN_SAMPLES = 10_000;
 interface OpponentsArgs {
     chain: string;
     minLevel?: number | null;
+    page?: number | null;
+    pageSize?: number | null;
+}
+
+interface LeaderboardArgs {
+    chain: string;
     page?: number | null;
     pageSize?: number | null;
 }
@@ -88,6 +95,26 @@ export const rootValue = {
         // and orders on level and cooldown, so it merges progression in the query itself.
         return {
             opponents: rows.map(toOpponentPet),
+            total,
+            page,
+            pageSize,
+        };
+    },
+
+    leaderboard: async (args: LeaderboardArgs) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        const page = Math.max(0, args.page ?? 0);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, args.pageSize ?? DEFAULT_PAGE_SIZE));
+
+        // No overlay here, for the same reason as `opponents`: the ranking is the merge,
+        // so `findPetLeaderboard` does it in the query.
+        const { entries, total } = await findPetLeaderboard({ chain: args.chain, page, pageSize });
+
+        return {
+            entries: entries.map(({ petId: id, ...rest }) => ({ id, ...rest })),
             total,
             page,
             pageSize,
