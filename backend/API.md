@@ -316,6 +316,31 @@ switching the mode off stops new battles, it does not retract receipts already i
 | GET | `/api/battle/rulesets/:rulesetHash` | none | One ruleset's full bundle, for replaying against it. |
 | POST | `/api/battle/verify-receipt` | none | Body `{ receiptHash }`. Checks the stored signature against a published key and that the payload is well-formed — §A's "operator signature, verified against a published key" row, nothing more. It does **not** re-run the fight, check the drand BLS signature, or recompute progression; that is the standalone verifier's job (§H), which runs with no backend access so its answer cannot depend on this process telling the truth. Passing this check is necessary, not sufficient. |
 
+### Private chat (roadmap §2, v1)
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/chat/threads` | JWT | The caller's currently-usable threads, one per married counterpart, with the pet pairs behind each. Creates a thread on first listing — a married pair always ends up with exactly one, so an explicit open call would add a round trip and a null state that resolves one way. |
+| GET | `/api/chat/threads/:id/messages` | JWT | A page, oldest first within the page. `before=<messageId>` pages backwards (a chat is read from its end); `limit` defaults to 50, capped at 100. |
+| POST | `/api/chat/threads/:id/messages` | JWT | Body `{ text }`, trimmed, 1-2000 characters. The author is the session wallet; a `sender` in the body is ignored. |
+
+Access is **derived, never stored**: a thread answers only while the two wallets have a
+married pet pair in `pet_roster.spouse_id`, rechecked on every request. A divorce closes
+the conversation the moment the indexer sees it, with nothing to revoke. The thread row
+survives — deleting it would destroy the history — it just stops answering.
+
+Status codes carry a deliberate asymmetry. A non-participant gets **404**, the same as a
+thread that does not exist, because 403 would confirm the id to anyone probing. A
+participant whose marriage has ended gets **403** with a reason, since they already know
+the thread exists.
+
+**What v1 does not have**, each a product call flagged in the roadmap rather than an
+oversight: no block or report, no profanity filtering, no read receipts or presence, no
+edit or delete, and no retention policy. The abuse controls are a length cap and a rate
+limit (20 sends/min per wallet, 120 reads) — volume controls, not content ones. This is
+the first endpoint in the API that stores genuine user-authored text, which is what makes
+moderation a real question here and not elsewhere.
+
 ### Battle room WebSocket (v2)
 
 ```

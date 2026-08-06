@@ -146,6 +146,52 @@ model BattleConversation {
   @@map("battle_conversation")
 }
 
+/// A private thread between two wallets (roadmap §2 v1).
+///
+/// No `chain` column, deliberately: the relationship is between wallets, and a wallet
+/// address only exists on one chain anyway (0x-hex on EVM, base58 on Solana), so the
+/// pair is implicitly single-chain without saying so.
+///
+/// The marriage that grants access is NOT stored here. Access is checked against
+/// `pet_roster.spouse_id` every time the thread is read or written, the same
+/// "derive from indexed state, don't duplicate it" rule the roster reads follow. A
+/// copied `marriedPetIds` here would keep granting access after a divorce.
+///
+/// `participantA` is the lexicographically smaller address, which is what makes the
+/// unique constraint mean "one thread per pair" rather than "one per direction".
+model ChatThread {
+  id           String @id @default(cuid())
+  participantA String @map("participant_a")
+  participantB String @map("participant_b")
+  /// 'marriage' in v1. Present so a later 'direct' scope does not need a migration.
+  scope        String
+
+  createdAt DateTime      @default(now()) @map("created_at")
+  messages  ChatMessage[]
+
+  @@unique([participantA, participantB], name: "chat_thread_pair")
+  @@index([participantA])
+  @@index([participantB])
+  @@map("chat_thread")
+}
+
+/// One message. Unlike every other generated text in this schema, this is real
+/// user-authored content, which is what makes moderation a live product question
+/// rather than a prompt-layer one (roadmap §2).
+model ChatMessage {
+  id       Int        @id @default(autoincrement())
+  threadId String     @map("thread_id")
+  thread   ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  /// Wallet address of the author, normalized the way the JWT normalizes it.
+  sender   String
+  text     String
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([threadId, createdAt])
+  @@map("chat_message")
+}
+
 // ─── Backend-authoritative battles ────────────────────────────────────────────
 // Models for the design in docs/battle-protocol.md. The existing
 // pet_roster / battle_history tables stay exactly as they are: they are projections
