@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccount } from 'wagmi';
 
-import ConnectButton from './ConnectButton';
+import AccountSheet from './AccountSheet';
 import EthereumNetworkSwitcher from './EthereumNetworkSwitcher';
 import NetworkGate from './NetworkGate';
 import { neon, neonGlow } from '../theme/neon';
@@ -24,10 +24,12 @@ export default function AppHeader() {
     return (
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
             <Text style={styles.headerTitle}>Do Not Stop</Text>
-            <View style={styles.walletRow}>
-                {isConnected ? <EthereumNetworkSwitcher /> : null}
-                <ConnectButton compact />
-            </View>
+            {isConnected ? (
+                <View style={styles.walletRow}>
+                    <EthereumNetworkSwitcher />
+                    <AccountSheet />
+                </View>
+            ) : null}
             <NetworkGate />
         </View>
     );
