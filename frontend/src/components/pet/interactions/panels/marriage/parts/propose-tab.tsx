@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { type Pet, type PetChain } from '@shared/core';
 import { AuthActionButton } from '@components/common';
 import PetSearchDropdown from '@components/ui/pet-search-dropdown';
+import PetSelect from '@components/ui/pet-select';
 import OutgoingProposalRow from './outgoing-proposal-row';
 import styles from '../index.module.css';
 
@@ -27,6 +28,7 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
     onCancelProposal,
 }) => {
     const [myPet, setMyPet] = useState('');
+    const petOptions = useMemo(() => chainPets.map((p) => ({ id: p.id, pet: p })), [chainPets]);
     const [partnerId, setPartnerId] = useState('');
 
     const handlePropose = async () => {
@@ -46,14 +48,14 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
             <div className="picker">
                 <div className="field">
                     <label htmlFor="propose-my-pet">Your pet</label>
-                    <select id="propose-my-pet" value={myPet} onChange={(e) => setMyPet(e.target.value)}>
-                        <option value="">Select your pet...</option>
-                        {chainPets.map((p) => (
-                            <option key={p.id} value={p.id}>
-                                {p.name} (#{p.id})
-                            </option>
-                        ))}
-                    </select>
+                    <PetSelect
+                        id="propose-my-pet"
+                        pets={petOptions}
+                        value={myPet}
+                        onChange={setMyPet}
+                        placeholder="Select your pet..."
+                        disabled={busy || chainPets.length === 0}
+                    />
                 </div>
                 <div className="field">
                     <label htmlFor="propose-partner-pet">Partner&apos;s pet</label>

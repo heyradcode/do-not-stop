@@ -61,9 +61,22 @@ vi.mock('@shared/core', () => ({
     useMarriageInfo: () => marriageInfo,
     useApiClient: () => ({ defaults: { baseURL: '' }, post: vi.fn() }),
     useSpousePet: () => ({ name: undefined, level: undefined }),
+    useSearchPets: () => ({ results: [], isLoading: false, error: null, refetch: vi.fn() }),
+    getPetAvatar: () => '🐉',
+    // No art service in these tests: PetArt renders the emoji alone.
+    petArtUrl: () => null,
 }));
 
 import MarriagePanel from '@components/pet/interactions/panels/marriage';
+
+/**
+ * Picks one of the player's pets from `PetSelect`: a trigger plus a portalled listbox,
+ * so the options exist only once it is open and `selectOptions` does not apply.
+ */
+async function choosePet(name: string) {
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.click(await screen.findByRole('option', { name: new RegExp(name) }));
+}
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -86,11 +99,17 @@ describe('MarriagePanel', () => {
         expect(screen.getByText('Connect a wallet to use marriage.')).toBeInTheDocument();
     });
 
-    it('renders the propose tab with a pet select and partner search', () => {
+    it('renders the propose tab with a pet select and partner search', async () => {
         render(<MarriagePanel />);
         expect(screen.getByRole('combobox')).toBeInTheDocument();
         expect(screen.getByPlaceholderText('Search by name or ID…')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Send Proposal/ })).toBeInTheDocument();
+
+        // Each pet is shown, not just named: the art is how a player recognises which
+        // one they are marrying.
+        await userEvent.click(screen.getByRole('combobox'));
+        expect(await screen.findByRole('option', { name: /Rex/ })).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: /Blaze/ })).toBeInTheDocument();
     });
 
     it('disables Send Proposal when no pet or partner is selected', () => {
@@ -101,7 +120,7 @@ describe('MarriagePanel', () => {
     it('calls propose.mutateAsync and shows success when proposal is submitted', async () => {
         marriage.propose.mutateAsync.mockResolvedValue(undefined);
         render(<MarriagePanel />);
-        await userEvent.selectOptions(screen.getByRole('combobox'), '1');
+        await choosePet('Rex');
         await userEvent.type(screen.getByPlaceholderText('Search by name or ID…'), '5');
         await userEvent.click(screen.getByRole('button', { name: /Send Proposal/ }));
         expect(marriage.propose.mutateAsync).toHaveBeenCalledWith({ petIdA: '1', petIdB: '5' });
@@ -111,7 +130,7 @@ describe('MarriagePanel', () => {
     it('calls notifyError when mutateAsync throws', async () => {
         marriage.propose.mutateAsync.mockRejectedValue(new Error('revert'));
         render(<MarriagePanel />);
-        await userEvent.selectOptions(screen.getByRole('combobox'), '1');
+        await choosePet('Rex');
         await userEvent.type(screen.getByPlaceholderText('Search by name or ID…'), '5');
         await userEvent.click(screen.getByRole('button', { name: /Send Proposal/ }));
         await vi.waitFor(() => expect(mocks.notifyError).toHaveBeenCalled());
