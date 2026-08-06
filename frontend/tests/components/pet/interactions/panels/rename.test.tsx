@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const navigate = vi.fn();
@@ -19,11 +19,15 @@ const renamePet = {
 };
 let capturedOnSuccess: (() => void) | undefined;
 
+/** Unix seconds, well past any test run: marks a pet as still cooling down. */
+const FAR_FUTURE = 4_000_000_000;
+
+const defaultPets = () => [
+    { id: '1', name: 'Alpha', level: 2 },
+    { id: '2', name: 'Beta', level: 5 },
+];
 const petList = {
-    pets: [
-        { id: '1', name: 'Alpha', level: 2 },
-        { id: '2', name: 'Beta', level: 5 },
-    ],
+    pets: defaultPets() as { id: string; name: string; level: number; readyAt?: number }[],
     refetch: vi.fn(),
 };
 const capabilities = { renameMinLevel: 1, isConnected: true };
@@ -35,7 +39,11 @@ vi.mock('@shared/core', () => ({
     getPetClass: () => 'Warrior',
     getXpNumbers: () => ({ xpCurrent: 10, xpMax: 100 }),
     getXpPercent: () => 10,
-    getReadyPetsUnified: (pets: { id: string; level: number }[]) => pets.map((p) => ({ id: p.id, pet: p })),
+    // Mirrors the real filter, which drops pets whose cooldown has not elapsed.
+    getReadyPetsUnified: (pets: { id: string; level: number; readyAt?: number }[]) =>
+        pets
+            .filter((p) => (p.readyAt ?? 0) <= Date.now() / 1000)
+            .map((p) => ({ id: p.id, pet: p })),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
     useRenamePet: (opts: { onSuccess?: () => void }) => {
@@ -59,6 +67,7 @@ beforeEach(() => {
     vi.clearAllMocks();
     capabilities.renameMinLevel = 1;
     renamePet.isPending = false;
+    petList.pets = defaultPets();
 });
 
 describe('RenamePanel', () => {
@@ -81,12 +90,39 @@ describe('RenamePanel', () => {
         expect(await screen.findByRole('option', { name: /Beta/ })).toBeInTheDocument();
     });
 
-    it('names the level requirement when it rules every pet out', () => {
+    // The standalone page shows no subtitle, so without this the control is simply
+    // empty and disabled with nothing saying why.
+    it('says why the pet list is empty, per cause', () => {
         capabilities.renameMinLevel = 9;
-        render(<RenamePanel />);
-
-        expect(screen.getByText('No pets at level 9+')).toBeInTheDocument();
+        const { rerender } = render(<RenamePanel />);
+        expect(
+            screen.getByText('Renaming needs a level 9 pet. Level one up first.'),
+        ).toBeInTheDocument();
         expect(screen.getByRole('combobox')).toBeDisabled();
+
+        capabilities.renameMinLevel = 1;
+        petList.pets = [];
+        rerender(<RenamePanel />);
+        expect(screen.getByText('You have no pets yet.')).toBeInTheDocument();
+
+        petList.pets = [{ id: '1', name: 'Alpha', level: 2, readyAt: FAR_FUTURE }];
+        rerender(<RenamePanel />);
+        expect(screen.getByText('Every pet is still on cooldown.')).toBeInTheDocument();
+    });
+
+    // The slot has to be occupied before a pet is chosen, or picking one grows the
+    // panel and everything under it jumps.
+    it('holds the pet slot with a placeholder before a pet is chosen', async () => {
+        const { container } = render(<RenamePanel />);
+        const slot = () => container.querySelector('.interaction-visual');
+        expect(slot()).not.toBeNull();
+        expect(within(slot() as HTMLElement).getByText('?')).toBeInTheDocument();
+
+        await choosePet('Alpha');
+        // Same slot, real pet in it: the name also shows on the dropdown trigger, so
+        // this asks the slot specifically.
+        expect(within(slot() as HTMLElement).queryByText('?')).toBeNull();
+        expect(within(slot() as HTMLElement).getByText('Alpha')).toBeInTheDocument();
     });
 
     it('keeps the submit button disabled until a pet and name are provided', async () => {

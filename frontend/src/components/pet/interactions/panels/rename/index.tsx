@@ -62,6 +62,21 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
         [readyPets, renameMinLevel],
     );
 
+    /**
+     * Why the pet list is empty, said out loud.
+     *
+     * The standalone page renders no subtitle, so the level floor (2 on EVM, 1 on
+     * Solana) was never stated anywhere: a player whose only pet is a level-1 starter
+     * met an empty control and nothing explaining it. Each cause reads differently
+     * because each has a different fix.
+     */
+    const emptyReason =
+        pets.length === 0
+            ? 'You have no pets yet.'
+            : readyPets.length === 0
+            ? 'Every pet is still on cooldown.'
+            : `Renaming needs a level ${renameMinLevel} pet. Level one up first.`;
+
     const selectedPetObj = selectablePets.find(({ id }) => id === selectedPet)?.pet ?? null;
     const previewName = newName.trim() || selectedPetObj?.name || 'New Name';
     const meetsMin = newName.trim().length >= 2;
@@ -103,22 +118,49 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                     </>
                 )}
 
-                {selectedPetObj && (
-                    <PetShowcase avatar={<PetArt pet={selectedPetObj} />} accent="cyan">
-                        <div className={styles.preview}>{previewName}</div>
-                        <div className={styles.sub}>
-                            {getPetClass(selectedPetObj.dna)} · Lv.{selectedPetObj.level}
-                        </div>
-                        <div className={styles.reqs}>
-                            <div className={meetsMin ? styles.isOk : styles.isPending}>
-                                {meetsMin ? '✓' : '○'} Min 2 characters
+                {/* The slot is always rendered, with a placeholder standing in before a
+                    pet is chosen, so picking one swaps content into a box that is
+                    already the right size and nothing on the panel shifts. */}
+                <div className="interaction-visual">
+                    {!selectedPetObj && (
+                        // Built from the same classes as the filled state rather than
+                        // its own skeleton layout, so the two are the same height by
+                        // construction instead of by hand-matched numbers that drift.
+                        <PetShowcase
+                            avatar={<span className="pet-slot-glyph">?</span>}
+                            accent="cyan"
+                        >
+                            <div className={styles.preview}>
+                                <span className="skeleton-bar wide" />
                             </div>
-                            <div className={styles.isOk}>
-                                ✓ Max {MAX_NAME_LEN} characters ({newName.length})
+                            <div className={styles.sub}>
+                                <span className="skeleton-bar narrow" />
                             </div>
-                        </div>
-                    </PetShowcase>
-                )}
+                            <div className={styles.reqs}>
+                                <div className={styles.isPending}>○ Min 2 characters</div>
+                                <div className={styles.isPending}>
+                                    ○ Max {MAX_NAME_LEN} characters
+                                </div>
+                            </div>
+                        </PetShowcase>
+                    )}
+                    {selectedPetObj && (
+                        <PetShowcase avatar={<PetArt pet={selectedPetObj} />} accent="cyan">
+                            <div className={styles.preview}>{previewName}</div>
+                            <div className={styles.sub}>
+                                {getPetClass(selectedPetObj.dna)} · Lv.{selectedPetObj.level}
+                            </div>
+                            <div className={styles.reqs}>
+                                <div className={meetsMin ? styles.isOk : styles.isPending}>
+                                    {meetsMin ? '✓' : '○'} Min 2 characters
+                                </div>
+                                <div className={styles.isOk}>
+                                    ✓ Max {MAX_NAME_LEN} characters ({newName.length})
+                                </div>
+                            </div>
+                        </PetShowcase>
+                    )}
+                </div>
 
                 <div className="picker">
                     <div className="field">
@@ -128,13 +170,12 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                             pets={selectablePets}
                             value={selectedPet}
                             onChange={setSelectedPet}
-                            placeholder={
-                                selectablePets.length === 0 && renameMinLevel > 1
-                                    ? `No pets at level ${renameMinLevel}+`
-                                    : 'Select pet...'
-                            }
+                            placeholder="Select pet..."
                             disabled={selectablePets.length === 0}
                         />
+                        {selectablePets.length === 0 && (
+                            <p className={styles.emptyNote}>{emptyReason}</p>
+                        )}
                     </div>
 
                     <div className="field">

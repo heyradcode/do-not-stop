@@ -68,6 +68,16 @@
                 color: rgb(125 214 255 / 65%);
             }
 
+            /* One height for every control in a field row. 48px is what PetSelect's
+               trigger measures: its 34px art plus 6px padding and the border outgrow the
+               46px min-height it asks for, and the rename panel puts a text field
+               directly beside one. */
+            select,
+            input:not(.psd-input) {
+                box-sizing: border-box;
+                min-height: 48px;
+            }
+
             select {
                 appearance: none;
                 -webkit-appearance: none;
