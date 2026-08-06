@@ -1,0 +1,191 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+   Private chat: thread rail plus one conversation, magenta accent to match marriage. */
+.layout {
+    display: grid;
+    grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+}
+
+.threadList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.threadButton {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgb(148 163 184 / 14%);
+    background: var(--cp-surface);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.threadButton.isActive {
+    border-color: rgb(255 123 203 / 55%);
+    background: rgb(255 123 203 / 8%);
+}
+
+.threadName {
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.threadSub,
+.conversationSub {
+    font-size: 0.75rem;
+    opacity: 0.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conversation {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 460px;
+    border-radius: 10px;
+    border: 1px solid rgb(148 163 184 / 14%);
+    background: var(--cp-surface);
+}
+
+.conversationHeader {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgb(148 163 184 / 12%);
+}
+
+.conversationTitle {
+    font-size: 0.95rem;
+}
+
+/* Stated plainly rather than blocking the composer: sending still works while the
+   notification channel is down, it just will not update on its own. */
+.offline {
+    margin-left: auto;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.5;
+}
+
+.messages {
+    list-style: none;
+    margin: 0;
+    padding: 12px 14px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.message {
+    max-width: 78%;
+    align-self: flex-start;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 7px 11px;
+    border-radius: 12px;
+    background: rgb(148 163 184 / 12%);
+}
+
+.message.isMine {
+    align-self: flex-end;
+    background: rgb(255 123 203 / 16%);
+}
+
+.messageText {
+    /* User-authored text: wrap anywhere rather than let one long token stretch the row. */
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.9rem;
+}
+
+.messageTime {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    opacity: 0.5;
+    font-variant-numeric: tabular-nums;
+}
+
+.composer {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid rgb(148 163 184 / 12%);
+}
+
+.composer input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgb(148 163 184 / 22%);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9rem;
+}
+
+.composer button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid rgb(255 123 203 / 45%);
+    background: rgb(255 123 203 / 12%);
+    color: inherit;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.composer button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.empty,
+.error {
+    margin: 20px 14px;
+    font-size: 0.9rem;
+}
+
+.empty {
+    opacity: 0.7;
+}
+
+.error {
+    color: rgb(251 113 133);
+}
+
+@media (width <= 720px) {
+    /* The rail becomes a strip above the conversation; two columns leave neither usable. */
+    .layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .threadList {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+
+    .threadButton {
+        width: auto;
+        flex-shrink: 0;
+    }
+}

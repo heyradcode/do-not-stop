@@ -72,6 +72,27 @@ export {
     type UsePlayerLeaderboardResult,
 } from './leaderboard/usePlayerLeaderboard';
 export { usePlayerRank, type UsePlayerRankResult } from './leaderboard/usePlayerRank';
+// Private chat (roadmap §2 v1). Access is decided server-side from live marriage state;
+// these hooks render what they are given and never gate anything themselves.
+export {
+    useChatThreads,
+    chatThreadsQueryKey,
+    type ChatThread,
+    type ChatThreadPets,
+    type UseChatThreadsResult,
+} from './chat/useChatThreads';
+export {
+    useChatMessages,
+    chatMessagesQueryKey,
+    type ChatMessage,
+    type UseChatMessagesOptions,
+    type UseChatMessagesResult,
+} from './chat/useChatMessages';
+export {
+    useChatThreadSocket,
+    type ChatThreadNotification,
+    type UseChatThreadSocketOptions,
+} from './chat/useChatThreadSocket';
 export {
     useBattleDialogue,
     type UseBattleDialogueOptions,

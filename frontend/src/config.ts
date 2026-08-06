@@ -15,6 +15,14 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
  */
 export const BATTLE_ROOM_WS_URL = `${API_URL.replace(/^http/, 'ws')}/ws/battle-room`;
 
+/**
+ * Per-thread notification channel for private chat (roadmap §2).
+ *
+ * Carries no message text, only "this thread changed" — the authenticated read is what
+ * returns messages, so an unreachable socket costs liveness, never access.
+ */
+export const CHAT_WS_URL = `${API_URL.replace(/^http/, 'ws')}/ws/chat`;
+
 const AUTH_TOKEN_KEY = 'authToken';
 
 // localStorage-backed token persistence — the single source of truth for the key.

@@ -5,6 +5,7 @@ import {
     DASHBOARD_HOME,
     LEADERBOARD_PATH,
     LEVELUP_PATH,
+    MESSAGES_PATH,
     MARRIAGE_PATH,
     RENAME_PATH,
     TRAIN_PATH,
@@ -50,6 +51,15 @@ export const NAV_ITEMS: readonly NavItem[] = [
     { id: 'shard', label: 'Shard Forge', iconSrc: shardIcon, tone: 'cyan', deferred: true },
     { id: 'marriage', label: 'Marriage', iconSrc: marriageIcon, tone: 'magenta', path: MARRIAGE_PATH },
     { id: 'rename', label: 'Rename Pet', iconSrc: renameIcon, tone: 'cyan', path: RENAME_PATH },
+    {
+        id: 'messages',
+        label: 'Messages',
+        // Reuses the marriage icon rather than inventing one: in v1 a thread exists
+        // only because two pets are married, so it is the same relationship.
+        iconSrc: marriageIcon,
+        tone: 'magenta',
+        path: MESSAGES_PATH,
+    },
     {
         id: 'leaderboard',
         label: 'Leaderboard',
