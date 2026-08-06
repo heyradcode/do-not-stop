@@ -54,7 +54,8 @@ export const useMarriagePanel = (): UseMarriagePanel => {
     );
     const chainPetIds = useMemo(() => chainPets.map((p) => p.id), [chainPets]);
 
-    // All pets on this chain — used for spouse name lookup in marriage cards.
+    // All pets on this chain — the only place a counterpart's full record (dna, and so
+    // its art) can be resolved from an id, for marriage cards and both proposal rows.
     const { pets: allRosterPets } = useAllPets(activeKind);
     const petById = useMemo<Map<string, OpponentPet>>(
         () => new Map(allRosterPets.map((p) => [p.id, p])),
@@ -130,6 +131,7 @@ export const useMarriagePanel = (): UseMarriagePanel => {
             walletAddress,
             busy,
             isProposing: marriage.propose.isPending,
+            petById,
             onPropose: handlePropose,
             onCancelProposal: handleCancel,
         },
@@ -137,6 +139,7 @@ export const useMarriagePanel = (): UseMarriagePanel => {
             proposals: incomingProposals,
             isLoading: incomingLoading,
             busy,
+            petById,
             targetPetName,
             onAccept: onOpenAccept,
         },

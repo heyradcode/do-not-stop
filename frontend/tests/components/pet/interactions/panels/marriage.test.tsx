@@ -41,6 +41,9 @@ const petList = {
     pets: [{ id: '1', name: 'Rex', chain: 'evm' }, { id: '2', name: 'Blaze', chain: 'evm' }] as { id: string; name: string; chain: string }[],
     refetch: vi.fn(),
 };
+/** The chain roster behind `useAllPets`: every pet on chain, counterparts included. */
+let rosterPets: { id: string; name: string; chain: string; dna?: bigint }[] = [];
+
 const marriageInfo = { isMarried: false, hasProposal: false, spouseId: undefined as string | undefined, proposer: undefined as string | undefined, proposalPetIdB: undefined as string | undefined, proposalExpiry: undefined as bigint | undefined };
 let incomingProposals: { proposerPetId: string; proposerPetName: string; proposerOwner: string; targetPetId: string; expiry: number }[] = [];
 
@@ -55,7 +58,7 @@ vi.mock('@shared/core', () => ({
     useAuth: () => ({ isAuthenticated: true, isSigning: false, isVerifying: false, isNonceLoading: false, signAndLogin: vi.fn() }),
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
-    useAllPets: () => ({ pets: petList.pets }),
+    useAllPets: () => ({ pets: rosterPets }),
     useIncomingProposals: () => ({ proposals: incomingProposals, isLoading: false }),
     useMarriage: () => marriage,
     useMarriageInfo: () => marriageInfo,
@@ -90,6 +93,10 @@ beforeEach(() => {
     petList.pets = [{ id: '1', name: 'Rex', chain: 'evm' }, { id: '2', name: 'Blaze', chain: 'evm' }];
     Object.assign(marriageInfo, { isMarried: false, hasProposal: false, spouseId: undefined, proposer: undefined, proposalPetIdB: undefined, proposalExpiry: undefined });
     incomingProposals = [];
+    rosterPets = [
+        ...petList.pets,
+        { id: '3', name: 'Tiger', chain: 'evm', dna: 3n },
+    ];
 });
 
 describe('MarriagePanel', () => {
@@ -135,6 +142,42 @@ describe('MarriagePanel', () => {
         await userEvent.click(screen.getByRole('button', { name: /Send Proposal/ }));
         await vi.waitFor(() => expect(mocks.notifyError).toHaveBeenCalled());
         expect(mocks.notifyError).toHaveBeenCalledWith('Marriage action failed', expect.any(Error), 'marriage');
+    });
+
+    // The proposal rows identify pets the reader may not own, so the art comes from the
+    // chain roster rather than from the proposal itself.
+    it('shows both pets in an incoming proposal, art included', async () => {
+        incomingProposals = [{
+            proposerPetId: '3',
+            proposerPetName: 'Tiger',
+            proposerOwner: '0xother',
+            targetPetId: '1',
+            expiry: Math.floor(Date.now() / 1000) + 3600,
+        }];
+        const { container } = render(<MarriagePanel />);
+        await userEvent.click(screen.getByRole('button', { name: /💒 Accept/ }));
+
+        expect(screen.getByText(/Tiger/)).toBeInTheDocument();
+        expect(screen.getByText(/your Rex/)).toBeInTheDocument();
+        // One frame per side, both resolved through the roster.
+        expect(container.querySelectorAll('.proposalArt')).toHaveLength(2);
+    });
+
+    it('leaves out the art for a counterpart the roster has not resolved', async () => {
+        incomingProposals = [{
+            proposerPetId: '99',
+            proposerPetName: 'Ghost',
+            proposerOwner: '0xother',
+            targetPetId: '1',
+            expiry: Math.floor(Date.now() / 1000) + 3600,
+        }];
+        const { container } = render(<MarriagePanel />);
+        await userEvent.click(screen.getByRole('button', { name: /💒 Accept/ }));
+
+        // Still named and numbered — the row degrades to what it rendered before.
+        expect(screen.getByText(/Ghost/)).toBeInTheDocument();
+        expect(screen.getByText('#99')).toBeInTheDocument();
+        expect(container.querySelectorAll('.proposalArt')).toHaveLength(1);
     });
 
     it('shows Divorce button for each married pet', () => {

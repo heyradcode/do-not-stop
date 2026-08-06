@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { type Pet, type PetChain } from '@shared/core';
+import { type OpponentPet, type Pet, type PetChain } from '@shared/core';
 import { AuthActionButton } from '@components/common';
 import PetSearchDropdown from '@components/ui/pet-search-dropdown';
 import PetSelect from '@components/ui/pet-select';
@@ -12,6 +12,8 @@ export type ProposeTabProps = {
     walletAddress: string | null;
     busy: boolean;
     isProposing: boolean;
+    /** Every pet on this chain, for resolving a proposal's counterpart to its art. */
+    petById: Map<string, OpponentPet>;
     /** Resolves true on success so the form can reset itself. */
     onPropose: (petIdA: string, petIdB: string) => Promise<boolean>;
     onCancelProposal: (petId: string) => void;
@@ -24,6 +26,7 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
     walletAddress,
     busy,
     isProposing,
+    petById,
     onPropose,
     onCancelProposal,
 }) => {
@@ -88,6 +91,7 @@ const ProposeTab: React.FC<ProposeTabProps> = ({
                                 key={p.id}
                                 pet={p}
                                 walletAddress={walletAddress}
+                                petById={petById}
                                 busy={busy}
                                 onCancel={onCancelProposal}
                             />
