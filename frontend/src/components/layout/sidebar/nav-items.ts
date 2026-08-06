@@ -19,6 +19,7 @@ import itemsIcon from '@assets/nav-icons/items.svg';
 import shardIcon from '@assets/nav-icons/shard.svg';
 import marriageIcon from '@assets/nav-icons/marriage.svg';
 import renameIcon from '@assets/nav-icons/rename.svg';
+import messagesIcon from '@assets/nav-icons/messages.svg';
 import leaderboardIcon from '@assets/nav-icons/leaderboard.svg';
 
 export type NavItem = {
@@ -54,9 +55,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     {
         id: 'messages',
         label: 'Messages',
-        // Reuses the marriage icon rather than inventing one: in v1 a thread exists
-        // only because two pets are married, so it is the same relationship.
-        iconSrc: marriageIcon,
+        iconSrc: messagesIcon,
         tone: 'magenta',
         path: MESSAGES_PATH,
     },
