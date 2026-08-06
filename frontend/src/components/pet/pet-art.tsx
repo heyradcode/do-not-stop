@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getPetAvatar, petArtUrl as buildPetArtUrl, type Pet } from '@shared/core';
 
+import styles from './pet-art.module.css';
+
 /**
  * A pet's generated art, falling back to its emoji avatar.
  *
@@ -10,9 +12,13 @@ import { getPetAvatar, petArtUrl as buildPetArtUrl, type Pet } from '@shared/cor
  * can resolve, and the image actually loads. Any of those failing leaves the UI
  * exactly as it was rather than showing a broken frame.
  *
- * The emoji also covers the first-ever request for a pet, which is slow: art is
- * generated on demand and the response can take seconds. Showing the emoji until
- * the image arrives beats an empty box.
+ * While art is *on its way*, a spinner holds the space rather than the emoji. The
+ * two cases look the same to a viewer but are not: an emoji is a final answer for
+ * a pet with no art, whereas a pet whose first-ever request is still generating —
+ * which takes seconds — has art coming. Showing the emoji there presented a
+ * placeholder as the finished thing and then swapped it out under the reader.
+ * The emoji still covers every case where nothing is coming: no service
+ * configured, no identifier to resolve, or the image gave up after its retry.
  *
  * Sizing is inherited, not declared: the image is 1em square, so it matches
  * whatever font-size the surrounding avatar style already sets, and no CSS
@@ -96,7 +102,15 @@ const PetArt: React.FC<PetArtProps> = ({ pet, fill = false, emojiClassName }) =>
 
     if (!url || failed) return <>{emojiNode}</>;
 
-    // The emoji and the image share one grid cell, so they stack without a
+    // Deliberately not given `emojiClassName`: that class carries glyph decoration
+    // (size, glow, float) meant for text, and a spinner wearing it reads as a bug.
+    const pending = (
+        <span style={{ gridArea: '1 / 1' }} aria-hidden>
+            <span className={styles.spinner} />
+        </span>
+    );
+
+    // The placeholder and the image share one grid cell, so they stack without a
     // wrapper that reserves its own space, and swapping them causes no layout
     // shift. The image is hidden with opacity rather than `display: none`
     // specifically because it must keep a layout box: `loading="lazy"` defers
@@ -104,7 +118,7 @@ const PetArt: React.FC<PetArtProps> = ({ pet, fill = false, emojiClassName }) =>
     // nothing to intersect, so hiding it that way risks never loading it at all.
     return (
         <span style={{ display: 'grid', placeItems: 'center', lineHeight: 1 }}>
-            {loaded ? null : <span style={{ gridArea: '1 / 1' }}>{emojiNode}</span>}
+            {loaded ? null : pending}
             <img
                 // Remounts for the retry: reusing the element with an unchanged
                 // src would not refetch. The 503 is sent no-store, so the browser

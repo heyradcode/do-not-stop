@@ -66,18 +66,29 @@ describe('PetArt', () => {
         expect(screen.queryByRole('img')).toBeNull();
     });
 
-    // Art is generated on demand, so the first request for a pet can take
-    // seconds. The emoji covers that rather than leaving an empty frame.
-    it('keeps showing the emoji until the image has loaded', async () => {
+    // Art is generated on demand, so the first request for a pet can take seconds. A
+    // spinner holds the frame for that wait rather than the emoji: the emoji is the
+    // final answer for a pet with no art, and showing it here presented a placeholder
+    // as the finished thing and then swapped it under the reader.
+    it('shows a spinner, not the emoji, until the image has loaded', async () => {
         const PetArt = await loadPetArt();
-        render(<PetArt pet={pet()} />);
+        const { container } = render(<PetArt pet={pet()} />);
 
-        expect(screen.getByText('🦉')).toBeInTheDocument();
+        expect(container.querySelector('[class*="spinner"]')).not.toBeNull();
+        expect(screen.queryByText('🦉')).toBeNull();
         expect(screen.getByRole('img')).toHaveStyle({ opacity: '0' });
 
         fireEvent.load(screen.getByRole('img'));
-        expect(screen.queryByText('🦉')).toBeNull();
+        expect(container.querySelector('[class*="spinner"]')).toBeNull();
         expect(screen.getByRole('img')).toHaveStyle({ opacity: '1' });
+    });
+
+    // The spinner is scenery, and the image already carries the pet's name as alt text.
+    it('hides the spinner from assistive technology', async () => {
+        const PetArt = await loadPetArt();
+        const { container } = render(<PetArt pet={pet()} />);
+
+        expect(container.querySelector('[class*="spinner"]')?.closest('[aria-hidden]')).not.toBeNull();
     });
 
     // loading="lazy" defers until the element nears the viewport, so the image
@@ -174,11 +185,36 @@ describe('PetArt', () => {
             // absolutely positioned descendants, so wrapping PetArt in it
             // trapped the filling image at emoji size and the art never reached
             // the frame. The class has to land on the glyph.
-            const PetArt = await loadPetArt();
-            render(<PetArt pet={pet()} fill emojiClassName="avatar-cls" />);
+            //
+            // Checked on the failed path, because that is when the emoji renders now.
+            vi.useFakeTimers();
+            try {
+                const PetArt = await loadPetArt();
+                const { container } = render(
+                    <PetArt pet={pet()} fill emojiClassName="avatar-cls" />,
+                );
 
-            expect(screen.getByText('🦉')).toHaveClass('avatar-cls');
-            expect(screen.getByRole('img').closest('.avatar-cls')).toBeNull();
+                fireEvent.error(screen.getByRole('img'));
+                act(() => { vi.advanceTimersByTime(30_000); });
+                fireEvent.error(screen.getByRole('img'));
+
+                expect(screen.getByText('🦉')).toHaveClass('avatar-cls');
+                expect(container.querySelector('.avatar-cls img')).toBeNull();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('does not put the caller glyph class on the loading spinner', async () => {
+            // That class carries glyph decoration (size, glow, float); a spinner
+            // wearing it reads as a rendering bug rather than as progress.
+            const PetArt = await loadPetArt();
+            const { container } = render(
+                <PetArt pet={pet()} fill emojiClassName="avatar-cls" />,
+            );
+
+            expect(container.querySelector('.avatar-cls')).toBeNull();
+            expect(container.querySelector('[class*="spinner"]')).not.toBeNull();
         });
 
         it('still falls back to the emoji when filling and the image fails', async () => {
