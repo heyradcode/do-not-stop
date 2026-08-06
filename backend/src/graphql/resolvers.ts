@@ -1,6 +1,10 @@
 import { findReadyOpponents, getAllPets, getPetById, searchPets, type RosterPet } from '@repositories/roster.repository';
 import { findBattleProgress, withBattleProgress } from '@repositories/battleProgress.overlay';
-import { findPetLeaderboard, findPlayerLeaderboard } from '@repositories/leaderboard.repository';
+import {
+    findPetLeaderboard,
+    findPlayerLeaderboard,
+    findPlayerRank,
+} from '@repositories/leaderboard.repository';
 import { tryGrpcEstimateWin } from '@grpc-client/estimateWin';
 import { isSupportedChain, SUPPORTED_CHAINS } from '@typings/chain';
 
@@ -131,6 +135,16 @@ export const rootValue = {
         const { entries, total } = await findPlayerLeaderboard({ chain: args.chain, page, pageSize });
 
         return { entries, total, page, pageSize };
+    },
+
+    playerRank: async (args: { chain: string }, context: GraphQLContext) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        // The session address, already normalized the way the board groups owners. An
+        // unauthenticated caller has no standing to report rather than an error.
+        return findPlayerRank(args.chain, context.caller);
     },
 
     searchPets: async (args: SearchPetsArgs) => {

@@ -24,7 +24,7 @@ describe('GraphQL schema — Query surface', () => {
     it('exposes the pet reads, both leaderboards, battleProgress, and winEstimate', () => {
         expect(Object.keys(query).sort()).toEqual([
             'allPets', 'battleProgress', 'leaderboard', 'opponents', 'pet', 'playerLeaderboard',
-            'searchPets', 'winEstimate',
+            'playerRank', 'searchPets', 'winEstimate',
         ]);
     });
 
@@ -52,6 +52,15 @@ describe('GraphQL schema — Query surface', () => {
 
     it('returns a non-null PlayerLeaderboardPage from playerLeaderboard', () => {
         expect(query.playerLeaderboard?.type).toBe('PlayerLeaderboardPage!');
+    });
+
+    it('returns a nullable PlayerLeaderboardEntry from playerRank (null = unranked)', () => {
+        expect(query.playerRank?.type).toBe('PlayerLeaderboardEntry');
+    });
+
+    it('takes no owner argument on playerRank — the session decides whose rank it is', () => {
+        const args = (schema.getQueryType()?.getFields().playerRank?.args ?? []).map((a) => a.name);
+        expect(args).toEqual(['chain']);
     });
 });
 

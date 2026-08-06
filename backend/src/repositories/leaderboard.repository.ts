@@ -236,6 +236,77 @@ async function queryPlayersMerged(
     return { rows, total: Number(counted[0]?.total ?? 0) };
 }
 
+/**
+ * One owner's own standing, or null when they hold no pet that has fought.
+ *
+ * Exists so a player can be told their rank without the client paging the board looking
+ * for itself, which costs one request per page and gets worse as the game grows.
+ *
+ * `ROW_NUMBER` over the same ORDER BY the paged query uses, so the number here is the
+ * number that row would carry on its page — the page arithmetic (`offset + index + 1`)
+ * is the same function. Ties cannot diverge either, since the owner key makes the
+ * ordering strict.
+ *
+ * `owner` must already be normalized the way the JWT normalizes it (EVM lowercased,
+ * Solana base58 as-is), which is exactly how `ownerKey` groups. An unnormalized EVM
+ * address matches nothing and reads as "unranked", which is why the caller passes the
+ * authenticated address rather than anything user-supplied.
+ */
+export async function findPlayerRank(
+    chain: Chain,
+    owner: string
+): Promise<PlayerLeaderboardEntry | null> {
+    if (!owner) {
+        return null;
+    }
+
+    const chainId = servedChainIdForFamily(chain);
+    const key = ownerKey(chain);
+
+    // The two branches differ only in whether progression is joined, matching the two
+    // paged queries above.
+    const ranked = chainId
+        ? Prisma.sql`
+            SELECT ${key} AS owner,
+                   SUM(COALESCE(p.win_count, r.win_count))::int AS "winCount",
+                   SUM(COALESCE(p.loss_count, r.loss_count))::int AS "lossCount",
+                   COUNT(*)::int AS "petCount",
+                   ROW_NUMBER() OVER (
+                       ORDER BY SUM(COALESCE(p.win_count, r.win_count)) DESC,
+                                SUM(COALESCE(p.loss_count, r.loss_count)) ASC,
+                                ${key} ASC
+                   )::int AS rank
+            FROM pet_roster r
+            LEFT JOIN pet_battle_progress p
+                ON p.pet_id = r.pet_id
+               AND p.chain_id = ${chainId}
+               AND p.deployment_id = ${servedDeploymentId()}
+            WHERE r.chain = ${chain}
+              AND COALESCE(p.win_count, r.win_count) + COALESCE(p.loss_count, r.loss_count) > 0
+            GROUP BY ${key}
+        `
+        : Prisma.sql`
+            SELECT ${key} AS owner,
+                   SUM(r.win_count)::int AS "winCount",
+                   SUM(r.loss_count)::int AS "lossCount",
+                   COUNT(*)::int AS "petCount",
+                   ROW_NUMBER() OVER (
+                       ORDER BY SUM(r.win_count) DESC, SUM(r.loss_count) ASC, ${key} ASC
+                   )::int AS rank
+            FROM pet_roster r
+            WHERE r.chain = ${chain} AND r.win_count + r.loss_count > 0
+            GROUP BY ${key}
+        `;
+
+    const rows = await prisma.$queryRaw<PlayerLeaderboardEntry[]>`
+        SELECT owner, "winCount", "lossCount", "petCount", rank
+        FROM (${ranked}) ranked
+        WHERE owner = ${owner}
+    `;
+
+    return rows[0] ?? null;
+}
+
 /** The same aggregate without progression, for a chain family this deployment does not serve. */
 async function queryPlayersFromChainState(
     params: FindLeaderboardParams

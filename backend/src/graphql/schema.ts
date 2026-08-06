@@ -151,6 +151,16 @@ export const schema = buildSchema(`
         ): PlayerLeaderboardPage!
 
         """
+        The authenticated caller's own standing on the player board.
+
+        Returns null when the caller holds no pet that has fought — "unranked" is a real
+        answer, and a zeroed row could not be told apart from a player ranked last. The
+        owner is taken from the session, never from an argument, so this cannot be used
+        to enumerate other wallets' positions.
+        """
+        playerRank(chain: String!): PlayerLeaderboardEntry
+
+        """
         Search pets by name prefix or exact numeric ID across the whole roster.
         Returns up to 'limit' results (default 10, max 20).
         Useful for marriage proposal flows where the user needs to find another

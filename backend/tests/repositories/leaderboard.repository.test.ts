@@ -15,7 +15,11 @@ vi.mock('../../src/repositories/battleProgress.overlay', () => ({
     servedChainIdForFamily: (chain: string) => servedChainIdForFamily(chain),
 }));
 
-import { findPetLeaderboard, findPlayerLeaderboard } from '../../src/repositories/leaderboard.repository';
+import {
+    findPetLeaderboard,
+    findPlayerLeaderboard,
+    findPlayerRank,
+} from '../../src/repositories/leaderboard.repository';
 import { prisma } from '@config/prisma';
 
 const rankedRow = {
@@ -198,5 +202,55 @@ describe('findPlayerLeaderboard', () => {
         expect(sql).toContain('SUM(r.win_count)::int');
         expect(sql).not.toContain('pet_battle_progress');
         expect(sqlOfCall(1)).toContain('COUNT(DISTINCT');
+    });
+});
+
+describe('findPlayerRank', () => {
+    const rankedRowForOwner = { rank: 4, owner: '0xowner', winCount: 8, lossCount: 4, petCount: 3 };
+
+    it('returns the caller row with its rank', async () => {
+        vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([rankedRowForOwner] as never);
+
+        expect(await findPlayerRank('evm', '0xowner')).toEqual(rankedRowForOwner);
+    });
+
+    it('returns null for a player holding no pet that has fought', async () => {
+        // Unranked is a real answer. A zeroed row could not be told apart from a player
+        // who has fought and lost everything.
+        vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([] as never);
+
+        expect(await findPlayerRank('evm', '0xowner')).toBeNull();
+    });
+
+    it('does not query at all for an unauthenticated caller', async () => {
+        expect(await findPlayerRank('evm', '')).toBeNull();
+        expect(prisma.$queryRaw).not.toHaveBeenCalled();
+    });
+
+    it('ranks with ROW_NUMBER over the ordering the paged board uses', async () => {
+        // The paged board numbers rows `offset + index + 1`; this has to be the same
+        // function, or a player's stated rank would not match where they appear.
+        vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([] as never);
+
+        await findPlayerRank('evm', '0xowner');
+
+        const fragments = fragmentsOfCall(0);
+        expect(fragments).toContain('ROW_NUMBER() OVER (');
+        expect(fragments).toContain('SUM(COALESCE(p.win_count, r.win_count)) DESC');
+        expect(fragments).toContain('SUM(COALESCE(p.loss_count, r.loss_count)) ASC');
+        expect(fragments).toContain('LOWER(r.owner)');
+    });
+
+    it('ranks on frozen counters for a chain family this deployment does not serve', async () => {
+        servedChainIdForFamily.mockReturnValue(null);
+        vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([] as never);
+
+        await findPlayerRank('solana', 'SoLpubkey');
+
+        const fragments = fragmentsOfCall(0);
+        expect(fragments).toContain('SUM(r.win_count) DESC');
+        expect(fragments).not.toContain('pet_battle_progress');
+        // base58 stays unfolded here too, for the reason the board folds only EVM.
+        expect(fragments).not.toContain('LOWER(');
     });
 });

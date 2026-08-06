@@ -2,6 +2,8 @@ import React from 'react';
 import clsx from 'clsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+import { useChainCapabilities, usePlayerRank } from '@shared/core';
+
 import Icon, { PinFilledIcon, PinIcon } from '@components/ui/icon';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { useSidebarPin } from '@hooks/useSidebarPin';
@@ -9,13 +11,49 @@ import { NAV_ITEMS } from './nav-items';
 import styles from './index.module.css';
 
 /**
+ * The player's own standing, from the leaderboard the sidebar links to.
+ *
+ * Its own component so the sidebar itself stays free of data fetching, and so the
+ * hook is not called on every re-render of a nav item.
+ *
+ * Three states, all real: a rank, unranked (connected but no pet has fought), and
+ * nothing at all while it loads or before a session exists. The last one renders
+ * no footer rather than a zero, which would be indistinguishable from a genuine
+ * last place.
+ */
+const RankFooter: React.FC = () => {
+    const { activeKind } = useChainCapabilities();
+    const { rank, isLoading } = usePlayerRank(activeKind);
+
+    if (isLoading) return null;
+
+    return (
+        <div className={styles.rank}>
+            <span className={styles.rankIcon} aria-hidden>
+                🏆
+            </span>
+            <div className={styles.rankCopy}>
+                <div className={styles.rankTitle}>
+                    {rank ? `RANK #${rank.rank} GLOBAL` : 'UNRANKED'}
+                </div>
+                <div className={styles.rankSub}>
+                    {rank
+                        ? `${rank.winCount} Total Win${rank.winCount === 1 ? '' : 's'}`
+                        : 'Win a battle to enter the board'}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/**
  * Collapsible left navigation for the app shell. Collapsed to an icon rail by
  * default; expands on hover / keyboard focus (CSS-driven), or stays open when
  * pinned. Nav items drive the existing router so deep-links keep working; the
  * logo returns to the gallery.
  *
- * Daily Quests and the rank footer are static placeholders pending real data
- * (see FRONTEND_REDESIGN_PLAN.md §8 Q3).
+ * Daily Quests is still a static placeholder pending real data
+ * (see FRONTEND_REDESIGN_PLAN.md §8 Q3); the rank footer is live.
  */
 const Sidebar: React.FC = () => {
     const navigate = useNavigate();
@@ -116,16 +154,7 @@ const Sidebar: React.FC = () => {
                 </ul>
             </div>
 
-            {/* Placeholder — global rank footer (pending leaderboard data) */}
-            <div className={styles.rank}>
-                <span className={styles.rankIcon} aria-hidden>
-                    🏆
-                </span>
-                <div className={styles.rankCopy}>
-                    <div className={styles.rankTitle}>RANK #3 GLOBAL</div>
-                    <div className={styles.rankSub}>649 Total Wins</div>
-                </div>
-            </div>
+            <RankFooter />
         </nav>
     );
 };

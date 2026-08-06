@@ -71,6 +71,7 @@ export {
     type UsePlayerLeaderboardOptions,
     type UsePlayerLeaderboardResult,
 } from './leaderboard/usePlayerLeaderboard';
+export { usePlayerRank, type UsePlayerRankResult } from './leaderboard/usePlayerRank';
 export {
     useBattleDialogue,
     type UseBattleDialogueOptions,

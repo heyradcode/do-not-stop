@@ -10,6 +10,7 @@ vi.mock('../../src/grpc/estimateWin', () => ({
 vi.mock('@repositories/leaderboard.repository', () => ({
     findPetLeaderboard: vi.fn(),
     findPlayerLeaderboard: vi.fn(),
+    findPlayerRank: vi.fn(),
 }));
 // The overlay's own merge rule is covered in repositories/battleProgress.overlay.test.ts;
 // here it is stubbed to a pass-through so these tests stay about resolver shaping.
@@ -20,7 +21,11 @@ vi.mock('@repositories/battleProgress.overlay', () => ({
 
 import { rootValue } from '../../src/graphql/resolvers';
 import { findReadyOpponents, getPetById } from '@repositories/roster.repository';
-import { findPetLeaderboard, findPlayerLeaderboard } from '@repositories/leaderboard.repository';
+import {
+    findPetLeaderboard,
+    findPlayerLeaderboard,
+    findPlayerRank,
+} from '@repositories/leaderboard.repository';
 import { tryGrpcEstimateWin } from '../../src/grpc/estimateWin';
 
 const ctx = { caller: '0xcaller' };
@@ -122,6 +127,27 @@ describe('playerLeaderboard resolver', () => {
         vi.mocked(findPlayerLeaderboard).mockResolvedValue({ entries: [], total: 0 });
         await rootValue.playerLeaderboard({ chain: 'evm', pageSize: 999 }, ctx);
         expect(vi.mocked(findPlayerLeaderboard).mock.calls[0][0].pageSize).toBe(50);
+    });
+});
+
+describe('playerRank resolver', () => {
+    it('ranks the session wallet, not an argument', async () => {
+        // The owner comes from the JWT context, so this cannot be pointed at someone
+        // else's wallet to enumerate their standing.
+        vi.mocked(findPlayerRank).mockResolvedValue(null);
+
+        await rootValue.playerRank({ chain: 'evm' }, { caller: '0xme' });
+
+        expect(findPlayerRank).toHaveBeenCalledWith('evm', '0xme');
+    });
+
+    it('returns null for an unranked caller rather than a zeroed row', async () => {
+        vi.mocked(findPlayerRank).mockResolvedValue(null);
+        expect(await rootValue.playerRank({ chain: 'evm' }, ctx)).toBeNull();
+    });
+
+    it('throws for an unsupported chain', async () => {
+        await expect(rootValue.playerRank({ chain: 'tron' }, ctx)).rejects.toThrow('chain must be one of');
     });
 });
 
