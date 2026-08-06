@@ -10,7 +10,7 @@ import { queryClient, ApiClientProvider, AuthProvider, PetsConfigProvider } from
 
 import { appKit, wagmiConfig } from './src/AppKitConfig';
 import { API_URL } from './config';
-import { petsContractParams } from './src/petsContractParams';
+import { useEvmPetsConfig } from './src/petsContractParams';
 import { ToastProvider } from './src/components/ui/toast';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { neon } from './src/theme/neon';
@@ -30,6 +30,18 @@ import { SolanaAuthSigner } from './src/solana/SolanaAuthSigner';
  * where `AppProviders.tsx` puts its own: it registers rather than provides, and
  * it has to sit above `AuthProvider`, which reads what it registers.
  */
+
+/**
+ * Supplies the contract config for whichever deployment chain the wallet is on.
+ *
+ * A component rather than a constant because the config now depends on
+ * `useAccount`, and hooks only run inside the tree. It has to sit under
+ * `WagmiProvider`, which it does.
+ */
+function PetsConfig({ children }: { children: React.ReactNode }) {
+  return <PetsConfigProvider evm={useEvmPetsConfig()}>{children}</PetsConfigProvider>;
+}
+
 export default function App() {
   return (
     <SafeAreaProvider>
@@ -41,14 +53,14 @@ export default function App() {
             <SolanaAppKitAnchorBridge>
               <ApiClientProvider baseURL={API_URL}>
                 <AuthProvider>
-                  <PetsConfigProvider evm={petsContractParams}>
+                  <PetsConfig>
                     <ToastProvider>
                       <NavigationContainer>
                         <RootNavigator />
                       </NavigationContainer>
                       <AppKit />
                     </ToastProvider>
-                  </PetsConfigProvider>
+                  </PetsConfig>
                 </AuthProvider>
               </ApiClientProvider>
             </SolanaAppKitAnchorBridge>
