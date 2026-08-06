@@ -75,6 +75,11 @@ export const usePetGallery = (): UsePetGallery => {
         setRefreshing(true);
         try {
             await refetch();
+        } catch {
+            // Swallowed on purpose. A failed refetch already reaches the player
+            // through the `error` effect above, and `RefreshControl` discards
+            // whatever this returns, so rethrowing only buys an unhandled
+            // rejection.
         } finally {
             setRefreshing(false);
         }
