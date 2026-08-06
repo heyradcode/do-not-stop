@@ -93,7 +93,7 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                 )}
 
                 {selectedPetObj && (
-                    <div className={styles.status}>
+                    <div className={`interaction-visual ${styles.status}`}>
                         <div className={styles.visual}>
                             <span className={styles.level}>Lv.{selectedPetObj.level}</span>
                             <span className={styles.avatar}>

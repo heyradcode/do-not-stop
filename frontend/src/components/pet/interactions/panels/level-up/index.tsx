@@ -110,6 +110,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                 )}
 
                 {selectedPetObj && (
+                    // `interaction-visual` is the layout hook: it marks the pet column
+                    // for the two-column rule in interactions.css.
+                    <div className="interaction-visual">
                     <PetShowcase avatar={<PetArt pet={selectedPetObj} />} accent="violet">
                         <div className={styles.name}>{selectedPetObj.name}</div>
                         <div className={styles.petClass}>{getPetClass(selectedPetObj.dna)}</div>
@@ -139,6 +142,7 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                             </div>
                         </div>
                     </PetShowcase>
+                    </div>
                 )}
 
                 <div className="picker">

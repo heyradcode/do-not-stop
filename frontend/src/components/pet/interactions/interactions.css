@@ -186,6 +186,89 @@
    `interaction-standalone--<action>` sets a wash + accent; the shared chrome
    below left-aligns the title bar to match the redesign mock.
    ============================================================================= */
+/* Breed lays its own tabs and parent columns out, so it takes only the pinned action:
+   on the spouse tab the button lives here rather than in the DNA centre. */
+.dashboard-panel.pet-interactions.interaction-standalone--breed .action-controls {
+    margin-top: auto;
+    padding-top: 18px;
+    border-top: 1px solid var(--zi-border);
+}
+
+/* ==========================================================================
+   Single-pet action screens (level-up, train): pet column beside the controls,
+   primary action across the bottom.
+
+   These panels are one short form in a very wide slot, so a single stacked column
+   left most of the panel empty. The pet block becomes a fixed-width left column,
+   the picker takes the rest, and the action sits on the bottom edge under a rule —
+   `margin-top: auto` rather than absolute positioning, so it is pushed down by the
+   free space instead of overlapping content when there is none.
+
+   Scoped with `:has(.interaction-visual)`: with no pet selected there is nothing to
+   put in the left column, and the form stays a single column.
+   ========================================================================== */
+.dashboard-panel.pet-interactions.interaction-standalone--levelup .interface,
+.dashboard-panel.pet-interactions.interaction-standalone--train .interface {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.dashboard-panel.pet-interactions.interaction-standalone--levelup .interface .action-controls,
+.dashboard-panel.pet-interactions.interaction-standalone--train .interface .action-controls {
+    margin-top: auto;
+    padding-top: 18px;
+    border-top: 1px solid var(--zi-border);
+}
+
+@media (min-width: 900px) {
+    .dashboard-panel.pet-interactions.interaction-standalone--levelup
+        .interface:has(.interaction-visual),
+    .dashboard-panel.pet-interactions.interaction-standalone--train
+        .interface:has(.interaction-visual) {
+        display: grid;
+        grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+        grid-template-rows: 1fr auto;
+        column-gap: 32px;
+        /* Both columns ride in the middle of the free row rather than hugging the top,
+           so the leftover height is shared above and below instead of pooling under
+           the form. */
+        align-items: center;
+    }
+
+    .interaction-standalone--levelup .interface .interaction-visual,
+    .interaction-standalone--train .interface .interaction-visual {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    /* Roomy enough for the pet column not to feel cramped, but the panel can be very
+       wide and a lone select stretched across it reads as a mistake. */
+    .interaction-standalone--levelup .interface .picker,
+    .interaction-standalone--train .interface .picker {
+        max-width: 460px;
+    }
+
+    .interaction-standalone--levelup .interface .picker,
+    .interaction-standalone--train .interface .picker {
+        grid-column: 2;
+        grid-row: 1;
+        /* One column of its own: the outer grid already splits the panel, so the
+           picker's own two-up grid would put the select and the cost side by side in
+           half the width. */
+        grid-template-columns: minmax(0, 1fr);
+        margin-bottom: 0;
+    }
+
+    .interaction-standalone--levelup .interface .action-controls,
+    .interaction-standalone--train .interface .action-controls {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        align-self: end;
+    }
+}
+
 .interaction-standalone--battle {
     --view-wash: var(--cp-wash-battle);
     --view-accent: 255 123 203;
