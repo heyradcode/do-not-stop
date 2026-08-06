@@ -7,7 +7,10 @@ const useChainCapabilities = vi.fn();
 const useChatThreads = vi.fn();
 const useChatMessages = vi.fn();
 
+const useAuth = vi.fn();
+
 vi.mock('@shared/core', () => ({
+    useAuth: () => useAuth(),
     // `@utils/address` normalizes through the protocol helper; the real one, since the
     // EVM-folds/base58-doesn't rule is what several of these assertions are about.
     normalizeAccount: (value: string) => (/^0x[0-9a-fA-F]{40}$/.test(value) ? value.toLowerCase() : value),
@@ -69,6 +72,7 @@ const renderChat = () =>
 
 beforeEach(() => {
     vi.clearAllMocks();
+    useAuth.mockReturnValue({ isAuthenticated: true, signAndLogin: vi.fn() });
     send.mockResolvedValue(undefined);
     useChainCapabilities.mockReturnValue({ isConnected: true, walletAddress: ME });
     useChatThreads.mockReturnValue({ threads: [], isLoading: false, error: null });
@@ -85,6 +89,28 @@ describe('Chat', () => {
     });
 
     // The normal state for most players, and it must not read as a failed load.
+    // A connected wallet is not a session: the API is JWT-gated, so rendering the panel
+    // here produced 401s surfaced as a raw error, or an empty state claiming there were
+    // no conversations when the truth was that nobody had signed in.
+    it('offers sign-in when the wallet is connected but the session is not', () => {
+        useAuth.mockReturnValue({ isAuthenticated: false, signAndLogin: vi.fn() });
+
+        renderChat();
+
+        expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+        expect(screen.queryByText(/Marry one of your pets/i)).toBeNull();
+    });
+
+    it('starts the sign-in flow when the button is pressed', async () => {
+        const signAndLogin = vi.fn();
+        useAuth.mockReturnValue({ isAuthenticated: false, signAndLogin });
+
+        renderChat();
+        await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+        expect(signAndLogin).toHaveBeenCalled();
+    });
+
     it('explains how to get a thread when there are none', () => {
         renderChat();
 

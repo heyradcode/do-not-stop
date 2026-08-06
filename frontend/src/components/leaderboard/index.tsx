@@ -7,7 +7,7 @@ import {
 } from '@shared/core';
 
 import DashboardPanel from '@components/common/dashboard-panel';
-import StateCard from '@components/pet/interactions/state-card';
+import SessionGate from '@components/common/session-gate';
 import PetArt from '@components/pet/pet-art';
 import Icon, { TrophyIcon } from '@components/ui/icon';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
@@ -79,7 +79,7 @@ const Row: React.FC<{
  */
 const Leaderboard: React.FC = () => {
     const navigate = useNavigate();
-    const { isConnected, activeKind, walletAddress } = useChainCapabilities();
+    const { activeKind, walletAddress } = useChainCapabilities();
     const [board, setBoard] = useState<Board>('pets');
     const [page, setPage] = useState(0);
 
@@ -92,24 +92,12 @@ const Leaderboard: React.FC = () => {
 
     const active = board === 'pets' ? pets : players;
     const goBack = () => navigate(DASHBOARD_HOME);
-
-    if (!isConnected) {
-        return (
-            <StateCard
-                // The literal class is load-bearing: StateCard centers the description
-                // only when it sees this name, matching every other disconnected screen.
-                containerClassName="wallet-disconnected"
-                title={
-                    <>
-                        <Icon as={TrophyIcon} tone={Tones.Amber} />
-                        Leaderboard
-                    </>
-                }
-                description="Connect your wallet to see the rankings"
-                back={goBack}
-            />
-        );
-    }
+    const heading = (
+        <>
+            <Icon as={TrophyIcon} tone={Tones.Amber} />
+            Leaderboard
+        </>
+    );
 
     // `sameAccount` normalizes by address shape, so this needs no chain branch and cannot
     // merge two Solana pubkeys that differ only in case.
@@ -125,106 +113,109 @@ const Leaderboard: React.FC = () => {
     const lastPage = Math.max(0, Math.ceil(active.total / active.pageSize) - 1);
 
     return (
-        <DashboardPanel
-            className={styles.page}
-            title={
-                <>
-                    <Icon as={TrophyIcon} tone={Tones.Amber} />
-                    Leaderboard
-                </>
-            }
-            description="Ranked by wins, then by fewest losses"
+        <SessionGate
+            title={heading}
+            connectPrompt="Connect your wallet to see the rankings"
+            signInPrompt="Sign in to see the rankings"
+            tone="amber"
             back={goBack}
         >
-            <div className={styles.tabs} role="tablist" aria-label="Leaderboard type">
-                {(['pets', 'players'] as const).map((tab) => (
-                    <button
-                        key={tab}
-                        type="button"
-                        role="tab"
-                        aria-selected={board === tab}
-                        className={board === tab ? `${styles.tab} ${styles.isActive}` : styles.tab}
-                        onClick={() => showBoard(tab)}
-                    >
-                        {tab === 'pets' ? 'Pets' : 'Players'}
-                    </button>
-                ))}
-            </div>
-
-            {active.error ? (
-                <p className={styles.error}>{active.error.message}</p>
-            ) : active.isLoading ? (
-                <div className="loading-container">
-                    <div className="loading-spinner" />
+            <DashboardPanel
+                className={styles.page}
+                title={heading}
+                description="Ranked by wins, then by fewest losses"
+                back={goBack}
+            >
+                <div className={styles.tabs} role="tablist" aria-label="Leaderboard type">
+                    {(['pets', 'players'] as const).map((tab) => (
+                        <button
+                            key={tab}
+                            type="button"
+                            role="tab"
+                            aria-selected={board === tab}
+                            className={board === tab ? `${styles.tab} ${styles.isActive}` : styles.tab}
+                            onClick={() => showBoard(tab)}
+                        >
+                            {tab === 'pets' ? 'Pets' : 'Players'}
+                        </button>
+                    ))}
                 </div>
-            ) : active.total === 0 ? (
-                <p className={styles.empty}>
-                    No battles on record yet. Win one and the board fills up.
-                </p>
-            ) : (
-                <>
-                    <ol className={styles.list}>
-                        {board === 'pets'
-                            ? pets.entries.map((entry) => (
-                                  <Row
-                                      key={entry.id}
-                                      rank={entry.rank}
-                                      avatar={
-                                          <PetArt
-                                              pet={{
-                                                  id: entry.id,
-                                                  chain: entry.chain,
-                                                  assetKey: entry.asset || undefined,
-                                                  dna: BigInt(entry.dna),
-                                                  name: entry.name,
-                                              }}
-                                          />
-                                      }
-                                      title={entry.name}
-                                      sub={`Lv ${entry.level}`}
-                                      winCount={entry.winCount}
-                                      lossCount={entry.lossCount}
-                                      isYou={isYou(entry.owner)}
-                                  />
-                              ))
-                            : players.entries.map((entry) => (
-                                  <Row
-                                      key={entry.owner}
-                                      rank={entry.rank}
-                                      avatar="👤"
-                                      title={shortAddress(entry.owner)}
-                                      sub={`${entry.petCount} pet${entry.petCount === 1 ? '' : 's'}`}
-                                      winCount={entry.winCount}
-                                      lossCount={entry.lossCount}
-                                      isYou={isYou(entry.owner)}
-                                  />
-                              ))}
-                    </ol>
 
-                    {lastPage > 0 && (
-                        <div className={styles.pager}>
-                            <button
-                                type="button"
-                                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                                disabled={page === 0}
-                            >
-                                ← Prev
-                            </button>
-                            <span className={styles.pageLabel}>
-                                Page {page + 1} of {lastPage + 1}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
-                                disabled={page >= lastPage}
-                            >
-                                Next →
-                            </button>
-                        </div>
-                    )}
-                </>
-            )}
-        </DashboardPanel>
+                {active.error ? (
+                    <p className={styles.error}>{active.error.message}</p>
+                ) : active.isLoading ? (
+                    <div className="loading-container">
+                        <div className="loading-spinner" />
+                    </div>
+                ) : active.total === 0 ? (
+                    <p className={styles.empty}>
+                        No battles on record yet. Win one and the board fills up.
+                    </p>
+                ) : (
+                    <>
+                        <ol className={styles.list}>
+                            {board === 'pets'
+                                ? pets.entries.map((entry) => (
+                                      <Row
+                                          key={entry.id}
+                                          rank={entry.rank}
+                                          avatar={
+                                              <PetArt
+                                                  pet={{
+                                                      id: entry.id,
+                                                      chain: entry.chain,
+                                                      assetKey: entry.asset || undefined,
+                                                      dna: BigInt(entry.dna),
+                                                      name: entry.name,
+                                                  }}
+                                              />
+                                          }
+                                          title={entry.name}
+                                          sub={`Lv ${entry.level}`}
+                                          winCount={entry.winCount}
+                                          lossCount={entry.lossCount}
+                                          isYou={isYou(entry.owner)}
+                                      />
+                                  ))
+                                : players.entries.map((entry) => (
+                                      <Row
+                                          key={entry.owner}
+                                          rank={entry.rank}
+                                          avatar="👤"
+                                          title={shortAddress(entry.owner)}
+                                          sub={`${entry.petCount} pet${entry.petCount === 1 ? '' : 's'}`}
+                                          winCount={entry.winCount}
+                                          lossCount={entry.lossCount}
+                                          isYou={isYou(entry.owner)}
+                                      />
+                                  ))}
+                        </ol>
+
+                        {lastPage > 0 && (
+                            <div className={styles.pager}>
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                                    disabled={page === 0}
+                                >
+                                    ← Prev
+                                </button>
+                                <span className={styles.pageLabel}>
+                                    Page {page + 1} of {lastPage + 1}
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
+                                    disabled={page >= lastPage}
+                                >
+                                    Next →
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
+            </DashboardPanel>
+        </SessionGate>
     );
 };
 

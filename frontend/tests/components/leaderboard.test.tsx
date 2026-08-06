@@ -7,7 +7,10 @@ const useChainCapabilities = vi.fn();
 const useLeaderboard = vi.fn();
 const usePlayerLeaderboard = vi.fn();
 
+const useAuth = vi.fn();
+
 vi.mock('@shared/core', () => ({
+    useAuth: () => useAuth(),
     // `@utils/address` normalizes through the protocol helper; the real one, since the
     // EVM-folds/base58-doesn't rule is what several of these assertions are about.
     normalizeAccount: (value: string) => (/^0x[0-9a-fA-F]{40}$/.test(value) ? value.toLowerCase() : value),
@@ -50,6 +53,7 @@ const renderBoard = () =>
 
 beforeEach(() => {
     vi.clearAllMocks();
+    useAuth.mockReturnValue({ isAuthenticated: true, signAndLogin: vi.fn() });
     useChainCapabilities.mockReturnValue({
         isConnected: true,
         activeKind: 'evm',
@@ -70,6 +74,17 @@ describe('Leaderboard', () => {
         renderBoard();
 
         expect(screen.getByText(/Connect your wallet/i)).toBeInTheDocument();
+    });
+
+    // The empty state said "No battles on record yet", which is a claim about the game
+    // rather than about the session — wrong, and it left the player with nothing to do.
+    it('offers sign-in when the wallet is connected but the session is not', () => {
+        useAuth.mockReturnValue({ isAuthenticated: false, signAndLogin: vi.fn() });
+
+        renderBoard();
+
+        expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+        expect(screen.queryByText(/No battles on record yet/i)).toBeNull();
     });
 
     it('renders a pet row with its record and win rate', () => {

@@ -8,7 +8,7 @@ import {
 } from '@shared/core';
 
 import DashboardPanel from '@components/common/dashboard-panel';
-import StateCard from '@components/pet/interactions/state-card';
+import SessionGate from '@components/common/session-gate';
 import Icon, { MarriageIcon } from '@components/ui/icon';
 import { CHAT_WS_URL } from '../../config';
 import { sameAccount, shortAddress } from '@utils/address';
@@ -174,7 +174,7 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
  */
 const Chat: React.FC = () => {
     const navigate = useNavigate();
-    const { isConnected, walletAddress } = useChainCapabilities();
+    const { walletAddress } = useChainCapabilities();
     const { threads, isLoading, error } = useChatThreads();
     const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -184,66 +184,59 @@ const Chat: React.FC = () => {
     );
 
     const goBack = () => navigate(DASHBOARD_HOME);
-
-    if (!isConnected) {
-        return (
-            <StateCard
-                containerClassName="wallet-disconnected"
-                title={
-                    <>
-                        <Icon as={MarriageIcon} tone={Tones.Magenta} />
-                        Messages
-                    </>
-                }
-                description="Connect your wallet to see your conversations"
-                back={goBack}
-            />
-        );
-    }
+    const heading = (
+        <>
+            <Icon as={MarriageIcon} tone={Tones.Magenta} />
+            Messages
+        </>
+    );
 
     return (
-        <DashboardPanel
-            className={styles.page}
-            title={
-                <>
-                    <Icon as={MarriageIcon} tone={Tones.Magenta} />
-                    Messages
-                </>
-            }
-            description="Private threads with the owners your pets are married to"
+        <SessionGate
+            title={heading}
+            connectPrompt="Connect your wallet to see your conversations"
+            signInPrompt="Sign in to open your conversations"
+            tone="magenta"
             back={goBack}
         >
-            {error ? (
-                <p className={styles.error}>{error.message}</p>
-            ) : isLoading ? (
-                <div className="loading-container">
-                    <div className="loading-spinner" />
-                </div>
-            ) : threads.length === 0 ? (
-                <p className={styles.empty}>
-                    No conversations yet. Marry one of your pets to another player&apos;s to open
-                    a thread with them.
-                </p>
-            ) : (
-                <div className={styles.layout}>
-                    <ThreadList
-                        threads={threads}
-                        selectedId={selected?.threadId ?? null}
-                        onSelect={setSelectedId}
-                    />
-                    {selected && (
-                        <Conversation
-                            // Remounts on thread change, so the draft and scroll position
-                            // belong to the conversation on screen rather than following
-                            // the reader into the next one.
-                            key={selected.threadId}
-                            thread={selected}
-                            me={walletAddress ?? ''}
+            <DashboardPanel
+                className={styles.page}
+                title={heading}
+                description="Private threads with the owners your pets are married to"
+                back={goBack}
+            >
+                {error ? (
+                    <p className={styles.error}>{error.message}</p>
+                ) : isLoading ? (
+                    <div className="loading-container">
+                        <div className="loading-spinner" />
+                    </div>
+                ) : threads.length === 0 ? (
+                    <p className={styles.empty}>
+                        No conversations yet. Marry one of your pets to another player&apos;s to open
+                        a thread with them.
+                    </p>
+                ) : (
+                    <div className={styles.layout}>
+                        <ThreadList
+                            threads={threads}
+                            selectedId={selected?.threadId ?? null}
+                            onSelect={setSelectedId}
                         />
-                    )}
-                </div>
-            )}
-        </DashboardPanel>
+                        {selected && (
+                            <Conversation
+                                // Remounts on thread change, so the draft and scroll position
+                                // belong to the conversation on screen rather than following
+                                // the reader into the next one.
+                                key={selected.threadId}
+                                thread={selected}
+                                me={walletAddress ?? ''}
+                            />
+                        )}
+                    </div>
+                )}
+            </DashboardPanel>
+        </SessionGate>
     );
 };
 
