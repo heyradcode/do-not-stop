@@ -19,6 +19,8 @@ func buildAdapters(cfg *config.Config) ([]indexer.ChainIndexer, error) {
 		evmIx, err := evm.New(evm.Config{
 			URL:          cfg.EVMSubgraphURL,
 			PollInterval: cfg.EVMPollInterval,
+			// Same safety net Solana has had all along; see evm.Indexer.Run.
+			ReconcileInterval: cfg.ReconcileInterval,
 		})
 		if err != nil {
 			return nil, err

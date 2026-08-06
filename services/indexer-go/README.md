@@ -40,15 +40,16 @@ connection settings is skipped, so adapters roll out independently.
 | `SOLANA_WS_URL` / `SOLANA_RPC_URL` / `SOLANA_PROGRAM_ID` | Helius endpoints + program id |
 | `SOLANA_COMMITMENT` | `finalized` (default) or `confirmed`. See below before changing it. |
 | `GRPC_ADDR` | GameDataService bind address (default `localhost:50051`) |
-| `EVM_POLL_INTERVAL` / `RECONCILE_INTERVAL` | pull tick / reconciliation scan |
+| `EVM_POLL_INTERVAL` / `RECONCILE_INTERVAL` | pull tick / reconciliation scan (both adapters; see below) |
 
 Prereq migrations (from `backend/`): `npx prisma migrate dev`. Beyond
 `pet_roster.last_version` / `battle_history.version`, the v2 schema adds the
 roster fields (`xp`, `generation`, `parent1_id`/`parent2_id`, `breed_count`,
 `species_id`, `spouse_id`, `breed_ready_at`, `train_ready_at`, `asset`) and the
 combat-sim battle fields (`loser_pet_id`, `seed`, `rounds`,
-`winner_hp_remaining`, `xp_win`, `xp_loss`). All are defaulted, so the v1 Node
-indexer keeps writing during shadow mode. **The writer is DML-only — run the
+`winner_hp_remaining`, `xp_win`, `xp_loss`). All are defaulted, which is what let
+the (since-deleted) v1 Node indexer keep writing alongside this one during the
+migration. **The writer is DML-only — run the
 migration before pointing indexer-go at the database.** The EVM adapter also
 expects the subgraph to expose the matching v2 Pet/Battle fields; until that
 schema bump deploys, those fields decode to their zero values.
@@ -59,11 +60,15 @@ schema bump deploys, those fields decode to their zero values.
   write, exit. The Go counterpart of the backend's `index:once`.
 - `GET /healthz` on `HEALTH_ADDR` (default `localhost:8090`; when `PORT` is
   set — Render's convention — it binds `0.0.0.0:$PORT` instead).
-- `GET /metrics` (same port) — Prometheus text format: roster updates and
-  battles per chain, flush count/rows/errors, WS reconnects, per-chain last
-  version (lag), cache size/warm, stream subscriber count. The runbook
-  signals: rising `indexer_flush_errors_total`, a flat `indexer_last_version`
-  under traffic, or runaway `indexer_ws_reconnects_total`.
+- `GET /readyz` (same port) — 503 until every configured chain has been reached
+  once. Deliberately not `/healthz`; see "Liveness vs freshness" below.
+- `GET /metrics` (same port) — Prometheus text format: roster updates per chain,
+  flush count/rows/errors, WS reconnects, per-chain last version and last poll
+  time, cache size/warm. (No battle or stream series any more — that pipeline
+  went with §L Phase 6.) The runbook signals: rising
+  `indexer_flush_errors_total`, a growing `time() - indexer_last_poll_unixtime`,
+  or runaway `indexer_ws_reconnects_total`. A flat `indexer_last_version` is
+  *not* a signal on its own — it also means nobody has played.
 
 Deployment: `render.yaml` at the repo root defines `do-not-stop-indexer` as a
 free-plan Go web service (`/healthz` checked, `/metrics` on the same port).
@@ -74,6 +79,21 @@ Note this service is now the **only** roster indexer: the backend's Node
 `RosterIndexer` was deleted, so nothing else writes `pet_roster` and there is no
 longer a shadow mode or a second source of truth to fall back on. A stalled
 indexer-go means a stale roster, not a slower one.
+
+## Reconciliation
+
+`RECONCILE_INTERVAL` (default 10m) is a periodic full re-read of the roster, on top of
+the incremental path. Both adapters use it now; until recently only Solana did, which
+mattered because the EVM incremental query asks for `updatedAt_gt: watermark` — anything
+the watermark has already passed is invisible to it by construction, so a row that
+drifted stayed wrong until the pet changed again.
+
+It is not a reorg fix, and should not be read as one. A subgraph reorg can *lower* a
+pet's `updatedAt`, and the writer discards a lower version
+(`WHERE last_version <= EXCLUDED.last_version`), so a sweep re-reads the row and the
+correction is then rejected. Closing that needs either a confirmation depth on the read
+or a version that never moves backwards — a change to what `Version` means, and an open
+item in the roadmap's §3.
 
 ## Liveness vs freshness
 

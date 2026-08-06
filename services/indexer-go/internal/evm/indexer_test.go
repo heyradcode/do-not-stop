@@ -1,8 +1,10 @@
 package evm
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -285,3 +287,84 @@ func TestNewRequiresURL(t *testing.T) {
 	}
 }
 
+
+// The incremental query asks for updatedAt_gt: watermark, so a row the watermark has
+// already passed can never be re-read by it. Without a periodic full sweep an EVM row
+// that drifted stayed wrong until the pet changed again — the safety net RECONCILE_INTERVAL
+// advertises, which only the Solana adapter actually had.
+func TestRunReconcilesWithAFullSweep(t *testing.T) {
+	fake := &fakeSubgraph{pets: []subgraphPet{pet("1", "0xA", 5, "100")}}
+
+	fullSweeps := &atomic.Int32{}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if !strings.Contains(string(body), "updatedAt_gt") {
+			fullSweeps.Add(1)
+		}
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		fake.handler(t)(w, r)
+	})
+
+	ix, err := New(Config{
+		URL: "http://subgraph.test/query", PageSize: 100,
+		PollInterval: time.Hour, // incremental ticks must not fire; only the sweep may
+		ReconcileInterval: 10 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	ix.client.http = &http.Client{Transport: handlerTransport{handler}}
+
+	ch := make(chan indexer.RosterUpdate, 32)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- ix.Run(ctx, ch) }()
+
+	deadline := time.After(2 * time.Second)
+	for fullSweeps.Load() < 2 { // one at startup, then at least one from the ticker
+		select {
+		case <-deadline:
+			cancel()
+			t.Fatalf("only %d full sweeps; reconcile never fired", fullSweeps.Load())
+		case <-time.After(2 * time.Millisecond):
+		}
+	}
+
+	cancel()
+	if err := <-done; err != nil {
+		t.Errorf("Run returned %v on clean shutdown, want nil", err)
+	}
+}
+
+// Zero means off, and off must not mean "every zero seconds": a nil ticker channel here
+// would spin, and a zero-duration one panics.
+func TestRunWithoutReconcileIntervalOnlySyncsIncrementally(t *testing.T) {
+	fake := &fakeSubgraph{pets: []subgraphPet{pet("1", "0xA", 5, "100")}}
+
+	fullSweeps := &atomic.Int32{}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if !strings.Contains(string(body), "updatedAt_gt") {
+			fullSweeps.Add(1)
+		}
+		r.Body = io.NopCloser(bytes.NewReader(body))
+		fake.handler(t)(w, r)
+	})
+
+	ix := newTestIndexer(t, handler, 100) // no ReconcileInterval
+	ch := make(chan indexer.RosterUpdate, 32)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() { done <- ix.Run(ctx, ch) }()
+
+	time.Sleep(60 * time.Millisecond) // several 10ms poll ticks
+	cancel()
+	if err := <-done; err != nil {
+		t.Errorf("Run returned %v on clean shutdown, want nil", err)
+	}
+
+	// Exactly the startup scan, no more.
+	if got := fullSweeps.Load(); got != 1 {
+		t.Errorf("full sweeps = %d, want 1 (startup only) when reconcile is disabled", got)
+	}
+}
