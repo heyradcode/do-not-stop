@@ -18,18 +18,20 @@
     flex-shrink: 0;
 }
 
-/* `font-size` is the real lever, not the box: PetArt renders generated art as a 1em
-   square, so the image tracks the type size and the box is only the frame around it.
-   The box grows with it to keep the float animation and the drop-shadow from clipping. */
+/* One knob, `--sc-size`, sizes the frame; the art follows from it.
+   `font-size` is the real lever for the art, not the box: PetArt renders generated art as
+   a 1em square, so the image tracks the type size. Deriving it keeps the two in step, and
+   leaves the frame enough margin that the float animation and drop-shadow do not clip.
+   Callers that want a larger hero set `--sc-size` on an ancestor. */
 .avatar {
     position: relative;
     z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 140px;
-    height: 140px;
-    font-size: 5.5rem;
+    width: var(--sc-size, 140px);
+    height: var(--sc-size, 140px);
+    font-size: calc(var(--sc-size, 140px) * 0.62);
     line-height: 1;
     border-radius: 18px;
     animation: cp-float 3.6s ease-in-out infinite;

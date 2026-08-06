@@ -310,6 +310,22 @@
         grid-row: 1;
     }
 
+    /* The pet gets its own column here, so the art can be far larger than in the
+       single-column layout these panels fall back to. This is the space the screen was
+       wasting. */
+    .interaction-standalone--levelup .interface .interaction-visual {
+        --sc-size: 260px;
+    }
+
+    /* Train's card stacks in a narrow column: side by side, the art could never be more
+       than half the column wide. */
+    .interaction-standalone--train .interface .interaction-visual {
+        --tr-dir: column;
+        --tr-visual: 100%;
+        --tr-visual-ratio: 1;
+        --tr-art: 10rem;
+    }
+
     /* Roomy enough for the pet column not to feel cramped, but the panel can be very
        wide and a lone select stretched across it reads as a mistake. */
     .interaction-standalone--levelup .interface .picker,
