@@ -450,8 +450,11 @@ bare as possible for a first version.
 >   (`WHERE last_version <= EXCLUDED.last_version`). So the reconcile sweep above fixes
 >   the first and not the second — it re-reads the row and the correction is rejected.
 >   Closing it needs either a confirmation depth on the read or a `Version` that never
->   moves backwards, which changes what that column means for both chains and should be
->   designed rather than bolted on.
+>   moves backwards. Written up with a recommendation in
+>   `services/indexer-go/plan-evm-reorg-recovery.md`, which also records the trap in the
+>   obvious fix: EVM versions are block *timestamps* (~1.79e9 in the live table) while
+>   block numbers are ~3e7, so switching to a block number rejects every subsequent write
+>   while the service still looks healthy.
 > - **The log-subscription path is still open** and unchanged in motivation.
 
 **Goal.** Tighten the existing dual-indexer setup (Node `RosterIndexer` + optional `indexer-go`)

@@ -92,8 +92,9 @@ It is not a reorg fix, and should not be read as one. A subgraph reorg can *lowe
 pet's `updatedAt`, and the writer discards a lower version
 (`WHERE last_version <= EXCLUDED.last_version`), so a sweep re-reads the row and the
 correction is then rejected. Closing that needs either a confirmation depth on the read
-or a version that never moves backwards — a change to what `Version` means, and an open
-item in the roadmap's §3.
+or a version that never moves backwards; both options, the recommendation, and the
+migration trap in the obvious one are written up in
+[`plan-evm-reorg-recovery.md`](./plan-evm-reorg-recovery.md).
 
 ## Liveness vs freshness
 

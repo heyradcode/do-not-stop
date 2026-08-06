@@ -34,3 +34,18 @@ CREATE INDEX "chat_message_thread_id_created_at_idx" ON "chat_message"("thread_i
 
 -- AddForeignKey
 ALTER TABLE "chat_message" ADD CONSTRAINT "chat_message_thread_id_fkey" FOREIGN KEY ("thread_id") REFERENCES "chat_thread"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- EnableRowLevelSecurity
+--
+-- Prisma emits no RLS statements, and on Supabase `ALTER DEFAULT PRIVILEGES` grants every
+-- newly created table in `public` to `anon` and `authenticated` with ALL privileges —
+-- including DELETE and TRUNCATE. So a table shipped without this line is readable and
+-- writable by anyone holding the project's public anon key. For private messages that is
+-- not a hardening gap, it is the whole confidentiality of the feature.
+--
+-- Enabled with no policies, matching every other table in this database: that denies all
+-- access to the PostgREST roles, while the backend connects as the table owner
+-- (`postgres`) and owners bypass RLS unless FORCE is set. Do NOT add FORCE here — it
+-- would apply these policy-less tables to the owner too and deny the backend everything.
+ALTER TABLE "chat_thread" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "chat_message" ENABLE ROW LEVEL SECURITY;

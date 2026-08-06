@@ -221,6 +221,19 @@ Backend auth is nonce, then wallet-signature, then JWT (`backend/README.md`), gu
 ### Testing conventions
 See `docs/testing.md` for the full per-package suite table. Test work is expected to land on dedicated branches per test type/area (e.g. `test/frontend-modules`), not mixed into feature branches, with coverage reported after each change.
 
+### Every new Prisma migration must enable RLS on the tables it creates
+The database is Supabase, and `ALTER DEFAULT PRIVILEGES` in `public` grants **every newly created table** to `anon` and `authenticated` with ALL privileges — SELECT, INSERT, UPDATE, DELETE, TRUNCATE. Prisma emits no RLS statements, so a migration that only does `CREATE TABLE` ships a table that anyone holding the project's public anon key can read *and* delete through PostgREST.
+
+All existing tables have RLS enabled with **zero policies**, which is the correct posture here rather than an unfinished one: with no policy, RLS denies the PostgREST roles everything, while the backend connects as the table owner (`postgres`) and owners bypass RLS unless `FORCE ROW LEVEL SECURITY` is set. So the backend is unaffected and the public roles get nothing. Verified by experiment: as `anon`, a `SELECT` against an RLS-enabled table returns zero rows, while the same query against an identical table without RLS returns the data and a follow-up `DELETE` removes it.
+
+So every migration that creates a table **MUST** end with:
+
+```sql
+ALTER TABLE "new_table" ENABLE ROW LEVEL SECURITY;
+```
+
+Do **not** add `FORCE ROW LEVEL SECURITY`: it applies policy-less RLS to the owner too, which denies the backend its own tables. Note the existing tables got RLS out of band (dashboard or manual SQL) rather than from their migrations, so each of them was exposed between deploy and the fix — putting the statement in the migration is what closes that window.
+
 ## Licensing
 
 This monorepo has split licensing; see the table in `README.md`. `contracts/ethereum`, `contracts/solana`, `indexer-go`, `proto`, `protocol`, and `verifier` are MIT; everything else (`frontend`, `backend`, `mobile`, `website`, `shared`, `image-generator`) is PolyForm Noncommercial 1.0.0 (root `LICENSE`). Match the license of whichever package you're editing when adding new files.
