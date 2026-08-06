@@ -38,7 +38,14 @@ const mockState = {
     proposals: [] as ReturnType<typeof proposal>[],
     proposalsLoading: false,
     isMarried: false,
+    /** Bulk roster from `useAllPets`; a spouse is only sometimes in it. */
+    roster: [{ id: '9', name: 'Luna' }] as { id: string; name: string }[],
+    /** What a direct spouse lookup returns when the roster map has no answer. */
+    fetchedSpouse: {} as { name?: string; level?: number },
 };
+
+/** Every `useSpousePet` call the card made, to check it skips when it can. */
+const mockSpouseLookups: { id: string; skip: boolean }[] = [];
 
 const mockMutations = {
     propose: jest.fn(async () => undefined),
@@ -57,7 +64,7 @@ jest.mock('@shared/core', () => ({
         activeKind: mockState.kind === 'none' ? null : mockState.kind,
         walletAddress: '0xme',
     }),
-    useAllPets: () => ({ pets: [{ id: '9', name: 'Luna' }] }),
+    useAllPets: () => ({ pets: mockState.roster }),
     useIncomingProposals: (...args: unknown[]) => {
         mockIncomingArgs(...args);
         return { proposals: mockState.proposals, isLoading: mockState.proposalsLoading };
@@ -73,6 +80,13 @@ jest.mock('@shared/core', () => ({
         isMarried: mockState.isMarried,
         spouseId: mockState.isMarried ? 9n : undefined,
     }),
+    // Resolves a spouse the bulk roster does not hold. `skip` is what the card
+    // passes when the map already answered, so honouring it here is what proves
+    // the card is not firing a redundant request per married pet.
+    useSpousePet: (_chain: unknown, id: string, opts?: { skip?: boolean }) => {
+        mockSpouseLookups.push({ id, skip: Boolean(opts?.skip) });
+        return opts?.skip ? {} : mockState.fetchedSpouse;
+    },
 }));
 
 jest.mock('@tanstack/react-query', () => ({
@@ -141,6 +155,9 @@ beforeEach(() => {
     mockState.proposals = [];
     mockState.proposalsLoading = false;
     mockState.isMarried = false;
+    mockState.roster = [{ id: '9', name: 'Luna' }];
+    mockState.fetchedSpouse = {};
+    mockSpouseLookups.length = 0;
     jest.clearAllMocks();
 });
 
@@ -231,6 +248,37 @@ describe('MarriageScreen', () => {
         mockState.isMarried = false;
         const single = await render();
         expect(textOf(single)).not.toContain('married to');
+    });
+
+    it('does not look up a spouse the roster already named', async () => {
+        // One redundant request per married pet otherwise, on every render.
+        mockState.isMarried = true;
+        mockSpouseLookups.length = 0;
+        await render();
+        expect(mockSpouseLookups.every((l) => l.skip)).toBe(true);
+    });
+
+    it('names a spouse the roster does not hold', async () => {
+        // The usual case: a spouse is someone else's pet, and `useAllPets` only
+        // fetched a page. Without the direct lookup the card shows "pet #9", which
+        // is the id the player already could not do anything with.
+        mockState.isMarried = true;
+        mockState.roster = [];
+        mockState.fetchedSpouse = { name: 'Momo', level: 4 };
+        mockSpouseLookups.length = 0;
+
+        const tree = await render();
+
+        expect(mockSpouseLookups.some((l) => l.id === '9' && !l.skip)).toBe(true);
+        expect(textOf(tree)).toContain('married to Momo');
+    });
+
+    it('falls back to the id when nothing can name the spouse', async () => {
+        mockState.isMarried = true;
+        mockState.roster = [];
+        mockState.fetchedSpouse = {};
+        const tree = await render();
+        expect(textOf(tree)).toContain('married to pet #9');
     });
 
     it('divorces the chosen pet', async () => {

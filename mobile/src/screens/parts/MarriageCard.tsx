@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useMarriageInfo, type OpponentPet, type Pet } from '@shared/core';
+import { useMarriageInfo, useSpousePet, type OpponentPet, type Pet } from '@shared/core';
 
 import { neon } from '../../theme/neon';
 
@@ -19,10 +19,24 @@ type Props = {
 export default function MarriageCard({ pet, petById, busy, onDivorce }: Props) {
     const info = useMarriageInfo(pet);
 
+    const spouseId = info.spouseId?.toString();
+    const fromMap = spouseId ? petById.get(spouseId)?.name : undefined;
+
+    /**
+     * The roster map only holds what `useAllPets` fetched, and a spouse is usually
+     * someone else's pet, so it is often absent. Without this the card falls back
+     * to "married to pet #123", which is the id the player already cannot use.
+     *
+     * Called before the early return below, because a pet that stops being married
+     * would otherwise change this component's hook count between renders. `skip`
+     * keeps it from firing when the map already answered, and an empty id disables
+     * it outright.
+     */
+    const fetched = useSpousePet(pet.chain, spouseId ?? '', { skip: Boolean(fromMap) });
+
     if (info.isLoading || !info.isMarried) return null;
 
-    const spouseId = info.spouseId?.toString();
-    const spouseName = spouseId ? petById.get(spouseId)?.name : undefined;
+    const spouseName = fromMap ?? fetched.name;
 
     return (
         <View style={styles.card}>
