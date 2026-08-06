@@ -13,6 +13,7 @@ import DefenseScreen from '../screens/DefenseScreen';
 import GalleryScreen from '../screens/GalleryScreen';
 import LandingScreen from '../screens/LandingScreen';
 import LevelUpScreen from '../screens/LevelUpScreen';
+import MarriageScreen from '../screens/MarriageScreen';
 import RenameScreen from '../screens/RenameScreen';
 import TrainScreen from '../screens/TrainScreen';
 import { placeholderFor } from '../screens/PlaceholderScreen';
@@ -37,7 +38,7 @@ const TAB_SCREENS: Record<keyof MainTabParamList, React.ComponentType> = {
 };
 
 const STACK_SCREENS = {
-    Marriage: placeholderFor('Marriage'),
+    Marriage: MarriageScreen,
     Rename: RenameScreen,
     Defense: DefenseScreen,
 } as const;
