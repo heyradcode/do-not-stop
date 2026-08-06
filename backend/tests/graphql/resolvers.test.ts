@@ -9,6 +9,7 @@ vi.mock('../../src/grpc/estimateWin', () => ({
 }));
 vi.mock('@repositories/leaderboard.repository', () => ({
     findPetLeaderboard: vi.fn(),
+    findPlayerLeaderboard: vi.fn(),
 }));
 // The overlay's own merge rule is covered in repositories/battleProgress.overlay.test.ts;
 // here it is stubbed to a pass-through so these tests stay about resolver shaping.
@@ -19,7 +20,7 @@ vi.mock('@repositories/battleProgress.overlay', () => ({
 
 import { rootValue } from '../../src/graphql/resolvers';
 import { findReadyOpponents, getPetById } from '@repositories/roster.repository';
-import { findPetLeaderboard } from '@repositories/leaderboard.repository';
+import { findPetLeaderboard, findPlayerLeaderboard } from '@repositories/leaderboard.repository';
 import { tryGrpcEstimateWin } from '../../src/grpc/estimateWin';
 
 const ctx = { caller: '0xcaller' };
@@ -97,6 +98,30 @@ describe('leaderboard resolver', () => {
         vi.mocked(findPetLeaderboard).mockResolvedValue({ entries: [], total: 0 });
         await rootValue.leaderboard({ chain: 'evm', pageSize: 999 }, ctx);
         expect(vi.mocked(findPetLeaderboard).mock.calls[0][0].pageSize).toBe(50);
+    });
+});
+
+describe('playerLeaderboard resolver', () => {
+    const entry = { rank: 1, owner: '0xowner', winCount: 20, lossCount: 4, petCount: 3 };
+
+    it('passes the page through unchanged (no petId to rename here)', async () => {
+        vi.mocked(findPlayerLeaderboard).mockResolvedValue({ entries: [entry], total: 1 });
+
+        const result = await rootValue.playerLeaderboard({ chain: 'evm', page: 2 }, ctx);
+
+        expect(result.total).toBe(1);
+        expect(result.page).toBe(2);
+        expect(result.entries[0]).toEqual(entry);
+    });
+
+    it('throws for an unsupported chain', async () => {
+        await expect(rootValue.playerLeaderboard({ chain: 'tron' }, ctx)).rejects.toThrow('chain must be one of');
+    });
+
+    it('clamps pageSize to MAX_PAGE_SIZE=50', async () => {
+        vi.mocked(findPlayerLeaderboard).mockResolvedValue({ entries: [], total: 0 });
+        await rootValue.playerLeaderboard({ chain: 'evm', pageSize: 999 }, ctx);
+        expect(vi.mocked(findPlayerLeaderboard).mock.calls[0][0].pageSize).toBe(50);
     });
 });
 

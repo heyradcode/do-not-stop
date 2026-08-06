@@ -86,6 +86,25 @@ export const schema = buildSchema(`
         pageSize: Int!
     }
 
+    "One ranked owner, over the same merged battle record as LeaderboardEntry."
+    type PlayerLeaderboardEntry {
+        "1-based position in the full ranking, not within the page."
+        rank: Int!
+        "Wallet address / pubkey. EVM addresses are lowercased; Solana pubkeys are not."
+        owner: String!
+        winCount: Int!
+        lossCount: Int!
+        "How many of this owner's pets have a battle record."
+        petCount: Int!
+    }
+
+    type PlayerLeaderboardPage {
+        entries: [PlayerLeaderboardEntry!]!
+        total: Int!
+        page: Int!
+        pageSize: Int!
+    }
+
     type OpponentsPage {
         opponents: [OpponentPet!]!
         total: Int!
@@ -119,6 +138,17 @@ export const schema = buildSchema(`
             page: Int
             pageSize: Int
         ): LeaderboardPage!
+
+        """
+        Owners ranked by their pets' combined battle record, ordered the same way as
+        the pet board. Only pets that have fought are summed, so petCount is "pets with
+        a record" and an owner whose pets have never fought does not appear.
+        """
+        playerLeaderboard(
+            chain: String!
+            page: Int
+            pageSize: Int
+        ): PlayerLeaderboardPage!
 
         """
         Search pets by name prefix or exact numeric ID across the whole roster.

@@ -15,7 +15,7 @@ vi.mock('../../src/repositories/battleProgress.overlay', () => ({
     servedChainIdForFamily: (chain: string) => servedChainIdForFamily(chain),
 }));
 
-import { findPetLeaderboard } from '../../src/repositories/leaderboard.repository';
+import { findPetLeaderboard, findPlayerLeaderboard } from '../../src/repositories/leaderboard.repository';
 import { prisma } from '@config/prisma';
 
 const rankedRow = {
@@ -42,6 +42,21 @@ function mockJoinQuery(rows: unknown[], total: number) {
 function sqlOfCall(index: number): string {
     const [template] = vi.mocked(prisma.$queryRaw).mock.calls[index] as unknown as [string[]];
     return template.join(' ? ').replace(/\s+/g, ' ');
+}
+
+/**
+ * The SQL of any `Prisma.Sql` fragments interpolated into the nth call.
+ *
+ * `sqlOfCall` only sees the literal chunks, so the owner key — a nested fragment — is
+ * invisible to it. `$queryRaw` is mocked, so the nesting is never flattened.
+ */
+function fragmentsOfCall(index: number): string {
+    const [, ...values] = vi.mocked(prisma.$queryRaw).mock.calls[index] as unknown as [string[], ...unknown[]];
+    return values
+        .filter((value): value is { sql: string } => typeof (value as { sql?: unknown })?.sql === 'string')
+        .map((fragment) => fragment.sql)
+        .join(' ')
+        .replace(/\s+/g, ' ');
 }
 
 beforeEach(() => {
@@ -113,5 +128,75 @@ describe('findPetLeaderboard', () => {
             { petId: 'asc' },
         ]);
         expect(args?.where?.OR).toEqual([{ winCount: { gt: 0 } }, { lossCount: { gt: 0 } }]);
+    });
+});
+
+describe('findPlayerLeaderboard', () => {
+    const playerRow = { owner: '0xowner', winCount: 20, lossCount: 4, petCount: 3 };
+
+    it('returns the ranked owners and their total', async () => {
+        mockJoinQuery([playerRow], 1);
+
+        const result = await findPlayerLeaderboard({ chain: 'evm', page: 0, pageSize: 20 });
+
+        expect(result.total).toBe(1);
+        expect(result.entries[0]).toMatchObject({ owner: '0xowner', rank: 1, petCount: 3 });
+    });
+
+    it('numbers ranks absolutely, continuing across pages', async () => {
+        mockJoinQuery([playerRow, { ...playerRow, owner: '0xother' }], 30);
+
+        const result = await findPlayerLeaderboard({ chain: 'evm', page: 1, pageSize: 20 });
+
+        expect(result.entries.map((entry) => entry.rank)).toEqual([21, 22]);
+    });
+
+    it('folds EVM owners to one group so a wallet is not listed twice', async () => {
+        // indexer-go is not guaranteed to write the roster in one case, and an unfolded
+        // group would split a single wallet's record across two rows.
+        mockJoinQuery([], 0);
+
+        await findPlayerLeaderboard({ chain: 'evm', page: 0, pageSize: 20 });
+
+        expect(fragmentsOfCall(0)).toContain('LOWER(r.owner)');
+    });
+
+    it('leaves Solana pubkeys unfolded, since base58 is case-significant', async () => {
+        // Folding here would merge two distinct pubkeys into one player.
+        mockJoinQuery([], 0);
+
+        await findPlayerLeaderboard({ chain: 'solana', page: 0, pageSize: 20 });
+
+        const fragments = fragmentsOfCall(0);
+        expect(fragments).toContain('r.owner');
+        expect(fragments).not.toContain('LOWER(');
+    });
+
+    it('sums the merged record and counts owners, not pets', async () => {
+        mockJoinQuery([], 0);
+
+        await findPlayerLeaderboard({ chain: 'evm', page: 0, pageSize: 20 });
+
+        const sql = sqlOfCall(0);
+        expect(sql).toContain('SUM(COALESCE(p.win_count, r.win_count))::int');
+        expect(sql).toContain('SUM(COALESCE(p.loss_count, r.loss_count))::int');
+        expect(sql).toContain('ORDER BY "winCount" DESC, "lossCount" ASC');
+        // The total counts grouped owners: COUNT(*) over the ungrouped join would count
+        // pets, and page the client past the last owner.
+        expect(sqlOfCall(1)).toContain('SELECT COUNT(*) AS total FROM (');
+        expect(sqlOfCall(1)).toContain('GROUP BY');
+    });
+
+    it('sums frozen roster counters for a chain family this deployment does not serve', async () => {
+        servedChainIdForFamily.mockReturnValue(null);
+        mockJoinQuery([playerRow], 1);
+
+        const result = await findPlayerLeaderboard({ chain: 'solana', page: 0, pageSize: 20 });
+
+        expect(result.entries[0].rank).toBe(1);
+        const sql = sqlOfCall(0);
+        expect(sql).toContain('SUM(r.win_count)::int');
+        expect(sql).not.toContain('pet_battle_progress');
+        expect(sqlOfCall(1)).toContain('COUNT(DISTINCT');
     });
 });

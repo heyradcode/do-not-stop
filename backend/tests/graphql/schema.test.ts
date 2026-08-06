@@ -21,9 +21,10 @@ function fieldsOf(typeName: string): Record<string, { type: string }> {
 describe('GraphQL schema — Query surface', () => {
     const query = fieldsOf('Query');
 
-    it('exposes opponents, pet, searchPets, allPets, battleProgress, leaderboard, and winEstimate', () => {
+    it('exposes the pet reads, both leaderboards, battleProgress, and winEstimate', () => {
         expect(Object.keys(query).sort()).toEqual([
-            'allPets', 'battleProgress', 'leaderboard', 'opponents', 'pet', 'searchPets', 'winEstimate',
+            'allPets', 'battleProgress', 'leaderboard', 'opponents', 'pet', 'playerLeaderboard',
+            'searchPets', 'winEstimate',
         ]);
     });
 
@@ -48,6 +49,10 @@ describe('GraphQL schema — Query surface', () => {
     it('returns a non-null LeaderboardPage from leaderboard', () => {
         expect(query.leaderboard?.type).toBe('LeaderboardPage!');
     });
+
+    it('returns a non-null PlayerLeaderboardPage from playerLeaderboard', () => {
+        expect(query.playerLeaderboard?.type).toBe('PlayerLeaderboardPage!');
+    });
 });
 
 describe('GraphQL schema — LeaderboardEntry', () => {
@@ -62,6 +67,21 @@ describe('GraphQL schema — LeaderboardEntry', () => {
     it('types rank as Int and carries `asset` so Solana rows can address pet art', () => {
         expect(entry.rank?.type).toBe('Int!');
         expect(entry.asset?.type).toBe('String!');
+    });
+});
+
+describe('GraphQL schema — PlayerLeaderboardEntry', () => {
+    const entry = fieldsOf('PlayerLeaderboardEntry');
+
+    it('carries the rank, owner, and the summed record', () => {
+        for (const f of ['rank', 'owner', 'winCount', 'lossCount', 'petCount']) {
+            expect(entry, `missing field ${f}`).toHaveProperty(f);
+        }
+    });
+
+    it('has no pet-specific fields — a player row is an aggregate, not a pet', () => {
+        expect(entry).not.toHaveProperty('id');
+        expect(entry).not.toHaveProperty('dna');
     });
 });
 
