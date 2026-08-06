@@ -51,7 +51,7 @@ const mockTaunts = jest.fn();
 // discarded.
 const mockCreateRoom = jest.fn<Promise<string | null>, unknown[]>(async () => 'r1');
 /** Captures what the panel hands `useBattlePets`, which is where roomId matters. */
-const mockBattleOptions: { roomId?: string | null } = {};
+const mockBattleOptions: { roomId?: string | null; roomSocketUrl?: string } = {};
 const mockWinEstimateArgs = jest.fn();
 
 jest.mock('@shared/core', () => ({
@@ -80,8 +80,9 @@ jest.mock('@shared/core', () => ({
         isLoading: false,
     }),
     useCreateBattleRoom: () => ({ createRoom: mockCreateRoom, isLoading: false }),
-    useBattlePets: (opts: { roomId?: string | null }) => {
+    useBattlePets: (opts: { roomId?: string | null; roomSocketUrl?: string }) => {
         mockBattleOptions.roomId = opts?.roomId;
+        mockBattleOptions.roomSocketUrl = opts?.roomSocketUrl;
         return {
             mutate: mockBattle,
             isPending: false,
@@ -241,6 +242,17 @@ describe('BattleScreen', () => {
 
         expect(mockBattleOptions.roomId).toBe('r1');
         expect(mockBattle).toHaveBeenCalled();
+    });
+
+    it('subscribes to the room socket so updates arrive by push', async () => {
+        // Polling still carries the battle either way; this is what makes it
+        // prompt. The URL is derived from API_URL, so it must be a ws scheme
+        // pointing at the §J endpoint rather than the http one it came from.
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+
+        expect(mockBattleOptions.roomSocketUrl).toMatch(/^wss?:\/\/.+\/ws\/battle-room$/);
     });
 
     it('does not hand a failed mint the previous battle’s room', async () => {

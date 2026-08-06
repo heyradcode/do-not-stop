@@ -15,6 +15,7 @@ import {
     type Pet,
 } from '@shared/core';
 
+import { BATTLE_ROOM_WS_URL } from '../../constants/api';
 import { usePetErrorToast } from '../usePetErrorToast';
 import { pickRandomOpponent, sortOpponentsByMatch } from './matchmaking';
 
@@ -68,11 +69,11 @@ export interface UseBattlePanel {
  * `docs/plan-mobile-frontend-parity.md`, and the receipt is what settles a battle
  * either way, so mobile shows the taunts, then the result the receipt carries.
  *
- * Battle state itself is not narrower: `useBattlePets` already polls
+ * Battle state itself is not narrower: `useBattlePets` polls
  * `GET /api/battle/:battleId` through `useBackendBattle`, which is the
- * authoritative source. `roomSocketUrl` is left unset, so this client learns of
- * changes by polling rather than push. That is a latency difference, not a
- * correctness one, by the design of §J: the socket only ever says "ask again".
+ * authoritative source, and subscribes to the room socket for push updates on top
+ * of it. The socket only ever says "ask again", so a client that cannot reach it
+ * converges on the same state a little slower (§J).
  */
 export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
     const capabilities = useChainCapabilities();
@@ -129,6 +130,7 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
             refetch();
         },
         roomId,
+        roomSocketUrl: BATTLE_ROOM_WS_URL,
     });
 
     // Read through a ref so the effect below depends on the pending fight alone.
