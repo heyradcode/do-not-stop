@@ -55,27 +55,12 @@
     gap: 8px;
     flex-wrap: wrap;
 
-    select {
+    /* PetSelect draws its own chrome and is `width: 100%`; this is the flex slot it
+       fills, so the Random and Refresh buttons keep their place beside it. */
+    .combatantSelectField {
         flex: 1;
         min-width: 0;
-        background: rgb(4 10 26 / 96%);
-        border: 1px solid rgb(101 131 255 / 28%);
-        border-radius: 6px;
-        padding: 8px 12px;
-        font-size: 12px;
-        font-family: var(--cp-content-font);
-        color: var(--cp-text-body-dark);
-        cursor: pointer;
-
-        &:focus-visible {
-            outline: none;
-            border-color: var(--cp-cyan);
-        }
     }
-}
-
-.combatantColRival .combatantSelect select:focus-visible {
-    border-color: var(--cp-magenta);
 }
 
 .combatantSelectBtn {
