@@ -11,6 +11,7 @@ type Props = {
     onBattle: () => void;
     onRename: () => void;
     onDefend: () => void;
+    onSend: () => void;
 };
 
 /**
@@ -18,7 +19,7 @@ type Props = {
  * Rename and Defense live here rather than in the tab bar because both act on a
  * chosen pet; see plan 3.1.
  */
-export default function PetCard({ pet, status, onBattle, onRename, onDefend }: Props) {
+export default function PetCard({ pet, status, onBattle, onRename, onDefend, onSend }: Props) {
     const rarityColor = getRarityColor(pet.rarity);
 
     return (
@@ -69,6 +70,9 @@ export default function PetCard({ pet, status, onBattle, onRename, onDefend }: P
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.action} onPress={onDefend} activeOpacity={0.85}>
                     <Text style={styles.actionText}>Defend</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.action} onPress={onSend} activeOpacity={0.85}>
+                    <Text style={styles.actionText}>Send</Text>
                 </TouchableOpacity>
             </View>
         </View>

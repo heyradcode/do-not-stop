@@ -23,6 +23,7 @@ type Props = {
     onBattle: (pet: Pet) => void;
     onRename: (pet: Pet) => void;
     onDefend: (pet: Pet) => void;
+    onSend: (pet: Pet) => void;
 };
 
 export default function PetList({
@@ -35,6 +36,7 @@ export default function PetList({
     onBattle,
     onRename,
     onDefend,
+    onSend,
 }: Props) {
     if (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -100,6 +102,7 @@ export default function PetList({
                     onBattle={() => onBattle(pet)}
                     onRename={() => onRename(pet)}
                     onDefend={() => onDefend(pet)}
+                    onSend={() => onSend(pet)}
                 />
             ))}
         </ScrollView>

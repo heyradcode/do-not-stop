@@ -93,10 +93,11 @@ Things worth knowing before changing any of it:
 
 ## Known gaps
 
-- No live battle spectating or round-by-round animation. `useBattleRoomSocket` is not wired, so a
-  battle plays its taunts and then shows the result the signed receipt carries.
+- No round-by-round battle animation. A battle plays its taunts and then shows the result the
+  signed receipt carries. Battle *state* is live: it polls `GET /api/battle/:battleId` and
+  subscribes to the room socket for push updates on top.
 - No ERC-20 token balances. The target chain's popular-token list holds a single testnet LINK.
-- No pet transfer flow, and no NFT art. Pets fall back to emoji avatars.
+- No NFT art. Pets fall back to emoji avatars.
 
 ## Android package name
 

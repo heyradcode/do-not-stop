@@ -27,6 +27,9 @@ jest.mock('../src/hooks/pet-gallery/usePetGallery', () => ({
     usePetGallery: () => mockGallery(),
 }));
 jest.mock('../src/components/CreatePetModal', () => () => null);
+// Both sheets reach for chain hooks this file's `@shared/core` stub does not
+// carry, and both have their own suites. This one is about the gallery view.
+jest.mock('../src/components/SendPetModal', () => () => null);
 
 import GalleryScreen from '../src/screens/GalleryScreen';
 import { usePetCooldowns } from '../src/hooks/usePetCooldowns';

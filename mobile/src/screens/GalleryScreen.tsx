@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 
 import CreatePetModal from '../components/CreatePetModal';
 import PetList from '../components/PetList';
+import SendPetModal from '../components/SendPetModal';
 import { usePetGallery } from '../hooks/pet-gallery/usePetGallery';
 import { neon, neonGlow } from '../theme/neon';
 
@@ -30,6 +31,10 @@ export default function GalleryScreen() {
         onBattle,
         onRename,
         onDefend,
+        sendingPet,
+        onSend,
+        onCloseSend,
+        onSent,
     } = usePetGallery();
 
     return (
@@ -84,7 +89,10 @@ export default function GalleryScreen() {
                 onBattle={onBattle}
                 onRename={onRename}
                 onDefend={onDefend}
+                onSend={onSend}
             />
+
+            <SendPetModal pet={sendingPet} onClose={onCloseSend} onSent={onSent} />
         </View>
     );
 }

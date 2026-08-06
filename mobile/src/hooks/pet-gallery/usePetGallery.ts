@@ -17,9 +17,9 @@ import { usePetCooldowns, type PetCooldownStatus } from '../usePetCooldowns';
  * And `useCreatePet` lives here rather than in the screen, so the mint's `onSuccess`
  * can refetch the list the hook already owns.
  *
- * The send/transfer modal is deliberately absent: `useTransferPet` exists in the
- * adapter, but transfer is not in the plan's hook list for this screen and pulls in
- * a whole address-entry flow. It belongs with the rest of Phase 4, not here.
+ * Transfer lives here too. The pet being sent is held rather than a boolean, so
+ * the sheet always knows which one it has, and `onSent` refetches because a
+ * transferred pet has left this wallet and the list it came from is now wrong.
  */
 export interface UsePetGallery {
     pets: Pet[];
@@ -36,6 +36,11 @@ export interface UsePetGallery {
     onBattle: (pet: Pet) => void;
     onRename: (pet: Pet) => void;
     onDefend: (pet: Pet) => void;
+    /** The pet being transferred, or null when the send sheet is closed. */
+    sendingPet: Pet | null;
+    onSend: (pet: Pet) => void;
+    onCloseSend: () => void;
+    onSent: () => void;
 }
 
 type GalleryNavigation = NativeStackNavigationProp<RootStackParamList>;
@@ -47,6 +52,9 @@ export const usePetGallery = (): UsePetGallery => {
     const notifyError = useNotifyError();
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+    // Held as the pet rather than a boolean: the sheet needs to know which one it
+    // is sending, and a stale id after a refetch would send the wrong pet.
+    const [sendingPet, setSendingPet] = useState<Pet | null>(null);
 
     const { statusFor } = usePetCooldowns(pets);
 
@@ -100,5 +108,10 @@ export const usePetGallery = (): UsePetGallery => {
         onBattle: (pet) => navigation.navigate('Main', { screen: 'Battle', params: { petId: pet.id } }),
         onRename: (pet) => navigation.navigate('Rename', { petId: pet.id }),
         onDefend: (pet) => navigation.navigate('Defense', { petId: pet.id }),
+        sendingPet,
+        onSend: setSendingPet,
+        onCloseSend: () => setSendingPet(null),
+        // The pet has left this wallet, so the list it was read from is now wrong.
+        onSent: refetch,
     };
 };
