@@ -46,6 +46,15 @@ vi.mock('@shared/core', () => ({
 
 import RenamePanel from '@components/pet/interactions/panels/rename';
 
+/**
+ * Picks a pet from `PetSelect`: a trigger plus a portalled listbox, so the options exist
+ * only once it is open and `selectOptions` does not apply.
+ */
+async function choosePet(name: string) {
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.click(await screen.findByRole('option', { name: new RegExp(name) }));
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
     capabilities.renameMinLevel = 1;
@@ -53,19 +62,31 @@ beforeEach(() => {
 });
 
 describe('RenamePanel', () => {
-    it('lists the ready pets as options', () => {
+    it('lists the ready pets as options', async () => {
         render(<RenamePanel />);
+        await userEvent.click(screen.getByRole('combobox'));
 
-        expect(screen.getByRole('option', { name: 'Alpha (Level 2)' })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: 'Beta (Level 5)' })).toBeInTheDocument();
+        expect(await screen.findByRole('option', { name: /Alpha/ })).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: /Beta/ })).toBeInTheDocument();
+        // The level rides beside the name rather than being folded into one string.
+        expect(screen.getByRole('option', { name: /Lv 5/ })).toBeInTheDocument();
     });
 
-    it('filters out pets below the rename minimum level', () => {
+    it('filters out pets below the rename minimum level', async () => {
         capabilities.renameMinLevel = 3;
         render(<RenamePanel />);
+        await userEvent.click(screen.getByRole('combobox'));
 
-        expect(screen.queryByRole('option', { name: 'Alpha (Level 2)' })).not.toBeInTheDocument();
-        expect(screen.getByRole('option', { name: 'Beta (Level 5)' })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: /Alpha/ })).not.toBeInTheDocument();
+        expect(await screen.findByRole('option', { name: /Beta/ })).toBeInTheDocument();
+    });
+
+    it('names the level requirement when it rules every pet out', () => {
+        capabilities.renameMinLevel = 9;
+        render(<RenamePanel />);
+
+        expect(screen.getByText('No pets at level 9+')).toBeInTheDocument();
+        expect(screen.getByRole('combobox')).toBeDisabled();
     });
 
     it('keeps the submit button disabled until a pet and name are provided', async () => {
@@ -73,7 +94,7 @@ describe('RenamePanel', () => {
         const submit = screen.getByRole('button', { name: 'Change Name' });
         expect(submit).toBeDisabled();
 
-        await userEvent.selectOptions(screen.getByRole('combobox'), '1');
+        await choosePet('Alpha');
         await userEvent.type(screen.getByPlaceholderText('Enter new name...'), 'Gamma');
 
         expect(submit).toBeEnabled();
@@ -82,7 +103,7 @@ describe('RenamePanel', () => {
     it('submits the rename mutation with the trimmed name', async () => {
         render(<RenamePanel />);
 
-        await userEvent.selectOptions(screen.getByRole('combobox'), '1');
+        await choosePet('Alpha');
         await userEvent.type(screen.getByPlaceholderText('Enter new name...'), '  Gamma  ');
         await userEvent.click(screen.getByRole('button', { name: 'Change Name' }));
 
@@ -92,7 +113,7 @@ describe('RenamePanel', () => {
 
     it('shows a success message once the rename settles', async () => {
         render(<RenamePanel />);
-        await userEvent.selectOptions(screen.getByRole('combobox'), '1');
+        await choosePet('Alpha');
         await userEvent.type(screen.getByPlaceholderText('Enter new name...'), 'Gamma');
 
         act(() => {

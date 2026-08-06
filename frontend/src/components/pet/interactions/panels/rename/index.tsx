@@ -16,6 +16,7 @@ import { Tones } from '@constants/tones';
 import PetShowcase from '../_shared/pet-showcase';
 import styles from './index.module.css';
 import PetArt from '@components/pet/pet-art';
+import PetSelect from '@components/ui/pet-select';
 
 const MAX_NAME_LEN = 20;
 
@@ -122,18 +123,18 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                 <div className="picker">
                     <div className="field">
                         <label htmlFor="rename-pet">Select Pet</label>
-                        <select
+                        <PetSelect
                             id="rename-pet"
+                            pets={selectablePets}
                             value={selectedPet}
-                            onChange={(e) => setSelectedPet(e.target.value)}
-                        >
-                            <option value="">Select pet...</option>
-                            {selectablePets.map(({ id, pet }) => (
-                                <option key={id} value={id}>
-                                    {pet.name} (Level {pet.level})
-                                </option>
-                            ))}
-                        </select>
+                            onChange={setSelectedPet}
+                            placeholder={
+                                selectablePets.length === 0 && renameMinLevel > 1
+                                    ? `No pets at level ${renameMinLevel}+`
+                                    : 'Select pet...'
+                            }
+                            disabled={selectablePets.length === 0}
+                        />
                     </div>
 
                     <div className="field">

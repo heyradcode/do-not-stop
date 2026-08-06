@@ -121,6 +121,9 @@
 .popup {
     max-height: 320px;
     overflow-y: auto;
+    /* Stops a wheel past the last pet from chaining to the page behind: that scroll
+       lands outside the popup, which is what closes it. */
+    overscroll-behavior: contain;
     padding: 6px;
     border: 1px solid rgb(125 214 255 / 45%);
     border-radius: 6px;

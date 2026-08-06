@@ -111,15 +111,24 @@ const PetSelect: React.FC<PetSelectProps> = ({
         // Closed rather than repositioned on scroll: the popup is fixed to a rect
         // measured once, so a scrolled panel would leave it floating beside nothing.
         // `true` catches scrolls on the panel body, which does not bubble.
-        const onScrollOrResize = () => close();
+        //
+        // The popup's own list is the exception, and has to be: it scrolls past six or
+        // so pets, and the capture listener sees that scroll too, so without this a
+        // wheel over the list closed the thing the player was reading.
+        const onScroll = (event: Event) => {
+            const target = event.target as Node | null;
+            if (target && popupRef.current?.contains(target)) return;
+            close();
+        };
+        const onResize = () => close();
 
         document.addEventListener('mousedown', onPointerDown);
-        window.addEventListener('scroll', onScrollOrResize, true);
-        window.addEventListener('resize', onScrollOrResize);
+        window.addEventListener('scroll', onScroll, true);
+        window.addEventListener('resize', onResize);
         return () => {
             document.removeEventListener('mousedown', onPointerDown);
-            window.removeEventListener('scroll', onScrollOrResize, true);
-            window.removeEventListener('resize', onScrollOrResize);
+            window.removeEventListener('scroll', onScroll, true);
+            window.removeEventListener('resize', onResize);
         };
     }, [open, close]);
 
