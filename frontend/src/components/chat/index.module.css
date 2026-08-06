@@ -1,5 +1,20 @@
 /* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
    Private chat: thread rail plus one conversation, magenta accent to match marriage. */
+
+/* The messaging panel is the one screen that should end at the bottom of the window
+   rather than at the bottom of its content.
+
+   `height: 100%` and not a flex rule: the shell's content slot is a scrollable *block*
+   (`overflow: auto`, no `display: flex`), so a `flex` declaration on the panel is inert
+   and it just sizes to its children. The slot does have a definite height — it is a
+   flex item of the shell's column — so a percentage resolves against it, and it resolves
+   against the slot's *content box*, which is why the panel lands inside the shell's
+   padding instead of overflowing it. Everything below here is a flex column already, so
+   the height flows down to the transcript on its own. */
+.page {
+    height: 100%;
+}
+
 /* Fills the panel body instead of sizing to its content. Every ancestor from the app
    shell down is already a flex column that owns the viewport height, so the conversation
    should end at the bottom of the panel's padding rather than at a fixed height with

@@ -183,6 +183,7 @@ const Chat: React.FC = () => {
 
     return (
         <DashboardPanel
+            className={styles.page}
             title={
                 <>
                     <Icon as={MarriageIcon} tone={Tones.Magenta} />
