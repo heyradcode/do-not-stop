@@ -5,13 +5,16 @@
  * wraps, and that is checked directly.
  */
 
-import { sepolia } from 'wagmi/chains';
+import { mainnet, sepolia } from 'wagmi/chains';
 
 import {
     CHAINS,
-    EVM_SWITCHER_CHAINS,
     TARGET_CHAIN_ID,
+    WC_FALLBACK_CHAINS,
+    getAppKitEvmNetworks,
+    getChainConfig,
     getNativeTokenSymbol,
+    getTargetChainName,
     isSupportedChain,
     resolveTargetChainId,
 } from '../src/constants/ethereumNetworks';
@@ -44,16 +47,55 @@ describe('CHAINS', () => {
         expect(CHAINS[0].chain.id).toBe(sepolia.id);
     });
 
-    it('omits chains with no deployment', () => {
-        // Mainnet is offered by the switcher but has no contracts, so switching to
-        // it must read as unsupported rather than as silently failing reads.
-        expect(EVM_SWITCHER_CHAINS.some((c) => c.chain.id === 1)).toBe(true);
-        expect(isSupportedChain(1)).toBe(false);
+    it('omits chains with no deployment, including the handshake fallback', () => {
+        // Mainnet is offered in the WalletConnect proposal so testnet-less wallets
+        // can approve something, but it has no contracts. It must not be listed as
+        // somewhere to play, or the switcher could strand a player there.
+        expect(WC_FALLBACK_CHAINS.some((c) => c.id === mainnet.id)).toBe(true);
+        expect(CHAINS.some((c) => c.chain.id === mainnet.id)).toBe(false);
+        expect(isSupportedChain(mainnet.id)).toBe(false);
     });
 
     it('does not treat an unknown chain as supported', () => {
         expect(isSupportedChain(84532)).toBe(false);
         expect(isSupportedChain(undefined)).toBe(false);
+    });
+});
+
+describe('getChainConfig / getTargetChainName', () => {
+    it('resolves a playable chain and names the target', () => {
+        expect(getChainConfig(sepolia.id)?.name).toBe('Sepolia');
+        expect(getTargetChainName(sepolia.id)).toBe('Sepolia');
+    });
+
+    it('does not resolve the handshake fallback', () => {
+        expect(getChainConfig(mainnet.id)).toBeUndefined();
+    });
+
+    it('names an unknown chain by id rather than rendering "undefined"', () => {
+        expect(getTargetChainName(84532)).toBe('chain 84532');
+    });
+});
+
+describe('getAppKitEvmNetworks', () => {
+    it('puts the target first so defaultNetwork lands on it', () => {
+        expect(getAppKitEvmNetworks(sepolia.id)[0].id).toBe(sepolia.id);
+    });
+
+    it('trails the handshake fallback behind every playable chain', () => {
+        const ids = getAppKitEvmNetworks(sepolia.id).map((c) => c.id);
+        expect(ids).toContain(mainnet.id);
+        expect(ids.indexOf(mainnet.id)).toBe(ids.length - 1);
+    });
+
+    it('lists each chain once', () => {
+        const ids = getAppKitEvmNetworks(sepolia.id).map((c) => c.id);
+        expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('still leads with a playable chain when the target has no config', () => {
+        // A typo'd EVM_CHAIN_ID must not put wagmi's default on the fallback.
+        expect(getAppKitEvmNetworks(84532)[0].id).toBe(CHAINS[0].chain.id);
     });
 });
 

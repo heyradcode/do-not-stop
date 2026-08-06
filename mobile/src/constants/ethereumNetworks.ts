@@ -41,10 +41,10 @@ export const TARGET_CHAIN_ID = resolveTargetChainId(EVM_CHAIN_ID);
  * Order matters: wagmi treats `chains[0]` as its default, so whatever sits first
  * is the chain RPC reads fall back to before a wallet reports a usable one.
  *
- * Chains without a deployment are deliberately absent, which is why Ethereum
- * mainnet appears in `EVM_SWITCHER_CHAINS` below but not here: offering one
- * would let a player switch to a network where every contract read silently
- * fails.
+ * Chains without a deployment are deliberately absent: offering one would let a
+ * player switch to a network where every contract read silently fails. This is
+ * also exactly what the network switcher lists, so the switcher can no longer
+ * strand a player somewhere `isSupportedChain` rejects.
  */
 export const CHAINS: EvmNetworkOption[] = [
     { chain: sepolia, name: 'Sepolia', symbol: 'ETH', isTestnet: true },
@@ -63,27 +63,50 @@ export const getNativeTokenSymbol = (chainId?: number): string => {
     return CHAIN_SYMBOLS[chainId] || 'ETH';
 };
 
+export const getChainConfig = (chainId: number): EvmNetworkOption | undefined =>
+    CHAINS.find((c) => c.chain.id === chainId);
+
 /** True when the wallet's current chain is one the app has contracts on. */
 export const isSupportedChain = (chainId: number | undefined): boolean =>
     chainId !== undefined && CHAINS.some((c) => c.chain.id === chainId);
 
+/** Target chain's name for player-facing copy; mirrors frontend's inline fallback. */
+export const getTargetChainName = (targetChainId: number = TARGET_CHAIN_ID): string =>
+    getChainConfig(targetChainId)?.name ?? `chain ${targetChainId}`;
+
 /**
- * Networks exposed in AppKit / wagmi — same three as in `AppKitConfig`.
+ * Offered in the WalletConnect proposal, never in the switcher.
  *
- * Wider than `CHAINS` on purpose: this is what the switcher lists, and it still
- * offers mainnet, where nothing is deployed. Narrowing it belongs with the rest
- * of the network-switcher work in plan Phase 5, not here.
+ * A wallet approves the intersection of what it supports with what was requested
+ * and rejects the whole proposal when that intersection is empty. `CHAINS` is
+ * testnet-only, so a wallet that ships no testnets matches nothing and the
+ * connect dies before the player can act on it. Mainnet gives such a wallet
+ * something to approve, which turns a dead connect into a wrong-network banner.
+ *
+ * It buys a connection, not an authorization: `CHAINS` still excludes it, so a
+ * player who lands here gets `NetworkGate` rather than a broken game. That is
+ * also why it is not an `EvmNetworkOption` — nothing should be able to list it
+ * as somewhere to play.
  */
-export const EVM_SWITCHER_CHAINS: EvmNetworkOption[] = [
-    { chain: hardhatLocal, name: 'Hardhat Local', symbol: 'ETH', isTestnet: true },
-    { chain: mainnet, name: 'Ethereum', symbol: 'ETH', isTestnet: false },
-    { chain: sepolia, name: 'Sepolia', symbol: 'ETH', isTestnet: true },
-];
+export const WC_FALLBACK_CHAINS: Chain[] = [mainnet];
 
-export function getEvmSwitcherChains(showTestnets: boolean): EvmNetworkOption[] {
-    return EVM_SWITCHER_CHAINS.filter((c) => (showTestnets ? c.isTestnet : !c.isTestnet));
-}
-
-export function getEvmNetworkMeta(chainId: number): EvmNetworkOption | undefined {
-    return EVM_SWITCHER_CHAINS.find((c) => c.chain.id === chainId);
+/**
+ * Wagmi / AppKit network list — target first, handshake fallbacks last.
+ *
+ * The single source of truth for what wagmi is configured with, so
+ * `useEvmSessionChain` can ask what it is allowed to switch to without
+ * duplicating `AppKitConfig`'s list. Fallbacks trail the playable chains so
+ * `defaultNetwork`, and any wallet that simply takes the first entry, still land
+ * on the target.
+ */
+export function getAppKitEvmNetworks(
+    targetChainId: number = TARGET_CHAIN_ID,
+): [Chain, ...Chain[]] {
+    const playable = CHAINS.map((c) => c.chain);
+    const target = getChainConfig(targetChainId)?.chain ?? CHAINS[0].chain;
+    const rest = playable.filter((c) => c.id !== target.id);
+    const fallbacks = WC_FALLBACK_CHAINS.filter(
+        (c) => c.id !== target.id && !rest.some((r) => r.id === c.id),
+    );
+    return [target, ...rest, ...fallbacks];
 }
