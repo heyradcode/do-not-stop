@@ -1,105 +1,130 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# CryptoPets mobile
 
-# Getting Started
+React Native client for the `do-not-stop` monorepo, sharing `@shared/core` with the web frontend.
+Licensed PolyForm Noncommercial 1.0.0, like the rest of the app packages (see the root `LICENSE`).
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Setup
 
-## Step 1: Start Metro
-
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
-
-To start the Metro dev server, run the following command from the root of your React Native project:
+Run everything from the repo root. The package manager is pnpm; `npm` and `yarn` will not resolve
+the workspace links this package depends on.
 
 ```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+pnpm install:all              # root + frontend + website + backend + mobile + contracts/ethereum
+cp mobile/env.example mobile/.env
 ```
 
-## Step 2: Build and run your app
+Fill in `REOWN_PROJECT_ID` from https://dashboard.reown.com and point `API_URL` at your backend.
+On an Android emulator the host is `10.0.2.2`; on a physical device or LDPlayer it is your LAN IP.
+Every other variable has a working default.
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+> **Editing `.env` needs a rebuild, not a reload.** `react-native-dotenv` inlines `@env` at Babel
+> transform time and Metro caches transforms, so a Fast Refresh picks up nothing. Restart with
+> `pnpm --filter mobile start --reset-cache` and rebuild. An installed APK has the old values
+> bundled inside it, where a cache reset cannot reach them at all.
 
-### Android
+## Commands
+
+| Task | Command |
+|---|---|
+| Metro dev server | `pnpm --filter mobile start` |
+| Run on Android | `pnpm --filter mobile android` |
+| Run on iOS | `pnpm --filter mobile ios` |
+| Lint | `pnpm --filter mobile lint` |
+| Test | `pnpm --filter mobile test` |
+| One test file | `pnpm --filter mobile exec jest __tests__/<name>.test.tsx` |
+
+There is no `build` script. React Native has no equivalent, so "it works" means lint, jest, and the
+app running on a device, never a successful compile. `tsc --noEmit` is useful but is not a gate:
+it reports pre-existing errors in `shared/` that this package does not own.
+
+iOS also needs CocoaPods before its first run:
 
 ```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+cd mobile/ios && bundle install && bundle exec pod install
 ```
 
-### iOS
+## Which chain this targets
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+`EVM_CHAIN_ID` defaults to **Sepolia (11155111)**, which is the only network with a live `PetCore`
+and `GameLogic`. This diverges from the web frontend, which lists Base Sepolia, and the divergence
+is deliberate: pet reads on Base Sepolia return an empty `0x` that looks like a decode bug because
+the contracts have no bytecode there. `docs/plan-mobile-frontend-parity.md` records the decision.
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+The roster on that deployment starts empty, so **mint a pet before expecting the gallery to show
+anything**. An empty gallery on first run is correct, not a failure.
 
-```sh
-bundle install
+Solana is wired for devnet and reached through the same chain-blind hooks. It has not yet been
+exercised end to end on a device.
+
+## How it fits together
+
+`App.tsx` mounts the provider stack in the same order as the frontend's `AppProviders.tsx`, with
+`NavigationContainer` where the web app has `BrowserRouter`:
+
+```
+SafeAreaProvider > Wagmi > QueryClient > AppKit > [SolanaAuthSigner]
+  > SolanaAppKitAnchorBridge > ApiClient > Auth > PetsConfig > Toast > NavigationContainer
 ```
 
-Then, and every time you update your native dependencies, run:
+Things worth knowing before changing any of it:
 
-```sh
-bundle exec pod install
-```
+- **Wallets go through Reown AppKit**, not Dynamic Labs as on web. Parity between the two apps is at
+  the level of behavior and configuration, not libraries.
+- **Pet reads and writes are chain-blind.** Screens call `@shared/core` hooks (`usePetList`,
+  `useCreatePet`, `useBattlePets`, and so on) which resolve through the `ChainAdapter` layer. Do not
+  reach for wagmi or Anchor directly in a screen.
+- **`useActiveChain` decides which adapter runs**, and it resolves Solana from the auth-signer store
+  and nothing else. `src/solana/SolanaAuthSigner.tsx` is what registers it; without that a connected
+  Solana wallet is invisible to every one of those hooks.
+- **Navigation is five tabs plus three stack routes.** `Gallery`, `Battle`, `Breed`, `Level Up` and
+  `Train` are tabs; `Marriage`, `Rename` and `Defense` are pushed over the shell from a per-pet
+  action, because each acts on one chosen pet.
+- **The landing screen is registered conditionally**, not redirected away from. While disconnected
+  only `Landing` exists, so there is no window where a tab screen renders against a wallet that is
+  not there.
+- **`shared/` and `protocol/` are consumed as raw TypeScript**, with no build step, by this app and
+  the frontend at once. A change in either affects both.
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## Known gaps
 
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+- No live battle spectating or round-by-round animation. `useBattleRoomSocket` is not wired, so a
+  battle plays its taunts and then shows the result the signed receipt carries.
+- No ERC-20 token balances. The target chain's popular-token list holds a single testnet LINK.
+- No pet transfer flow, and no NFT art. Pets fall back to emoji avatars.
 
 ## Android package name
 
-The app **display name** is **CryptoPets** (see `app.json`, Android `res/values/strings.xml`, and iOS `CFBundleDisplayName`). The Android **namespace** and **Kotlin/Java package** remain **`com.cryptozombies`** (e.g. `MainActivity` under `com/cryptozombies/`, `namespace` in `android/app/build.gradle`).
+The app **display name** is **CryptoPets** (see `app.json`, Android `res/values/strings.xml`, and
+iOS `CFBundleDisplayName`). The Android **namespace** and **Kotlin/Java package** remain
+**`com.cryptozombies`** (e.g. `MainActivity` under `com/cryptozombies/`, `namespace` in
+`android/app/build.gradle`).
 
-The Play Store **`applicationId`** is configured separately in `android/app/build.gradle` (`defaultConfig.applicationId`); it can differ from the namespace, but the **native package / namespace** is intentionally not rebranded to match CryptoPets yet.
+The Play Store **`applicationId`** is configured separately in `android/app/build.gradle`
+(`defaultConfig.applicationId`); it can differ from the namespace, but the **native package /
+namespace** is intentionally not rebranded to match CryptoPets yet.
 
-We are **not** renaming that Android namespace/package until React Native fixes autogenerated code that can reference a **stale or wrong `BuildConfig` package** when renaming apps or using flavors—see [facebook/react-native#52754 — `ReactNativeApplicationEntryPoint.java` doesn’t generate correctly during release `.aab` build](https://github.com/facebook/react-native/issues/52754).
+We are **not** renaming that Android namespace/package until React Native fixes autogenerated code
+that can reference a **stale or wrong `BuildConfig` package** when renaming apps or using flavors.
+See [facebook/react-native#52754](https://github.com/facebook/react-native/issues/52754).
 
-# Troubleshooting
+## Troubleshooting
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+**A `.env` change had no effect.** See the rebuild note above. This is almost always the cause.
 
-# Learn More
+**`pnpm install` fails with `ERR_PNPM_ENOENT ... <pkg>_tmp_<pid>`.** Metro is running and its
+watcher holds handles in `node_modules` while pnpm renames temp directories. It fails on a different
+package each attempt, so it looks transient and is not. Stop Metro and install again. A partial
+failure rewrites `pnpm-lock.yaml` without recording the dependency in `mobile/package.json`, so
+imports fail while the lockfile claims the package exists; add the specifier by hand and re-run.
 
-To learn more about React Native, take a look at the following resources:
+**WebSocket 3000 "Unauthorized: origin not allowed".** The Reown dashboard project has an allowlist
+that does not include this build's origin. Leave it empty while developing, or add the exact
+`metadata.url` from `src/AppKitConfig.ts` plus your Metro origin.
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+**Wrong network banner that will not clear.** The wallet approved a different chain set than the app
+requested, which WalletConnect freezes at connect time. Reconnecting is the only reliable way to
+widen it. `src/components/NetworkGate.tsx` explains which of the two cases you are in.
+
+**A jest suite dies importing `@shared/core`.** The barrel re-exports the Solana adapter and drags
+the whole Solana runtime in, ending at an unresolvable `rpc-websockets`. Stub the barrel with
+`jest.mock` and pull the specific module in through `jest.requireActual` with a relative path.
