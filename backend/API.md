@@ -219,6 +219,48 @@ matchup UI degrades to "odds unavailable". Intended for a single confirmed
 matchup, not per opponents row. Optional `samples` arg overrides the server
 default (clamped to 10,000).
 
+### Leaderboards
+
+```graphql
+query($chain: String!, $page: Int, $pageSize: Int) {
+  leaderboard(chain: $chain, page: $page, pageSize: $pageSize) {
+    entries { rank id chain owner name dna level rarity winCount lossCount asset }
+    total page pageSize
+  }
+  playerLeaderboard(chain: $chain, page: $page, pageSize: $pageSize) {
+    entries { rank owner winCount lossCount petCount }
+    total page pageSize
+  }
+  playerRank(chain: $chain) { rank owner winCount lossCount petCount }
+}
+```
+
+Three read-only rankings over the **merged** battle record — `pet_battle_progress`
+where a pet has fought a backend battle, the frozen `pet_roster` counters otherwise.
+Ranking on the roster alone is not a simplification but a bug: those counters stopped
+moving when battles left the chain (§L Phase 6), so on a deployment whose battles are
+all backend-settled the roster-only ranking is empty.
+
+Ordering is wins DESC, then losses ASC, then (pets only) level DESC, then the id or
+owner key. The losses tiebreak *is* the win-rate tiebreak — among rows on equal wins,
+fewer losses is a strictly higher rate — so nothing is ranked on a ratio drawn from a
+handful of fights. Rows with no battles at all are excluded.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `rank` | Int | 1-based over the **full** ranking, not the page; page 2 continues where page 1 stopped |
+| `owner` | String | grouping key on the player board: EVM addresses lowercased, Solana pubkeys untouched, matching `normalizeAccount` |
+| `petCount` | Int | pets **with a battle record**, not pets owned |
+
+`playerRank` reports the authenticated caller's own standing, so a client does not page
+the whole board looking for itself. It takes no owner argument — whose rank it is comes
+from the session — and returns **`null` for an unranked player** (no pet has fought)
+rather than a zeroed row, which would be indistinguishable from genuine last place.
+
+Neither board has a gRPC fast path, for the same reason `opponents` lost its own:
+indexer-go's cache holds chain state and has no view of `pet_battle_progress`, a
+backend-owned table, so it cannot answer these correctly. Both read Postgres directly.
+
 ### Battle data
 
 `battle_history` carries `loserPetId, seed (0x-hex), rounds, winnerHpRemaining,

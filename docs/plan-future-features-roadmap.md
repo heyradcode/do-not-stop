@@ -78,7 +78,9 @@ what to build first, section 11 is what to build last.
 
 *Tier 1 — ship immediately.* Near-zero new infrastructure, no contract work on either chain,
 nothing else in this doc needs to exist first.
-1. **Leaderboard** — `PetRoster.winCount`/`lossCount` already exist.
+1. **Leaderboard** — **Built; see §1.** Ranked on the merged battle record, not on
+   `PetRoster.winCount`/`lossCount` as this line originally assumed: those froze when
+   battles left the chain.
 2. **Social chat** — reuses the existing WebSocket channel and JWT auth; v1 scope is gated by the
    marriage feature that's already shipped.
 
@@ -227,6 +229,35 @@ Reading the graph:
 ---
 
 ## 1. Leaderboard feature
+
+> **Built.** This section is kept as the original proposal; `backend/API.md`
+> (Leaderboards) is authoritative for the shipped surface. What shipped diverges
+> from the sketch below in three ways, recorded here so they are not mistaken for
+> drift:
+>
+> - **`PetRoster.winCount`/`lossCount` were the wrong source.** The sketch's whole
+>   claim to cheapness was that those columns already exist. They do, and they have
+>   been frozen since §L Phase 6 — the live record accumulates in
+>   `pet_battle_progress`. This was not a theoretical concern: run the roster-only
+>   ranking against the live Base Sepolia data and it returns **zero rows**, while
+>   the merged ranking returns four pets and two players. Every leaderboard query
+>   merges the two the way `findReadyOpponents` does, in the query that orders the
+>   rows, because the ordering *is* the merge and a post-sort cannot fix it.
+> - **No ELO, and no `PetRating` table.** Ranking is wins DESC then losses ASC. That
+>   second key is the win-rate tiebreak without the division: on equal wins, fewer
+>   losses is a strictly higher rate, so nothing is ranked on a ratio drawn from a
+>   handful of fights. The `PetRating` model below was not created — see the
+>   paragraph after it, which is still the standing decision: if rating ever lands it
+>   belongs in the versioned ruleset computed from receipts, not at this layer.
+> - **A player board and a self-rank came with it.** Owners are ranked by their pets'
+>   combined record, grouped case-folded on EVM and unfolded on Solana (folding base58
+>   would merge two distinct pubkeys into one player). `playerRank` answers "where am
+>   I" in one query rather than having a client page the board looking for itself, and
+>   returns null for an unranked player rather than a zeroed row.
+>
+> Surfaces: `/leaderboard` in the web app, plus the sidebar rank footer, which until
+> now hardcoded "RANK #3 GLOBAL / 649 Total Wins" for every visitor. Mobile was
+> deliberately left out; the hooks live in `@shared/core` so it can pick them up.
 
 **Goal.** Ranked pets and/or players by battle performance.
 
