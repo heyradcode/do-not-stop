@@ -57,6 +57,20 @@ export {
 } from './pets/useSpousePet';
 export { useIncomingProposals, type IncomingProposal } from './marriage/useIncomingProposals';
 export { useWinEstimate, type WinEstimateResult } from './battle/useWinEstimate';
+// Leaderboards. Ranked server-side over the merged battle record, so a page arrives
+// already ordered and `rank` is absolute rather than per-page.
+export {
+    useLeaderboard,
+    type LeaderboardEntry,
+    type UseLeaderboardOptions,
+    type UseLeaderboardResult,
+} from './leaderboard/useLeaderboard';
+export {
+    usePlayerLeaderboard,
+    type PlayerLeaderboardEntry,
+    type UsePlayerLeaderboardOptions,
+    type UsePlayerLeaderboardResult,
+} from './leaderboard/usePlayerLeaderboard';
 export {
     useBattleDialogue,
     type UseBattleDialogueOptions,

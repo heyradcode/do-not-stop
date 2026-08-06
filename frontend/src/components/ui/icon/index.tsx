@@ -15,6 +15,7 @@ import {
     GiShield,
     GiSparkles,
     GiSpellBook,
+    GiTrophy,
     GiUpgrade,
 } from 'react-icons/gi';
 import {
@@ -104,6 +105,7 @@ export {
     GiShield as ShieldIcon,
     GiSparkles as SparklesIcon,
     GiSpellBook as SpellbookIcon,
+    GiTrophy as TrophyIcon,
     GiUpgrade as LevelUpIcon,
     IoCheckmarkSharp as CheckIcon,
     IoClose as CloseIcon,

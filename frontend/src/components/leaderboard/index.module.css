@@ -1,0 +1,164 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+   Leaderboard: a read-only ranking table, amber accent to match the trophy. */
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.tab {
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1px solid rgb(251 191 36 / 25%);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.tab:hover {
+    opacity: 1;
+}
+
+.tab.isActive {
+    opacity: 1;
+    border-color: rgb(251 191 36 / 60%);
+    background: rgb(251 191 36 / 12%);
+}
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Fixed track widths so ranks, records and rates line up down the column; only the
+   name track flexes. */
+.row {
+    display: grid;
+    grid-template-columns: 3rem 2.2rem minmax(0, 1fr) 6.5rem 3.5rem;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid rgb(148 163 184 / 14%);
+    background: var(--cp-surface);
+}
+
+/* The connected wallet's own rows, so a player finds themselves without reading
+   every address. */
+.row.isYou {
+    border-color: rgb(251 191 36 / 55%);
+    background: rgb(251 191 36 / 8%);
+}
+
+.rank {
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.avatar {
+    font-size: 1.4rem;
+    line-height: 1;
+    text-align: center;
+}
+
+.name {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sub {
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+.record {
+    display: flex;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.wins {
+    color: rgb(52 211 153);
+}
+
+.losses {
+    color: rgb(251 113 133);
+}
+
+.rate {
+    text-align: right;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
+}
+
+.pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.pager button {
+    padding: 5px 14px;
+    border-radius: 8px;
+    border: 1px solid rgb(148 163 184 / 25%);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.pager button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.pageLabel {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+}
+
+.empty,
+.error {
+    margin: 24px 0;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.empty {
+    opacity: 0.7;
+}
+
+.error {
+    color: rgb(251 113 133);
+}
+
+@media (width <= 640px) {
+    /* The rate is the one column derivable from the record beside it, so it is what
+       goes when the row runs out of room. */
+    .row {
+        grid-template-columns: 2.5rem 2rem minmax(0, 1fr) 5.5rem;
+    }
+
+    .rate {
+        display: none;
+    }
+}

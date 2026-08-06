@@ -63,3 +63,6 @@ export const TRAIN_PATH = '/train';
 export const MARRIAGE_PATH = '/marriage';
 export const RENAME_PATH = '/rename';
 export const DEFENSE_PATH = '/defense';
+
+/** Read-only view, not an interaction — no pet selection, nothing to sign. */
+export const LEADERBOARD_PATH = '/leaderboard';
