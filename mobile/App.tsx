@@ -15,6 +15,7 @@ import { ToastProvider } from './src/components/ui/toast';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { neon } from './src/theme/neon';
 import { SolanaAppKitAnchorBridge } from './src/solana/SolanaAppKitAnchorBridge';
+import { SolanaAuthSigner } from './src/solana/SolanaAuthSigner';
 
 /**
  * Provider order matches `frontend/src/AppProviders.tsx`, with `NavigationContainer`
@@ -24,6 +25,10 @@ import { SolanaAppKitAnchorBridge } from './src/solana/SolanaAppKitAnchorBridge'
  * inset rather than assuming one. `AppKit` renders as a sibling of the navigator
  * so its connect sheet is reachable from the landing screen and the tab shell
  * alike.
+ *
+ * `SolanaAuthSigner` is a non-wrapping sibling inside `AppKitProvider`, matching
+ * where `AppProviders.tsx` puts its own: it registers rather than provides, and
+ * it has to sit above `AuthProvider`, which reads what it registers.
  */
 export default function App() {
   return (
@@ -32,6 +37,7 @@ export default function App() {
       <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
           <AppKitProvider instance={appKit}>
+            <SolanaAuthSigner />
             <SolanaAppKitAnchorBridge>
               <ApiClientProvider baseURL={API_URL}>
                 <AuthProvider>
