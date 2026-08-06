@@ -16,7 +16,7 @@
 .visual {
     position: relative;
     flex-shrink: 0;
-    width: 96px;
+    width: 128px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -39,8 +39,9 @@
     font-weight: 700;
 }
 
+/* See the note in _shared/pet-showcase.module.css: the art is 1em, so this sizes it. */
 .avatar {
-    font-size: 2.6rem;
+    font-size: 4rem;
     line-height: 1;
     animation: cp-float 3.5s ease-in-out infinite;
     filter: drop-shadow(0 0 18px rgb(125 214 255 / 60%));

@@ -18,15 +18,18 @@
     flex-shrink: 0;
 }
 
+/* `font-size` is the real lever, not the box: PetArt renders generated art as a 1em
+   square, so the image tracks the type size and the box is only the frame around it.
+   The box grows with it to keep the float animation and the drop-shadow from clipping. */
 .avatar {
     position: relative;
     z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 98px;
-    height: 98px;
-    font-size: 3.5rem;
+    width: 140px;
+    height: 140px;
+    font-size: 5.5rem;
     line-height: 1;
     border-radius: 18px;
     animation: cp-float 3.6s ease-in-out infinite;
