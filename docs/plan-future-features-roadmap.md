@@ -374,8 +374,10 @@ bare as possible for a first version.
 >   deleted; `indexer-go` is the only thing that writes `pet_roster`. So "shadow mode",
 >   "the Node indexers stay the source of truth until promotion", and the proposed
 >   reconciliation job that *diffs Node-indexer state against indexer-go state* have
->   nothing left to compare against. What survives of that item is a plain freshness
->   check, not a cross-indexer diff. `ROSTER_CACHE_ENABLED`'s "only coherent while
+>   nothing left to compare against. What survives of that item shipped as a plain
+>   freshness signal rather than a cross-indexer diff: `indexer_last_poll_unixtime{chain}`
+>   is stamped on every error-free round trip, and `/readyz` (separate from `/healthz`,
+>   which stays pure liveness) refuses until every chain has been reached once. `ROSTER_CACHE_ENABLED`'s "only coherent while
 >   indexer-go is the sole writer" caveat is likewise satisfied by default now.
 > - **Reorg handling shipped for Solana.** Every read and the program subscription ran
 >   at `confirmed`, which is exactly the phantom-row exposure this section names.

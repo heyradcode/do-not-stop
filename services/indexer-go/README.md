@@ -75,6 +75,30 @@ Note this service is now the **only** roster indexer: the backend's Node
 longer a shadow mode or a second source of truth to fall back on. A stalled
 indexer-go means a stale roster, not a slower one.
 
+## Liveness vs freshness
+
+Three endpoints on the health port, answering different questions:
+
+| Path | Meaning |
+| --- | --- |
+| `/healthz` | The process is up. Nothing more — this is what the platform restarts on. |
+| `/readyz` | Every configured chain has been reached at least once since start. 503 names the chains still pending. |
+| `/metrics` | `indexer_last_poll_unixtime{chain}` carries continuous staleness: alert on `time() - indexer_last_poll_unixtime`. |
+
+`/healthz` deliberately ignores indexing freshness. Restarting cannot fix an unreachable
+subgraph or RPC, so failing liveness on staleness would turn a provider outage into a
+restart loop that outlives it.
+
+The split matters more than it used to. This is the only writer of `pet_roster`, and
+under backend-authoritative battles indexer-go is also the independent pre-signing
+verifier, so "the process is up" and "its view of the chain is current" stopped being
+the same claim.
+
+`indexer_last_poll_unixtime` is stamped on every error-free round trip — including a
+quiet tick that returns no pets, and every live Solana notification. That is the point:
+`indexer_last_version` only moves when something on chain changes, so through it a quiet
+chain and a stalled adapter look identical.
+
 ## Solana commitment
 
 `SOLANA_COMMITMENT` sets the commitment for every Solana read *and* the program

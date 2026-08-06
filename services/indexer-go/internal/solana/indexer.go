@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/radcrew/do-not-stop/services/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/services/indexer-go/internal/metrics"
 )
 
 type Config struct {
@@ -78,6 +79,9 @@ func (ix *Indexer) Scan(ctx context.Context, roster chan<- indexer.RosterUpdate)
 	if err != nil {
 		return 0, err
 	}
+	// Stamped on the round trip rather than on the pets: an empty program is still
+	// proof the RPC answered, and this is a liveness signal, not an activity one.
+	metrics.SetLastPoll("solana", time.Now().Unix())
 
 	emitted := 0
 	for _, acc := range res.Value {

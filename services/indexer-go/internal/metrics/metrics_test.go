@@ -18,6 +18,7 @@ func TestHandlerExposesAllSeries(t *testing.T) {
 	SetLastVersion("solana", 12345)
 	SetCacheSize(7)
 	SetCacheWarm(true)
+	SetLastPoll("evm", 1700000000)
 
 	rec := httptest.NewRecorder()
 	Handler()(rec, httptest.NewRequest("GET", "/metrics", nil))
@@ -33,6 +34,7 @@ func TestHandlerExposesAllSeries(t *testing.T) {
 		`indexer_last_version{chain="solana"} 12345`,
 		"indexer_cache_pets 7",
 		"indexer_cache_warm 1",
+		`indexer_last_poll_unixtime{chain="evm"} 1700000000`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing series %q in:\n%s", want, body)
@@ -41,5 +43,19 @@ func TestHandlerExposesAllSeries(t *testing.T) {
 
 	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/plain") {
 		t.Errorf("Content-Type = %q", ct)
+	}
+}
+
+// Readiness turns on this, so "never polled" must be distinguishable from "polled".
+// A chain that has never been reached reads 0, which is what /readyz refuses on.
+func TestHasPolledOnlyAfterASuccessfulPoll(t *testing.T) {
+	if HasPolled("chain-never-polled") {
+		t.Error("HasPolled = true for a chain that was never polled")
+	}
+
+	SetLastPoll("chain-polled", 1700000001)
+
+	if !HasPolled("chain-polled") {
+		t.Error("HasPolled = false after a successful poll")
 	}
 }

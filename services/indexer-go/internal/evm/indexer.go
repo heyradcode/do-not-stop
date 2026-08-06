@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/radcrew/do-not-stop/services/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/services/indexer-go/internal/metrics"
 )
 
 const defaultPageSize = 1000 // The Graph caps `first` at 1000
@@ -77,6 +78,9 @@ func (ix *Indexer) Scan(ctx context.Context, roster chan<- indexer.RosterUpdate)
 	if err != nil {
 		return 0, err
 	}
+	// Stamped on the round trip rather than on the rows: an empty roster is still proof
+	// the subgraph answered.
+	metrics.SetLastPoll(ix.chain, time.Now().Unix())
 	return ix.emit(ctx, roster, pets)
 }
 
@@ -90,6 +94,9 @@ func (ix *Indexer) sync(ctx context.Context, roster chan<- indexer.RosterUpdate)
 	if err != nil {
 		return 0, err
 	}
+	// A quiet tick returns no pets and still counts: the point of this signal is that
+	// the subgraph was reachable, not that anything happened.
+	metrics.SetLastPoll(ix.chain, time.Now().Unix())
 	return ix.emit(ctx, roster, pets)
 }
 

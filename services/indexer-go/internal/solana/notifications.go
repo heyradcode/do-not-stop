@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"time"
 
 	"github.com/radcrew/do-not-stop/services/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/services/indexer-go/internal/metrics"
 )
 
 type wsNotification struct {
@@ -48,6 +50,10 @@ func (ix *Indexer) handleMessage(
 
 	switch note.Method {
 	case "programNotification":
+		// A live frame is the freshest possible evidence of contact, so it counts the
+		// same as a poll. Without this the signal would go stale on a healthy stream
+		// between reconcile scans and read as an outage.
+		metrics.SetLastPoll("solana", time.Now().Unix())
 		ix.handleProgramNotification(ctx, note.Params.Result, roster)
 	}
 }
