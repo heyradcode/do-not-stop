@@ -1,0 +1,19 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`. */
+
+/* The gate's cards stand in for a full screen, so they take the same height the screen
+   would. Without this they sized to their own text and left a short card floating in an
+   otherwise empty panel — the same "flex is inert in the shell's block content slot"
+   reason the panels themselves carry `height: 100%` rather than a flex rule. */
+.fill {
+    height: 100%;
+}
+
+/* The connect-wallet variant routes its description into DashboardPanel's `.state-body`,
+   which already centres. The sign-in variant renders into `.panel-body`, which does not,
+   so a full-height card would strand the prompt and its button against the top edge. */
+.signIn :global(.panel-body) {
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+}

@@ -4,6 +4,7 @@ import { useAuth, useChainCapabilities } from '@shared/core';
 import AuthActionButton from '@components/common/auth-action-button';
 import StateCard from '@components/pet/interactions/state-card';
 import type { NeonButtonTone } from '@components/ui/neon-button';
+import styles from './index.module.css';
 
 export type SessionGateProps = {
     /** Panel heading, shown in every state so the screen keeps its identity. */
@@ -48,9 +49,10 @@ const SessionGate: React.FC<SessionGateProps> = ({
     if (!isConnected) {
         return (
             <StateCard
-                // The literal class is load-bearing: StateCard centers the description
-                // only when it sees this name, matching every other disconnected screen.
-                containerClassName="wallet-disconnected"
+                // The literal name is load-bearing: StateCard centers the description
+                // only when it sees it, matching every other disconnected screen. The
+                // hashed class rides alongside, and `includes` still finds the literal.
+                containerClassName={`wallet-disconnected ${styles.fill}`}
                 title={title}
                 description={connectPrompt}
                 back={back}
@@ -63,7 +65,12 @@ const SessionGate: React.FC<SessionGateProps> = ({
         // description into a centered slot and drops children, so the button would
         // vanish.
         return (
-            <StateCard title={title} description={signInPrompt} back={back}>
+            <StateCard
+                containerClassName={`${styles.fill} ${styles.signIn}`}
+                title={title}
+                description={signInPrompt}
+                back={back}
+            >
                 <AuthActionButton tone={tone}>Sign in</AuthActionButton>
             </StateCard>
         );
