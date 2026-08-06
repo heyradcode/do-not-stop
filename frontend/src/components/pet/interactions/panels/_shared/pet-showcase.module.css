@@ -36,6 +36,14 @@
     filter: drop-shadow(0 0 28px rgb(var(--sc-accent) / 80%));
 }
 
+/* Rounds the generated art itself, not just the frame around it. The frame's own
+   radius never showed, because the image is smaller than its box and so never reaches
+   the corners. Targets the `img` specifically: the emoji fallback is text, where a
+   radius would do nothing, and rounding it would be meaningless anyway. */
+.avatar img {
+    border-radius: 18px;
+}
+
 /* Local copy of the shared float keyframe (kept in-module so the scoped
    animation-name resolves). */
 @keyframes cp-float {

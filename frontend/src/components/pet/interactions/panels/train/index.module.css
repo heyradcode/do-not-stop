@@ -47,6 +47,12 @@
     filter: drop-shadow(0 0 18px rgb(125 214 255 / 60%));
 }
 
+/* Matches `.visual`'s radius so the art echoes the frame it sits in. `.visual` already
+   clips, but the art is smaller than the panel and never touches those corners. */
+.avatar img {
+    border-radius: 10px;
+}
+
 .body {
     flex: 1;
     min-width: 0;
