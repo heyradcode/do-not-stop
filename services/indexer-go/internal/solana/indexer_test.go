@@ -275,3 +275,106 @@ func TestRunRedialsAfterConnectionLoss(t *testing.T) {
 	}
 }
 
+
+// --- commitment ---
+
+// capturingRPC records the commitment each call asked for, so the test can assert what
+// went on the wire rather than what the config held.
+type capturingRPC struct {
+	mu          sync.Mutex
+	commitments map[string]string // rpc method -> commitment
+}
+
+func (c *capturingRPC) RoundTrip(req *http.Request) (*http.Response, error) {
+	var rpcReq rpcRequest
+	if err := json.NewDecoder(req.Body).Decode(&rpcReq); err != nil {
+		return nil, err
+	}
+
+	params, _ := rpcReq.Params.([]any)
+	for _, p := range params {
+		if opts, ok := p.(map[string]any); ok {
+			if commitment, ok := opts["commitment"].(string); ok {
+				c.mu.Lock()
+				if c.commitments == nil {
+					c.commitments = map[string]string{}
+				}
+				c.commitments[rpcReq.Method] = commitment
+				c.mu.Unlock()
+			}
+		}
+	}
+
+	rec := httptest.NewRecorder()
+	_ = json.NewEncoder(rec).Encode(map[string]any{
+		"jsonrpc": "2.0", "id": 1,
+		"result": map[string]any{"context": map[string]any{"slot": 1}, "value": []programAccount{}},
+	})
+	return rec.Result(), nil
+}
+
+func (c *capturingRPC) commitmentFor(method string) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.commitments[method]
+}
+
+// A Config that names no commitment must not fall through to the RPC default, which is
+// "finalized" for some methods and "confirmed" for others. Indexing unfinalized state is
+// what freezes a value that never happened into a battle snapshot.
+func TestEmptyCommitmentDefaultsToFinalized(t *testing.T) {
+	ix, err := New(Config{
+		WSURL: "ws://test", RPCURL: "http://rpc.test",
+		ProgramID: "Prog1111111111111111111111111111111111111111",
+	})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if ix.cfg.Commitment != "finalized" {
+		t.Errorf("Commitment = %q, want %q", ix.cfg.Commitment, "finalized")
+	}
+	if ix.rpc.commitment != "finalized" {
+		t.Errorf("rpc commitment = %q, want %q", ix.rpc.commitment, "finalized")
+	}
+}
+
+// The reads and the subscription must agree: a scan at one commitment and a live stream
+// at another would disagree about what is real, and the roster would flip between them.
+func TestScanAndSubscribeUseTheSameConfiguredCommitment(t *testing.T) {
+	for _, commitment := range []string{"finalized", "confirmed"} {
+		t.Run(commitment, func(t *testing.T) {
+			rpc := &capturingRPC{}
+			ix, err := New(Config{
+				WSURL: "ws://test", RPCURL: "http://rpc.test",
+				ProgramID:  "Prog1111111111111111111111111111111111111111",
+				Commitment: commitment,
+			})
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			ix.rpc.http = &http.Client{Transport: rpc}
+
+			if _, err := ix.Scan(t.Context(), make(chan indexer.RosterUpdate, 1)); err != nil {
+				t.Fatalf("Scan: %v", err)
+			}
+			if got := rpc.commitmentFor("getProgramAccounts"); got != commitment {
+				t.Errorf("getProgramAccounts commitment = %q, want %q", got, commitment)
+			}
+
+			conn := newFakeConn()
+			if err := ix.subscribe(conn); err != nil {
+				t.Fatalf("subscribe: %v", err)
+			}
+			conn.mu.Lock()
+			defer conn.mu.Unlock()
+			if len(conn.writes) == 0 {
+				t.Fatal("subscribe wrote nothing")
+			}
+			params := conn.writes[0]["params"].([]any)
+			opts := params[1].(map[string]any)
+			if got := opts["commitment"]; got != commitment {
+				t.Errorf("programSubscribe commitment = %v, want %q", got, commitment)
+			}
+		})
+	}
+}

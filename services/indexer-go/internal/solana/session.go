@@ -126,7 +126,7 @@ func (ix *Indexer) subscribe(conn wsConn) error {
 		"jsonrpc": "2.0", "id": 1, "method": "programSubscribe",
 		"params": []any{ix.cfg.ProgramID, map[string]any{
 			"encoding":   "base64",
-			"commitment": "confirmed",
+			"commitment": ix.cfg.Commitment,
 			"filters": []any{
 				map[string]any{"dataSize": ix.layout.totalLen()},
 				map[string]any{"memcmp": map[string]any{"offset": 0, "bytes": ix.layout.discriminatorB58}},

@@ -367,6 +367,31 @@ bare as possible for a first version.
 
 ## 3. "Perfect" indexing with realtime blockchain sync
 
+> **Partly built, and partly obsolete.** Two of this section's four items no longer
+> describe the repo, and one has shipped:
+>
+> - **There is no dual-indexer setup left.** The backend's Node `RosterIndexer` was
+>   deleted; `indexer-go` is the only thing that writes `pet_roster`. So "shadow mode",
+>   "the Node indexers stay the source of truth until promotion", and the proposed
+>   reconciliation job that *diffs Node-indexer state against indexer-go state* have
+>   nothing left to compare against. What survives of that item is a plain freshness
+>   check, not a cross-indexer diff. `ROSTER_CACHE_ENABLED`'s "only coherent while
+>   indexer-go is the sole writer" caveat is likewise satisfied by default now.
+> - **Reorg handling shipped for Solana.** Every read and the program subscription ran
+>   at `confirmed`, which is exactly the phantom-row exposure this section names.
+>   `SOLANA_COMMITMENT` now defaults to `finalized`, with reads and the subscription
+>   pinned to the same value; see `services/indexer-go/README.md`. This mattered more
+>   than "display freshness" suggests, because the roster is what battle snapshots are
+>   frozen from (threat T10).
+> - **EVM confirmation depth is still open**, and is subtler than the Solana case. The
+>   subgraph is the parsing layer and rolls back reorged blocks itself, but the writer
+>   here is version-guarded on `updatedAt` (`WHERE last_version <= EXCLUDED.last_version`),
+>   so a rollback that re-emits a pet at a *lower* version is discarded rather than
+>   applied — leaving the pre-reorg row in place. Fixing that means either querying the
+>   subgraph at a confirmation depth or letting a rollback override the guard, and it
+>   should be designed deliberately rather than bolted on.
+> - **The log-subscription path is still open** and unchanged in motivation.
+
 **Goal.** Tighten the existing dual-indexer setup (Node `RosterIndexer` + optional `indexer-go`)
 so both chains reflect on-chain state with minimal lag and no missed events.
 

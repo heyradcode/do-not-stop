@@ -38,6 +38,7 @@ connection settings is skipped, so adapters roll out independently.
 | `DATABASE_URL` | Postgres (schema owned by `backend/prisma` — run migrations there first) |
 | `EVM_SUBGRAPH_URL` | The Graph query endpoint (needs the `Pet` entity deployed) |
 | `SOLANA_WS_URL` / `SOLANA_RPC_URL` / `SOLANA_PROGRAM_ID` | Helius endpoints + program id |
+| `SOLANA_COMMITMENT` | `finalized` (default) or `confirmed`. See below before changing it. |
 | `GRPC_ADDR` | GameDataService bind address (default `localhost:50051`) |
 | `EVM_POLL_INTERVAL` / `RECONCILE_INTERVAL` | pull tick / reconciliation scan |
 
@@ -67,16 +68,43 @@ schema bump deploys, those fields decode to their zero values.
 Deployment: `render.yaml` at the repo root defines `do-not-stop-indexer` as a
 free-plan Go web service (`/healthz` checked, `/metrics` on the same port).
 Free web services sleep when idle — the reconnect/backfill machinery recovers
-the gap on wake, and the Node indexers stay the source of truth until
-promotion. Connection env vars are set in the Render dashboard.
+the gap on wake. Connection env vars are set in the Render dashboard.
+
+Note this service is now the **only** roster indexer: the backend's Node
+`RosterIndexer` was deleted, so nothing else writes `pet_roster` and there is no
+longer a shadow mode or a second source of truth to fall back on. A stalled
+indexer-go means a stale roster, not a slower one.
+
+## Solana commitment
+
+`SOLANA_COMMITMENT` sets the commitment for every Solana read *and* the program
+subscription, defaulting to `finalized`.
+
+It used to be `confirmed` everywhere, which is the reorg exposure the roadmap's
+indexing-hardening section names. A confirmed slot has a supermajority vote but can
+still be dropped, and this roster is what backend battle snapshots are frozen from —
+so indexing unfinalized state can freeze a value that never happened into a signed,
+permanently replayable receipt (`docs/battle-protocol.md` Appendix A, threat T10).
+That is a different class of problem from a stale opponent list.
+
+The cost is roughly a dozen extra seconds of lag on pet updates. A local validator
+finalizes almost immediately, so local development is unaffected. `confirmed` remains
+available for an operator who has weighed the trade; anything else is refused at
+startup rather than silently defaulted, and `processed` is refused outright because one
+node having seen a slot is not an indexable claim about the chain.
+
+Reads and the subscription always use the same value — a scan at one commitment and a
+live stream at another would disagree about what is real, and the roster would flip
+between them.
 
 ## Read cache (milestone 8)
 
 `ROSTER_CACHE_ENABLED=true` serves `GetPetState` / `EstimateWin` from a
 write-through RAM copy of `pet_roster`: warmed from the table at startup,
 updated commit-then-cache by the single writer, version-guarded like the SQL.
-**Coherent only while indexer-go is the sole writer of the table** — enable at
-promotion, never during shadow mode. Reads return `UNAVAILABLE` until warm.
+**Coherent only while indexer-go is the sole writer of the table** — which it now
+is, the Node indexer having been deleted, so the shadow-mode caveat this
+originally carried no longer applies. Reads return `UNAVAILABLE` until warm.
 
 Node side: `ROSTER_READ_SOURCE=grpc` routes the matchmaking query through the
 cache with a 50ms deadline, a 3-failure/30s circuit breaker, and automatic

@@ -80,3 +80,42 @@ func TestHealthAddrHonorsExplicitLocalOverride(t *testing.T) {
 		t.Errorf("HealthAddr = %q, want 127.0.0.1:9090", cfg.HealthAddr)
 	}
 }
+
+// The default is the safe end of the trade-off, and it is load-bearing: this roster is
+// what battle snapshots are frozen from, so indexing a slot that can still be dropped
+// can freeze a value that never happened into a signed receipt.
+func TestSolanaCommitmentDefaultsToFinalized(t *testing.T) {
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	if cfg.SolanaCommitment != "finalized" {
+		t.Errorf("SolanaCommitment = %q, want %q", cfg.SolanaCommitment, "finalized")
+	}
+}
+
+func TestSolanaCommitmentAcceptsConfirmed(t *testing.T) {
+	t.Setenv("SOLANA_COMMITMENT", "confirmed")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	if cfg.SolanaCommitment != "confirmed" {
+		t.Errorf("SolanaCommitment = %q, want %q", cfg.SolanaCommitment, "confirmed")
+	}
+}
+
+// A typo must not silently fall back to a default the operator did not choose, and
+// "processed" is refused outright: one node having seen a slot is not an indexable
+// claim about the chain.
+func TestSolanaCommitmentRejectsUnknownValues(t *testing.T) {
+	for _, value := range []string{"processed", "final", "FINALIZED", "42"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("SOLANA_COMMITMENT", value)
+			if _, err := Load(); err == nil {
+				t.Errorf("Load() accepted SOLANA_COMMITMENT=%q, want an error", value)
+			}
+		})
+	}
+}

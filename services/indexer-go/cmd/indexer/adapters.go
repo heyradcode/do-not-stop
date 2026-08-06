@@ -34,6 +34,7 @@ func buildAdapters(cfg *config.Config) ([]indexer.ChainIndexer, error) {
 			RPCURL:            cfg.SolanaRPCURL,
 			ProgramID:         cfg.SolanaProgramID,
 			ReconcileInterval: cfg.ReconcileInterval,
+			Commitment:        cfg.SolanaCommitment,
 		})
 		if err != nil {
 			return nil, err
