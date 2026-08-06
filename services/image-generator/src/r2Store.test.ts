@@ -62,6 +62,14 @@ describe('R2ImageStore.get', () => {
         const store = new R2ImageStore(CONFIG, clientRejecting(notFound(403)));
         await expect(store.get('k.png')).rejects.toThrow();
     });
+
+    it('propagates a missing bucket, which R2 also reports as a 404', async () => {
+        const noSuchBucket = Object.assign(notFound(404), { name: 'NoSuchBucket' });
+        const store = new R2ImageStore(CONFIG, clientRejecting(noSuchBucket));
+        // Swallowed as a miss, this reads as "not cached yet" and /ready — whose
+        // store probe is a get() expecting to miss — calls the deploy healthy.
+        await expect(store.get('k.png')).rejects.toThrow();
+    });
 });
 
 describe('R2ImageStore.put', () => {

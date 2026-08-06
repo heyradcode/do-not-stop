@@ -87,9 +87,16 @@ export class R2ImageStore implements ImageStore {
 }
 
 /** A missing key surfaces as NoSuchKey, or as a bare 404 when R2 answers a HEAD
- *  style response without the modelled error shape. */
+ *  style response without the modelled error shape.
+ *
+ *  A missing *bucket* is also a 404, and must not be read as a miss. Doing so
+ *  turns a misconfigured R2_BUCKET into "not cached yet, generate it", which
+ *  then fails on the write with the real error — and makes /ready report the
+ *  store healthy, since its probe is a get() it expects to miss. That is
+ *  precisely the failure readiness.ts claims to catch. */
 const isNotFound = (error: unknown): boolean => {
     if (error instanceof NoSuchKey) return true;
     const meta = (error as { $metadata?: { httpStatusCode?: number }; name?: string });
+    if (meta.name === 'NoSuchBucket') return false;
     return meta.$metadata?.httpStatusCode === 404 || meta.name === 'NotFound';
 };
