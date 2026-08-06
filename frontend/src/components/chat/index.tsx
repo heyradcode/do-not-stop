@@ -55,10 +55,17 @@ const ThreadList: React.FC<{
 );
 
 const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me }) => {
-    const { messages, isLoading, error, isLive, send, isSending, sendError } = useChatMessages({
-        threadId: thread.threadId,
-        socketUrl: CHAT_WS_URL,
-    });
+    const { messages, isLoading, error, isLive, online, send, isSending, sendError } =
+        useChatMessages({
+            threadId: thread.threadId,
+            socketUrl: CHAT_WS_URL,
+        });
+
+    // Only a live channel can say anyone is present. While it is down every dot would
+    // otherwise read grey, which is indistinguishable from "they left" — so the header
+    // says the channel is offline instead of asserting anything about the other person.
+    const counterpartOnline =
+        isLive && online.some((address) => sameAccount(address, thread.counterpart));
     const [draft, setDraft] = useState('');
     const endRef = useRef<HTMLDivElement>(null);
 
@@ -87,11 +94,24 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
     return (
         <div className={styles.conversation}>
             <header className={styles.conversationHeader}>
-                <span className={styles.conversationTitle}>{shortAddress(thread.counterpart)}</span>
+                <span className={styles.conversationTitle}>
+                    <span
+                        className={
+                            counterpartOnline ? `${styles.dot} ${styles.isOnline}` : styles.dot
+                        }
+                        // The dot is the whole signal, so it carries the text rather than
+                        // relying on colour, which a screen reader cannot see and a
+                        // colour-blind player may not distinguish.
+                        role="img"
+                        aria-label={counterpartOnline ? 'Online' : 'Offline'}
+                        title={counterpartOnline ? 'Online now' : 'Offline'}
+                    />
+                    {shortAddress(thread.counterpart)}
+                </span>
                 <span className={styles.conversationSub}>{marriageLine(thread)}</span>
                 {!isLive && (
                     <span className={styles.offline} title="Reconnecting; messages still send">
-                        offline
+                        reconnecting
                     </span>
                 )}
             </header>

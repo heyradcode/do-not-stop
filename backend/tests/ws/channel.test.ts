@@ -1,6 +1,13 @@
 import { createServer, type Server } from 'node:http';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import jwt from 'jsonwebtoken';
 import WebSocket from 'ws';
+
+// Chat authorizes its upgrades now; the battle room does not. Stubbing the marriage gate
+// keeps this file about channel routing rather than about chat's rules.
+vi.mock('@features/chat/chat.service', () => ({
+    authorizeThread: vi.fn(async () => null),
+}));
 
 import { notifyBattleRoom } from '@ws/battleRoomSocket';
 import { notifyChatThread } from '@ws/chatSocket';
@@ -37,17 +44,34 @@ afterEach(async () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
 });
 
+const AUTH_PROTOCOL = 'cryptopets-auth';
+const token = () =>
+    jwt.sign(
+        { address: '0x1111111111111111111111111111111111111111', userId: 'u' },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '5m' },
+    );
+
 function open(url: string): Promise<WebSocket> {
     return new Promise((resolve, reject) => {
-        const socket = new WebSocket(url);
+        // The token is ignored by the unauthenticated channel and required by chat, so
+        // both connections are opened the same way.
+        const socket = new WebSocket(url, [AUTH_PROTOCOL, token()]);
         socket.once('open', () => resolve(socket));
         socket.once('error', reject);
     });
 }
 
-function nextMessage(socket: WebSocket): Promise<unknown> {
+/** Skips presence frames, which chat emits unprompted on join. */
+function nextMessage(socket: WebSocket): Promise<Record<string, unknown>> {
     return new Promise((resolve, reject) => {
-        socket.once('message', (data) => resolve(JSON.parse(data.toString())));
+        const onMessage = (data: Buffer) => {
+            const message = JSON.parse(data.toString()) as Record<string, unknown>;
+            if (message.type === 'presence') return;
+            socket.off('message', onMessage);
+            resolve(message);
+        };
+        socket.on('message', onMessage);
         socket.once('error', reject);
         socket.once('close', (code) => reject(new Error(`closed before a message: ${code}`)));
     });

@@ -53,6 +53,7 @@ const messagesResult = (over: Record<string, unknown> = {}) => ({
     isLoading: false,
     error: null,
     isLive: true,
+    online: [],
     send,
     isSending: false,
     sendError: null,
@@ -151,13 +152,46 @@ describe('Chat', () => {
         expect(send).not.toHaveBeenCalled();
     });
 
+    it('shows the counterpart as online when they are connected', () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        // Deliberately a different case from the stored address: presence is matched on
+        // accounts, not strings.
+        useChatMessages.mockReturnValue(
+            messagesResult({ online: [THEM.toUpperCase().replace('0X', '0x')] }),
+        );
+
+        renderChat();
+
+        expect(screen.getByLabelText('Online')).toBeInTheDocument();
+    });
+
+    it('shows the counterpart as offline when only you are connected', () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(messagesResult({ online: [ME] }));
+
+        renderChat();
+
+        expect(screen.getByLabelText('Offline')).toBeInTheDocument();
+    });
+
+    // A dropped channel cannot report presence. Showing grey would be indistinguishable
+    // from "they left", so the dot must not claim anything while the socket is down.
+    it('does not claim the counterpart is online while the channel is down', () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(messagesResult({ isLive: false, online: [ME, THEM] }));
+
+        renderChat();
+
+        expect(screen.getByLabelText('Offline')).toBeInTheDocument();
+    });
+
     it('says when the live channel is down without blocking sending', () => {
         useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
         useChatMessages.mockReturnValue(messagesResult({ isLive: false }));
 
         renderChat();
 
-        expect(screen.getByText('offline')).toBeInTheDocument();
+        expect(screen.getByText('reconnecting')).toBeInTheDocument();
         expect(screen.getByLabelText('Message')).toBeEnabled();
     });
 

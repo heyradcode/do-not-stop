@@ -1,23 +1,33 @@
 import { useEffect, useRef, useState } from 'react';
+import { getStorageAdapter } from '../../api';
 
 /**
- * Subscribes to one thread's notification channel (`/ws/chat`).
+ * Subscribes to one thread's channel (`/ws/chat`).
  *
- * Notification only, by construction: a frame carries `{ threadId, messageId }` and no
- * text, so there is nothing here that could be rendered as a message even by mistake.
- * Every frame means one thing — re-read the thread.
+ * Carries no message text: a frame says the thread changed, or who is currently
+ * connected. Every notification means one thing — re-read the thread.
  *
- * Same shape as `useBattleRoomSocket`, including the reconnect callback, which matters
- * for the same reason: anything sent while the socket was down was never delivered, so a
- * reconnect is as much a reason to re-read as a frame is. Kept separate rather than
- * generalized because the two channels differ in what they will need next — this one
- * gains authentication when chat widens past married pairs.
+ * The connection is authenticated. The token is offered as a WebSocket subprotocol
+ * because browsers cannot set headers on a WebSocket and a token in the query string
+ * would be recorded by proxies and access logs. Without a valid token for a thread the
+ * caller participates in, the server refuses the upgrade, so this reports "not live"
+ * rather than silently subscribing to nothing.
+ *
+ * Same reconnect shape as `useBattleRoomSocket`, including the reconnect callback:
+ * anything sent while the socket was down was never delivered, so a reconnect is as much
+ * a reason to re-read as a frame is.
  */
 
 export interface ChatThreadNotification {
     type: 'thread-updated';
     threadId: string;
     messageId: number;
+}
+
+export interface ChatPresence {
+    type: 'presence';
+    topic: string;
+    online: string[];
 }
 
 export interface UseChatThreadSocketOptions {
@@ -30,12 +40,24 @@ export interface UseChatThreadSocketOptions {
     onReconnect?: () => void;
 }
 
+export interface UseChatThreadSocketResult {
+    connected: boolean;
+    /** Wallet addresses currently connected to this thread, including your own. */
+    online: string[];
+}
+
 const INITIAL_RETRY_MS = 1000;
 const MAX_RETRY_MS = 30_000;
 
-export function useChatThreadSocket(options: UseChatThreadSocketOptions): { connected: boolean } {
+/** Marker subprotocol the server echoes back; the token follows it. */
+const AUTH_PROTOCOL = 'cryptopets-auth';
+
+export function useChatThreadSocket(
+    options: UseChatThreadSocketOptions
+): UseChatThreadSocketResult {
     const { url, threadId } = options;
     const [connected, setConnected] = useState(false);
+    const [online, setOnline] = useState<string[]>([]);
 
     // Refs so inline callbacks do not rebuild the socket every render: its lifetime should
     // depend on the url and thread, and nothing else.
@@ -46,6 +68,7 @@ export function useChatThreadSocket(options: UseChatThreadSocketOptions): { conn
 
     useEffect(() => {
         setConnected(false);
+        setOnline([]);
         if (!url || !threadId) return;
 
         let disposed = false;
@@ -54,10 +77,25 @@ export function useChatThreadSocket(options: UseChatThreadSocketOptions): { conn
         let retryDelay = INITIAL_RETRY_MS;
         let hasConnectedBefore = false;
 
-        const connect = (): void => {
+        const connect = async (): Promise<void> => {
             if (disposed) return;
 
-            socket = new WebSocket(`${url}?threadId=${encodeURIComponent(threadId)}`);
+            // Read per attempt rather than once: a reconnect after a token refresh must
+            // use the new one, or it authenticates with a token the server has retired.
+            const token = await getStorageAdapter()?.getToken();
+            if (disposed) return;
+            if (!token) {
+                // Nothing to authenticate with. Retry rather than give up: this happens
+                // during sign-in, and the thread becomes live once a token exists.
+                retryTimer = setTimeout(() => void connect(), retryDelay);
+                retryDelay = Math.min(retryDelay * 2, MAX_RETRY_MS);
+                return;
+            }
+
+            socket = new WebSocket(`${url}?threadId=${encodeURIComponent(threadId)}`, [
+                AUTH_PROTOCOL,
+                token,
+            ]);
 
             socket.onopen = () => {
                 if (disposed) return;
@@ -72,9 +110,16 @@ export function useChatThreadSocket(options: UseChatThreadSocketOptions): { conn
             socket.onmessage = (event) => {
                 if (disposed) return;
                 try {
-                    const message = JSON.parse(event.data as string) as ChatThreadNotification;
-                    if (message?.type === 'thread-updated' && typeof message.threadId === 'string') {
-                        onNotification.current?.(message);
+                    const message = JSON.parse(event.data as string) as
+                        | ChatThreadNotification
+                        | ChatPresence;
+                    if (message?.type === 'presence' && Array.isArray(message.online)) {
+                        setOnline(message.online);
+                    } else if (
+                        message?.type === 'thread-updated' &&
+                        typeof message.threadId === 'string'
+                    ) {
+                        onNotification.current?.(message as ChatThreadNotification);
                     }
                 } catch {
                     // A malformed frame is not worth surfacing: the read endpoint is the
@@ -85,7 +130,8 @@ export function useChatThreadSocket(options: UseChatThreadSocketOptions): { conn
             socket.onclose = () => {
                 if (disposed) return;
                 setConnected(false);
-                retryTimer = setTimeout(connect, retryDelay);
+                setOnline([]);
+                retryTimer = setTimeout(() => void connect(), retryDelay);
                 retryDelay = Math.min(retryDelay * 2, MAX_RETRY_MS);
             };
 
@@ -96,7 +142,7 @@ export function useChatThreadSocket(options: UseChatThreadSocketOptions): { conn
             };
         };
 
-        connect();
+        void connect();
 
         return () => {
             disposed = true;
@@ -111,8 +157,9 @@ export function useChatThreadSocket(options: UseChatThreadSocketOptions): { conn
                 socket.close();
             }
             setConnected(false);
+            setOnline([]);
         };
     }, [url, threadId]);
 
-    return { connected };
+    return { connected, online };
 }

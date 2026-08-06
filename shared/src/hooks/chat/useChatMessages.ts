@@ -24,6 +24,8 @@ export interface UseChatMessagesResult {
     error: Error | null;
     /** True while the notification channel is connected; false means reads are on demand only. */
     isLive: boolean;
+    /** Wallet addresses currently connected to this thread, including your own. */
+    online: string[];
     send: (text: string) => Promise<void>;
     isSending: boolean;
     sendError: Error | null;
@@ -90,7 +92,7 @@ export const useChatMessages = ({
         [queryClient, baseURL, threadId, refresh],
     );
 
-    const { connected } = useChatThreadSocket({
+    const { connected, online } = useChatThreadSocket({
         url: socketUrl,
         threadId,
         onNotification,
@@ -134,6 +136,7 @@ export const useChatMessages = ({
         isLoading: query.isLoading,
         error: query.error as Error | null,
         isLive: connected,
+        online,
         send,
         isSending: mutation.isPending,
         sendError: mutation.error as Error | null,

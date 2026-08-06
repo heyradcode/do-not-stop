@@ -95,7 +95,26 @@
 }
 
 .conversationTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: 0.95rem;
+}
+
+/* Presence. Grey is the resting state and green is the exception, so a thread that is
+   simply quiet does not look like an error. Sized in em so it tracks the title. */
+.dot {
+    width: 0.55em;
+    height: 0.55em;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: rgb(148 163 184 / 55%);
+}
+
+.dot.isOnline {
+    background: rgb(52 211 153);
+    /* A faint halo so it reads as "lit" at this size rather than as a dark speck. */
+    box-shadow: 0 0 0 3px rgb(52 211 153 / 18%);
 }
 
 /* Stated plainly rather than blocking the composer: sending still works while the
