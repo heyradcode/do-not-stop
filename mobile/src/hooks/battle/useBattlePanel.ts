@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     getReadyPetsUnified,
     useBattlePets,
@@ -8,6 +8,7 @@ import {
     useOpponents,
     usePetList,
     useWinEstimate,
+    type BattlePetsArgs,
     type BattleResolvedResult,
     type DialoguePetInput,
     type OpponentPet,
@@ -61,15 +62,17 @@ export interface UseBattlePanel {
  * Headless controller for the battle screen, following
  * `frontend/src/hooks/battle/useBattlePanel.ts`.
  *
- * **Narrower than frontend's on purpose.** That one also drives a live WebSocket
- * replay, a per-round animation, and a mismatch-reconciliation notice for when the
- * client replay disagrees with the signed receipt. None of those are in this
- * screen's hook list in `docs/plan-mobile-frontend-parity.md`, and the receipt is
- * what settles a battle either way, so mobile shows the taunts, then the result the
- * receipt carries. `useBattleRoomSocket` is deliberately not wired.
+ * **Narrower than frontend's on purpose.** That one also drives a per-round
+ * animation and a mismatch-reconciliation notice for when the client replay
+ * disagrees with the signed receipt. Neither is in this screen's hook list in
+ * `docs/plan-mobile-frontend-parity.md`, and the receipt is what settles a battle
+ * either way, so mobile shows the taunts, then the result the receipt carries.
  *
- * A room is still minted before the battle (§J) so a spectator or a later replay
- * has something to attach to.
+ * Battle state itself is not narrower: `useBattlePets` already polls
+ * `GET /api/battle/:battleId` through `useBackendBattle`, which is the
+ * authoritative source. `roomSocketUrl` is left unset, so this client learns of
+ * changes by polling rather than push. That is a latency difference, not a
+ * correctness one, by the design of §J: the socket only ever says "ask again".
  */
 export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
     const capabilities = useChainCapabilities();
@@ -81,6 +84,23 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
     const [selectedOpponentId, setSelectedOpponentId] = useState('');
     const [validationError, setValidationError] = useState<string | null>(null);
     const [result, setResult] = useState<BattleResolvedResult | null>(null);
+
+    /**
+     * The room this battle is watched through (§J), and the fight waiting on it.
+     *
+     * `useBattlePets` folds `roomId` into the `accept` call, and `accept` is what
+     * records the room on the ledger row: it is the only thing that makes the
+     * backend notify that room as the battle changes state. Minting a room and not
+     * passing it here leaves it attached to nothing and every spectator holding
+     * the link silently uninformed.
+     *
+     * The battle cannot start in the same tick the room is minted, because
+     * `mutate` closes over `roomId` as it stood when the hook last ran. So the
+     * mint stores the room and the pending fight together, and an effect starts
+     * the battle on the next render, once `mutate` carries the new room.
+     */
+    const [roomId, setRoomId] = useState<string | null>(null);
+    const [pendingStart, setPendingStart] = useState<BattlePetsArgs | null>(null);
 
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const fighter = readyPets.find(({ id }) => id === selectedPetId)?.pet ?? null;
@@ -108,7 +128,20 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
             setResult(resolved);
             refetch();
         },
+        roomId,
     });
+
+    // Read through a ref so the effect below depends on the pending fight alone.
+    // `battle` is a fresh object every render, and depending on it would restart
+    // the battle on each one.
+    const battleRef = useRef(battle);
+    battleRef.current = battle;
+
+    useEffect(() => {
+        if (!pendingStart) return;
+        setPendingStart(null);
+        battleRef.current.mutate(pendingStart);
+    }, [pendingStart]);
 
     usePetErrorToast(battle.error, null, validationError, BATTLE_FAIL_MESSAGE);
 
@@ -158,14 +191,18 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
             }),
         )
             .catch(() => null)
-            .then(() =>
-                battle.mutate({
+            .then((mintedRoomId) => {
+                // Recorded either way. Keeping the previous battle's room on a failed
+                // mint would push this fight's updates to a room full of the wrong
+                // spectators, which is worse than having no room at all.
+                setRoomId(mintedRoomId ?? null);
+                setPendingStart({
                     petId1: fighter.id,
                     petId2: opponent.id,
                     defenderOwner: opponent.owner,
-                }),
-            );
-    }, [fighter, opponent, capabilities.activeKind, taunts, createRoom, battle]);
+                });
+            });
+    }, [fighter, opponent, capabilities.activeKind, taunts, createRoom]);
 
     return {
         isConnected: capabilities.isConnected,

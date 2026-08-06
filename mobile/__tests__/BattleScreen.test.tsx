@@ -4,7 +4,7 @@
  * The things worth pinning are the ones that decide whether a battle is legal
  * before a signature is asked for: only pets off cooldown can fight, the opponent
  * must be cleared when the fighter changes (it was picked against a different
- * level band), and `defenderOwner` must reach the mutation — the backend needs it
+ * level band), and `defenderOwner` must reach the mutation, since the backend needs it
  * to find the defence authorization, and pet ids are not unique across owners on
  * Solana.
  */
@@ -45,7 +45,13 @@ const mockState = {
 
 const mockBattle = jest.fn();
 const mockTaunts = jest.fn();
-const mockCreateRoom = jest.fn(async () => ({ roomId: 'r1' }));
+// `useCreateBattleRoom().createRoom` resolves to the room id itself, or null when
+// it fails; it catches internally and never rejects. The mock returned a
+// `{ roomId }` object before, which went unnoticed only because the value was
+// discarded.
+const mockCreateRoom = jest.fn<Promise<string | null>, unknown[]>(async () => 'r1');
+/** Captures what the panel hands `useBattlePets`, which is where roomId matters. */
+const mockBattleOptions: { roomId?: string | null } = {};
 const mockWinEstimateArgs = jest.fn();
 
 jest.mock('@shared/core', () => ({
@@ -74,12 +80,15 @@ jest.mock('@shared/core', () => ({
         isLoading: false,
     }),
     useCreateBattleRoom: () => ({ createRoom: mockCreateRoom, isLoading: false }),
-    useBattlePets: () => ({
-        mutate: mockBattle,
-        isPending: false,
-        error: null,
-        phase: 'idle',
-    }),
+    useBattlePets: (opts: { roomId?: string | null }) => {
+        mockBattleOptions.roomId = opts?.roomId;
+        return {
+            mutate: mockBattle,
+            isPending: false,
+            error: null,
+            phase: 'idle',
+        };
+    },
 }));
 
 jest.mock('../src/hooks/usePetErrorToast', () => ({ usePetErrorToast: () => {} }));
@@ -218,6 +227,35 @@ describe('BattleScreen', () => {
         await pressWith(tree, 'Start Battle');
         expect(mockCreateRoom).toHaveBeenCalled();
         expect(mockBattle).toHaveBeenCalled();
+    });
+
+    it('links the battle to the room it minted', async () => {
+        // `accept` records roomId on the ledger row, and that is the only thing
+        // that makes the backend notify the room as the battle changes state.
+        // Minting a room without passing it here leaves it attached to nothing and
+        // every spectator holding the link uninformed.
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+
+        expect(mockBattleOptions.roomId).toBe('r1');
+        expect(mockBattle).toHaveBeenCalled();
+    });
+
+    it('does not hand a failed mint the previous battle’s room', async () => {
+        // Reusing it would push this fight's updates to a room full of the wrong
+        // spectators, which is worse than having no room at all.
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+        expect(mockBattleOptions.roomId).toBe('r1');
+
+        mockCreateRoom.mockResolvedValueOnce(null);
+        await pressWith(tree, 'Start Battle');
+
+        expect(mockBattleOptions.roomId).toBeNull();
     });
 
     it('asks for the win estimate with both fighters', async () => {
