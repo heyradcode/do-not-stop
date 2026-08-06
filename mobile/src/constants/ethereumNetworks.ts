@@ -1,5 +1,5 @@
 import type { Chain } from 'viem';
-import { mainnet, sepolia } from 'wagmi/chains';
+import { baseSepolia, mainnet, sepolia } from 'wagmi/chains';
 import { EVM_CHAIN_ID } from '@env';
 import { hardhatLocal } from '../ethereumChains';
 
@@ -12,7 +12,7 @@ export type EvmNetworkOption = {
 };
 
 /**
- * Parses `EVM_CHAIN_ID` into a chain id, falling back to Sepolia.
+ * Parses `EVM_CHAIN_ID` into a chain id, falling back to Base Sepolia.
  *
  * Exported for its test: `react-native-dotenv` inlines `@env` at Babel transform
  * time, so `TARGET_CHAIN_ID` below is a literal baked in from whatever `.env` the
@@ -22,24 +22,30 @@ export type EvmNetworkOption = {
  * `isSupportedChain` false forever and read as a wallet problem, not a typo.
  */
 export function resolveTargetChainId(raw: string | undefined): number {
-    if (!raw) return sepolia.id;
+    if (!raw) return baseSepolia.id;
     const parsed = Number(raw);
-    return Number.isInteger(parsed) ? parsed : sepolia.id;
+    return Number.isInteger(parsed) ? parsed : baseSepolia.id;
 }
 
 /**
  * The chain this build's contracts are deployed on, mirroring frontend's
- * `TARGET_CHAIN_ID`. Sepolia rather than frontend's Base Sepolia: it is the only
- * network with a live PetCore and GameLogic. See
- * `docs/plan-mobile-frontend-parity.md` Phase 0.1 for why the two diverge.
+ * `TARGET_CHAIN_ID`.
+ *
+ * Base Sepolia since 2026-08-06, when the stack was deployed there. That closes
+ * the divergence recorded in `docs/plan-mobile-frontend-parity.md` Phase 0.1:
+ * mobile targeted Sepolia only because Base Sepolia had no PetCore or GameLogic
+ * at the time, while frontend pointed at Base Sepolia and read nothing.
  */
 export const TARGET_CHAIN_ID = resolveTargetChainId(EVM_CHAIN_ID);
 
 /**
- * Every chain the game can actually be played on, target chain first.
+ * Every chain the game can actually be played on, in preference order.
  *
- * Order matters: wagmi treats `chains[0]` as its default, so whatever sits first
- * is the chain RPC reads fall back to before a wallet reports a usable one.
+ * Both carry a full deployment, so a player can switch between them and the pet
+ * list follows (see `useEvmPetsConfig`). `getAppKitEvmNetworks` reorders this so
+ * whatever `EVM_CHAIN_ID` names leads, since wagmi treats `chains[0]` as its
+ * default and that is the chain RPC reads fall back to before a wallet reports a
+ * usable one.
  *
  * Chains without a deployment are deliberately absent: offering one would let a
  * player switch to a network where every contract read silently fails. This is
@@ -47,6 +53,7 @@ export const TARGET_CHAIN_ID = resolveTargetChainId(EVM_CHAIN_ID);
  * strand a player somewhere `isSupportedChain` rejects.
  */
 export const CHAINS: EvmNetworkOption[] = [
+    { chain: baseSepolia, name: 'Base Sepolia', symbol: 'ETH', isTestnet: true },
     { chain: sepolia, name: 'Sepolia', symbol: 'ETH', isTestnet: true },
     ...(__DEV__
         ? [{ chain: hardhatLocal, name: 'Hardhat Local', symbol: 'ETH', isTestnet: true }]
@@ -55,6 +62,7 @@ export const CHAINS: EvmNetworkOption[] = [
 
 export const CHAIN_SYMBOLS: { [key: number]: string } = {
     31337: 'ETH', // Hardhat Local
+    84532: 'ETH', // Base Sepolia
     11155111: 'ETH', // Sepolia
 };
 
@@ -85,13 +93,13 @@ export const getTargetChainName = (targetChainId: number = TARGET_CHAIN_ID): str
  *
  * It buys a connection, not an authorization: `CHAINS` still excludes it, so a
  * player who lands here gets `NetworkGate` rather than a broken game. That is
- * also why it is not an `EvmNetworkOption` — nothing should be able to list it
+ * also why it is not an `EvmNetworkOption`: nothing should be able to list it
  * as somewhere to play.
  */
 export const WC_FALLBACK_CHAINS: Chain[] = [mainnet];
 
 /**
- * Wagmi / AppKit network list — target first, handshake fallbacks last.
+ * Wagmi / AppKit network list, target first, handshake fallbacks last.
  *
  * The single source of truth for what wagmi is configured with, so
  * `useEvmSessionChain` can ask what it is allowed to switch to without

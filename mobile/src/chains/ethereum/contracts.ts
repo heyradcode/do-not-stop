@@ -50,16 +50,23 @@ const SEPOLIA: EvmDeployment = {
 };
 
 /**
- * Base Sepolia (84532). Deliberately empty until the proxies exist.
+ * Base Sepolia (84532), deployed 2026-08-06 and verified on-chain the same day:
+ * PetCore answers name()="CryptoPets" / symbol()="PETS", GameLogic.petCore() and
+ * .gameConfig() point back at the other two, GameLogic.entropy() resolves to Pyth
+ * Entropy V2 (0x41c9e3…0d4c), and PetCore.authorizedCallers(GameLogic) is true,
+ * without which minting reverts.
  *
- * As of 2026-08-06 the deployment there is partial: GameConfig, both
- * implementations, BattleBatchRegistry and SeasonRewardDistributor are live, but
- * `PetCoreProxy` and `GameLogicProxy` were never created, and clients talk to the
- * proxies rather than the implementations. Filling these with the implementation
- * addresses would produce a contract with no storage and no pets, so they stay
- * absent and `hasEvmDeployment` reports false until the deploy completes.
+ * These are the **proxies**. The deployment also produced `PetCoreImpl`
+ * (0xf99e17…a21F) and `GameLogicImpl` (0x5fB2ec…00A3); those are implementation
+ * contracts with no storage of their own and must never appear here.
+ *
+ * totalPets() is 0, so mint before expecting the gallery to show anything.
  */
-const BASE_SEPOLIA: EvmDeployment = {};
+const BASE_SEPOLIA: EvmDeployment = {
+    petCore: '0x4B89BC0269523D8656e5B30E3A6Dda48fe9d2957',
+    gameLogic: '0x5ac524f54D5145167A43E7abA6D2EFc5D5e8E431',
+    gameConfig: '0xF35FB2696b3Adc2BF7dfd2eF81B4C177fF6Cd0d5',
+};
 
 const DEPLOYMENTS: Record<number, EvmDeployment> = {
     [sepolia.id]: SEPOLIA,
@@ -72,6 +79,12 @@ const DEPLOYMENTS: Record<number, EvmDeployment> = {
  * The variables are chain-agnostic (`PETCORE_ADDRESS`, not `SEPOLIA_PETCORE_ADDRESS`),
  * so they can only mean one deployment. Letting them override every chain would
  * point both at the same proxy, which is the bug this module is keyed to avoid.
+ *
+ * The trap this leaves: both chains are known here now, so a stale address in
+ * `.env` no longer fills a gap, it *overrides* a correct one. Changing
+ * `EVM_CHAIN_ID` while leaving the address variables set from the previous chain
+ * silently points the new target at the old chain's proxy. Leave them unset
+ * unless you are deliberately overriding.
  */
 const envOverrides: EvmDeployment = {
     petCore: (PETCORE_ADDRESS || undefined) as `0x${string}` | undefined,

@@ -15,6 +15,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { mainnet, sepolia } from 'wagmi/chains';
 
 import { pickRequestChainId } from '../src/utils/sessionChain';
+import { TARGET_CHAIN_ID, getTargetChainName } from '../src/constants/ethereumNetworks';
 import { parseApprovedEvmChainIds } from '../src/hooks/useApprovedEvmChains';
 
 const mockState = {
@@ -63,7 +64,7 @@ const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
 
 beforeEach(() => {
     mockState.isConnected = true;
-    mockState.chainId = sepolia.id;
+    mockState.chainId = TARGET_CHAIN_ID;
     mockState.approved = null;
     // `mockReset` rather than `mockClear`: the failure tests below install a
     // persistent rejection, and `useEvmSessionChain`'s repair attempt is a real
@@ -192,19 +193,19 @@ describe('NetworkGate', () => {
 
     it('warns about the network when the wallet sits on an unplayable chain', async () => {
         mockState.chainId = mainnet.id;
-        mockState.approved = [mainnet.id, sepolia.id];
+        mockState.approved = [mainnet.id, TARGET_CHAIN_ID];
         const tree = await render();
-        expect(textOf(tree)).toContain('CryptoPets runs on Sepolia');
-        expect(textOf(tree)).toContain('Switch to Sepolia');
+        expect(textOf(tree)).toContain(`CryptoPets runs on ${getTargetChainName()}`);
+        expect(textOf(tree)).toContain(`Switch to ${getTargetChainName()}`);
     });
 
     it('warns about the session when the target was never approved', async () => {
         // The distinction matters: the player is on the right chain by wagmi's
         // reckoning, and nothing looks wrong until a signature is refused.
-        mockState.chainId = sepolia.id;
+        mockState.chainId = TARGET_CHAIN_ID;
         mockState.approved = [mainnet.id];
         const tree = await render();
-        expect(textOf(tree)).toContain('Wallet did not approve Sepolia');
+        expect(textOf(tree)).toContain(`Wallet did not approve ${getTargetChainName()}`);
         expect(textOf(tree)).toContain('signing will fail');
     });
 
@@ -212,7 +213,7 @@ describe('NetworkGate', () => {
         // `wallet_addEthereumChain` is the only call that can widen a live
         // session, so hiding the button strands the player on reconnect advice
         // that does not help a wallet which hides testnets.
-        mockState.chainId = sepolia.id;
+        mockState.chainId = TARGET_CHAIN_ID;
         mockState.approved = [mainnet.id];
         const tree = await render();
 
@@ -220,14 +221,14 @@ describe('NetworkGate', () => {
             tree.root.findAllByType(TouchableOpacity)[0].props.onPress();
         });
 
-        expect(mockSwitchChainAsync).toHaveBeenCalledWith({ chainId: sepolia.id });
+        expect(mockSwitchChainAsync).toHaveBeenCalledWith({ chainId: TARGET_CHAIN_ID });
     });
 
     it('repairs a session pinned to a chain it never approved', async () => {
         // Mounted on Sepolia with only mainnet approved: every request would die
         // in the sign client, including the `wallet_addEthereumChain` the switch
         // button needs. Moving to mainnet is what makes the button reach a wallet.
-        mockState.chainId = sepolia.id;
+        mockState.chainId = TARGET_CHAIN_ID;
         mockState.approved = [mainnet.id];
         await render();
         expect(mockSwitchChainAsync).toHaveBeenCalledWith({ chainId: mainnet.id });
@@ -235,14 +236,14 @@ describe('NetworkGate', () => {
 
     it('does not repair a session that already approved the target', async () => {
         mockState.chainId = mainnet.id;
-        mockState.approved = [mainnet.id, sepolia.id];
+        mockState.approved = [mainnet.id, TARGET_CHAIN_ID];
         await render();
         expect(mockSwitchChainAsync).not.toHaveBeenCalled();
     });
 
     it('explains a rejected switch rather than echoing the raw error', async () => {
         mockState.chainId = mainnet.id;
-        mockState.approved = [mainnet.id, sepolia.id];
+        mockState.approved = [mainnet.id, TARGET_CHAIN_ID];
         mockSwitchChainAsync.mockRejectedValue(Object.assign(new Error('nope'), { code: 4001 }));
         const tree = await render();
 
@@ -254,7 +255,7 @@ describe('NetworkGate', () => {
     });
 
     it('tells a refusing wallet to reconnect when the target was never approved', async () => {
-        mockState.chainId = sepolia.id;
+        mockState.chainId = TARGET_CHAIN_ID;
         mockState.approved = [mainnet.id];
         mockSwitchChainAsync.mockRejectedValue(new Error('unsupported chain'));
         const tree = await render();

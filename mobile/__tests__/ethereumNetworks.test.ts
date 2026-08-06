@@ -5,7 +5,7 @@
  * wraps, and that is checked directly.
  */
 
-import { mainnet, sepolia } from 'wagmi/chains';
+import { baseSepolia, mainnet, sepolia } from 'wagmi/chains';
 
 import {
     CHAINS,
@@ -25,14 +25,14 @@ describe('resolveTargetChainId', () => {
         expect(resolveTargetChainId('31337')).toBe(31337);
     });
 
-    it('falls back to Sepolia when unset or empty', () => {
-        expect(resolveTargetChainId(undefined)).toBe(sepolia.id);
-        expect(resolveTargetChainId('')).toBe(sepolia.id);
+    it('falls back to Base Sepolia when unset or empty', () => {
+        expect(resolveTargetChainId(undefined)).toBe(baseSepolia.id);
+        expect(resolveTargetChainId('')).toBe(baseSepolia.id);
     });
 
     it('falls back rather than returning NaN for a malformed value', () => {
-        expect(resolveTargetChainId('sepolia')).toBe(sepolia.id);
-        expect(resolveTargetChainId('1.5')).toBe(sepolia.id);
+        expect(resolveTargetChainId('base-sepolia')).toBe(baseSepolia.id);
+        expect(resolveTargetChainId('1.5')).toBe(baseSepolia.id);
     });
 });
 
@@ -43,8 +43,11 @@ describe('TARGET_CHAIN_ID', () => {
 });
 
 describe('CHAINS', () => {
-    it('puts the target chain first, because wagmi defaults to chains[0]', () => {
-        expect(CHAINS[0].chain.id).toBe(sepolia.id);
+    it('lists both deployment chains, so a player can switch between them', () => {
+        const ids = CHAINS.map((c) => c.chain.id);
+        expect(ids).toContain(baseSepolia.id);
+        expect(ids).toContain(sepolia.id);
+        expect(CHAINS[0].chain.id).toBe(baseSepolia.id);
     });
 
     it('omits chains with no deployment, including the handshake fallback', () => {
@@ -57,7 +60,7 @@ describe('CHAINS', () => {
     });
 
     it('does not treat an unknown chain as supported', () => {
-        expect(isSupportedChain(84532)).toBe(false);
+        expect(isSupportedChain(137)).toBe(false);
         expect(isSupportedChain(undefined)).toBe(false);
     });
 });
@@ -73,7 +76,7 @@ describe('getChainConfig / getTargetChainName', () => {
     });
 
     it('names an unknown chain by id rather than rendering "undefined"', () => {
-        expect(getTargetChainName(84532)).toBe('chain 84532');
+        expect(getTargetChainName(137)).toBe('chain 137');
     });
 });
 
@@ -95,7 +98,9 @@ describe('getAppKitEvmNetworks', () => {
 
     it('still leads with a playable chain when the target has no config', () => {
         // A typo'd EVM_CHAIN_ID must not put wagmi's default on the fallback.
-        expect(getAppKitEvmNetworks(84532)[0].id).toBe(CHAINS[0].chain.id);
+        // 137 rather than 84532: Base Sepolia is a real deployment chain now, so
+        // it would pass this trivially while testing nothing.
+        expect(getAppKitEvmNetworks(137)[0].id).toBe(CHAINS[0].chain.id);
     });
 });
 

@@ -45,13 +45,19 @@ cd mobile/ios && bundle install && bundle exec pod install
 
 ## Which chain this targets
 
-`EVM_CHAIN_ID` defaults to **Sepolia (11155111)**, which is the only network with a live `PetCore`
-and `GameLogic`. This diverges from the web frontend, which lists Base Sepolia, and the divergence
-is deliberate: pet reads on Base Sepolia return an empty `0x` that looks like a decode bug because
-the contracts have no bytecode there. `docs/plan-mobile-frontend-parity.md` records the decision.
+Two testnets carry a full deployment, **Base Sepolia (84532)** and **Sepolia (11155111)**.
+`EVM_CHAIN_ID` picks which one the app starts on and defaults to Base Sepolia, matching the web
+frontend. A player can switch between them in the app and the pet list follows, because contract
+addresses are keyed by chain in `src/chains/ethereum/contracts.ts` and `useEvmPetsConfig` resolves
+them from the wallet's current chain.
 
-The roster on that deployment starts empty, so **mint a pet before expecting the gallery to show
-anything**. An empty gallery on first run is correct, not a failure.
+Addresses are built in, so **leave `PETCORE_ADDRESS` and friends unset** unless you are deliberately
+overriding. They apply to `EVM_CHAIN_ID`'s chain only, since the names carry no chain of their own,
+which makes a stale value worse than a missing one: it silently points the new target at the old
+chain's proxy and every read returns an empty `0x` that looks like a decode bug.
+
+Base Sepolia's roster started empty on 2026-08-06, so **mint a pet before expecting the gallery to
+show anything**. An empty gallery on first run is correct, not a failure.
 
 Solana is wired for devnet and reached through the same chain-blind hooks. It has not yet been
 exercised end to end on a device.
