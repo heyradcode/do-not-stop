@@ -23,6 +23,7 @@ jest.mock('../src/screens/RenameScreen', () => () => null);
 jest.mock('../src/screens/DefenseScreen', () => () => null);
 jest.mock('../src/screens/BreedScreen', () => () => null);
 jest.mock('../src/screens/MarriageScreen', () => () => null);
+jest.mock('../src/screens/BattleScreen', () => () => null);
 jest.mock('../src/components/AppHeader', () => () => null);
 jest.mock('../src/screens/LandingScreen', () => {
     const { Text: RNText } = jest.requireActual('react-native');

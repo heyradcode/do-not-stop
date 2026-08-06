@@ -8,6 +8,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAccount } from 'wagmi';
 
 import AppHeader from '../components/AppHeader';
+import BattleScreen from '../screens/BattleScreen';
 import BreedScreen from '../screens/BreedScreen';
 import DefenseScreen from '../screens/DefenseScreen';
 import GalleryScreen from '../screens/GalleryScreen';
@@ -16,7 +17,6 @@ import LevelUpScreen from '../screens/LevelUpScreen';
 import MarriageScreen from '../screens/MarriageScreen';
 import RenameScreen from '../screens/RenameScreen';
 import TrainScreen from '../screens/TrainScreen';
-import { placeholderFor } from '../screens/PlaceholderScreen';
 import { neon } from '../theme/neon';
 import {
     STACK_TITLES,
@@ -28,10 +28,10 @@ import {
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-/** Phase 4 swaps the remaining placeholders for real screens, one per commit. */
+/** Every screen is real now; the placeholder module is gone. */
 const TAB_SCREENS: Record<keyof MainTabParamList, React.ComponentType> = {
     Gallery: GalleryScreen,
-    Battle: placeholderFor('Battle Arena'),
+    Battle: BattleScreen,
     Breed: BreedScreen,
     LevelUp: LevelUpScreen,
     Train: TrainScreen,
