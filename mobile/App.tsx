@@ -21,9 +21,9 @@ import { SolanaAppKitAnchorBridge } from './src/solana/SolanaAppKitAnchorBridge'
  * where its `BrowserRouter` sits.
  *
  * `SafeAreaProvider` is outermost so `ToastProvider` can measure a real bottom
- * inset; it used to live inside the old `AppContent`, which put it below the toast
- * viewport. `AppKit` renders as a sibling of the navigator so its connect sheet is
- * reachable from the landing screen and the tab shell alike.
+ * inset rather than assuming one. `AppKit` renders as a sibling of the navigator
+ * so its connect sheet is reachable from the landing screen and the tab shell
+ * alike.
  */
 export default function App() {
   return (
