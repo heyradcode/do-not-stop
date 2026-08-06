@@ -28,9 +28,12 @@ names as historical pointers, not sources to read.
 >   `DnaLib`, `TestDeployer`, plus `BattleBatchRegistry`, `SeasonRewardDistributor`,
 >   `CryptoPetsToken` and `MockERC20`.
 > - **`liveBattleSocket.ts` is gone, and it is no longer "the one channel".** There are two:
->   `battleRoomSocket.ts` (§J battle notifications) and `chatSocket.ts` (§2 chat). Neither is
->   authenticated — both are notification-only by construction, which is what makes that
->   safe. §2's assumption that an authenticated socket already existed to reuse was wrong.
+>   `battleRoomSocket.ts` (§J battle notifications) and `chatSocket.ts` (§2 chat), both
+>   behind one upgrade listener (`ws/channel.ts`) — a `WebSocketServer` per channel on the
+>   same HTTP server handles every connection twice. The battle room is unauthenticated,
+>   which is safe only because its frames carry nothing readable; chat is authenticated.
+>   §2's assumption that an authenticated socket already existed to reuse was wrong, so one
+>   had to be built.
 > - **A chat surface now exists** (§2 v1, built). So does a **token**: `CryptoPetsToken.sol`
 >   is a deployed-ready fixed-supply ERC20 (CPET) that funds `SeasonRewardDistributor` under
 >   the battle protocol's §I. That materially narrows §11 — see the note there.
@@ -335,9 +338,16 @@ rank. The ranking computation itself is unaffected.
 > - **There was no authenticated WebSocket to reuse.** This section's cost argument rested
 >   on one. `liveBattleSocket.ts` is gone, and its replacement joins whoever presents a room
 >   id — safe there only because battle notifications carry nothing a client could not
->   re-fetch. So `/ws/chat` carries **no message text**: it says a thread changed, and the
->   authenticated read returns the content. Chat still cost less than anything else here,
->   just not for the stated reason.
+>   re-fetch. `/ws/chat` still carries **no message text**: it says a thread changed, and
+>   the authenticated read returns the content. Chat still cost less than anything else
+>   here, just not for the stated reason.
+> - **Presence shipped, and it is what made the socket authenticated.** The open decision
+>   below asked whether v1 should have online presence. It does: a green dot for the
+>   counterpart. That forced the auth this section assumed existed — presence is a claim
+>   about identities, and an anonymous socket has none, so counting connections would
+>   report one person with two tabs open as two people. The JWT travels as a subprotocol
+>   rather than a query parameter, and the upgrade applies the same participation and
+>   live-marriage gate as the HTTP routes. Read receipts are still absent.
 > - **Access is checked per request, not stored.** As sketched, `ChatThread` does not record
 >   the marriage — but the check runs on every read and send, not only at open time, so a
 >   divorce closes the conversation with nothing to revoke. The thread row survives, since
@@ -347,9 +357,10 @@ rank. The ranking computation itself is unaffected.
 >   null state that only ever resolves one way.
 >
 > The open decisions below are **unresolved and now carry a shipped surface**: there is no
-> block, report, filter, read receipt, presence, edit, delete, or retention policy. The only
-> abuse controls are a length cap and a send rate limit. v1's lack of any discovery surface
-> is what contains the risk today, and that containment ends with v2's open DMs.
+> block, report, filter, read receipt, edit, delete, or retention policy. (Presence is the
+> one that got answered — see above.) The only abuse controls are a length cap and a send
+> rate limit. v1's lack of any discovery surface is what contains the risk today, and that
+> containment ends with v2's open DMs.
 
 **Goal.** Real player-to-player messaging, not another AI-generated conversation. The natural
 starting point is the marriage feature: two owners whose pets are married already have an

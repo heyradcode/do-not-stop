@@ -377,25 +377,40 @@ and nothing left to filter.
 ws(s)://<host>/ws/chat?threadId=<threadId>
 ```
 
-Notification-only, per-thread. Connecting without a `threadId` closes the socket
-immediately (code `1008`). Every message is the same shape, and carries **no message
-text**:
+Per-thread, and **authenticated**. Two frame shapes, neither carrying message text:
 
 ```json
 { "type": "thread-updated", "threadId": "c...", "messageId": 42 }
+{ "type": "presence",       "topic": "c...",    "online": ["0xabc…"] }
 ```
 
-The roadmap assumed chat could reuse an authenticated socket. There isn't one — the
-battle-room channel above joins whoever presents a room id, which is safe there because
-its payload is not content. This channel keeps that posture and gets its safety from the
-same place: it says a thread changed, and the text comes from
+`thread-updated` means "re-read this thread"; the text comes from
 `GET /api/chat/threads/:id/messages`, which authenticates the caller and rechecks the
-marriage. Missing a notification costs latency, never access.
+marriage. Missing a notification costs latency, never access. `presence` is the roster of
+participants currently connected, which is what drives the online dot.
 
-What a listener does learn is timing — that a thread whose id they hold saw activity.
-Thread ids are cuids handed out only by an authenticated read. If v2 opens direct
-messages to strangers, this channel should be authenticated first, with the token in a
-subprotocol rather than the query string, where proxies and access logs would record it.
+**Authentication.** The client offers two subprotocols, `cryptopets-auth` followed by the
+JWT; the server echoes back only the marker. A subprotocol rather than a query parameter
+because browsers cannot set headers on a WebSocket and a URL-borne token is recorded by
+proxies and access logs. The upgrade then applies the same participation and live-marriage
+gate as the HTTP routes, so a socket can never subscribe to a thread its holder could not
+read. A connection with no token, a forged token, or a thread the caller is not in is
+refused at the upgrade — it never becomes a subscriber, not even to the fact that the
+thread changed.
+
+This is stricter than the channel shipped with. It was unauthenticated at first, on the
+argument that contentless frames made it safe; presence forced the change, because "is my
+counterpart online" is a claim about identities and an anonymous socket has none. Counting
+connections would have reported one person with two tabs open as two people. Closing the
+activity-timing leak came along with it.
+
+Presence counts identities, not sockets, so a second tab does not double a person and
+closing one does not report them as gone. Authorization is checked at connect only: a
+marriage that ends mid-session leaves the socket open until it drops, which costs nothing
+because every frame is contentless and the read it prompts refuses immediately.
+
+The battle-room channel above remains unauthenticated. It carries no content and has no
+presence, so it has nothing an identity would protect.
 
 ### Public receipt corpus (v2)
 
