@@ -126,6 +126,7 @@ const Leaderboard: React.FC = () => {
 
     return (
         <DashboardPanel
+            className={styles.page}
             title={
                 <>
                     <Icon as={TrophyIcon} tone={Tones.Amber} />

@@ -1,9 +1,23 @@
 /* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
    Leaderboard: a read-only ranking table, amber accent to match the trophy. */
+
+/* Ends at the bottom of the window rather than at the bottom of its rows, so the pager
+   stays reachable without scrolling the page and short pages leave no dead space.
+
+   `height: 100%` rather than a flex rule, for the reason spelled out in the chat panel's
+   stylesheet: the shell's content slot is a scrollable *block*, so a `flex` declaration
+   on the panel is inert. The percentage resolves against the slot's content box, which
+   is what keeps the panel inside the shell's padding. */
+.page {
+    height: 100%;
+}
+
 .tabs {
     display: flex;
     gap: 8px;
     margin-bottom: 14px;
+    /* Header-ish: never absorbs the space the list should get. */
+    flex-shrink: 0;
 }
 
 .tab {
@@ -29,6 +43,8 @@
     background: rgb(251 191 36 / 12%);
 }
 
+/* The one part that scrolls. Everything else in the panel keeps its natural height, so
+   the pager stays pinned below the rows instead of being pushed off the bottom. */
 .list {
     list-style: none;
     margin: 0;
@@ -36,6 +52,9 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 /* Fixed track widths so ranks, records and rates line up down the column; only the
@@ -112,6 +131,7 @@
     justify-content: center;
     gap: 14px;
     margin-top: 16px;
+    flex-shrink: 0;
 }
 
 .pager button {
