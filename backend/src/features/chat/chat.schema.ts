@@ -23,6 +23,12 @@ export const SendMessageSchema = z.object({
     text: z.string().transform((value) => value.trim()).pipe(z.string().min(1).max(MAX_MESSAGE_LENGTH)),
 });
 
+/** Body of POST /api/chat/threads/:id/read. */
+export const MarkReadSchema = z.object({
+    /** Newest message the caller has seen. */
+    messageId: z.coerce.number().int().positive(),
+});
+
 /** Query of GET /api/chat/threads/:id/messages. */
 export const ListMessagesSchema = z.object({
     /** Exclusive message id to page backwards from; omit for the newest page. */

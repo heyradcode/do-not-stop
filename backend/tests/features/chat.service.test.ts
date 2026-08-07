@@ -4,17 +4,28 @@ const findMarriedCounterparts = vi.fn();
 const openThread = vi.fn();
 const findThreadById = vi.fn();
 const isMarriedTo = vi.fn();
+const findMessages = vi.fn();
+const findCounterpartReadId = vi.fn();
+const markThreadRead = vi.fn();
 
 vi.mock('@repositories/chat.repository', () => ({
     findMarriedCounterparts: (caller: string) => findMarriedCounterparts(caller),
     openThread: (x: string, y: string, scope: string) => openThread(x, y, scope),
     findThreadById: (id: string) => findThreadById(id),
     isMarriedTo: (a: string, b: string) => isMarriedTo(a, b),
-    findMessages: vi.fn(),
+    findMessages: (id: string, limit: number, before?: number) => findMessages(id, limit, before),
+    findCounterpartReadId: (id: string, caller: string) => findCounterpartReadId(id, caller),
+    markThreadRead: (id: string, participant: string, messageId: number) =>
+        markThreadRead(id, participant, messageId),
     insertMessage: vi.fn(),
 }));
 
-import { authorizeThread, listThreads } from '../../src/features/chat/chat.service';
+import {
+    authorizeThread,
+    listThreads,
+    markRead,
+    readMessages,
+} from '../../src/features/chat/chat.service';
 
 const ME = '0x1111111111111111111111111111111111111111';
 const THEM = '0x2222222222222222222222222222222222222222';
@@ -114,5 +125,38 @@ describe('authorizeThread', () => {
         findThreadById.mockResolvedValue(null);
 
         expect(await authorizeThread('nope', ME)).toBe('not-found');
+    });
+});
+
+
+describe('readMessages', () => {
+    it('returns the page with how far the counterpart has read', async () => {
+        findMessages.mockResolvedValue([{ id: 7 }]);
+        findCounterpartReadId.mockResolvedValue(5);
+
+        await expect(readMessages('t1', ME, 50)).resolves.toEqual({
+            messages: [{ id: 7 }],
+            readUpTo: 5,
+        });
+        expect(findCounterpartReadId).toHaveBeenCalledWith('t1', ME);
+    });
+
+    // Nobody has read anything yet is the common case on a new thread, and it has to read
+    // as "no message is seen" rather than as a missing value at the call site.
+    it('reports 0 when the counterpart has read nothing', async () => {
+        findMessages.mockResolvedValue([]);
+        findCounterpartReadId.mockResolvedValue(0);
+
+        await expect(readMessages('t1', ME, 50)).resolves.toEqual({ messages: [], readUpTo: 0 });
+    });
+});
+
+describe('markRead', () => {
+    it("moves the caller's own watermark", async () => {
+        markThreadRead.mockResolvedValue(undefined);
+
+        await markRead('t1', ME, 9);
+
+        expect(markThreadRead).toHaveBeenCalledWith('t1', ME, 9);
     });
 });

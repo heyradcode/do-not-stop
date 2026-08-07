@@ -19,7 +19,8 @@ import { getStorageAdapter } from '../../api';
  */
 
 export interface ChatThreadNotification {
-    type: 'thread-updated';
+    /** `thread-updated` is a new message; `thread-read` is a moved read watermark. */
+    type: 'thread-updated' | 'thread-read';
     threadId: string;
     messageId: number;
 }
@@ -116,7 +117,7 @@ export function useChatThreadSocket(
                     if (message?.type === 'presence' && Array.isArray(message.online)) {
                         setOnline(message.online);
                     } else if (
-                        message?.type === 'thread-updated' &&
+                        (message?.type === 'thread-updated' || message?.type === 'thread-read') &&
                         typeof message.threadId === 'string'
                     ) {
                         onNotification.current?.(message as ChatThreadNotification);

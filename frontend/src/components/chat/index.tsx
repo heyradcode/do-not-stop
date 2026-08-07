@@ -82,11 +82,21 @@ const ThreadList: React.FC<{
 );
 
 const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me }) => {
-    const { messages, isLoading, error, isLive, online, send, isSending, sendError } =
-        useChatMessages({
-            threadId: thread.threadId,
-            socketUrl: CHAT_WS_URL,
-        });
+    const {
+        messages,
+        readUpTo,
+        markRead,
+        isLoading,
+        error,
+        isLive,
+        online,
+        send,
+        isSending,
+        sendError,
+    } = useChatMessages({
+        threadId: thread.threadId,
+        socketUrl: CHAT_WS_URL,
+    });
 
     // Only a live channel can say anyone is present. While it is down every dot would
     // otherwise read grey, which is indistinguishable from "they left" — so the header
@@ -110,10 +120,19 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
 
     // Chats are read from the bottom. Keyed on the newest id rather than length so a
     // re-read that changes nothing does not yank the view while someone scrolls up.
-    const newestId = messages[messages.length - 1]?.id;
+    const newest = messages[messages.length - 1];
+    const newestId = newest?.id;
     useEffect(() => {
         endRef.current?.scrollIntoView({ block: 'end' });
     }, [newestId]);
+
+    // Open thread means read. Marking on arrival rather than on visibility is the v1
+    // rule: this panel shows one conversation at a time and scrolls to the end, so a
+    // message that lands here is on screen. Own messages are skipped — the watermark
+    // exists to answer what the *other* side has seen.
+    useEffect(() => {
+        if (newest && !sameAccount(newest.sender, me)) markRead(newest.id);
+    }, [newest, me, markRead]);
 
     /**
      * Enter sends; Shift+Enter and Ctrl+Enter break the line.
@@ -214,6 +233,24 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
                                     <span className={styles.messageTime}>
                                         {timeOf(message.createdAt)}
                                     </span>
+                                    {/* Receipts on your own messages only: yours is the
+                                        only side whose reading is news to anyone. */}
+                                    {isMine && (
+                                        <span
+                                            className={
+                                                message.id <= readUpTo
+                                                    ? `${styles.receipt} ${styles.isSeen}`
+                                                    : styles.receipt
+                                            }
+                                            role="img"
+                                            aria-label={
+                                                message.id <= readUpTo ? 'Seen' : 'Sent'
+                                            }
+                                            title={message.id <= readUpTo ? 'Seen' : 'Sent'}
+                                        >
+                                            {message.id <= readUpTo ? '✓✓' : '✓'}
+                                        </span>
+                                    )}
                                 </div>
                             </li>
                         );

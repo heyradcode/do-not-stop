@@ -312,3 +312,21 @@
         flex-shrink: 0;
     }
 }
+
+/* Sent / seen receipt, on your own messages only.
+   One tick once the server has the message — every message in the transcript came back
+   from the server, so a rendered message is a stored one — and two once the counterpart's
+   read watermark has passed it. The pair is tightened rather than drawn as one glyph so
+   it reads as two ticks at 0.7rem. */
+.receipt {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    letter-spacing: -0.22em;
+    padding-inline-end: 0.22em;
+    opacity: 0.5;
+}
+
+.receipt.isSeen {
+    color: rgb(125 214 255);
+    opacity: 1;
+}

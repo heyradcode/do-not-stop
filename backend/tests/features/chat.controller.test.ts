@@ -6,13 +6,20 @@ vi.mock('../../src/features/chat/chat.service', () => ({
     authorizeThread: vi.fn(),
     readMessages: vi.fn(),
     sendMessage: vi.fn(),
+    markRead: vi.fn(),
 }));
 vi.mock('@ws/chatSocket', () => ({ notifyChatThread: vi.fn() }));
 
-import { getMessages, getThreads, postMessage } from '../../src/features/chat/chat.controller';
+import {
+    getMessages,
+    getThreads,
+    postMessage,
+    postRead,
+} from '../../src/features/chat/chat.controller';
 import {
     authorizeThread,
     listThreads,
+    markRead,
     readMessages,
     sendMessage,
 } from '../../src/features/chat/chat.service';
@@ -96,12 +103,14 @@ describe('thread authorization', () => {
 
 describe('getMessages', () => {
     it('passes the page through after authorizing', async () => {
-        vi.mocked(readMessages).mockResolvedValue([]);
+        vi.mocked(readMessages).mockResolvedValue({ messages: [], readUpTo: 3 });
         const res = makeRes();
 
         await getMessages(req({ query: { limit: '10', before: '99' } }), res);
 
-        expect(readMessages).toHaveBeenCalledWith('t1', 10, 99);
+        expect(readMessages).toHaveBeenCalledWith('t1', ME, 10, 99);
+        // The watermark rides with the page, so one read answers both questions.
+        expect(res.json).toHaveBeenCalledWith({ messages: [], readUpTo: 3 });
     });
 
     it('rejects a bad page size before touching the database', async () => {
@@ -185,5 +194,47 @@ describe('postMessage', () => {
         await postMessage(req({ body: { text: 'hi', sender: '0xsomeone-else' } }), res);
 
         expect(sendMessage).toHaveBeenCalledWith('t1', ME, 'hi');
+    });
+});
+
+describe('postRead', () => {
+    it('moves the watermark and tells the thread so the sender ticks', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        vi.mocked(markRead).mockResolvedValue(undefined);
+        const res = makeRes();
+        Object.assign(res, { end: vi.fn().mockReturnThis() });
+
+        await postRead(req({ body: { messageId: 12 } }), res);
+
+        expect(markRead).toHaveBeenCalledWith('t1', ME, 12);
+        // Its own frame type: a receipt names a message the sender already holds, and a
+        // client that skips those as echoes of its own send would never fill the tick in.
+        expect(notifyChatThread).toHaveBeenCalledWith('t1', {
+            type: 'thread-read',
+            threadId: 't1',
+            messageId: 12,
+        });
+        expect(res.status).toHaveBeenCalledWith(204);
+    });
+
+    it('rejects a bad message id before touching the database', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        const res = makeRes();
+
+        await postRead(req({ body: { messageId: 'nope' } }), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(markRead).not.toHaveBeenCalled();
+    });
+
+    // The same gate as every other route here: a non-participant learns nothing.
+    it('refuses a thread the caller is not in', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue('not-a-participant');
+        const res = makeRes();
+
+        await postRead(req({ body: { messageId: 1 } }), res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(markRead).not.toHaveBeenCalled();
     });
 });

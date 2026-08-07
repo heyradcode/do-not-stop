@@ -32,7 +32,18 @@ import { AUTH_PROTOCOL, defineChannel } from './channel';
  */
 
 export interface ChatThreadNotification {
-    type: 'thread-updated';
+    /**
+     * `thread-updated` is a new message; `thread-read` is someone moving their read
+     * watermark.
+     *
+     * They are distinguished because clients treat them oppositely. A client skips a
+     * `thread-updated` naming a message it already holds — that frame is the echo of its
+     * own send. A read receipt names a message it certainly already holds, by
+     * definition: the whole point is that the *other* side has now seen it. Folding the
+     * two together would make every receipt look like an echo and no tick would ever
+     * fill in.
+     */
+    type: 'thread-updated' | 'thread-read';
     threadId: string;
     /** Id of the message that caused it, so a client can skip a re-read it already has. */
     messageId: number;

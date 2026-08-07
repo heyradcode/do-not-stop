@@ -168,6 +168,7 @@ model ChatThread {
 
   createdAt DateTime      @default(now()) @map("created_at")
   messages  ChatMessage[]
+  reads     ChatRead[]
 
   @@unique([participantA, participantB], name: "chat_thread_pair")
   @@index([participantA])
@@ -194,6 +195,25 @@ model ChatMessage {
   /// sorted every message in the thread to return fifty of them, on every read.
   @@index([threadId, id])
   @@map("chat_message")
+}
+
+/// How far each participant has read in a thread: one row per participant, holding the
+/// id of the newest message they have seen.
+///
+/// A watermark rather than a per-message read flag. A thread of a thousand messages
+/// produces two rows here instead of two thousand, and "have they seen this one" is
+/// `message.id <= their watermark` — the same answer, one comparison, no join per row.
+model ChatRead {
+  threadId    String     @map("thread_id")
+  thread      ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  /// Wallet address, normalized the way the thread stores its participants.
+  participant String
+  lastReadId  Int        @map("last_read_id")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([threadId, participant])
+  @@map("chat_read")
 }
 
 // ─── Backend-authoritative battles ────────────────────────────────────────────

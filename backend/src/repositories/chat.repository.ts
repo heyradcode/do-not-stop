@@ -176,3 +176,43 @@ export function insertMessage(
         select: { id: true, sender: true, text: true, createdAt: true },
     });
 }
+
+/**
+ * Records that `participant` has read up to `messageId`.
+ *
+ * `GREATEST` rather than a plain assignment: the watermark only ever moves forward. A
+ * client that scrolls up and re-marks, or whose two tabs report different positions,
+ * would otherwise walk it backwards and un-read messages the sender has already been
+ * shown as read.
+ */
+export async function markThreadRead(
+    threadId: string,
+    participant: string,
+    messageId: number
+): Promise<void> {
+    await prisma.$executeRaw`
+        INSERT INTO chat_read (thread_id, participant, last_read_id, updated_at)
+        VALUES (${threadId}, ${normalizeAccount(participant)}, ${messageId}, now())
+        ON CONFLICT (thread_id, participant) DO UPDATE
+        SET last_read_id = GREATEST(chat_read.last_read_id, EXCLUDED.last_read_id),
+            updated_at = now()
+    `;
+}
+
+/**
+ * The newest message id anyone other than `caller` has read in this thread.
+ *
+ * 0 when nobody has, which reads naturally at the call site: every message id is
+ * positive, so nothing is marked seen. Excluding the caller by address rather than
+ * looking their counterpart up keeps this to one query and stays correct if a thread
+ * ever holds more than two participants.
+ */
+export async function findCounterpartReadId(threadId: string, caller: string): Promise<number> {
+    const rows = await prisma.$queryRaw<{ lastReadId: number | null }[]>`
+        SELECT MAX(last_read_id) AS "lastReadId"
+        FROM chat_read
+        WHERE thread_id = ${threadId}
+          AND participant <> ${normalizeAccount(caller)}
+    `;
+    return rows[0]?.lastReadId ?? 0;
+}

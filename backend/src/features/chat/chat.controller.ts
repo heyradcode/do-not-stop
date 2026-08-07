@@ -2,8 +2,15 @@ import type { Request, Response } from 'express';
 
 import type { AuthenticatedRequest } from '@middleware/auth';
 import { notifyChatThread } from '@ws/chatSocket';
-import { authorizeThread, listThreads, readMessages, sendMessage, type ChatDenial } from './chat.service';
-import { ListMessagesSchema, SendMessageSchema } from './chat.schema';
+import {
+    authorizeThread,
+    listThreads,
+    markRead,
+    readMessages,
+    sendMessage,
+    type ChatDenial,
+} from './chat.service';
+import { ListMessagesSchema, MarkReadSchema, SendMessageSchema } from './chat.schema';
 
 /**
  * HTTP surface for private chat (roadmap §2 v1). Every route is JWT-gated at the
@@ -48,11 +55,47 @@ export async function getMessages(req: Request, res: Response): Promise<void> {
     }
 
     try {
-        const messages = await readMessages(threadId, query.data.limit, query.data.before);
-        res.json({ messages });
+        res.json(await readMessages(threadId, caller, query.data.limit, query.data.before));
     } catch (err) {
         console.error('[chat] failed to read messages:', err);
         res.status(500).json({ error: 'Failed to read messages' });
+    }
+}
+
+/** POST /api/chat/threads/:id/read — move the caller's read watermark. */
+export async function postRead(req: Request, res: Response): Promise<void> {
+    const caller = callerOf(req);
+    if (!caller) {
+        res.status(401).json({ error: 'No token provided' });
+        return;
+    }
+
+    const body = MarkReadSchema.safeParse(req.body);
+    if (!body.success) {
+        res.status(400).json({ error: 'Invalid message id' });
+        return;
+    }
+
+    const threadId = req.params.id ?? '';
+    const denial = await authorizeThread(threadId, caller);
+    if (denial) {
+        respondToDenial(res, denial);
+        return;
+    }
+
+    try {
+        await markRead(threadId, caller, body.data.messageId);
+        // The sender is watching for their tick to fill in. Contentless like every other
+        // frame on this channel: it says the thread changed, and the client re-reads.
+        notifyChatThread(threadId, {
+            type: 'thread-read',
+            threadId,
+            messageId: body.data.messageId,
+        });
+        res.status(204).end();
+    } catch (err) {
+        console.error('[chat] failed to mark read:', err);
+        res.status(500).json({ error: 'Failed to mark read' });
     }
 }
 

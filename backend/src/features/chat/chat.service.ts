@@ -2,10 +2,12 @@ import { normalizeAccount } from '@cryptopets/protocol';
 
 import {
     findMarriedCounterparts,
+    findCounterpartReadId,
     findMessages,
     findThreadById,
     insertMessage,
     isMarriedTo,
+    markThreadRead,
     openThread,
     type ChatMessageRow,
 } from '@repositories/chat.repository';
@@ -127,13 +129,41 @@ export async function authorizeThread(threadId: string, rawCaller: string): Prom
     return (await isMarriedTo(caller, counterpart)) ? null : 'not-married';
 }
 
+/** A page of messages, and how far the other participant has read. */
+export interface ChatPage {
+    messages: ChatMessageRow[];
+    /**
+     * Newest message id the counterpart has read; 0 if none. The caller's own messages up
+     * to here have been seen. Sent with every page rather than per message: it is one
+     * number for the whole thread, and a client compares it against the ids it already
+     * has.
+     */
+    readUpTo: number;
+}
+
 /** A page of messages. Authorization is the caller's job — see `authorizeThread`. */
-export function readMessages(
+export async function readMessages(
     threadId: string,
+    caller: string,
     limit: number,
     before?: number
-): Promise<ChatMessageRow[]> {
-    return findMessages(threadId, limit, before);
+): Promise<ChatPage> {
+    const [messages, readUpTo] = await Promise.all([
+        findMessages(threadId, limit, before),
+        findCounterpartReadId(threadId, caller),
+    ]);
+    return { messages, readUpTo };
+}
+
+/**
+ * Records that the caller has read up to `messageId`. Authorization is the caller's job.
+ *
+ * Marking a message the caller sent themselves is harmless and not worth a round trip to
+ * prevent: the watermark is only ever read to answer "has the *other* side seen this",
+ * and their own messages are excluded from that question by construction.
+ */
+export function markRead(threadId: string, caller: string, messageId: number): Promise<void> {
+    return markThreadRead(threadId, caller, messageId);
 }
 
 /** Appends the caller's message. Authorization is the caller's job. */

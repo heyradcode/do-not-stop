@@ -18,8 +18,23 @@ export interface UseChatMessagesOptions {
     socketUrl?: string;
 }
 
+/** A page as the server returns it: the messages, plus how far the other side has read. */
+interface ChatPage {
+    messages: ChatMessage[];
+    readUpTo: number;
+}
+
 export interface UseChatMessagesResult {
     messages: ChatMessage[];
+    /**
+     * Newest message id the counterpart has read; 0 if none.
+     *
+     * One number for the whole thread rather than a flag per message: read state is a
+     * watermark, so `message.id <= readUpTo` answers it for every message at once.
+     */
+    readUpTo: number;
+    /** Moves the caller's own watermark, so the sender's receipt fills in. */
+    markRead: (messageId: number) => void;
     isLoading: boolean;
     error: Error | null;
     /** True while the notification channel is connected; false means reads are on demand only. */
@@ -63,11 +78,11 @@ export const useChatMessages = ({
     const query = useQuery({
         queryKey,
         enabled: isAuthenticated && threadId != null,
-        queryFn: async () => {
-            const { data } = await apiClient.get<{ messages: ChatMessage[] }>(
+        queryFn: async (): Promise<ChatPage> => {
+            const { data } = await apiClient.get<Partial<ChatPage>>(
                 `/api/chat/threads/${threadId}/messages`,
             );
-            return data.messages ?? [];
+            return { messages: data.messages ?? [], readUpTo: data.readUpTo ?? 0 };
         },
     });
 
@@ -83,10 +98,16 @@ export const useChatMessages = ({
     // `onSuccess` has already applied — re-reading fifty messages to learn nothing.
     const onNotification = useCallback(
         (message: ChatThreadNotification) => {
-            const cached = queryClient.getQueryData<ChatMessage[]>(
+            // A receipt always names a message this client already holds — that is what
+            // being read means — so the echo check below would swallow every one of them.
+            if (message.type === 'thread-read') {
+                refresh();
+                return;
+            }
+            const cached = queryClient.getQueryData<ChatPage>(
                 chatMessagesQueryKey(baseURL, threadId),
             );
-            if (cached?.some((entry) => entry.id === message.messageId)) return;
+            if (cached?.messages.some((entry) => entry.id === message.messageId)) return;
             refresh();
         },
         [queryClient, baseURL, threadId, refresh],
@@ -112,15 +133,32 @@ export const useChatMessages = ({
         // refused send must not look delivered) does not apply, and it saves a full page
         // re-read per message sent.
         onSuccess: (message) => {
-            queryClient.setQueryData<ChatMessage[]>(
+            queryClient.setQueryData<ChatPage>(
                 chatMessagesQueryKey(baseURL, threadId),
-                (previous) =>
-                    previous?.some((entry) => entry.id === message.id)
-                        ? previous
-                        : [...(previous ?? []), message],
+                (previous) => {
+                    const page = previous ?? { messages: [], readUpTo: 0 };
+                    return page.messages.some((entry) => entry.id === message.id)
+                        ? page
+                        : { ...page, messages: [...page.messages, message] };
+                },
             );
         },
     });
+
+    /**
+     * Moves this caller's watermark. Fire-and-forget: a receipt that fails to record is
+     * a tick that stays single until the next read, which is the right way for this to
+     * degrade — nothing about the conversation depends on it.
+     */
+    const markRead = useCallback(
+        (messageId: number) => {
+            if (!threadId || messageId <= 0) return;
+            void apiClient
+                .post(`/api/chat/threads/${threadId}/read`, { messageId })
+                .catch(() => undefined);
+        },
+        [apiClient, threadId],
+    );
 
     const send = useCallback(
         async (text: string) => {
@@ -132,7 +170,9 @@ export const useChatMessages = ({
     );
 
     return {
-        messages: query.data ?? [],
+        messages: query.data?.messages ?? [],
+        readUpTo: query.data?.readUpTo ?? 0,
+        markRead,
         isLoading: query.isLoading,
         error: query.error as Error | null,
         isLive: connected,

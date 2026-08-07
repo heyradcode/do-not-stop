@@ -63,7 +63,10 @@ const message = (over: Record<string, unknown> = {}) => ({
 
 const send = vi.fn();
 
+const markRead = vi.fn();
 const messagesResult = (over: Record<string, unknown> = {}) => ({
+    readUpTo: 0,
+    markRead,
     messages: [],
     isLoading: false,
     error: null,
@@ -169,6 +172,51 @@ describe('Chat', () => {
         // Each side shows its own pet.
         expect(theirsLast.querySelector('.messageFace')).toHaveAttribute('title', 'Theirs');
         expect(mine.querySelector('.messageFace')).toHaveAttribute('title', 'Mine');
+    });
+
+    it('ticks once for sent and twice once the counterpart has read it', () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(
+            messagesResult({
+                messages: [
+                    message({ id: 4, sender: ME.toLowerCase(), text: 'seen one' }),
+                    message({ id: 5, sender: ME.toLowerCase(), text: 'unseen one' }),
+                    message({ id: 6, text: 'theirs' }),
+                ],
+                readUpTo: 4,
+            }),
+        );
+
+        renderChat();
+
+        const seen = screen.getByText('seen one').closest('li') as HTMLElement;
+        const unseen = screen.getByText('unseen one').closest('li') as HTMLElement;
+        const theirs = screen.getByText('theirs').closest('li') as HTMLElement;
+
+        expect(within(seen).getByRole('img', { name: 'Seen' })).toHaveTextContent('✓✓');
+        expect(within(unseen).getByRole('img', { name: 'Sent' })).toHaveTextContent('✓');
+        // Their own messages carry no receipt: only your reading is news to anyone.
+        expect(theirs.querySelector('.receipt')).toBeNull();
+    });
+
+    it('marks the newest incoming message read, and never its own', () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(
+            messagesResult({ messages: [message({ id: 7, text: 'from them' })] }),
+        );
+
+        const { unmount } = renderChat();
+        expect(markRead).toHaveBeenCalledWith(7);
+
+        unmount();
+        markRead.mockClear();
+        useChatMessages.mockReturnValue(
+            messagesResult({
+                messages: [message({ id: 8, sender: ME.toLowerCase(), text: 'from me' })],
+            }),
+        );
+        renderChat();
+        expect(markRead).not.toHaveBeenCalled();
     });
 
     it('sends the trimmed draft and clears the box', async () => {
