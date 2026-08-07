@@ -86,6 +86,29 @@ describe("ItemCore", async function () {
         await ctx.itemCore.write.mintTo([to, itemType, quantity], { account: ctx.backend.account });
     }
 
+    describe("initialization", function () {
+        it("comes up owned, pointed at PetCore, and serving the default item uri", async function () {
+            const ctx = await deploy();
+            assert.equal(
+                (await ctx.itemCore.read.petCore()).toLowerCase(),
+                ctx.petCore.address.toLowerCase(),
+            );
+            assert.equal(
+                (await ctx.itemCore.read.owner()).toLowerCase(),
+                ctx.owner.account.address.toLowerCase(),
+            );
+            assert.equal(await ctx.itemCore.read.uri([1n]), "https://api.cryptopets.io/items/{id}.json");
+        });
+
+        it("leaves the implementation itself uninitializable", async function () {
+            const impl = await viem.deployContract("ItemCore");
+            await rejectsWith(
+                impl.write.initialize([impl.address, impl.address]),
+                "Initializable: contract is already initialized",
+            );
+        });
+    });
+
     describe("minting and burning", function () {
         it("credits the recipient's balance", async function () {
             const ctx = await deploy();
