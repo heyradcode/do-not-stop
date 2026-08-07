@@ -120,6 +120,48 @@ export const schema = buildSchema(`
         samples: Int!
     }
 
+    """
+    One item type's content (roadmap §4): what it is called, how rare it is, what it does.
+
+    Content, not ownership. The same definition is returned for a stack in a bag and for a
+    sword bolted to a pet, because the item type is what both of those name.
+    """
+    type ItemDefinition {
+        "ERC-1155 token id as a decimal string."
+        itemType: String!
+        "Stable content key, e.g. 'xp_potion_i'. Survives a redeploy that renumbers ids."
+        key: String!
+        "'consumable' | 'equipment' | 'collectible' | 'material'."
+        category: String!
+        "Equip slot 0-2 (weapon/armor/trinket); null unless this is equipment."
+        slot: Int
+        "1-5, the same scale as pet rarity."
+        rarity: Int!
+        """
+        Effect payload as JSON, or null for an inert item. Serialized as a string rather
+        than typed per variant: the shapes differ by category, and a union here would have
+        to be rebuilt every time a new effect kind lands, for a value the client only
+        renders.
+        """
+        effect: String
+        name: String!
+        description: String!
+    }
+
+    "One stack a wallet holds."
+    type InventoryEntry {
+        item: ItemDefinition!
+        "Quantity as a decimal string, since a uint256 balance does not fit a JS number."
+        quantity: String!
+    }
+
+    "One filled equip slot on a pet."
+    type EquippedItem {
+        "0 = weapon, 1 = armor, 2 = trinket."
+        slot: Int!
+        item: ItemDefinition!
+    }
+
     type Query {
         opponents(
             chain: String!

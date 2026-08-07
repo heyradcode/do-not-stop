@@ -156,6 +156,49 @@ function assertItem(item: ItemDefinitionSeed): void {
     }
 }
 
+/**
+ * Reads an effect back off a stored `item_definition.effect` column.
+ *
+ * Lenient where `assertCatalog` is strict, and the split is deliberate. This runs on a
+ * read path, where a single unrecognised row should cost that item its effect rather
+ * than fail a player's whole inventory. Authoring is where a malformed effect gets
+ * rejected, and the seeder is the only writer.
+ *
+ * Not the path a ruleset hash may use later (§4 phase 4): once an effect feeds combat,
+ * an unreadable one has to be a hard error, because silently dropping it would change a
+ * fight rather than a label.
+ */
+export function asItemEffect(value: unknown): ItemEffect | null {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        return null;
+    }
+    const record = value as Record<string, unknown>;
+
+    switch (record.kind) {
+        case 'stat_bonus': {
+            const fields = ['hp', 'atk', 'def', 'int', 'mdef'] as const;
+            if (fields.some((f) => !Number.isInteger(record[f]) || (record[f] as number) < 0)) {
+                return null;
+            }
+            const bonus: StatBonus = { kind: 'stat_bonus', hp: 0, atk: 0, def: 0, int: 0, mdef: 0 };
+            for (const field of fields) {
+                bonus[field] = record[field] as number;
+            }
+            return bonus;
+        }
+        case 'grant_xp':
+            return Number.isInteger(record.amount) && (record.amount as number) > 0
+                ? { kind: 'grant_xp', amount: record.amount as number }
+                : null;
+        case 'clear_battle_cooldown':
+            return { kind: 'clear_battle_cooldown' };
+        case 'clear_breed_cooldown':
+            return { kind: 'clear_breed_cooldown' };
+        default:
+            return null;
+    }
+}
+
 function assertStatBonus(effect: StatBonus, label: string): void {
     for (const field of ['hp', 'atk', 'def', 'int', 'mdef'] as const) {
         const value = effect[field];
