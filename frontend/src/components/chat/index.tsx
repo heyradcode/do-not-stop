@@ -235,28 +235,32 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
                                 )}
                                 <div className={styles.bubble}>
                                     <span className={styles.messageText}>{message.text}</span>
-                                    <span className={styles.messageTime}>
-                                        {timeOf(message.createdAt)}
+                                    {/* Time and receipt travel together in the bubble's
+                                        bottom-right corner. Own messages carry the
+                                        receipt: yours is the only side whose reading is
+                                        news to anyone. */}
+                                    <span className={styles.messageMeta}>
+                                        <span className={styles.messageTime}>
+                                            {timeOf(message.createdAt)}
+                                        </span>
+                                        {isMine && (
+                                            <span
+                                                className={
+                                                    message.id <= readUpTo
+                                                        ? `${styles.receipt} ${styles.isSeen}`
+                                                        : styles.receipt
+                                                }
+                                                role="img"
+                                                aria-label={
+                                                    message.id <= readUpTo ? 'Seen' : 'Sent'
+                                                }
+                                                title={message.id <= readUpTo ? 'Seen' : 'Sent'}
+                                            >
+                                                {message.id <= readUpTo ? '✓✓' : '✓'}
+                                            </span>
+                                        )}
                                     </span>
                                 </div>
-                                {/* Outside the bubble, on the side away from the pet, so
-                                    it reads as a note about the message rather than part
-                                    of what was said. Own messages only: yours is the only
-                                    side whose reading is news to anyone. */}
-                                {isMine && (
-                                    <span
-                                        className={
-                                            message.id <= readUpTo
-                                                ? `${styles.receipt} ${styles.isSeen}`
-                                                : styles.receipt
-                                        }
-                                        role="img"
-                                        aria-label={message.id <= readUpTo ? 'Seen' : 'Sent'}
-                                        title={message.id <= readUpTo ? 'Seen' : 'Sent'}
-                                    >
-                                        {message.id <= readUpTo ? '✓✓' : '✓'}
-                                    </span>
-                                )}
                             </li>
                         );
                     })}

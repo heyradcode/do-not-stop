@@ -195,10 +195,12 @@ describe('Chat', () => {
 
         expect(within(seen).getByRole('img', { name: 'Seen' })).toHaveTextContent('✓✓');
         expect(within(unseen).getByRole('img', { name: 'Sent' })).toHaveTextContent('✓');
-        // Outside the bubble: inside it, the tick sits in the run of text a screen reader
-        // reads out as the message.
-        expect(seen.querySelector('.bubble .receipt')).toBeNull();
-        expect(seen.querySelector(':scope > .receipt')).not.toBeNull();
+        // In the bubble's bottom-right corner, beside the time rather than loose in the
+        // row: the two are one piece of metadata about the message.
+        expect(seen.querySelector('.bubble .messageMeta .receipt')).not.toBeNull();
+        expect(seen.querySelector(':scope > .receipt')).toBeNull();
+        // The time keeps its place there for both sides.
+        expect(theirs.querySelector('.bubble .messageMeta .messageTime')).not.toBeNull();
         // Their own messages carry no receipt: only your reading is news to anyone.
         expect(theirs.querySelector('.receipt')).toBeNull();
     });

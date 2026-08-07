@@ -158,11 +158,23 @@
 .bubble {
     min-width: 0;
     display: flex;
-    align-items: baseline;
-    gap: 8px;
+    /* Text, then time and receipt beneath it. A row put the time on the first line's
+       baseline, so a message that wrapped left it stranded at the top of the bubble with
+       the text running on below it. */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
     padding: 7px 11px;
     border-radius: 12px;
     background: rgb(148 163 184 / 12%);
+}
+
+/* The bubble's bottom-right corner, wherever the text ends. */
+.messageMeta {
+    align-self: flex-end;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .message.isMine .bubble {
@@ -323,14 +335,9 @@
    read watermark has passed it. The pair is tightened rather than drawn as one glyph so
    it reads as two ticks at 0.7rem.
 
-   A sibling of the bubble, not a child: the row is reversed for your own messages, so
-   this lands on the outer side, opposite the pet, and stays clear of the text. Bottom
-   aligned with the bubble by the row's own `align-items`. */
+   Rides in `.messageMeta` beside the time, in the bubble's bottom-right corner. */
 .receipt {
     flex-shrink: 0;
-    /* Sits with the bubble's last line rather than its floor, which is a couple of
-       pixels lower than where the text ends. */
-    padding-block-end: 6px;
     font-size: 0.7rem;
     letter-spacing: -0.22em;
     padding-inline-end: 0.22em;
