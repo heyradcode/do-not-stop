@@ -89,11 +89,11 @@ const ReactionChips: React.FC<{
                 <button
                     key={reaction.emoji}
                     type="button"
-                    className={
-                        reaction.mine
-                            ? `${styles.reactionChip} ${styles.isMineReaction}`
-                            : styles.reactionChip
-                    }
+                    className={clsx(
+                        styles.reactionChip,
+                        reaction.mine && styles.isMineReaction,
+                        reaction.count > 1 && styles.hasCount,
+                    )}
                     onClick={() => onReact(message.id, reaction.emoji)}
                     aria-pressed={reaction.mine}
                     aria-label={`${reaction.emoji} ${reaction.count}`}

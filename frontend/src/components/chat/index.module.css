@@ -396,19 +396,34 @@
     gap: 4px;
 }
 
+/* A circle, not a pill: a lone emoji in a stadium-shaped chip reads as a squashed
+   button. Square dimensions with no horizontal padding, so the border sits an even
+   distance from the glyph on every side. */
 .reactionChip {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 3px;
-    padding: 2px 8px;
+    box-sizing: border-box;
+    width: 30px;
+    height: 30px;
+    padding: 0;
     border: 1px solid rgb(148 163 184 / 22%);
     border-radius: 999px;
     background: rgb(5 13 30 / 85%);
     color: inherit;
     font: inherit;
     font-size: 0.95rem;
-    line-height: 1.4;
+    line-height: 1;
     cursor: pointer;
+}
+
+/* Two things side by side cannot be a circle, so this one becomes a stadium and takes
+   the width it needs. `width` gives way to `min-width` for the same reason. */
+.reactionChip.hasCount {
+    width: auto;
+    min-width: 30px;
+    padding: 0 9px;
 }
 
 /* Your own reaction reads as pressed, because tapping it again is what takes it off. */
