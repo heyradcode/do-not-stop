@@ -56,6 +56,48 @@ func (ix *Indexer) toUpdate(pet subgraphPet) (indexer.RosterUpdate, error) {
 	}, nil
 }
 
+// toItemUpdate converts one ItemBalance row (roadmap §4).
+//
+// A quantity that does not fit 64 bits is an error rather than a truncation. The
+// item id beside it is kept as a string precisely because a uint256 token id can
+// be that large, so the asymmetry is a claim: ids are arbitrary, quantities are
+// counts of things a player holds, and one that overflows means something is
+// wrong upstream rather than that a wider type was needed.
+func (ix *Indexer) toItemUpdate(row subgraphItemBalance) (indexer.ItemUpdate, error) {
+	quantity, err := strconv.ParseUint(row.Quantity, 10, 64)
+	if err != nil {
+		return indexer.ItemUpdate{}, fmt.Errorf("item %s: invalid quantity %q: %w", row.ID, row.Quantity, err)
+	}
+	updatedAt, err := strconv.ParseUint(row.UpdatedAt, 10, 64)
+	if err != nil {
+		return indexer.ItemUpdate{}, fmt.Errorf("item %s: invalid updatedAt %q: %w", row.ID, row.UpdatedAt, err)
+	}
+
+	return indexer.ItemUpdate{
+		Chain:    ix.chain,
+		Owner:    strings.ToLower(row.Owner), // EVM addresses normalize lowercase
+		ItemType: row.ItemType,
+		Quantity: quantity,
+		Version:  updatedAt,
+	}, nil
+}
+
+// toEquipmentUpdate converts one PetEquipment row (roadmap §4).
+func (ix *Indexer) toEquipmentUpdate(row subgraphPetEquipment) (indexer.EquipmentUpdate, error) {
+	updatedAt, err := strconv.ParseUint(row.UpdatedAt, 10, 64)
+	if err != nil {
+		return indexer.EquipmentUpdate{}, fmt.Errorf("equipment %s: invalid updatedAt %q: %w", row.ID, row.UpdatedAt, err)
+	}
+
+	return indexer.EquipmentUpdate{
+		Chain:    ix.chain,
+		PetID:    row.PetID,
+		Slot:     row.Slot,
+		ItemType: idOrZero(row.ItemType),
+		Version:  updatedAt,
+	}, nil
+}
+
 // parseTimeField parses a BigInt cooldown string, treating "" (field absent on
 // a pre-v2 subgraph) as 0.
 func parseTimeField(s string) (int64, error) {

@@ -43,6 +43,12 @@ type Indexer struct {
 	// scan failed it stays 0, so the first successful sync recovers by
 	// sweeping everything (updatedAt_gt: 0).
 	watermark uint64
+	// itemWatermark and equipmentWatermark are the inventory equivalents
+	// (roadmap §4), owned by ScanInventory/RunInventory. Kept apart from each
+	// other, and from the roster's, because a shared cursor advanced by a busy
+	// stream skips the quiet one's unread rows permanently — see inventory.go.
+	itemWatermark      uint64
+	equipmentWatermark uint64
 	// battleWatermark is the highest Battle.foughtAt emitted. Starting at 0
 	// means the first sync sweeps the whole battle history into the pipeline —
 	// intentional: it backfills battle_history with chain truth, and
@@ -78,8 +84,10 @@ func (ix *Indexer) Chain() string { return ix.chain }
 
 // Scan full-syncs every pet ordered by id and primes the watermark.
 func (ix *Indexer) Scan(ctx context.Context, roster chan<- indexer.RosterUpdate) (int, error) {
-	pets, err := ix.client.paginate(ctx, fullSyncQuery, func(lastID string) map[string]any {
+	pets, err := paginate(ctx, ix.client.pageSize, func(lastID string) map[string]any {
 		return map[string]any{"first": ix.client.pageSize, "lastId": lastID}
+	}, func(p subgraphPet) string { return p.ID }, func(ctx context.Context, vars map[string]any) ([]subgraphPet, error) {
+		return ix.client.fetchPetsPage(ctx, fullSyncQuery, vars)
 	})
 	if err != nil {
 		return 0, err
@@ -94,8 +102,10 @@ func (ix *Indexer) Scan(ctx context.Context, roster chan<- indexer.RosterUpdate)
 // nothing and cost one HTTP request.
 func (ix *Indexer) sync(ctx context.Context, roster chan<- indexer.RosterUpdate) (int, error) {
 	since := strconv.FormatUint(ix.watermark, 10)
-	pets, err := ix.client.paginate(ctx, incrementalQuery, func(lastID string) map[string]any {
+	pets, err := paginate(ctx, ix.client.pageSize, func(lastID string) map[string]any {
 		return map[string]any{"first": ix.client.pageSize, "lastId": lastID, "since": since}
+	}, func(p subgraphPet) string { return p.ID }, func(ctx context.Context, vars map[string]any) ([]subgraphPet, error) {
+		return ix.client.fetchPetsPage(ctx, incrementalQuery, vars)
 	})
 	if err != nil {
 		return 0, err
