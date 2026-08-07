@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CHAT_REACTIONS } from '@shared/core/node';
 
 /**
  * Longest message accepted.
@@ -27,6 +28,17 @@ export const SendMessageSchema = z.object({
 export const MarkReadSchema = z.object({
     /** Newest message the caller has seen. */
     messageId: z.coerce.number().int().positive(),
+});
+
+/**
+ * Body of POST /api/chat/threads/:id/messages/:messageId/reaction.
+ *
+ * The emoji must be one the client is allowed to offer. Sharing the list with the
+ * frontend is what stops a picker from showing something the API refuses, and it means
+ * this endpoint accepts no arbitrary user-authored string at all.
+ */
+export const ReactSchema = z.object({
+    emoji: z.enum(CHAT_REACTIONS),
 });
 
 /** Query of GET /api/chat/threads/:id/messages. */

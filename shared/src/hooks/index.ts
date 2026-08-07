@@ -84,6 +84,7 @@ export {
 export {
     useChatMessages,
     chatMessagesQueryKey,
+    type ChatMessageReaction,
     type ChatMessage,
     type UseChatMessagesOptions,
     type UseChatMessagesResult,
@@ -93,6 +94,7 @@ export {
     type ChatThreadNotification,
     type UseChatThreadSocketOptions,
 } from './chat/useChatThreadSocket';
+export { CHAT_REACTIONS, isChatReaction, type ChatReaction } from './chat/reactions';
 export {
     useBattleDialogue,
     type UseBattleDialogueOptions,

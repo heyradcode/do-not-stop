@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+    CHAT_REACTIONS,
     useChainCapabilities,
     useChatMessages,
     useChatThreads,
+    type ChatMessage,
     type ChatThread,
     type Pet,
     type PetChain,
@@ -55,6 +57,94 @@ function timeOf(createdAt: string): string {
         : at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * The chips under a message: one per emoji used, with how many used it.
+ *
+ * Tapping a chip you are already in removes your reaction, which is the same gesture as
+ * adding it and is what both messengers do.
+ */
+const ReactionChips: React.FC<{
+    message: ChatMessage;
+    onReact: (messageId: number, emoji: string) => void;
+}> = ({ message, onReact }) => {
+    const reactions = message.reactions ?? [];
+    if (reactions.length === 0) return null;
+
+    return (
+        <div className={styles.reactions}>
+            {reactions.map((reaction) => (
+                <button
+                    key={reaction.emoji}
+                    type="button"
+                    className={
+                        reaction.mine
+                            ? `${styles.reactionChip} ${styles.isMineReaction}`
+                            : styles.reactionChip
+                    }
+                    onClick={() => onReact(message.id, reaction.emoji)}
+                    aria-pressed={reaction.mine}
+                    aria-label={`${reaction.emoji} ${reaction.count}`}
+                >
+                    <span aria-hidden>{reaction.emoji}</span>
+                    {/* The count is worth showing only once it stops being obvious. */}
+                    {reaction.count > 1 && (
+                        <span className={styles.reactionCount}>{reaction.count}</span>
+                    )}
+                </button>
+            ))}
+        </div>
+    );
+};
+
+/**
+ * The control that adds a reaction, beside the bubble on the side away from the pet.
+ *
+ * The picker is a fixed six — the list the server accepts — so there is no search, no
+ * skin-tone menu and nothing to load. It opens inward, over the message rather than the
+ * margin, because the transcript scrolls vertically and clips anything that runs past its
+ * edge sideways.
+ */
+const ReactionAdd: React.FC<{
+    message: ChatMessage;
+    onReact: (messageId: number, emoji: string) => void;
+}> = ({ message, onReact }) => {
+    const [picking, setPicking] = useState(false);
+
+    return (
+        <div className={styles.reactionTrigger}>
+            <button
+                type="button"
+                className={styles.reactionAdd}
+                onClick={() => setPicking((open) => !open)}
+                aria-expanded={picking}
+                aria-label="Add a reaction"
+                title="Add a reaction"
+            >
+                <span aria-hidden>☺</span>
+            </button>
+
+            {picking && (
+                <div className={styles.reactionPicker} role="group" aria-label="Reactions">
+                    {CHAT_REACTIONS.map((emoji) => (
+                        <button
+                            key={emoji}
+                            type="button"
+                            className={styles.reactionOption}
+                            onClick={() => {
+                                onReact(message.id, emoji);
+                                setPicking(false);
+                            }}
+                            aria-label={emoji}
+                        >
+                            {emoji}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ThreadList: React.FC<{
     threads: ChatThread[];
     selectedId: string | null;
@@ -86,6 +176,7 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
         messages,
         readUpTo,
         markRead,
+        react,
         isLoading,
         error,
         isLive,
@@ -224,15 +315,20 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
                                     isMine ? `${styles.message} ${styles.isMine}` : styles.message
                                 }
                             >
-                                {endsRun && face ? (
-                                    <span className={styles.messageFace} title={face.name}>
-                                        <PetArt pet={face} />
-                                    </span>
-                                ) : (
-                                    // Holds the column so bubbles in a run stay aligned
-                                    // with the one that carries the face.
-                                    <span className={styles.messageFaceGap} aria-hidden />
-                                )}
+                                {/* The pet rides beside the bubble; reactions hang under
+                                    the pair. Nesting the bubble and its reactions together
+                                    instead put the pet level with the reaction chips,
+                                    since the row bottom-aligns whatever it holds. */}
+                                <div className={styles.row}>
+                                    {endsRun && face ? (
+                                        <span className={styles.messageFace} title={face.name}>
+                                            <PetArt pet={face} />
+                                        </span>
+                                    ) : (
+                                        // Holds the column so bubbles in a run stay aligned
+                                        // with the one that carries the face.
+                                        <span className={styles.messageFaceGap} aria-hidden />
+                                    )}
                                 <div className={styles.bubble}>
                                     <span className={styles.messageText}>{message.text}</span>
                                     {/* Time and receipt travel together in the bubble's
@@ -261,6 +357,9 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
                                         )}
                                     </span>
                                 </div>
+                                <ReactionAdd message={message} onReact={react} />
+                                </div>
+                                <ReactionChips message={message} onReact={react} />
                             </li>
                         );
                     })}

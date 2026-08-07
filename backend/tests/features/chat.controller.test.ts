@@ -7,6 +7,7 @@ vi.mock('../../src/features/chat/chat.service', () => ({
     readMessages: vi.fn(),
     sendMessage: vi.fn(),
     markRead: vi.fn(),
+    reactToMessage: vi.fn(),
 }));
 vi.mock('@ws/chatSocket', () => ({ notifyChatThread: vi.fn() }));
 
@@ -14,12 +15,14 @@ import {
     getMessages,
     getThreads,
     postMessage,
+    postReaction,
     postRead,
 } from '../../src/features/chat/chat.controller';
 import {
     authorizeThread,
     listThreads,
     markRead,
+    reactToMessage,
     readMessages,
     sendMessage,
 } from '../../src/features/chat/chat.service';
@@ -236,5 +239,62 @@ describe('postRead', () => {
 
         expect(res.status).toHaveBeenCalledWith(404);
         expect(markRead).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('postReaction', () => {
+    const reactReq = (body: unknown, messageId = '7') =>
+        req({ params: { id: 't1', messageId }, body });
+
+    it('applies the tap and announces it as its own frame type', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        vi.mocked(reactToMessage).mockResolvedValue({ emoji: '👍' });
+        const res = makeRes();
+
+        await postReaction(reactReq({ emoji: '👍' }), res);
+
+        expect(reactToMessage).toHaveBeenCalledWith('t1', ME, 7, '👍');
+        // Not `thread-updated`: the message id is one every client already holds, and the
+        // echo check would drop the frame as its own send.
+        expect(notifyChatThread).toHaveBeenCalledWith('t1', {
+            type: 'thread-reacted',
+            threadId: 't1',
+            messageId: 7,
+        });
+        expect(res.json).toHaveBeenCalledWith({ emoji: '👍' });
+    });
+
+    // The whitelist is shared with the client, so this is the API refusing anything the
+    // picker could not have offered — including arbitrary user-authored text.
+    it('refuses an emoji outside the shared set', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        const res = makeRes();
+
+        await postReaction(reactReq({ emoji: 'not an emoji' }), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(reactToMessage).not.toHaveBeenCalled();
+    });
+
+    it('refuses a message id that is not a positive integer', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        const res = makeRes();
+
+        await postReaction(reactReq({ emoji: '👍' }, 'abc'), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(reactToMessage).not.toHaveBeenCalled();
+    });
+
+    it('404s a message that belongs to another thread', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        vi.mocked(reactToMessage).mockResolvedValue('not-found');
+        const res = makeRes();
+
+        await postReaction(reactReq({ emoji: '👍' }), res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(notifyChatThread).not.toHaveBeenCalled();
     });
 });

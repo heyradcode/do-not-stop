@@ -4,11 +4,14 @@ import {
     findMarriedCounterparts,
     findCounterpartReadId,
     findMessages,
+    findReactionsForMessages,
     findThreadById,
     insertMessage,
     isMarriedTo,
     markThreadRead,
+    messageBelongsToThread,
     openThread,
+    setReaction,
     type ChatMessageRow,
 } from '@repositories/chat.repository';
 
@@ -129,9 +132,21 @@ export async function authorizeThread(threadId: string, rawCaller: string): Prom
     return (await isMarriedTo(caller, counterpart)) ? null : 'not-married';
 }
 
+/** One emoji on one message, as the reader needs it. */
+export interface ChatReactionView {
+    emoji: string;
+    /** How many people reacted with it. */
+    count: number;
+    /** Whether the reader is one of them, which is the one the UI lights up. */
+    mine: boolean;
+}
+
+/** A message with its reactions attached. */
+export type ChatMessageView = ChatMessageRow & { reactions: ChatReactionView[] };
+
 /** A page of messages, and how far the other participant has read. */
 export interface ChatPage {
-    messages: ChatMessageRow[];
+    messages: ChatMessageView[];
     /**
      * Newest message id the counterpart has read; 0 if none. The caller's own messages up
      * to here have been seen. Sent with every page rather than per message: it is one
@@ -148,11 +163,59 @@ export async function readMessages(
     limit: number,
     before?: number
 ): Promise<ChatPage> {
-    const [messages, readUpTo] = await Promise.all([
+    const [rows, readUpTo] = await Promise.all([
         findMessages(threadId, limit, before),
         findCounterpartReadId(threadId, caller),
     ]);
-    return { messages, readUpTo };
+    // One query for the whole page's reactions, not one per message.
+    const reactions = await findReactionsForMessages(rows.map((row) => row.id));
+    return { messages: attachReactions(rows, reactions, caller), readUpTo };
+}
+
+/**
+ * Groups raw reaction rows onto their messages.
+ *
+ * Emoji keep the order they were first used on each message, so a reaction bar does not
+ * reshuffle under the reader when someone else joins one that is already there.
+ */
+function attachReactions(
+    rows: ChatMessageRow[],
+    reactions: { messageId: number; participant: string; emoji: string }[],
+    caller: string
+): ChatMessageView[] {
+    const me = normalizeAccount(caller);
+    const byMessage = new Map<number, Map<string, ChatReactionView>>();
+    for (const reaction of reactions) {
+        let group = byMessage.get(reaction.messageId);
+        if (!group) {
+            group = new Map();
+            byMessage.set(reaction.messageId, group);
+        }
+        const entry = group.get(reaction.emoji) ?? { emoji: reaction.emoji, count: 0, mine: false };
+        entry.count += 1;
+        entry.mine ||= reaction.participant === me;
+        group.set(reaction.emoji, entry);
+    }
+    return rows.map((row) => ({ ...row, reactions: [...(byMessage.get(row.id)?.values() ?? [])] }));
+}
+
+/**
+ * Applies a reaction tap and reports what the caller now holds, or null if it was removed.
+ *
+ * Authorization is the caller's job, and it is thread-level: a participant may react to
+ * either side's messages, which is the whole point. The message is checked to belong to
+ * the thread so a thread id the caller *can* read cannot be used to reach a message in one
+ * they cannot.
+ */
+export async function reactToMessage(
+    threadId: string,
+    caller: string,
+    messageId: number,
+    emoji: string
+): Promise<{ emoji: string | null } | 'not-found'> {
+    const belongs = await messageBelongsToThread(messageId, threadId);
+    if (!belongs) return 'not-found';
+    return { emoji: await setReaction(messageId, caller, emoji) };
 }
 
 /**

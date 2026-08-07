@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import { verifyToken } from '@middleware/auth';
 import { chatReadRateLimit, chatSendRateLimit } from '@middleware/rateLimit';
-import { getMessages, getThreads, postMessage, postRead } from '@features/chat';
+import { getMessages, getThreads, postMessage, postReaction, postRead } from '@features/chat';
 
 const router: Router = express.Router();
 
@@ -14,5 +14,13 @@ router.post('/threads/:id/messages', verifyToken, chatSendRateLimit, postMessage
 // Rate-limited as a read: it is one small write per thread open, not per message, and it
 // rides the same polling cadence the read endpoint already allows for.
 router.post('/threads/:id/read', verifyToken, chatReadRateLimit, postRead);
+// Held to the send budget, not the read one: a reaction writes a row other people see,
+// which is the same thing a message does, only smaller.
+router.post(
+    '/threads/:id/messages/:messageId/reaction',
+    verifyToken,
+    chatSendRateLimit,
+    postReaction
+);
 
 export default router;

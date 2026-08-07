@@ -4,12 +4,21 @@ import { useApiClient } from '../../contexts/ApiClientContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChatThreadSocket, type ChatThreadNotification } from './useChatThreadSocket';
 
+/** One emoji on a message, with how many used it and whether you are one of them. */
+export interface ChatMessageReaction {
+    emoji: string;
+    count: number;
+    mine: boolean;
+}
+
 export interface ChatMessage {
     id: number;
     /** Author's wallet address. Compare against your own to decide which side to render. */
     sender: string;
     text: string;
     createdAt: string;
+    /** Absent on a message stored before reactions existed; treat as none. */
+    reactions?: ChatMessageReaction[];
 }
 
 export interface UseChatMessagesOptions {
@@ -35,6 +44,12 @@ export interface UseChatMessagesResult {
     readUpTo: number;
     /** Moves the caller's own watermark, so the sender's receipt fills in. */
     markRead: (messageId: number) => void;
+    /**
+     * Taps a reaction on a message: adds it, replaces the one you had, or removes it if
+     * it is the one you already had. The server decides which, since only it knows the
+     * current state without a race.
+     */
+    react: (messageId: number, emoji: string) => void;
     isLoading: boolean;
     error: Error | null;
     /** True while the notification channel is connected; false means reads are on demand only. */
@@ -98,9 +113,9 @@ export const useChatMessages = ({
     // `onSuccess` has already applied — re-reading fifty messages to learn nothing.
     const onNotification = useCallback(
         (message: ChatThreadNotification) => {
-            // A receipt always names a message this client already holds — that is what
-            // being read means — so the echo check below would swallow every one of them.
-            if (message.type === 'thread-read') {
+            // A receipt or a reaction always names a message this client already holds —
+            // that is the point of both — so the echo check below would swallow them.
+            if (message.type === 'thread-read' || message.type === 'thread-reacted') {
                 refresh();
                 return;
             }
@@ -169,10 +184,27 @@ export const useChatMessages = ({
         [mutation, threadId],
     );
 
+    /**
+     * Taps a reaction. Re-reads rather than updating the cache: the server decides whether
+     * the tap added, replaced or removed, and guessing here would flicker the wrong chip
+     * whenever the two disagreed.
+     */
+    const react = useCallback(
+        (messageId: number, emoji: string) => {
+            if (!threadId) return;
+            void apiClient
+                .post(`/api/chat/threads/${threadId}/messages/${messageId}/reaction`, { emoji })
+                .then(refresh)
+                .catch(() => undefined);
+        },
+        [apiClient, threadId, refresh],
+    );
+
     return {
         messages: query.data?.messages ?? [],
         readUpTo: query.data?.readUpTo ?? 0,
         markRead,
+        react,
         isLoading: query.isLoading,
         error: query.error as Error | null,
         isLive: connected,

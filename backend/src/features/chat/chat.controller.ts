@@ -6,11 +6,17 @@ import {
     authorizeThread,
     listThreads,
     markRead,
+    reactToMessage,
     readMessages,
     sendMessage,
     type ChatDenial,
 } from './chat.service';
-import { ListMessagesSchema, MarkReadSchema, SendMessageSchema } from './chat.schema';
+import {
+    ListMessagesSchema,
+    MarkReadSchema,
+    ReactSchema,
+    SendMessageSchema,
+} from './chat.schema';
 
 /**
  * HTTP surface for private chat (roadmap §2 v1). Every route is JWT-gated at the
@@ -96,6 +102,51 @@ export async function postRead(req: Request, res: Response): Promise<void> {
     } catch (err) {
         console.error('[chat] failed to mark read:', err);
         res.status(500).json({ error: 'Failed to mark read' });
+    }
+}
+
+/**
+ * POST /api/chat/threads/:id/messages/:messageId/reaction — tap a reaction.
+ *
+ * One call for all three outcomes: adding, replacing and removing. The client sends the
+ * emoji it tapped and the server works out which of those it meant, because the answer
+ * depends on what is already stored and only the server knows that without a race.
+ */
+export async function postReaction(req: Request, res: Response): Promise<void> {
+    const caller = callerOf(req);
+    if (!caller) {
+        res.status(401).json({ error: 'No token provided' });
+        return;
+    }
+
+    const body = ReactSchema.safeParse(req.body);
+    const messageId = Number(req.params.messageId);
+    if (!body.success || !Number.isInteger(messageId) || messageId <= 0) {
+        res.status(400).json({ error: 'Invalid reaction' });
+        return;
+    }
+
+    const threadId = req.params.id ?? '';
+    const denial = await authorizeThread(threadId, caller);
+    if (denial) {
+        respondToDenial(res, denial);
+        return;
+    }
+
+    try {
+        const result = await reactToMessage(threadId, caller, messageId, body.data.emoji);
+        if (result === 'not-found') {
+            res.status(404).json({ error: 'Message not found' });
+            return;
+        }
+        // Contentless like every other frame here: it says the thread changed and the
+        // clients re-read. Its own type, because the message id it names is one every
+        // client already holds — the echo check would drop it as its own send.
+        notifyChatThread(threadId, { type: 'thread-reacted', threadId, messageId });
+        res.json(result);
+    } catch (err) {
+        console.error('[chat] failed to react:', err);
+        res.status(500).json({ error: 'Failed to react' });
     }
 }
 

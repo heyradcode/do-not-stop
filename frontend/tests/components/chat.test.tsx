@@ -17,6 +17,7 @@ vi.mock('@shared/core', () => ({
     useChainCapabilities: () => useChainCapabilities(),
     useChatThreads: () => useChatThreads(),
     useChatMessages: (opts: unknown) => useChatMessages(opts),
+    CHAT_REACTIONS: ['👍', '❤️', '😂', '😮', '😢', '🙏'],
     getPetAvatar: () => '🐉',
     // No art service in these tests: PetArt renders the emoji alone.
     petArtUrl: () => null,
@@ -64,9 +65,11 @@ const message = (over: Record<string, unknown> = {}) => ({
 const send = vi.fn();
 
 const markRead = vi.fn();
+const react = vi.fn();
 const messagesResult = (over: Record<string, unknown> = {}) => ({
     readUpTo: 0,
     markRead,
+    react,
     messages: [],
     isLoading: false,
     error: null,
@@ -223,6 +226,69 @@ describe('Chat', () => {
         );
         renderChat();
         expect(markRead).not.toHaveBeenCalled();
+    });
+
+    it('shows each reaction with its count, and marks your own', () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(
+            messagesResult({
+                messages: [
+                    message({
+                        id: 3,
+                        text: 'reacted to',
+                        reactions: [
+                            { emoji: '👍', count: 2, mine: true },
+                            { emoji: '😂', count: 1, mine: false },
+                        ],
+                    }),
+                ],
+            }),
+        );
+
+        renderChat();
+
+        // Pressed, because tapping it again is what removes it.
+        expect(screen.getByRole('button', { name: '👍 2' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: '😂 1' })).toHaveAttribute(
+            'aria-pressed',
+            'false',
+        );
+        // A count of one is what a lone emoji already says.
+        expect(screen.getByRole('button', { name: '👍 2' })).toHaveTextContent('2');
+        expect(screen.getByRole('button', { name: '😂 1' })).not.toHaveTextContent('1');
+    });
+
+    it('taps an existing reaction to toggle it off', async () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(
+            messagesResult({
+                messages: [
+                    message({ id: 3, reactions: [{ emoji: '👍', count: 1, mine: true }] }),
+                ],
+            }),
+        );
+
+        renderChat();
+        await userEvent.click(screen.getByRole('button', { name: '👍 1' }));
+
+        // Same call as adding: the server decides which the tap meant.
+        expect(react).toHaveBeenCalledWith(3, '👍');
+    });
+
+    it('picks a new reaction from the fixed set', async () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(messagesResult({ messages: [message({ id: 3 })] }));
+
+        renderChat();
+        // Nothing is offered until the picker is opened.
+        expect(screen.queryByRole('button', { name: '😮' })).toBeNull();
+
+        await userEvent.click(screen.getByRole('button', { name: 'Add a reaction' }));
+        await userEvent.click(screen.getByRole('button', { name: '😮' }));
+
+        expect(react).toHaveBeenCalledWith(3, '😮');
+        // The picker closes behind the choice.
+        expect(screen.queryByRole('button', { name: '😮' })).toBeNull();
     });
 
     it('sends the trimmed draft and clears the box', async () => {

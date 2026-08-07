@@ -143,15 +143,29 @@
     max-width: 78%;
     align-self: flex-start;
     display: flex;
+    /* A column: the pet-and-bubble row, then any reactions beneath it. */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+}
+
+.message.isMine {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.row {
+    display: flex;
     /* Bottom-aligned: the face sits beside the last line of a run, where the run ends. */
     align-items: flex-end;
     gap: 8px;
+    min-width: 0;
+    max-width: 100%;
 }
 
 /* Reversed rather than a separate rule per child: the sender's own messages put the
    face on the same side as the bubble they belong to. */
-.message.isMine {
-    align-self: flex-end;
+.message.isMine .row {
     flex-direction: row-reverse;
 }
 
@@ -352,4 +366,141 @@
 .receipt.isSeen {
     color: rgb(125 214 255);
     opacity: 1;
+}
+
+/* ── Reactions ─────────────────────────────────────────────────────────────────
+   Under the row, indented past the pet so the chips line up with the bubble rather than
+   with the avatar beside it. 36px is the face plus the row's gap. */
+.reactions {
+    padding-inline-start: 36px;
+}
+
+.message.isMine .reactions {
+    padding-inline-start: 0;
+    padding-inline-end: 36px;
+}
+
+/* Only rendered when a message actually has reactions, so no rule is needed to hide it. */
+.reactions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.reactionChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border: 1px solid rgb(148 163 184 / 22%);
+    border-radius: 999px;
+    background: rgb(5 13 30 / 85%);
+    color: inherit;
+    font: inherit;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+/* Your own reaction reads as pressed, because tapping it again is what takes it off. */
+.reactionChip.isMineReaction {
+    border-color: rgb(255 123 203 / 55%);
+    background: rgb(255 123 203 / 16%);
+}
+
+.reactionCount {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Beside the bubble, centred on it, on the side away from the pet — the row is reversed
+   for your own messages, so it lands there without a side-specific rule. The anchor for
+   the picker, which is why it is positioned. */
+.reactionTrigger {
+    position: relative;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+/* Hidden until the reader is on the message, so an untouched transcript carries no column
+   of empty controls. Kept visible while its own picker is open, or choosing an emoji
+   would dismiss the thing being chosen from. A CSS rule rather than hover state in React:
+   a re-render per pointer move to draw one button is not worth it. */
+.reactionAdd {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background: transparent;
+    color: rgb(195 210 255 / 55%);
+    font: inherit;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.message:hover .reactionAdd,
+.message:focus-within .reactionAdd,
+.reactionAdd[aria-expanded='true'] {
+    opacity: 1;
+}
+
+.reactionAdd:hover,
+.reactionAdd:focus-visible {
+    color: #f6f3ff;
+    border-color: rgb(148 163 184 / 35%);
+    background: rgb(148 163 184 / 12%);
+}
+
+/* Absolute rather than in flow: in flow it would widen the row and shove the bubble
+   sideways the moment it opened. Not portalled either — the transcript scrolls, and a
+   popup pinned to a rect measured once would drift off its message on the next scroll.
+
+   Opens upward and inward, over the message rather than the margin, because the list
+   clips anything running past its edge sideways. */
+.reactionPicker {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 6px;
+    border: 1px solid rgb(148 163 184 / 25%);
+    border-radius: 999px;
+    background: rgb(4 10 26 / 98%);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+/* Their message puts the control on the right, so the picker extends left, and the
+   reverse for yours. Either way it opens across the bubble, never off the panel. */
+.reactionPicker {
+    inset-inline-end: 0;
+}
+
+.message.isMine .reactionPicker {
+    inset-inline-end: auto;
+    inset-inline-start: 0;
+}
+
+.reactionOption {
+    padding: 3px 5px;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    font-size: 1.2rem;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.reactionOption:hover,
+.reactionOption:focus-visible {
+    background: rgb(148 163 184 / 18%);
 }

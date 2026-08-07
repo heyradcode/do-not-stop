@@ -216,3 +216,103 @@ export async function findCounterpartReadId(threadId: string, caller: string): P
     `;
     return rows[0]?.lastReadId ?? 0;
 }
+
+/** One emoji on one message, with who reacted. */
+export interface ChatReactionRow {
+    messageId: number;
+    participant: string;
+    emoji: string;
+}
+
+/**
+ * Applies a reaction tap: sets it, replaces the previous one, or removes it.
+ *
+ * Returns the reaction now in place, or null if the tap removed one. Toggling is decided
+ * here rather than in the service because the decision needs the current row, and a read
+ * then a write would let two taps interleave into the wrong final state.
+ *
+ * One statement, because Postgres runs every data-modifying CTE and the insert's
+ * `NOT EXISTS (SELECT 1 FROM removed)` makes it conditional on the delete having matched:
+ * tapping the emoji already stored deletes it and inserts nothing, anything else replaces.
+ */
+export async function setReaction(
+    messageId: number,
+    participant: string,
+    emoji: string
+): Promise<string | null> {
+    const who = normalizeAccount(participant);
+    const rows = await prisma.$queryRaw<{ emoji: string }[]>`
+        WITH removed AS (
+            DELETE FROM chat_reaction
+            WHERE message_id = ${messageId} AND participant = ${who} AND emoji = ${emoji}
+            RETURNING emoji
+        ), applied AS (
+            INSERT INTO chat_reaction (message_id, participant, emoji, created_at)
+            SELECT ${messageId}, ${who}, ${emoji}, now()
+            WHERE NOT EXISTS (SELECT 1 FROM removed)
+            ON CONFLICT (message_id, participant) DO UPDATE
+            SET emoji = EXCLUDED.emoji, created_at = now()
+            RETURNING emoji
+        )
+        SELECT emoji FROM applied
+    `;
+    return rows[0]?.emoji ?? null;
+}
+
+/** Removes a participant's reaction to a message, if any. */
+export async function clearReaction(messageId: number, participant: string): Promise<void> {
+    await prisma.chatReaction.deleteMany({
+        where: { messageId, participant: normalizeAccount(participant) },
+    });
+}
+
+/** The participant's current reaction to a message, or null. */
+export async function findReaction(
+    messageId: number,
+    participant: string
+): Promise<string | null> {
+    const row = await prisma.chatReaction.findUnique({
+        where: {
+            messageId_participant: { messageId, participant: normalizeAccount(participant) },
+        },
+        select: { emoji: true },
+    });
+    return row?.emoji ?? null;
+}
+
+/**
+ * Every reaction on a page of messages, in one query.
+ *
+ * Per-message queries would be one round trip per row rendered; a page is fifty. Returns
+ * the raw rows and lets the service group them, because who reacted matters to the caller
+ * (their own reaction is the one the UI highlights) and a count alone would lose it.
+ */
+export async function findReactionsForMessages(
+    messageIds: number[]
+): Promise<ChatReactionRow[]> {
+    if (messageIds.length === 0) return [];
+    return prisma.chatReaction.findMany({
+        where: { messageId: { in: messageIds } },
+        select: { messageId: true, participant: true, emoji: true },
+        orderBy: [{ messageId: 'asc' }, { createdAt: 'asc' }],
+    });
+}
+
+/**
+ * Whether a message belongs to a thread.
+ *
+ * Reaction requests name both, and authorization is thread-level. Without this check a
+ * caller could authorize against a thread they are in and then name any message id in the
+ * database, reacting to a conversation they cannot read — and reactions are visible to the
+ * people in that thread, so it would be writing into it.
+ */
+export async function messageBelongsToThread(
+    messageId: number,
+    threadId: string
+): Promise<boolean> {
+    const row = await prisma.chatMessage.findFirst({
+        where: { id: messageId, threadId },
+        select: { id: true },
+    });
+    return row !== null;
+}

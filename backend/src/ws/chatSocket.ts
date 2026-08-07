@@ -34,7 +34,7 @@ import { AUTH_PROTOCOL, defineChannel } from './channel';
 export interface ChatThreadNotification {
     /**
      * `thread-updated` is a new message; `thread-read` is someone moving their read
-     * watermark.
+     * watermark; `thread-reacted` is a reaction added, changed or removed.
      *
      * They are distinguished because clients treat them oppositely. A client skips a
      * `thread-updated` naming a message it already holds — that frame is the echo of its
@@ -43,7 +43,7 @@ export interface ChatThreadNotification {
      * two together would make every receipt look like an echo and no tick would ever
      * fill in.
      */
-    type: 'thread-updated' | 'thread-read';
+    type: 'thread-updated' | 'thread-read' | 'thread-reacted';
     threadId: string;
     /** Id of the message that caused it, so a client can skip a re-read it already has. */
     messageId: number;

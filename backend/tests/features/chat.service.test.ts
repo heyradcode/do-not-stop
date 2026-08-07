@@ -7,6 +7,9 @@ const isMarriedTo = vi.fn();
 const findMessages = vi.fn();
 const findCounterpartReadId = vi.fn();
 const markThreadRead = vi.fn();
+const findReactionsForMessages = vi.fn();
+const setReaction = vi.fn();
+const messageBelongsToThread = vi.fn();
 
 vi.mock('@repositories/chat.repository', () => ({
     findMarriedCounterparts: (caller: string) => findMarriedCounterparts(caller),
@@ -17,6 +20,11 @@ vi.mock('@repositories/chat.repository', () => ({
     findCounterpartReadId: (id: string, caller: string) => findCounterpartReadId(id, caller),
     markThreadRead: (id: string, participant: string, messageId: number) =>
         markThreadRead(id, participant, messageId),
+    findReactionsForMessages: (ids: number[]) => findReactionsForMessages(ids),
+    setReaction: (messageId: number, who: string, emoji: string) =>
+        setReaction(messageId, who, emoji),
+    messageBelongsToThread: (messageId: number, threadId: string) =>
+        messageBelongsToThread(messageId, threadId),
     insertMessage: vi.fn(),
 }));
 
@@ -24,6 +32,7 @@ import {
     authorizeThread,
     listThreads,
     markRead,
+    reactToMessage,
     readMessages,
 } from '../../src/features/chat/chat.service';
 
@@ -133,12 +142,75 @@ describe('readMessages', () => {
     it('returns the page with how far the counterpart has read', async () => {
         findMessages.mockResolvedValue([{ id: 7 }]);
         findCounterpartReadId.mockResolvedValue(5);
+        findReactionsForMessages.mockResolvedValue([]);
 
         await expect(readMessages('t1', ME, 50)).resolves.toEqual({
-            messages: [{ id: 7 }],
+            messages: [{ id: 7, reactions: [] }],
             readUpTo: 5,
         });
         expect(findCounterpartReadId).toHaveBeenCalledWith('t1', ME);
+    });
+
+    it("groups reactions per message, counting them and flagging the caller's own", async () => {
+        findMessages.mockResolvedValue([{ id: 7 }, { id: 8 }]);
+        findCounterpartReadId.mockResolvedValue(0);
+        findReactionsForMessages.mockResolvedValue([
+            { messageId: 7, participant: ME, emoji: '👍' },
+            { messageId: 7, participant: THEM, emoji: '👍' },
+            { messageId: 7, participant: THEM, emoji: '😂' },
+            { messageId: 8, participant: THEM, emoji: '🙏' },
+        ]);
+
+        const page = await readMessages('t1', ME, 50);
+
+        expect(page.messages[0].reactions).toEqual([
+            { emoji: '👍', count: 2, mine: true },
+            { emoji: '😂', count: 1, mine: false },
+        ]);
+        expect(page.messages[1].reactions).toEqual([{ emoji: '🙏', count: 1, mine: false }]);
+        // One query for the page, not one per message.
+        expect(findReactionsForMessages).toHaveBeenCalledWith([7, 8]);
+    });
+
+    // The caller arrives from the JWT already normalized, but the rule lives at the
+    // service boundary everywhere else in this feature and `mine` depends on it.
+    it("matches the caller's own reaction regardless of address case", async () => {
+        findMessages.mockResolvedValue([{ id: 7 }]);
+        findCounterpartReadId.mockResolvedValue(0);
+        findReactionsForMessages.mockResolvedValue([
+            { messageId: 7, participant: ME, emoji: '👍' },
+        ]);
+
+        // Checksummed spelling: `0x` prefix kept, hex body upper-cased, which is what a
+        // wallet actually hands over.
+        const page = await readMessages('t1', `0x${ME.slice(2).toUpperCase()}`, 50);
+
+        expect(page.messages[0].reactions[0].mine).toBe(true);
+    });
+});
+
+describe('reactToMessage', () => {
+    it('applies the tap and reports what the caller now holds', async () => {
+        messageBelongsToThread.mockResolvedValue(true);
+        setReaction.mockResolvedValue('👍');
+
+        await expect(reactToMessage('t1', ME, 7, '👍')).resolves.toEqual({ emoji: '👍' });
+    });
+
+    it('reports null when the tap removed the reaction', async () => {
+        messageBelongsToThread.mockResolvedValue(true);
+        setReaction.mockResolvedValue(null);
+
+        await expect(reactToMessage('t1', ME, 7, '👍')).resolves.toEqual({ emoji: null });
+    });
+
+    // Authorization is thread-level, so without this a caller could authorize against
+    // their own thread and then name a message in one they cannot read.
+    it('refuses a message that belongs to another thread', async () => {
+        messageBelongsToThread.mockResolvedValue(false);
+
+        await expect(reactToMessage('t1', ME, 999, '👍')).resolves.toBe('not-found');
+        expect(setReaction).not.toHaveBeenCalled();
     });
 
     // Nobody has read anything yet is the common case on a new thread, and it has to read
