@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -51,6 +51,36 @@ function facesOf(thread: ChatThread): { mine: Pet | null; theirs: Pet | null } {
     };
 }
 
+/**
+ * The day a message belongs to, as a label to sit above it.
+ *
+ * Relative for the two days anyone is likely to be reading — a date says less than
+ * "Today" when today is what you mean — and an absolute date beyond that. The weekday is
+ * included within the past week because that is how people refer to recent conversations.
+ */
+function dayLabel(createdAt: string, now: Date): string | null {
+    const at = new Date(createdAt);
+    if (Number.isNaN(at.getTime())) return null;
+
+    const days = Math.round(
+        (startOfDay(now).getTime() - startOfDay(at).getTime()) / 86_400_000,
+    );
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 7) return at.toLocaleDateString([], { weekday: 'long' });
+    return at.toLocaleDateString([], {
+        day: 'numeric',
+        month: 'long',
+        // Only when it is not the year everyone is already in.
+        ...(at.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+    });
+}
+
+/** Local midnight, so "same day" means the reader's day rather than UTC's. */
+function startOfDay(at: Date): Date {
+    return new Date(at.getFullYear(), at.getMonth(), at.getDate());
+}
+
 function timeOf(createdAt: string): string {
     const at = new Date(createdAt);
     return Number.isNaN(at.getTime())
@@ -65,6 +95,9 @@ function timeOf(createdAt: string): string {
  * of forty as the first thing you see is a decision where a reaction should be a reflex.
  */
 const QUICK_REACTIONS = 6;
+
+/** How close to the top the reader gets before the next page of history is fetched. */
+const OLDER_TRIGGER_PX = 120;
 
 /** Room the collapsed row and the full grid each need above the trigger to open upward. */
 const QUICK_HEIGHT = 52;
@@ -280,6 +313,9 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
         send,
         isSending,
         sendError,
+        hasOlder,
+        isLoadingOlder,
+        loadOlder,
     } = useChatMessages({
         threadId: thread.threadId,
         socketUrl: CHAT_WS_URL,
@@ -291,6 +327,14 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
     const counterpartOnline =
         isLive && online.some((address) => sameAccount(address, thread.counterpart));
     const faces = useMemo(() => facesOf(thread), [thread]);
+    // What "Today" is measured against. Read per render rather than memoized, so a tab
+    // left open across midnight relabels on the next render instead of insisting
+    // yesterday is still today. Nothing memoizes on its identity.
+    const now = new Date();
+    const listRef = useRef<HTMLOListElement>(null);
+    // Height before an older page arrives, so the view can be pinned to what the reader
+    // was looking at. A ref, not state: it is read during layout, never rendered.
+    const heightBeforeLoad = useRef(0);
     const [draft, setDraft] = useState('');
     const endRef = useRef<HTMLDivElement>(null);
     const boxRef = useRef<HTMLTextAreaElement>(null);
@@ -309,6 +353,34 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
         const border = box.offsetHeight - box.clientHeight;
         box.style.height = `${box.scrollHeight + border}px`;
     }, [draft]);
+
+    /**
+     * Fetches the page before the top when the reader gets near it.
+     *
+     * A scroll handler rather than an IntersectionObserver on a sentinel: one threshold
+     * on one element, and it needs no observer to exist in a test environment.
+     */
+    const onScroll = () => {
+        const list = listRef.current;
+        if (!list || !hasOlder || isLoadingOlder || list.scrollTop > OLDER_TRIGGER_PX) return;
+        heightBeforeLoad.current = list.scrollHeight;
+        loadOlder();
+    };
+
+    /**
+     * Holds the reader's place when older messages are prepended.
+     *
+     * Content added above shifts everything down by its height; without this the view
+     * jumps to a different part of the conversation the moment a page lands. Layout
+     * effect, not a plain one, so the correction happens before the browser paints and
+     * the jump is never visible.
+     */
+    useLayoutEffect(() => {
+        const list = listRef.current;
+        if (!list || heightBeforeLoad.current === 0) return;
+        list.scrollTop += list.scrollHeight - heightBeforeLoad.current;
+        heightBeforeLoad.current = 0;
+    }, [messages]);
 
     // Chats are read from the bottom. Keyed on the newest id rather than length so a
     // re-read that changes nothing does not yank the view while someone scrolls up.
@@ -394,7 +466,12 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
                     No messages yet. Say hello.
                 </p>
             ) : (
-                <ol className={styles.messages}>
+                <ol className={styles.messages} ref={listRef} onScroll={onScroll}>
+                    {hasOlder && (
+                        <li className={styles.historyNotice} aria-live="polite">
+                            {isLoadingOlder ? 'Loading earlier messages…' : ''}
+                        </li>
+                    )}
                     {messages.map((message, index) => {
                         const isMine = sameAccount(message.sender, me);
                         const next = messages[index + 1];
@@ -404,9 +481,21 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
                         // worth showing, which is whose pet is talking.
                         const endsRun = !next || sameAccount(next.sender, me) !== isMine;
                         const face = isMine ? faces.mine : faces.theirs;
+                        // A heading only where the day changes, which for the first
+                        // message on screen is always.
+                        const previous = messages[index - 1];
+                        const day = dayLabel(message.createdAt, now);
+                        const startsDay =
+                            day !== null &&
+                            (!previous || dayLabel(previous.createdAt, now) !== day);
                         return (
+                            <React.Fragment key={message.id}>
+                            {startsDay && (
+                                <li className={styles.dayMark} role="separator">
+                                    <span>{day}</span>
+                                </li>
+                            )}
                             <li
-                                key={message.id}
                                 className={
                                     isMine ? `${styles.message} ${styles.isMine}` : styles.message
                                 }
@@ -457,6 +546,7 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
                                 </div>
                                 <ReactionChips message={message} onReact={react} />
                             </li>
+                            </React.Fragment>
                         );
                     })}
                     <div ref={endRef} />

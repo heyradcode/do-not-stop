@@ -68,10 +68,14 @@ const send = vi.fn();
 
 const markRead = vi.fn();
 const react = vi.fn();
+const loadOlder = vi.fn();
 const messagesResult = (over: Record<string, unknown> = {}) => ({
     readUpTo: 0,
     markRead,
     react,
+    hasOlder: false,
+    isLoadingOlder: false,
+    loadOlder,
     messages: [],
     isLoading: false,
     error: null,
@@ -353,6 +357,66 @@ describe('Chat', () => {
 
         await userEvent.click(add);
         expect(screen.queryByRole('group', { name: 'Reactions' })).toBeNull();
+    });
+
+    // Telegram-style: a heading only where the day turns over, so a long thread reads as
+    // days rather than as one undated run.
+    it('marks each new day once, relative for the recent ones', () => {
+        const at = (daysAgo: number, hour: number) => {
+            const d = new Date();
+            d.setDate(d.getDate() - daysAgo);
+            d.setHours(hour, 0, 0, 0);
+            return d.toISOString();
+        };
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(
+            messagesResult({
+                messages: [
+                    message({ id: 1, text: 'old one', createdAt: at(1, 9) }),
+                    message({ id: 2, text: 'old two', createdAt: at(1, 18) }),
+                    message({ id: 3, text: 'new one', createdAt: at(0, 9) }),
+                ],
+            }),
+        );
+
+        renderChat();
+
+        const marks = screen.getAllByRole('separator');
+        expect(marks.map((mark) => mark.textContent)).toEqual(['Yesterday', 'Today']);
+    });
+
+    it('fetches older history when the reader nears the top', () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(
+            messagesResult({ messages: [message()], hasOlder: true }),
+        );
+
+        const { container } = renderChat();
+        const list = container.querySelector('.messages') as HTMLElement;
+
+        // Far from the top: nothing to do yet.
+        Object.defineProperty(list, 'scrollTop', { value: 900, writable: true });
+        fireEvent.scroll(list);
+        expect(loadOlder).not.toHaveBeenCalled();
+
+        Object.defineProperty(list, 'scrollTop', { value: 10, writable: true });
+        fireEvent.scroll(list);
+        expect(loadOlder).toHaveBeenCalled();
+    });
+
+    it('does not fetch again while a page is already in flight', () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(
+            messagesResult({ messages: [message()], hasOlder: true, isLoadingOlder: true }),
+        );
+
+        const { container } = renderChat();
+        const list = container.querySelector('.messages') as HTMLElement;
+        Object.defineProperty(list, 'scrollTop', { value: 0, writable: true });
+        fireEvent.scroll(list);
+
+        expect(loadOlder).not.toHaveBeenCalled();
+        expect(screen.getByText('Loading earlier messages…')).toBeInTheDocument();
     });
 
     it('sends the trimmed draft and clears the box', async () => {

@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo } from 'react';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '../../contexts/ApiClientContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useChatThreadSocket, type ChatThreadNotification } from './useChatThreadSocket';
@@ -33,6 +33,12 @@ interface ChatPage {
     readUpTo: number;
 }
 
+/**
+ * Messages per request. Sent explicitly rather than left to the server's default, because
+ * a short page is how this knows it has reached the start of the thread.
+ */
+const PAGE_SIZE = 50;
+
 export interface UseChatMessagesResult {
     messages: ChatMessage[];
     /**
@@ -59,6 +65,12 @@ export interface UseChatMessagesResult {
     send: (text: string) => Promise<void>;
     isSending: boolean;
     sendError: Error | null;
+    /** Whether there is older history left to fetch. */
+    hasOlder: boolean;
+    /** True while a page of older history is in flight. */
+    isLoadingOlder: boolean;
+    /** Fetches the page before the oldest message held. Safe to call repeatedly. */
+    loadOlder: () => void;
 }
 
 export const chatMessagesQueryKey = (baseURL: string, threadId: string | null) => [
@@ -90,16 +102,40 @@ export const useChatMessages = ({
     const baseURL = apiClient.defaults.baseURL ?? '';
     const queryKey = chatMessagesQueryKey(baseURL, threadId);
 
-    const query = useQuery({
+    /**
+     * Paged backwards from the newest message, a page at a time.
+     *
+     * `pages[0]` is the newest page and each one after it is older, which is the reverse
+     * of reading order — the transcript flattens them back the other way below.
+     *
+     * An infinite query rather than a page held in component state: a notification has to
+     * refresh *every* page on screen, not just the newest. A reaction or a read receipt
+     * can land on a message loaded ten pages ago, and history frozen in state would show
+     * it stale until reload. The cost is that a re-read fetches each loaded page; a thread
+     * here is one pair of players, so that is a handful of small requests.
+     */
+    const query = useInfiniteQuery({
         queryKey,
         enabled: isAuthenticated && threadId != null,
-        queryFn: async (): Promise<ChatPage> => {
+        initialPageParam: undefined as number | undefined,
+        queryFn: async ({ pageParam }): Promise<ChatPage> => {
             const { data } = await apiClient.get<Partial<ChatPage>>(
                 `/api/chat/threads/${threadId}/messages`,
+                { params: { limit: PAGE_SIZE, ...(pageParam ? { before: pageParam } : {}) } },
             );
             return { messages: data.messages ?? [], readUpTo: data.readUpTo ?? 0 };
         },
+        // The oldest id held, to page back from. A page shorter than asked for is the
+        // start of the thread, and returning undefined is what stops the loop.
+        getNextPageParam: (lastPage) =>
+            lastPage.messages.length < PAGE_SIZE ? undefined : lastPage.messages[0]?.id,
     });
+
+    /** Oldest first across every loaded page, which is the order the transcript reads in. */
+    const messages = useMemo(
+        () => [...(query.data?.pages ?? [])].reverse().flatMap((page) => page.messages),
+        [query.data],
+    );
 
     // Rebuilds the key inside rather than closing over the outer array, whose identity
     // changes every render — that is what previously needed an exhaustive-deps
@@ -119,10 +155,13 @@ export const useChatMessages = ({
                 refresh();
                 return;
             }
-            const cached = queryClient.getQueryData<ChatPage>(
+            const cached = queryClient.getQueryData<{ pages: ChatPage[] }>(
                 chatMessagesQueryKey(baseURL, threadId),
             );
-            if (cached?.messages.some((entry) => entry.id === message.messageId)) return;
+            const held = cached?.pages.some((page) =>
+                page.messages.some((entry) => entry.id === message.messageId),
+            );
+            if (held) return;
             refresh();
         },
         [queryClient, baseURL, threadId, refresh],
@@ -147,14 +186,21 @@ export const useChatMessages = ({
         // an optimistic update — the message exists — so the objection to optimism (a
         // refused send must not look delivered) does not apply, and it saves a full page
         // re-read per message sent.
+        // Lands on the newest page, which is `pages[0]`: that is the one holding the end
+        // of the thread, and appending anywhere else would file the message into history.
         onSuccess: (message) => {
-            queryClient.setQueryData<ChatPage>(
+            queryClient.setQueryData<{ pages: ChatPage[]; pageParams: unknown[] }>(
                 chatMessagesQueryKey(baseURL, threadId),
                 (previous) => {
-                    const page = previous ?? { messages: [], readUpTo: 0 };
-                    return page.messages.some((entry) => entry.id === message.id)
-                        ? page
-                        : { ...page, messages: [...page.messages, message] };
+                    if (!previous) return previous;
+                    const [newest, ...rest] = previous.pages;
+                    if (!newest || newest.messages.some((entry) => entry.id === message.id)) {
+                        return previous;
+                    }
+                    return {
+                        ...previous,
+                        pages: [{ ...newest, messages: [...newest.messages, message] }, ...rest],
+                    };
                 },
             );
         },
@@ -200,9 +246,15 @@ export const useChatMessages = ({
         [apiClient, threadId, refresh],
     );
 
+    const loadOlder = useCallback(() => {
+        if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
+    }, [query]);
+
     return {
-        messages: query.data?.messages ?? [],
-        readUpTo: query.data?.readUpTo ?? 0,
+        messages,
+        // From the newest page: the watermark is one number for the thread, and older
+        // pages carry a copy of the same answer.
+        readUpTo: query.data?.pages[0]?.readUpTo ?? 0,
         markRead,
         react,
         isLoading: query.isLoading,
@@ -212,5 +264,8 @@ export const useChatMessages = ({
         send,
         isSending: mutation.isPending,
         sendError: mutation.error as Error | null,
+        hasOlder: query.hasNextPage,
+        isLoadingOlder: query.isFetchingNextPage,
+        loadOlder,
     };
 };
