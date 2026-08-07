@@ -232,6 +232,10 @@
 .composer textarea {
     flex: 1;
     min-width: 0;
+    /* Height is assigned from scrollHeight, which already counts the padding. Without
+       this the padding lands twice and an empty box stands 16px taller than the single
+       line it holds. */
+    box-sizing: border-box;
     padding: 8px 12px;
     border-radius: 8px;
     border: 1px solid rgb(148 163 184 / 22%);
@@ -317,9 +321,16 @@
    One tick once the server has the message — every message in the transcript came back
    from the server, so a rendered message is a stored one — and two once the counterpart's
    read watermark has passed it. The pair is tightened rather than drawn as one glyph so
-   it reads as two ticks at 0.7rem. */
+   it reads as two ticks at 0.7rem.
+
+   A sibling of the bubble, not a child: the row is reversed for your own messages, so
+   this lands on the outer side, opposite the pet, and stays clear of the text. Bottom
+   aligned with the bubble by the row's own `align-items`. */
 .receipt {
     flex-shrink: 0;
+    /* Sits with the bubble's last line rather than its floor, which is a couple of
+       pixels lower than where the text ends. */
+    padding-block-end: 6px;
     font-size: 0.7rem;
     letter-spacing: -0.22em;
     padding-inline-end: 0.22em;

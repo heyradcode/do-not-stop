@@ -195,6 +195,10 @@ describe('Chat', () => {
 
         expect(within(seen).getByRole('img', { name: 'Seen' })).toHaveTextContent('✓✓');
         expect(within(unseen).getByRole('img', { name: 'Sent' })).toHaveTextContent('✓');
+        // Outside the bubble: inside it, the tick sits in the run of text a screen reader
+        // reads out as the message.
+        expect(seen.querySelector('.bubble .receipt')).toBeNull();
+        expect(seen.querySelector(':scope > .receipt')).not.toBeNull();
         // Their own messages carry no receipt: only your reading is news to anyone.
         expect(theirs.querySelector('.receipt')).toBeNull();
     });

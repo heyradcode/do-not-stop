@@ -244,6 +244,13 @@ ALTER TABLE "new_table" ENABLE ROW LEVEL SECURITY;
 
 Do **not** add `FORCE ROW LEVEL SECURITY`: it applies policy-less RLS to the owner too, which denies the backend its own tables. Note the existing tables got RLS out of band (dashboard or manual SQL) rather than from their migrations, so each of them was exposed between deploy and the fix — putting the statement in the migration is what closes that window.
 
+### Migrations run with `deploy`, never `dev`
+`pnpm --filter backend prisma:migrate` is `prisma migrate deploy`. There is one database configured here and it is production, so `migrate dev` is the wrong tool twice over: it wants a shadow database, and when it finds drift it offers to **reset** — against this database that is the whole game. It also *would* find drift, because the RLS above was applied out of band on the older tables and is not in their migration files.
+
+`prisma migrate dev` is still available as `prisma:migrate:dev` for anyone pointing `DIRECT_URL` at a scratch database of their own. `db:push` deserves the same caution: it reshapes the database from the schema with no migration recorded, which is how a column disappears without a file saying so.
+
+`prisma.config.ts` sets `connect_timeout=30` on the migration URL. Prisma's default is short enough that a proxy or antivirus doing TLS inspection makes every migration command fail as `P1001: Can't reach database server` — pointing at a database that is up and answering `pg` clients on the same URL at the same moment. Measured behind such an interceptor: the handshake takes ~19s and the engine gives up at ~10s. `sslmode=disable` also makes the error go away and **must not be used**: it works by putting the database password on the wire in clear text.
+
 ## Licensing
 
 This monorepo has split licensing; see the table in `README.md`. `contracts/ethereum`, `contracts/solana`, `indexer-go`, `proto`, `protocol`, and `verifier` are MIT; everything else (`frontend`, `backend`, `mobile`, `website`, `shared`, `image-generator`) is PolyForm Noncommercial 1.0.0 (root `LICENSE`). Match the license of whichever package you're editing when adding new files.

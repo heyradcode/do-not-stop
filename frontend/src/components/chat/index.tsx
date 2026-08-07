@@ -109,13 +109,18 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
     const boxRef = useRef<HTMLTextAreaElement>(null);
 
     // Grows with the draft up to the max height the stylesheet sets, then scrolls.
+    //
     // Reset to `auto` first: scrollHeight never shrinks below the height already set, so
-    // measuring without clearing it makes the box one-way.
+    // measuring without clearing it makes the box one-way. The border is added back
+    // because scrollHeight covers content and padding but not the border, and the box is
+    // border-box — without it the field is short by its own border and scrolls a line
+    // that fits.
     useEffect(() => {
         const box = boxRef.current;
         if (!box) return;
         box.style.height = 'auto';
-        box.style.height = `${box.scrollHeight}px`;
+        const border = box.offsetHeight - box.clientHeight;
+        box.style.height = `${box.scrollHeight + border}px`;
     }, [draft]);
 
     // Chats are read from the bottom. Keyed on the newest id rather than length so a
@@ -233,25 +238,25 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
                                     <span className={styles.messageTime}>
                                         {timeOf(message.createdAt)}
                                     </span>
-                                    {/* Receipts on your own messages only: yours is the
-                                        only side whose reading is news to anyone. */}
-                                    {isMine && (
-                                        <span
-                                            className={
-                                                message.id <= readUpTo
-                                                    ? `${styles.receipt} ${styles.isSeen}`
-                                                    : styles.receipt
-                                            }
-                                            role="img"
-                                            aria-label={
-                                                message.id <= readUpTo ? 'Seen' : 'Sent'
-                                            }
-                                            title={message.id <= readUpTo ? 'Seen' : 'Sent'}
-                                        >
-                                            {message.id <= readUpTo ? '✓✓' : '✓'}
-                                        </span>
-                                    )}
                                 </div>
+                                {/* Outside the bubble, on the side away from the pet, so
+                                    it reads as a note about the message rather than part
+                                    of what was said. Own messages only: yours is the only
+                                    side whose reading is news to anyone. */}
+                                {isMine && (
+                                    <span
+                                        className={
+                                            message.id <= readUpTo
+                                                ? `${styles.receipt} ${styles.isSeen}`
+                                                : styles.receipt
+                                        }
+                                        role="img"
+                                        aria-label={message.id <= readUpTo ? 'Seen' : 'Sent'}
+                                        title={message.id <= readUpTo ? 'Seen' : 'Sent'}
+                                    >
+                                        {message.id <= readUpTo ? '✓✓' : '✓'}
+                                    </span>
+                                )}
                             </li>
                         );
                     })}
