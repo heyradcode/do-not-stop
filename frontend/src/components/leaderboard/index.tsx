@@ -257,13 +257,11 @@ const Leaderboard: React.FC = () => {
 
     const showBoard = (next: Board) => {
         setBoard(next);
-        // Page 3 of the pet board says nothing about where a player sits, and the two
-        // boards have different lengths. The term goes too: the boards search different
-        // things — a pet's name and an owner's address — so carrying one across would
-        // hand the other board a query that cannot match.
+        // Only the page resets. Page 3 of the pet board says nothing about where a player
+        // sits, and the two boards are different lengths. The search term carries over on
+        // purpose now that both boards match a name *or* an address: looking a pet up and
+        // then switching boards is how you find out who owns it.
         setPage(0);
-        setTerm('');
-        setSearch('');
     };
 
     const lastPage = Math.max(0, Math.ceil(active.total / active.pageSize) - 1);
@@ -348,12 +346,8 @@ const Leaderboard: React.FC = () => {
                         type="search"
                         value={term}
                         onChange={(event) => setTerm(event.target.value)}
-                        placeholder={
-                            board === 'pets' ? 'Search pets by name' : 'Search players by address'
-                        }
-                        aria-label={
-                            board === 'pets' ? 'Search pets by name' : 'Search players by address'
-                        }
+                        placeholder="Search by pet name or wallet address"
+                        aria-label="Search by pet name or wallet address"
                     />
                 </div>
 

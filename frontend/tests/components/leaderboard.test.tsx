@@ -262,7 +262,7 @@ describe('Leaderboard search', () => {
         usePlayerLeaderboard.mockReturnValue(emptyResult);
 
         renderBoard();
-        await userEvent.type(screen.getByRole('searchbox', { name: /search pets/i }), 'Yas');
+        await userEvent.type(screen.getByRole('searchbox', { name: /pet name or wallet/i }), 'Yas');
 
         // Nothing yet: a round trip per keystroke is what the debounce exists to avoid.
         expect(useLeaderboard).not.toHaveBeenCalledWith(expect.objectContaining({ search: 'Yas' }));
@@ -290,9 +290,9 @@ describe('Leaderboard search', () => {
         vi.useRealTimers();
     });
 
-    // The boards search different things, so a pet name handed to the player board could
-    // only ever match nothing.
-    it('clears the term when the other board is opened', async () => {
+    // Both boards match a name or an address, so the term is worth keeping: looking a pet
+    // up and switching boards is how you find out who owns it.
+    it('carries the term to the other board', async () => {
         vi.useFakeTimers({ shouldAdvanceTime: true });
         useLeaderboard.mockReturnValue(board());
         usePlayerLeaderboard.mockReturnValue(board());
@@ -306,9 +306,9 @@ describe('Leaderboard search', () => {
 
         await userEvent.click(screen.getByRole('tab', { name: 'Players' }));
 
-        expect(screen.getByRole('searchbox')).toHaveValue('');
+        expect(screen.getByRole('searchbox')).toHaveValue('Yasu');
         expect(usePlayerLeaderboard).toHaveBeenLastCalledWith(
-            expect.objectContaining({ search: '' }),
+            expect.objectContaining({ search: 'Yasu' }),
         );
         vi.useRealTimers();
     });

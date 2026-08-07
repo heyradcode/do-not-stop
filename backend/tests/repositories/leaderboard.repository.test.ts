@@ -129,6 +129,17 @@ describe('findPetLeaderboard', () => {
         expect(sqlOfCall(1)).toContain('ILIKE');
     });
 
+    // One box, both questions: a name finds a pet, an address finds that wallet's pets.
+    it('matches a term against the pet name or its owner', async () => {
+        mockJoinQuery([], 0);
+
+        await findPetLeaderboard({ chain: 'evm', page: 0, pageSize: 20, search: '0xf00d' });
+
+        const sql = sqlOfCall(0);
+        expect(sql).toContain('ranked.name ILIKE');
+        expect(sql).toContain('ranked.owner ILIKE');
+    });
+
     it('leaves the board unfiltered when nothing is searched for', async () => {
         mockJoinQuery([], 0);
 
@@ -208,6 +219,26 @@ describe('findPlayerLeaderboard', () => {
 
         const sql = sqlOfCall(0);
         expect(sql.indexOf('ILIKE')).toBeGreaterThan(sql.indexOf('ROW_NUMBER() OVER'));
+    });
+
+    // Aggregated in the subquery because the filter runs outside it, after the grouping:
+    // looking up the player behind a pet should not require knowing whose it is.
+    it("matches a term against the address or the owner's pet names", async () => {
+        mockJoinQuery([], 0);
+
+        await findPlayerLeaderboard({ chain: 'evm', page: 0, pageSize: 20, search: 'Rex' });
+
+        const sql = sqlOfCall(0);
+        expect(sql).toContain('STRING_AGG(r.name');
+        expect(sql).toContain('ranked."petNames" ILIKE');
+    });
+
+    it('keeps the searchable pet names out of what it returns', async () => {
+        mockJoinQuery([{ ...playerRow, petNames: 'Rex Bramble' }], 1);
+
+        const result = await findPlayerLeaderboard({ chain: 'evm', page: 0, pageSize: 20 });
+
+        expect(result.entries[0]).not.toHaveProperty('petNames');
     });
 
     it('folds EVM owners to one group so a wallet is not listed twice', async () => {

@@ -108,7 +108,11 @@ const HAS_FOUGHT = Prisma.sql`${WINS} + ${LOSSES} > 0`;
 const petOrder = Prisma.sql`${WINS} DESC, ${LOSSES} ASC, ${LEVEL} DESC, r.pet_id ASC`;
 
 /**
- * A search term as a case-insensitive contains-match, or nothing at all.
+ * A search term as a case-insensitive contains-match against any of several columns.
+ *
+ * Several, because one box has to answer both questions people bring here — "how is my
+ * pet doing" and "how is that player doing" — and nobody should have to know which board
+ * indexes which. A wallet address typed into the pet board finds that wallet's pets.
  *
  * `TRUE` for a blank term rather than a second query: an unfiltered board is the same
  * shape as a filtered one, and branching would double every query below.
@@ -116,12 +120,17 @@ const petOrder = Prisma.sql`${WINS} DESC, ${LOSSES} ASC, ${LEVEL} DESC, r.pet_id
  * `%` and `_` are escaped because they are wildcards to `ILIKE` — a player searching for
  * a pet actually named `100%` should not match every pet on the board.
  */
-function contains(column: Prisma.Sql, term: string | undefined): Prisma.Sql {
+function matchesAny(columns: Prisma.Sql[], term: string | undefined): Prisma.Sql {
     const needle = term?.trim();
     if (!needle) return Prisma.sql`TRUE`;
     const escaped = needle.replace(/[\\%_]/g, (char) => `\\${char}`);
-    return Prisma.sql`${column} ILIKE ${`%${escaped}%`} ESCAPE '\\'`;
+    const pattern = `%${escaped}%`;
+    return Prisma.sql`(${Prisma.join(
+        columns.map((column) => Prisma.sql`${column} ILIKE ${pattern} ESCAPE '\\'`),
+        ' OR '
+    )})`;
 }
+
 const playerOrder = (owner: Prisma.Sql) =>
     Prisma.sql`SUM(${WINS}) DESC, SUM(${LOSSES}) ASC, ${owner} ASC`;
 
@@ -131,7 +140,12 @@ export async function findPetLeaderboard(
 ): Promise<{ entries: LeaderboardEntry[]; total: number }> {
     const join = progressJoin(servedChainIdForFamily(params.chain));
     const skip = params.page * params.pageSize;
-    const match = contains(Prisma.sql`r.name`, params.search);
+    // Name or owner: the pet board is where someone pastes an address to see a rival's
+    // pets, and where they type a name to find their own.
+    const match = matchesAny(
+        [Prisma.sql`ranked.name`, Prisma.sql`ranked.owner`],
+        params.search
+    );
 
     /**
      * Ranked first, filtered second.
@@ -183,7 +197,13 @@ export async function findPlayerLeaderboard(
     const join = progressJoin(servedChainIdForFamily(params.chain));
     const owner = ownerKey(params.chain, 'r');
     const skip = params.page * params.pageSize;
-    const match = contains(Prisma.sql`ranked.owner`, params.search);
+    // Address or any of the owner's pet names, so looking up the player behind a pet
+    // works without knowing whose it is. The names are aggregated in the subquery below
+    // because the filter runs outside it, after the grouping.
+    const match = matchesAny(
+        [Prisma.sql`ranked.owner`, Prisma.sql`ranked."petNames"`],
+        params.search
+    );
 
     // The SUMs are cast because Postgres widens them to bigint, which Prisma would hand
     // back as a BigInt the GraphQL Int serializer cannot take. A player's battle count has
@@ -196,6 +216,7 @@ export async function findPlayerLeaderboard(
                SUM(${WINS})::int AS "winCount",
                SUM(${LOSSES})::int AS "lossCount",
                COUNT(*)::int AS "petCount",
+               STRING_AGG(r.name, ' ') AS "petNames",
                ROW_NUMBER() OVER (ORDER BY ${playerOrder(owner)})::int AS rank
         FROM pet_roster r
         ${join}
@@ -204,7 +225,7 @@ export async function findPlayerLeaderboard(
     `;
 
     const [rows, counted] = await Promise.all([
-        prisma.$queryRaw<(PlayerRow & { rank: number })[]>`
+        prisma.$queryRaw<(PlayerRow & { rank: number; petNames: string })[]>`
             SELECT * FROM (${ranked}) ranked
             WHERE ${match}
             ORDER BY rank
@@ -218,7 +239,9 @@ export async function findPlayerLeaderboard(
     ]);
 
     return {
-        entries: rows,
+        // `petNames` exists to be searched, not shown: dropped here so it never reaches a
+        // client that would have to know to ignore it.
+        entries: rows.map(({ petNames: _petNames, ...entry }) => entry),
         total: Number(counted[0]?.total ?? 0),
     };
 }
