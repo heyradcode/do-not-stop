@@ -90,7 +90,7 @@
     display: flex;
     align-items: baseline;
     gap: 10px;
-    padding: 10px 14px;
+    padding: 12px 18px;
     border-bottom: 1px solid rgb(148 163 184 / 12%);
 }
 
@@ -130,7 +130,10 @@
 .messages {
     list-style: none;
     margin: 0;
-    padding: 12px 14px;
+    /* Roomier than the bubbles strictly need. A short message's reactions are wider than
+       the bubble they hang under, so they reach closer to the panel edge than anything
+       else does, and at the old inset they read as spilling out of it. */
+    padding: 14px 18px;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -178,7 +181,7 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
-    padding: 7px 11px;
+    padding: 8px 14px;
     border-radius: 12px;
     background: rgb(148 163 184 / 12%);
     /* `#root` in App.css centres the whole app, so anything that wants ordinary prose
@@ -252,7 +255,7 @@
 .composer {
     display: flex;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 12px 18px;
     border-top: 1px solid rgb(148 163 184 / 12%);
     flex-shrink: 0;
     /* The box grows upward from the bottom edge, so the Send button stays on the last
