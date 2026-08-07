@@ -21,6 +21,8 @@ vi.mock('@shared/core', () => ({
     // since VITE_IMAGE_SERVICE_URL is unset in tests.
     getPetAvatar: () => '🐾',
     petArtUrl: () => null,
+    // Tints the podium card behind the pet; any colour will do here.
+    getRarityColor: () => '#b58cff',
 }));
 
 import Leaderboard from '@components/leaderboard';
@@ -87,19 +89,21 @@ describe('Leaderboard', () => {
         expect(screen.queryByText(/No battles on record yet/i)).toBeNull();
     });
 
-    it('renders a pet row with its record and win rate', () => {
+    // The top three are cards, not rows: a ranking's first three are a result and the
+    // rest are a record, and the page says so.
+    it('puts the leader on the podium with its record and win rate', () => {
         useLeaderboard.mockReturnValue({ ...emptyResult, entries: [petEntry()], total: 1 });
 
         renderBoard();
 
-        const row = screen.getByText('Yasu').closest('li') as HTMLElement;
-        expect(within(row).getByText('5W')).toBeInTheDocument();
-        expect(within(row).getByText('2L')).toBeInTheDocument();
+        const card = screen.getByText('Yasu').closest('article') as HTMLElement;
+        expect(within(card).getByText('5W')).toBeInTheDocument();
+        expect(within(card).getByText('2L')).toBeInTheDocument();
         // 5 of 7 fights, rounded.
-        expect(within(row).getByText('71%')).toBeInTheDocument();
+        expect(within(card).getByText('71% win rate')).toBeInTheDocument();
     });
 
-    it('medals the top three and numbers the rest, using the absolute rank', () => {
+    it('has no podium beyond the first page, where "top three" is not true', () => {
         useLeaderboard.mockReturnValue({
             ...emptyResult,
             entries: [
@@ -110,10 +114,29 @@ describe('Leaderboard', () => {
         });
 
         renderBoard();
+        // Rendered by the pager as page 1 of 2, so this *is* the first page of a longer
+        // board; the ranks are what say these are not the top three.
+        const row = screen.getByText('Twenty-first').closest('li') as HTMLElement;
 
-        // Page 2 rows are not medalled: rank is absolute, not per-page.
-        expect(screen.getByText('#21')).toBeInTheDocument();
+        expect(within(row).getByText('21')).toBeInTheDocument();
         expect(screen.queryByText('🥇')).toBeNull();
+    });
+
+    // The card follows the rank, not the page or the query: searching up the leader
+    // should still show it as the leader.
+    it('keeps a medal on a rank-1 pet found by search', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        useLeaderboard.mockReturnValue({ ...emptyResult, entries: [petEntry()], total: 1 });
+
+        renderBoard();
+        fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'Yas' } });
+        act(() => {
+            vi.advanceTimersByTime(300);
+        });
+
+        expect(screen.getByRole('region', { name: 'Top three' })).toBeInTheDocument();
+        expect(screen.getByText('Yasu').closest('article')).not.toBeNull();
+        vi.useRealTimers();
     });
 
     it('highlights the connected wallet regardless of address case', () => {
@@ -126,8 +149,8 @@ describe('Leaderboard', () => {
 
         renderBoard();
 
-        const mine = screen.getByText('Yasu').closest('li') as HTMLElement;
-        const theirs = screen.getByText('Someone else').closest('li') as HTMLElement;
+        const mine = screen.getByText('Yasu').closest('article') as HTMLElement;
+        const theirs = screen.getByText('Someone else').closest('article') as HTMLElement;
         expect(mine.className).not.toEqual(theirs.className);
     });
 

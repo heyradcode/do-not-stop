@@ -1,6 +1,8 @@
-import React, { useEffect, useState, type ReactNode } from 'react';
+import React, { useEffect, useMemo, useState, type ReactNode } from 'react';
+import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import {
+    getRarityColor,
     useChainCapabilities,
     useLeaderboard,
     usePlayerLeaderboard,
@@ -24,41 +26,96 @@ function winRate(wins: number, losses: number): number | null {
     return fought === 0 ? null : Math.round((wins / fought) * 100);
 }
 
-/** Medal for the top three, plain number below. Rank is absolute, so this holds on page 2+. */
-function rankBadge(rank: number): string {
-    return rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
-}
+/** Metal for each of the top three, and nothing below. Drives `--medal` on the card. */
+const MEDALS = ['gold', 'silver', 'bronze'] as const;
 
-/**
- * One ranked row. Both boards render the same five tracks — only the avatar, the title
- * and the sub-line differ — so they share this rather than two near-identical components
- * that would drift the first time the record column is edited.
- */
-const Row: React.FC<{
+/** How many places get a card rather than a row. */
+const PODIUM_PLACES = MEDALS.length;
+
+/** What one row shows, whichever board produced it. */
+type Standing = {
+    key: string;
     rank: number;
     avatar: ReactNode;
-    title: ReactNode;
-    sub: ReactNode;
+    title: string;
+    sub: string;
+    /** Tints the podium card behind the pet; null on the player board. */
+    accent: string | null;
     winCount: number;
     lossCount: number;
     isYou: boolean;
-}> = ({ rank, avatar, title, sub, winCount, lossCount, isYou }) => {
-    const rate = winRate(winCount, lossCount);
+};
+
+/**
+ * A place on the podium: the top three, at the size their result earns.
+ *
+ * The pet art is the hero here rather than a 20px avatar in a table cell. It is the most
+ * distinctive thing the product owns and the leaderboard is where being looked at is the
+ * whole point — everywhere else it is an identifier, here it is a trophy.
+ *
+ * The wash behind it is the pet's own rarity colour, so a card says something about the
+ * pet and not only about its position.
+ */
+const PodiumCard: React.FC<{ standing: Standing; place: number }> = ({ standing, place }) => {
+    const rate = winRate(standing.winCount, standing.lossCount);
     return (
-        <li className={isYou ? `${styles.row} ${styles.isYou}` : styles.row}>
-            <span className={styles.rank}>{rankBadge(rank)}</span>
+        <article
+            className={clsx(
+                styles.podiumCard,
+                styles[MEDALS[place] as 'gold' | 'silver' | 'bronze'],
+                place === 0 && styles.isLeader,
+                standing.isYou && styles.isYou,
+            )}
+            style={standing.accent ? ({ '--accent': standing.accent } as React.CSSProperties) : undefined}
+        >
+            <span className={styles.podiumRank}>{standing.rank}</span>
+            <span className={styles.podiumArt} aria-hidden>
+                {standing.avatar}
+            </span>
+            <h3 className={styles.podiumName}>{standing.title}</h3>
+            <p className={styles.podiumSub}>{standing.sub}</p>
+            <p className={styles.podiumRecord}>
+                <span className={styles.wins}>{standing.winCount}W</span>
+                <span className={styles.dash} aria-hidden>
+                    ·
+                </span>
+                <span className={styles.losses}>{standing.lossCount}L</span>
+            </p>
+            <p className={styles.podiumRate}>{rate == null ? 'no record' : `${rate}% win rate`}</p>
+        </article>
+    );
+};
+
+/**
+ * One line of the ledger, below the podium.
+ *
+ * The rank leads at display size because the rank is what the reader came for; the row
+ * text is deliberately quieter than it. The win rate is drawn as a bar under the row
+ * rather than printed as a fifth column — a column of percentages has to be read one at a
+ * time, where a column of bars shows the shape of the board at a glance.
+ */
+const Row: React.FC<{ standing: Standing }> = ({ standing }) => {
+    const rate = winRate(standing.winCount, standing.lossCount);
+    return (
+        <li className={clsx(styles.row, standing.isYou && styles.isYou)}>
+            <span className={styles.rank}>{standing.rank}</span>
             <span className={styles.avatar} aria-hidden>
-                {avatar}
+                {standing.avatar}
             </span>
             <span className={styles.name}>
-                {title}
-                <span className={styles.sub}>{sub}</span>
+                {standing.title}
+                <span className={styles.sub}>{standing.sub}</span>
             </span>
             <span className={styles.record}>
-                <span className={styles.wins}>{winCount}W</span>
-                <span className={styles.losses}>{lossCount}L</span>
+                <span className={styles.wins}>{standing.winCount}W</span>
+                <span className={styles.losses}>{standing.lossCount}L</span>
             </span>
             <span className={styles.rate}>{rate == null ? '—' : `${rate}%`}</span>
+            {/* Presentational: the same number is written beside it for anyone who cannot
+                see the bar. */}
+            <span className={styles.meter} aria-hidden>
+                <span className={styles.meterFill} style={{ width: `${rate ?? 0}%` }} />
+            </span>
         </li>
     );
 };
@@ -211,6 +268,52 @@ const Leaderboard: React.FC = () => {
 
     const lastPage = Math.max(0, Math.ceil(active.total / active.pageSize) - 1);
 
+    /** Both boards flattened to the same shape, so the podium and ledger take either. */
+    const standings: Standing[] = useMemo(
+        () =>
+            board === 'pets'
+                ? pets.entries.map((entry) => ({
+                      key: entry.id,
+                      rank: entry.rank,
+                      avatar: (
+                          <PetArt
+                              pet={{
+                                  id: entry.id,
+                                  chain: entry.chain,
+                                  assetKey: entry.asset || undefined,
+                                  dna: BigInt(entry.dna),
+                                  name: entry.name,
+                              }}
+                          />
+                      ),
+                      title: entry.name,
+                      sub: `Lv ${entry.level}`,
+                      accent: getRarityColor(entry.rarity),
+                      winCount: entry.winCount,
+                      lossCount: entry.lossCount,
+                      isYou: isYou(entry.owner),
+                  }))
+                : players.entries.map((entry) => ({
+                      key: entry.owner,
+                      rank: entry.rank,
+                      avatar: '👤',
+                      title: shortAddress(entry.owner),
+                      sub: `${entry.petCount} pet${entry.petCount === 1 ? '' : 's'}`,
+                      accent: null,
+                      winCount: entry.winCount,
+                      lossCount: entry.lossCount,
+                      isYou: isYou(entry.owner),
+                  })),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [board, pets.entries, players.entries, walletAddress],
+    );
+
+    // Decided by the rank itself, not by which page is showing: a medal belongs to third
+    // place, so page 2 grows no podium and a search that turns up the leader still shows
+    // it as the leader. Ranks are absolute for exactly this reason.
+    const podium = standings.filter((standing) => standing.rank <= PODIUM_PLACES);
+    const ledger = standings.filter((standing) => standing.rank > PODIUM_PLACES);
+
     return (
         <SessionGate
             title={heading}
@@ -267,43 +370,23 @@ const Leaderboard: React.FC = () => {
                             : 'No battles on record yet. Win one and the board fills up.'}
                     </p>
                 ) : (
-                    <>
+                    <div className={styles.board}>
+                        {podium.length > 0 && (
+                            <section className={styles.podium} aria-label="Top three">
+                                {podium.map((standing) => (
+                                    <PodiumCard
+                                        key={standing.key}
+                                        standing={standing}
+                                        place={standing.rank - 1}
+                                    />
+                                ))}
+                            </section>
+                        )}
+
                         <ol className={styles.list}>
-                            {board === 'pets'
-                                ? pets.entries.map((entry) => (
-                                      <Row
-                                          key={entry.id}
-                                          rank={entry.rank}
-                                          avatar={
-                                              <PetArt
-                                                  pet={{
-                                                      id: entry.id,
-                                                      chain: entry.chain,
-                                                      assetKey: entry.asset || undefined,
-                                                      dna: BigInt(entry.dna),
-                                                      name: entry.name,
-                                                  }}
-                                              />
-                                          }
-                                          title={entry.name}
-                                          sub={`Lv ${entry.level}`}
-                                          winCount={entry.winCount}
-                                          lossCount={entry.lossCount}
-                                          isYou={isYou(entry.owner)}
-                                      />
-                                  ))
-                                : players.entries.map((entry) => (
-                                      <Row
-                                          key={entry.owner}
-                                          rank={entry.rank}
-                                          avatar="👤"
-                                          title={shortAddress(entry.owner)}
-                                          sub={`${entry.petCount} pet${entry.petCount === 1 ? '' : 's'}`}
-                                          winCount={entry.winCount}
-                                          lossCount={entry.lossCount}
-                                          isYou={isYou(entry.owner)}
-                                      />
-                                  ))}
+                            {ledger.map((standing) => (
+                                <Row key={standing.key} standing={standing} />
+                            ))}
                         </ol>
 
                         <Pager
@@ -313,7 +396,7 @@ const Leaderboard: React.FC = () => {
                             total={active.total}
                             onGo={setPage}
                         />
-                    </>
+                    </div>
                 )}
             </DashboardPanel>
         </SessionGate>
