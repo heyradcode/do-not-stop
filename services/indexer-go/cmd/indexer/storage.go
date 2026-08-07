@@ -24,10 +24,12 @@ func startStorage(
 	ctx context.Context,
 	cfg *config.Config,
 	roster chan indexer.RosterUpdate,
+	items chan indexer.ItemUpdate,
+	equipment chan indexer.EquipmentUpdate,
 ) (*storage, error) {
 	if cfg.DatabaseURL == "" {
 		slog.Warn("DATABASE_URL not set; draining pipeline to logs only")
-		go drainSink(ctx, roster)
+		go drainSink(ctx, roster, items, equipment)
 		return &storage{close: func() {}}, nil
 	}
 
@@ -58,7 +60,7 @@ func startStorage(
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		if err := writer.Run(ctx, roster); err != nil {
+		if err := writer.Run(ctx, roster, items, equipment); err != nil {
 			slog.Error("writer exited", "err", err)
 		}
 	}()
@@ -70,15 +72,24 @@ func startStorage(
 	}, nil
 }
 
-// drainSink discards roster updates to logs when no database is configured, so the
-// channel never blocks the adapters.
-func drainSink(ctx context.Context, roster <-chan indexer.RosterUpdate) {
+// drainSink discards updates to logs when no database is configured, so the
+// channels never block the adapters.
+func drainSink(
+	ctx context.Context,
+	roster <-chan indexer.RosterUpdate,
+	items <-chan indexer.ItemUpdate,
+	equipment <-chan indexer.EquipmentUpdate,
+) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case u := <-roster:
 			slog.Debug("roster update (drained)", "chain", u.Chain, "pet", u.PetID, "version", u.Version)
+		case u := <-items:
+			slog.Debug("item update (drained)", "chain", u.Chain, "owner", u.Owner, "itemType", u.ItemType, "version", u.Version)
+		case u := <-equipment:
+			slog.Debug("equipment update (drained)", "chain", u.Chain, "pet", u.PetID, "slot", u.Slot, "version", u.Version)
 		}
 	}
 }

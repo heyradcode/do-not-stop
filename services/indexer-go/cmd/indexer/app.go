@@ -43,8 +43,10 @@ func run() error {
 	}
 
 	roster := make(chan indexer.RosterUpdate, 256)
+	items := make(chan indexer.ItemUpdate, 256)
+	equipment := make(chan indexer.EquipmentUpdate, 256)
 
-	st, err := startStorage(ctx, cfg, roster)
+	st, err := startStorage(ctx, cfg, roster, items, equipment)
 	if err != nil {
 		return err
 	}
@@ -66,6 +68,19 @@ func run() error {
 				slog.Error("adapter exited", "chain", a.Chain(), "err", err)
 			}
 		}(adapter)
+
+		// Inventory is optional per chain (roadmap §4 is EVM-first), so an adapter
+		// opts in by implementing InventoryIndexer. Its own goroutine, so a stalled
+		// inventory poll cannot hold up the roster loop everything else reads.
+		if inv, ok := adapter.(indexer.InventoryIndexer); ok {
+			wg.Add(1)
+			go func(a indexer.ChainIndexer, in indexer.InventoryIndexer) {
+				defer wg.Done()
+				if err := in.RunInventory(ctx, items, equipment); err != nil {
+					slog.Error("inventory adapter exited", "chain", a.Chain(), "err", err)
+				}
+			}(adapter, inv)
+		}
 	}
 
 	chains := make([]string, len(adapters))

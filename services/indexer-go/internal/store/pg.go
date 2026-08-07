@@ -60,6 +60,42 @@ var rosterUpdateColumns = []string{
 	"spouse_id", "breed_ready_at", "train_ready_at", "asset", "last_version", "updated_at",
 }
 
+// itemRosterRow maps indexer.ItemUpdate onto item_roster (roadmap §4).
+//
+// Keyed on (chain, owner, item_type) rather than on a per-instance id: an
+// ERC-1155 balance is a count of a fungible type, so "how many of type 7 does
+// this wallet hold" is the whole row and there is no individual item to name.
+type itemRosterRow struct {
+	Chain       string    `gorm:"column:chain;primaryKey"`
+	Owner       string    `gorm:"column:owner;primaryKey"`
+	ItemType    string    `gorm:"column:item_type;primaryKey"`
+	Quantity    int64     `gorm:"column:quantity"`
+	LastVersion int64     `gorm:"column:last_version"`
+	UpdatedAt   time.Time `gorm:"column:updated_at"`
+}
+
+func (itemRosterRow) TableName() string { return "item_roster" }
+
+var itemUpdateColumns = []string{"quantity", "last_version", "updated_at"}
+
+// petEquipmentRow maps indexer.EquipmentUpdate onto pet_equipment (roadmap §4).
+//
+// A row per (pet, slot) that persists once written, holding item type "0" for an
+// empty slot. Deleting the row instead would be invisible to the watermark read
+// that produced it, so an unequip would never reach this table.
+type petEquipmentRow struct {
+	Chain       string    `gorm:"column:chain;primaryKey"`
+	PetID       string    `gorm:"column:pet_id;primaryKey"`
+	Slot        int32     `gorm:"column:slot;primaryKey"`
+	ItemType    string    `gorm:"column:item_type"`
+	LastVersion int64     `gorm:"column:last_version"`
+	UpdatedAt   time.Time `gorm:"column:updated_at"`
+}
+
+func (petEquipmentRow) TableName() string { return "pet_equipment" }
+
+var equipmentUpdateColumns = []string{"item_type", "last_version", "updated_at"}
+
 // NewPgFlusher opens a GORM connection (pgx driver) and verifies it with a ping.
 func NewPgFlusher(ctx context.Context, databaseURL string) (*PgFlusher, error) {
 	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{
@@ -127,6 +163,64 @@ func (f *PgFlusher) FlushRoster(ctx context.Context, batch []indexer.RosterUpdat
 	return nil
 }
 
+
+// FlushItems bulk-upserts one coalesced batch of item balances (roadmap §4).
+// Same version guard as FlushRoster, for the same reason: a stale or replayed
+// version is discarded by Postgres itself, so delivery order never matters.
+func (f *PgFlusher) FlushItems(ctx context.Context, batch []indexer.ItemUpdate) error {
+	if len(batch) == 0 {
+		return nil
+	}
+
+	now := time.Now()
+	rows := make([]itemRosterRow, len(batch))
+	for i, u := range batch {
+		rows[i] = itemRosterRow{
+			Chain: u.Chain, Owner: u.Owner, ItemType: u.ItemType,
+			Quantity: int64(u.Quantity), LastVersion: int64(u.Version), UpdatedAt: now,
+		}
+	}
+
+	err := f.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "chain"}, {Name: "owner"}, {Name: "item_type"}},
+		DoUpdates: clause.AssignmentColumns(itemUpdateColumns),
+		Where: clause.Where{Exprs: []clause.Expression{
+			clause.Expr{SQL: "item_roster.last_version <= excluded.last_version"},
+		}},
+	}).Create(&rows).Error
+	if err != nil {
+		return fmt.Errorf("store: item upsert (%d rows): %w", len(batch), err)
+	}
+	return nil
+}
+
+// FlushEquipment bulk-upserts one coalesced batch of equip slots (roadmap §4).
+func (f *PgFlusher) FlushEquipment(ctx context.Context, batch []indexer.EquipmentUpdate) error {
+	if len(batch) == 0 {
+		return nil
+	}
+
+	now := time.Now()
+	rows := make([]petEquipmentRow, len(batch))
+	for i, u := range batch {
+		rows[i] = petEquipmentRow{
+			Chain: u.Chain, PetID: u.PetID, Slot: int32(u.Slot), ItemType: u.ItemType,
+			LastVersion: int64(u.Version), UpdatedAt: now,
+		}
+	}
+
+	err := f.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "chain"}, {Name: "pet_id"}, {Name: "slot"}},
+		DoUpdates: clause.AssignmentColumns(equipmentUpdateColumns),
+		Where: clause.Where{Exprs: []clause.Expression{
+			clause.Expr{SQL: "pet_equipment.last_version <= excluded.last_version"},
+		}},
+	}).Create(&rows).Error
+	if err != nil {
+		return fmt.Errorf("store: equipment upsert (%d rows): %w", len(batch), err)
+	}
+	return nil
+}
 
 // LoadRoster reads the whole pet_roster table — the cache warm-up source
 // (the table is the persistent copy of the exact data the cache mirrors).
