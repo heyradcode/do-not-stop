@@ -53,12 +53,19 @@ describe('no cancellation after commitment', () => {
         expect(isCommitted(BattleState.seeded)).toBe(true);
     });
 
-    it('offers forfeit instead, but only where a beacon can actually stall', () => {
-        // A permanent beacon outage has to end the battle somehow. Forfeit does it with no
-        // progression change, so manufacturing an outage gains nothing.
+    it('offers forfeit instead, but only where the pipeline can actually stall', () => {
+        // A permanent outage has to end the battle somehow. Forfeit does it with no
+        // progression change, so manufacturing an outage gains nothing. `computed` is here
+        // because the verifier can be unreachable until the outbox gives up, which strands
+        // the battle and its pets' locks exactly as a beacon outage would.
         expect(classifyTransition(BattleState.committed, BattleState.forfeited)).toBe('advance');
         expect(classifyTransition(BattleState.seeded, BattleState.forfeited)).toBe('advance');
-        expect(classifyTransition(BattleState.computed, BattleState.forfeited)).toBe('illegal');
+        expect(classifyTransition(BattleState.computed, BattleState.forfeited)).toBe('advance');
+
+        // Not from everywhere: past signing there is a signed receipt, and a battle with one
+        // is resolved rather than abandonable.
+        expect(classifyTransition(BattleState.verified, BattleState.forfeited)).toBe('illegal');
+        expect(classifyTransition(BattleState.signed, BattleState.forfeited)).toBe('illegal');
     });
 });
 

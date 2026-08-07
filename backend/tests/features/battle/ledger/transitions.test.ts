@@ -24,6 +24,7 @@ vi.mock('@config/prisma', () => ({
 import { prisma } from '@config/prisma';
 
 import {
+    abandonBattle,
     applyTransition,
     failBattle,
     IllegalTransitionError,
@@ -234,5 +235,61 @@ describe('sortPetIds', () => {
         const input = ['10', '9'];
         sortPetIds(input);
         expect(input).toEqual(['10', '9']);
+    });
+});
+
+describe('abandonBattle', () => {
+    /** The state `prisma.battleLedger.findUnique` reports for the battle under test. */
+    const currently = (state: BattleState | null) =>
+        vi.mocked(prisma.battleLedger.findUnique).mockResolvedValue(
+            (state === null ? null : { state }) as never,
+        );
+
+    // The gap this closes: a dead-lettered step left the battle non-terminal, and locks are
+    // released by reaching a terminal state, so both its pets were stuck for good.
+    it('forfeits a battle stuck in computed and releases its locks', async () => {
+        currently(BattleState.computed);
+
+        const result = await abandonBattle('btl_1', 'verify gave up');
+
+        expect(result).toEqual({ abandoned: true, state: BattleState.forfeited });
+        expect(tx.battleLedger.updateMany).toHaveBeenCalledWith({
+            where: { battleId: 'btl_1', state: BattleState.computed },
+            data: { failureReason: 'verify gave up', state: BattleState.forfeited },
+        });
+        // Terminal, so the locks go with it — in the same transaction.
+        expect(tx.petBattleLock.deleteMany).toHaveBeenCalledWith({ where: { battleId: 'btl_1' } });
+    });
+
+    // `verification_failed` means the two engines disagreed and is a ruleset-wide circuit
+    // breaker (§F). A verifier that never answered has disagreed with nothing.
+    it('does not mark an unreachable verifier as a verification failure', async () => {
+        currently(BattleState.computed);
+
+        await abandonBattle('btl_1', 'indexer-go unavailable');
+
+        const data = tx.battleLedger.updateMany.mock.calls[0]![0].data;
+        expect(data.state).toBe(BattleState.forfeited);
+        expect(data.state).not.toBe(BattleState.verification_failed);
+    });
+
+    it('leaves a state with no legal forfeit exactly as it is', async () => {
+        currently(BattleState.verified);
+
+        const result = await abandonBattle('btl_1', 'sign gave up');
+
+        expect(result).toEqual({ abandoned: false, state: BattleState.verified });
+        // Untouched: the battle is still live and may yet be signed, so its pets stay locked.
+        expect(tx.battleLedger.updateMany).not.toHaveBeenCalled();
+        expect(tx.petBattleLock.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('reports nothing to do for a battle that does not exist', async () => {
+        currently(null);
+
+        await expect(abandonBattle('btl_missing', 'whatever')).resolves.toEqual({
+            abandoned: false,
+            state: null,
+        });
     });
 });

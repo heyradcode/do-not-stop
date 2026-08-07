@@ -1,5 +1,11 @@
 import { env } from '@config/env';
-import { type ClaimedMessage, claimOutbox, failOutbox, OUTBOX_TOPICS } from '@features/battle/ledger';
+import {
+    abandonBattle,
+    type ClaimedMessage,
+    claimOutbox,
+    failOutbox,
+    OUTBOX_TOPICS,
+} from '@features/battle/ledger';
 
 import { processAwaitBeaconMessage } from './beacon.worker';
 import { processComputeMessage } from './compute.worker';
@@ -37,17 +43,40 @@ export async function runBattleWorkerOnce(workerId: string, now: Date = new Date
             // Claimed a topic this process does not know how to run. That is a deployment or
             // routing bug, not a transient failure, but dead-lettering it immediately is safer
             // than leaving it claimed forever with nothing to process it.
-            await failOutbox(message, `no handler for topic ${message.topic}`, now);
+            await giveUp(message, `no handler for topic ${message.topic}`, now);
             continue;
         }
         try {
             await handler(message, nowSeconds);
         } catch (error) {
-            await failOutbox(message, (error as Error).message, now);
+            await giveUp(message, (error as Error).message, now);
         }
     }
 
     return { processed: messages.length };
+}
+
+/**
+ * Records the failure, and ends the battle if that was the last attempt.
+ *
+ * A dead letter used to stop at the message: the battle stayed in whatever non-terminal
+ * state it was in, and since locks are freed by reaching a terminal state, both its pets
+ * were left unable to battle again with nothing saying why. `abandonBattle` closes that,
+ * and declines where the state machine has no legal way to forfeit — the dead letter is
+ * still listed for a human in either case.
+ */
+async function giveUp(message: ClaimedMessage, error: string, now: Date): Promise<void> {
+    const { deadLettered } = await failOutbox(message, error, now);
+    if (!deadLettered) return;
+
+    const { abandoned, state } = await abandonBattle(
+        message.battleId,
+        `${message.topic} gave up after ${message.attempts} attempts: ${error}`,
+    );
+    console.error(
+        `[battle-worker] ${message.topic} dead-lettered for ${message.battleId}` +
+            (abandoned ? ' — battle forfeited, pets released' : ` — left in ${state ?? 'unknown'}`),
+    );
 }
 
 export interface BattleWorkerHandle {

@@ -1,10 +1,15 @@
-import type { BattleState } from '@generated/prisma/enums';
+import { BattleState } from '@generated/prisma/enums';
 import type { Prisma } from '@generated/prisma/client';
 
 import { prisma } from '@config/prisma';
 
 import { enqueueOutbox, type OutboxMessage } from './outbox';
-import { classifyTransition, IllegalTransitionError, shouldReleaseLocks } from './state';
+import {
+    canForfeitFrom,
+    classifyTransition,
+    IllegalTransitionError,
+    shouldReleaseLocks,
+} from './state';
 
 /**
  * Transactional state transitions for the battle ledger (§J).
@@ -219,4 +224,48 @@ export async function failBattle(
     reason: string,
 ): Promise<TransitionResult> {
     return applyTransition({ battleId, from, to, patch: { failureReason: reason } });
+}
+
+/**
+ * Ends a battle whose pipeline can no longer make progress, freeing both pets.
+ *
+ * Called when an outbox message dead-letters. Until this existed, a battle whose step ran
+ * out of retries stayed in a non-terminal state forever, and because locks are released by
+ * reaching a terminal state, both its pets were unable to battle again — permanently, with
+ * nothing surfacing why. That is how one unreachable verifier took two pets out of the
+ * game for days.
+ *
+ * `forfeited` and deliberately not `verification_failed`: that state means the two engines
+ * disagreed and is a ruleset-wide circuit breaker (§F). A verifier that never answered has
+ * disagreed with nothing, and marking it failed would stop signing for every battle on
+ * that ruleset because one service was down.
+ *
+ * States with no legal move to `forfeited` — `verified` awaiting a signature, say — are
+ * left exactly as they are. Freeing the pets is not worth inventing a transition the state
+ * machine does not allow, and the dead letter is still listed for a human either way.
+ */
+export async function abandonBattle(
+    battleId: string,
+    reason: string,
+): Promise<{ abandoned: boolean; state: BattleState | null }> {
+    const current = await prisma.battleLedger.findUnique({
+        where: { battleId },
+        select: { state: true },
+    });
+    if (!current) {
+        return { abandoned: false, state: null };
+    }
+
+    const from = current.state as BattleState;
+    if (!canForfeitFrom(from)) {
+        return { abandoned: false, state: from };
+    }
+
+    const result = await applyTransition({
+        battleId,
+        from,
+        to: BattleState.forfeited,
+        patch: { failureReason: reason },
+    });
+    return { abandoned: result.applied, state: result.state };
 }

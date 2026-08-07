@@ -92,6 +92,7 @@ export {
 export {
     ALLOWED_TRANSITIONS,
     BATTLE_HAPPY_PATH,
+    canForfeitFrom,
     classifyTransition,
     IllegalTransitionError,
     isCommitted,
@@ -101,6 +102,7 @@ export {
     type TransitionKind,
 } from './state';
 export {
+    abandonBattle,
     applyTransition,
     type BattleLedgerPatch,
     failBattle,

@@ -40,19 +40,27 @@ export const TERMINAL_STATES: readonly BattleState[] = [
 /**
  * Legal moves out of each state.
  *
- * `forfeited` is reachable from `committed` and `seeded` because a permanent beacon
+ * `forfeited` is reachable from `committed`, `seeded` and `computed` because a permanent
  * outage has to end the battle somehow, and ending it with no progression change plus a
- * cooldown is the option that does not reward manufacturing an outage (§E).
+ * cooldown is the option that does not reward manufacturing an outage (§E). From
+ * `computed` it covers the verifier being unreachable until the outbox gives up — which
+ * is an outage like any other, and must not be confused with the next paragraph.
  *
  * `verification_failed` is reachable only from `computed`: it means the TypeScript
  * engine and the Go verifier disagreed, which stops signing for that ruleset rather
- * than silently preferring one implementation (§F).
+ * than silently preferring one implementation (§F). A verifier that never answered has
+ * disagreed with nothing, so it forfeits instead; marking it failed would trip a
+ * ruleset-wide circuit breaker over a service being down.
  */
 export const ALLOWED_TRANSITIONS: Readonly<Record<BattleState, readonly BattleState[]>> = {
     [BattleState.accepted]: [BattleState.committed, BattleState.rejected, BattleState.expired],
     [BattleState.committed]: [BattleState.seeded, BattleState.forfeited],
     [BattleState.seeded]: [BattleState.computed, BattleState.forfeited],
-    [BattleState.computed]: [BattleState.verified, BattleState.verification_failed],
+    [BattleState.computed]: [
+        BattleState.verified,
+        BattleState.verification_failed,
+        BattleState.forfeited,
+    ],
     [BattleState.verified]: [BattleState.signed, BattleState.signing_failed],
     [BattleState.signed]: [BattleState.published],
     [BattleState.published]: [BattleState.batched],
@@ -80,6 +88,11 @@ export function classifyTransition(from: BattleState, to: BattleState): Transiti
         return 'noop';
     }
     return ALLOWED_TRANSITIONS[from].includes(to) ? 'advance' : 'illegal';
+}
+
+/** Whether `forfeited` is a legal move from here; see `abandonBattle`. */
+export function canForfeitFrom(state: BattleState): boolean {
+    return (ALLOWED_TRANSITIONS[state] ?? []).includes(BattleState.forfeited);
 }
 
 /** Whether a battle has reached a state it never leaves. */
