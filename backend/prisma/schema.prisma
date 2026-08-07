@@ -706,3 +706,117 @@ model BattleSigningKey {
 
   @@map("battle_signing_key")
 }
+
+// ─── Inventory (roadmap §4) ───────────────────────────────────────────────────
+// Two owners, kept apart the way pet_roster and pet_battle_progress are. The
+// catalog is backend content that a rebalance edits; item_roster and
+// pet_equipment are projections of chain state that only indexer-go writes, and
+// carry the same monotonic `lastVersion` guard pet_roster does.
+
+/// One item type's content: what it is called, how rare it is, and what it does.
+///
+/// Keyed on the on-chain token id rather than on a slug, because that is what
+/// every projection below joins against and what a battle snapshot records. The
+/// slug is kept beside it as the handle content authors and seed data use, since
+/// "xp_potion_i" survives a redeploy that renumbers ids and a bare 7 does not.
+///
+/// `effect` is deliberately off chain. ItemCore stores only the numeric type, so
+/// a rebalance is a row edit here rather than a transaction, matching how
+/// GameConfig keeps balance knobs owner-tunable away from the asset contract.
+/// The cost is that a combat-affecting effect has to be versioned some other way,
+/// which is what the ruleset's itemCatalogHash is for (§4 phase 4).
+model ItemDefinition {
+  /// ERC-1155 token id as a decimal string, matching item_roster.item_type.
+  itemType    String  @id @map("item_type")
+  /// Stable content key, e.g. 'xp_potion_i'.
+  key         String  @unique
+  /// 'consumable' | 'equipment' | 'collectible' | 'material'.
+  category    String
+  /// Equip slot 0-2 (ItemCore.SLOT_*), null unless category = 'equipment'.
+  ///
+  /// Duplicated from ItemCore's own registry, which is authoritative: the
+  /// contract rejects an equip into the wrong slot and this column cannot. They
+  /// are written together by the catalog seeder, and a disagreement shows up as
+  /// an equip the UI offers and the chain refuses.
+  slot        Int?
+  /// 1-5, the same scale as pet rarity (shared/src/utils/pets/cosmetics.ts).
+  rarity      Int
+  /// Modifier payload for equipment; null for everything else.
+  effect      Json?
+  name        String
+  description String
+
+  @@map("item_definition")
+}
+
+/// One holder's balance of one item type. Written only by indexer-go.
+///
+/// Keyed on (chain, owner, itemType) because an ERC-1155 balance is a count of a
+/// fungible type: there is no individual item to name, unlike a pet. The
+/// ItemCore contract itself appears here as a holder, since equipping escrows the
+/// token into it.
+model ItemRoster {
+  chain    String
+  owner    String
+  itemType String @map("item_type")
+  quantity BigInt
+
+  /// Monotonic source version (subgraph updatedAt), guarding the upsert exactly
+  /// as pet_roster.last_version does.
+  lastVersion BigInt   @default(0) @map("last_version")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@id([chain, owner, itemType])
+  @@map("item_roster")
+}
+
+/// What is equipped in one pet's one slot. Written only by indexer-go.
+///
+/// A row persists once written, holding item type "0" for an empty slot rather
+/// than being deleted. The subgraph is read on an updatedAt watermark, and a
+/// deletion is invisible to a watermark reader, so an unequip that removed the
+/// row would never arrive here at all.
+model PetEquipment {
+  chain    String
+  petId    String @map("pet_id")
+  slot     Int
+  /// Equipped item type, or "0" for an empty slot.
+  itemType String @map("item_type")
+
+  lastVersion BigInt   @default(0) @map("last_version")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@id([chain, petId, slot])
+  @@map("pet_equipment")
+}
+
+/// An item a wallet has earned but not yet minted: a battle drop, or an admin
+/// grant. Backend-owned, unlike the two projections above.
+///
+/// The row exists because minting costs gas and a drop should not block a battle
+/// on a transaction. Claiming it is what calls ItemCore.mintTo, after which
+/// item_roster picks the balance up through the indexer like any other mint.
+model ItemEntitlement {
+  id       String @id @default(cuid())
+  chain    String
+  owner    String
+  itemType String @map("item_type")
+  quantity Int
+  /// 'battle_drop' | 'admin_grant'.
+  source   String
+  /// What produced it: the battleId for a drop, the request id for a grant.
+  ///
+  /// Part of a unique key with owner and item type, so the battle worker writing
+  /// a drop inside the receipt transaction stays idempotent under a retry. A
+  /// battle that settles twice must not pay out twice.
+  sourceRef String @map("source_ref")
+
+  claimedAt DateTime? @map("claimed_at")
+  /// Mint transaction hash, set when the claim lands.
+  txHash    String?   @map("tx_hash")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@unique([sourceRef, owner, itemType])
+  @@index([chain, owner, claimedAt])
+  @@map("item_entitlement")
+}
