@@ -1,4 +1,4 @@
-import React, { useState, type ReactNode } from 'react';
+import React, { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     useChainCapabilities,
@@ -163,11 +163,25 @@ const Leaderboard: React.FC = () => {
     const { activeKind, walletAddress } = useChainCapabilities();
     const [board, setBoard] = useState<Board>('pets');
     const [page, setPage] = useState(0);
+    const [term, setTerm] = useState('');
 
-    const pets = useLeaderboard({ chain: activeKind, page, enabled: board === 'pets' });
+    // 300 ms, matching `useSearchPets`: a round trip per keystroke against a ranked query
+    // is a lot of work to throw away, and the board is not a typeahead.
+    const [search, setSearch] = useState('');
+    useEffect(() => {
+        const id = setTimeout(() => setSearch(term.trim()), 300);
+        return () => clearTimeout(id);
+    }, [term]);
+
+    // A term that narrows the board also renumbers which page anything is on, so the
+    // reader has to be put back at the first one or a search can land on an empty page.
+    useEffect(() => setPage(0), [search]);
+
+    const pets = useLeaderboard({ chain: activeKind, page, search, enabled: board === 'pets' });
     const players = usePlayerLeaderboard({
         chain: activeKind,
         page,
+        search,
         enabled: board === 'players',
     });
 
@@ -187,8 +201,12 @@ const Leaderboard: React.FC = () => {
     const showBoard = (next: Board) => {
         setBoard(next);
         // Page 3 of the pet board says nothing about where a player sits, and the two
-        // boards have different lengths.
+        // boards have different lengths. The term goes too: the boards search different
+        // things — a pet's name and an owner's address — so carrying one across would
+        // hand the other board a query that cannot match.
         setPage(0);
+        setTerm('');
+        setSearch('');
     };
 
     const lastPage = Math.max(0, Math.ceil(active.total / active.pageSize) - 1);
@@ -222,6 +240,20 @@ const Leaderboard: React.FC = () => {
                     ))}
                 </div>
 
+                <div className={styles.search}>
+                    <input
+                        type="search"
+                        value={term}
+                        onChange={(event) => setTerm(event.target.value)}
+                        placeholder={
+                            board === 'pets' ? 'Search pets by name' : 'Search players by address'
+                        }
+                        aria-label={
+                            board === 'pets' ? 'Search pets by name' : 'Search players by address'
+                        }
+                    />
+                </div>
+
                 {active.error ? (
                     <p className={styles.error}>{active.error.message}</p>
                 ) : active.isLoading ? (
@@ -230,7 +262,9 @@ const Leaderboard: React.FC = () => {
                     </div>
                 ) : active.total === 0 ? (
                     <p className={styles.empty}>
-                        No battles on record yet. Win one and the board fills up.
+                        {search
+                            ? `Nothing on the board matches "${search}".`
+                            : 'No battles on record yet. Win one and the board fills up.'}
                     </p>
                 ) : (
                     <>

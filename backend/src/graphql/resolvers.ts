@@ -26,6 +26,8 @@ interface LeaderboardArgs {
     chain: string;
     page?: number | null;
     pageSize?: number | null;
+    /** Substring filter; ranks stay absolute, so it narrows the board without renumbering it. */
+    search?: string | null;
 }
 
 interface BattleProgressArgs {
@@ -115,7 +117,12 @@ export const rootValue = {
 
         // No overlay here, for the same reason as `opponents`: the ranking is the merge,
         // so `findPetLeaderboard` does it in the query.
-        const { entries, total } = await findPetLeaderboard({ chain: args.chain, page, pageSize });
+        const { entries, total } = await findPetLeaderboard({
+            chain: args.chain,
+            page,
+            pageSize,
+            search: args.search ?? undefined,
+        });
 
         return {
             entries: entries.map(({ petId: id, ...rest }) => ({ id, ...rest })),
@@ -132,7 +139,12 @@ export const rootValue = {
 
         const page = Math.max(0, args.page ?? 0);
         const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, args.pageSize ?? DEFAULT_PAGE_SIZE));
-        const { entries, total } = await findPlayerLeaderboard({ chain: args.chain, page, pageSize });
+        const { entries, total } = await findPlayerLeaderboard({
+            chain: args.chain,
+            page,
+            pageSize,
+            search: args.search ?? undefined,
+        });
 
         return { entries, total, page, pageSize };
     },

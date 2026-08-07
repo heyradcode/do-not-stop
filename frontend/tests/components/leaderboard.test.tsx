@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -219,5 +219,74 @@ describe('Leaderboard pagination', () => {
         expect(within(nav).getByRole('button', { name: 'Page 50' })).toBeInTheDocument();
         expect(within(nav).queryByRole('button', { name: 'Page 25' })).toBeNull();
         expect(within(nav).getAllByRole('button').length).toBeLessThan(10);
+    });
+});
+
+
+describe('Leaderboard search', () => {
+    const board = (over: Record<string, unknown> = {}) => ({
+        entries: [petEntry()],
+        total: 1,
+        pageSize: 20,
+        isLoading: false,
+        error: null,
+        ...over,
+    });
+
+    it('passes the typed term to the board, debounced', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        useLeaderboard.mockReturnValue(board());
+        usePlayerLeaderboard.mockReturnValue(emptyResult);
+
+        renderBoard();
+        await userEvent.type(screen.getByRole('searchbox', { name: /search pets/i }), 'Yas');
+
+        // Nothing yet: a round trip per keystroke is what the debounce exists to avoid.
+        expect(useLeaderboard).not.toHaveBeenCalledWith(expect.objectContaining({ search: 'Yas' }));
+
+        await act(async () => {
+            vi.advanceTimersByTime(300);
+        });
+        expect(useLeaderboard).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'Yas' }));
+        vi.useRealTimers();
+    });
+
+    it('says nothing matched, rather than that the board is empty', () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        useLeaderboard.mockReturnValue(board({ entries: [], total: 0 }));
+        usePlayerLeaderboard.mockReturnValue(emptyResult);
+
+        renderBoard();
+        fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'nobody' } });
+        act(() => {
+            vi.advanceTimersByTime(300);
+        });
+
+        expect(screen.getByText('Nothing on the board matches "nobody".')).toBeInTheDocument();
+        expect(screen.queryByText(/No battles on record yet/)).toBeNull();
+        vi.useRealTimers();
+    });
+
+    // The boards search different things, so a pet name handed to the player board could
+    // only ever match nothing.
+    it('clears the term when the other board is opened', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        useLeaderboard.mockReturnValue(board());
+        usePlayerLeaderboard.mockReturnValue(board());
+
+        renderBoard();
+        const box = screen.getByRole('searchbox');
+        fireEvent.change(box, { target: { value: 'Yasu' } });
+        act(() => {
+            vi.advanceTimersByTime(300);
+        });
+
+        await userEvent.click(screen.getByRole('tab', { name: 'Players' }));
+
+        expect(screen.getByRole('searchbox')).toHaveValue('');
+        expect(usePlayerLeaderboard).toHaveBeenLastCalledWith(
+            expect.objectContaining({ search: '' }),
+        );
+        vi.useRealTimers();
     });
 });

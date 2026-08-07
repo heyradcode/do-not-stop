@@ -61,6 +61,8 @@ export interface FindLeaderboardParams {
     chain: Chain;
     page: number;
     pageSize: number;
+    /** Filters the board without renumbering it; see `contains`. */
+    search?: string | undefined;
 }
 
 /** The projected columns, before the rank is attached. */
@@ -104,6 +106,22 @@ const HAS_FOUGHT = Prisma.sql`${WINS} + ${LOSSES} > 0`;
  * from a handful of fights.
  */
 const petOrder = Prisma.sql`${WINS} DESC, ${LOSSES} ASC, ${LEVEL} DESC, r.pet_id ASC`;
+
+/**
+ * A search term as a case-insensitive contains-match, or nothing at all.
+ *
+ * `TRUE` for a blank term rather than a second query: an unfiltered board is the same
+ * shape as a filtered one, and branching would double every query below.
+ *
+ * `%` and `_` are escaped because they are wildcards to `ILIKE` — a player searching for
+ * a pet actually named `100%` should not match every pet on the board.
+ */
+function contains(column: Prisma.Sql, term: string | undefined): Prisma.Sql {
+    const needle = term?.trim();
+    if (!needle) return Prisma.sql`TRUE`;
+    const escaped = needle.replace(/[\\%_]/g, (char) => `\\${char}`);
+    return Prisma.sql`${column} ILIKE ${`%${escaped}%`} ESCAPE '\\'`;
+}
 const playerOrder = (owner: Prisma.Sql) =>
     Prisma.sql`SUM(${WINS}) DESC, SUM(${LOSSES}) ASC, ${owner} ASC`;
 
@@ -113,31 +131,42 @@ export async function findPetLeaderboard(
 ): Promise<{ entries: LeaderboardEntry[]; total: number }> {
     const join = progressJoin(servedChainIdForFamily(params.chain));
     const skip = params.page * params.pageSize;
+    const match = contains(Prisma.sql`r.name`, params.search);
+
+    /**
+     * Ranked first, filtered second.
+     *
+     * The rank is a position on the whole board, so it has to be assigned before any
+     * search narrows the rows — otherwise a pet's rank would change depending on what
+     * someone typed, and "where does Yasu sit" is the question a search here is asked.
+     * That is why it comes from `ROW_NUMBER` rather than from the offset, which only ever
+     * described an unfiltered page.
+     */
+    const ranked = Prisma.sql`
+        SELECT r.chain, r.pet_id AS "petId", r.owner, r.name, r.rarity, r.dna, r.asset,
+               ${LEVEL} AS level, ${WINS} AS "winCount", ${LOSSES} AS "lossCount",
+               ROW_NUMBER() OVER (ORDER BY ${petOrder})::int AS rank
+        FROM pet_roster r
+        ${join}
+        WHERE r.chain = ${params.chain} AND ${HAS_FOUGHT}
+    `;
 
     const [rows, counted] = await Promise.all([
-        prisma.$queryRaw<RankedRow[]>`
-            SELECT r.chain, r.pet_id AS "petId", r.owner, r.name, r.rarity, r.dna, r.asset,
-                   ${LEVEL} AS level, ${WINS} AS "winCount", ${LOSSES} AS "lossCount"
-            FROM pet_roster r
-            ${join}
-            WHERE r.chain = ${params.chain} AND ${HAS_FOUGHT}
-            ORDER BY ${petOrder}
+        prisma.$queryRaw<(RankedRow & { rank: number })[]>`
+            SELECT * FROM (${ranked}) ranked
+            WHERE ${match}
+            ORDER BY rank
             LIMIT ${params.pageSize} OFFSET ${skip}
         `,
+        // Counted after the filter, since it drives the pager over the matches rather
+        // than over the board.
         prisma.$queryRaw<{ total: bigint }[]>`
-            SELECT COUNT(*) AS total
-            FROM pet_roster r
-            ${join}
-            WHERE r.chain = ${params.chain} AND ${HAS_FOUGHT}
+            SELECT COUNT(*) AS total FROM (${ranked}) ranked WHERE ${match}
         `,
     ]);
 
     return {
-        entries: rows.map((row, index) => ({
-            ...row,
-            chain: row.chain as Chain,
-            rank: skip + index + 1,
-        })),
+        entries: rows.map((row) => ({ ...row, chain: row.chain as Chain })),
         total: Number(counted[0]?.total ?? 0),
     };
 }
@@ -154,38 +183,42 @@ export async function findPlayerLeaderboard(
     const join = progressJoin(servedChainIdForFamily(params.chain));
     const owner = ownerKey(params.chain, 'r');
     const skip = params.page * params.pageSize;
+    const match = contains(Prisma.sql`ranked.owner`, params.search);
 
     // The SUMs are cast because Postgres widens them to bigint, which Prisma would hand
     // back as a BigInt the GraphQL Int serializer cannot take. A player's battle count has
     // no way to approach the int range.
+    //
+    // Ranked before filtered, for the same reason as the pet board: a rank describes a
+    // position on the whole board, not within someone's search.
+    const ranked = Prisma.sql`
+        SELECT ${owner} AS owner,
+               SUM(${WINS})::int AS "winCount",
+               SUM(${LOSSES})::int AS "lossCount",
+               COUNT(*)::int AS "petCount",
+               ROW_NUMBER() OVER (ORDER BY ${playerOrder(owner)})::int AS rank
+        FROM pet_roster r
+        ${join}
+        WHERE r.chain = ${params.chain} AND ${HAS_FOUGHT}
+        GROUP BY ${owner}
+    `;
+
     const [rows, counted] = await Promise.all([
-        prisma.$queryRaw<PlayerRow[]>`
-            SELECT ${owner} AS owner,
-                   SUM(${WINS})::int AS "winCount",
-                   SUM(${LOSSES})::int AS "lossCount",
-                   COUNT(*)::int AS "petCount"
-            FROM pet_roster r
-            ${join}
-            WHERE r.chain = ${params.chain} AND ${HAS_FOUGHT}
-            GROUP BY ${owner}
-            ORDER BY ${playerOrder(owner)}
+        prisma.$queryRaw<(PlayerRow & { rank: number })[]>`
+            SELECT * FROM (${ranked}) ranked
+            WHERE ${match}
+            ORDER BY rank
             LIMIT ${params.pageSize} OFFSET ${skip}
         `,
         // Counts grouped owners, not joined pet rows: COUNT(*) over the ungrouped join
         // would count pets and page the client past the last owner.
         prisma.$queryRaw<{ total: bigint }[]>`
-            SELECT COUNT(*) AS total FROM (
-                SELECT 1
-                FROM pet_roster r
-                ${join}
-                WHERE r.chain = ${params.chain} AND ${HAS_FOUGHT}
-                GROUP BY ${owner}
-            ) owners
+            SELECT COUNT(*) AS total FROM (${ranked}) ranked WHERE ${match}
         `,
     ]);
 
     return {
-        entries: rows.map((row, index) => ({ ...row, rank: skip + index + 1 })),
+        entries: rows,
         total: Number(counted[0]?.total ?? 0),
     };
 }

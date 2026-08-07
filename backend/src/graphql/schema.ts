@@ -137,6 +137,8 @@ export const schema = buildSchema(`
             chain: String!
             page: Int
             pageSize: Int
+            "Case-insensitive substring of the pet's name. Ranks stay absolute: a match keeps its position on the full board rather than being renumbered within the results."
+            search: String
         ): LeaderboardPage!
 
         """
@@ -148,6 +150,8 @@ export const schema = buildSchema(`
             chain: String!
             page: Int
             pageSize: Int
+            "Case-insensitive substring of the owner's address. Ranks stay absolute, as on the pet board."
+            search: String
         ): PlayerLeaderboardPage!
 
         """

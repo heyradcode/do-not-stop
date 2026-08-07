@@ -23,6 +23,7 @@ import {
 import { prisma } from '@config/prisma';
 
 const rankedRow = {
+    rank: 1,
     chain: 'evm',
     petId: '7',
     owner: '0xowner',
@@ -94,13 +95,47 @@ describe('findPetLeaderboard', () => {
         expect(result.entries[0].rank).toBe(1);
     });
 
-    it('numbers ranks absolutely, continuing across pages', async () => {
-        // A rank that restarted at 1 on every page would say the 21st pet is the best one.
-        mockJoinQuery([rankedRow, { ...rankedRow, petId: '8' }], 42);
+    // The rank moved into the query when search arrived: it has to be assigned over the
+    // whole board *before* a filter narrows it, which an offset cannot do. These two say
+    // the repository reports what the query ranked and never recomputes it.
+    it('reports the rank the query assigned', async () => {
+        mockJoinQuery([{ ...rankedRow, rank: 41 }, { ...rankedRow, petId: '8', rank: 42 }], 42);
 
         const result = await findPetLeaderboard({ chain: 'evm', page: 2, pageSize: 20 });
 
         expect(result.entries.map((entry) => entry.rank)).toEqual([41, 42]);
+    });
+
+    it('ranks over the whole board before any search narrows it', async () => {
+        mockJoinQuery([], 0);
+
+        await findPetLeaderboard({ chain: 'evm', page: 0, pageSize: 20, search: 'Rex' });
+
+        const sql = sqlOfCall(0);
+        // The window sits inside the subquery, the filter outside it. The other way round
+        // would renumber the matches from one and a pet's rank would depend on what
+        // somebody typed.
+        const ranking = sql.indexOf('ROW_NUMBER() OVER');
+        const filtering = sql.indexOf('ILIKE');
+        expect(ranking).toBeGreaterThan(-1);
+        expect(filtering).toBeGreaterThan(ranking);
+    });
+
+    it('counts the matches, not the board, so the pager fits the search', async () => {
+        mockJoinQuery([], 0);
+
+        await findPetLeaderboard({ chain: 'evm', page: 0, pageSize: 20, search: 'Rex' });
+
+        expect(sqlOfCall(1)).toContain('ILIKE');
+    });
+
+    it('leaves the board unfiltered when nothing is searched for', async () => {
+        mockJoinQuery([], 0);
+
+        await findPetLeaderboard({ chain: 'evm', page: 0, pageSize: 20, search: '   ' });
+
+        // A blank term is `TRUE`, not a second query shape.
+        expect(sqlOfCall(0)).not.toContain('ILIKE');
     });
 
     it('ranks on the merged battle record, not the frozen roster counters', async () => {
@@ -147,7 +182,7 @@ describe('findPetLeaderboard', () => {
 });
 
 describe('findPlayerLeaderboard', () => {
-    const playerRow = { owner: '0xowner', winCount: 20, lossCount: 4, petCount: 3 };
+    const playerRow = { rank: 1, owner: '0xowner', winCount: 20, lossCount: 4, petCount: 3 };
 
     it('returns the ranked owners and their total', async () => {
         mockJoinQuery([playerRow], 1);
@@ -158,12 +193,21 @@ describe('findPlayerLeaderboard', () => {
         expect(result.entries[0]).toMatchObject({ owner: '0xowner', rank: 1, petCount: 3 });
     });
 
-    it('numbers ranks absolutely, continuing across pages', async () => {
-        mockJoinQuery([playerRow, { ...playerRow, owner: '0xother' }], 30);
+    it('reports the rank the query assigned', async () => {
+        mockJoinQuery([{ ...playerRow, rank: 21 }, { ...playerRow, owner: '0xother', rank: 22 }], 30);
 
         const result = await findPlayerLeaderboard({ chain: 'evm', page: 1, pageSize: 20 });
 
         expect(result.entries.map((entry) => entry.rank)).toEqual([21, 22]);
+    });
+
+    it('ranks over the whole board before a search narrows it', async () => {
+        mockJoinQuery([], 0);
+
+        await findPlayerLeaderboard({ chain: 'evm', page: 0, pageSize: 20, search: '0xowner' });
+
+        const sql = sqlOfCall(0);
+        expect(sql.indexOf('ILIKE')).toBeGreaterThan(sql.indexOf('ROW_NUMBER() OVER'));
     });
 
     it('folds EVM owners to one group so a wallet is not listed twice', async () => {

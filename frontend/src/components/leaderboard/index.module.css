@@ -209,3 +209,39 @@
         display: none;
     }
 }
+
+/* Search. One box for whichever board is showing — the two search different things, so
+   the placeholder says which, and switching boards clears it. */
+.search {
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.search input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid rgb(148 163 184 / 25%);
+    border-radius: 8px;
+    background: rgb(4 10 26 / 96%);
+    color: inherit;
+    font: inherit;
+    font-size: 0.9rem;
+    caret-color: var(--cp-amber);
+}
+
+.search input::placeholder {
+    color: rgb(195 210 255 / 35%);
+    font-style: italic;
+}
+
+.search input:hover {
+    border-color: rgb(255 207 112 / 40%);
+}
+
+.search input:focus {
+    outline: none;
+    border-color: var(--cp-amber);
+    box-shadow: 0 0 0 2px rgb(255 207 112 / 30%);
+}

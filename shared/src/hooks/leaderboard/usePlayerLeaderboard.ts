@@ -4,8 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import type { PetChain } from '../../types/pet';
 
 const PLAYER_LEADERBOARD_QUERY = `
-    query PlayerLeaderboard($chain: String!, $page: Int, $pageSize: Int) {
-        playerLeaderboard(chain: $chain, page: $page, pageSize: $pageSize) {
+    query PlayerLeaderboard($chain: String!, $page: Int, $pageSize: Int, $search: String) {
+        playerLeaderboard(chain: $chain, page: $page, pageSize: $pageSize, search: $search) {
             entries { rank owner winCount lossCount petCount }
             total page pageSize
         }
@@ -41,6 +41,12 @@ export interface UsePlayerLeaderboardOptions {
     chain: PetChain | null;
     /** Zero-based page index. */
     page?: number;
+    /**
+     * Narrows the board to matching rows. Ranks are unaffected: a match keeps its place
+     * on the full board, so searching answers "where does this sit" rather than
+     * renumbering the results from one.
+     */
+    search?: string;
     enabled?: boolean;
 }
 
@@ -63,6 +69,7 @@ export interface UsePlayerLeaderboardResult {
 export const usePlayerLeaderboard = ({
     chain,
     page = 0,
+    search,
     enabled = true,
 }: UsePlayerLeaderboardOptions): UsePlayerLeaderboardResult => {
     const apiClient = useApiClient();
@@ -70,12 +77,12 @@ export const usePlayerLeaderboard = ({
     const baseURL = apiClient.defaults.baseURL ?? '';
 
     const query = useQuery({
-        queryKey: ['playerLeaderboard', baseURL, chain, page],
+        queryKey: ['playerLeaderboard', baseURL, chain, page, search ?? ''],
         enabled: enabled && chain != null && isAuthenticated,
         queryFn: async () => {
             const { data } = await apiClient.post<GraphQLResponse>('/graphql', {
                 query: PLAYER_LEADERBOARD_QUERY,
-                variables: { chain, page },
+                variables: { chain, page, search },
             });
 
             if (data.errors?.length) {
