@@ -164,3 +164,60 @@ describe('Leaderboard', () => {
         expect(screen.getByText('backend unreachable')).toBeInTheDocument();
     });
 });
+
+
+describe('Leaderboard pagination', () => {
+    const board = (total: number, page = 0) => ({
+        entries: [petEntry({ rank: page * 20 + 1 })],
+        total,
+        pageSize: 20,
+        isLoading: false,
+        error: null,
+    });
+
+    // The old pager hid itself whenever everything fit, which left a reader unable to
+    // tell a short board from a truncated one.
+    it('states the range even when there is only one page', () => {
+        useLeaderboard.mockReturnValue(board(4));
+        usePlayerLeaderboard.mockReturnValue(emptyResult);
+
+        renderBoard();
+
+        expect(screen.getByText('1–4 of 4')).toBeInTheDocument();
+        expect(screen.queryByRole('navigation', { name: 'Leaderboard pages' })).toBeNull();
+    });
+
+    it('offers a numbered page per page and jumps straight to one', async () => {
+        useLeaderboard.mockReturnValue(board(65));
+        usePlayerLeaderboard.mockReturnValue(emptyResult);
+
+        renderBoard();
+        const nav = screen.getByRole('navigation', { name: 'Leaderboard pages' });
+
+        // 65 rows at 20 a page is four pages, and the first is the one you are on.
+        expect(within(nav).getByRole('button', { name: 'Page 1' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(within(nav).getByRole('button', { name: 'Page 4' })).toBeInTheDocument();
+
+        await userEvent.click(within(nav).getByRole('button', { name: 'Page 3' }));
+
+        // The hook is asked for the page that was pressed, not the next one along.
+        expect(useLeaderboard).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }));
+    });
+
+    it('keeps both ends reachable on a long board', () => {
+        useLeaderboard.mockReturnValue(board(1000));
+        usePlayerLeaderboard.mockReturnValue(emptyResult);
+
+        renderBoard();
+        const nav = screen.getByRole('navigation', { name: 'Leaderboard pages' });
+
+        // Fifty pages, but a fixed-width strip: the ends, the neighbours, and a gap.
+        expect(within(nav).getByRole('button', { name: 'Page 1' })).toBeInTheDocument();
+        expect(within(nav).getByRole('button', { name: 'Page 50' })).toBeInTheDocument();
+        expect(within(nav).queryByRole('button', { name: 'Page 25' })).toBeNull();
+        expect(within(nav).getAllByRole('button').length).toBeLessThan(10);
+    });
+});

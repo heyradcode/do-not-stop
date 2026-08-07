@@ -64,6 +64,87 @@ const Row: React.FC<{
 };
 
 /**
+ * Page numbers to render, with `null` standing for a gap.
+ *
+ * The ends and the current page's neighbours, so the strip stays a fixed width however
+ * long the board grows: page 1 and the last page are always reachable in one press, which
+ * is what people actually jump to.
+ */
+function pageSlots(page: number, lastPage: number): (number | null)[] {
+    if (lastPage <= 6) return Array.from({ length: lastPage + 1 }, (_, index) => index);
+
+    const wanted = [0, lastPage, page - 1, page, page + 1];
+    const shown = [...new Set(wanted)].filter((n) => n >= 0 && n <= lastPage).sort((a, b) => a - b);
+
+    return shown.flatMap((n, index) => {
+        const previous = shown[index - 1];
+        if (previous === undefined || n - previous === 1) return [n];
+        // A gap of exactly one is written out rather than elided: an ellipsis costs the
+        // same space as the single number it would hide.
+        return n - previous === 2 ? [n - 1, n] : [null, n];
+    });
+}
+
+/**
+ * The range summary and page controls.
+ *
+ * The summary shows even on a single page. Hiding the whole thing when everything fits —
+ * which is what this did — leaves a reader unable to tell a short board from a truncated
+ * one, and makes the feature look absent right up until the day it matters.
+ */
+const Pager: React.FC<{
+    page: number;
+    lastPage: number;
+    pageSize: number;
+    total: number;
+    onGo: (page: number) => void;
+}> = ({ page, lastPage, pageSize, total, onGo }) => {
+    const first = page * pageSize + 1;
+    const last = Math.min(total, (page + 1) * pageSize);
+
+    return (
+        <div className={styles.pager}>
+            <span className={styles.pageLabel}>
+                {first}–{last} of {total}
+            </span>
+
+            {lastPage > 0 && (
+                <nav className={styles.pageNav} aria-label="Leaderboard pages">
+                    <button type="button" onClick={() => onGo(page - 1)} disabled={page === 0}>
+                        ←
+                    </button>
+                    {pageSlots(page, lastPage).map((slot, index) =>
+                        slot === null ? (
+                            <span key={`gap-${index}`} className={styles.pageGap} aria-hidden>
+                                …
+                            </span>
+                        ) : (
+                            <button
+                                key={slot}
+                                type="button"
+                                className={slot === page ? styles.isCurrent : undefined}
+                                aria-current={slot === page ? 'page' : undefined}
+                                aria-label={`Page ${slot + 1}`}
+                                onClick={() => onGo(slot)}
+                            >
+                                {slot + 1}
+                            </button>
+                        ),
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => onGo(page + 1)}
+                        disabled={page >= lastPage}
+                    >
+                        →
+                    </button>
+                </nav>
+            )}
+        </div>
+    );
+};
+
+/**
  * Leaderboard view: pets ranked by battle record, and their owners ranked by the same
  * record summed.
  *
@@ -191,27 +272,13 @@ const Leaderboard: React.FC = () => {
                                   ))}
                         </ol>
 
-                        {lastPage > 0 && (
-                            <div className={styles.pager}>
-                                <button
-                                    type="button"
-                                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                                    disabled={page === 0}
-                                >
-                                    ← Prev
-                                </button>
-                                <span className={styles.pageLabel}>
-                                    Page {page + 1} of {lastPage + 1}
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => setPage((p) => Math.min(lastPage, p + 1))}
-                                    disabled={page >= lastPage}
-                                >
-                                    Next →
-                                </button>
-                            </div>
-                        )}
+                        <Pager
+                            page={page}
+                            lastPage={lastPage}
+                            pageSize={active.pageSize}
+                            total={active.total}
+                            onGo={setPage}
+                        />
                     </>
                 )}
             </DashboardPanel>
