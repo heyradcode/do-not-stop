@@ -159,6 +159,11 @@ export {
     type UseItemResult,
     type UseUseItemResult,
 } from './inventory/useUseItem';
+// Equipping is a chain write the player signs, so it goes through its own adapter rather
+// than ChainAdapter: AGENTS.md forbids growing that interface, and §4 names this case.
+export { useEquipItem, type UseEquipItemOptions, type UseEquipItemResult } from './inventory/useEquipItem';
+export { useInventoryAdapter } from './adapters/useInventoryAdapter';
+export type { EquipArgs, InventoryAdapter, UnequipArgs } from './adapters/inventoryTypes';
 export {
     describeItemEffect,
     ITEM_CATEGORIES,

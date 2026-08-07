@@ -10,6 +10,9 @@ export const petsContractParams: PetsEvmConfig = {
     petCore: evmContracts.petCore,
     gameLogic: evmContracts.gameLogic,
     gameConfig: evmContracts.gameConfig,
+    // Undefined unless VITE_ITEMCORE_ADDRESS is set: no deployment to fall back to yet, so
+    // equipping stays unavailable rather than pointing at a wrong address.
+    itemCore: evmContracts.itemCore,
     enabled: true,
     chainId: evmChainId,
 };
