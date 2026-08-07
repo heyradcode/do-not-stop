@@ -1,5 +1,11 @@
 /* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
-   Private chat: thread rail plus one conversation, magenta accent to match marriage. */
+   Private chat: thread rail plus one conversation.
+
+   Violet is the page's accent, not the magenta the marriage panels use. Chat borrowed
+   that wholesale and every surface ran hot at once — bubbles, avatars, chips, the send
+   button. Violet is the same neon family a step cooler, carried at low alpha so the pet
+   art is the one saturated thing on screen; the faces are what the page is for. Cyan
+   stays reserved for signals that must not read as decoration: the seen receipt. */
 
 /* The messaging panel is the one screen that should end at the bottom of the window
    rather than at the bottom of its content.
@@ -58,8 +64,8 @@
 }
 
 .threadButton.isActive {
-    border-color: rgb(255 123 203 / 55%);
-    background: rgb(255 123 203 / 8%);
+    border-color: rgb(181 140 255 / 45%);
+    background: rgb(181 140 255 / 7%);
 }
 
 .threadName {
@@ -200,7 +206,7 @@
 }
 
 .message.isMine .bubble {
-    background: rgb(255 123 203 / 16%);
+    background: rgb(181 140 255 / 13%);
 }
 
 /* The pet behind each side of the thread. Round, because that is what reads as a
@@ -221,7 +227,7 @@
     line-height: 1;
     border-radius: 50%;
     overflow: hidden;
-    background: radial-gradient(circle at 50% 45%, rgb(255 123 203 / 18%), transparent 68%);
+    background: radial-gradient(circle at 50% 45%, rgb(181 140 255 / 14%), transparent 68%);
 }
 
 .messageFace img {
@@ -285,14 +291,14 @@
     overflow-y: auto;
     line-height: 1.4;
     scrollbar-width: thin;
-    scrollbar-color: rgb(255 123 203 / 35%) transparent;
+    scrollbar-color: rgb(181 140 255 / 28%) transparent;
 }
 
 .composer button {
     padding: 8px 16px;
     border-radius: 8px;
-    border: 1px solid rgb(255 123 203 / 45%);
-    background: rgb(255 123 203 / 12%);
+    border: 1px solid rgb(181 140 255 / 38%);
+    background: rgb(181 140 255 / 10%);
     color: inherit;
     font: inherit;
     font-size: 0.85rem;
@@ -407,8 +413,8 @@
 
 /* Your own reaction reads as pressed, because tapping it again is what takes it off. */
 .reactionChip.isMineReaction {
-    border-color: rgb(255 123 203 / 55%);
-    background: rgb(255 123 203 / 16%);
+    border-color: rgb(181 140 255 / 45%);
+    background: rgb(181 140 255 / 13%);
 }
 
 .reactionCount {

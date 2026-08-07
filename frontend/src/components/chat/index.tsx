@@ -508,7 +508,7 @@ const Chat: React.FC = () => {
     const goBack = () => navigate(DASHBOARD_HOME);
     const heading = (
         <>
-            <Icon as={MarriageIcon} tone={Tones.Magenta} />
+            <Icon as={MarriageIcon} tone={Tones.Violet} />
             Messages
         </>
     );
@@ -518,7 +518,7 @@ const Chat: React.FC = () => {
             title={heading}
             connectPrompt="Connect your wallet to see your conversations"
             signInPrompt="Sign in to open your conversations"
-            tone="magenta"
+            tone="violet"
             back={goBack}
         >
             <DashboardPanel
