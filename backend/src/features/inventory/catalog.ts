@@ -1,3 +1,11 @@
+import {
+    ITEM_CATEGORIES,
+    type ItemCategory,
+    type ItemEffect,
+    type SlotName,
+    type StatBonus,
+} from '@shared/core/node';
+
 /**
  * The item catalog's shape and its validation (roadmap §4).
  *
@@ -12,42 +20,19 @@
  * expensive to discover in production, and none of them need a connection to check.
  */
 
-/** Equip slots, mirroring ItemCore.SLOT_*. The contract is authoritative. */
-export const SLOT = { weapon: 0, armor: 1, trinket: 2 } as const;
-export type SlotName = keyof typeof SLOT;
-
-export const ITEM_CATEGORIES = ['consumable', 'equipment', 'collectible', 'material'] as const;
-export type ItemCategory = (typeof ITEM_CATEGORIES)[number];
-
-/**
- * Flat, non-negative additions to a pet's extracted attributes.
- *
- * Non-negative and additive only in v1, which §4 recommends and which also removes a
- * real hazard: the engine truncates to 16 bits with wraparound rather than clamping, so
- * a negative modifier is one underflow away from a pet with 65,000 HP. A multiplicative
- * or conditional effect system is a v2 of the equipment model, not a field added here.
- */
-export interface StatBonus {
-    kind: 'stat_bonus';
-    hp: number;
-    atk: number;
-    def: number;
-    int: number;
-    mdef: number;
-}
-
-/**
- * Every effect v1 can actually apply.
- *
- * Breeding cooldowns are deliberately absent. They live in on-chain state, and clearing
- * one means an authorized `PetCore.triggerBreedCooldown` call the inventory feature does
- * not have and should not quietly acquire. A fertility charm is a real item to build, with
- * that authorization as its first step, rather than a catalog entry that errors on use.
- */
-export type ItemEffect =
-    | StatBonus
-    | { kind: 'grant_xp'; amount: number }
-    | { kind: 'clear_battle_cooldown' };
+// The vocabulary itself lives in `@shared/core/node`, not here. Both this server and every
+// client have to agree on what an effect is, and the way they agree is by importing one
+// declaration: a second copy would drift the first time an effect kind was added, and the
+// symptom would be a client rendering nothing rather than an error anyone notices. This
+// module owns the *rules* about that vocabulary, which is a separate job.
+export {
+    ITEM_CATEGORIES,
+    SLOT,
+    type ItemCategory,
+    type ItemEffect,
+    type SlotName,
+    type StatBonus,
+} from '@shared/core/node';
 
 /** One catalog entry, as authored. */
 export interface ItemDefinitionSeed {
