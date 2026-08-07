@@ -67,5 +67,8 @@ export const DEFENSE_PATH = '/defense';
 /** Read-only view, not an interaction — no pet selection, nothing to sign. */
 export const LEADERBOARD_PATH = '/leaderboard';
 
+/** Standalone inventory screen (roadmap §4). */
+export const INVENTORY_PATH = '/inventory';
+
 /** Private chat with married-pet counterparts. Also not an interaction. */
 export const MESSAGES_PATH = '/messages';

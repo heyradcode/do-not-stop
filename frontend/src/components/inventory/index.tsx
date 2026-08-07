@@ -1,0 +1,252 @@
+import React, { useMemo, useState } from 'react';
+import clsx from 'clsx';
+import { useNavigate } from 'react-router-dom';
+import {
+    describeItemEffect,
+    getRarityColor,
+    getRarityName,
+    SLOT_NAMES,
+    useChainCapabilities,
+    useInventory,
+    usePendingItems,
+    useSpendItem,
+    usePetList,
+    type ItemDefinition,
+} from '@shared/core';
+
+import DashboardPanel from '@components/common/dashboard-panel';
+import SessionGate from '@components/common/session-gate';
+import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { Tones } from '@constants/tones';
+import styles from './index.module.css';
+
+/**
+ * The bag (roadmap §4).
+ *
+ * Grouped by category rather than shown as one flat grid, because the categories are not
+ * a taxonomy imposed on the items — they are what a player can *do* with one. A consumable
+ * has a button, a piece of equipment goes on a pet somewhere else, and a collectible does
+ * nothing at all. Sorting those together would make the screen's only question ("what can
+ * I use?") the hardest one to answer.
+ *
+ * Rarity colour comes from `getRarityColor`, the same function the pet cards use, so the
+ * five tiers mean one thing across the app rather than two.
+ */
+
+/** Display order: what you can act on first, what merely accumulates last. */
+const CATEGORY_ORDER = ['consumable', 'equipment', 'collectible', 'material'] as const;
+
+const CATEGORY_LABELS: Record<string, string> = {
+    consumable: 'Consumables',
+    equipment: 'Equipment',
+    collectible: 'Collectibles',
+    material: 'Materials',
+};
+
+/** A short line saying what an item does, or where it goes. */
+function itemSubtitle(item: ItemDefinition): string | null {
+    if (item.category === 'equipment' && item.slot != null) {
+        const slot = SLOT_NAMES[item.slot];
+        const bonus = describeItemEffect(item.effect);
+        return bonus ? `${slot ?? 'gear'} · ${bonus}` : (slot ?? null);
+    }
+    return describeItemEffect(item.effect);
+}
+
+const ItemCard: React.FC<{
+    item: ItemDefinition;
+    quantity: string;
+    action?: React.ReactNode;
+}> = ({ item, quantity, action }) => {
+    const subtitle = itemSubtitle(item);
+    return (
+        <article
+            className={styles.card}
+            style={{ '--rarity': getRarityColor(item.rarity) } as React.CSSProperties}
+        >
+            <header className={styles.cardHead}>
+                <h3 className={styles.cardName}>{item.name}</h3>
+                {/* Rendered even at one, so a stack of one and a stack of nine read the
+                    same shape rather than the badge appearing to mean something. */}
+                <span className={styles.quantity}>×{quantity}</span>
+            </header>
+            <p className={styles.rarity}>{getRarityName(item.rarity)}</p>
+            {subtitle ? <p className={styles.effect}>{subtitle}</p> : null}
+            <p className={styles.description}>{item.description}</p>
+            {action ? <div className={styles.cardAction}>{action}</div> : null}
+        </article>
+    );
+};
+
+const Inventory: React.FC = () => {
+    const navigate = useNavigate();
+    const back = () => navigate(DASHBOARD_HOME);
+    // `activeKind` is the PetChain value (null when disconnected); `kind` is the adapter's
+    // own discriminator and is not what these queries take.
+    const { activeKind: chain } = useChainCapabilities();
+
+    const { entries, isLoading, error, refetch } = useInventory({ chain });
+    const { pending, claim, claimingId, claimError } = usePendingItems(chain);
+    const { pets } = usePetList();
+    const { spend, isPending: isSpending, error: spendError } = useSpendItem();
+
+    /**
+     * Which pet a consumable applies to.
+     *
+     * A single selection for the whole screen rather than one per card. Using an item is
+     * "give this to that pet", and asking again on every card would make a one-click action
+     * a two-step one every time.
+     */
+    const [petId, setPetId] = useState<string | null>(null);
+    const selectedPet = petId ?? (pets[0] ? String(pets[0].id) : null);
+
+    const grouped = useMemo(() => {
+        const byCategory = new Map<string, typeof entries>();
+        for (const entry of entries) {
+            const bucket = byCategory.get(entry.item.category);
+            if (bucket) {
+                bucket.push(entry);
+            } else {
+                byCategory.set(entry.item.category, [entry]);
+            }
+        }
+        return CATEGORY_ORDER.map((category) => ({
+            category,
+            label: CATEGORY_LABELS[category] ?? category,
+            items: byCategory.get(category) ?? [],
+        })).filter((group) => group.items.length > 0);
+    }, [entries]);
+
+    const failure = (error ?? spendError ?? claimError) as Error | null;
+
+    return (
+        <SessionGate
+            title="Inventory"
+            connectPrompt="Connect your wallet to see what you are carrying."
+            signInPrompt="Sign in to load your items."
+            tone={Tones.Amber}
+            back={back}
+        >
+            <DashboardPanel
+                title="Inventory"
+                description="Everything your wallet is carrying."
+                back={back}
+                className={styles.page}
+                actions={
+                    <button type="button" className={styles.refresh} onClick={refetch}>
+                        Refresh
+                    </button>
+                }
+            >
+                {failure ? (
+                    <p className={styles.error} role="alert">
+                        {failure.message}
+                    </p>
+                ) : null}
+
+                {pending.length > 0 ? (
+                    <section className={styles.pending} aria-labelledby="pending-heading">
+                        <h2 id="pending-heading" className={styles.sectionTitle}>
+                            Waiting to be claimed
+                        </h2>
+                        {/* Its own strip above the bag, because these are not items yet:
+                            claiming is what mints them, and until then there is nothing on
+                            chain to spend. */}
+                        <ul className={styles.pendingList}>
+                            {pending.map((entry) => (
+                                <li key={entry.entitlementId} className={styles.pendingRow}>
+                                    <span
+                                        className={styles.pendingDot}
+                                        style={{ background: getRarityColor(entry.item.rarity) }}
+                                        aria-hidden
+                                    />
+                                    <span className={styles.pendingName}>
+                                        {entry.item.name} ×{entry.quantity}
+                                    </span>
+                                    <span className={styles.pendingSource}>
+                                        {entry.source === 'battle_drop' ? 'Battle drop' : 'Granted'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className={styles.claim}
+                                        onClick={() => void claim(entry.entitlementId)}
+                                        disabled={claimingId != null}
+                                    >
+                                        {claimingId === entry.entitlementId ? 'Claiming…' : 'Claim'}
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                ) : null}
+
+                {isLoading ? (
+                    <p className={styles.muted}>Loading your items…</p>
+                ) : grouped.length === 0 ? (
+                    <p className={styles.muted}>
+                        Nothing yet. Items drop from battles, so fight something.
+                    </p>
+                ) : (
+                    <>
+                        {pets.length > 0 ? (
+                            <label className={styles.petPicker}>
+                                <span className={styles.petPickerLabel}>Use items on</span>
+                                <select
+                                    value={selectedPet ?? ''}
+                                    onChange={(event) => setPetId(event.target.value)}
+                                >
+                                    {pets.map((pet) => (
+                                        <option key={String(pet.id)} value={String(pet.id)}>
+                                            {pet.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        ) : null}
+
+                        {grouped.map((group) => (
+                            <section key={group.category} aria-labelledby={`group-${group.category}`}>
+                                <h2 id={`group-${group.category}`} className={styles.sectionTitle}>
+                                    {group.label}
+                                </h2>
+                                <div className={styles.grid}>
+                                    {group.items.map((entry) => (
+                                        <ItemCard
+                                            key={entry.item.itemType}
+                                            item={entry.item}
+                                            quantity={entry.quantity}
+                                            action={
+                                                entry.item.category === 'consumable' && chain ? (
+                                                    <button
+                                                        type="button"
+                                                        className={clsx(styles.use, !selectedPet && styles.disabled)}
+                                                        disabled={isSpending || !selectedPet}
+                                                        onClick={() =>
+                                                            void spend({
+                                                                chain,
+                                                                petId: selectedPet!,
+                                                                itemType: entry.item.itemType,
+                                                            })
+                                                        }
+                                                    >
+                                                        {isSpending ? 'Using…' : 'Use'}
+                                                    </button>
+                                                ) : entry.item.category === 'equipment' ? (
+                                                    // Equipping is a wallet signature and
+                                                    // happens on the pet, not here.
+                                                    <span className={styles.hint}>Equip from a pet</span>
+                                                ) : null
+                                            }
+                                        />
+                                    ))}
+                                </div>
+                            </section>
+                        ))}
+                    </>
+                )}
+            </DashboardPanel>
+        </SessionGate>
+    );
+};
+
+export default Inventory;

@@ -154,14 +154,22 @@ export {
     type UsePetEquipmentResult,
 } from './inventory/usePetEquipment';
 export {
-    useUseItem,
-    type UseItemArgs,
-    type UseItemResult,
-    type UseUseItemResult,
-} from './inventory/useUseItem';
+    useSpendItem,
+    type SpendItemArgs,
+    type SpendItemResult,
+    type UseSpendItemResult,
+} from './inventory/useSpendItem';
 // Equipping is a chain write the player signs, so it goes through its own adapter rather
 // than ChainAdapter: AGENTS.md forbids growing that interface, and §4 names this case.
 export { useEquipItem, type UseEquipItemOptions, type UseEquipItemResult } from './inventory/useEquipItem';
+// Earned but unminted items, plus the claim that mints them. Separate from the bag: an
+// entitlement is a promise of an item, and nothing on chain reflects it until it is claimed.
+export {
+    usePendingItems,
+    pendingItemsQueryKey,
+    type PendingItem,
+    type UsePendingItemsResult,
+} from './inventory/usePendingItems';
 export { useInventoryAdapter } from './adapters/useInventoryAdapter';
 export type { EquipArgs, InventoryAdapter, UnequipArgs } from './adapters/inventoryTypes';
 export {

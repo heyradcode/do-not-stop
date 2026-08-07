@@ -1,0 +1,245 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+
+   Inventory: a bag, grouped by what you can do with a thing.
+
+   The grouping is the design. Categories here are not a taxonomy laid over the items, they
+   are the set of available actions: a consumable has a button, equipment goes on a pet
+   somewhere else, a collectible does nothing. Sorted together, the screen's only real
+   question — what can I use right now — becomes the hardest one to answer.
+
+   Rarity is the one colour that carries meaning, and it comes from the same
+   `getRarityColor` the pet cards use, exposed per card as `--rarity`. Amber is the page's
+   own accent, matching the sidebar entry, and never competes with a rarity: the accent
+   belongs to the chrome, the rarity to the contents. */
+
+/* Ends at the bottom of the window rather than at the bottom of its rows, so a long bag
+   scrolls inside the panel instead of pushing the page. `height: 100%` rather than a flex
+   rule, for the reason the leaderboard's stylesheet spells out: the shell's content slot
+   is a scrollable block, so a `flex` declaration on the panel is inert. */
+.page {
+    height: 100%;
+}
+
+.sectionTitle {
+    margin: 18px 0 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(251 191 36 / 75%);
+}
+
+.grid {
+    display: grid;
+    /* Auto-fill rather than a fixed column count: the bag is as wide as the window allows,
+       and a fixed grid would leave a single potion stranded in a narrow column. */
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 12px;
+}
+
+.card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 14px 14px 18px;
+    border: 1px solid rgb(255 255 255 / 8%);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 3%);
+    overflow: hidden;
+}
+
+/* The rarity reads as a stripe down the edge rather than as a border around the whole
+   card. A full border on five tiers turns a grid into a colour chart; a stripe stays
+   legible when nine of them sit side by side. */
+.card::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--rarity, rgb(255 255 255 / 20%));
+}
+
+.cardHead {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.cardName {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.quantity {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.rarity {
+    margin: 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--rarity, inherit);
+}
+
+.effect {
+    margin: 2px 0 0;
+    font-size: 0.82rem;
+    color: rgb(110 231 183 / 90%);
+}
+
+.description {
+    margin: 4px 0 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    opacity: 0.6;
+}
+
+.cardAction {
+    margin-top: 10px;
+}
+
+.use {
+    padding: 5px 14px;
+    border-radius: 999px;
+    border: 1px solid rgb(251 191 36 / 40%);
+    background: rgb(251 191 36 / 10%);
+    color: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.use:hover:not(:disabled) {
+    background: rgb(251 191 36 / 20%);
+}
+
+.use:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.disabled {
+    cursor: not-allowed;
+}
+
+.hint {
+    font-size: 0.75rem;
+    opacity: 0.45;
+}
+
+/* ─── pending claims ──────────────────────────────────────────────────────────
+   Above the bag and visually distinct from it, because these are not items yet.
+   Claiming is what mints them, and until it lands there is nothing on chain to spend. */
+
+.pending {
+    padding: 12px 14px;
+    border: 1px dashed rgb(251 191 36 / 35%);
+    border-radius: 12px;
+    background: rgb(251 191 36 / 6%);
+}
+
+.pending .sectionTitle {
+    margin-top: 0;
+}
+
+.pendingList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pendingRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pendingDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.pendingName {
+    font-size: 0.88rem;
+}
+
+.pendingSource {
+    font-size: 0.72rem;
+    opacity: 0.5;
+    /* Pushes the button to the far edge without a spacer element. */
+    margin-right: auto;
+}
+
+.claim {
+    padding: 4px 14px;
+    border-radius: 999px;
+    border: 1px solid rgb(251 191 36 / 50%);
+    background: rgb(251 191 36 / 15%);
+    color: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.claim:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ─── chrome ─────────────────────────────────────────────────────────────────── */
+
+.petPicker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 0.82rem;
+}
+
+.petPickerLabel {
+    opacity: 0.6;
+}
+
+.petPicker select {
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid rgb(255 255 255 / 15%);
+    background: rgb(0 0 0 / 30%);
+    color: inherit;
+    font: inherit;
+}
+
+.refresh {
+    padding: 4px 12px;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 15%);
+    background: transparent;
+    color: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.muted {
+    margin-top: 24px;
+    opacity: 0.6;
+    font-size: 0.9rem;
+}
+
+.error {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgb(248 113 113 / 35%);
+    background: rgb(248 113 113 / 10%);
+    font-size: 0.85rem;
+}

@@ -6,9 +6,11 @@ export {
     getCatalog,
     getEquipmentForPets,
     getInventory,
+    getPendingItems,
     getPetEquipment,
     type EquippedItem,
     type InventoryEntry,
+    type PendingItem,
     type ItemView,
 } from './inventory.service';
 export {

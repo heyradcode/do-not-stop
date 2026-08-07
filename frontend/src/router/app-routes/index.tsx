@@ -16,6 +16,7 @@ const RenamePage = lazy(() => import('@pages/rename'));
 const DefensePage = lazy(() => import('@pages/defense'));
 const LeaderboardPage = lazy(() => import('@pages/leaderboard'));
 const ChatPage = lazy(() => import('@pages/chat'));
+const InventoryPage = lazy(() => import('@pages/inventory'));
 // SCRATCH — remove after visual verification.
 const BattleOverlayPreview = lazy(() => import('@pages/__preview/battle-overlay-preview'));
 
@@ -44,6 +45,7 @@ const AppRoutes: React.FC = () => {
                     <Route path="/defense" element={<DefensePage />} />
                     <Route path="/leaderboard" element={<LeaderboardPage />} />
                     <Route path="/messages" element={<ChatPage />} />
+                    <Route path="/inventory" element={<InventoryPage />} />
                 </Route>
                 <Route path="/__preview/battle-overlay" element={<BattleOverlayPreview />} />
                 <Route path="*" element={<Navigate to="/main" replace />} />

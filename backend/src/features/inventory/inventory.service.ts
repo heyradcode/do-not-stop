@@ -6,6 +6,7 @@ import {
     findDefinitions,
     findEquipment,
     findEquipmentForPets,
+    findUnclaimedEntitlements,
     type ItemDefinitionRow,
 } from '@repositories/inventory.repository';
 
@@ -50,6 +51,51 @@ export interface InventoryEntry {
 export interface EquippedItem {
     slot: number;
     item: ItemView;
+}
+
+/** An item a wallet has earned but not yet minted. */
+export interface PendingItem {
+    entitlementId: string;
+    item: ItemView;
+    quantity: number;
+    /** 'battle_drop' | 'admin_grant'. */
+    source: string;
+    /** The battle id for a drop, so a UI can say which fight paid it. */
+    sourceRef: string;
+    createdAt: string;
+}
+
+/**
+ * What a wallet has earned but not claimed.
+ *
+ * Its own read rather than part of `getInventory`, because these are not items yet: they
+ * are a promise of one, and nothing on chain reflects them until a claim mints. Folding
+ * them into the bag would show a player a stack they cannot spend.
+ */
+export async function getPendingItems(chain: string, owner: string): Promise<PendingItem[]> {
+    const rows = await findUnclaimedEntitlements(chain, normalizeAccount(owner));
+    if (rows.length === 0) {
+        return [];
+    }
+
+    const catalog = await definitionsByType(rows.map((row) => row.itemType));
+    const pending: PendingItem[] = [];
+    for (const row of rows) {
+        const definition = catalog.get(row.itemType);
+        if (!definition) {
+            console.warn(`[inventory] entitlement ${row.id} names uncatalogued item type ${row.itemType}; hidden`);
+            continue;
+        }
+        pending.push({
+            entitlementId: row.id,
+            item: definition,
+            quantity: row.quantity,
+            source: row.source,
+            sourceRef: row.sourceRef,
+            createdAt: row.createdAt.toISOString(),
+        });
+    }
+    return pending;
 }
 
 export async function getCatalog(): Promise<ItemView[]> {

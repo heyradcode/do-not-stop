@@ -6,7 +6,7 @@ import {
     findPlayerRank,
 } from '@repositories/leaderboard.repository';
 import { tryGrpcEstimateWin } from '@grpc-client/estimateWin';
-import { getCatalog, getInventory, getPetEquipment, type ItemView } from '@features/inventory';
+import { getCatalog, getInventory, getPendingItems, getPetEquipment, type ItemView } from '@features/inventory';
 import { isSupportedChain, SUPPORTED_CHAINS } from '@typings/chain';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -70,12 +70,6 @@ export interface GraphQLContext {
 }
 
 /**
- * Project a RosterPet to the GraphQL `OpponentPet` shape: rename `petId` → `id`
- * and coerce the bigint unix-seconds cooldowns to Float (GraphQL has no bigint).
- * Shared by the opponents list and the single-pet detail read so both stay in
- * lockstep.
- */
-/**
  * Project an `ItemView` to the GraphQL `ItemDefinition` shape.
  *
  * The effect is serialized to a JSON string rather than exposed as a typed union. The
@@ -88,6 +82,12 @@ function toItemDefinition(item: ItemView) {
     return { ...item, effect: item.effect ? JSON.stringify(item.effect) : null };
 }
 
+/**
+ * Project a RosterPet to the GraphQL `OpponentPet` shape: rename `petId` → `id`
+ * and coerce the bigint unix-seconds cooldowns to Float (GraphQL has no bigint).
+ * Shared by the opponents list and the single-pet detail read so both stay in
+ * lockstep.
+ */
 function toOpponentPet({ petId: id, readyAt, breedReadyAt, trainReadyAt, ...rest }: RosterPet) {
     return {
         id,
@@ -258,6 +258,22 @@ export const rootValue = {
         return (await getInventory(args.chain, context.caller)).map((entry) => ({
             item: toItemDefinition(entry.item),
             quantity: entry.quantity,
+        }));
+    },
+
+    pendingItems: async (args: { chain: string }, context: GraphQLContext) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        // Same rule as `inventory`: an unauthenticated caller has nothing waiting rather
+        // than an error, and the owner is never an argument.
+        if (!context.caller) {
+            return [];
+        }
+        return (await getPendingItems(args.chain, context.caller)).map((pending) => ({
+            ...pending,
+            item: toItemDefinition(pending.item),
         }));
     },
 

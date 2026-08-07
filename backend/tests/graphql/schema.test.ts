@@ -24,7 +24,8 @@ describe('GraphQL schema — Query surface', () => {
     it('exposes the pet reads, both leaderboards, battleProgress, winEstimate, and the inventory reads', () => {
         expect(Object.keys(query).sort()).toEqual([
             'allPets', 'battleProgress', 'inventory', 'itemCatalog', 'leaderboard', 'opponents',
-            'pet', 'petEquipment', 'playerLeaderboard', 'playerRank', 'searchPets', 'winEstimate',
+            'pendingItems', 'pet', 'petEquipment', 'playerLeaderboard', 'playerRank', 'searchPets',
+            'winEstimate',
         ]);
     });
 

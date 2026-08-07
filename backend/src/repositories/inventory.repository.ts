@@ -68,6 +68,29 @@ export function findBalance(chain: string, owner: string, itemType: string): Pro
     });
 }
 
+export interface EntitlementRow {
+    id: string;
+    itemType: string;
+    quantity: number;
+    source: string;
+    sourceRef: string;
+    createdAt: Date;
+}
+
+/**
+ * A wallet's unclaimed entitlements, newest first.
+ *
+ * Unclaimed only. A claimed one is just an item in the bag by then, and listing both would
+ * make the same drop appear twice on a screen whose whole job is "here is what is waiting".
+ */
+export function findUnclaimedEntitlements(chain: string, owner: string): Promise<EntitlementRow[]> {
+    return prisma.itemEntitlement.findMany({
+        where: { chain, owner, claimedAt: null },
+        select: { id: true, itemType: true, quantity: true, source: true, sourceRef: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+    });
+}
+
 /** One pet's filled slots. Item type "0" means empty, so those are dropped. */
 export function findEquipment(chain: string, petId: string): Promise<EquipmentSlotRow[]> {
     return prisma.petEquipment.findMany({

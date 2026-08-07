@@ -13,7 +13,7 @@ vi.mock('../../src/contexts/AuthContext', () => ({ useAuth: () => auth }));
 import { useInventory } from '../../src/hooks/inventory/useInventory';
 import { usePetEquipment } from '../../src/hooks/inventory/usePetEquipment';
 import { useItemCatalog } from '../../src/hooks/inventory/useItemCatalog';
-import { useUseItem } from '../../src/hooks/inventory/useUseItem';
+import { useSpendItem } from '../../src/hooks/inventory/useSpendItem';
 
 /** The wire shape: `effect` is a JSON string, as the server sends it. */
 const POTION = {
@@ -165,12 +165,12 @@ describe('useItemCatalog', () => {
     });
 });
 
-describe('useUseItem', () => {
+describe('useSpendItem', () => {
     it('posts to the REST route, since the backend burns rather than the player signing', async () => {
         post.mockResolvedValue({ data: { burnTxHash: '0xburn', level: 5, xp: 0, readyAt: 0, leveledUp: true } });
-        const { result } = renderHook(() => useUseItem(), { wrapper });
+        const { result } = renderHook(() => useSpendItem(), { wrapper });
 
-        const outcome = await result.current.useItem({ chain: 'evm', petId: '7', itemType: '100' });
+        const outcome = await result.current.spend({ chain: 'evm', petId: '7', itemType: '100' });
 
         expect(post).toHaveBeenCalledWith('/api/inventory/use', { chain: 'evm', petId: '7', itemType: '100' });
         expect(outcome.leveledUp).toBe(true);
@@ -181,10 +181,10 @@ describe('useUseItem', () => {
     // that can still fail.
     it('surfaces a rejected spend rather than reporting success', async () => {
         post.mockRejectedValue(new Error('You do not hold that item'));
-        const { result } = renderHook(() => useUseItem(), { wrapper });
+        const { result } = renderHook(() => useSpendItem(), { wrapper });
 
         await expect(
-            result.current.useItem({ chain: 'evm', petId: '7', itemType: '100' }),
+            result.current.spend({ chain: 'evm', petId: '7', itemType: '100' }),
         ).rejects.toThrow('You do not hold that item');
     });
 });

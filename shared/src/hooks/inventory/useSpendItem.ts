@@ -11,7 +11,7 @@ import { inventoryQueryKey } from './useInventory';
  * the whole reason a consumable is one click and an equip is a wallet prompt.
  */
 
-export interface UseItemArgs {
+export interface SpendItemArgs {
     chain: PetChain;
     /** Pet id as a decimal string. */
     petId: string;
@@ -20,7 +20,7 @@ export interface UseItemArgs {
 }
 
 /** What the server reports back: the burn, and the pet's progression after the effect. */
-export interface UseItemResult {
+export interface SpendItemResult {
     burnTxHash: string;
     level: number;
     xp: number;
@@ -29,21 +29,26 @@ export interface UseItemResult {
     leveledUp: boolean;
 }
 
-export interface UseUseItemResult {
-    useItem(args: UseItemArgs): Promise<UseItemResult>;
+export interface UseSpendItemResult {
+    /**
+     * Named `spend` rather than `useItem`: a returned function whose name starts with
+     * `use` reads as a hook, and eslint's rules-of-hooks rejects calling one from an event
+     * handler, which is the only place this is ever called from.
+     */
+    spend(args: SpendItemArgs): Promise<SpendItemResult>;
     isPending: boolean;
     error: Error | null;
     reset(): void;
 }
 
-export const useUseItem = (): UseUseItemResult => {
+export const useSpendItem = (): UseSpendItemResult => {
     const apiClient = useApiClient();
     const queryClient = useQueryClient();
     const baseURL = apiClient.defaults.baseURL ?? '';
 
     const mutation = useMutation({
-        mutationFn: async (args: UseItemArgs) => {
-            const { data } = await apiClient.post<UseItemResult>('/api/inventory/use', args);
+        mutationFn: async (args: SpendItemArgs) => {
+            const { data } = await apiClient.post<SpendItemResult>('/api/inventory/use', args);
             return data;
         },
         // Invalidated rather than patched, and never optimistically. The burn is a
@@ -57,7 +62,7 @@ export const useUseItem = (): UseUseItemResult => {
     });
 
     return {
-        useItem: mutation.mutateAsync,
+        spend: mutation.mutateAsync,
         isPending: mutation.isPending,
         error: mutation.error as Error | null,
         reset: mutation.reset,

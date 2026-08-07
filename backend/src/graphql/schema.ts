@@ -162,6 +162,26 @@ export const schema = buildSchema(`
         item: ItemDefinition!
     }
 
+    """
+    An item a wallet has earned but not yet minted: a battle drop, or an admin grant.
+
+    Not an item yet, which is why it is its own type rather than an entry in the bag.
+    Nothing on chain reflects it until the claim mints, so folding these into the inventory
+    read would show a player a stack they cannot spend.
+    """
+    type PendingItem {
+        "Pass this to POST /api/inventory/entitlements/:id/claim."
+        entitlementId: String!
+        item: ItemDefinition!
+        quantity: Int!
+        "'battle_drop' | 'admin_grant'."
+        source: String!
+        "The battle id for a drop, so a client can say which fight paid it."
+        sourceRef: String!
+        "ISO 8601."
+        createdAt: String!
+    }
+
     type Query {
         opponents(
             chain: String!
@@ -285,5 +305,14 @@ export const schema = buildSchema(`
         checkable without making it more private.
         """
         petEquipment(chain: String!, petId: String!): [EquippedItem!]!
+
+        """
+        The caller's unclaimed items, newest first.
+
+        Owner comes from the session, as with the inventory read. Claimed entitlements are
+        omitted: by then the item is in the bag, and listing both would show one drop twice
+        on a screen whose job is "here is what is waiting".
+        """
+        pendingItems(chain: String!): [PendingItem!]!
     }
 `);
