@@ -143,6 +143,21 @@
     max-width: 78%;
     align-self: flex-start;
     display: flex;
+    /* Bottom-aligned: the face sits beside the last line of a run, where the run ends. */
+    align-items: flex-end;
+    gap: 8px;
+}
+
+/* Reversed rather than a separate rule per child: the sender's own messages put the
+   face on the same side as the bubble they belong to. */
+.message.isMine {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+}
+
+.bubble {
+    min-width: 0;
+    display: flex;
     align-items: baseline;
     gap: 8px;
     padding: 7px 11px;
@@ -150,9 +165,33 @@
     background: rgb(148 163 184 / 12%);
 }
 
-.message.isMine {
-    align-self: flex-end;
+.message.isMine .bubble {
     background: rgb(255 123 203 / 16%);
+}
+
+/* The pet behind each side of the thread. Round, because that is what reads as a
+   messenger avatar; square frames belong to the pet panels. PetArt draws at 1em, so
+   font-size is what sizes the image (see PetArt). */
+.messageFace,
+.messageFaceGap {
+    flex-shrink: 0;
+    width: 28px;
+}
+
+.messageFace {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    font-size: 1.5rem;
+    line-height: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 45%, rgb(255 123 203 / 18%), transparent 68%);
+}
+
+.messageFace img {
+    border-radius: 50%;
 }
 
 .messageText {

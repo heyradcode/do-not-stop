@@ -17,12 +17,14 @@ import { chainOfAccount, type Chain } from '@typings/chain';
 /** One current marriage involving the caller, from the caller's side. */
 export interface MarriedCounterpart {
     chain: Chain;
-    /** The caller's married pet. */
+    /** The caller's married pet. `dna` is what a client derives its art and emoji from. */
     petId: string;
     petName: string;
+    petDna: string;
     /** The spouse pet, and the wallet that owns it. */
     spousePetId: string;
     spouseName: string;
+    spouseDna: string;
     counterpart: string;
 }
 
@@ -68,8 +70,10 @@ export async function findMarriedCounterparts(caller: string): Promise<MarriedCo
         SELECT p.chain,
                p.pet_id AS "petId",
                p.name   AS "petName",
+               p.dna    AS "petDna",
                s.pet_id AS "spousePetId",
                s.name   AS "spouseName",
+               s.dna    AS "spouseDna",
                s.owner  AS counterpart
         ${where}
         ORDER BY p.pet_id ASC

@@ -38,7 +38,14 @@ export interface ChatThreadView {
     threadId: string;
     counterpart: string;
     /** The married pair behind this thread, for a UI that wants to say why it exists. */
-    pets: { petId: string; petName: string; spousePetId: string; spouseName: string }[];
+    pets: {
+        petId: string;
+        petName: string;
+        petDna: string;
+        spousePetId: string;
+        spouseName: string;
+        spouseDna: string;
+    }[];
     chain: string;
 }
 
@@ -72,8 +79,10 @@ export async function listThreads(rawCaller: string): Promise<ChatThreadView[]> 
         const pets = {
             petId: marriage.petId,
             petName: marriage.petName,
+            petDna: marriage.petDna,
             spousePetId: marriage.spousePetId,
             spouseName: marriage.spouseName,
+            spouseDna: marriage.spouseDna,
         };
 
         const seen = byCounterpart.get(counterpart);

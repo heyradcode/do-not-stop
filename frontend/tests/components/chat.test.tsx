@@ -17,6 +17,9 @@ vi.mock('@shared/core', () => ({
     useChainCapabilities: () => useChainCapabilities(),
     useChatThreads: () => useChatThreads(),
     useChatMessages: (opts: unknown) => useChatMessages(opts),
+    getPetAvatar: () => '🐉',
+    // No art service in these tests: PetArt renders the emoji alone.
+    petArtUrl: () => null,
 }));
 
 // `config.ts` registers the storage adapter with @shared/core at module scope, which the
@@ -36,7 +39,16 @@ const THEM = '0x2222222222222222222222222222222222222222';
 const thread = (over: Record<string, unknown> = {}) => ({
     threadId: 't1',
     counterpart: THEM,
-    pets: [{ petId: '1', petName: 'Mine', spousePetId: '2', spouseName: 'Theirs' }],
+    pets: [
+        {
+            petId: '1',
+            petName: 'Mine',
+            petDna: '1',
+            spousePetId: '2',
+            spouseName: 'Theirs',
+            spouseDna: '2',
+        },
+    ],
     chain: 'evm',
     ...over,
 });
@@ -126,21 +138,37 @@ describe('Chat', () => {
         expect(screen.getAllByText('Mine ♥ Theirs').length).toBeGreaterThan(0);
     });
 
-    it('separates my messages from theirs', () => {
+    it('shows one pet face per run of messages, not one per message', () => {
         useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
         useChatMessages.mockReturnValue(
             messagesResult({
-                messages: [message(), message({ id: 2, sender: ME.toLowerCase(), text: 'hi back' })],
+                messages: [
+                    message(),
+                    message({ id: 2, text: 'still me' }),
+                    message({ id: 3, sender: ME.toLowerCase(), text: 'hi back' }),
+                ],
             }),
         );
 
         renderChat();
 
         const theirs = screen.getByText('hello there').closest('li') as HTMLElement;
+        const theirsLast = screen.getByText('still me').closest('li') as HTMLElement;
         const mine = screen.getByText('hi back').closest('li') as HTMLElement;
+
         // Case differs between the wallet and the stored sender, so the sides must not
         // be decided by an exact string match.
         expect(mine.className).not.toEqual(theirs.className);
+
+        // The face lands on the last message of a run; the earlier ones hold the column
+        // with a spacer so the bubbles stay aligned.
+        expect(theirs.querySelector('.messageFace')).toBeNull();
+        expect(theirs.querySelector('.messageFaceGap')).not.toBeNull();
+        expect(theirsLast.querySelector('.messageFace')).not.toBeNull();
+        expect(mine.querySelector('.messageFace')).not.toBeNull();
+        // Each side shows its own pet.
+        expect(theirsLast.querySelector('.messageFace')).toHaveAttribute('title', 'Theirs');
+        expect(mine.querySelector('.messageFace')).toHaveAttribute('title', 'Mine');
     });
 
     it('sends the trimmed draft and clears the box', async () => {

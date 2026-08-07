@@ -5,9 +5,12 @@ import {
     useChatMessages,
     useChatThreads,
     type ChatThread,
+    type Pet,
+    type PetChain,
 } from '@shared/core';
 
 import DashboardPanel from '@components/common/dashboard-panel';
+import PetArt from '@components/pet/pet-art';
 import SessionGate from '@components/common/session-gate';
 import Icon, { MarriageIcon } from '@components/ui/icon';
 import { CHAT_WS_URL } from '../../config';
@@ -19,6 +22,30 @@ import styles from './index.module.css';
 /** The married pets behind a thread, as a one-line reason it exists. */
 function marriageLine(thread: ChatThread): string {
     return thread.pets.map((pair) => `${pair.petName} ♥ ${pair.spouseName}`).join(', ');
+}
+
+/**
+ * The pet standing in for each side of a thread.
+ *
+ * A thread belongs to two owners, but what the game connected is their pets, and a
+ * truncated wallet address identifies nobody. Where a pair has several married couples
+ * the first is used: the rows are ordered by pet id, so the choice is stable between
+ * loads rather than shuffling with the query plan.
+ */
+function facesOf(thread: ChatThread): { mine: Pet | null; theirs: Pet | null } {
+    const pair = thread.pets[0];
+    if (!pair) return { mine: null, theirs: null };
+    const chain = thread.chain as PetChain;
+    // `dna` is newer than the rest of the payload, and the client deploys separately from
+    // the backend that serves it. No dna means no art and no emoji, so the row falls back
+    // to a plain bubble rather than throwing on `BigInt(undefined)` and taking the page
+    // down over an avatar.
+    const face = (id: string, name: string, dna?: string) =>
+        dna ? (({ id, name, chain, dna: BigInt(dna) }) as Pet) : null;
+    return {
+        mine: face(pair.petId, pair.petName, pair.petDna),
+        theirs: face(pair.spousePetId, pair.spouseName, pair.spouseDna),
+    };
 }
 
 function timeOf(createdAt: string): string {
@@ -66,6 +93,7 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
     // says the channel is offline instead of asserting anything about the other person.
     const counterpartOnline =
         isLive && online.some((address) => sameAccount(address, thread.counterpart));
+    const faces = useMemo(() => facesOf(thread), [thread]);
     const [draft, setDraft] = useState('');
     const endRef = useRef<HTMLDivElement>(null);
 
@@ -128,19 +156,40 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
                 </p>
             ) : (
                 <ol className={styles.messages}>
-                    {messages.map((message) => (
-                        <li
-                            key={message.id}
-                            className={
-                                sameAccount(message.sender, me)
-                                    ? `${styles.message} ${styles.isMine}`
-                                    : styles.message
-                            }
-                        >
-                            <span className={styles.messageText}>{message.text}</span>
-                            <span className={styles.messageTime}>{timeOf(message.createdAt)}</span>
-                        </li>
-                    ))}
+                    {messages.map((message, index) => {
+                        const isMine = sameAccount(message.sender, me);
+                        const next = messages[index + 1];
+                        // One face per run of consecutive messages, on the last of the
+                        // run. Repeating it on every line in a two-person thread is the
+                        // noise messengers avoid; dropping it entirely loses the thing
+                        // worth showing, which is whose pet is talking.
+                        const endsRun = !next || sameAccount(next.sender, me) !== isMine;
+                        const face = isMine ? faces.mine : faces.theirs;
+                        return (
+                            <li
+                                key={message.id}
+                                className={
+                                    isMine ? `${styles.message} ${styles.isMine}` : styles.message
+                                }
+                            >
+                                {endsRun && face ? (
+                                    <span className={styles.messageFace} title={face.name}>
+                                        <PetArt pet={face} />
+                                    </span>
+                                ) : (
+                                    // Holds the column so bubbles in a run stay aligned
+                                    // with the one that carries the face.
+                                    <span className={styles.messageFaceGap} aria-hidden />
+                                )}
+                                <div className={styles.bubble}>
+                                    <span className={styles.messageText}>{message.text}</span>
+                                    <span className={styles.messageTime}>
+                                        {timeOf(message.createdAt)}
+                                    </span>
+                                </div>
+                            </li>
+                        );
+                    })}
                     <div ref={endRef} />
                 </ol>
             )}

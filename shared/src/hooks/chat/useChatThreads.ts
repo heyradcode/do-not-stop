@@ -6,8 +6,11 @@ import { useAuth } from '../../contexts/AuthContext';
 export interface ChatThreadPets {
     petId: string;
     petName: string;
+    /** Serialized bigint. What the pet's art and emoji fallback are derived from. */
+    petDna: string;
     spousePetId: string;
     spouseName: string;
+    spouseDna: string;
 }
 
 export interface ChatThread {
