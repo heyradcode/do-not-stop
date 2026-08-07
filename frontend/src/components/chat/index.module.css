@@ -167,6 +167,11 @@
     padding: 7px 11px;
     border-radius: 12px;
     background: rgb(148 163 184 / 12%);
+    /* `#root` in App.css centres the whole app, so anything that wants ordinary prose
+       has to say so — see `.threadButton`, which already had to. A centred second line
+       under a longer first one does not read as a message. The meta below is placed by
+       `align-self`, which this does not touch. */
+    text-align: left;
 }
 
 /* The bubble's bottom-right corner, wherever the text ends. */
