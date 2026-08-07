@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import {
     CHAT_REACTIONS,
@@ -58,10 +59,15 @@ function timeOf(createdAt: string): string {
 }
 
 /**
- * Room the picker needs above the trigger before it opens that way. Matches the
- * stylesheet's `max-height` plus its offset; a few pixels either way only decides which
- * side a picker near the boundary opens on.
+ * How many of the set the picker offers before it is expanded.
+ *
+ * The first six, which is what everyone reaches for; the rest are one press away. A wall
+ * of forty as the first thing you see is a decision where a reaction should be a reflex.
  */
+const QUICK_REACTIONS = 6;
+
+/** Room the collapsed row and the full grid each need above the trigger to open upward. */
+const QUICK_HEIGHT = 52;
 const PICKER_MAX_HEIGHT = 224;
 
 /**
@@ -116,29 +122,71 @@ const ReactionAdd: React.FC<{
     onReact: (messageId: number, emoji: string) => void;
 }> = ({ message, onReact }) => {
     const [picking, setPicking] = useState(false);
+    const [expanded, setExpanded] = useState(false);
     const [below, setBelow] = useState(false);
+    const rootRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLButtonElement>(null);
 
+    const close = useCallback(() => {
+        setPicking(false);
+        // Reset, so reopening starts at the quick row rather than wherever it was left.
+        setExpanded(false);
+    }, []);
+
+    /** Distance from the trigger to the top of the transcript, which is what clips it. */
+    const roomAbove = () => {
+        const trigger = triggerRef.current?.getBoundingClientRect();
+        const list = triggerRef.current?.closest('ol')?.getBoundingClientRect();
+        return trigger && list ? trigger.top - list.top : Number.POSITIVE_INFINITY;
+    };
+
     /**
-     * Opens the picker upward, or downward when there is not room above.
+     * Opens upward, or downward when there is not room above.
      *
-     * Measured on open rather than fixed, because the transcript clips it: anchored
-     * upward it is cut off on a message near the top of the list, and anchored downward
-     * on the newest one — which is where most reactions land.
+     * Measured per state rather than fixed: the transcript clips the picker, and the
+     * collapsed row needs a fraction of the height the full grid does — deciding once
+     * with either number gets the other case wrong.
      */
     const toggle = () => {
         if (picking) {
-            setPicking(false);
+            close();
             return;
         }
-        const trigger = triggerRef.current?.getBoundingClientRect();
-        const list = triggerRef.current?.closest('ol')?.getBoundingClientRect();
-        setBelow(Boolean(trigger && list && trigger.top - list.top < PICKER_MAX_HEIGHT));
+        setBelow(roomAbove() < QUICK_HEIGHT);
         setPicking(true);
     };
 
+    const expand = () => {
+        setBelow(roomAbove() < PICKER_MAX_HEIGHT);
+        setExpanded(true);
+    };
+
+    // A click anywhere else closes it, which is what every menu does and what a reader
+    // expects when they have changed their mind. Escape too: the picker takes focus, so
+    // leaving the keyboard without a way out would trap it.
+    useEffect(() => {
+        if (!picking) return;
+
+        const onPointerDown = (event: MouseEvent) => {
+            if (rootRef.current?.contains(event.target as Node)) return;
+            close();
+        };
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') close();
+        };
+
+        document.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('keydown', onKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [picking, close]);
+
+    const offered = expanded ? CHAT_REACTIONS : CHAT_REACTIONS.slice(0, QUICK_REACTIONS);
+
     return (
-        <div className={styles.reactionTrigger}>
+        <div className={styles.reactionTrigger} ref={rootRef}>
             <button
                 ref={triggerRef}
                 type="button"
@@ -153,26 +201,40 @@ const ReactionAdd: React.FC<{
 
             {picking && (
                 <div
-                    className={
-                        below ? `${styles.reactionPicker} ${styles.isBelow}` : styles.reactionPicker
-                    }
+                    className={clsx(
+                        styles.reactionPicker,
+                        below && styles.isBelow,
+                        expanded && styles.isExpanded,
+                    )}
                     role="group"
                     aria-label="Reactions"
                 >
-                    {CHAT_REACTIONS.map((emoji) => (
+                    {offered.map((emoji) => (
                         <button
                             key={emoji}
                             type="button"
                             className={styles.reactionOption}
                             onClick={() => {
                                 onReact(message.id, emoji);
-                                setPicking(false);
+                                close();
                             }}
                             aria-label={emoji}
                         >
                             {emoji}
                         </button>
                     ))}
+
+                    {!expanded && (
+                        <button
+                            type="button"
+                            className={styles.reactionMore}
+                            onClick={expand}
+                            aria-label="More reactions"
+                            title="More reactions"
+                        >
+                            <span className={styles.reactionMoreChevron} aria-hidden />
+                        </button>
+                    )}
                 </div>
             )}
         </div>

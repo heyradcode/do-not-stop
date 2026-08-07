@@ -286,15 +286,60 @@ describe('Chat', () => {
         expect(screen.queryByRole('button', { name: '😮' })).toBeNull();
 
         await userEvent.click(screen.getByRole('button', { name: 'Add a reaction' }));
-        // Every emoji the API accepts is offered, not a subset of them.
-        const picker = screen.getByRole('group', { name: 'Reactions' });
-        expect(within(picker).getAllByRole('button')).toHaveLength(CHAT_REACTIONS.length);
-
         await userEvent.click(screen.getByRole('button', { name: '😮' }));
 
         expect(react).toHaveBeenCalledWith(3, '😮');
         // The picker closes behind the choice.
         expect(screen.queryByRole('button', { name: '😮' })).toBeNull();
+    });
+
+    it('offers the quick six first and the whole set once expanded', async () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(messagesResult({ messages: [message({ id: 3 })] }));
+
+        renderChat();
+        await userEvent.click(screen.getByRole('button', { name: 'Add a reaction' }));
+
+        const picker = () => screen.getByRole('group', { name: 'Reactions' });
+        // Six emoji plus the control that reveals the rest.
+        expect(within(picker()).getAllByRole('button')).toHaveLength(7);
+        expect(screen.queryByRole('button', { name: '🐾' })).toBeNull();
+
+        await userEvent.click(screen.getByRole('button', { name: 'More reactions' }));
+
+        // Every emoji the API accepts, and the chevron is gone with nothing left to open.
+        expect(within(picker()).getAllByRole('button')).toHaveLength(CHAT_REACTIONS.length);
+        expect(screen.getByRole('button', { name: '🐾' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'More reactions' })).toBeNull();
+    });
+
+    it('closes the picker on a click outside it, and reopens collapsed', async () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(messagesResult({ messages: [message({ id: 3 })] }));
+
+        renderChat();
+        await userEvent.click(screen.getByRole('button', { name: 'Add a reaction' }));
+        await userEvent.click(screen.getByRole('button', { name: 'More reactions' }));
+        expect(screen.getByRole('button', { name: '🐾' })).toBeInTheDocument();
+
+        await userEvent.click(document.body);
+        expect(screen.queryByRole('group', { name: 'Reactions' })).toBeNull();
+
+        // Expansion does not persist: reopening starts at the quick row again.
+        await userEvent.click(screen.getByRole('button', { name: 'Add a reaction' }));
+        expect(screen.queryByRole('button', { name: '🐾' })).toBeNull();
+        expect(screen.getByRole('button', { name: 'More reactions' })).toBeInTheDocument();
+    });
+
+    it('closes the picker on Escape', async () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(messagesResult({ messages: [message({ id: 3 })] }));
+
+        renderChat();
+        await userEvent.click(screen.getByRole('button', { name: 'Add a reaction' }));
+        await userEvent.keyboard('{Escape}');
+
+        expect(screen.queryByRole('group', { name: 'Reactions' })).toBeNull();
     });
 
     it('closes the picker when the control is pressed again', async () => {

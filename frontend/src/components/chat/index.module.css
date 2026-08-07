@@ -466,21 +466,28 @@
    Opens upward and inward, over the message rather than the margin, because the list
    clips anything running past its edge sideways.
 
-   A grid rather than the single row it started as: the set is long enough now that one
-   row would be wider than the panel. Six columns keep it roughly square and put the
-   quick six — the first row — where the eye lands first. */
+   Opens as a row of the quick six with a chevron; expanding turns it into the grid. */
 .reactionPicker {
     position: absolute;
     bottom: calc(100% + 6px);
     z-index: 2;
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    display: flex;
+    align-items: center;
     gap: 2px;
-    padding: 6px;
+    padding: 5px;
     border: 1px solid rgb(148 163 184 / 25%);
-    border-radius: 12px;
+    border-radius: 999px;
     background: rgb(4 10 26 / 98%);
     box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+/* Six columns keep the full set roughly square, and the quick six stay on the first row
+   so expanding moves nothing the reader was already looking at. */
+.reactionPicker.isExpanded {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    padding: 6px;
+    border-radius: 12px;
     /* Scrolls rather than growing past the transcript it opens over. */
     max-height: 216px;
     overflow-y: auto;
@@ -527,4 +534,32 @@
 .reactionOption:hover,
 .reactionOption:focus-visible {
     background: rgb(148 163 184 / 18%);
+}
+
+/* Opens the rest of the set. Drawn rather than a glyph so it sits at the same weight as
+   the emoji beside it instead of whatever a font decides a chevron character is. */
+.reactionMore {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-inline-start: 1px solid rgb(148 163 184 / 20%);
+    background: transparent;
+    cursor: pointer;
+}
+
+.reactionMoreChevron {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid rgb(125 214 255 / 70%);
+    border-bottom: 2px solid rgb(125 214 255 / 70%);
+    transform: translateY(-2px) rotate(45deg);
+}
+
+.reactionMore:hover .reactionMoreChevron,
+.reactionMore:focus-visible .reactionMoreChevron {
+    border-color: #f6f3ff;
 }
