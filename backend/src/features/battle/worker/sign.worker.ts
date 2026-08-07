@@ -13,6 +13,7 @@ import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import { applyTransition, type ClaimedMessage, completeOutbox, OUTBOX_TOPICS } from '@features/battle/ledger';
 import { activeSigningKey, type EngineAttestation, sign, SignerRefusedError } from '@features/battle/signer';
+import { recordBattleDrops } from '@features/inventory';
 import { recordBattleFromReceipt } from '@repositories/history.repository';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
@@ -212,6 +213,25 @@ export async function processSignMessage(message: ClaimedMessage, nowSeconds: nu
                         attackerXp: progression.attacker.xpAwarded,
                         defenderXp: progression.defender.xpAwarded,
                     });
+                    // Item drops (roadmap §4). In this transaction for the same reason
+                    // battle_history is: a battle that paid a drop without recording the
+                    // battle, or recorded one without paying, is two writes that can
+                    // disagree. Derived from the receipt's own seed, so it was fixed by a
+                    // drand round committed before the fight resolved rather than chosen
+                    // here, and recomputable by anyone holding the receipt.
+                    if (env.inventory.dropsEnabled) {
+                        await recordBattleDrops(tx, {
+                            chain: chainFamily(battle.chainId as never),
+                            battleId: battle.battleId,
+                            seed: receipt.seed,
+                            winnerOwner: receipt.result.attackerWon
+                                ? snapshot.attacker.owner
+                                : snapshot.defender.owner,
+                            loserOwner: receipt.result.attackerWon
+                                ? snapshot.defender.owner
+                                : snapshot.attacker.owner,
+                        });
+                    }
                 },
                 outbox: [{ battleId: battle.battleId, topic: OUTBOX_TOPICS.publish }],
             });

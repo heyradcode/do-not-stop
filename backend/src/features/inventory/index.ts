@@ -35,3 +35,10 @@ export {
     type WriteFailure,
 } from './inventory.write';
 export { getItemCoreClient, resetItemCoreClient, type ItemCoreClient } from './inventory.chain';
+export {
+    DEFAULT_DROP_RATES,
+    recordBattleDrops,
+    rollDrops,
+    type Drop,
+    type DropRates,
+} from './drops';

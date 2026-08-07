@@ -144,6 +144,15 @@ export const env = {
          * excluded. Normalized here so a checksummed address in the env still matches the
          * lowercased one the JWT carries.
          */
+        /**
+         * Whether a settled battle pays item drops.
+         *
+         * Separate from ITEM_CORE_ENABLED and off by default. Recording a drop needs no
+         * transaction, only claiming one does, so the two are genuinely independent — and
+         * an existing deployment should not start handing out items because a key was
+         * added for something else.
+         */
+        dropsEnabled: process.env.ITEM_DROPS_ENABLED?.trim().toLowerCase() === 'true',
         adminWallets: new Set(
             (process.env.ITEM_ADMIN_WALLETS ?? '')
                 .split(',')

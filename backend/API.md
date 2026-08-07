@@ -351,6 +351,35 @@ because the client waits for a receipt and treats a reverted one as a failure.
 drop reach a bag by the same path. Its allowlist (`ITEM_ADMIN_WALLETS`) is empty by
 default: the route is closed until someone is named, not open until someone is excluded.
 
+#### Battle drops
+
+A settled battle can pay an item to each side, written as unclaimed entitlements **in the
+same transaction as the receipt** — the rule `battle_history` already follows, because two
+writes that can disagree eventually will. Off unless `ITEM_DROPS_ENABLED=true`, separately
+from `ITEM_CORE_ENABLED`: recording a drop needs no transaction, only claiming one does.
+
+The roll derives from the battle's own drand seed rather than a new randomness source.
+That seed is committed to a future round *before* the fight resolves, so nobody, this
+server included, can grind a drop by re-rolling, and anyone holding the receipt can
+recompute what should have dropped. Each side draws from its own labelled stream, so one
+side's outcome reveals nothing about the other's.
+
+What that does **not** give you: the drop is not part of the signed receipt in v1. An
+outsider can recompute what was owed and notice if something else was paid, but cannot
+prove it from the receipt alone. Putting drops inside the signed payload means a receipt
+schema version and a place in the ruleset hash, which is §4 phase 4 work.
+
+Equipment never drops — that tier is gated behind its own design review, and having gear
+fall out of ordinary battles would settle that question by accident. Rarity is the weight,
+inverted, so a Common lands five times as often as a Legendary. The pool comes from the
+shipped catalog constant rather than `item_definition`, because a replay has to reproduce
+what a battle dropped, and a table that content edits underneath would answer differently
+next month for the same seed.
+
+Idempotent under a retried receipt transaction: the entitlement's unique key is
+`(source_ref, owner, item_type)` with `source_ref` the battle id, so a replay collides with
+its own earlier row rather than paying twice.
+
 ### Battle data
 
 `battle_history` carries `loserPetId, seed (0x-hex), rounds, winnerHpRemaining,
