@@ -15,7 +15,7 @@ import {
     postDefenseAuthorization,
     postVerifyReceipt,
     requireBackendBattleMode,
-} from '@features/battle-ledger';
+} from '@features/battle/ledger';
 import { verifyToken } from '@middleware/auth';
 import { battleRoomRateLimit } from '@middleware/rateLimit';
 

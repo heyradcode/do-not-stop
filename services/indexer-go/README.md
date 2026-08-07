@@ -184,7 +184,7 @@ the whole delta, not just the XP formula `xp.go` already covered).
 This is release safety, not a trust boundary — see
 `docs/battle-protocol.md` §F's "what the Go verifier is for"
 before reusing it as anything stronger. The backend
-(`backend/src/features/battle-worker/verify.worker.ts`) calls it, converts the
+(`backend/src/features/battle/worker/verify.worker.ts`) calls it, converts the
 structured log back into `@cryptopets/protocol`'s `SimOutcome` shape, and hashes
 it with the *real* canonical encoder — Go never reimplements that encoding
 itself, so the only question this check answers is whether the two engines

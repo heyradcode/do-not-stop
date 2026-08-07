@@ -6,7 +6,7 @@ import { tryGrpcGetPetState } from '@grpc-client/rosterReads';
 import { mapRosterRowToRosterPet, type PetRosterRow } from './roster.mapping';
 import { servedChainIdForFamily } from './battleProgress.overlay';
 import { ownerKey } from './owner.sql';
-import { servedDeploymentId } from '@features/battle-ledger/domain';
+import { servedDeploymentId } from '@features/battle/ledger/domain';
 import type { Chain } from '@typings/chain';
 
 /**

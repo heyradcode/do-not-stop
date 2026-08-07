@@ -2,10 +2,10 @@ import './register-path-aliases';
 import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import app from './app';
-import { configureSigner, loadPersistedSigningKeys } from '@features/battle-signer';
+import { configureSigner, loadPersistedSigningKeys } from '@features/battle/signer';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
-import { type BattleWorkerHandle, startBattleWorker } from '@features/battle-worker';
-import { startBatchAnchor, stopBatchAnchor } from '@features/battle-anchor';
+import { type BattleWorkerHandle, startBattleWorker } from '@features/battle/worker';
+import { startBatchAnchor, stopBatchAnchor } from '@features/battle/anchor';
 import { startWsChannels, stopWsChannels } from '@ws/channel';
 
 let battleWorker: BattleWorkerHandle | undefined;
@@ -30,7 +30,7 @@ const server = app.listen(env.port, '0.0.0.0', () => {
 
     // Backend-authoritative battles (docs/battle-protocol.md §L Phase 3).
     // Selects the signing backend (refuses an in-process key in production; see
-    // @features/battle-signer) and starts the outbox worker that carries accepted battles
+    // @features/battle/signer) and starts the outbox worker that carries accepted battles
     // through to a signed receipt.
     //
     // Both are gated on the mode, so a deployment running only the on-chain path needs no

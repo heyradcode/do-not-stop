@@ -3,7 +3,7 @@ import { Prisma } from '@generated/prisma/client';
 import { prisma } from '@config/prisma';
 import { servedChainIdForFamily } from './battleProgress.overlay';
 import { ownerKey } from './owner.sql';
-import { servedDeploymentId } from '@features/battle-ledger/domain';
+import { servedDeploymentId } from '@features/battle/ledger/domain';
 import type { Chain } from '@typings/chain';
 
 /**

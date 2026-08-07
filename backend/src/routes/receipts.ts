@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 
-import { getReceiptInclusionProof } from '@features/battle-batcher';
-import { getReceiptsByPet, getReceiptsBySequence, getReceiptsByWallet } from '@features/battle-ledger';
+import { getReceiptInclusionProof } from '@features/battle/batcher';
+import { getReceiptsByPet, getReceiptsBySequence, getReceiptsByWallet } from '@features/battle/ledger';
 
 /**
  * The public receipt corpus (§H item 3): paginated export by pet, by wallet, and
