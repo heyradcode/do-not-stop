@@ -256,5 +256,34 @@ export const schema = buildSchema(`
             "Seeds to sample; omit to let the server choose."
             samples: Int
         ): WinEstimate
+
+        """
+        The whole item catalog (roadmap §4), ordered by token id.
+
+        Read from the database rather than from the shipped source file, so a rebalance is
+        a row edit rather than a redeploy. That means an unseeded deployment returns an
+        empty catalog, which is the honest answer: no items are defined on it.
+        """
+        itemCatalog: [ItemDefinition!]!
+
+        """
+        The authenticated caller's own items.
+
+        The owner comes from the session and is never an argument, so this cannot be used
+        to read another wallet's bag. Stacks spent to nothing are omitted rather than
+        returned as zero: the projection has to keep a zero row, because a deletion would
+        be invisible to the watermark read that produced it, but a player has no reason to
+        see one.
+        """
+        inventory(chain: String!): [InventoryEntry!]!
+
+        """
+        What a pet has equipped. Empty slots are omitted.
+
+        Public, unlike the inventory read: gear changes a pet's stats in a battle anyone
+        can be matched into, so hiding it from an opponent would make the fight less
+        checkable without making it more private.
+        """
+        petEquipment(chain: String!, petId: String!): [EquippedItem!]!
     }
 `);

@@ -6,6 +6,7 @@ import {
     findPlayerRank,
 } from '@repositories/leaderboard.repository';
 import { tryGrpcEstimateWin } from '@grpc-client/estimateWin';
+import { getCatalog, getInventory, getPetEquipment, type ItemView } from '@features/inventory';
 import { isSupportedChain, SUPPORTED_CHAINS } from '@typings/chain';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -58,6 +59,11 @@ interface AllPetsArgs {
     limit?: number | null;
 }
 
+interface PetEquipmentArgs {
+    chain: string;
+    petId: string;
+}
+
 export interface GraphQLContext {
     /** Authenticated wallet address; empty string when unauthenticated. */
     caller: string;
@@ -69,6 +75,19 @@ export interface GraphQLContext {
  * Shared by the opponents list and the single-pet detail read so both stay in
  * lockstep.
  */
+/**
+ * Project an `ItemView` to the GraphQL `ItemDefinition` shape.
+ *
+ * The effect is serialized to a JSON string rather than exposed as a typed union. The
+ * payload shape differs per category and gains a variant each time a new effect kind
+ * lands, so a union would need a schema change for a value the client only ever renders.
+ * Null stays null, so "inert item" and "unreadable payload" both read as absence, which
+ * is what they mean to a client either way.
+ */
+function toItemDefinition(item: ItemView) {
+    return { ...item, effect: item.effect ? JSON.stringify(item.effect) : null };
+}
+
 function toOpponentPet({ petId: id, readyAt, breedReadyAt, trainReadyAt, ...rest }: RosterPet) {
     return {
         id,
@@ -221,5 +240,35 @@ export const rootValue = {
                 samples: Math.min(MAX_WIN_SAMPLES, Math.max(0, args.samples)),
             }),
         });
+    },
+
+    itemCatalog: async () => (await getCatalog()).map(toItemDefinition),
+
+    inventory: async (args: { chain: string }, context: GraphQLContext) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        // An unauthenticated caller owns nothing rather than erroring, matching how
+        // `playerRank` treats having no standing. The address is never an argument, so
+        // there is no spelling of this query that reads someone else's bag.
+        if (!context.caller) {
+            return [];
+        }
+        return (await getInventory(args.chain, context.caller)).map((entry) => ({
+            item: toItemDefinition(entry.item),
+            quantity: entry.quantity,
+        }));
+    },
+
+    petEquipment: async (args: PetEquipmentArgs) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        return (await getPetEquipment(args.chain, args.petId)).map((equipped) => ({
+            slot: equipped.slot,
+            item: toItemDefinition(equipped.item),
+        }));
     },
 };

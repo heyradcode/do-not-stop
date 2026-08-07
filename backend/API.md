@@ -261,6 +261,59 @@ Neither board has a gRPC fast path, for the same reason `opponents` lost its own
 indexer-go's cache holds chain state and has no view of `pet_battle_progress`, a
 backend-owned table, so it cannot answer these correctly. Both read Postgres directly.
 
+### Inventory (roadmap §4)
+
+```graphql
+query($chain: String!, $petId: String!) {
+  itemCatalog { itemType key category slot rarity effect name description }
+  inventory(chain: $chain) {
+    item { itemType key category slot rarity effect name description }
+    quantity
+  }
+  petEquipment(chain: $chain, petId: $petId) {
+    slot
+    item { itemType key category slot rarity effect name description }
+  }
+}
+```
+
+Three read-only joins of an indexer-written projection onto the backend-owned catalog.
+`item_roster` and `pet_equipment` are written **only** by indexer-go from the `ItemCore`
+subgraph, under the same monotonic `last_version` guard `pet_roster` uses;
+`item_definition` is content the catalog seeder writes.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `itemType` | String | ERC-1155 token id as a decimal string. The join key everywhere, including the battle snapshot |
+| `key` | String | Stable content key (`xp_potion_i`). Survives a redeploy that renumbers token ids |
+| `category` | String | `consumable` \| `equipment` \| `collectible` \| `material`. No cosmetics in v1 |
+| `slot` | Int | 0 = weapon, 1 = armor, 2 = trinket; `null` unless equipment |
+| `rarity` | Int | 1-5, the same five tiers as pet rarity, not a second scale |
+| `effect` | String | Effect payload as a JSON string, `null` for an inert item. A string rather than a typed union: the shape differs per category and gains a variant per effect kind, for a value the client only renders |
+| `quantity` | String | Decimal string — a uint256 balance does not fit a JS number |
+
+`inventory` takes **no owner argument**: whose bag it is comes from the session, so there
+is no spelling of the query that reads another wallet's items. An unauthenticated caller
+gets an empty list rather than an error, matching `playerRank`'s treatment of no standing.
+Stacks spent to nothing are omitted — the projection has to keep a zero row, because a
+deletion would be invisible to the watermark read that produced it, but a player has no
+reason to see one.
+
+`petEquipment` is public, unlike `inventory`. Gear changes a pet's stats in a battle
+anyone can be matched into, so hiding it from an opponent would make the fight less
+checkable without making it more private. Empty slots (item type `"0"` in the table) are
+omitted.
+
+An item held but absent from the catalog is **hidden and logged**, not returned unnamed.
+That state means a mint of an undefined type or a catalog seeded behind the contract, and
+a blank tile in a player's bag is the worst way to discover either. `itemCatalog` reads
+the database rather than the shipped source file, so a rebalance is a row edit rather than
+a redeploy; an unseeded deployment therefore returns an empty catalog, which is the honest
+answer.
+
+Like the leaderboards, none of these have a gRPC fast path: indexer-go's cache holds pet
+state only and has no view of these tables.
+
 ### Battle data
 
 `battle_history` carries `loserPetId, seed (0x-hex), rounds, winnerHpRemaining,
