@@ -17,7 +17,8 @@ vi.mock('@shared/core', () => ({
     useChainCapabilities: () => useChainCapabilities(),
     useChatThreads: () => useChatThreads(),
     useChatMessages: (opts: unknown) => useChatMessages(opts),
-    CHAT_REACTIONS: ['👍', '❤️', '😂', '😮', '😢', '🙏'],
+    // A short stand-in for the real list; the picker only maps over whatever it is given.
+    CHAT_REACTIONS: ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '🐾'],
     getPetAvatar: () => '🐉',
     // No art service in these tests: PetArt renders the emoji alone.
     petArtUrl: () => null,
@@ -33,6 +34,7 @@ vi.mock('../../src/config', () => ({
 }));
 
 import Chat from '@components/chat';
+import { CHAT_REACTIONS } from '@shared/core';
 
 const ME = '0xAAAAbbbbCCCCddddEEEEffff0000111122223333';
 const THEM = '0x2222222222222222222222222222222222222222';
@@ -284,11 +286,28 @@ describe('Chat', () => {
         expect(screen.queryByRole('button', { name: '😮' })).toBeNull();
 
         await userEvent.click(screen.getByRole('button', { name: 'Add a reaction' }));
+        // Every emoji the API accepts is offered, not a subset of them.
+        const picker = screen.getByRole('group', { name: 'Reactions' });
+        expect(within(picker).getAllByRole('button')).toHaveLength(CHAT_REACTIONS.length);
+
         await userEvent.click(screen.getByRole('button', { name: '😮' }));
 
         expect(react).toHaveBeenCalledWith(3, '😮');
         // The picker closes behind the choice.
         expect(screen.queryByRole('button', { name: '😮' })).toBeNull();
+    });
+
+    it('closes the picker when the control is pressed again', async () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+        useChatMessages.mockReturnValue(messagesResult({ messages: [message({ id: 3 })] }));
+
+        renderChat();
+        const add = screen.getByRole('button', { name: 'Add a reaction' });
+        await userEvent.click(add);
+        expect(screen.getByRole('group', { name: 'Reactions' })).toBeInTheDocument();
+
+        await userEvent.click(add);
+        expect(screen.queryByRole('group', { name: 'Reactions' })).toBeNull();
     });
 
     it('sends the trimmed draft and clears the box', async () => {

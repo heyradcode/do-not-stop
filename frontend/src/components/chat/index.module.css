@@ -464,19 +464,38 @@
    popup pinned to a rect measured once would drift off its message on the next scroll.
 
    Opens upward and inward, over the message rather than the margin, because the list
-   clips anything running past its edge sideways. */
+   clips anything running past its edge sideways.
+
+   A grid rather than the single row it started as: the set is long enough now that one
+   row would be wider than the panel. Six columns keep it roughly square and put the
+   quick six — the first row — where the eye lands first. */
 .reactionPicker {
     position: absolute;
     bottom: calc(100% + 6px);
     z-index: 2;
-    display: flex;
-    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
     gap: 2px;
-    padding: 4px 6px;
+    padding: 6px;
     border: 1px solid rgb(148 163 184 / 25%);
-    border-radius: 999px;
+    border-radius: 12px;
     background: rgb(4 10 26 / 98%);
     box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+    /* Scrolls rather than growing past the transcript it opens over. */
+    max-height: 216px;
+    overflow-y: auto;
+    /* Explicit, because a non-visible overflow on one axis forces the other to `auto`
+       too, and the grid then draws a horizontal scrollbar it has no use for. */
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(148 163 184 / 35%) transparent;
+}
+
+/* Flipped downward when the component measures too little room above; see PICKER_MAX_HEIGHT. */
+.reactionPicker.isBelow {
+    bottom: auto;
+    top: calc(100% + 6px);
 }
 
 /* Their message puts the control on the right, so the picker extends left, and the
@@ -491,12 +510,17 @@
 }
 
 .reactionOption {
-    padding: 3px 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
     border: none;
-    border-radius: 999px;
+    border-radius: 8px;
     background: transparent;
     font-size: 1.2rem;
-    line-height: 1.2;
+    line-height: 1;
     cursor: pointer;
 }
 

@@ -58,6 +58,13 @@ function timeOf(createdAt: string): string {
 }
 
 /**
+ * Room the picker needs above the trigger before it opens that way. Matches the
+ * stylesheet's `max-height` plus its offset; a few pixels either way only decides which
+ * side a picker near the boundary opens on.
+ */
+const PICKER_MAX_HEIGHT = 224;
+
+/**
  * The chips under a message: one per emoji used, with how many used it.
  *
  * Tapping a chip you are already in removes your reaction, which is the same gesture as
@@ -109,13 +116,34 @@ const ReactionAdd: React.FC<{
     onReact: (messageId: number, emoji: string) => void;
 }> = ({ message, onReact }) => {
     const [picking, setPicking] = useState(false);
+    const [below, setBelow] = useState(false);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+
+    /**
+     * Opens the picker upward, or downward when there is not room above.
+     *
+     * Measured on open rather than fixed, because the transcript clips it: anchored
+     * upward it is cut off on a message near the top of the list, and anchored downward
+     * on the newest one — which is where most reactions land.
+     */
+    const toggle = () => {
+        if (picking) {
+            setPicking(false);
+            return;
+        }
+        const trigger = triggerRef.current?.getBoundingClientRect();
+        const list = triggerRef.current?.closest('ol')?.getBoundingClientRect();
+        setBelow(Boolean(trigger && list && trigger.top - list.top < PICKER_MAX_HEIGHT));
+        setPicking(true);
+    };
 
     return (
         <div className={styles.reactionTrigger}>
             <button
+                ref={triggerRef}
                 type="button"
                 className={styles.reactionAdd}
-                onClick={() => setPicking((open) => !open)}
+                onClick={toggle}
                 aria-expanded={picking}
                 aria-label="Add a reaction"
                 title="Add a reaction"
@@ -124,7 +152,13 @@ const ReactionAdd: React.FC<{
             </button>
 
             {picking && (
-                <div className={styles.reactionPicker} role="group" aria-label="Reactions">
+                <div
+                    className={
+                        below ? `${styles.reactionPicker} ${styles.isBelow}` : styles.reactionPicker
+                    }
+                    role="group"
+                    aria-label="Reactions"
+                >
                     {CHAT_REACTIONS.map((emoji) => (
                         <button
                             key={emoji}

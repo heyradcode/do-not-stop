@@ -8,9 +8,23 @@
  * moderation note) — it is a surface with nothing to moderate: there is no arbitrary
  * string to smuggle through.
  *
- * The same six WhatsApp puts on its quick bar. Ordered as they are shown.
+ * **Only ever append.** A reaction already stored can be removed by its owner only by
+ * tapping it again, and that tap is validated against this list: dropping an entry would
+ * strand every reaction anyone had already left with it.
+ *
+ * The first six are WhatsApp's quick bar and lead the grid because they cover most of
+ * what anyone reaches for. The rest run from general reactions to the ones this game
+ * gives people a reason to use.
  */
-export const CHAT_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'] as const;
+export const CHAT_REACTIONS = [
+    '👍', '❤️', '😂', '😮', '😢', '🙏',
+    '👎', '🔥', '🎉', '👏', '💯', '✅',
+    '😍', '🥰', '😊', '😉', '😎', '🤩',
+    '🤔', '😅', '😬', '🙄', '😴', '🤯',
+    '😭', '😡', '🤝', '💪', '✨', '🌟',
+    '🐾', '🥇', '⚔️', '🛡️', '🧬', '💎',
+    '🍀', '🎯', '⏰', '🚀',
+] as const;
 
 export type ChatReaction = (typeof CHAT_REACTIONS)[number];
 
