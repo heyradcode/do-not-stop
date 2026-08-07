@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import clsx from 'clsx';
 import { useSearchPets } from '@shared/core';
 import type { OpponentPet, PetChain } from '@shared/core';
+import PetArt from '@components/pet/pet-art';
 import styles from './index.module.css';
 
 export type PetSearchDropdownProps = {
@@ -179,6 +180,9 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
                                   handleSelect(pet);
                               }}
                           >
+                              <span className={styles.psdRowArt} aria-hidden>
+                                  <PetArt pet={pet} />
+                              </span>
                               <span className={styles.psdRowName}>{pet.name}</span>
                               <span className={styles.psdRowId}>#{pet.id}</span>
                               <span className={styles.psdRowLevel}>Lv {pet.level}</span>
@@ -198,6 +202,13 @@ const PetSearchDropdown: React.FC<PetSearchDropdownProps> = ({
                     open && styles.isOpen,
                 )}
             >
+                {/* The chosen pet, shown rather than described. Search results are a
+                    name and a number until you can see which pet they are. */}
+                {isSelected && (
+                    <span className={styles.psdSelectedArt} aria-hidden>
+                        <PetArt pet={selected} />
+                    </span>
+                )}
                 <input
                     ref={inputRef}
                     id={id}

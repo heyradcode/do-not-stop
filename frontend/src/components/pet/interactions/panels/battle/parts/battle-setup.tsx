@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import clsx from 'clsx';
 import {
     getLifePercent,
@@ -14,9 +14,11 @@ import {
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import Icon, { BattleIcon } from '@components/ui/icon';
-import { opponentKey, shortAddress } from '../battle-utils';
+import { opponentKey } from '../battle-utils';
+import { shortAddress } from '@utils/address';
 import styles from '../index.module.css';
 import PetArt from '@components/pet/pet-art';
+import PetSelect from '@components/ui/pet-select';
 
 export type BattleSetupProps = {
     isStandaloneView: boolean;
@@ -152,6 +154,13 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
         ? `${Math.round(winEstimate.winProbability * 100)}%`
         : '—';
 
+    // The rival list is keyed by owner+id, not by pet id: two players can hold the same
+    // token id on different chains, and the panel reports the composite key back.
+    const opponentOptions = useMemo(
+        () => sortedOpponents.map((o) => ({ id: opponentKey(o.owner, o.id), pet: o })),
+        [sortedOpponents],
+    );
+
     const opponentEmpty = opponentsLoading
         ? 'Finding challengers…'
         : sortedOpponents.length === 0
@@ -175,20 +184,20 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 <div className={clsx(styles.combatantCol, styles.combatantColFighter)}>
                     <div className={styles.combatantColLabel}>Your Fighter</div>
                     <div className={styles.combatantSelect}>
-                        <select
-                            aria-label="Choose your fighter"
-                            value={selectedPet1}
-                            onChange={(e) => onSelectFighter(e.target.value)}
-                        >
-                            <option value="">
-                                {readyPets.length === 0 ? 'No ready fighters' : 'Choose your fighter…'}
-                            </option>
-                            {readyPets.map(({ id, pet }) => (
-                                <option key={id} value={id}>
-                                    {pet.name} (Lv {pet.level})
-                                </option>
-                            ))}
-                        </select>
+                        <div className={styles.combatantSelectField}>
+                            <PetSelect
+                                label="Choose your fighter"
+                                pets={readyPets}
+                                value={selectedPet1}
+                                onChange={onSelectFighter}
+                                placeholder={
+                                    readyPets.length === 0
+                                        ? 'No ready fighters'
+                                        : 'Choose your fighter…'
+                                }
+                                disabled={readyPets.length === 0}
+                            />
+                        </div>
                     </div>
                     <CombatantCard
                         pet={selectedFighter}
@@ -212,22 +221,17 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 <div className={clsx(styles.combatantCol, styles.combatantColRival)}>
                     <div className={styles.combatantColLabel}>On-Chain Rival</div>
                     <div className={styles.combatantSelect}>
-                        <select
-                            aria-label="Select an opponent"
-                            value={selectedOpponentKey}
-                            onChange={(e) => onSelectOpponent(e.target.value)}
-                            disabled={sortedOpponents.length === 0}
-                        >
-                            <option value="">{opponentEmpty}</option>
-                            {sortedOpponents.map((o) => {
-                                const key = opponentKey(o.owner, o.id);
-                                return (
-                                    <option key={key} value={key}>
-                                        {o.name} (Lv {o.level})
-                                    </option>
-                                );
-                            })}
-                        </select>
+                        <div className={styles.combatantSelectField}>
+                            <PetSelect
+                                label="Select an opponent"
+                                pets={opponentOptions}
+                                value={selectedOpponentKey}
+                                onChange={onSelectOpponent}
+                                placeholder={opponentEmpty}
+                                disabled={sortedOpponents.length === 0}
+                                accent="var(--cp-magenta)"
+                            />
+                        </div>
                         <button
                             type="button"
                             className={styles.combatantSelectBtn}

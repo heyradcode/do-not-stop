@@ -65,11 +65,15 @@
     color: #ffd07b;
 }
 
+/* Fills the panel rather than sitting at the top of it, so the two parents and the DNA
+   centre between them use the height instead of leaving it empty below. */
 .tabPanel {
     padding-top: 18px;
     display: flex;
     flex-direction: column;
     gap: 14px;
+    flex: 1;
+    min-height: 0;
 }
 
 .tabHint {
@@ -142,12 +146,17 @@
 }
 
 /* ── Parent A · egg · Parent B preview (real stats) ─────────────────────────── */
+/* Takes the slack inside the tab panel and centres the pair in it. `align-items: center`
+   also keeps the DNA centre — which carries the breed action on this tab — level with the
+   two parent cards rather than riding at their top edge. */
 .parents {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
-    align-items: start;
+    align-items: center;
     gap: 12px;
     margin-bottom: 10px;
+    flex: 1;
+    min-height: 0;
 }
 
 /* Parent column = card + Prev/Next cycle row (mock-style selection) */

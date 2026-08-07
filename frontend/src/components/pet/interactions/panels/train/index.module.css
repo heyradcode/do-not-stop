@@ -1,8 +1,12 @@
 /* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
    Train pet-status card — avatar + name/class + XP (cyan accent). Shared chrome
    (.interface/.picker/.field/.action-controls) stays global in interactions.css. */
+/* `--tr-*` are the knobs the two-column layout turns (see interactions.css): in a narrow
+   pet column the card stacks and the art grows, while the default stays the wide
+   avatar-beside-stats card this panel uses on its own. */
 .status {
     display: flex;
+    flex-direction: var(--tr-dir, row);
     align-items: stretch;
     gap: 14px;
     margin-bottom: 18px;
@@ -16,7 +20,8 @@
 .visual {
     position: relative;
     flex-shrink: 0;
-    width: 96px;
+    width: var(--tr-visual, 128px);
+    aspect-ratio: var(--tr-visual-ratio, auto);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -39,11 +44,18 @@
     font-weight: 700;
 }
 
+/* See the note in _shared/pet-showcase.module.css: the art is 1em, so this sizes it. */
 .avatar {
-    font-size: 2.6rem;
+    font-size: var(--tr-art, 4rem);
     line-height: 1;
     animation: cp-float 3.5s ease-in-out infinite;
     filter: drop-shadow(0 0 18px rgb(125 214 255 / 60%));
+}
+
+/* Matches `.visual`'s radius so the art echoes the frame it sits in. `.visual` already
+   clips, but the art is smaller than the panel and never touches those corners. */
+.avatar img {
+    border-radius: 10px;
 }
 
 .body {

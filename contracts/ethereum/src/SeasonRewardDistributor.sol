@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 /**
  * @title SeasonRewardDistributor
  * @notice Capped, one-time reward claims against a per-season Merkle root.
- * @dev docs/plan-backend-battle-architecture.md §I. Separate from BattleBatchRegistry on
+ * @dev docs/battle-protocol.md §I. Separate from BattleBatchRegistry on
  *      purpose: that contract is the immutable record of what happened and must stay
  *      minimal, while this one holds funds. Keeping the ledger away from the money means a
  *      bug here cannot corrupt the history, and a pause here cannot stop battles.

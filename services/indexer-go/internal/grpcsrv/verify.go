@@ -13,7 +13,7 @@ import (
 )
 
 // VerifyBattle independently recomputes a backend-authoritative battle result
-// (docs/plan-backend-battle-architecture.md §F). Unlike GetPetState/
+// (docs/battle-protocol.md §F). Unlike GetPetState/
 // EstimateWin, it reads nothing from the roster cache and
 // needs no warm-up: every input arrives in the request, which is what makes
 // this a genuine second implementation of the computation rather than a

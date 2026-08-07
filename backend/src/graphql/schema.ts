@@ -54,6 +54,57 @@ export const schema = buildSchema(`
         readyAt: Float!
     }
 
+    """
+    One ranked pet on the leaderboard.
+
+    The battle record is the merged one: pet_battle_progress where a pet has fought a
+    backend battle, the frozen pet_roster counters otherwise — the same rule every
+    other pet read here applies.
+    """
+    type LeaderboardEntry {
+        "1-based position in the full ranking, not within the page."
+        rank: Int!
+        "Pet id as a decimal string."
+        id: String!
+        chain: String!
+        owner: String!
+        name: String!
+        "On-chain DNA serialized as a decimal string."
+        dna: String!
+        level: Int!
+        rarity: Int!
+        winCount: Int!
+        lossCount: Int!
+        "Metaplex Core asset pubkey (Solana only); empty string on EVM."
+        asset: String!
+    }
+
+    type LeaderboardPage {
+        entries: [LeaderboardEntry!]!
+        total: Int!
+        page: Int!
+        pageSize: Int!
+    }
+
+    "One ranked owner, over the same merged battle record as LeaderboardEntry."
+    type PlayerLeaderboardEntry {
+        "1-based position in the full ranking, not within the page."
+        rank: Int!
+        "Wallet address / pubkey. EVM addresses are lowercased; Solana pubkeys are not."
+        owner: String!
+        winCount: Int!
+        lossCount: Int!
+        "How many of this owner's pets have a battle record."
+        petCount: Int!
+    }
+
+    type PlayerLeaderboardPage {
+        entries: [PlayerLeaderboardEntry!]!
+        total: Int!
+        page: Int!
+        pageSize: Int!
+    }
+
     type OpponentsPage {
         opponents: [OpponentPet!]!
         total: Int!
@@ -76,6 +127,42 @@ export const schema = buildSchema(`
             page: Int
             pageSize: Int
         ): OpponentsPage!
+
+        """
+        Pets ranked by battle record: wins descending, then losses ascending (the
+        win-rate tiebreak), then level, then pet id. Pets that have never fought are
+        omitted. Ranks are absolute, so page 2 continues where page 1 stopped.
+        """
+        leaderboard(
+            chain: String!
+            page: Int
+            pageSize: Int
+            "Case-insensitive substring of the pet's name. Ranks stay absolute: a match keeps its position on the full board rather than being renumbered within the results."
+            search: String
+        ): LeaderboardPage!
+
+        """
+        Owners ranked by their pets' combined battle record, ordered the same way as
+        the pet board. Only pets that have fought are summed, so petCount is "pets with
+        a record" and an owner whose pets have never fought does not appear.
+        """
+        playerLeaderboard(
+            chain: String!
+            page: Int
+            pageSize: Int
+            "Case-insensitive substring of the owner's address. Ranks stay absolute, as on the pet board."
+            search: String
+        ): PlayerLeaderboardPage!
+
+        """
+        The authenticated caller's own standing on the player board.
+
+        Returns null when the caller holds no pet that has fought — "unranked" is a real
+        answer, and a zeroed row could not be told apart from a player ranked last. The
+        owner is taken from the session, never from an argument, so this cannot be used
+        to enumerate other wallets' positions.
+        """
+        playerRank(chain: String!): PlayerLeaderboardEntry
 
         """
         Search pets by name prefix or exact numeric ID across the whole roster.

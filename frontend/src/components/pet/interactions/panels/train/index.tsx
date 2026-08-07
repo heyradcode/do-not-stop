@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
+import PetPicker from '@components/ui/pet-picker';
 import {
     getPetClass,
     getReadyPetsUnified,
@@ -92,47 +93,67 @@ const TrainPanel: React.FC<TrainPanelProps> = ({ isStandaloneView = true }) => {
                     </>
                 )}
 
-                {selectedPetObj && (
-                    <div className={styles.status}>
-                        <div className={styles.visual}>
-                            <span className={styles.level}>Lv.{selectedPetObj.level}</span>
+                {/* Always rendered, with a placeholder before a pet is chosen: the card
+                    keeps its size either way, so selecting a pet moves nothing. */}
+                <div className={`interaction-visual ${styles.status}`}>
+                    <div className={styles.visual}>
+                        {selectedPetObj ? (
+                            <>
+                                <span className={styles.level}>Lv.{selectedPetObj.level}</span>
+                                <span className={styles.avatar}>
+                                    <PetArt pet={selectedPetObj} />
+                                </span>
+                            </>
+                        ) : (
                             <span className={styles.avatar}>
-                                <PetArt pet={selectedPetObj} />
+                                <span className="pet-slot-glyph">?</span>
                             </span>
-                        </div>
-                        <div className={styles.body}>
-                            <div className={styles.name}>{selectedPetObj.name}</div>
-                            <div className={styles.petClass}>
-                                {getPetClass(selectedPetObj.dna)}
-                            </div>
-                            <div className={styles.xpTrack}>
-                                <div
-                                    className={styles.xpFill}
-                                    style={{ width: `${getXpPercent(selectedPetObj)}%` }}
-                                />
-                            </div>
-                            <div className={styles.xp}>
-                                {selectedXp?.xpCurrent}/{selectedXp?.xpMax} XP
-                            </div>
-                        </div>
+                        )}
                     </div>
-                )}
+                    <div className={styles.body}>
+                        {selectedPetObj ? (
+                            <>
+                                <div className={styles.name}>{selectedPetObj.name}</div>
+                                <div className={styles.petClass}>
+                                    {getPetClass(selectedPetObj.dna)}
+                                </div>
+                                <div className={styles.xpTrack}>
+                                    <div
+                                        className={styles.xpFill}
+                                        style={{ width: `${getXpPercent(selectedPetObj)}%` }}
+                                    />
+                                </div>
+                                <div className={styles.xp}>
+                                    {selectedXp?.xpCurrent}/{selectedXp?.xpMax} XP
+                                </div>
+                            </>
+                        ) : (
+                            // Same classes as the filled state, so both are the same
+                            // height by construction rather than by matched numbers.
+                            <>
+                                <div className={styles.name}>
+                                    <span className="skeleton-bar wide" />
+                                </div>
+                                <div className={styles.petClass}>
+                                    <span className="skeleton-bar narrow" />
+                                </div>
+                                <div className={styles.xpTrack} />
+                                <div className={styles.xp}>Select a pet to see its XP</div>
+                            </>
+                        )}
+                    </div>
+                </div>
 
                 <div className="picker">
                     <div className="field">
-                        <label htmlFor="train-pet">Select Pet</label>
-                        <select
-                            id="train-pet"
+                        <span className="field-label">Select Pet</span>
+                        <PetPicker
+                            pets={readyPets}
                             value={selectedPet}
-                            onChange={(e) => setSelectedPet(e.target.value)}
-                        >
-                            <option value="">Select pet...</option>
-                            {readyPets.map(({ id, pet }) => (
-                                <option key={id} value={id}>
-                                    {pet.name} (Level {pet.level})
-                                </option>
-                            ))}
-                        </select>
+                            onChange={setSelectedPet}
+                            label="Pet to train"
+                            emptyHint="No pets are ready right now."
+                        />
                     </div>
                     {trainCost && <p className="train-cost">Cost: {trainCost}</p>}
                 </div>

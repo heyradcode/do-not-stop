@@ -4,7 +4,7 @@
 // recover the parents that BreedSettled omits.
 //
 // No battle handlers: battles are resolved by the backend and published as signed
-// receipts (docs/plan-backend-battle-architecture.md), never as chain events.
+// receipts (docs/battle-protocol.md), never as chain events.
 
 import {
   NewPet,

@@ -40,3 +40,12 @@
 .actionControls {
     margin-top: 18px;
 }
+
+/* Why the pet list is empty. Amber rather than the muted body colour: this is the
+   answer to "why can I not rename anything", so it has to be read, not skimmed past. */
+.emptyNote {
+    margin: 6px 0 0;
+    color: rgb(255 199 120 / 85%);
+    font-size: 11px;
+    line-height: 1.45;
+}

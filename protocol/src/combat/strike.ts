@@ -6,8 +6,8 @@ import type { Attrs } from './dna';
 /**
  * One resolved attack. Mirrors indexer-go's strike.go `strike` return value
  * (newHpDef, atkHeal) plus extra fields (isMagic/crit/elementMult/
- * furyTriggered) the Go port doesn't need but the live-replay animation does
- * (plan-realtime-battle-impl.md Phase 4). These extra fields are read off the
+ * furyTriggered) the Go port doesn't need but the live-replay animation does.
+ * These extra fields are read off the
  * exact same computation as the damage number, never recomputed separately —
  * there is one simulation code path, and the log is a write-only view onto it.
  */

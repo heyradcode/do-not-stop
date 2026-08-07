@@ -16,8 +16,8 @@ export interface SimResult {
 }
 
 /**
- * One resolved attack, in fight order, for blow-by-blow animation
- * (plan-realtime-battle-impl.md Phase 4). Recorded inline as `simulate` runs
+ * One resolved attack, in fight order, for blow-by-blow animation.
+ * Recorded inline as `simulate` runs
  * the same computation the result is derived from — never a second pass, so
  * the log can't drift from the math it's describing.
  */
@@ -54,10 +54,10 @@ export interface SimOutcome {
  * Runs a full battle between pet 1 and pet 2 seeded by a 32-byte combat seed
  * (the on-chain uint256 `seed`/`randomness`). A move-for-move port of
  * CombatSim.simulate / combat::simulate / indexer-go's sim.go Simulate, with
- * one addition: it also returns a per-strike log for live animation
- * (plan-realtime-battle-impl.md Phase 4). Presentation only — the on-chain
- * `BattleResolved` event is always the authoritative result; see this port's
- * package README / the plan docs for the reconciliation rule.
+ * one addition: it also returns a per-strike log for live animation.
+ * Presentation only — the on-chain `BattleResolved` event is always the
+ * authoritative result; see this port's package README for the reconciliation
+ * rule.
  */
 export function simulate(
     dna1: bigint,

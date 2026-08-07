@@ -1,6 +1,6 @@
 import express, { Router } from 'express';
 
-import { getSeason, getSeasonClaim } from '@features/battle-rewards';
+import { getSeason, getSeasonClaim } from '@features/battle/rewards';
 
 /**
  * Reward seasons and claim proofs (§I).

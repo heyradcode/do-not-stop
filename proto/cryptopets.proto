@@ -20,7 +20,7 @@ service GameDataService {
   rpc EstimateWin(WinRequest) returns (WinResponse);
 
   // Independent recomputation of a backend-authoritative battle
-  // (docs/plan-backend-battle-architecture.md §F). Takes everything needed to
+  // (docs/battle-protocol.md §F). Takes everything needed to
   // rerun the fight and the progression composition — no database, no cache,
   // no chain state — so a mismatch against the TypeScript engine's own result
   // means the two implementations disagree, not that either read something

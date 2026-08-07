@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/radcrew/do-not-stop/services/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/services/indexer-go/internal/metrics"
 )
 
 type Config struct {
@@ -24,7 +25,14 @@ type Config struct {
 	RPCURL            string
 	ProgramID         string
 	ReconcileInterval time.Duration
+	// Commitment for every read and the subscription. Empty means "finalized" — the
+	// safe reading, so a caller that forgets to set it does not silently index
+	// unfinalized state.
+	Commitment string
 }
+
+// defaultCommitment is the safe end of the trade-off; see Config.Commitment.
+const defaultCommitment = "finalized"
 
 type Indexer struct {
 	cfg    Config
@@ -46,11 +54,18 @@ func New(cfg Config) (*Indexer, error) {
 	if err != nil {
 		return nil, err
 	}
+	if cfg.Commitment == "" {
+		cfg.Commitment = defaultCommitment
+	}
 	return &Indexer{
 		cfg:    cfg,
 		layout: layout,
-		rpc:    &rpcClient{url: cfg.RPCURL, http: &http.Client{Timeout: 30 * time.Second}},
-		dial:   dialGorilla,
+		rpc: &rpcClient{
+			url:        cfg.RPCURL,
+			http:       &http.Client{Timeout: 30 * time.Second},
+			commitment: cfg.Commitment,
+		},
+		dial: dialGorilla,
 	}, nil
 }
 
@@ -64,6 +79,9 @@ func (ix *Indexer) Scan(ctx context.Context, roster chan<- indexer.RosterUpdate)
 	if err != nil {
 		return 0, err
 	}
+	// Stamped on the round trip rather than on the pets: an empty program is still
+	// proof the RPC answered, and this is a liveness signal, not an activity one.
+	metrics.SetLastPoll("solana", time.Now().Unix())
 
 	emitted := 0
 	for _, acc := range res.Value {

@@ -18,19 +18,32 @@
     flex-shrink: 0;
 }
 
+/* One knob, `--sc-size`, sizes the frame; the art follows from it.
+   `font-size` is the real lever for the art, not the box: PetArt renders generated art as
+   a 1em square, so the image tracks the type size. Deriving it keeps the two in step, and
+   leaves the frame enough margin that the float animation and drop-shadow do not clip.
+   Callers that want a larger hero set `--sc-size` on an ancestor. */
 .avatar {
     position: relative;
     z-index: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 98px;
-    height: 98px;
-    font-size: 3.5rem;
+    width: var(--sc-size, 140px);
+    height: var(--sc-size, 140px);
+    font-size: calc(var(--sc-size, 140px) * 0.62);
     line-height: 1;
     border-radius: 18px;
     animation: cp-float 3.6s ease-in-out infinite;
     filter: drop-shadow(0 0 28px rgb(var(--sc-accent) / 80%));
+}
+
+/* Rounds the generated art itself, not just the frame around it. The frame's own
+   radius never showed, because the image is smaller than its box and so never reaches
+   the corners. Targets the `img` specifically: the emoji fallback is text, where a
+   radius would do nothing, and rounding it would be meaningless anyway. */
+.avatar img {
+    border-radius: 18px;
 }
 
 /* Local copy of the shared float keyframe (kept in-module so the scoped

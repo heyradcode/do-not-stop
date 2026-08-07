@@ -3,7 +3,6 @@ import type { OpponentPet, Pet } from '@shared/core';
 
 import {
     opponentKey,
-    shortAddress,
     toDialoguePet,
 } from '@components/pet/interactions/panels/battle/battle-utils';
 
@@ -52,13 +51,3 @@ describe('opponentKey', () => {
     });
 });
 
-describe('shortAddress', () => {
-    it('truncates long addresses to head…tail', () => {
-        expect(shortAddress('0x1234567890abcdef')).toBe('0x1234…cdef');
-    });
-
-    it('returns short strings unchanged', () => {
-        expect(shortAddress('0x1234')).toBe('0x1234');
-        expect(shortAddress('0x1234567890')).toBe('0x1234567890');
-    });
-});

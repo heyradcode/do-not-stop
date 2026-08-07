@@ -86,8 +86,7 @@ export const env = {
         process.env.ROSTER_READ_SOURCE?.trim().toLowerCase() === 'grpc' ? 'grpc' : 'postgres',
 
     /**
-     * Settle keeper (plan-realtime-battle-ux.md / plan-realtime-battle-impl.md Phase 2):
-     * settles GameLogic battle/breed/mint requests from this wallet once Pyth Entropy
+     * Settle keeper: settles GameLogic breed/mint requests from this wallet once Pyth Entropy
      * reveals, so the player doesn't send the settle transaction themselves. Off unless
      * KEEPER_ENABLED=true; the four fields below are required once it is (checked at
      * startSettleKeeper() time so a misconfigured keeper logs and no-ops rather than
@@ -115,7 +114,7 @@ export const env = {
     },
 
     /**
-     * Backend-authoritative battles (docs/plan-backend-battle-architecture.md).
+     * Backend-authoritative battles (docs/battle-protocol.md).
      *
      * Every wallet-signed object binds `chainId` and `deploymentId`, and that binding only
      * stops a replay if this server refuses payloads naming a different one. Both values are

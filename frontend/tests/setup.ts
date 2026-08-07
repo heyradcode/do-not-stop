@@ -15,6 +15,14 @@ if (!document.getElementById('root')) {
     document.body.appendChild(root);
 }
 
+// jsdom implements no layout, so it has no scrollIntoView at all. Components that keep a
+// view pinned to its newest content (the chat transcript) call it on every update, and
+// without this every such render throws. A no-op is the right stub: there is nothing to
+// scroll in a headless DOM, and the behaviour under test is what gets rendered.
+if (!Element.prototype.scrollIntoView) {
+    Element.prototype.scrollIntoView = function scrollIntoView() {};
+}
+
 // Unmount React trees between tests so renderHook/render don't leak state.
 afterEach(() => {
     cleanup();

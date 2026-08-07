@@ -16,9 +16,17 @@
        as the battle showdown), so every panel shares the uniform slot padding
        rather than a narrow centered cap. `max-height: 100%` bounds the panel to
        the slot so its body scrolls internally instead of the whole panel growing
-       past the header. */
+       past the header.
+
+       `height: 100%` is what makes it *reach* that bound. The panel already declares
+       `flex: 1 1 auto`, but the shell's content slot is a scrollable block rather than
+       a flex container, so that rule is inert and the panel used to size to its
+       content — short screens like rename left a small card stranded in an empty slot,
+       and the height jumped between screens. The percentage resolves against the
+       slot's content box, which lands the panel inside the shell's padding. */
     &.interaction-standalone {
         max-width: 100%;
+        height: 100%;
         max-height: 100%;
     }
 
@@ -58,6 +66,16 @@
                 letter-spacing: 0.9px;
                 text-transform: uppercase;
                 color: rgb(125 214 255 / 65%);
+            }
+
+            /* One height for every control in a field row. 48px is what PetSelect's
+               trigger measures: its 34px art plus 6px padding and the border outgrow the
+               46px min-height it asks for, and the rename panel puts a text field
+               directly beside one. */
+            select,
+            input:not(.psd-input) {
+                box-sizing: border-box;
+                min-height: 48px;
             }
 
             select {
@@ -178,6 +196,173 @@
    `interaction-standalone--<action>` sets a wash + accent; the shared chrome
    below left-aligns the title bar to match the redesign mock.
    ============================================================================= */
+/* Placeholder for the pet slot before a pet is chosen.
+ *
+ * Built from the filled state's own classes in each panel, so the empty and filled
+ * cards are the same height by construction. Only the bars and the glyph are new.
+ *
+ * It occupies exactly the space the real pet block will, which is the point: the slot is
+ * never empty, so the panel does not reshape when a pet is picked and nothing around it
+ * moves. That also lets the two-column rule below apply unconditionally rather than
+ * switching layouts on selection.
+ */
+.pet-slot-glyph {
+    font-weight: 700;
+    color: rgb(195 210 255 / 45%);
+}
+
+.skeleton-bar {
+    /* Inline-block so it can sit inside the same text rows the filled state uses and
+       still take a width and height. */
+    display: inline-block;
+    vertical-align: middle;
+    height: 12px;
+    border-radius: 999px;
+    background: linear-gradient(
+        90deg,
+        rgb(125 214 255 / 8%),
+        rgb(125 214 255 / 18%),
+        rgb(125 214 255 / 8%)
+    );
+    background-size: 200% 100%;
+    animation: cp-skeleton 1.6s ease-in-out infinite;
+}
+
+/* Fixed widths, not percentages: these sit inside shrink-to-fit rows (the showcase is a
+   centred flex column), where a percentage resolves against a zero-width parent and the
+   bar disappears. */
+.skeleton-bar.wide {
+    width: 132px;
+}
+
+.skeleton-bar.narrow {
+    width: 84px;
+}
+
+.skeleton-bar.full {
+    width: 100%;
+    min-width: 120px;
+}
+
+.pet-slot-hint {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: rgb(195 210 255 / 55%);
+}
+
+@keyframes cp-skeleton {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-bar {
+        animation: none;
+    }
+}
+
+/* Breed lays its own tabs and parent columns out, so it takes only the pinned action:
+   on the spouse tab the button lives here rather than in the DNA centre. */
+.dashboard-panel.pet-interactions.interaction-standalone--breed .action-controls {
+    margin-top: auto;
+    padding-top: 18px;
+    border-top: 1px solid var(--zi-border);
+}
+
+/* ==========================================================================
+   Single-pet action screens (level-up, train): pet column beside the controls,
+   primary action across the bottom.
+
+   These panels are one short form in a very wide slot, so a single stacked column
+   left most of the panel empty. The pet block becomes a fixed-width left column,
+   the picker takes the rest, and the action sits on the bottom edge under a rule —
+   `margin-top: auto` rather than absolute positioning, so it is pushed down by the
+   free space instead of overlapping content when there is none.
+
+   The pet column is always rendered — a placeholder stands in before a pet is chosen —
+   so this layout does not switch on selection and nothing moves when a pet is picked.
+   ========================================================================== */
+.dashboard-panel.pet-interactions.interaction-standalone--levelup .interface,
+.dashboard-panel.pet-interactions.interaction-standalone--train .interface {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.dashboard-panel.pet-interactions.interaction-standalone--levelup .interface .action-controls,
+.dashboard-panel.pet-interactions.interaction-standalone--train .interface .action-controls {
+    margin-top: auto;
+    padding-top: 18px;
+    border-top: 1px solid var(--zi-border);
+}
+
+@media (min-width: 900px) {
+    .dashboard-panel.pet-interactions.interaction-standalone--levelup .interface,
+    .dashboard-panel.pet-interactions.interaction-standalone--train .interface {
+        display: grid;
+        grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+        grid-template-rows: 1fr auto;
+        column-gap: 32px;
+        /* Both columns ride in the middle of the free row rather than hugging the top,
+           so the leftover height is shared above and below instead of pooling under
+           the form. */
+        align-items: center;
+    }
+
+    .interaction-standalone--levelup .interface .interaction-visual,
+    .interaction-standalone--train .interface .interaction-visual {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    /* The pet gets its own column here, so the art can be far larger than in the
+       single-column layout these panels fall back to. This is the space the screen was
+       wasting. */
+    .interaction-standalone--levelup .interface .interaction-visual {
+        --sc-size: 260px;
+    }
+
+    /* Train's card stacks in a narrow column: side by side, the art could never be more
+       than half the column wide. */
+    .interaction-standalone--train .interface .interaction-visual {
+        --tr-dir: column;
+        --tr-visual: 100%;
+        --tr-visual-ratio: 1;
+        --tr-art: 10rem;
+    }
+
+    /* The pet tiles auto-fill this width, so it sets how many sit across a row: about
+       five. Left uncapped they would spread over a very wide panel into one long line
+       with the cost note stranded at the far end. */
+    .interaction-standalone--levelup .interface .picker,
+    .interaction-standalone--train .interface .picker {
+        max-width: 620px;
+    }
+
+    .interaction-standalone--levelup .interface .picker,
+    .interaction-standalone--train .interface .picker {
+        grid-column: 2;
+        grid-row: 1;
+        /* One column of its own: the outer grid already splits the panel, so the
+           picker's own two-up grid would put the select and the cost side by side in
+           half the width. */
+        grid-template-columns: minmax(0, 1fr);
+        margin-bottom: 0;
+    }
+
+    .interaction-standalone--levelup .interface .action-controls,
+    .interaction-standalone--train .interface .action-controls {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        align-self: end;
+    }
+}
+
 .interaction-standalone--battle {
     --view-wash: var(--cp-wash-battle);
     --view-accent: 255 123 203;

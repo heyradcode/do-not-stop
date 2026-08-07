@@ -98,9 +98,12 @@ services:
     healthCheckPath: /health
     envVars:
       # Must match this service's own URL, or metadata hands marketplaces
-      # image links that 404.
+      # image links that 404. Pinned rather than sync:false because a forgotten
+      # value here fails silently: the service boots, serves images, and only
+      # the metadata links are wrong. Change it if the service is renamed or
+      # moves to a custom domain.
       - key: PUBLIC_BASE_URL
-        sync: false
+        value: https://do-not-stop-image-generator.onrender.com
       # r2, not filesystem: free web services sleep when idle, and a service
       # that slept on local disk wakes up and regenerates art every pet owner
       # has already seen. Generated art must survive the instance.

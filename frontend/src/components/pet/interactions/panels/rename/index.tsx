@@ -16,6 +16,7 @@ import { Tones } from '@constants/tones';
 import PetShowcase from '../_shared/pet-showcase';
 import styles from './index.module.css';
 import PetArt from '@components/pet/pet-art';
+import PetSelect from '@components/ui/pet-select';
 
 const MAX_NAME_LEN = 20;
 
@@ -61,6 +62,21 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
         [readyPets, renameMinLevel],
     );
 
+    /**
+     * Why the pet list is empty, said out loud.
+     *
+     * The standalone page renders no subtitle, so the level floor (2 on EVM, 1 on
+     * Solana) was never stated anywhere: a player whose only pet is a level-1 starter
+     * met an empty control and nothing explaining it. Each cause reads differently
+     * because each has a different fix.
+     */
+    const emptyReason =
+        pets.length === 0
+            ? 'You have no pets yet.'
+            : readyPets.length === 0
+            ? 'Every pet is still on cooldown.'
+            : `Renaming needs a level ${renameMinLevel} pet. Level one up first.`;
+
     const selectedPetObj = selectablePets.find(({ id }) => id === selectedPet)?.pet ?? null;
     const previewName = newName.trim() || selectedPetObj?.name || 'New Name';
     const meetsMin = newName.trim().length >= 2;
@@ -102,38 +118,64 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                     </>
                 )}
 
-                {selectedPetObj && (
-                    <PetShowcase avatar={<PetArt pet={selectedPetObj} />} accent="cyan">
-                        <div className={styles.preview}>{previewName}</div>
-                        <div className={styles.sub}>
-                            {getPetClass(selectedPetObj.dna)} · Lv.{selectedPetObj.level}
-                        </div>
-                        <div className={styles.reqs}>
-                            <div className={meetsMin ? styles.isOk : styles.isPending}>
-                                {meetsMin ? '✓' : '○'} Min 2 characters
+                {/* The slot is always rendered, with a placeholder standing in before a
+                    pet is chosen, so picking one swaps content into a box that is
+                    already the right size and nothing on the panel shifts. */}
+                <div className="interaction-visual">
+                    {!selectedPetObj && (
+                        // Built from the same classes as the filled state rather than
+                        // its own skeleton layout, so the two are the same height by
+                        // construction instead of by hand-matched numbers that drift.
+                        <PetShowcase
+                            avatar={<span className="pet-slot-glyph">?</span>}
+                            accent="cyan"
+                        >
+                            <div className={styles.preview}>
+                                <span className="skeleton-bar wide" />
                             </div>
-                            <div className={styles.isOk}>
-                                ✓ Max {MAX_NAME_LEN} characters ({newName.length})
+                            <div className={styles.sub}>
+                                <span className="skeleton-bar narrow" />
                             </div>
-                        </div>
-                    </PetShowcase>
-                )}
+                            <div className={styles.reqs}>
+                                <div className={styles.isPending}>○ Min 2 characters</div>
+                                <div className={styles.isPending}>
+                                    ○ Max {MAX_NAME_LEN} characters
+                                </div>
+                            </div>
+                        </PetShowcase>
+                    )}
+                    {selectedPetObj && (
+                        <PetShowcase avatar={<PetArt pet={selectedPetObj} />} accent="cyan">
+                            <div className={styles.preview}>{previewName}</div>
+                            <div className={styles.sub}>
+                                {getPetClass(selectedPetObj.dna)} · Lv.{selectedPetObj.level}
+                            </div>
+                            <div className={styles.reqs}>
+                                <div className={meetsMin ? styles.isOk : styles.isPending}>
+                                    {meetsMin ? '✓' : '○'} Min 2 characters
+                                </div>
+                                <div className={styles.isOk}>
+                                    ✓ Max {MAX_NAME_LEN} characters ({newName.length})
+                                </div>
+                            </div>
+                        </PetShowcase>
+                    )}
+                </div>
 
                 <div className="picker">
                     <div className="field">
                         <label htmlFor="rename-pet">Select Pet</label>
-                        <select
+                        <PetSelect
                             id="rename-pet"
+                            pets={selectablePets}
                             value={selectedPet}
-                            onChange={(e) => setSelectedPet(e.target.value)}
-                        >
-                            <option value="">Select pet...</option>
-                            {selectablePets.map(({ id, pet }) => (
-                                <option key={id} value={id}>
-                                    {pet.name} (Level {pet.level})
-                                </option>
-                            ))}
-                        </select>
+                            onChange={setSelectedPet}
+                            placeholder="Select pet..."
+                            disabled={selectablePets.length === 0}
+                        />
+                        {selectablePets.length === 0 && (
+                            <p className={styles.emptyNote}>{emptyReason}</p>
+                        )}
                     </div>
 
                     <div className="field">

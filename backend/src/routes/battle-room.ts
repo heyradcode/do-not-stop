@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import { verifyToken } from '@middleware/auth';
 import { battleRoomRateLimit } from '@middleware/rateLimit';
-import { createBattleRoom } from '@features/battle-room';
+import { createBattleRoom } from '@features/battle/room';
 
 const router: Router = express.Router();
 

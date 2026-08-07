@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/radcrew/do-not-stop/services/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/services/indexer-go/internal/metrics"
 )
 
 const defaultPageSize = 1000 // The Graph caps `first` at 1000
@@ -26,12 +27,17 @@ type Config struct {
 	URL          string // subgraph HTTP query endpoint
 	PollInterval time.Duration
 	PageSize     int // tests use small pages to exercise pagination
+	// ReconcileInterval is how often to re-read the whole roster instead of only what
+	// changed. Zero disables it, which is what the tests that assert on incremental
+	// behaviour want. See Run for what it is and is not a safety net against.
+	ReconcileInterval time.Duration
 }
 
 type Indexer struct {
-	chain  string
-	poll   time.Duration
-	client *client
+	chain     string
+	poll      time.Duration
+	reconcile time.Duration
+	client    *client
 	// watermark is the highest updatedAt seen. Owned by Scan/Run, which are
 	// never called concurrently (Run performs its own scans). If the initial
 	// scan failed it stays 0, so the first successful sync recovers by
@@ -57,8 +63,9 @@ func New(cfg Config) (*Indexer, error) {
 		chain = "evm"
 	}
 	return &Indexer{
-		chain: chain,
-		poll:  cfg.PollInterval,
+		chain:     chain,
+		poll:      cfg.PollInterval,
+		reconcile: cfg.ReconcileInterval,
 		client: &client{
 			url:      cfg.URL,
 			pageSize: pageSize,
@@ -77,6 +84,9 @@ func (ix *Indexer) Scan(ctx context.Context, roster chan<- indexer.RosterUpdate)
 	if err != nil {
 		return 0, err
 	}
+	// Stamped on the round trip rather than on the rows: an empty roster is still proof
+	// the subgraph answered.
+	metrics.SetLastPoll(ix.chain, time.Now().Unix())
 	return ix.emit(ctx, roster, pets)
 }
 
@@ -90,11 +100,28 @@ func (ix *Indexer) sync(ctx context.Context, roster chan<- indexer.RosterUpdate)
 	if err != nil {
 		return 0, err
 	}
+	// A quiet tick returns no pets and still counts: the point of this signal is that
+	// the subgraph was reachable, not that anything happened.
+	metrics.SetLastPoll(ix.chain, time.Now().Unix())
 	return ix.emit(ctx, roster, pets)
 }
 
-// Run scans once to prime the watermark, then polls incrementally. Transient
-// subgraph errors are logged and retried on the next tick.
+// Run scans once to prime the watermark, then polls incrementally, with a periodic full
+// re-read as a safety net. Transient subgraph errors are logged and retried next tick.
+//
+// The reconcile sweep matches what the Solana adapter has always done, and closes a real
+// asymmetry: `RECONCILE_INTERVAL` is documented as a full-scan safety net, but until now
+// only one of the two adapters used it, so an EVM row that the incremental path missed
+// stayed wrong until the pet changed again. The incremental query asks for
+// `updatedAt_gt: watermark`, so anything the watermark has already passed is invisible
+// to it, forever, by construction.
+//
+// Be precise about what this does *not* fix: a subgraph reorg can lower a pet's
+// `updatedAt`, and the store's write guard discards a lower version
+// (`WHERE last_version <= EXCLUDED.last_version`). A full sweep re-reads such a row but
+// the corrected value is then rejected, so the stale row survives. Fixing that needs
+// either a confirmation depth on the read or a version that does not move backwards —
+// a change to what `Version` means, deliberately not made here. See the roadmap's §3.
 //
 // Battles are no longer ingested (§L Phase 6): GameLogic has no requestBattle /
 // settleBattle and the subgraph no longer emits a Battle entity, so there is nothing on
@@ -113,21 +140,43 @@ func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) 
 	ticker := time.NewTicker(ix.poll)
 	defer ticker.Stop()
 
+	// A disabled reconcile still needs a channel to select on; a nil one blocks forever,
+	// which is exactly the "never fires" behaviour wanted.
+	var reconcileC <-chan time.Time
+	if ix.reconcile > 0 {
+		reconcileTicker := time.NewTicker(ix.reconcile)
+		defer reconcileTicker.Stop()
+		reconcileC = reconcileTicker.C
+	}
+
+	// Shared so the clean-shutdown discrimination lives in one place: a cancelled context
+	// surfaces as an error from the in-flight request, and treating that as a failure logs
+	// a spurious error on every shutdown that races a poll. Reports false to stop.
+	report := func(label string, count int, err error) bool {
+		switch {
+		case err != nil && ctx.Err() != nil:
+			return false
+		case err != nil:
+			slog.Error(label+" failed", "err", err)
+		case count > 0:
+			slog.Info(label, "count", count, "watermark", ix.watermark)
+		}
+		return true
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			synced, err := ix.sync(ctx, roster)
-			switch {
-			case err != nil && ctx.Err() != nil:
+			if synced, err := ix.sync(ctx, roster); !report("evm sync", synced, err) {
 				return nil
-			case err != nil:
-				slog.Error("evm sync failed", "err", err)
-			case synced > 0:
-				slog.Info("evm sync", "synced", synced, "watermark", ix.watermark)
 			}
-				}
+		case <-reconcileC:
+			if scanned, err := ix.Scan(ctx, roster); !report("evm reconcile scan", scanned, err) {
+				return nil
+			}
+		}
 	}
 }
 

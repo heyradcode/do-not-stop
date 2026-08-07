@@ -5,7 +5,8 @@ import { prisma } from '@config/prisma';
 import { tryGrpcGetPetState } from '@grpc-client/rosterReads';
 import { mapRosterRowToRosterPet, type PetRosterRow } from './roster.mapping';
 import { servedChainIdForFamily } from './battleProgress.overlay';
-import { servedDeploymentId } from '@features/battle-ledger/domain';
+import { ownerKey } from './owner.sql';
+import { servedDeploymentId } from '@features/battle/ledger/domain';
 import type { Chain } from '@typings/chain';
 
 /**
@@ -101,14 +102,10 @@ export async function findReadyOpponents(
     const rulesetHash = hashRuleset(SOURCE_DEFAULT_RULESET);
     const skip = params.page * params.pageSize;
 
-    // `normalizeAccount` lowercases EVM addresses and leaves base58 Solana pubkeys
-    // alone, so only the EVM side is folded — indexer-go is not guaranteed to write
-    // the roster in the same case. Folding base58 too could match two distinct
-    // pubkeys and list a pet whose owner never consented.
-    const ownerMatch =
-        params.chain === 'evm'
-            ? Prisma.sql`LOWER(r.owner) = a.defender_owner`
-            : Prisma.sql`r.owner = a.defender_owner`;
+    // Folded for EVM, exact for base58 — see `ownerKey`, which states the rule once for
+    // the three places that need it (here, the leaderboard's grouping, chat's marriage
+    // gate). Getting it wrong here would list a pet whose owner never consented.
+    const ownerMatch = Prisma.sql`${ownerKey(params.chain, 'r')} = a.defender_owner`;
 
     // A live grant covering this pet, under the ruleset battles are currently settled
     // under. Level band and daily cap are not here on purpose — see the header.

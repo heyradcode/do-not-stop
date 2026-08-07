@@ -18,6 +18,16 @@ type Config struct {
 	SolanaWSURL     string
 	SolanaRPCURL    string
 	SolanaProgramID string
+	// Commitment every Solana read and the program subscription run at.
+	//
+	// Defaults to "finalized" rather than "confirmed". A confirmed slot can still be
+	// dropped, and this roster is what battle snapshots are frozen from, so indexing
+	// unfinalized state can freeze a value that never happened into a signed receipt
+	// (docs/battle-protocol.md Appendix A, T10). The cost is roughly a dozen seconds of
+	// extra lag on pet updates, which matters to an opponent list far less than a
+	// phantom row does. A local validator finalizes almost immediately, so dev is
+	// unaffected; "confirmed" stays available for an operator who has weighed this.
+	SolanaCommitment string
 
 	// EVM adapter (milestone 2).
 	EVMSubgraphURL  string
@@ -46,7 +56,12 @@ const (
 	defaultHealthAddr        = "localhost:8090"
 	defaultEVMPollInterval   = 15 * time.Second
 	defaultReconcileInterval = 10 * time.Minute
+	defaultSolanaCommitment  = "finalized"
 )
+
+// Commitments a Solana RPC accepts. "processed" is deliberately absent: it means "one
+// node has seen it", which is not an indexable claim about the chain.
+var validSolanaCommitments = map[string]bool{"confirmed": true, "finalized": true}
 
 // Load reads the environment. It errors only on malformed values (bad
 // durations); missing connection settings are reported by the consuming
@@ -61,10 +76,16 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	commitment := stringEnv("SOLANA_COMMITMENT", defaultSolanaCommitment)
+	if !validSolanaCommitments[commitment] {
+		return nil, fmt.Errorf(`SOLANA_COMMITMENT: must be "confirmed" or "finalized", got %q`, commitment)
+	}
+
 	return &Config{
 		SolanaWSURL:        os.Getenv("SOLANA_WS_URL"),
 		SolanaRPCURL:       os.Getenv("SOLANA_RPC_URL"),
 		SolanaProgramID:    os.Getenv("SOLANA_PROGRAM_ID"),
+		SolanaCommitment:   commitment,
 		EVMSubgraphURL:     os.Getenv("EVM_SUBGRAPH_URL"),
 		EVMPollInterval:    evmPoll,
 		DatabaseURL:        os.Getenv("DATABASE_URL"),

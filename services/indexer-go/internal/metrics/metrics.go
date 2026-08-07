@@ -50,6 +50,13 @@ var (
 	flushErrors   = newSeries()
 	wsReconnects  = newSeries()
 	lastVersion   = newSeries() // by chain; gauge semantics (set, not add)
+	// lastPoll is unix seconds of the last round trip to a chain that came back without
+	// an error, by chain. Distinct from lastVersion on purpose: a version only moves when
+	// something on chain changed, so a quiet chain and a stalled adapter look identical
+	// through it. This moves on every healthy tick, which is what makes staleness
+	// (`time() - indexer_last_poll_unixtime`) mean "we have lost contact" rather than
+	// "nobody has played today".
+	lastPoll = newSeries() // by chain
 
 	cacheSize         atomic.Int64
 	cacheWarm         atomic.Int64
@@ -60,6 +67,7 @@ func Flush(rows int)                        { flushes.get("").Add(1); flushRows.
 func FlushError()                           { flushErrors.get("").Add(1) }
 func WSReconnect()                          { wsReconnects.get("").Add(1) }
 func SetLastVersion(chain string, v uint64) { lastVersion.get(chain).Store(int64(v)) }
+func SetLastPoll(chain string, unix int64)  { lastPoll.get(chain).Store(unix) }
 func SetCacheSize(n int)                    { cacheSize.Store(int64(n)) }
 func SetCacheWarm(warm bool)                { cacheWarm.Store(b2i(warm)) }
 
@@ -69,6 +77,11 @@ func b2i(b bool) int64 {
 	}
 	return 0
 }
+
+// HasPolled reports whether this chain has completed at least one error-free round trip
+// since start. Readiness, not health: a process that is up but has never reached a chain
+// is not yet serving anything anyone should trust.
+func HasPolled(chain string) bool { return lastPoll.get(chain).Load() > 0 }
 
 // Handler serves the Prometheus text exposition format.
 func Handler() http.HandlerFunc {
@@ -87,6 +100,9 @@ func Handler() http.HandlerFunc {
 			"Solana WebSocket reconnect attempts", wsReconnects)
 		writeLabelled(w, "indexer_last_version", "gauge",
 			"Last indexed source version per chain (slot / updatedAt)", lastVersion)
+
+		writeLabelled(w, "indexer_last_poll_unixtime", "gauge",
+			"Unix seconds of the last error-free round trip per chain", lastPoll)
 
 		writeGauge(w, "indexer_cache_pets", "Pets held in the roster read cache", cacheSize.Load())
 		writeGauge(w, "indexer_cache_warm", "1 when the read cache serves traffic", cacheWarm.Load())

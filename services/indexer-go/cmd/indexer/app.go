@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -66,7 +68,12 @@ func run() error {
 		}(adapter)
 	}
 
-	health := &http.Server{Addr: cfg.HealthAddr, Handler: healthMux()}
+	chains := make([]string, len(adapters))
+	for i, a := range adapters {
+		chains[i] = a.Chain()
+	}
+
+	health := &http.Server{Addr: cfg.HealthAddr, Handler: healthMux(chains)}
 	serveErr := make(chan error, 1)
 	go func() {
 		if err := health.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
@@ -74,10 +81,6 @@ func run() error {
 		}
 	}()
 
-	chains := make([]string, len(adapters))
-	for i, a := range adapters {
-		chains[i] = a.Chain()
-	}
 	slog.Info("indexer-go started",
 		"chains", chains,
 		"health_addr", cfg.HealthAddr,
@@ -113,11 +116,43 @@ func run() error {
 	return nil
 }
 
-func healthMux() *http.ServeMux {
+// healthMux serves liveness and readiness as two different questions, because they have
+// two different consequences.
+//
+// `/healthz` stays a bare liveness probe: it is what the platform restarts the process
+// on, and restarting cannot fix an unreachable subgraph or RPC. Tying it to indexing
+// freshness would turn a provider outage into a restart loop that guarantees the outage
+// outlasts it.
+//
+// `/readyz` is the freshness question, and it is the one that matters to callers rather
+// than to the supervisor: this service is the only writer of `pet_roster`, and under
+// backend-authoritative battles it is also the independent pre-signing verifier, so
+// "the process is up" and "its view of the chain is current" stopped being the same
+// claim. Continuous staleness lives in `indexer_last_poll_unixtime`; this endpoint
+// answers the coarser question a caller can act on.
+func healthMux(chains []string) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
+	})
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, _ *http.Request) {
+		var pending []string
+		for _, chain := range chains {
+			if !metrics.HasPolled(chain) {
+				pending = append(pending, chain)
+			}
+		}
+		if len(pending) > 0 {
+			// 503 until every configured chain has been reached once. Before that the
+			// roster is not merely stale, it is absent, and a caller that treats an
+			// empty answer as "no such pet" would be wrong rather than late.
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = fmt.Fprintf(w, "awaiting first successful poll: %s\n", strings.Join(pending, ", "))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ready"))
 	})
 	mux.HandleFunc("GET /metrics", metrics.Handler())
 	return mux

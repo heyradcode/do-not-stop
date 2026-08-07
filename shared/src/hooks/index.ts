@@ -57,6 +57,44 @@ export {
 } from './pets/useSpousePet';
 export { useIncomingProposals, type IncomingProposal } from './marriage/useIncomingProposals';
 export { useWinEstimate, type WinEstimateResult } from './battle/useWinEstimate';
+// Leaderboards. Ranked server-side over the merged battle record, so a page arrives
+// already ordered and `rank` is absolute rather than per-page.
+export {
+    useLeaderboard,
+    type LeaderboardEntry,
+    type UseLeaderboardOptions,
+    type UseLeaderboardResult,
+} from './leaderboard/useLeaderboard';
+export {
+    usePlayerLeaderboard,
+    type PlayerLeaderboardEntry,
+    type UsePlayerLeaderboardOptions,
+    type UsePlayerLeaderboardResult,
+} from './leaderboard/usePlayerLeaderboard';
+export { usePlayerRank, type UsePlayerRankResult } from './leaderboard/usePlayerRank';
+// Private chat (roadmap §2 v1). Access is decided server-side from live marriage state;
+// these hooks render what they are given and never gate anything themselves.
+export {
+    useChatThreads,
+    chatThreadsQueryKey,
+    type ChatThread,
+    type ChatThreadPets,
+    type UseChatThreadsResult,
+} from './chat/useChatThreads';
+export {
+    useChatMessages,
+    chatMessagesQueryKey,
+    type ChatMessageReaction,
+    type ChatMessage,
+    type UseChatMessagesOptions,
+    type UseChatMessagesResult,
+} from './chat/useChatMessages';
+export {
+    useChatThreadSocket,
+    type ChatThreadNotification,
+    type UseChatThreadSocketOptions,
+} from './chat/useChatThreadSocket';
+export { CHAT_REACTIONS, isChatReaction, type ChatReaction } from './chat/reactions';
 export {
     useBattleDialogue,
     type UseBattleDialogueOptions,
@@ -67,7 +105,7 @@ export {
 } from './battle/useBattleDialogue';
 export { useBattleTaunts, type GenerateTauntsVars } from './battle/useBattleTaunts';
 export { useCreateBattleRoom, type CreateRoomVars } from './battle/useCreateBattleRoom';
-// Backend-authoritative battles (docs/plan-backend-battle-architecture.md §D, §E, §J).
+// Backend-authoritative battles (docs/battle-protocol.md §D, §E, §J).
 export { BATTLE_CONFIG_QUERY_KEY, useBattleConfig, type BattleConfig } from './battle/useBattleConfig';
 export { useBattleMode, type BattleMode, type BattleModeState } from './battle/useBattleMode';
 export {

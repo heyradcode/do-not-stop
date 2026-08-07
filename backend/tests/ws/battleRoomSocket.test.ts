@@ -2,12 +2,9 @@ import { createServer, type Server } from 'node:http';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import WebSocket from 'ws';
 
-import {
-    notifyBattleRoom,
-    notifyBattleRoomIfPresent,
-    startBattleRoomSocket,
-    stopBattleRoomSocket,
-} from '@ws/battleRoomSocket';
+import '@ws/chatSocket'; // registers the other channel, as the real server does
+import { notifyBattleRoom, notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
+import { startWsChannels, stopWsChannels } from '@ws/channel';
 
 /**
  * Real HTTP server + real `ws` clients, not mocks: the property under test is
@@ -21,7 +18,7 @@ let baseUrl: string;
 
 beforeEach(async () => {
     server = createServer();
-    startBattleRoomSocket(server);
+    startWsChannels(server);
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const address = server.address();
     if (address === null || typeof address === 'string') {
@@ -31,7 +28,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-    stopBattleRoomSocket();
+    stopWsChannels();
     await new Promise<void>((resolve) => server.close(() => resolve()));
 });
 
@@ -113,10 +110,15 @@ describe('room scoping', () => {
 });
 
 describe('connection requirements', () => {
-    it('closes the connection when roomId is missing', async () => {
+    it('refuses the connection when roomId is missing', async () => {
+        // Refused at the upgrade now, so this is a transport error rather than a close
+        // code — see the equivalent note in chatSocket.test.ts.
         const socket = new WebSocket(baseUrl);
-        const closed = nextClose(socket);
-        const { code } = await closed;
-        expect(code).toBe(1008);
+        const outcome = await new Promise<string>((resolve) => {
+            socket.once('open', () => resolve('open'));
+            socket.once('error', () => resolve('refused'));
+            socket.once('close', () => resolve('refused'));
+        });
+        expect(outcome).toBe('refused');
     });
 });

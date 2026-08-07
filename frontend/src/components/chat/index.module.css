@@ -1,0 +1,625 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+   Private chat: thread rail plus one conversation.
+
+   Violet is the page's accent, not the magenta the marriage panels use. Chat borrowed
+   that wholesale and every surface ran hot at once — bubbles, avatars, chips, the send
+   button. Violet is the same neon family a step cooler, carried at low alpha so the pet
+   art is the one saturated thing on screen; the faces are what the page is for. Cyan
+   stays reserved for signals that must not read as decoration: the seen receipt. */
+
+/* The messaging panel is the one screen that should end at the bottom of the window
+   rather than at the bottom of its content.
+
+   `height: 100%` and not a flex rule: the shell's content slot is a scrollable *block*
+   (`overflow: auto`, no `display: flex`), so a `flex` declaration on the panel is inert
+   and it just sizes to its children. The slot does have a definite height — it is a
+   flex item of the shell's column — so a percentage resolves against it, and it resolves
+   against the slot's *content box*, which is why the panel lands inside the shell's
+   padding instead of overflowing it. Everything below here is a flex column already, so
+   the height flows down to the transcript on its own. */
+.page {
+    height: 100%;
+}
+
+/* Fills the panel body instead of sizing to its content. Every ancestor from the app
+   shell down is already a flex column that owns the viewport height, so the conversation
+   should end at the bottom of the panel's padding rather than at a fixed height with
+   dead space beneath it. `min-height: 0` is what lets the transcript scroll inside
+   rather than pushing the composer past the bottom edge. */
+.layout {
+    display: grid;
+    grid-template-columns: minmax(0, 240px) minmax(0, 1fr);
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
+}
+
+.threadList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    /* Scrolls on its own so a long thread list cannot stretch the row and push the
+       conversation off the bottom. */
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.threadButton {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgb(148 163 184 / 14%);
+    background: var(--cp-surface);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.threadButton.isActive {
+    border-color: rgb(181 140 255 / 45%);
+    background: rgb(181 140 255 / 7%);
+}
+
+.threadName {
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.threadSub,
+.conversationSub {
+    font-size: 0.75rem;
+    opacity: 0.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.conversation {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    border-radius: 10px;
+    border: 1px solid rgb(148 163 184 / 14%);
+    background: var(--cp-surface);
+}
+
+.conversationHeader {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgb(148 163 184 / 12%);
+}
+
+.conversationTitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+}
+
+/* Presence. Grey is the resting state and green is the exception, so a thread that is
+   simply quiet does not look like an error. Sized in em so it tracks the title. */
+.dot {
+    width: 0.55em;
+    height: 0.55em;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: rgb(148 163 184 / 55%);
+}
+
+.dot.isOnline {
+    background: rgb(52 211 153);
+    /* A faint halo so it reads as "lit" at this size rather than as a dark speck. */
+    box-shadow: 0 0 0 3px rgb(52 211 153 / 18%);
+}
+
+/* Stated plainly rather than blocking the composer: sending still works while the
+   notification channel is down, it just will not update on its own. */
+.offline {
+    margin-left: auto;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.5;
+}
+
+.messages {
+    list-style: none;
+    margin: 0;
+    /* Roomier than the bubbles strictly need. A short message's reactions are wider than
+       the bubble they hang under, so they reach closer to the panel edge than anything
+       else does, and at the old inset they read as spilling out of it. */
+    padding: 14px 18px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.message {
+    max-width: 78%;
+    align-self: flex-start;
+    display: flex;
+    /* A column: the pet-and-bubble row, then any reactions beneath it. */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+}
+
+.message.isMine {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.row {
+    display: flex;
+    /* Bottom-aligned: the face sits beside the last line of a run, where the run ends. */
+    align-items: flex-end;
+    gap: 8px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* Reversed rather than a separate rule per child: the sender's own messages put the
+   face on the same side as the bubble they belong to. */
+.message.isMine .row {
+    flex-direction: row-reverse;
+}
+
+.bubble {
+    min-width: 0;
+    display: flex;
+    /* Text, then time and receipt beneath it. A row put the time on the first line's
+       baseline, so a message that wrapped left it stranded at the top of the bubble with
+       the text running on below it. */
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 8px 14px;
+    border-radius: 12px;
+    background: rgb(148 163 184 / 12%);
+    /* `#root` in App.css centres the whole app, so anything that wants ordinary prose
+       has to say so — see `.threadButton`, which already had to. A centred second line
+       under a longer first one does not read as a message. The meta below is placed by
+       `align-self`, which this does not touch. */
+    text-align: left;
+}
+
+/* The bubble's bottom-right corner, wherever the text ends. */
+.messageMeta {
+    align-self: flex-end;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.message.isMine .bubble {
+    background: rgb(181 140 255 / 13%);
+}
+
+/* The pet behind each side of the thread. Round, because that is what reads as a
+   messenger avatar; square frames belong to the pet panels. PetArt draws at 1em, so
+   font-size is what sizes the image (see PetArt). */
+.messageFace,
+.messageFaceGap {
+    flex-shrink: 0;
+    width: 28px;
+}
+
+.messageFace {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    font-size: 1.5rem;
+    line-height: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 45%, rgb(181 140 255 / 14%), transparent 68%);
+}
+
+.messageFace img {
+    border-radius: 50%;
+}
+
+.messageText {
+    /* User-authored text: wrap anywhere rather than let one long token stretch the row,
+       and keep the newlines the composer now allows. `pre-wrap`, not `pre`: the author's
+       line breaks are theirs, but the wrapping is still ours. */
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    font-size: 0.9rem;
+}
+
+.messageTime {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    opacity: 0.5;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Pinned to the bottom of the card by the region above it filling, not by absolute
+   positioning. An absolutely positioned bar sits on top of the transcript unless the
+   scroll area reserves exactly its height, and that reservation has to be re-tuned by
+   hand every time the composer's padding, font or error line changes — it silently
+   covers the newest message when it drifts. `flex-shrink: 0` is the part that matters:
+   it keeps the bar at its natural height instead of being squeezed by a long
+   transcript. */
+.composer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid rgb(148 163 184 / 12%);
+    flex-shrink: 0;
+    /* The box grows upward from the bottom edge, so the Send button stays on the last
+       line rather than floating beside the middle of a long draft. */
+    align-items: flex-end;
+}
+
+.composer textarea {
+    flex: 1;
+    min-width: 0;
+    /* Height is assigned from scrollHeight, which already counts the padding. Without
+       this the padding lands twice and an empty box stands 16px taller than the single
+       line it holds. */
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid rgb(148 163 184 / 22%);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9rem;
+
+    /* Height is set inline as the draft grows; this caps it at roughly six lines,
+       after which the draft scrolls instead of eating the transcript. */
+    max-height: 9.5rem;
+    resize: none;
+    overflow-y: auto;
+    line-height: 1.4;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(181 140 255 / 28%) transparent;
+}
+
+.composer button {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid rgb(181 140 255 / 38%);
+    background: rgb(181 140 255 / 10%);
+    color: inherit;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.composer button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* The transcript's stand-in states. They take the same space the message list would, so
+   the composer stays on the bottom edge whether the thread is loading, empty, or broken
+   — previously these hugged their one line of text and the composer rode up with them. */
+.placeholder {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.empty,
+.error {
+    margin: 20px 14px;
+    font-size: 0.9rem;
+}
+
+.empty {
+    opacity: 0.7;
+}
+
+.error {
+    color: rgb(251 113 133);
+}
+
+@media (width <= 720px) {
+    /* The rail becomes a strip above the conversation; two columns leave neither usable.
+       Rows are declared so the conversation still takes the remaining height rather than
+       splitting it evenly with the strip. */
+    .layout {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .threadList {
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: visible;
+    }
+
+    .threadButton {
+        width: auto;
+        flex-shrink: 0;
+    }
+}
+
+/* Sent / seen receipt, on your own messages only.
+   One tick once the server has the message — every message in the transcript came back
+   from the server, so a rendered message is a stored one — and two once the counterpart's
+   read watermark has passed it. The pair is tightened rather than drawn as one glyph so
+   it reads as two ticks at 0.7rem.
+
+   Rides in `.messageMeta` beside the time, in the bubble's bottom-right corner. */
+.receipt {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    letter-spacing: -0.22em;
+    padding-inline-end: 0.22em;
+    opacity: 0.5;
+}
+
+.receipt.isSeen {
+    color: rgb(125 214 255);
+    opacity: 1;
+}
+
+/* ── Reactions ─────────────────────────────────────────────────────────────────
+   Under the row, indented past the pet so the chips line up with the bubble rather than
+   with the avatar beside it. 36px is the face plus the row's gap. */
+.reactions {
+    padding-inline-start: 36px;
+}
+
+.message.isMine .reactions {
+    padding-inline-start: 0;
+    padding-inline-end: 36px;
+}
+
+/* Only rendered when a message actually has reactions, so no rule is needed to hide it. */
+.reactions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* A circle, not a pill: a lone emoji in a stadium-shaped chip reads as a squashed
+   button. Square dimensions with no horizontal padding, so the border sits an even
+   distance from the glyph on every side. */
+.reactionChip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    box-sizing: border-box;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid rgb(148 163 184 / 22%);
+    border-radius: 999px;
+    background: rgb(5 13 30 / 85%);
+    color: inherit;
+    font: inherit;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+/* Two things side by side cannot be a circle, so this one becomes a stadium and takes
+   the width it needs. `width` gives way to `min-width` for the same reason. */
+.reactionChip.hasCount {
+    width: auto;
+    min-width: 30px;
+    padding: 0 9px;
+}
+
+/* Your own reaction reads as pressed, because tapping it again is what takes it off. */
+.reactionChip.isMineReaction {
+    border-color: rgb(181 140 255 / 45%);
+    background: rgb(181 140 255 / 13%);
+}
+
+.reactionCount {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Beside the bubble, centred on it, on the side away from the pet — the row is reversed
+   for your own messages, so it lands there without a side-specific rule. The anchor for
+   the picker, which is why it is positioned. */
+.reactionTrigger {
+    position: relative;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+/* Hidden until the reader is on the message, so an untouched transcript carries no column
+   of empty controls. Kept visible while its own picker is open, or choosing an emoji
+   would dismiss the thing being chosen from. A CSS rule rather than hover state in React:
+   a re-render per pointer move to draw one button is not worth it. */
+.reactionAdd {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    background: transparent;
+    color: rgb(195 210 255 / 55%);
+    font: inherit;
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.message:hover .reactionAdd,
+.message:focus-within .reactionAdd,
+.reactionAdd[aria-expanded='true'] {
+    opacity: 1;
+}
+
+.reactionAdd:hover,
+.reactionAdd:focus-visible {
+    color: #f6f3ff;
+    border-color: rgb(148 163 184 / 35%);
+    background: rgb(148 163 184 / 12%);
+}
+
+/* Absolute rather than in flow: in flow it would widen the row and shove the bubble
+   sideways the moment it opened. Not portalled either — the transcript scrolls, and a
+   popup pinned to a rect measured once would drift off its message on the next scroll.
+
+   Opens upward and inward, over the message rather than the margin, because the list
+   clips anything running past its edge sideways.
+
+   Opens as a row of the quick six with a chevron; expanding turns it into the grid. */
+.reactionPicker {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 5px;
+    border: 1px solid rgb(148 163 184 / 25%);
+    border-radius: 999px;
+    background: rgb(4 10 26 / 98%);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+}
+
+/* Six columns keep the full set roughly square, and the quick six stay on the first row
+   so expanding moves nothing the reader was already looking at. */
+.reactionPicker.isExpanded {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    padding: 6px;
+    border-radius: 12px;
+    /* Scrolls rather than growing past the transcript it opens over. */
+    max-height: 216px;
+    overflow-y: auto;
+    /* Explicit, because a non-visible overflow on one axis forces the other to `auto`
+       too, and the grid then draws a horizontal scrollbar it has no use for. */
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(148 163 184 / 35%) transparent;
+}
+
+/* Flipped downward when the component measures too little room above; see PICKER_MAX_HEIGHT. */
+.reactionPicker.isBelow {
+    bottom: auto;
+    top: calc(100% + 6px);
+}
+
+/* Their message puts the control on the right, so the picker extends left, and the
+   reverse for yours. Either way it opens across the bubble, never off the panel. */
+.reactionPicker {
+    inset-inline-end: 0;
+}
+
+.message.isMine .reactionPicker {
+    inset-inline-end: auto;
+    inset-inline-start: 0;
+}
+
+.reactionOption {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.reactionOption:hover,
+.reactionOption:focus-visible {
+    background: rgb(148 163 184 / 18%);
+}
+
+/* Opens the rest of the set. Drawn rather than a glyph so it sits at the same weight as
+   the emoji beside it instead of whatever a font decides a chevron character is. */
+.reactionMore {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-inline-start: 1px solid rgb(148 163 184 / 20%);
+    background: transparent;
+    cursor: pointer;
+}
+
+.reactionMoreChevron {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid rgb(125 214 255 / 70%);
+    border-bottom: 2px solid rgb(125 214 255 / 70%);
+    transform: translateY(-2px) rotate(45deg);
+}
+
+.reactionMore:hover .reactionMoreChevron,
+.reactionMore:focus-visible .reactionMoreChevron {
+    border-color: #f6f3ff;
+}
+
+/* ── History and day marks ─────────────────────────────────────────────────────
+   The date a run of messages belongs to. A rule through the middle rather than a bare
+   line of text, so it reads as a division of the transcript and not as someone's
+   message. */
+.dayMark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 6px 0 2px;
+    color: rgb(195 210 255 / 45%);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+
+.dayMark::before,
+.dayMark::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgb(148 163 184 / 14%);
+}
+
+/* Holds the top of the list while a page is on its way. Present but empty when there is
+   more to load and nothing in flight, so arriving history does not shift the view by the
+   height of a notice appearing. */
+.historyNotice {
+    flex-shrink: 0;
+    min-height: 18px;
+    color: rgb(195 210 255 / 45%);
+    font-size: 0.75rem;
+    font-style: italic;
+    text-align: center;
+}

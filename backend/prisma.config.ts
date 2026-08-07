@@ -3,6 +3,39 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+/** Seconds the schema engine waits for a connection before reporting P1001. */
+const CONNECT_TIMEOUT = "30";
+
+/**
+ * The migration connection, with a connect timeout that survives TLS interception.
+ *
+ * Prisma's default is short enough that a proxy or antivirus doing TLS inspection makes
+ * every migration command fail as `P1001: Can't reach database server` — a message that
+ * points at the database, which is up and answering `pg` clients on the same URL at the
+ * same moment. Measured against the Supabase pooler behind such an interceptor: the
+ * handshake takes ~19s and the engine gives up at ~10s.
+ *
+ * Applied here rather than in `.env` so it holds for every developer and cannot be lost
+ * to an edit of a file that is not in the repository. Left alone if the URL already sets
+ * it. Note `sslmode=disable` also "fixes" this and must not be used: it works by putting
+ * the database password on the wire in clear text.
+ */
+function migrationUrl(): string | undefined {
+  const raw = process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"];
+  if (!raw) return undefined;
+  try {
+    const url = new URL(raw);
+    if (!url.searchParams.has("connect_timeout")) {
+      url.searchParams.set("connect_timeout", CONNECT_TIMEOUT);
+    }
+    return url.toString();
+  } catch {
+    // Not a URL we can parse. Hand it back untouched: a malformed connection string is
+    // the engine's error to report, and it reports it far better than this would.
+    return raw;
+  }
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
@@ -11,6 +44,6 @@ export default defineConfig({
   datasource: {
     // Migrations/introspection use a direct (session-mode) connection — the
     // transaction-mode pooler in DATABASE_URL can't run DDL / advisory locks.
-    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
+    url: migrationUrl(),
   },
 });

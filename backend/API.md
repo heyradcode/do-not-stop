@@ -219,6 +219,48 @@ matchup UI degrades to "odds unavailable". Intended for a single confirmed
 matchup, not per opponents row. Optional `samples` arg overrides the server
 default (clamped to 10,000).
 
+### Leaderboards
+
+```graphql
+query($chain: String!, $page: Int, $pageSize: Int) {
+  leaderboard(chain: $chain, page: $page, pageSize: $pageSize) {
+    entries { rank id chain owner name dna level rarity winCount lossCount asset }
+    total page pageSize
+  }
+  playerLeaderboard(chain: $chain, page: $page, pageSize: $pageSize) {
+    entries { rank owner winCount lossCount petCount }
+    total page pageSize
+  }
+  playerRank(chain: $chain) { rank owner winCount lossCount petCount }
+}
+```
+
+Three read-only rankings over the **merged** battle record — `pet_battle_progress`
+where a pet has fought a backend battle, the frozen `pet_roster` counters otherwise.
+Ranking on the roster alone is not a simplification but a bug: those counters stopped
+moving when battles left the chain (§L Phase 6), so on a deployment whose battles are
+all backend-settled the roster-only ranking is empty.
+
+Ordering is wins DESC, then losses ASC, then (pets only) level DESC, then the id or
+owner key. The losses tiebreak *is* the win-rate tiebreak — among rows on equal wins,
+fewer losses is a strictly higher rate — so nothing is ranked on a ratio drawn from a
+handful of fights. Rows with no battles at all are excluded.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `rank` | Int | 1-based over the **full** ranking, not the page; page 2 continues where page 1 stopped |
+| `owner` | String | grouping key on the player board: EVM addresses lowercased, Solana pubkeys untouched, matching `normalizeAccount` |
+| `petCount` | Int | pets **with a battle record**, not pets owned |
+
+`playerRank` reports the authenticated caller's own standing, so a client does not page
+the whole board looking for itself. It takes no owner argument — whose rank it is comes
+from the session — and returns **`null` for an unranked player** (no pet has fought)
+rather than a zeroed row, which would be indistinguishable from genuine last place.
+
+Neither board has a gRPC fast path, for the same reason `opponents` lost its own:
+indexer-go's cache holds chain state and has no view of `pet_battle_progress`, a
+backend-owned table, so it cannot answer these correctly. Both read Postgres directly.
+
 ### Battle data
 
 `battle_history` carries `loserPetId, seed (0x-hex), rounds, winnerHpRemaining,
@@ -238,8 +280,7 @@ requests (the `requestX` → Pyth Entropy reveals → `settleX` flow) from a
 backend-held wallet once entropy reveals, so the player only signs the request
 transaction — `settleX` is permissionless and needed no special authorization,
 it was just being sent from the player's wallet by default. Off unless
-`KEEPER_ENABLED=true`. See `docs/plan-realtime-battle-ux.md` /
-`docs/plan-realtime-battle-impl.md` for the design and threat model.
+`KEEPER_ENABLED=true`.
 
 Battles are **not** settled here any more (§L Phase 6). `requestBattle`/`settleBattle`
 were removed from the contracts entirely, along with the Solana settle keeper and shadow
@@ -248,7 +289,7 @@ mode; battles run through the backend-authoritative path below.
 ### Backend-authoritative battles (v2)
 
 `backend/src/routes/battle.ts` — the workflow described in
-`docs/plan-backend-battle-architecture.md`. Submission and consent require a JWT
+`docs/battle-protocol.md`. Submission and consent require a JWT
 (the wallet signature inside the body is what actually authorizes the action,
 per §D); the reads below require nothing, because every value they return is
 either already public on chain or is itself a signed artifact anyone is meant
@@ -274,6 +315,31 @@ switching the mode off stops new battles, it does not retract receipts already i
 | GET | `/api/battle/rulesets` | none | Metadata for every published ruleset bundle. |
 | GET | `/api/battle/rulesets/:rulesetHash` | none | One ruleset's full bundle, for replaying against it. |
 | POST | `/api/battle/verify-receipt` | none | Body `{ receiptHash }`. Checks the stored signature against a published key and that the payload is well-formed — §A's "operator signature, verified against a published key" row, nothing more. It does **not** re-run the fight, check the drand BLS signature, or recompute progression; that is the standalone verifier's job (§H), which runs with no backend access so its answer cannot depend on this process telling the truth. Passing this check is necessary, not sufficient. |
+
+### Private chat (roadmap §2, v1)
+
+| Method | Path | Auth | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/chat/threads` | JWT | The caller's currently-usable threads, one per married counterpart, with the pet pairs behind each. Creates a thread on first listing — a married pair always ends up with exactly one, so an explicit open call would add a round trip and a null state that resolves one way. |
+| GET | `/api/chat/threads/:id/messages` | JWT | A page, oldest first within the page. `before=<messageId>` pages backwards (a chat is read from its end); `limit` defaults to 50, capped at 100. |
+| POST | `/api/chat/threads/:id/messages` | JWT | Body `{ text }`, trimmed, 1-2000 characters. The author is the session wallet; a `sender` in the body is ignored. |
+
+Access is **derived, never stored**: a thread answers only while the two wallets have a
+married pet pair in `pet_roster.spouse_id`, rechecked on every request. A divorce closes
+the conversation the moment the indexer sees it, with nothing to revoke. The thread row
+survives — deleting it would destroy the history — it just stops answering.
+
+Status codes carry a deliberate asymmetry. A non-participant gets **404**, the same as a
+thread that does not exist, because 403 would confirm the id to anyone probing. A
+participant whose marriage has ended gets **403** with a reason, since they already know
+the thread exists.
+
+**What v1 does not have**, each a product call flagged in the roadmap rather than an
+oversight: no block or report, no profanity filtering, no read receipts or presence, no
+edit or delete, and no retention policy. The abuse controls are a length cap and a rate
+limit (20 sends/min per wallet, 120 reads) — volume controls, not content ones. This is
+the first endpoint in the API that stores genuine user-authored text, which is what makes
+moderation a real question here and not elsewhere.
 
 ### Battle room WebSocket (v2)
 
@@ -304,6 +370,47 @@ every connected client for the on-chain settle-keeper flow and was filtered
 client-side by `(chainId, requestId)`. That socket was removed once battles
 stopped being resolved from chain state, so there is no longer a second channel
 and nothing left to filter.
+
+### Chat WebSocket (roadmap §2)
+
+```
+ws(s)://<host>/ws/chat?threadId=<threadId>
+```
+
+Per-thread, and **authenticated**. Two frame shapes, neither carrying message text:
+
+```json
+{ "type": "thread-updated", "threadId": "c...", "messageId": 42 }
+{ "type": "presence",       "topic": "c...",    "online": ["0xabc…"] }
+```
+
+`thread-updated` means "re-read this thread"; the text comes from
+`GET /api/chat/threads/:id/messages`, which authenticates the caller and rechecks the
+marriage. Missing a notification costs latency, never access. `presence` is the roster of
+participants currently connected, which is what drives the online dot.
+
+**Authentication.** The client offers two subprotocols, `cryptopets-auth` followed by the
+JWT; the server echoes back only the marker. A subprotocol rather than a query parameter
+because browsers cannot set headers on a WebSocket and a URL-borne token is recorded by
+proxies and access logs. The upgrade then applies the same participation and live-marriage
+gate as the HTTP routes, so a socket can never subscribe to a thread its holder could not
+read. A connection with no token, a forged token, or a thread the caller is not in is
+refused at the upgrade — it never becomes a subscriber, not even to the fact that the
+thread changed.
+
+This is stricter than the channel shipped with. It was unauthenticated at first, on the
+argument that contentless frames made it safe; presence forced the change, because "is my
+counterpart online" is a claim about identities and an anonymous socket has none. Counting
+connections would have reported one person with two tabs open as two people. Closing the
+activity-timing leak came along with it.
+
+Presence counts identities, not sockets, so a second tab does not double a person and
+closing one does not report them as gone. Authorization is checked at connect only: a
+marriage that ends mid-session leaves the socket open until it drops, which costs nothing
+because every frame is contentless and the read it prompts refuses immediately.
+
+The battle-room channel above remains unauthenticated. It carries no content and has no
+presence, so it has nothing an identity would protect.
 
 ### Public receipt corpus (v2)
 

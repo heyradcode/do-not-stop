@@ -3,8 +3,7 @@
 Canonical definitions for the backend-authoritative battle protocol: canonical encodings, hashes,
 drand seed derivation, the versioned combat ruleset, and the receipt and commitment schemas.
 
-Design: [docs/plan-backend-battle-architecture.md](../docs/plan-backend-battle-architecture.md).
-Sequencing: [docs/plan-backend-battle-steps.md](../docs/plan-backend-battle-steps.md).
+Design: [docs/battle-protocol.md](../docs/battle-protocol.md).
 
 ## Why this package exists, and why it is MIT
 

@@ -311,7 +311,7 @@
     box-shadow: 0 0 5px rgb(125 214 255 / 40%);
 }
 
-/* Rank footer (placeholder) */
+/* Rank footer — the player's own leaderboard standing */
 .rank {
     flex-shrink: 0;
     border-top: 1px solid rgb(101 131 255 / 10%);

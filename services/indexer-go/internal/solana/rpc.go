@@ -16,6 +16,10 @@ import (
 type rpcClient struct {
 	url  string
 	http *http.Client
+	// commitment every call here runs at; see config.Config.SolanaCommitment for why
+	// it defaults to "finalized". Carried on the client so no call site can quietly
+	// disagree with the subscription about what counts as real.
+	commitment string
 }
 
 type rpcRequest struct {
@@ -104,7 +108,7 @@ func (c *rpcClient) getProgramPetAccounts(
 	var result programAccountsResult
 	params := []any{programID, map[string]any{
 		"encoding":    "base64",
-		"commitment":  "confirmed",
+		"commitment":  c.commitment,
 		"withContext": true,
 		"filters": []any{
 			map[string]any{"dataSize": layout.totalLen()},
@@ -131,7 +135,7 @@ func (c *rpcClient) getSignaturesForAddress(
 	address, until string,
 	limit int,
 ) ([]signatureInfo, error) {
-	opts := map[string]any{"commitment": "confirmed", "limit": limit}
+	opts := map[string]any{"commitment": c.commitment, "limit": limit}
 	if until != "" {
 		opts["until"] = until
 	}
@@ -153,7 +157,7 @@ func (c *rpcClient) getTransaction(ctx context.Context, signature string) (trans
 	var result transactionResult
 	params := []any{signature, map[string]any{
 		"encoding":                       "json",
-		"commitment":                     "confirmed",
+		"commitment":                     c.commitment,
 		"maxSupportedTransactionVersion": 0,
 	}}
 	err := c.call(ctx, "getTransaction", params, &result)

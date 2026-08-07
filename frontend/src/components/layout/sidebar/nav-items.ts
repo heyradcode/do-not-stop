@@ -3,7 +3,9 @@ import {
     BATTLE_PATH,
     BREED_PATH,
     DASHBOARD_HOME,
+    LEADERBOARD_PATH,
     LEVELUP_PATH,
+    MESSAGES_PATH,
     MARRIAGE_PATH,
     RENAME_PATH,
     TRAIN_PATH,
@@ -17,6 +19,8 @@ import itemsIcon from '@assets/nav-icons/items.svg';
 import shardIcon from '@assets/nav-icons/shard.svg';
 import marriageIcon from '@assets/nav-icons/marriage.svg';
 import renameIcon from '@assets/nav-icons/rename.svg';
+import messagesIcon from '@assets/nav-icons/messages.svg';
+import leaderboardIcon from '@assets/nav-icons/leaderboard.svg';
 
 export type NavItem = {
     id: string;
@@ -48,4 +52,18 @@ export const NAV_ITEMS: readonly NavItem[] = [
     { id: 'shard', label: 'Shard Forge', iconSrc: shardIcon, tone: 'cyan', deferred: true },
     { id: 'marriage', label: 'Marriage', iconSrc: marriageIcon, tone: 'magenta', path: MARRIAGE_PATH },
     { id: 'rename', label: 'Rename Pet', iconSrc: renameIcon, tone: 'cyan', path: RENAME_PATH },
+    {
+        id: 'messages',
+        label: 'Messages',
+        iconSrc: messagesIcon,
+        tone: 'magenta',
+        path: MESSAGES_PATH,
+    },
+    {
+        id: 'leaderboard',
+        label: 'Leaderboard',
+        iconSrc: leaderboardIcon,
+        tone: 'amber',
+        path: LEADERBOARD_PATH,
+    },
 ];

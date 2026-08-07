@@ -7,6 +7,9 @@
  */
 
 export type { BattleResolvedResult } from './types/battle';
+// The chat reaction whitelist: the backend validates against the same list the client
+// offers, so a picker can never show an emoji the API refuses.
+export { CHAT_REACTIONS, isChatReaction, type ChatReaction } from './hooks/chat/reactions';
 export {
     simulate,
     encodeSimOutcome,

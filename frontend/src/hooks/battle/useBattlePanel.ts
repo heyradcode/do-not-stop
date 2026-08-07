@@ -102,9 +102,9 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // display still waits on the live animation finishing (see the gating effect
     // below), unless a mismatch was found, in which case it waits on the notice.
     const [hasResolvedEvent, setHasResolvedEvent] = useState(false);
-    // Client-side live-replay disagreed with the on-chain result (should be ~never
-    // — see plan-realtime-battle-ux.md's reconciliation rule). Shows a brief
-    // honest notice instead of silently correcting or showing the wrong winner.
+    // Client-side live-replay disagreed with the on-chain result (should be
+    // ~never). Shows a brief honest notice instead of silently correcting or
+    // showing the wrong winner.
     const [mismatchNotice, setMismatchNotice] = useState(false);
 
     // Personas captured at battle start. The backend pre-generates the result
@@ -510,7 +510,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         onTauntsComplete: handleTauntsComplete,
         fighterName: fighterDisplayName,
         opponentName: opponentDisplayName,
-        // Live-replay animation (plan-realtime-battle-impl.md Phase 4): only
+        // Live-replay animation: only
         // populated once entropy has revealed and the sim inputs are known;
         // battle-overlay falls back to its existing static HP display otherwise
         // (Solana, or an EVM deployment with no GameConfig wired up).

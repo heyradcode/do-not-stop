@@ -42,7 +42,7 @@ type GameDataServiceClient interface {
 	// and returns pet_id1's win probability. UNAVAILABLE until the cache is warm.
 	EstimateWin(ctx context.Context, in *WinRequest, opts ...grpc.CallOption) (*WinResponse, error)
 	// Independent recomputation of a backend-authoritative battle
-	// (docs/plan-backend-battle-architecture.md §F). Takes everything needed to
+	// (docs/battle-protocol.md §F). Takes everything needed to
 	// rerun the fight and the progression composition — no database, no cache,
 	// no chain state — so a mismatch against the TypeScript engine's own result
 	// means the two implementations disagree, not that either read something
@@ -104,7 +104,7 @@ type GameDataServiceServer interface {
 	// and returns pet_id1's win probability. UNAVAILABLE until the cache is warm.
 	EstimateWin(context.Context, *WinRequest) (*WinResponse, error)
 	// Independent recomputation of a backend-authoritative battle
-	// (docs/plan-backend-battle-architecture.md §F). Takes everything needed to
+	// (docs/battle-protocol.md §F). Takes everything needed to
 	// rerun the fight and the progression composition — no database, no cache,
 	// no chain state — so a mismatch against the TypeScript engine's own result
 	// means the two implementations disagree, not that either read something
