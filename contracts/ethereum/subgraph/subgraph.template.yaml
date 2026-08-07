@@ -1,7 +1,9 @@
 # Template — `scripts/prepare-subgraph.mjs` fills {{...}} and writes subgraph.yaml.
-# Two v2 data sources: the PetCore proxy (pet lifecycle + marriage) and the
-# GameLogic proxy (breed/mint/train). Both share src/mapping.ts and both
-# carry the PetCore ABI so handlers can read full pet state via getPet().
+# Three v2 data sources: the PetCore proxy (pet lifecycle + marriage), the
+# GameLogic proxy (breed/mint/train), and the ItemCore proxy (inventory, roadmap
+# §4). The first two share src/mapping.ts and both carry the PetCore ABI so
+# handlers can read full pet state via getPet(); ItemCore has its own
+# src/item.ts, since it touches neither Pet nor the pet ABI.
 specVersion: 1.0.0
 schema:
   file: ./schema.graphql
@@ -63,3 +65,33 @@ dataSources:
         - event: Trained(indexed uint256,uint32,uint32,uint32)
           handler: handleTrained
       file: ./src/mapping.ts
+  - kind: ethereum/contract
+    name: ItemCore
+    network: {{NETWORK}}
+    source:
+      address: "{{ITEMCORE_ADDRESS}}"
+      abi: ItemCore
+      startBlock: {{START_BLOCK}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - ItemBalance
+        - PetEquipment
+      abis:
+        - name: ItemCore
+          file: ./abis/ItemCore.json
+      eventHandlers:
+        # Balances come off the ERC-1155 transfers rather than ItemsMinted/ItemsBurned:
+        # minting, burning, escrowing gear, returning it and a plain wallet-to-wallet send
+        # all emit a transfer, and only some of them emit anything else.
+        - event: TransferSingle(indexed address,indexed address,indexed address,uint256,uint256)
+          handler: handleTransferSingle
+        - event: TransferBatch(indexed address,indexed address,indexed address,uint256[],uint256[])
+          handler: handleTransferBatch
+        - event: ItemEquipped(indexed uint256,indexed uint8,indexed uint256,address)
+          handler: handleItemEquipped
+        - event: ItemUnequipped(indexed uint256,indexed uint8,indexed uint256,address)
+          handler: handleItemUnequipped
+      file: ./src/item.ts
