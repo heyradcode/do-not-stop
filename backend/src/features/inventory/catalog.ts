@@ -36,11 +36,18 @@ export interface StatBonus {
     mdef: number;
 }
 
+/**
+ * Every effect v1 can actually apply.
+ *
+ * Breeding cooldowns are deliberately absent. They live in on-chain state, and clearing
+ * one means an authorized `PetCore.triggerBreedCooldown` call the inventory feature does
+ * not have and should not quietly acquire. A fertility charm is a real item to build, with
+ * that authorization as its first step, rather than a catalog entry that errors on use.
+ */
 export type ItemEffect =
     | StatBonus
     | { kind: 'grant_xp'; amount: number }
-    | { kind: 'clear_battle_cooldown' }
-    | { kind: 'clear_breed_cooldown' };
+    | { kind: 'clear_battle_cooldown' };
 
 /** One catalog entry, as authored. */
 export interface ItemDefinitionSeed {
@@ -192,8 +199,6 @@ export function asItemEffect(value: unknown): ItemEffect | null {
                 : null;
         case 'clear_battle_cooldown':
             return { kind: 'clear_battle_cooldown' };
-        case 'clear_breed_cooldown':
-            return { kind: 'clear_breed_cooldown' };
         default:
             return null;
     }

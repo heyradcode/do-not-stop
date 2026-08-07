@@ -13,9 +13,13 @@
  *   pnpm tsx scripts/seed-item-catalog.ts --dry-run       # print the plan, write nothing
  *
  * Chain registration needs, in backend/.env:
- *   ITEM_CORE_ADDRESS=0x...        the ItemCore proxy (deploy.ts prints it)
+ *   ITEM_CORE_ADDRESS=0x...              the ItemCore proxy (deploy.ts prints it)
  *   ITEM_CORE_RPC_URL=http://...
- *   ITEM_CORE_PRIVATE_KEY=0x...    must be ItemCore's owner; registerItemSlot is onlyOwner
+ *   ITEM_CORE_OWNER_PRIVATE_KEY=0x...    ItemCore's owner
+ *
+ * Its own key, not the runtime ITEM_CORE_PRIVATE_KEY, because the two roles differ:
+ * registerItemSlot is onlyOwner, while the server's wallet only needs authorizeCaller.
+ * Sharing one key would hand the always-on service the ability to reshape the catalog.
  *
  * Safe to re-run. Definitions upsert by token id, and registerItemSlot is idempotent for
  * an unchanged slot, so this is the way a catalog edit ships rather than a one-shot.
@@ -99,9 +103,11 @@ async function seedDatabase(dryRun: boolean): Promise<void> {
 async function registerSlots(dryRun: boolean): Promise<void> {
     const address = process.env.ITEM_CORE_ADDRESS;
     const rpcUrl = process.env.ITEM_CORE_RPC_URL;
-    const privateKey = process.env.ITEM_CORE_PRIVATE_KEY;
+    const privateKey = process.env.ITEM_CORE_OWNER_PRIVATE_KEY;
     if (!address || !rpcUrl || !privateKey) {
-        throw new Error('--with-chain needs ITEM_CORE_ADDRESS, ITEM_CORE_RPC_URL and ITEM_CORE_PRIVATE_KEY');
+        throw new Error(
+            '--with-chain needs ITEM_CORE_ADDRESS, ITEM_CORE_RPC_URL and ITEM_CORE_OWNER_PRIVATE_KEY',
+        );
     }
 
     const { createPublicClient, createWalletClient, http } = await import('viem');

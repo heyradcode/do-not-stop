@@ -314,6 +314,43 @@ answer.
 Like the leaderboards, none of these have a gRPC fast path: indexer-go's cache holds pet
 state only and has no view of these tables.
 
+#### Inventory writes
+
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| POST | `/api/inventory/use` | JWT | Body `{ chain, petId, itemType }`. Spends one consumable on one of the caller's pets |
+| POST | `/api/inventory/entitlements/:id/claim` | JWT | Mints an item the caller has earned |
+| POST | `/api/inventory/admin/grant` | JWT + allowlist | Body `{ chain, owner, itemType, quantity }`. Creates an entitlement for any wallet |
+
+All three send a transaction from the backend's item wallet and are rate-limited per
+wallet at 15/min, because each one spends gas from that key whether or not it settles.
+They return **503** when `ITEM_CORE_ENABLED` is unset: writes refuse individually rather
+than the feature going dark, so a missing key never hides a player's items.
+
+**Equipping is not here, and will not be.** `ItemCore.equip` requires `msg.sender` to be
+the pet's owner, so the player's own wallet sends it from the client. That is the property
+that makes gear in a battle snapshot checkable against chain state by someone who does not
+trust this server, rather than an assertion by it.
+
+`use` burns on chain **first**, then applies the effect. The ordering is deliberate: a
+burn that lands with a failed apply costs the player an item and gains them nothing, while
+applying first and failing to burn would leave them the item *and* the effect, which
+repeats. The failed-apply case is logged with everything needed to fix it by hand;
+automating that means an outbox, worth building when volume justifies it.
+
+XP grants go through the combat engine's own `applyXp`, so a potion moves a pet on exactly
+the curve a battle does, and a pet with no progression row is seeded from its on-chain
+level the way its first battle would seed it.
+
+`claim` marks the row claimed **before** minting, conditioned on it still being unclaimed,
+so two concurrent claims mint at most once — the loser's update matches no row and it
+stops before sending. A failed mint releases the claim so it stays retryable, which is safe
+because the client waits for a receipt and treats a reverted one as a failure.
+
+`grant` creates an entitlement rather than minting directly, so an admin grant and a battle
+drop reach a bag by the same path. Its allowlist (`ITEM_ADMIN_WALLETS`) is empty by
+default: the route is closed until someone is named, not open until someone is excluded.
+
 ### Battle data
 
 `battle_history` carries `loserPetId, seed (0x-hex), rounds, winnerHpRemaining,

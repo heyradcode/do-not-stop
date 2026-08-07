@@ -23,3 +23,15 @@ export {
     type StatBonus,
 } from './catalog';
 export { ITEM_CATALOG } from './catalog.data';
+export { postClaim, postGrant, postUseItem } from './inventory.controller';
+export {
+    claimEntitlement,
+    grantItem,
+    isAdmin,
+    useItem,
+    type ClaimResult,
+    type GrantResult,
+    type UseItemResult,
+    type WriteFailure,
+} from './inventory.write';
+export { getItemCoreClient, resetItemCoreClient, type ItemCoreClient } from './inventory.chain';

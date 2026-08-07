@@ -5,7 +5,7 @@ import type { ItemDefinitionSeed } from './catalog';
  *
  * Breadth is the point here rather than depth: §4 takes the wide-catalog idea from
  * OwoBot and the gear-matters idea from Dota, and says not to attempt Dota's scale on
- * day one. Sixteen items across the four shipping categories is enough to exercise every
+ * day one. Fifteen items across the four shipping categories is enough to exercise every
  * path (a stackable, a burn, an equip, a slot conflict) without pretending to be content
  * design, which is a human call.
  *
@@ -135,15 +135,6 @@ export const ITEM_CATALOG: readonly ItemDefinitionSeed[] = [
         effect: { kind: 'clear_battle_cooldown' },
         name: 'Second Wind',
         description: 'Clears a pet’s battle cooldown. The ache comes back later.',
-    },
-    {
-        itemType: '111',
-        key: 'fertility_charm',
-        category: 'consumable',
-        rarity: 4,
-        effect: { kind: 'clear_breed_cooldown' },
-        name: 'Fertility Charm',
-        description: 'Clears a pet’s breeding cooldown.',
     },
 
     // ─── collectibles ─────────────────────────────────────────────────────────

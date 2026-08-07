@@ -114,6 +114,46 @@ export const env = {
     },
 
     /**
+     * Inventory (roadmap §4): the wallet that mints claimed items and burns spent
+     * consumables through ItemCore.
+     *
+     * Off unless ITEM_CORE_ENABLED=true, and every field below is required once it is.
+     * With it off, the read surface still works — a bag renders from what the indexer
+     * saw — and only the two writes that need a transaction refuse. That is the useful
+     * degradation: a missing key should not hide a player's items.
+     *
+     * The wallet must be an authorized caller on ItemCore (`authorizeCaller`), which is a
+     * real trust grant: an authorized caller can burn any wallet's items without that
+     * wallet's approval. It is what lets a consumable settle in one call after the player
+     * has already authenticated, and it is the reason this key belongs nowhere near a
+     * shared environment.
+     */
+    inventory: {
+        enabled: process.env.ITEM_CORE_ENABLED?.trim().toLowerCase() === 'true',
+        rpcUrl: process.env.ITEM_CORE_RPC_URL?.trim() || undefined,
+        privateKey: (process.env.ITEM_CORE_PRIVATE_KEY?.trim()
+            ? (process.env.ITEM_CORE_PRIVATE_KEY.trim().startsWith('0x')
+                ? process.env.ITEM_CORE_PRIVATE_KEY.trim()
+                : `0x${process.env.ITEM_CORE_PRIVATE_KEY.trim()}`)
+            : undefined) as `0x${string}` | undefined,
+        chainId: process.env.ITEM_CORE_CHAIN_ID ? Number(process.env.ITEM_CORE_CHAIN_ID) : undefined,
+        address: process.env.ITEM_CORE_ADDRESS?.trim() as `0x${string}` | undefined,
+        /**
+         * Wallets allowed to grant items, comma-separated. Empty by default, so the admin
+         * route is closed until someone is named rather than open until someone is
+         * excluded. Normalized here so a checksummed address in the env still matches the
+         * lowercased one the JWT carries.
+         */
+        adminWallets: new Set(
+            (process.env.ITEM_ADMIN_WALLETS ?? '')
+                .split(',')
+                .map((entry) => entry.trim())
+                .filter(Boolean)
+                .map((entry) => (/^0x[0-9a-fA-F]{40}$/.test(entry) ? entry.toLowerCase() : entry)),
+        ),
+    },
+
+    /**
      * Backend-authoritative battles (docs/battle-protocol.md).
      *
      * Every wallet-signed object binds `chainId` and `deploymentId`, and that binding only
