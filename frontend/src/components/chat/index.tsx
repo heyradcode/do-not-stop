@@ -96,6 +96,17 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
     const faces = useMemo(() => facesOf(thread), [thread]);
     const [draft, setDraft] = useState('');
     const endRef = useRef<HTMLDivElement>(null);
+    const boxRef = useRef<HTMLTextAreaElement>(null);
+
+    // Grows with the draft up to the max height the stylesheet sets, then scrolls.
+    // Reset to `auto` first: scrollHeight never shrinks below the height already set, so
+    // measuring without clearing it makes the box one-way.
+    useEffect(() => {
+        const box = boxRef.current;
+        if (!box) return;
+        box.style.height = 'auto';
+        box.style.height = `${box.scrollHeight}px`;
+    }, [draft]);
 
     // Chats are read from the bottom. Keyed on the newest id rather than length so a
     // re-read that changes nothing does not yank the view while someone scrolls up.
@@ -103,6 +114,23 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
     useEffect(() => {
         endRef.current?.scrollIntoView({ block: 'end' });
     }, [newestId]);
+
+    /**
+     * Enter sends; Shift+Enter and Ctrl+Enter break the line.
+     *
+     * The messenger convention, and the reason the box is a textarea at all — a form's
+     * lone text input submits on Enter for free, but it can only ever hold one line.
+     *
+     * `isComposing` guards the Enter that closes an IME candidate window: for anyone
+     * typing Japanese, Korean or Chinese that keystroke picks a character and would
+     * otherwise fire the message off mid-word.
+     */
+    const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.metaKey) return;
+        if (event.nativeEvent.isComposing) return;
+        event.preventDefault();
+        void submit(event);
+    };
 
     const submit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -195,10 +223,12 @@ const Conversation: React.FC<{ thread: ChatThread; me: string }> = ({ thread, me
             )}
 
             <form className={styles.composer} onSubmit={submit}>
-                <input
-                    type="text"
+                <textarea
+                    ref={boxRef}
+                    rows={1}
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
+                    onKeyDown={onKeyDown}
                     placeholder="Write a message"
                     maxLength={2000}
                     aria-label="Message"

@@ -195,9 +195,12 @@
 }
 
 .messageText {
-    /* User-authored text: wrap anywhere rather than let one long token stretch the row. */
+    /* User-authored text: wrap anywhere rather than let one long token stretch the row,
+       and keep the newlines the composer now allows. `pre-wrap`, not `pre`: the author's
+       line breaks are theirs, but the wrapping is still ours. */
     min-width: 0;
     overflow-wrap: anywhere;
+    white-space: pre-wrap;
     font-size: 0.9rem;
 }
 
@@ -221,9 +224,12 @@
     padding: 10px 12px;
     border-top: 1px solid rgb(148 163 184 / 12%);
     flex-shrink: 0;
+    /* The box grows upward from the bottom edge, so the Send button stays on the last
+       line rather than floating beside the middle of a long draft. */
+    align-items: flex-end;
 }
 
-.composer input {
+.composer textarea {
     flex: 1;
     min-width: 0;
     padding: 8px 12px;
@@ -233,6 +239,15 @@
     color: inherit;
     font: inherit;
     font-size: 0.9rem;
+
+    /* Height is set inline as the draft grows; this caps it at roughly six lines,
+       after which the draft scrolls instead of eating the transcript. */
+    max-height: 9.5rem;
+    resize: none;
+    overflow-y: auto;
+    line-height: 1.4;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 123 203 / 35%) transparent;
 }
 
 .composer button {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -181,6 +181,32 @@ describe('Chat', () => {
 
         expect(send).toHaveBeenCalledWith('hello');
         expect(box).toHaveValue('');
+    });
+
+    it('sends on Enter and breaks the line on Shift+Enter', async () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+
+        renderChat();
+        const box = screen.getByLabelText('Message');
+        await userEvent.type(box, 'first{Shift>}{Enter}{/Shift}second');
+        expect(box).toHaveValue('first\nsecond');
+        expect(send).not.toHaveBeenCalled();
+
+        await userEvent.type(box, '{Enter}');
+        expect(send).toHaveBeenCalledWith('first\nsecond');
+    });
+
+    // The Enter that closes an IME candidate window picks a character; sending there
+    // would fire the message off mid-word for anyone typing Japanese, Korean or Chinese.
+    it('does not send on the Enter that commits an IME composition', () => {
+        useChatThreads.mockReturnValue({ threads: [thread()], isLoading: false, error: null });
+
+        renderChat();
+        const box = screen.getByLabelText('Message');
+        fireEvent.change(box, { target: { value: 'こんにちは' } });
+        fireEvent.keyDown(box, { key: 'Enter', isComposing: true });
+
+        expect(send).not.toHaveBeenCalled();
     });
 
     // A refused send must leave the text where the player can see it, not swallow it.
