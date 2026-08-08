@@ -1,11 +1,24 @@
 import React, { useState } from 'react';
-import { useChainCapabilities, usePetList, useTransferPet } from '@shared/core';
+import {
+    getRarityColor,
+    SLOT,
+    useChainCapabilities,
+    usePetEquipment,
+    usePetList,
+    useTransferPet,
+} from '@shared/core';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import NeonModal from '@components/ui/neon-modal';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import styles from './index.module.css';
+
+const SLOT_LABEL: Record<number, string> = {
+    [SLOT.weapon]: 'Weapon',
+    [SLOT.armor]: 'Armor',
+    [SLOT.trinket]: 'Trinket',
+};
 
 interface SendPetModalProps {
     isOpen: boolean;
@@ -20,9 +33,15 @@ interface SendPetModalProps {
 }
 
 const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId }) => {
-    const { address: addrCaps, chainLabel, walletAddress } = useChainCapabilities();
+    const { activeKind: chain, address: addrCaps, chainLabel, walletAddress } = useChainCapabilities();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
+
+    // Equipped gear is escrowed in ItemCore and paid out to whoever owns the pet when it is
+    // unequipped, so it travels with the pet. That is the right rule — the alternative
+    // strands the item in a wallet that can no longer reach it — but it is invisible, and
+    // this modal is the last point where it can still be undone.
+    const { equipped, isSuccess: gearKnown } = usePetEquipment({ chain, petId: petId.toString() });
 
     const [recipientAddress, setRecipientAddress] = useState('');
     const [inputInvalid, setInputInvalid] = useState(false);
@@ -107,6 +126,37 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
                     </p>
                 </div>
             </div>
+
+            {/* Three states, not two. An unanswered read returns an empty list exactly like a
+                bare pet does, and the query is disabled until the caller is authenticated, so
+                falling through to silence would drop the warning in precisely the cases where
+                nobody can see what is about to leave. */}
+            {gearKnown && equipped.length > 0 && (
+                <div className={styles.gearNotice} role="status">
+                    <strong>This pet is wearing gear</strong>
+                    <p>
+                        Equipped items are held by the pet, so they go to the recipient with it.
+                        Unequip anything you want to keep before sending.
+                    </p>
+                    <ul>
+                        {equipped.map(({ slot, item }) => (
+                            <li
+                                key={slot}
+                                style={{ '--rarity': getRarityColor(item.rarity) } as React.CSSProperties}
+                            >
+                                <span className={styles.gearSlot}>{SLOT_LABEL[slot] ?? `Slot ${slot}`}</span>
+                                <span className={styles.gearName}>{item.name}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+            {!gearKnown && (
+                <p className={styles.gearUnknown} role="status">
+                    Could not check this pet’s equipment. Anything it has equipped will go to the
+                    recipient along with it.
+                </p>
+            )}
 
             <div className={styles.recipient}>
                 <label htmlFor="recipient">{addressLabel}</label>

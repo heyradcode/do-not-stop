@@ -8,10 +8,13 @@ vi.mock('@hooks/useTxErrorToast', () => ({ useTxErrorToast: vi.fn() }));
 
 const isValid = vi.fn();
 const capabilities = {
+    activeKind: 'evm',
     address: { placeholder: '0x… address', label: 'Recipient address', isValid: (a: string) => isValid(a) },
     chainLabel: 'Ethereum',
     walletAddress: '0xself',
 };
+/** Defaults to "answered, no gear", which is the case every pre-existing test assumes. */
+const petEquipment = { equipped: [] as { slot: number; item: unknown }[], isSuccess: true };
 const transferPet = {
     mutate: vi.fn().mockResolvedValue(undefined),
     isPending: false,
@@ -25,6 +28,9 @@ const petList = { refetch: vi.fn() };
 vi.mock('@shared/core', () => ({
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
+    usePetEquipment: () => petEquipment,
+    getRarityColor: () => '#7dd6ff',
+    SLOT: { weapon: 0, armor: 1, trinket: 2 },
     useTransferPet: (opts: { onSuccess?: () => void }) => {
         capturedOnSuccess = opts?.onSuccess;
         return transferPet;
@@ -43,6 +49,8 @@ beforeEach(() => {
     vi.clearAllMocks();
     isValid.mockReturnValue(true);
     transferPet.isPending = false;
+    petEquipment.equipped = [];
+    petEquipment.isSuccess = true;
 });
 
 describe('SendPetModal', () => {
@@ -122,5 +130,56 @@ describe('SendPetModal', () => {
         const onClose = renderModal();
         await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
         expect(onClose).toHaveBeenCalledOnce();
+    });
+});
+
+// Equipped gear is escrowed against the pet and pays out to whoever owns it, so a transfer
+// hands the gear over too. That is the intended rule; these cover the part that is not
+// obvious from the screen.
+describe('SendPetModal equipment warning', () => {
+    const blade = { itemType: '1', name: 'Iron Fang', rarity: 1 };
+    const vest = { itemType: '10', name: 'Hide Vest', rarity: 3 };
+
+    it('names every item that would travel with the pet', () => {
+        petEquipment.equipped = [
+            { slot: 0, item: blade },
+            { slot: 1, item: vest },
+        ];
+        renderModal();
+
+        expect(screen.getByText('This pet is wearing gear')).toBeInTheDocument();
+        expect(screen.getByText('Iron Fang')).toBeInTheDocument();
+        expect(screen.getByText('Hide Vest')).toBeInTheDocument();
+        expect(screen.getByText('Weapon')).toBeInTheDocument();
+        expect(screen.getByText('Armor')).toBeInTheDocument();
+    });
+
+    // Advisory, not a gate: sending a pet with its gear is a legitimate thing to want, and
+    // a blocked button would make the common case worse to fix the uncommon one.
+    it('does not block the send', async () => {
+        petEquipment.equipped = [{ slot: 0, item: blade }];
+        renderModal();
+
+        await userEvent.type(screen.getByRole('textbox'), '0xrecipient');
+        await userEvent.click(screen.getByRole('button', { name: 'Send Pet' }));
+
+        expect(transferPet.mutate).toHaveBeenCalledWith({ to: '0xrecipient', petId: '7' });
+    });
+
+    it('stays quiet for a pet with nothing equipped', () => {
+        renderModal();
+        expect(screen.queryByText('This pet is wearing gear')).not.toBeInTheDocument();
+        expect(screen.queryByText(/Could not check/)).not.toBeInTheDocument();
+    });
+
+    // The regression that matters. An unanswered read returns an empty list exactly like a
+    // bare pet, so keying off length alone would drop the warning in the one case where
+    // nobody can see what is about to leave.
+    it('warns anyway when the equipment read has not answered', () => {
+        petEquipment.isSuccess = false;
+        renderModal();
+
+        expect(screen.getByText(/Could not check this pet’s equipment/)).toBeInTheDocument();
+        expect(screen.queryByText('This pet is wearing gear')).not.toBeInTheDocument();
     });
 });

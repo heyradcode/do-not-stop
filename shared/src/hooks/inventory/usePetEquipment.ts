@@ -43,6 +43,15 @@ export interface UsePetEquipmentResult {
     /** Lookup by slot index, for a UI drawing one tile per slot including the empty ones. */
     bySlot: Map<number, EquippedItem>;
     isLoading: boolean;
+    /**
+     * Whether `equipped` is an answer rather than a default.
+     *
+     * An empty array means "this pet has no gear" *and* "we have not been told yet" — the
+     * query is also disabled until the caller is authenticated, so it never even reaches
+     * loading. A caller that warns about gear has to tell those apart, or an unanswered
+     * read looks identical to a bare pet and the warning silently does not appear.
+     */
+    isSuccess: boolean;
     error: Error | null;
     refetch(): void;
 }
@@ -86,6 +95,7 @@ export const usePetEquipment = ({
         equipped,
         bySlot: new Map(equipped.map((entry) => [entry.slot, entry])),
         isLoading: query.isLoading,
+        isSuccess: query.isSuccess,
         error: query.error as Error | null,
         refetch: () => void query.refetch(),
     };
