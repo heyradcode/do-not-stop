@@ -22,8 +22,34 @@ func Simulate(
 	dna2 uint64, rarity2 uint8, level2 uint16, skill2 uint8,
 	seed [32]byte, sc SkillConfig,
 ) Result {
+	return SimulateWithBonus(
+		dna1, rarity1, level1, skill1,
+		dna2, rarity2, level2, skill2,
+		seed, sc, NoBonus, NoBonus,
+	)
+}
+
+// SimulateWithBonus is Simulate with equipment (roadmap §4).
+//
+// A separate entry point rather than two more parameters on Simulate, because Go has no
+// default arguments and the ungeared signature is what contracts/test-vectors/battle.json
+// is checked through. Leaving it untouched is what proves the modifier path costs an
+// ungeared fight nothing.
+func SimulateWithBonus(
+	dna1 uint64, rarity1 uint8, level1 uint16, skill1 uint8,
+	dna2 uint64, rarity2 uint8, level2 uint16, skill2 uint8,
+	seed [32]byte, sc SkillConfig, bonus1, bonus2 AttrBonus,
+) Result {
 	a := Extract(dna1, rarity1, level1)
 	b := Extract(dna2, rarity2, level2)
+
+	// Equipment lands between extraction and the skill modifiers, matching
+	// protocol/src/combat/sim.ts exactly. Applying it first means Tank's +20% HP
+	// multiplies the geared total rather than the bare one. The ordering is pinned by
+	// equipment.json's gear-before-tank case in both ports, so a reorder in one shows up
+	// as a vector failure rather than as a §F mismatch on live traffic.
+	applyBonus(&a, bonus1)
+	applyBonus(&b, bonus2)
 
 	// Pre-battle skill modifiers (Tank, Shell, Sage).
 	if skill1 == SkillTank {

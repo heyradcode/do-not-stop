@@ -46,10 +46,14 @@ type VerifyResult struct {
 // Verify runs the fight and the progression composition against a frozen
 // snapshot and a verified seed.
 func Verify(req VerifyRequest) VerifyResult {
-	logged := SimulateWithLog(
+	// The bonuses come from the request, which the caller resolved from the frozen
+	// snapshot. This port never reads an item catalog: what it verifies is that the fight
+	// follows from the numbers the receipt will publish, and those numbers are the
+	// resolved modifiers, not the items that granted them.
+	logged := SimulateWithLogAndBonus(
 		req.Attacker.DNA, req.Attacker.Rarity, req.Attacker.Level, req.Attacker.Skill,
 		req.Defender.DNA, req.Defender.Rarity, req.Defender.Level, req.Defender.Skill,
-		req.Seed, req.SkillConfig,
+		req.Seed, req.SkillConfig, req.Attacker.Bonus, req.Defender.Bonus,
 	)
 	progression := ComputeProgression(req.Attacker, req.Defender, logged.Result.FirstWins, req.MaxLevel)
 

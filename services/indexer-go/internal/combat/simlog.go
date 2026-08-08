@@ -40,8 +40,26 @@ func SimulateWithLog(
 	dna2 uint64, rarity2 uint8, level2 uint16, skill2 uint8,
 	seed [32]byte, sc SkillConfig,
 ) LoggedResult {
+	return SimulateWithLogAndBonus(
+		dna1, rarity1, level1, skill1,
+		dna2, rarity2, level2, skill2,
+		seed, sc, NoBonus, NoBonus,
+	)
+}
+
+// SimulateWithLogAndBonus is SimulateWithLog with equipment (roadmap §4). See
+// SimulateWithBonus for why this is a separate entry point.
+func SimulateWithLogAndBonus(
+	dna1 uint64, rarity1 uint8, level1 uint16, skill1 uint8,
+	dna2 uint64, rarity2 uint8, level2 uint16, skill2 uint8,
+	seed [32]byte, sc SkillConfig, bonus1, bonus2 AttrBonus,
+) LoggedResult {
 	a := Extract(dna1, rarity1, level1)
 	b := Extract(dna2, rarity2, level2)
+
+	// Same insertion point as SimulateWithBonus and as the TypeScript engine.
+	applyBonus(&a, bonus1)
+	applyBonus(&b, bonus2)
 
 	if skill1 == SkillTank {
 		a.HP = uint16(uint32(a.HP) * uint32(sc.TankHPMult) / 100)

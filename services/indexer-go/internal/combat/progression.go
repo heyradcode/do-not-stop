@@ -91,4 +91,7 @@ type PetInputs struct {
 	XP             uint32
 	LastOpponentID uint64
 	Streak         uint32
+	// Bonus is the pet's equipment total, resolved from the frozen snapshot (roadmap §4).
+	// Zero value means ungeared, so a caller that predates equipment is unaffected.
+	Bonus AttrBonus
 }
