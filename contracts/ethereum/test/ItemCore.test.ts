@@ -250,6 +250,41 @@ describe("ItemCore", async function () {
         });
     });
 
+    describe("escrowed equipment", function () {
+        // An audit finding, kept as a regression test. Burning the contract's own balance
+        // would leave `_equipped` naming an item that no longer exists: `unequip` reverts
+        // forever and the slot is stranded, while every battle snapshot keeps resolving
+        // that item's modifier for a token nobody holds. The receipt would still verify,
+        // because the catalog still declares the item, so the damage is a phantom combat
+        // bonus that passes every check.
+        it("cannot be burned out from under a pet", async function () {
+            const ctx = await deploy();
+            await grant(ctx, ctx.alice.account.address, SWORD, 1n);
+            await ctx.itemCore.write.equip([1n, SLOT_WEAPON, SWORD], { account: ctx.alice.account });
+
+            await rejectsWith(
+                ctx.itemCore.write.burnFrom([ctx.itemCore.address, SWORD, 1n], { account: ctx.backend.account }),
+                "Cannot burn escrowed equipment",
+            );
+
+            // Still held and still returnable, which is the property being protected.
+            assert.equal(await ctx.itemCore.read.balanceOf([ctx.itemCore.address, SWORD]), 1n);
+            await ctx.itemCore.write.unequip([1n, SLOT_WEAPON], { account: ctx.alice.account });
+            assert.equal(await ctx.itemCore.read.balanceOf([ctx.alice.account.address, SWORD]), 1n);
+        });
+
+        // The guard names the escrow address only; ordinary burns are the consumable path
+        // and have to keep working.
+        it("does not block burning a player's own balance", async function () {
+            const ctx = await deploy();
+            await grant(ctx, ctx.alice.account.address, POTION, 2n);
+            await ctx.itemCore.write.burnFrom([ctx.alice.account.address, POTION, 1n], {
+                account: ctx.backend.account,
+            });
+            assert.equal(await ctx.itemCore.read.balanceOf([ctx.alice.account.address, POTION]), 1n);
+        });
+    });
+
     describe("unequipping", function () {
         it("returns the item to the pet's owner", async function () {
             const ctx = await deploy();

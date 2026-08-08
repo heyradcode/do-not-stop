@@ -39,6 +39,7 @@ contract ItemCore is ERC1155Upgradeable, ERC1155HolderUpgradeable, UUPSUpgradeab
     event CallerAuthorized(address indexed caller);
     event CallerRevoked(address indexed caller);
     event ItemUriUpdated(string uri);
+    event PetCoreUpdated(address indexed petCore);
 
     /// @dev Used by uri() until an owner calls setUri. ERC-1155 clients substitute the
     ///      lowercase hex item type for `{id}` themselves; the contract never does.
@@ -128,11 +129,24 @@ contract ItemCore is ERC1155Upgradeable, ERC1155HolderUpgradeable, UUPSUpgradeab
         emit ItemUriUpdated(newUri);
     }
 
-    /// @notice Repoint at a newly deployed PetCore. Only affects future equip calls, since
-    ///         equipment is keyed by pet id and nothing here stores a resolved owner.
+    /// @notice Repoint at a newly deployed PetCore.
+    ///
+    /// @dev    **Not** future-only, despite the obvious reading. `unequip` resolves the
+    ///         recipient through `ownerOf` at call time, so repointing changes who already
+    ///         escrowed gear returns to: a pet id absent from the new contract makes
+    ///         `unequip` revert and locks that item forever, and a pet id belonging to
+    ///         someone else there hands them the item. There is no rescue path, and adding
+    ///         one would mean giving the owner a way to move players' escrowed assets,
+    ///         which is worse than the hazard it fixes.
+    ///
+    ///         So this is a migration tool, not a configuration knob: it is only safe while
+    ///         no gear is escrowed, or onto a PetCore where every geared pet id resolves to
+    ///         the same holder. `equipmentOf` over the geared pets is how that gets checked
+    ///         beforehand.
     function setPetCore(address petCore_) external onlyOwner {
         require(petCore_ != address(0), "Zero address");
         petCore = petCore_;
+        emit PetCoreUpdated(petCore_);
     }
 
     // ─── caller authorization ─────────────────────────────────────────────────
@@ -253,7 +267,17 @@ contract ItemCore is ERC1155Upgradeable, ERC1155HolderUpgradeable, UUPSUpgradeab
     ///         the burn is the record that the effect was spent. Reverts on an insufficient
     ///         balance, which is what keeps a double-spend of one potion from settling
     ///         twice even if the backend asked for it.
+    ///
+    ///         This contract cannot be the source. Its own balance is escrowed equipment,
+    ///         and burning from it would leave `_equipped` naming an item that no longer
+    ///         exists: `unequip` would revert forever, stranding the slot, while every
+    ///         battle snapshot kept resolving that item's modifier for a token nobody
+    ///         holds. The receipt would still verify, because the catalog still declares
+    ///         the item — so the damage would be a phantom combat bonus that passes every
+    ///         check. An authorized caller has no reason to pass this address, which is
+    ///         exactly why it costs nothing to forbid.
     function burnFrom(address from, uint256 itemType, uint256 quantity) external onlyAuthorized {
+        require(from != address(this), "Cannot burn escrowed equipment");
         require(quantity > 0, "Zero quantity");
         _burn(from, itemType, quantity);
         emit ItemsBurned(from, itemType, quantity);
