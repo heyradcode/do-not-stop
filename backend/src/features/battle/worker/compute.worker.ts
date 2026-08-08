@@ -1,10 +1,13 @@
 import {
     type BattleSnapshot,
     computeProgression,
+    type AttrBonus,
     hashCombatLog,
     type Hex,
     loadRulesetBundle,
+    NO_BONUS,
     simulate,
+    sumBonuses,
 } from '@cryptopets/protocol';
 import { BattleState } from '@generated/prisma/enums';
 import type { Prisma } from '@generated/prisma/client';
@@ -52,6 +55,9 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
     const attacker = deserializePet(snapshot.attacker);
     const defender = deserializePet(snapshot.defender);
 
+    // Equipment totals come from the frozen snapshot, not from the catalog: the fight has
+    // to use the modifiers that were written down at acceptance, so unequipping since then
+    // changes nothing (roadmap §4).
     const outcome = simulate(
         attacker.dna,
         attacker.rarity,
@@ -63,6 +69,8 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
         defender.skill,
         BigInt(battle.seed),
         ruleset.skillConfig,
+        equipmentBonus(attacker.equipment),
+        equipmentBonus(defender.equipment),
     );
 
     const progression = computeProgression(
@@ -92,6 +100,33 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
     await completeOutbox(message.id, new Date(nowSeconds * 1000));
 }
 
+/** Totals a snapshot's frozen equipment into the bonus the engine consumes. */
+export function equipmentBonus(equipment: SnapshotEquipment | undefined): AttrBonus {
+    if (!equipment || equipment.length === 0) {
+        return NO_BONUS;
+    }
+    return sumBonuses(
+        equipment.map((entry) => ({
+            hp: Number(entry.hp),
+            atk: Number(entry.atk),
+            def: Number(entry.def),
+            int: Number(entry.int),
+            mdef: Number(entry.mdef),
+        })),
+    );
+}
+
+/** As stored: JSON, so the item type arrives as a decimal string. */
+export type SnapshotEquipment = {
+    slot: number;
+    itemType: string | bigint;
+    hp: number;
+    atk: number;
+    def: number;
+    int: number;
+    mdef: number;
+}[];
+
 /** The snapshot is stored as JSON, where bigint fields round-trip as decimal strings. */
 function deserializePet(pet: {
     petId: string | bigint;
@@ -105,6 +140,7 @@ function deserializePet(pet: {
     streak: number;
     readyAt: number;
     sourceVersion: string | bigint;
+    equipment?: SnapshotEquipment;
 }) {
     return {
         petId: BigInt(pet.petId),
@@ -118,6 +154,11 @@ function deserializePet(pet: {
         streak: pet.streak,
         readyAt: pet.readyAt,
         sourceVersion: BigInt(pet.sourceVersion),
+        // Widened back to bigint: JSON storage round-trips the item type as a decimal
+        // string, and the protocol's validator wants the number it was written as.
+        ...(pet.equipment && {
+            equipment: pet.equipment.map((entry) => ({ ...entry, itemType: BigInt(entry.itemType) })),
+        }),
     };
 }
 

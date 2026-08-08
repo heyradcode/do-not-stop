@@ -10,7 +10,7 @@ import {
     type Hex,
     publishRuleset,
     QUICKNET,
-    SOURCE_DEFAULT_RULESET,
+    SNAPSHOT_SCHEMA_VERSION,
 } from '@cryptopets/protocol';
 import type { Prisma } from '@generated/prisma/client';
 import { BattleState } from '@generated/prisma/enums';
@@ -25,6 +25,7 @@ import { type ConsentFailure, consumeDailyBudget, findCoveringAuthorization } fr
 import { servedDeploymentId } from './domain';
 import { OUTBOX_TOPICS } from './outbox';
 import { buildPetSnapshot } from './snapshot.builder';
+import { servedRuleset } from './ruleset.builder';
 import { applyTransition, openBattle } from './transitions';
 
 /**
@@ -123,7 +124,9 @@ export async function acceptBattle(request: AcceptBattleRequest): Promise<Accept
         return reject('defender-not-ready', `defender ready at ${defender.readyAt}`);
     }
 
-    const ruleset = SOURCE_DEFAULT_RULESET;
+    // Built from the live item catalog rather than taken from the constant: gear changes
+    // fights, so the rules a battle names have to include what gear does (roadmap §4).
+    const ruleset = await servedRuleset();
     const rulesetHash = hashRuleset(ruleset);
     await ensureRulesetPublished(rulesetHash);
 
@@ -159,7 +162,15 @@ export async function acceptBattle(request: AcceptBattleRequest): Promise<Accept
 
     const battleId = `btl_${randomUUID()}`;
     const domain = { chainId, deploymentId: servedDeploymentId() };
-    const snapshot: BattleSnapshot = { domain, attacker, defender, takenAt: request.nowSeconds };
+    // Declared, never defaulted: an absent schemaVersion means 1, which would encode a
+    // geared snapshot without its gear (and `assertBattleSnapshot` refuses that outright).
+    const snapshot: BattleSnapshot = {
+        domain,
+        attacker,
+        defender,
+        takenAt: request.nowSeconds,
+        schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+    };
     const snapshotHash = hashBattleSnapshot(snapshot);
 
     // Stage A: everything that must be durable before any randomness exists.
@@ -342,14 +353,15 @@ async function ensureRulesetPublished(expectedHash: Hex): Promise<void> {
     if (existing) {
         return;
     }
-    const { hash, json } = publishRuleset(SOURCE_DEFAULT_RULESET);
+    const ruleset = await servedRuleset();
+    const { hash, json } = publishRuleset(ruleset);
     try {
         await prisma.battleRuleset.create({
             data: {
                 rulesetHash: hash,
-                version: SOURCE_DEFAULT_RULESET.version,
-                engineId: SOURCE_DEFAULT_RULESET.engineId,
-                engineVersion: SOURCE_DEFAULT_RULESET.engineVersion,
+                version: ruleset.version,
+                engineId: ruleset.engineId,
+                engineVersion: ruleset.engineVersion,
                 bundle: JSON.parse(json),
             },
         });

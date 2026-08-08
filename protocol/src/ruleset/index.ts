@@ -1,6 +1,7 @@
 export { loadRulesetBundle, parseRulesetBundle, publishRuleset, serializeRuleset } from './bundle';
 export { assertRulesetHash, encodeRuleset, hashRuleset } from './hash';
 export {
+    type ItemModifier,
     assertRuleset,
     ENGINE_ID,
     ENGINE_VERSION,

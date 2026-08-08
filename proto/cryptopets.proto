@@ -87,6 +87,19 @@ message VerifyPetInputs {
   uint32 xp = 6;
   string last_opponent_id = 7; // decimal string; "0" = no prior opponent
   uint32 streak = 8;
+
+  // Equipment total, already resolved from the frozen snapshot (roadmap §4).
+  //
+  // The resolved modifiers rather than the item ids, because that is what the fight
+  // actually consumes and what the receipt publishes; the verifier has no item catalog
+  // and needs none. Sent as five scalars rather than a nested message so an older server
+  // sees proto3 defaults of zero, which is exactly "ungeared" — a geared battle then
+  // fails §F loudly instead of being verified against the wrong inputs.
+  uint32 bonus_hp = 9;
+  uint32 bonus_atk = 10;
+  uint32 bonus_def = 11;
+  uint32 bonus_int = 12;
+  uint32 bonus_mdef = 13;
 }
 
 // Mirrors protocol's SkillConfig field for field.

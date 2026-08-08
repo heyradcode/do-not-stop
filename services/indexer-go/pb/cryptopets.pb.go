@@ -417,8 +417,20 @@ type VerifyPetInputs struct {
 	Xp             uint32                 `protobuf:"varint,6,opt,name=xp,proto3" json:"xp,omitempty"`
 	LastOpponentId string                 `protobuf:"bytes,7,opt,name=last_opponent_id,json=lastOpponentId,proto3" json:"last_opponent_id,omitempty"` // decimal string; "0" = no prior opponent
 	Streak         uint32                 `protobuf:"varint,8,opt,name=streak,proto3" json:"streak,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Equipment total, already resolved from the frozen snapshot (roadmap §4).
+	//
+	// The resolved modifiers rather than the item ids, because that is what the fight
+	// actually consumes and what the receipt publishes; the verifier has no item catalog
+	// and needs none. Sent as five scalars rather than a nested message so an older server
+	// sees proto3 defaults of zero, which is exactly "ungeared" — a geared battle then
+	// fails §F loudly instead of being verified against the wrong inputs.
+	BonusHp       uint32 `protobuf:"varint,9,opt,name=bonus_hp,json=bonusHp,proto3" json:"bonus_hp,omitempty"`
+	BonusAtk      uint32 `protobuf:"varint,10,opt,name=bonus_atk,json=bonusAtk,proto3" json:"bonus_atk,omitempty"`
+	BonusDef      uint32 `protobuf:"varint,11,opt,name=bonus_def,json=bonusDef,proto3" json:"bonus_def,omitempty"`
+	BonusInt      uint32 `protobuf:"varint,12,opt,name=bonus_int,json=bonusInt,proto3" json:"bonus_int,omitempty"`
+	BonusMdef     uint32 `protobuf:"varint,13,opt,name=bonus_mdef,json=bonusMdef,proto3" json:"bonus_mdef,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *VerifyPetInputs) Reset() {
@@ -503,6 +515,41 @@ func (x *VerifyPetInputs) GetLastOpponentId() string {
 func (x *VerifyPetInputs) GetStreak() uint32 {
 	if x != nil {
 		return x.Streak
+	}
+	return 0
+}
+
+func (x *VerifyPetInputs) GetBonusHp() uint32 {
+	if x != nil {
+		return x.BonusHp
+	}
+	return 0
+}
+
+func (x *VerifyPetInputs) GetBonusAtk() uint32 {
+	if x != nil {
+		return x.BonusAtk
+	}
+	return 0
+}
+
+func (x *VerifyPetInputs) GetBonusDef() uint32 {
+	if x != nil {
+		return x.BonusDef
+	}
+	return 0
+}
+
+func (x *VerifyPetInputs) GetBonusInt() uint32 {
+	if x != nil {
+		return x.BonusInt
+	}
+	return 0
+}
+
+func (x *VerifyPetInputs) GetBonusMdef() uint32 {
+	if x != nil {
+		return x.BonusMdef
 	}
 	return 0
 }
@@ -1070,7 +1117,7 @@ const file_cryptopets_proto_rawDesc = "" +
 	"\asamples\x18\x04 \x01(\rR\asamples\"P\n" +
 	"\vWinResponse\x12'\n" +
 	"\x0fwin_probability\x18\x01 \x01(\x01R\x0ewinProbability\x12\x18\n" +
-	"\asamples\x18\x02 \x01(\rR\asamples\"\xd0\x01\n" +
+	"\asamples\x18\x02 \x01(\rR\asamples\"\xe1\x02\n" +
 	"\x0fVerifyPetInputs\x12\x15\n" +
 	"\x06pet_id\x18\x01 \x01(\tR\x05petId\x12\x10\n" +
 	"\x03dna\x18\x02 \x01(\tR\x03dna\x12\x16\n" +
@@ -1079,7 +1126,14 @@ const file_cryptopets_proto_rawDesc = "" +
 	"\x05skill\x18\x05 \x01(\rR\x05skill\x12\x0e\n" +
 	"\x02xp\x18\x06 \x01(\rR\x02xp\x12(\n" +
 	"\x10last_opponent_id\x18\a \x01(\tR\x0elastOpponentId\x12\x16\n" +
-	"\x06streak\x18\b \x01(\rR\x06streak\"\xca\x02\n" +
+	"\x06streak\x18\b \x01(\rR\x06streak\x12\x19\n" +
+	"\bbonus_hp\x18\t \x01(\rR\abonusHp\x12\x1b\n" +
+	"\tbonus_atk\x18\n" +
+	" \x01(\rR\bbonusAtk\x12\x1b\n" +
+	"\tbonus_def\x18\v \x01(\rR\bbonusDef\x12\x1b\n" +
+	"\tbonus_int\x18\f \x01(\rR\bbonusInt\x12\x1d\n" +
+	"\n" +
+	"bonus_mdef\x18\r \x01(\rR\tbonusMdef\"\xca\x02\n" +
 	"\x11VerifySkillConfig\x12 \n" +
 	"\ftank_hp_mult\x18\x01 \x01(\rR\n" +
 	"tankHpMult\x12$\n" +

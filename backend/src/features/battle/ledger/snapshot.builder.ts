@@ -1,6 +1,7 @@
-import { chainFamily, type ChainId, type PetSnapshot } from '@cryptopets/protocol';
+import { chainFamily, type ChainId, type EquipEntry, type PetSnapshot } from '@cryptopets/protocol';
 
 import { prisma } from '@config/prisma';
+import { getPetEquipment } from '@features/inventory';
 
 import { servedDeploymentId } from './domain';
 
@@ -38,6 +39,7 @@ export async function buildPetSnapshot(chainId: ChainId, petId: string): Promise
         winCount: roster.winCount,
         lossCount: roster.lossCount,
     });
+    const equipment = await resolveEquipment(family, petId);
 
     return {
         petId: BigInt(petId),
@@ -51,7 +53,54 @@ export async function buildPetSnapshot(chainId: ChainId, petId: string): Promise
         streak: progress.streak,
         readyAt: Number(progress.readyAt),
         sourceVersion: roster.lastVersion,
+        // Omitted rather than empty for an ungeared pet, matching what
+        // `assertPetSnapshot` normalizes to. It encodes the same either way, and it keeps
+        // an ungeared snapshot's stored JSON identical to what it was before equipment
+        // existed, so a diff of stored rows shows only the pets that actually wear
+        // something.
+        ...(equipment.length > 0 && { equipment }),
     };
+}
+
+/**
+ * Freezes what a pet is wearing, with each item's modifier already resolved (roadmap §4).
+ *
+ * Resolved here rather than referenced, because the snapshot is the photo: unequipping
+ * after acceptance must not change a committed fight, exactly as a level-up between
+ * acceptance and settlement must not. Storing the item id alone would leave the fight
+ * depending on a row anyone can still edit.
+ *
+ * The equip state comes from `pet_equipment`, which only indexer-go writes from the chain,
+ * so what is frozen is what the chain said at a version the snapshot records. An outsider
+ * can therefore check the gear as well as the numbers.
+ *
+ * An equipped item with no catalog effect contributes nothing and is left out entirely.
+ * Including it with zeroes would put an entry in the receipt claiming an item was worn and
+ * did nothing, which reads as a bug rather than as a fact.
+ */
+async function resolveEquipment(family: string, petId: string): Promise<EquipEntry[]> {
+    const equipped = await getPetEquipment(family, petId);
+    const entries: EquipEntry[] = [];
+
+    for (const { slot, item } of equipped) {
+        if (item.effect?.kind !== 'stat_bonus') {
+            continue;
+        }
+        entries.push({
+            slot,
+            itemType: BigInt(item.itemType),
+            hp: item.effect.hp,
+            atk: item.effect.atk,
+            def: item.effect.def,
+            int: item.effect.int,
+            mdef: item.effect.mdef,
+        });
+    }
+
+    // Ascending by slot, which the protocol requires: the order is part of the snapshot
+    // digest, and `assertPetSnapshot` refuses to sort silently so an upstream bug that
+    // produced two weapons surfaces instead of being tidied away.
+    return entries.sort((a, b) => a.slot - b.slot);
 }
 
 /**

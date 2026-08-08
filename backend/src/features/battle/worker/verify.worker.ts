@@ -14,6 +14,7 @@ import { prisma } from '@config/prisma';
 import { applyTransition, type ClaimedMessage, completeOutbox, OUTBOX_TOPICS } from '@features/battle/ledger';
 import { callVerifyBattle, type VerifyBattleWire, type VerifyPetProgressionWire } from '@grpc-client/verifyBattle';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
+import { equipmentBonus, type SnapshotEquipment } from './compute.worker';
 
 /**
  * Handles `verify` messages: `computed` -> `verified` (§F).
@@ -56,8 +57,8 @@ export async function processVerifyMessage(message: ClaimedMessage, nowSeconds: 
     const ruleset = loadRulesetBundle(JSON.stringify(rulesetRow.bundle), battle.rulesetHash as Hex);
 
     const snapshot = battle.snapshot as unknown as BattleSnapshot;
-    const attacker = snapshot.attacker as unknown as Record<string, string | number>;
-    const defender = snapshot.defender as unknown as Record<string, string | number>;
+    const attacker = snapshot.attacker as unknown as Record<string, unknown>;
+    const defender = snapshot.defender as unknown as Record<string, unknown>;
 
     const outcome = await callVerifyBattle({
         attacker: toWirePet(attacker),
@@ -107,7 +108,12 @@ export async function processVerifyMessage(message: ClaimedMessage, nowSeconds: 
     await completeOutbox(message.id, new Date(nowSeconds * 1000));
 }
 
-function toWirePet(pet: Record<string, string | number>) {
+function toWirePet(pet: Record<string, unknown>) {
+    // The resolved equipment total, so the independent recomputation runs on the same
+    // inputs the canonical engine used (roadmap §4). Sending the frozen modifiers rather
+    // than item ids is what lets the verifier hold no item catalog at all: what §F checks
+    // is that the fight follows from the numbers the receipt publishes.
+    const bonus = equipmentBonus(pet.equipment as SnapshotEquipment | undefined);
     return {
         petId: String(pet.petId),
         dna: String(pet.dna),
@@ -117,6 +123,11 @@ function toWirePet(pet: Record<string, string | number>) {
         xp: Number(pet.xp),
         lastOpponentId: String(pet.lastOpponentId),
         streak: Number(pet.streak),
+        bonusHp: bonus.hp,
+        bonusAtk: bonus.atk,
+        bonusDef: bonus.def,
+        bonusInt: bonus.int,
+        bonusMdef: bonus.mdef,
     };
 }
 
