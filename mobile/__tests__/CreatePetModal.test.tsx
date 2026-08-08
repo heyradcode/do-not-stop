@@ -210,3 +210,55 @@ describe('CreatePetModal feedback', () => {
         expect(textOf(tree)).not.toContain('refreshing list');
     });
 });
+
+describe('CreatePetModal open-only reset', () => {
+    /**
+     * The adapter rebuilds its `lifecycle` object every render, so `reset` is a
+     * fresh identity each time. An effect keyed on it re-runs on every render,
+     * and its own `reset()` causes the next one: on device that surfaced as
+     * "Maximum update depth exceeded" the moment the sheet opened.
+     */
+    it('does not re-reset when only the reset identity changes', async () => {
+        let tree!: ReactTestRenderer.ReactTestRenderer;
+        await ReactTestRenderer.act(() => {
+            tree = ReactTestRenderer.create(
+                <CreatePetModal visible onClose={jest.fn()} createPet={createPet()} />,
+            );
+        });
+        expect(mockReset).toHaveBeenCalledTimes(1);
+
+        for (let i = 0; i < 3; i++) {
+            await ReactTestRenderer.act(() => {
+                tree.update(
+                    <CreatePetModal
+                        visible
+                        onClose={jest.fn()}
+                        // A new function each render, as the real hook returns.
+                        createPet={createPet({ reset: () => mockReset() })}
+                    />,
+                );
+            });
+        }
+
+        expect(mockReset).toHaveBeenCalledTimes(1);
+    });
+
+    it('resets again when the sheet is reopened', async () => {
+        let tree!: ReactTestRenderer.ReactTestRenderer;
+        await ReactTestRenderer.act(() => {
+            tree = ReactTestRenderer.create(
+                <CreatePetModal visible onClose={jest.fn()} createPet={createPet()} />,
+            );
+        });
+        await ReactTestRenderer.act(() => {
+            tree.update(
+                <CreatePetModal visible={false} onClose={jest.fn()} createPet={createPet()} />,
+            );
+        });
+        await ReactTestRenderer.act(() => {
+            tree.update(<CreatePetModal visible onClose={jest.fn()} createPet={createPet()} />);
+        });
+
+        expect(mockReset).toHaveBeenCalledTimes(2);
+    });
+});

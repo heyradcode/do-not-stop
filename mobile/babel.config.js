@@ -16,5 +16,8 @@ module.exports = {
         verbose: false,
       },
     ],
+    // `@switchboard-xyz/common`'s ESM build uses `export * as ns from`, which
+    // the React Native preset does not transform.
+    '@babel/plugin-transform-export-namespace-from',
   ],
 };

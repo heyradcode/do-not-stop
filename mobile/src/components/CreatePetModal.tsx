@@ -27,12 +27,18 @@ export default function CreatePetModal({ visible, onClose, createPet }: Props) {
     const { width } = useWindowDimensions();
     const cardWidth = Math.min(400, width - 48);
 
+    // Opening the sheet clears the previous attempt. Keyed on `visible` alone:
+    // the adapter rebuilds its `lifecycle` object every render, so `reset` is a
+    // new identity each time, and depending on it would re-run this effect on
+    // every render, whose own `reset()` renders again. That loop is what
+    // "Maximum update depth exceeded" was.
     useEffect(() => {
         if (visible) {
             setName('');
             reset();
         }
-    }, [visible, reset]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- open-only reset
+    }, [visible]);
 
     // EVM minting spans three waits: the request tx, Pyth Entropy revealing, then
     // the settle tx. All of them mean "keep the sheet locked and spinning".
