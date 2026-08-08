@@ -87,6 +87,26 @@ export function resolveEntropyParams(
 }
 
 /**
+ * The `ignition/deployments/` directory holding the stack to operate on.
+ *
+ * `chain-<id>` is only Ignition's *default* id. A chain that has been redeployed under an
+ * explicit `--deployment-id` keeps the superseded stack in that default directory, so a
+ * script that reads it upgrades a dead proxy, leaves the live one untouched, and reports
+ * success either way. That is not hypothetical here: `chain-84532` still names the pre-2.0.0
+ * Base Sepolia proxies.
+ *
+ * `scripts/prepare-subgraph.mjs` resolves the same way for the same reason.
+ */
+export function resolveDeploymentDir(
+    network: NetworkSpec,
+    argv: string[] = process.argv,
+    env: NodeJS.ProcessEnv = process.env
+): string {
+    const flag = argv.find((a) => a.startsWith("--deployment-id="))?.split("=")[1]?.trim();
+    return flag || env.IGNITION_DEPLOYMENT_ID?.trim() || `chain-${network.chainId}`;
+}
+
+/**
  * Resolves the RPC URL for `network` from env. Falls back to legacy `SEPOLIA_URL`
  * for Sepolia so existing .env files keep working.
  */

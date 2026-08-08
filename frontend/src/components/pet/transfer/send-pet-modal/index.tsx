@@ -37,11 +37,14 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
 
-    // Equipped gear is escrowed in ItemCore and paid out to whoever owns the pet when it is
-    // unequipped, so it travels with the pet. That is the right rule — the alternative
-    // strands the item in a wallet that can no longer reach it — but it is invisible, and
-    // this modal is the last point where it can still be undone.
+    // Pets and items are separate assets, and PetCore enforces it: a transfer reverts with
+    // "Unequip items before transferring" while any slot is filled. So this is not advice,
+    // it is the reason the send would fail, and it is worth saying before the wallet opens
+    // rather than after a rejected transaction.
     const { equipped, isSuccess: gearKnown } = usePetEquipment({ chain, petId: petId.toString() });
+    // Only when we actually know. An unanswered read must not disable the button, or a
+    // backend outage would make every pet look untransferable; the chain decides then.
+    const blockedByGear = gearKnown && equipped.length > 0;
 
     const [recipientAddress, setRecipientAddress] = useState('');
     const [inputInvalid, setInputInvalid] = useState(false);
@@ -131,12 +134,13 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
                 bare pet does, and the query is disabled until the caller is authenticated, so
                 falling through to silence would drop the warning in precisely the cases where
                 nobody can see what is about to leave. */}
-            {gearKnown && equipped.length > 0 && (
+            {blockedByGear && (
                 <div className={styles.gearNotice} role="status">
-                    <strong>This pet is wearing gear</strong>
+                    <strong>Unequip before sending</strong>
                     <p>
-                        Equipped items are held by the pet, so they go to the recipient with it.
-                        Unequip anything you want to keep before sending.
+                        Pets and items are separate assets, so this send will be rejected while
+                        the pet is wearing gear. Unequip these in the Equipment panel first —
+                        they stay in your bag.
                     </p>
                     <ul>
                         {equipped.map(({ slot, item }) => (
@@ -153,8 +157,8 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
             )}
             {!gearKnown && (
                 <p className={styles.gearUnknown} role="status">
-                    Could not check this pet’s equipment. Anything it has equipped will go to the
-                    recipient along with it.
+                    Could not check this pet’s equipment. If it is wearing any, the send will be
+                    rejected until you unequip it.
                 </p>
             )}
 
@@ -181,7 +185,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
                 <NeonButton
                     tone="cyan"
                     onClick={handleSend}
-                    disabled={!recipientAddress || isPending}
+                    disabled={!recipientAddress || isPending || blockedByGear}
                 >
                     {isPending ? 'Sending...' : 'Send Pet'}
                 </NeonButton>

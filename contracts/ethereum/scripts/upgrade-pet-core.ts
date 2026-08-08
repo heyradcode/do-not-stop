@@ -26,7 +26,7 @@ import { join } from 'path';
 import { createPublicClient, createWalletClient, http, type Chain } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia, baseSepolia } from 'viem/chains';
-import { getNetwork, resolveRpcUrl } from './networks.js';
+import { getNetwork, resolveDeploymentDir, resolveRpcUrl } from './networks.js';
 
 const petCoreArtifact = JSON.parse(
     readFileSync(join(process.cwd(), 'artifacts', 'src', 'PetCore.sol', 'PetCore.json'), 'utf8'),
@@ -74,8 +74,9 @@ if (!pk) {
 }
 const account = privateKeyToAccount((pk.startsWith('0x') ? pk : `0x${pk}`) as `0x${string}`);
 
+const deploymentDir = resolveDeploymentDir(network);
 const deployedAddressesPath = join(
-    process.cwd(), 'ignition', 'deployments', `chain-${network.chainId}`, 'deployed_addresses.json',
+    process.cwd(), 'ignition', 'deployments', deploymentDir, 'deployed_addresses.json',
 );
 const deployedAddresses = JSON.parse(readFileSync(deployedAddressesPath, 'utf8')) as Record<string, string>;
 const proxyAddress = deployedAddresses['CryptoPetsV2Live#PetCoreProxy'] as `0x${string}` | undefined;
@@ -83,6 +84,9 @@ if (!proxyAddress) {
     console.error(`PetCoreProxy not found in ${deployedAddressesPath} — deploy the stack first.`);
     process.exit(1);
 }
+// Said out loud before anything is sent. Upgrading the wrong proxy is silent: it succeeds,
+// and the stack everyone is using is simply not the one that changed.
+console.log(`Deployment "${deploymentDir}" -> PetCoreProxy ${proxyAddress}`);
 
 const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
 const wallet = createWalletClient({ account, chain, transport: http(rpcUrl) });

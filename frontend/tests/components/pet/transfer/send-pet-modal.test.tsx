@@ -133,53 +133,57 @@ describe('SendPetModal', () => {
     });
 });
 
-// Equipped gear is escrowed against the pet and pays out to whoever owns it, so a transfer
-// hands the gear over too. That is the intended rule; these cover the part that is not
-// obvious from the screen.
+// PetCore refuses to move a pet with a filled slot ("Unequip items before transferring"),
+// so these are not advice — they are the reason the send would fail, surfaced before the
+// wallet opens instead of after a rejected transaction.
 describe('SendPetModal equipment warning', () => {
     const blade = { itemType: '1', name: 'Iron Fang', rarity: 1 };
     const vest = { itemType: '10', name: 'Hide Vest', rarity: 3 };
 
-    it('names every item that would travel with the pet', () => {
+    it('names every item standing in the way', () => {
         petEquipment.equipped = [
             { slot: 0, item: blade },
             { slot: 1, item: vest },
         ];
         renderModal();
 
-        expect(screen.getByText('This pet is wearing gear')).toBeInTheDocument();
+        expect(screen.getByText('Unequip before sending')).toBeInTheDocument();
         expect(screen.getByText('Iron Fang')).toBeInTheDocument();
         expect(screen.getByText('Hide Vest')).toBeInTheDocument();
         expect(screen.getByText('Weapon')).toBeInTheDocument();
         expect(screen.getByText('Armor')).toBeInTheDocument();
     });
 
-    // Advisory, not a gate: sending a pet with its gear is a legitimate thing to want, and
-    // a blocked button would make the common case worse to fix the uncommon one.
-    it('does not block the send', async () => {
+    // The chain rejects this send, so letting it through only spends gas to reach the same
+    // answer with a worse message.
+    it('disables the send while gear is on', async () => {
         petEquipment.equipped = [{ slot: 0, item: blade }];
         renderModal();
 
         await userEvent.type(screen.getByRole('textbox'), '0xrecipient');
+        expect(screen.getByRole('button', { name: 'Send Pet' })).toBeDisabled();
         await userEvent.click(screen.getByRole('button', { name: 'Send Pet' }));
-
-        expect(transferPet.mutate).toHaveBeenCalledWith({ to: '0xrecipient', petId: '7' });
+        expect(transferPet.mutate).not.toHaveBeenCalled();
     });
 
     it('stays quiet for a pet with nothing equipped', () => {
         renderModal();
-        expect(screen.queryByText('This pet is wearing gear')).not.toBeInTheDocument();
+        expect(screen.queryByText('Unequip before sending')).not.toBeInTheDocument();
         expect(screen.queryByText(/Could not check/)).not.toBeInTheDocument();
     });
 
-    // The regression that matters. An unanswered read returns an empty list exactly like a
-    // bare pet, so keying off length alone would drop the warning in the one case where
-    // nobody can see what is about to leave.
-    it('warns anyway when the equipment read has not answered', () => {
+    // An unanswered read returns an empty list exactly like a bare pet. It must warn, but it
+    // must NOT disable: a backend outage would otherwise make every pet look untransferable,
+    // and the chain is the thing that actually decides.
+    it('warns but still allows the send when the equipment read has not answered', async () => {
         petEquipment.isSuccess = false;
         renderModal();
 
         expect(screen.getByText(/Could not check this pet’s equipment/)).toBeInTheDocument();
-        expect(screen.queryByText('This pet is wearing gear')).not.toBeInTheDocument();
+        expect(screen.queryByText('Unequip before sending')).not.toBeInTheDocument();
+
+        await userEvent.type(screen.getByRole('textbox'), '0xrecipient');
+        await userEvent.click(screen.getByRole('button', { name: 'Send Pet' }));
+        expect(transferPet.mutate).toHaveBeenCalledWith({ to: '0xrecipient', petId: '7' });
     });
 });

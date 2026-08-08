@@ -19,7 +19,7 @@ import { join } from 'path';
 import { createPublicClient, createWalletClient, http, type Chain } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia, baseSepolia } from 'viem/chains';
-import { getNetwork, resolveRpcUrl } from './networks.js';
+import { getNetwork, resolveDeploymentDir, resolveRpcUrl } from './networks.js';
 
 const gameLogicArtifact = JSON.parse(
     readFileSync(join(process.cwd(), 'artifacts', 'src', 'GameLogic.sol', 'GameLogic.json'), 'utf8'),
@@ -57,8 +57,9 @@ if (!pk) {
 }
 const account = privateKeyToAccount((pk.startsWith('0x') ? pk : `0x${pk}`) as `0x${string}`);
 
+const deploymentDir = resolveDeploymentDir(network);
 const deployedAddressesPath = join(
-    process.cwd(), 'ignition', 'deployments', `chain-${network.chainId}`, 'deployed_addresses.json',
+    process.cwd(), 'ignition', 'deployments', deploymentDir, 'deployed_addresses.json',
 );
 const deployedAddresses = JSON.parse(readFileSync(deployedAddressesPath, 'utf8')) as Record<string, string>;
 const proxyAddress = deployedAddresses['CryptoPetsV2Live#GameLogicProxy'] as `0x${string}` | undefined;
@@ -66,6 +67,7 @@ if (!proxyAddress) {
     console.error(`GameLogicProxy not found in ${deployedAddressesPath} — deploy the stack first.`);
     process.exit(1);
 }
+console.log(`Deployment "${deploymentDir}" -> GameLogicProxy ${proxyAddress}`);
 
 const publicClient = createPublicClient({ chain, transport: http(rpcUrl) });
 const wallet = createWalletClient({ account, chain, transport: http(rpcUrl) });
