@@ -88,6 +88,15 @@ const CryptoPetsV2LiveModule = buildModule("CryptoPetsV2Live", (m) => {
 
     // ── wire up ──────────────────────────────────────────────────────────────
     m.call(petCore, "authorizeCaller", [gameLogicProxy]);
+    // Pets and items are separate assets, and this is what makes that true on chain rather
+    // than only in the UI: PetCore reads equipmentOf on every transfer and refuses to move a
+    // pet with a filled slot. Wired here so a fresh network cannot come up without it —
+    // unset, the check silently does nothing and gear changes hands with the pet.
+    //
+    // On an existing deployment this call needs a PetCore implementation that has
+    // setItemCore, so the upgrade lands before the reconcile, not after. It reverts loudly
+    // rather than quietly if that order is missed.
+    m.call(petCore, "setItemCore", [itemCoreProxy]);
     // Publishing rights for the deployer, so a local stack can anchor immediately. This
     // grants nothing the owner did not already have (it can call setPublisher at will).
     // A real deployment should rotate this to the backend's own anchor wallet — the key

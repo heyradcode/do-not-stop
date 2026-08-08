@@ -201,9 +201,17 @@ contract ItemCore is ERC1155Upgradeable, ERC1155HolderUpgradeable, UUPSUpgradeab
     ///         an item cannot buff two pets, without needing a locked-balance invariant that
     ///         breaks the moment a geared pet changes hands.
     ///
-    ///         Gear follows the pet, deliberately: unequip returns it to whoever owns the pet
-    ///         then, not to whoever equipped it. A transfer-locked design would instead
-    ///         strand the item in the old owner's wallet, locked by a pet they no longer own.
+    ///         `unequip` pays out to whoever owns the pet at the time, not to whoever equipped
+    ///         it. On its own that would mean gear silently changes hands with the pet, so
+    ///         `PetCore._beforeTokenTransfer` refuses to move a pet with any slot filled —
+    ///         pets and items are separate assets, and the stripping has to happen first.
+    ///         Paying the current owner is still the right rule for what remains: it is what
+    ///         stops an item being stranded behind a pet its equipper can no longer reach.
+    ///
+    ///         That check reads `equipmentOf` here, so this contract is on the path of every
+    ///         pet transfer once PetCore points at it. Nothing on this side may assume it:
+    ///         PetCore treats an unset address as "no check", and a deployment can run the
+    ///         two in either order.
     function equip(uint256 petId, uint8 slot, uint256 itemType) external {
         require(msg.sender == _petOwner(petId), "Not the owner of this pet");
         (bool isEquipment, uint8 itemSlot) = slotOf(itemType);

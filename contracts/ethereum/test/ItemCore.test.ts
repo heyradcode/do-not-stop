@@ -33,6 +33,8 @@ describe("ItemCore", async function () {
     const PLATE = 2n;
     const POTION = 3n; // never registered to a slot: a consumable, not equipment
 
+    const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+
     async function deploy() {
         const [owner, alice, bob, backend] = await viem.getWalletClients();
 
@@ -72,6 +74,11 @@ describe("ItemCore", async function () {
         await itemCore.write.authorizeCaller([backend.account.address]);
         await itemCore.write.registerItemSlot([SWORD, SLOT_WEAPON]);
         await itemCore.write.registerItemSlot([PLATE, SLOT_ARMOR]);
+
+        // The production wiring: PetCore consults ItemCore on transfer, so a geared pet
+        // cannot move. Deliberately part of the default fixture rather than opt-in per
+        // test, since a deployment that skips it silently loses the guarantee.
+        await petCore.write.setItemCore([itemCore.address]);
 
         return { itemCore, petCore, owner, alice, bob, backend };
     }
@@ -315,8 +322,13 @@ describe("ItemCore", async function () {
             );
         });
 
-        it("hands gear to the pet's new owner after a transfer, not to whoever equipped it", async function () {
+        // Only reachable with the transfer guard switched off, which is what makes it worth
+        // keeping: paying the pet's current owner is what stops an item being stranded behind
+        // a pet its equipper can no longer reach, and that has to hold in the one
+        // configuration where a geared pet can still change hands.
+        it("hands gear to the pet's new owner when the transfer guard is disabled", async function () {
             const ctx = await deploy();
+            await ctx.petCore.write.setItemCore([ZERO_ADDRESS]);
             await grant(ctx, ctx.alice.account.address, SWORD, 1n);
             await ctx.itemCore.write.equip([1n, SLOT_WEAPON, SWORD], { account: ctx.alice.account });
 
@@ -332,6 +344,135 @@ describe("ItemCore", async function () {
 
             assert.equal(await ctx.itemCore.read.balanceOf([ctx.bob.account.address, SWORD]), 1n);
             assert.equal(await ctx.itemCore.read.balanceOf([ctx.alice.account.address, SWORD]), 0n);
+        });
+    });
+
+    /**
+     * Pets and items are separate assets, and until this existed only the UI said so.
+     * `unequip` pays whoever owns the pet, so a transferFrom sent straight to the contract
+     * handed the gear over with it — no warning, no record, nothing a frontend could stop.
+     */
+    describe("the transfer guard", function () {
+        it("refuses to move a pet with anything equipped", async function () {
+            const ctx = await deploy();
+            await grant(ctx, ctx.alice.account.address, SWORD, 1n);
+            await ctx.itemCore.write.equip([1n, SLOT_WEAPON, SWORD], { account: ctx.alice.account });
+
+            await rejectsWith(
+                ctx.petCore.write.transferFrom(
+                    [ctx.alice.account.address, ctx.bob.account.address, 1n],
+                    { account: ctx.alice.account },
+                ),
+                "Unequip items before transferring",
+            );
+            assert.equal(
+                (await ctx.petCore.read.ownerOf([1n])).toLowerCase(),
+                ctx.alice.account.address.toLowerCase(),
+            );
+        });
+
+        // safeTransferFrom is a separate entry point, and a guard that only covered
+        // transferFrom would be trivially sidestepped by using the other one.
+        it("refuses safeTransferFrom too, not just transferFrom", async function () {
+            const ctx = await deploy();
+            await grant(ctx, ctx.alice.account.address, PLATE, 1n);
+            await ctx.itemCore.write.equip([1n, SLOT_ARMOR, PLATE], { account: ctx.alice.account });
+
+            await rejectsWith(
+                ctx.petCore.write["safeTransferFrom"](
+                    [ctx.alice.account.address, ctx.bob.account.address, 1n],
+                    { account: ctx.alice.account },
+                ),
+                "Unequip items before transferring",
+            );
+        });
+
+        it("lets a bare pet move", async function () {
+            const ctx = await deploy();
+            await ctx.petCore.write.transferFrom(
+                [ctx.alice.account.address, ctx.bob.account.address, 1n],
+                { account: ctx.alice.account },
+            );
+            assert.equal(
+                (await ctx.petCore.read.ownerOf([1n])).toLowerCase(),
+                ctx.bob.account.address.toLowerCase(),
+            );
+        });
+
+        it("lets the pet move once it has been stripped", async function () {
+            const ctx = await deploy();
+            await grant(ctx, ctx.alice.account.address, SWORD, 1n);
+            await ctx.itemCore.write.equip([1n, SLOT_WEAPON, SWORD], { account: ctx.alice.account });
+            await ctx.itemCore.write.unequip([1n, SLOT_WEAPON], { account: ctx.alice.account });
+
+            await ctx.petCore.write.transferFrom(
+                [ctx.alice.account.address, ctx.bob.account.address, 1n],
+                { account: ctx.alice.account },
+            );
+
+            // The item stayed behind, which is the whole point: separate assets.
+            assert.equal(
+                (await ctx.petCore.read.ownerOf([1n])).toLowerCase(),
+                ctx.bob.account.address.toLowerCase(),
+            );
+            assert.equal(await ctx.itemCore.read.balanceOf([ctx.alice.account.address, SWORD]), 1n);
+        });
+
+        // Gear on one pet must not freeze another. The guard is keyed on the token being
+        // moved, and an owner-wide check would be an easy thing to write by accident.
+        it("does not block a different pet owned by the same wallet", async function () {
+            const ctx = await deploy();
+            await grant(ctx, ctx.alice.account.address, SWORD, 1n);
+            await ctx.itemCore.write.equip([1n, SLOT_WEAPON, SWORD], { account: ctx.alice.account });
+
+            await ctx.petCore.write.transferFrom(
+                [ctx.alice.account.address, ctx.bob.account.address, 2n],
+                { account: ctx.alice.account },
+            );
+            assert.equal(
+                (await ctx.petCore.read.ownerOf([2n])).toLowerCase(),
+                ctx.bob.account.address.toLowerCase(),
+            );
+        });
+
+        // Minting is from the zero address, where no pet exists yet to carry gear. If the
+        // guard ran there it would break every mint, since equipmentOf would be read for a
+        // token that has no owner.
+        it("leaves minting alone", async function () {
+            const ctx = await deploy();
+            await ctx.petCore.write.createPet(["pet4", 1234567890123456n, 3, 0, 0n, 0n]);
+            await ctx.petCore.write.mintTo([ctx.alice.account.address, 4n]);
+            assert.equal(
+                (await ctx.petCore.read.ownerOf([4n])).toLowerCase(),
+                ctx.alice.account.address.toLowerCase(),
+            );
+        });
+
+        // The escape hatch. A wrong or broken ItemCore address would otherwise freeze every
+        // pet in the collection permanently, since the check is on the only transfer path.
+        it("is disabled by an unset ItemCore, so a bad address cannot freeze the collection", async function () {
+            const ctx = await deploy();
+            await grant(ctx, ctx.alice.account.address, SWORD, 1n);
+            await ctx.itemCore.write.equip([1n, SLOT_WEAPON, SWORD], { account: ctx.alice.account });
+
+            await ctx.petCore.write.setItemCore([ZERO_ADDRESS]);
+
+            await ctx.petCore.write.transferFrom(
+                [ctx.alice.account.address, ctx.bob.account.address, 1n],
+                { account: ctx.alice.account },
+            );
+            assert.equal(
+                (await ctx.petCore.read.ownerOf([1n])).toLowerCase(),
+                ctx.bob.account.address.toLowerCase(),
+            );
+        });
+
+        it("is only settable by the owner", async function () {
+            const ctx = await deploy();
+            await rejectsWith(
+                ctx.petCore.write.setItemCore([ZERO_ADDRESS], { account: ctx.alice.account }),
+                "Ownable: caller is not the owner",
+            );
         });
     });
 });
