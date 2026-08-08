@@ -5,6 +5,7 @@ const repo = {
     findBalances: vi.fn(),
     findDefinitions: vi.fn(),
     findEquipment: vi.fn(),
+    findUnclaimedEntitlements: vi.fn(),
 };
 
 vi.mock('@repositories/inventory.repository', () => ({
@@ -12,9 +13,10 @@ vi.mock('@repositories/inventory.repository', () => ({
     findBalances: (chain: string, owner: string) => repo.findBalances(chain, owner),
     findDefinitions: (itemTypes: string[]) => repo.findDefinitions(itemTypes),
     findEquipment: (chain: string, petId: string) => repo.findEquipment(chain, petId),
+    findUnclaimedEntitlements: (chain: string, owner: string) => repo.findUnclaimedEntitlements(chain, owner),
 }));
 
-import { getInventory, getPetEquipment } from '@features/inventory';
+import { getInventory, getPendingItems, getPetEquipment } from '@features/inventory';
 
 const POTION = {
     itemType: '100',
@@ -127,6 +129,58 @@ describe('getPetEquipment', () => {
     it('returns nothing for a pet with no gear', async () => {
         repo.findEquipment.mockResolvedValue([]);
         expect(await getPetEquipment('evm', '7')).toEqual([]);
+        expect(repo.findDefinitions).not.toHaveBeenCalled();
+    });
+});
+
+describe('getPendingItems', () => {
+    const row = {
+        id: 'e1',
+        itemType: '100',
+        quantity: 2,
+        source: 'battle_drop',
+        sourceRef: 'btl_0001',
+        createdAt: new Date('2026-08-07T00:00:00.000Z'),
+    };
+
+    it('joins entitlements onto the catalog and names what paid them', async () => {
+        repo.findUnclaimedEntitlements.mockResolvedValue([row]);
+        repo.findDefinitions.mockResolvedValue([POTION]);
+
+        expect(await getPendingItems('evm', '0xabc')).toEqual([
+            {
+                entitlementId: 'e1',
+                item: expect.objectContaining({ key: 'xp_potion_i' }),
+                quantity: 2,
+                source: 'battle_drop',
+                sourceRef: 'btl_0001',
+                createdAt: '2026-08-07T00:00:00.000Z',
+            },
+        ]);
+    });
+
+    // Same normalization rule as the bag: rows are written lowercased, so an unnormalized
+    // key would report nothing waiting rather than erroring.
+    it('folds an EVM owner before looking anything up', async () => {
+        repo.findUnclaimedEntitlements.mockResolvedValue([]);
+        await getPendingItems('evm', '0xAbC0000000000000000000000000000000000DEF');
+        expect(repo.findUnclaimedEntitlements).toHaveBeenCalledWith(
+            'evm',
+            '0xabc0000000000000000000000000000000000def',
+        );
+    });
+
+    it('hides an entitlement naming an item the catalog does not have', async () => {
+        repo.findUnclaimedEntitlements.mockResolvedValue([{ ...row, itemType: '999' }]);
+        repo.findDefinitions.mockResolvedValue([]);
+
+        expect(await getPendingItems('evm', '0xabc')).toEqual([]);
+        expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('e1'));
+    });
+
+    it('skips the catalog fetch when nothing is waiting', async () => {
+        repo.findUnclaimedEntitlements.mockResolvedValue([]);
+        expect(await getPendingItems('evm', '0xabc')).toEqual([]);
         expect(repo.findDefinitions).not.toHaveBeenCalled();
     });
 });
