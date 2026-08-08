@@ -19,7 +19,8 @@
 export const SCHEMA_VERSIONS = {
     intent: 1,
     defenseAuthorization: 1,
-    snapshot: 1,
+    /** 2 adds per-pet equipment (roadmap §4). Version 1 snapshots carry none. */
+    snapshot: 2,
     ruleset: 1,
     commitment: 1,
     receipt: 1,
@@ -35,7 +36,9 @@ export type SchemaKind = keyof typeof SCHEMA_VERSIONS;
 const SUPPORTED_VERSIONS: Record<SchemaKind, readonly number[]> = {
     intent: [1],
     defenseAuthorization: [1],
-    snapshot: [1],
+    // 1 stays supported: every receipt signed before equipment existed names a v1
+    // snapshot, and those have to keep verifying forever (§H).
+    snapshot: [1, 2],
     ruleset: [1],
     commitment: [1],
     receipt: [1],

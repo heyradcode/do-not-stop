@@ -75,8 +75,16 @@ export function writeHeader(
     writer: CanonicalWriter,
     kind: SchemaKind,
     domain: ProtocolDomain,
+    /**
+     * Layout to write, defaulting to this build's current one.
+     *
+     * Passed explicitly only when re-encoding a historical object: reproducing the bytes
+     * it was hashed under means writing the version it was written at, not the version
+     * this build happens to be on. Encoding an old object at a new version would change
+     * its digest and invalidate every signature over it.
+     */
+    version: number = currentSchemaVersion(kind),
 ): CanonicalWriter {
-    const version = currentSchemaVersion(kind);
     assertSupportedSchemaVersion(kind, version);
     const checked = assertProtocolDomain(domain);
     return writer.u16(version).text(checked.chainId).text(checked.deploymentId);
