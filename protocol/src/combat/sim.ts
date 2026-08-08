@@ -1,4 +1,5 @@
 import { addHeal, strike } from './strike';
+import { applyBonus, type AttrBonus, NO_BONUS } from './equipment';
 import { elementMod, extract, toUint16 } from './dna';
 import { roundSeed } from './rng';
 import { DEFAULT_SKILL_CONFIG, SKILL_REBIRTH, SKILL_SAGE, SKILL_SHELL, SKILL_SWIFT, SKILL_TANK, type SkillConfig } from './skills';
@@ -70,9 +71,25 @@ export function simulate(
     skill2: number,
     seed: bigint,
     sc: SkillConfig = DEFAULT_SKILL_CONFIG,
+    /** Pet 1's equipment total (roadmap §4). Defaults to ungeared. */
+    bonus1: AttrBonus = NO_BONUS,
+    /** Pet 2's equipment total. */
+    bonus2: AttrBonus = NO_BONUS,
 ): SimOutcome {
     const a = extract(dna1, rarity1, level1);
     const b = extract(dna2, rarity2, level2);
+
+    // Equipment lands between extraction and the skill modifiers, and the order is a
+    // real decision. Applying it first means Tank's +20% HP multiplies the geared total
+    // rather than the bare one, so armour and the archetype compound the way a player
+    // expects. It also keeps one clamp site: gear is the only additive input here, and
+    // everything after it is a percentage of whatever it produced.
+    //
+    // The Go verifier applies it at the identical point. These two ports were written to
+    // disagree if either drifts (§F), which is worth nothing if a reordering here goes
+    // unmatched there.
+    applyBonus(a, bonus1);
+    applyBonus(b, bonus2);
 
     // Pre-battle skill modifiers (Tank, Shell, Sage) — mutate the extracted
     // attrs in place, exactly like the Go/Solidity/Rust ports do.

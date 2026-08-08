@@ -21,11 +21,13 @@ interface RulesetCase {
 
 /** Widens the stored item types back to bigints, as `parseRulesetBundle` does. */
 function toRuleset(stored: RulesetCase['ruleset']): Ruleset {
+    const { itemCatalog, ...rest } = stored;
+    if (!itemCatalog) {
+        return rest;
+    }
     return {
-        ...stored,
-        ...(stored.itemCatalog && {
-            itemCatalog: stored.itemCatalog.map((item) => ({ ...item, itemType: BigInt(item.itemType) })),
-        }),
+        ...rest,
+        itemCatalog: itemCatalog.map((item) => ({ ...item, itemType: BigInt(item.itemType) })),
     };
 }
 
