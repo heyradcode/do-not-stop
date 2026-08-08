@@ -187,8 +187,8 @@
       }
     },
     {
-      "receiptHash": "0x312885fbefed24b78c8510df832fb708bd8d85a8d40ce38ee0e6730e8725bdbc",
-      "signature": "0x13f0a055dc65e8c303f80bd1542bbddb826b5a00479a49b7033ff3f5c63429502b0a6366d4d36f4db23a5170d97c9fd3de3d24d3ea1ff2c16bdd9c73cadf69ec1b",
+      "receiptHash": "0x3fb6e9e01a9ee7ac6d649254ddfaa4e5f0a2d1dd6336cb448ef318604bf418ad",
+      "signature": "0x8f63f41c3f106d33148e1a2e91058147d87fff49bac9ea95722ec827afa1119d6a1298624691208e627ce34d959f25ceb06ec84b8225cac152d77c768fe322f01c",
       "signingKeyId": "battle-signer-2026-07",
       "payload": {
         "domain": {
@@ -215,7 +215,27 @@
             "lastOpponentId": "0",
             "streak": 0,
             "readyAt": 1692806267,
-            "sourceVersion": "1692806317"
+            "sourceVersion": "1692806317",
+            "equipment": [
+              {
+                "slot": 0,
+                "itemType": "1",
+                "hp": 0,
+                "atk": 4,
+                "def": 0,
+                "int": 0,
+                "mdef": 0
+              },
+              {
+                "slot": 1,
+                "itemType": "11",
+                "hp": 30,
+                "atk": 0,
+                "def": 10,
+                "int": 0,
+                "mdef": 0
+              }
+            ]
           },
           "defender": {
             "petId": "2",
@@ -230,7 +250,8 @@
             "readyAt": 1692806267,
             "sourceVersion": "1692806317"
           },
-          "takenAt": 1692806361
+          "takenAt": 1692806361,
+          "schemaVersion": 2
         },
         "beacon": {
           "chainHash": "0x52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
@@ -238,15 +259,15 @@
           "signature": "0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39",
           "randomness": "0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd"
         },
-        "seed": "0x59edb62ce7ad180d584f817e1a4fd7e8a21aa02df2feb0cc17548214824ca299",
+        "seed": "0xe9753fb217140a8a38c6527997e1e438426a022ded2043a3d60937fa8691656c",
         "rulesetVersion": 1,
-        "rulesetHash": "0xe51caf2298cfd0afab7d4bb3e391bdc0e1187d014782dbbb72e10ca42a4ccbac",
+        "rulesetHash": "0x9b4fe8ecacfecd7af6d6d39b82c62a38fb84f14a4228f94e95f2a3a97689ab38",
         "result": {
           "attackerWon": true,
-          "rounds": 6,
-          "winnerHpRemaining": 199
+          "rounds": 5,
+          "winnerHpRemaining": 218
         },
-        "combatLogHash": "0xa626aa46f28919e253dd0941372e8e66e48830657f449f8214f25d912383cf1b",
+        "combatLogHash": "0x133d7ed5ec19f64213075c07e1a42439a5d68f49ab33a310c0f6e488f9937f2f",
         "progression": {
           "attacker": {
             "petId": "1",

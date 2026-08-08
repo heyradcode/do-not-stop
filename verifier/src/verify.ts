@@ -4,6 +4,7 @@ import {
     checkBeaconSignature,
     checkChainContinuity,
     checkCombatReplay,
+    checkEquipment,
     checkOperatorSignature,
     checkProgression,
     checkSeedDerivation,
@@ -127,6 +128,9 @@ function verifyOne(
         return results;
     }
     results.push(about(checkCombatReplay(receipt, ruleset)));
+    // After the replay: a mispriced item still replays perfectly, so this is what says
+    // whether the numbers the replay used were the ones the items declare (roadmap §4).
+    results.push(about(checkEquipment(receipt, ruleset)));
     results.push(about(checkProgression(receipt, ruleset)));
     return results;
 }

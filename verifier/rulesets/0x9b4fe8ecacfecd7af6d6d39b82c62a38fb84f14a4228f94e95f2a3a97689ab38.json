@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "engineId": "cryptopets-combat-ts",
+  "engineVersion": 2,
+  "maxRounds": 30,
+  "maxLevel": 100,
+  "skillConfig": {
+    "tankHpMult": 120,
+    "shellDefMult": 125,
+    "swiftCritBonus": 50,
+    "cunningCritCap": 4000,
+    "furyDmgMult": 130,
+    "furyHpThreshold": 3000,
+    "sageMdefMult": 125,
+    "bloodlustBps": 150
+  },
+  "schemaVersion": 2,
+  "itemCatalog": [
+    {
+      "itemType": "1",
+      "slot": 0,
+      "hp": 0,
+      "atk": 4,
+      "def": 0,
+      "int": 0,
+      "mdef": 0
+    },
+    {
+      "itemType": "11",
+      "slot": 1,
+      "hp": 30,
+      "atk": 0,
+      "def": 10,
+      "int": 0,
+      "mdef": 0
+    }
+  ]
+}
