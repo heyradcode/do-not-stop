@@ -183,6 +183,34 @@ cost of a rules change, but it is user-visible and should ship deliberately.
 
 Solana's frozen ports (`game/battle_sim.rs`, `game/xp.rs`) are not touched in any step above.
 
+## Deployed (Base Sepolia, 2026-08-08)
+
+`ItemCore` was reconciled into the existing `base-sepolia-v2` Ignition deployment, so only
+its own futures broadcast; every other contract in the stack was left untouched.
+
+| | |
+|---|---|
+| ItemCore proxy | `0xA6F2f05C2721937D0379482CFC39b7aBd641cD30` |
+| ItemCore implementation | `0x1A4B5c4EC5C7Da973F6F0432c84B16fe9131477D` |
+| owner | `0x86f88bd62a77ab39A50e1855D35B437B1eE3cEF5` (the deployer) |
+| `petCore` | `0x1CEfc6C0DeCF7F7e299FB385012f1eAD8892FFe8`, the PetCore **proxy** |
+| item wallet | `0xd23d56f66aB960220687078AcFEb7051AbAfaE05`, authorized and funded 0.003 ETH |
+
+All eight equipment types are registered to their catalog slots (1/2/3 weapon, 10/11/12
+armor, 20/21 trinket) and type 100 is confirmed still unregistered, which is what stops the
+UI offering to equip a potion. A mint-and-burn round trip through the item wallet confirmed
+the `authorizeCaller` grant took and left no residual balance.
+
+The item wallet holds its own key rather than the anchor or signer key, because an
+authorized caller can burn any wallet's items. Rotating it is `authorizeCaller(new)` then
+`revokeCaller(old)`; the owner key stays out of `backend/.env` entirely, since only
+`seed-item-catalog.ts --with-chain` needs it.
+
+Addresses are written into `frontend/.env.local` (`VITE_ITEMCORE_ADDRESS`, injected by
+`scripts/deploy.ts`) and `backend/.env` (`ITEM_CORE_*`). The backend block points at
+`https://sepolia.base.org` rather than the drpc endpoint the contracts package uses: drpc
+returned intermittent 500s on `eth_getTransactionCount` throughout this deployment.
+
 ## What is still outstanding
 
 Two things, both needing a human decision rather than more code:
@@ -199,7 +227,15 @@ Two things, both needing a human decision rather than more code:
 Also unverified by construction: the `ItemCore` write client's transactions are stubbed in
 every test, and the two web screens have not been opened in a browser, since both need the
 migration first. The contract, its Ignition deployment, the seeder's chain half, and the
-runtime mint/burn/over-burn paths *were* exercised against a local Hardhat node.
+runtime mint/burn/over-burn paths *were* exercised against a local Hardhat node, and the
+deployed contract has since been exercised on Base Sepolia (see above).
+
+The seeder's database half has not run, for the same reason as (1): `item_definition` does
+not exist yet. The slots were therefore registered on chain directly rather than through
+`seed-item-catalog.ts --with-chain`, which writes the table first and would have failed
+before reaching the chain. Once the migration is applied, run the seeder normally — it is
+idempotent, so it will write the definitions and find every slot already correct — then
+`scripts/verify-inventory-setup.ts` to confirm the two halves agree.
 
 ## End-to-end check
 
