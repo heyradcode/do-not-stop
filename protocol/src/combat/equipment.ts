@@ -65,6 +65,26 @@ export function sumBonuses(items: readonly AttrBonus[]): AttrBonus {
     return total;
 }
 
+/**
+ * Totals a snapshot's equipment list, treating an absent list as ungeared.
+ *
+ * The one summation every replaying consumer shares. It exists because the alternative was
+ * each of them writing their own: the backend totalling the snapshot to run a fight, and
+ * the verifier totalling it again to re-run that fight. Two implementations of the same
+ * addition is a divergence waiting to be discovered as an unexplained replay mismatch,
+ * where the arithmetic is the last thing anyone would suspect.
+ *
+ * Note this is *not* the Go port's situation. That one is independent on purpose (§F), and
+ * its whole value is that it can disagree. A verifier that reproduces a fight is the
+ * opposite case: it has to agree exactly, so it uses the canonical code.
+ *
+ * Accepts anything carrying the five attribute fields, so a caller can pass entries that
+ * also hold a slot and an item type without stripping them first.
+ */
+export function bonusFromEquipment(items: readonly AttrBonus[] | undefined): AttrBonus {
+    return items === undefined ? { ...NO_BONUS } : sumBonuses(items);
+}
+
 function clampU16(value: bigint): bigint {
     return value > U16_MAX ? U16_MAX : value;
 }

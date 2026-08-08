@@ -1,4 +1,4 @@
-import type { BattleReceipt, EquipEntry, Ruleset } from '@cryptopets/protocol';
+import { bonusFromEquipment, type BattleReceipt, type Ruleset } from '@cryptopets/protocol';
 
 import type { CheckResult } from './types';
 
@@ -56,22 +56,13 @@ export function checkEquipment(receipt: BattleReceipt, ruleset: Ruleset): CheckR
 }
 
 /**
- * Totals a pet's frozen equipment into the bonus the engine consumes.
+ * Re-exported rather than reimplemented.
  *
- * The snapshot's numbers, not the catalog's, and the distinction is the point: the replay
- * has to reproduce the fight that happened, so it runs on what was applied.
- * `checkEquipment` is what says whether that was correct, and it reports separately, so a
- * mispriced item shows up as a mispriced item rather than as an unexplained replay
- * mismatch.
+ * A replay has to reproduce the fight exactly, so it totals equipment with the same code
+ * that ran it. This package used to have its own copy, which is two implementations of one
+ * addition and a divergence that would surface as an unexplained replay mismatch.
+ *
+ * The snapshot's numbers are what get totalled, not the catalog's: the replay reproduces
+ * what happened, and `checkEquipment` above is what says whether that was correct.
  */
-export function equipmentBonus(equipment: readonly EquipEntry[] | undefined) {
-    const total = { hp: 0, atk: 0, def: 0, int: 0, mdef: 0 };
-    for (const entry of equipment ?? []) {
-        total.hp += entry.hp;
-        total.atk += entry.atk;
-        total.def += entry.def;
-        total.int += entry.int;
-        total.mdef += entry.mdef;
-    }
-    return total;
-}
+export { bonusFromEquipment as equipmentBonus };

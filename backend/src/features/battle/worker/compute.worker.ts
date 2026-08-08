@@ -1,13 +1,11 @@
 import {
     type BattleSnapshot,
     computeProgression,
-    type AttrBonus,
+    bonusFromEquipment,
     hashCombatLog,
     type Hex,
     loadRulesetBundle,
-    NO_BONUS,
     simulate,
-    sumBonuses,
 } from '@cryptopets/protocol';
 import { BattleState } from '@generated/prisma/enums';
 import type { Prisma } from '@generated/prisma/client';
@@ -69,8 +67,8 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
         defender.skill,
         BigInt(battle.seed),
         ruleset.skillConfig,
-        equipmentBonus(attacker.equipment),
-        equipmentBonus(defender.equipment),
+        bonusFromEquipment(attacker.equipment),
+        bonusFromEquipment(defender.equipment),
     );
 
     const progression = computeProgression(
@@ -100,21 +98,14 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
     await completeOutbox(message.id, new Date(nowSeconds * 1000));
 }
 
-/** Totals a snapshot's frozen equipment into the bonus the engine consumes. */
-export function equipmentBonus(equipment: SnapshotEquipment | undefined): AttrBonus {
-    if (!equipment || equipment.length === 0) {
-        return NO_BONUS;
-    }
-    return sumBonuses(
-        equipment.map((entry) => ({
-            hp: Number(entry.hp),
-            atk: Number(entry.atk),
-            def: Number(entry.def),
-            int: Number(entry.int),
-            mdef: Number(entry.mdef),
-        })),
-    );
-}
+/**
+ * Totals a snapshot's frozen equipment, using the engine's own summation.
+ *
+ * Re-exported rather than reimplemented: this server runs the fight and the verifier
+ * re-runs it, and two implementations of one addition is a divergence that would surface
+ * as an unexplained replay mismatch rather than as an arithmetic bug.
+ */
+export { bonusFromEquipment as equipmentBonus };
 
 /** As stored: JSON, so the item type arrives as a decimal string. */
 export type SnapshotEquipment = {

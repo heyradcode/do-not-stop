@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { type AttrBonus, NO_BONUS, simulate, sumBonuses } from '../../src/combat';
+import { type AttrBonus, bonusFromEquipment, NO_BONUS, simulate, sumBonuses } from '../../src/combat';
 import type { SkillConfig } from '../../src/combat/skills';
 
 /**
@@ -114,5 +114,32 @@ describe('properties the vectors exist to pin', () => {
             { hp: 0, atk: 0, def: 0, int: 12, mdef: 8 },
         ];
         expect(sumBonuses(parts)).toEqual(sumBonuses([...parts].reverse()));
+    });
+});
+
+describe('bonusFromEquipment', () => {
+    // The one summation every replaying consumer shares. It exists because the backend and
+    // the verifier each had their own, and two implementations of one addition diverge into
+    // an unexplained replay mismatch where the arithmetic is the last thing suspected.
+    it('totals the five attributes and ignores the fields the engine does not read', () => {
+        expect(
+            bonusFromEquipment([
+                { slot: 0, itemType: 1n, hp: 0, atk: 4, def: 0, int: 0, mdef: 0 },
+                { slot: 1, itemType: 11n, hp: 30, atk: 0, def: 10, int: 0, mdef: 0 },
+            ] as never),
+        ).toEqual({ hp: 30, atk: 4, def: 10, int: 0, mdef: 0 });
+    });
+
+    it('treats an absent list as ungeared', () => {
+        expect(bonusFromEquipment(undefined)).toEqual(NO_BONUS);
+    });
+
+    // Returns a fresh object, so a caller mutating its result cannot poison NO_BONUS for
+    // every later ungeared fight in the process.
+    it('does not hand back the shared NO_BONUS instance', () => {
+        const first = bonusFromEquipment(undefined);
+        first.atk = 99;
+        expect(bonusFromEquipment(undefined)).toEqual(NO_BONUS);
+        expect(NO_BONUS.atk).toBe(0);
     });
 });
