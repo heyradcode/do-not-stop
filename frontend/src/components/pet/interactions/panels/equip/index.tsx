@@ -1,0 +1,270 @@
+import React, { useMemo, useState } from 'react';
+import {
+    describeItemEffect,
+    getPetClass,
+    getRarityColor,
+    SLOT,
+    useChainCapabilities,
+    useEquipItem,
+    useInventory,
+    usePetEquipment,
+    usePetList,
+    type ItemDefinition,
+} from '@shared/core';
+
+import TransactionStatus from '@components/common/transaction-status';
+import NeonButton from '@components/ui/neon-button';
+import Icon, { ShieldIcon } from '@components/ui/icon';
+import PetArt from '@components/pet/pet-art';
+import PetSelect from '@components/ui/pet-select';
+import { Tones } from '@constants/tones';
+import { useNotifyError } from '@hooks/useNotifyError';
+import { useTxErrorToast } from '@hooks/useTxErrorToast';
+import PetShowcase from '../_shared/pet-showcase';
+import styles from './index.module.css';
+
+/**
+ * Gear a pet (roadmap §4).
+ *
+ * Composes the shared hooks directly and keeps its state local, rather than sitting on a
+ * controller hook. Per CLAUDE.md the test for a controller is a multi-step state machine
+ * the player watches — request, reveal, settle — and this has none: an equip is one
+ * transaction whose only intermediate state is the wallet, which `TransactionStatus`
+ * already renders.
+ *
+ * Three slots are always drawn, filled or not. An empty slot is information ("you could
+ * put something here"), and rendering only what is equipped would make a bare pet look
+ * like a pet with no slots.
+ */
+
+const SLOTS = [
+    { index: SLOT.weapon, label: 'Weapon' },
+    { index: SLOT.armor, label: 'Armor' },
+    { index: SLOT.trinket, label: 'Trinket' },
+] as const;
+
+export type EquipPanelProps = {
+    isStandaloneView?: boolean;
+};
+
+const EquipPanel: React.FC<EquipPanelProps> = ({ isStandaloneView = true }) => {
+    const { activeKind: chain, isConnected } = useChainCapabilities();
+    const { pets } = usePetList();
+    const notifyError = useNotifyError();
+
+    const [selectedPet, setSelectedPet] = useState<string>('');
+    /** Which item is chosen per slot, before the player commits it. */
+    const [choice, setChoice] = useState<Record<number, string>>({});
+
+    const petId = selectedPet || null;
+    const { entries } = useInventory({ chain });
+    const { bySlot, isLoading: slotsLoading, refetch: refetchSlots } = usePetEquipment({ chain, petId });
+    const { canEquip, equip, unequip, equipLifecycle, unequipLifecycle, isPending } = useEquipItem({
+        chain,
+        petId,
+    });
+
+    useTxErrorToast((equipLifecycle.error ?? unequipLifecycle.error) as Error | null);
+
+    /**
+     * Held equipment, bucketed by the slot it goes in.
+     *
+     * Filtered from the bag rather than fetched separately: the inventory read is already
+     * on screen, and an item's slot is part of its definition, so a second query would ask
+     * the server for something the client can answer.
+     */
+    const bySlotChoices = useMemo(() => {
+        const buckets = new Map<number, ItemDefinition[]>();
+        for (const entry of entries) {
+            if (entry.item.category !== 'equipment' || entry.item.slot == null) continue;
+            const bucket = buckets.get(entry.item.slot);
+            if (bucket) bucket.push(entry.item);
+            else buckets.set(entry.item.slot, [entry.item]);
+        }
+        return buckets;
+    }, [entries]);
+
+    const selectedPetObj = pets.find((pet) => String(pet.id) === selectedPet) ?? null;
+
+    const handleEquip = async (slot: number) => {
+        const itemType = choice[slot];
+        if (!isConnected) {
+            notifyError('Please connect your wallet first', undefined, 'equip-validation');
+            return;
+        }
+        if (!selectedPet || !itemType) {
+            notifyError('Pick a pet and an item first', undefined, 'equip-validation');
+            return;
+        }
+        try {
+            await equip(slot, itemType);
+            setChoice((current) => ({ ...current, [slot]: '' }));
+            refetchSlots();
+        } catch (err) {
+            console.error('[equip]', err);
+        }
+    };
+
+    const handleUnequip = async (slot: number) => {
+        try {
+            await unequip(slot);
+            refetchSlots();
+        } catch (err) {
+            console.error('[equip]', err);
+        }
+    };
+
+    return (
+        <>
+            <div className="interface">
+                {!isStandaloneView && (
+                    <>
+                        <h4>
+                            <Icon as={ShieldIcon} tone={Tones.Amber} />
+                            Equipment
+                        </h4>
+                        <p>Fit your pet with gear. Stats apply in backend battles.</p>
+                    </>
+                )}
+
+                <div className="interaction-visual">
+                    {selectedPetObj ? (
+                        <PetShowcase avatar={<PetArt pet={selectedPetObj} />} accent="amber">
+                            <div className={styles.petName}>{selectedPetObj.name}</div>
+                            <div className={styles.sub}>
+                                {getPetClass(selectedPetObj.dna)} · Lv.{selectedPetObj.level}
+                            </div>
+                        </PetShowcase>
+                    ) : (
+                        <PetShowcase avatar={<span className="pet-slot-glyph">?</span>} accent="amber">
+                            <div className={styles.petName}>
+                                <span className="skeleton-bar wide" />
+                            </div>
+                            <div className={styles.sub}>
+                                <span className="skeleton-bar narrow" />
+                            </div>
+                        </PetShowcase>
+                    )}
+                </div>
+
+                <div className="picker">
+                    <div className="field">
+                        <label htmlFor="equip-pet">Select Pet</label>
+                        <PetSelect
+                            id="equip-pet"
+                            pets={pets.map((pet) => ({ id: String(pet.id), pet }))}
+                            value={selectedPet}
+                            onChange={setSelectedPet}
+                            placeholder="Select pet..."
+                            disabled={pets.length === 0}
+                        />
+                        {pets.length === 0 && <p className={styles.note}>You have no pets yet.</p>}
+                    </div>
+                </div>
+
+                {!canEquip && (
+                    // Said out loud rather than shown as a dead control: on Solana there is
+                    // no item contract yet, and on EVM the address may simply be unset.
+                    <p className={styles.note}>
+                        Equipping is not available on this deployment yet.
+                    </p>
+                )}
+
+                {selectedPet && canEquip && (
+                    <ul className={styles.slots}>
+                        {SLOTS.map(({ index, label }) => {
+                            const equipped = bySlot.get(index);
+                            const options = bySlotChoices.get(index) ?? [];
+                            return (
+                                <li key={index} className={styles.slot}>
+                                    <span className={styles.slotLabel}>{label}</span>
+
+                                    {equipped ? (
+                                        <>
+                                            <span
+                                                className={styles.equipped}
+                                                style={
+                                                    {
+                                                        '--rarity': getRarityColor(equipped.item.rarity),
+                                                    } as React.CSSProperties
+                                                }
+                                            >
+                                                <span className={styles.equippedName}>
+                                                    {equipped.item.name}
+                                                </span>
+                                                <span className={styles.equippedEffect}>
+                                                    {describeItemEffect(equipped.item.effect)}
+                                                </span>
+                                            </span>
+                                            <NeonButton
+                                                tone="magenta"
+                                                onClick={() => void handleUnequip(index)}
+                                                disabled={isPending}
+                                            >
+                                                Unequip
+                                            </NeonButton>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <select
+                                                className={styles.select}
+                                                aria-label={`${label} to equip`}
+                                                value={choice[index] ?? ''}
+                                                onChange={(event) =>
+                                                    setChoice((current) => ({
+                                                        ...current,
+                                                        [index]: event.target.value,
+                                                    }))
+                                                }
+                                                disabled={options.length === 0}
+                                            >
+                                                <option value="">
+                                                    {options.length === 0
+                                                        ? 'Nothing for this slot'
+                                                        : 'Choose an item…'}
+                                                </option>
+                                                {options.map((item) => (
+                                                    <option key={item.itemType} value={item.itemType}>
+                                                        {item.name}
+                                                        {describeItemEffect(item.effect)
+                                                            ? ` — ${describeItemEffect(item.effect)}`
+                                                            : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <NeonButton
+                                                tone="emerald"
+                                                onClick={() => void handleEquip(index)}
+                                                disabled={isPending || !choice[index]}
+                                            >
+                                                Equip
+                                            </NeonButton>
+                                        </>
+                                    )}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+
+                {selectedPet && canEquip && slotsLoading && (
+                    <p className={styles.note}>Reading this pet’s gear…</p>
+                )}
+
+                {/* The lag is real and worth naming: these rows come from the indexed
+                    projection, so a confirmed transaction shows up once the indexer has
+                    seen it rather than the instant the wallet returns. */}
+                {isPending && (
+                    <p className={styles.note}>
+                        Waiting for the change to be indexed — this can take a moment after
+                        the transaction confirms.
+                    </p>
+                )}
+            </div>
+
+            <TransactionStatus lifecycle={equipLifecycle.phase !== 'idle' ? equipLifecycle : unequipLifecycle} />
+        </>
+    );
+};
+
+export default EquipPanel;

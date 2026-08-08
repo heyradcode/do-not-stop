@@ -17,7 +17,8 @@ export type InteractionAction =
     | 'train'
     | 'marriage'
     | 'changename'
-    | 'defense';
+    | 'defense'
+    | 'equip';
 
 export type StandaloneInteractionHeader = {
     Icon: ComponentType<{ size?: number | string }>;
@@ -50,6 +51,11 @@ export const STANDALONE_INTERACTION_HEADERS: Record<
         label: 'Allow Challenges',
         sub: 'Let others battle your pets while you are away',
     },
+    equip: {
+        Icon: ShieldIcon,
+        label: 'Equipment',
+        sub: 'Fit your pet with gear it carries into battle',
+    },
 };
 
 /** Dashboard home (idle gallery). */
@@ -63,6 +69,7 @@ export const TRAIN_PATH = '/train';
 export const MARRIAGE_PATH = '/marriage';
 export const RENAME_PATH = '/rename';
 export const DEFENSE_PATH = '/defense';
+export const EQUIP_PATH = '/equip';
 
 /** Read-only view, not an interaction — no pet selection, nothing to sign. */
 export const LEADERBOARD_PATH = '/leaderboard';

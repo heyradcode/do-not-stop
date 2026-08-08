@@ -16,7 +16,7 @@ import {
 
 import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
-import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { DASHBOARD_HOME, EQUIP_PATH } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import styles from './index.module.css';
 
@@ -232,9 +232,19 @@ const Inventory: React.FC = () => {
                                                         {isSpending ? 'Using…' : 'Use'}
                                                     </button>
                                                 ) : entry.item.category === 'equipment' ? (
-                                                    // Equipping is a wallet signature and
-                                                    // happens on the pet, not here.
-                                                    <span className={styles.hint}>Equip from a pet</span>
+                                                    // Equipping is a wallet signature against
+                                                    // one pet, so it belongs on the pet rather
+                                                    // than in the bag. A link, not a note: the
+                                                    // player is holding gear and wants to use
+                                                    // it, and telling them where without
+                                                    // taking them there is a dead end.
+                                                    <button
+                                                        type="button"
+                                                        className={styles.hintLink}
+                                                        onClick={() => navigate(EQUIP_PATH)}
+                                                    >
+                                                        Equip on a pet →
+                                                    </button>
                                                 ) : null
                                             }
                                         />

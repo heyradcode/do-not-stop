@@ -128,9 +128,19 @@
     cursor: not-allowed;
 }
 
-.hint {
-    font-size: 0.75rem;
-    opacity: 0.45;
+.hintLink {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: rgb(251 191 36 / 80%);
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.hintLink:hover {
+    color: rgb(251 191 36);
+    text-decoration: underline;
 }
 
 /* ─── pending claims ──────────────────────────────────────────────────────────
