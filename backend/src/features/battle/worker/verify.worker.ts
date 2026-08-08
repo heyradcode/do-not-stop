@@ -1,5 +1,6 @@
 import {
     type BattleSnapshot,
+    bonusFromEquipment,
     type Hex,
     hashCombatLog,
     loadRulesetBundle,
@@ -14,7 +15,7 @@ import { prisma } from '@config/prisma';
 import { applyTransition, type ClaimedMessage, completeOutbox, OUTBOX_TOPICS } from '@features/battle/ledger';
 import { callVerifyBattle, type VerifyBattleWire, type VerifyPetProgressionWire } from '@grpc-client/verifyBattle';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
-import { equipmentBonus, type SnapshotEquipment } from './compute.worker';
+import { type SnapshotEquipment } from './compute.worker';
 
 /**
  * Handles `verify` messages: `computed` -> `verified` (§F).
@@ -113,7 +114,7 @@ function toWirePet(pet: Record<string, unknown>) {
     // inputs the canonical engine used (roadmap §4). Sending the frozen modifiers rather
     // than item ids is what lets the verifier hold no item catalog at all: what §F checks
     // is that the fight follows from the numbers the receipt publishes.
-    const bonus = equipmentBonus(pet.equipment as SnapshotEquipment | undefined);
+    const bonus = bonusFromEquipment(pet.equipment as SnapshotEquipment | undefined);
     return {
         petId: String(pet.petId),
         dna: String(pet.dna),

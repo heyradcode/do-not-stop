@@ -99,15 +99,3 @@ export function findEquipment(chain: string, petId: string): Promise<EquipmentSl
         orderBy: { slot: 'asc' },
     });
 }
-
-/** Every filled slot across several pets, for a list view that would otherwise N+1. */
-export function findEquipmentForPets(chain: string, petIds: string[]): Promise<(EquipmentSlotRow & { petId: string })[]> {
-    if (petIds.length === 0) {
-        return Promise.resolve([]);
-    }
-    return prisma.petEquipment.findMany({
-        where: { chain, petId: { in: petIds }, itemType: { not: '0' } },
-        select: { petId: true, slot: true, itemType: true },
-        orderBy: [{ petId: 'asc' }, { slot: 'asc' }],
-    });
-}

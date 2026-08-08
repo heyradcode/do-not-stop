@@ -98,15 +98,6 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
     await completeOutbox(message.id, new Date(nowSeconds * 1000));
 }
 
-/**
- * Totals a snapshot's frozen equipment, using the engine's own summation.
- *
- * Re-exported rather than reimplemented: this server runs the fight and the verifier
- * re-runs it, and two implementations of one addition is a divergence that would surface
- * as an unexplained replay mismatch rather than as an arithmetic bug.
- */
-export { bonusFromEquipment as equipmentBonus };
-
 /** As stored: JSON, so the item type arrives as a decimal string. */
 export type SnapshotEquipment = {
     slot: number;

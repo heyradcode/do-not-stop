@@ -5,7 +5,6 @@ const repo = {
     findBalances: vi.fn(),
     findDefinitions: vi.fn(),
     findEquipment: vi.fn(),
-    findEquipmentForPets: vi.fn(),
 };
 
 vi.mock('@repositories/inventory.repository', () => ({
@@ -13,10 +12,9 @@ vi.mock('@repositories/inventory.repository', () => ({
     findBalances: (chain: string, owner: string) => repo.findBalances(chain, owner),
     findDefinitions: (itemTypes: string[]) => repo.findDefinitions(itemTypes),
     findEquipment: (chain: string, petId: string) => repo.findEquipment(chain, petId),
-    findEquipmentForPets: (chain: string, petIds: string[]) => repo.findEquipmentForPets(chain, petIds),
 }));
 
-import { getEquipmentForPets, getInventory, getPetEquipment } from '@features/inventory';
+import { getInventory, getPetEquipment } from '@features/inventory';
 
 const POTION = {
     itemType: '100',
@@ -130,32 +128,5 @@ describe('getPetEquipment', () => {
         repo.findEquipment.mockResolvedValue([]);
         expect(await getPetEquipment('evm', '7')).toEqual([]);
         expect(repo.findDefinitions).not.toHaveBeenCalled();
-    });
-});
-
-describe('getEquipmentForPets', () => {
-    // One query and one catalog fetch for the whole set: a pet list rendering gear per row
-    // is exactly the shape that becomes an N+1 when written the obvious way.
-    it('groups by pet without a query per pet', async () => {
-        repo.findEquipmentForPets.mockResolvedValue([
-            { petId: '7', slot: 0, itemType: '1' },
-            { petId: '7', slot: 1, itemType: '1' },
-            { petId: '8', slot: 0, itemType: '1' },
-        ]);
-        repo.findDefinitions.mockResolvedValue([BLADE]);
-
-        const byPet = await getEquipmentForPets('evm', ['7', '8']);
-
-        expect(byPet.get('7')).toHaveLength(2);
-        expect(byPet.get('8')).toHaveLength(1);
-        expect(repo.findEquipmentForPets).toHaveBeenCalledTimes(1);
-        expect(repo.findDefinitions).toHaveBeenCalledTimes(1);
-        // Deduplicated: three rows share one item type, so the catalog is asked once for it.
-        expect(repo.findDefinitions).toHaveBeenCalledWith(['1']);
-    });
-
-    it('returns an empty map when no pet has gear', async () => {
-        repo.findEquipmentForPets.mockResolvedValue([]);
-        expect((await getEquipmentForPets('evm', ['7'])).size).toBe(0);
     });
 });

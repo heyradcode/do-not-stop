@@ -5,7 +5,6 @@ import {
     findBalances,
     findDefinitions,
     findEquipment,
-    findEquipmentForPets,
     findUnclaimedEntitlements,
     type ItemDefinitionRow,
 } from '@repositories/inventory.repository';
@@ -146,36 +145,6 @@ export async function getPetEquipment(chain: string, petId: string): Promise<Equ
         equipped.push({ slot: slot.slot, item: definition });
     }
     return equipped;
-}
-
-/**
- * Equipment for several pets at once, keyed by pet id.
- *
- * One query and one catalog fetch for the whole set: a pet list rendering gear per row is
- * the shape that turns into an N+1 the moment it is written the obvious way.
- */
-export async function getEquipmentForPets(chain: string, petIds: string[]): Promise<Map<string, EquippedItem[]>> {
-    const byPet = new Map<string, EquippedItem[]>();
-    const rows = await findEquipmentForPets(chain, petIds);
-    if (rows.length === 0) {
-        return byPet;
-    }
-
-    const catalog = await definitionsByType(rows.map((r) => r.itemType));
-    for (const row of rows) {
-        const definition = catalog.get(row.itemType);
-        if (!definition) {
-            continue;
-        }
-        const existing = byPet.get(row.petId);
-        const entry = { slot: row.slot, item: definition };
-        if (existing) {
-            existing.push(entry);
-        } else {
-            byPet.set(row.petId, [entry]);
-        }
-    }
-    return byPet;
 }
 
 async function definitionsByType(itemTypes: string[]): Promise<Map<string, ItemView>> {

@@ -71,11 +71,6 @@ export function getItemCoreClient(): ItemCoreClient | null {
     return cached;
 }
 
-/** Test seam: drops the memoized client so a changed env is picked up. */
-export function resetItemCoreClient(): void {
-    cached = undefined;
-}
-
 function buildClient(): ItemCoreClient | null {
     const { enabled, rpcUrl, privateKey, chainId, address } = env.inventory;
     if (!enabled) {
