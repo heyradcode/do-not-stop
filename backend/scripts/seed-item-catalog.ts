@@ -26,7 +26,7 @@
  */
 import 'dotenv/config';
 
-import { PrismaClient } from '../src/generated/prisma/client';
+import { prisma } from '../src/config/prisma';
 import { assertCatalog, SLOT } from '../src/features/inventory/catalog';
 import { ITEM_CATALOG } from '../src/features/inventory/catalog.data';
 
@@ -64,7 +64,6 @@ async function seedDatabase(dryRun: boolean): Promise<void> {
         return;
     }
 
-    const prisma = new PrismaClient();
     try {
         for (const item of catalog) {
             const row = {
