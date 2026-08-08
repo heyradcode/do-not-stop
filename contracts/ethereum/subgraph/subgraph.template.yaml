@@ -71,7 +71,11 @@ dataSources:
     source:
       address: "{{ITEMCORE_ADDRESS}}"
       abi: ItemCore
-      startBlock: {{START_BLOCK}}
+      # Its own start block, not the stack's. ItemCore was added to an already-live
+      # deployment, so it does not exist for the ~300k blocks the other two need indexed,
+      # and sharing START_BLOCK would spend that whole span scanning for logs that cannot
+      # be there. Defaults to START_BLOCK when unset, which is right for a fresh network.
+      startBlock: {{ITEMCORE_START_BLOCK}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9

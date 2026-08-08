@@ -113,6 +113,10 @@ function writeSubgraphYaml(vars) {
 function main() {
     const network = process.env.SUBGRAPH_NETWORK ?? 'sepolia';
     const startBlock = process.env.SUBGRAPH_START_BLOCK ?? '0';
+    // ItemCore can join a deployment that is already live, in which case it does not exist
+    // for everything before its own deploy block. Falls back to the stack's start block,
+    // which is what a network deployed all at once wants.
+    const itemCoreStartBlock = process.env.SUBGRAPH_ITEMCORE_START_BLOCK ?? startBlock;
 
     const petCoreAddress = (
         process.env.PETCORE_ADDRESS ??
@@ -143,6 +147,7 @@ function main() {
         GAMELOGIC_ADDRESS: gameLogicAddress,
         ITEMCORE_ADDRESS: itemCoreAddress,
         START_BLOCK: startBlock,
+        ITEMCORE_START_BLOCK: itemCoreStartBlock,
     });
 
     console.log('[subgraph] Prepared subgraph.yaml');
@@ -150,11 +155,21 @@ function main() {
     console.log(`  startBlock:  ${startBlock}`);
     console.log(`  PetCore:   ${petCoreAddress}`);
     console.log(`  GameLogic: ${gameLogicAddress}`);
+    console.log(`  ItemCore:  ${itemCoreAddress} (from block ${itemCoreStartBlock})`);
 
     if (petCoreAddress === ZERO || gameLogicAddress === ZERO) {
         console.warn(
             '\n⚠️  PETCORE_ADDRESS / GAMELOGIC_ADDRESS not resolved. Set them (or deploy\n' +
                 '   CryptoPetsV2Live to the network) and re-run: pnpm configure'
+        );
+    }
+    // Its own warning rather than a shared one: a zero ItemCore address builds and deploys
+    // cleanly and simply indexes nothing, so the symptom is an inventory that stays empty
+    // rather than an error anyone traces back to here.
+    if (itemCoreAddress === ZERO) {
+        console.warn(
+            '\n⚠️  ITEMCORE_ADDRESS not resolved — inventory will index nothing. Set it (or\n' +
+                '   deploy ItemCore) and re-run: pnpm configure'
         );
     }
     if (startBlock === '0') {
