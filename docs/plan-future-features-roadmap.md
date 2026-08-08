@@ -514,6 +514,32 @@ exists end-to-end — but it now sits upstream of battle correctness, not just o
 
 ## 4. Inventory functionality with an NFT system
 
+> **Built.** This section is kept as the original proposal; `backend/API.md` (Inventory) is
+> authoritative for the shipped surface and `docs/plan-inventory-items.md` records the
+> execution order. Five divergences, recorded so they are not mistaken for drift:
+>
+> - **Cosmetics are not in the v1 catalog, and equipment-affects-combat *is*.** The sketch
+>   below recommends the reverse. The call was made deliberately: gear shipped with the
+>   verifiability work §4 asks for, and cosmetics were dropped because an equipment item
+>   with no modifier is indistinguishable from a bug in a geared snapshot.
+> - **No `itemCatalogHash` field.** The combat-affecting catalog is encoded *into* the
+>   ruleset instead, so `rulesetHash` covers it natively. A separate digest would have been
+>   a second thing to keep in step for no gain, since the published bundle already carries
+>   the rows.
+> - **`item_roster` is keyed `(chain, owner, item_type)`**, not the sketch's per-instance
+>   `(chain, itemId, owner)`. An ERC-1155 balance is a count of a fungible type; there is no
+>   individual item to name.
+> - **`PetEquipment` carries no `equippedAt` and equipping escrows the token.** Escrow makes
+>   the equip mapping itself the ownership proof, which is what §4's snapshot-verifiability
+>   requirement needs, and it structurally prevents one sword buffing five pets.
+> - **`clear_breed_cooldown` was dropped.** Breed cooldown is on-chain state, and clearing it
+>   needs an authorized `PetCore` call the inventory feature does not have. Better absent
+>   than shipped erroring.
+>
+> Gacha crates were **not** built: they need their own VRF settle flow, and the roadmap
+> sequences them after inventory rather than inside it. Acquisition in v1 is battle drops
+> plus an owner-gated admin grant.
+
 **Goal.** A large item catalog — the user's reference points are OwoBot (breadth: hundreds of
 collectible/currency items, gacha crates, a constant drip of new items) and Dota 2 (depth: gear
 that actually changes what a pet can do in battle, rarity-tiered cosmetics, item sets). This

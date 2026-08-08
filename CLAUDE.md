@@ -95,7 +95,7 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | `mobile` | React Native | Cross-platform client |
 | `website` | Next.js | Marketing/docs site |
 | `services/indexer-go` | Go | Optional cross-chain indexer (EVM pull + Solana push) |
-| `contracts/ethereum` | Solidity, Hardhat | EVM contracts + subgraph |
+| `contracts/ethereum` | Solidity, Hardhat | EVM contracts (`PetCore`, `GameLogic`, `GameConfig`, `ItemCore`) + subgraph |
 | `contracts/solana/cryptopets` | Rust, Anchor | Solana programs |
 | `shared` (`@shared/core`) | TypeScript | Common utils/types/hooks, consumed as raw TS (no build step), shared by frontend + mobile |
 | `protocol` (`@cryptopets/protocol`) | TypeScript | MIT, dependency-free battle protocol: the TS combat engine plus (in progress) canonical encodings, hashes, and drand seed derivation. Consumed as raw TS by `shared`/`backend` and by `verifier` |
@@ -104,7 +104,7 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | `services/image-generator` | Node.js, TypeScript, Cloudflare Workers AI, R2 | Standalone service rendering pet NFT art + ERC-721 metadata. **Not a pnpm workspace member** (see below) |
 
 ### Data flow
-On-chain pet state (EVM via subgraph watermark polling, Solana via WebSocket push + backfill) is mirrored into Prisma-owned Postgres (`pet_roster`) by **`indexer-go`, which is the only indexer**. The backend's built-in Node `RosterIndexer` no longer exists — nothing in `backend/src` indexes chain state, so a local stack that needs a populated roster has to run `indexer-go`. `battle_history` is not indexed at all: the backend writes it from its own signed receipts. `indexer-go` also answers pet-state reads and win estimates over gRPC; if it is down the backend falls back to reading Postgres directly (`ROSTER_READ_SOURCE` controls `grpc` vs `postgres`, and matchmaking always reads Postgres). Frontend, mobile, and website all talk to the backend via REST + GraphQL; none of them read chain state directly. The one thing outside that path is pet art: the frontend and mobile app request images straight from `image-generator` (`VITE_IMAGE_SERVICE_URL` / mobile's `IMAGE_SERVICE_URL`), which reads `PetCore` over RPC itself rather than trusting the indexer, because a stale `dna` there would not render an outdated pet but a *different* one, and cache that permanently. Both clients build the URL with `petArtUrl` from `@shared/core`, so the route shape (numeric id on EVM, Core asset pubkey on Solana) is written down once; only the environment read is per-platform. Art is optional by construction: unset the variable, or let the service be down, and pets fall back to their emoji avatars. Note the service transcribes `PetCore.Pet` by hand in `src/chain.ts` rather than importing an ABI, so a change to that struct silently breaks every EVM read here until it is copied across. See `backend/API.md`, `services/indexer-go/README.md`, `services/image-generator/README.md`.
+On-chain pet state (EVM via subgraph watermark polling, Solana via WebSocket push + backfill) is mirrored into Prisma-owned Postgres (`pet_roster`) by **`indexer-go`, which is the only indexer**. It also owns `item_roster` and `pet_equipment` (roadmap §4, EVM-only), on their own watermarks separate from the roster's — a shared cursor advanced by the busy stream would skip the quiet one's unread rows permanently, since the incremental query filters on `updatedAt_gt`. The backend's built-in Node `RosterIndexer` no longer exists — nothing in `backend/src` indexes chain state, so a local stack that needs a populated roster has to run `indexer-go`. `battle_history` is not indexed at all: the backend writes it from its own signed receipts. `indexer-go` also answers pet-state reads and win estimates over gRPC; if it is down the backend falls back to reading Postgres directly (`ROSTER_READ_SOURCE` controls `grpc` vs `postgres`, and matchmaking always reads Postgres). Frontend, mobile, and website all talk to the backend via REST + GraphQL; none of them read chain state directly. The one thing outside that path is pet art: the frontend and mobile app request images straight from `image-generator` (`VITE_IMAGE_SERVICE_URL` / mobile's `IMAGE_SERVICE_URL`), which reads `PetCore` over RPC itself rather than trusting the indexer, because a stale `dna` there would not render an outdated pet but a *different* one, and cache that permanently. Both clients build the URL with `petArtUrl` from `@shared/core`, so the route shape (numeric id on EVM, Core asset pubkey on Solana) is written down once; only the environment read is per-platform. Art is optional by construction: unset the variable, or let the service be down, and pets fall back to their emoji avatars. Note the service transcribes `PetCore.Pet` by hand in `src/chain.ts` rather than importing an ABI, so a change to that struct silently breaks every EVM read here until it is copied across. See `backend/API.md`, `services/indexer-go/README.md`, `services/image-generator/README.md`.
 
 Note: there is no `docs/architecture.md` and no `services/indexer-go/ARCHITECTURE.md`. The component map and data flow live in this file's Architecture section, and the indexer's real doc is `services/indexer-go/README.md`. Everything that used to link to those two paths now points at the real ones, so a new reference to either is a mistake rather than a known gap.
 
@@ -121,16 +121,18 @@ What that adapter does NOT unify: `frontend/src/chains/ethereum/` (wagmi client,
 
 Do not "fix" `useBattlePanel` for being 555 lines. Its own doc comment records the reasoning: selection and validation are tightly coupled (random-match and battle-start both touch validation), so one controller is the honest seam, and the genuinely separable concerns were already extracted to `useBattleOutcome` and `useResultDialogue`. If it does get touched, the thing worth consolidating is its six `useEffect`s, whose ordering is implicit, not its line count.
 
-### Combat simulator: one frozen port, two live ones, one set of golden vectors
+### Combat simulator: one frozen port, two live ones, and the vectors that hold them together
 The battle/combat logic began as four independent implementations. As of §L Phase 6 they are no longer peers, and the Solidity one is gone:
 
 - **Frozen** — Solana's `game/battle_sim.rs` and `game/xp.rs`. No caller left in the program, kept because their golden-vector tests are what still tie the vectors to what really settled on that chain. **Do not change them.** A bug is fixed forward in the live ports under a new `rulesetVersion`.
 - **Deleted** — `contracts/ethereum/src/CombatSim.sol`. Removed once nothing on chain called it, together with `gen-battle-vectors.ts` (which generated `battle.json` from it) and `CombatGoldenVectors.test.ts`. `battle.json` is unchanged and still gates the live ports; what is gone is the ability to regenerate it, and the Solidity leg of the parity check.
 - **Live** — `protocol/src/combat/` (the canonical engine, re-exported from `shared/src/utils/combat` for existing importers) and `services/indexer-go/internal/combat/` (the independent verifier). These two `MUST` change together. §F's circuit breaker only has value because they were written to disagree if either drifts, so updating one alone quietly disarms it.
 
-The remaining three are validated against the same golden vectors at `contracts/test-vectors/{battle,xp}.json`, run by Anchor, `combat_golden_test.go`, and `@cryptopets/protocol`'s `tests/combat/goldenVectors.test.ts`. Keeping Anchor's frozen suite running is the point: it proves the vectors still describe what actually settled on Solana, and the live suites prove the current engine has not drifted from it. Hardhat no longer checks `battle.json` at all — that leg went with `CombatSim.sol`. `contracts/ethereum/test/XpFormula.test.ts` still runs, but note it is a pure-TypeScript reimplementation of the formula checked against the fixture; it does not call a contract, and did not before this change either.
+The remaining three are validated against the same golden vectors at `contracts/test-vectors/{battle,xp}.json`, run by Anchor, `combat_golden_test.go`, and `@cryptopets/protocol`'s `tests/combat/goldenVectors.test.ts`. A third file, `equipment.json`, pins what gear does (roadmap §4) and is read by the **two live ports only** — the frozen Solana port predates equipment and never applies it, so it is not a witness to that file. Its first case reproduces a `battle.json` row exactly, which is what proves the modifier path costs an ungeared fight nothing rather than merely claiming so. Equipment applies after `extract` and before the skill multipliers, so Tank's `+20%` multiplies the geared total; that ordering is pinned by a vector case at a one-point margin in both ports, because moving it in one alone changes every geared fight. Keeping Anchor's frozen suite running is the point: it proves the vectors still describe what actually settled on Solana, and the live suites prove the current engine has not drifted from it. Hardhat no longer checks `battle.json` at all — that leg went with `CombatSim.sol`. `contracts/ethereum/test/XpFormula.test.ts` still runs, but note it is a pure-TypeScript reimplementation of the formula checked against the fixture; it does not call a contract, and did not before this change either.
 
 Hashing uses **legacy Keccak-256** (`keccak256(abi.encodePacked(...))` byte layout); a SHA3-vs-Keccak mismatch fails every vector. The TS port covers XP and level progression as well as fight math: `protocol/src/combat/xp.ts` mirrors the XP rules the chains settled under (`GameLogic._calcXp` / `PetCore.addXp`, plus the same-opponent decay that `PetCore` no longer carries) and is validated against `contracts/test-vectors/xp.json`, with the snapshot-shaped wrapper in `protocol/src/progression/` (vectors: `protocol-progression.json`). This became portable once `lastOpponentId`/`streak` were frozen into the battle snapshot; before that the client had no way to know the streak state XP depends on. Note the decay shift **must be clamped to 31** in TS: JavaScript's `>>` masks the shift count to 5 bits, so an unclamped `200 >> 32` returns 200 where Solidity, Rust, and Go all return 0. `services/indexer-go/internal/combat/xp.go` still covers only the formula and decay, not level-up.
+
+Two protocol objects are now versioned, and the rule is the same for both: **an absent `schemaVersion` means 1, never "whatever this build implements"**. `snapshot` v2 adds per-pet equipment and `ruleset` v2 adds the combat-affecting item catalog; every snapshot and published bundle written before those fields existed is a v1 object with receipts already signed over it, so defaulting to the current version would re-encode all of them under a layout they were never hashed under. Old versions stay in `SUPPORTED_VERSIONS` permanently. This was not theoretical: the first draft defaulted to current and 35 receipt vectors caught it immediately.
 
 **If a golden vector test fails, a live port has drifted from the rules real battles were settled under. Fix the drifted port, never edit the vector.** A *frozen* port failing a vector means something worse — the vectors or the contract source no longer match what is deployed — and is an incident, not a test failure.
 
@@ -200,6 +202,51 @@ The dialogue endpoint's anti-forgery guard still exists but now compares the cli
 
 Consequently `src/grpc/battleStream.ts` is deleted: nothing published to it after indexer-go stopped ingesting battles, and nothing read from it after this. `INDEXER_GRPC_ADDR` still matters for pet-state reads and win estimates. `StreamLiveBattles` and `ListReadyOpponents` are gone from `proto/cryptopets.proto` too, along with indexer-go's whole `BattleEvent` pipeline — no adapter had published one since battles left the chain.
 
+### Inventory: two owners, one join, and gear that has to be checkable (roadmap §4)
+`ItemCore.sol` is an ERC-1155 where the token id is the item *type* and the balance is the
+quantity, so a catalog of 20 items and one of 2,000 cost the same on chain. Four tables
+split across two owners, and the split is the point: `item_definition` is backend content a
+rebalance edits, while `item_roster` and `pet_equipment` are chain projections **only
+indexer-go writes**, under the same monotonic `last_version` guard `pet_roster` uses.
+`item_entitlement` is backend-owned and holds earned-but-unminted drops. Reads join a
+projection to the catalog in TypeScript rather than SQL, so the two owners stay visible.
+
+Three things are easy to get wrong here:
+
+- **Equipping escrows the token into `ItemCore`, and only the player can send it.**
+  `equip` requires `msg.sender` to be the pet's owner, so the backend physically cannot do
+  it — that is what makes gear in a battle snapshot checkable against chain state by
+  someone who does not trust the operator, rather than an assertion by it. Escrow also
+  stops one sword buffing five pets without a locked-balance invariant that breaks the
+  moment a geared pet changes hands. Consumables go the other way: the backend burns them
+  from its own authorized wallet, which is a real trust grant (an authorized caller can
+  burn any wallet's items) and the reason that key belongs nowhere shared.
+- **Nothing in the projections is ever deleted.** A spent stack writes `quantity 0` and an
+  emptied slot writes `item_type "0"`, because indexer-go resumes from an `updatedAt`
+  watermark and a deleted row is one it never learns about. Zero is a value, not an absence.
+- **Battle drops derive from the battle's own drand seed**, committed before the fight
+  resolves, so nobody including the operator can grind one and anyone holding the receipt
+  can recompute it. They are written in the *same transaction* as the receipt, the rule
+  `battle_history` already follows. The honest limit: the drop is not inside the signed
+  payload in v1, so an outsider can recompute what was owed and notice a discrepancy but
+  cannot prove one from the receipt alone.
+
+Equipment reaching combat is what made this expensive, and it is why `snapshot` and
+`ruleset` both went to schema v2 (see the combat-simulator section above). The snapshot
+freezes **resolved modifiers plus the item type**: the modifiers so unequipping after
+acceptance cannot change a committed fight, the item type so `@cryptopets/verifier`'s
+`equipment` check can confirm those modifiers were the ones the catalog declares. Replay
+alone cannot do that — a receipt granting +50 ATK from a 4-ATK dagger replays perfectly.
+What remains unproven is *ownership* of the item, which is a claim about chain state at
+`sourceVersion` that the verifier deliberately cannot read.
+
+`servedRuleset()` joins the live catalog onto `SOURCE_DEFAULT_RULESET` and caches for the
+process's life, so a catalog edit needs a restart. That is deliberate: it moves
+`rulesetHash`, which invalidates every outstanding `DefenseAuthorization`, and that should
+be a deliberate rollout rather than a row edit that quietly re-prices live battles. Only
+equipment reaches the ruleset for the same reason — re-prompting every defender because a
+badge was added would train players to click through the one prompt that matters.
+
 ### Every WebSocket channel goes through one upgrade listener
 `backend/src/ws/channel.ts` owns the process's single `upgrade` handler and dispatches on path; `battleRoomSocket.ts` and `chatSocket.ts` are thin registrations on top of it. Do **not** add a channel by constructing `new WebSocketServer({ server, path })`. That attaches one upgrade listener *per instance* to the same HTTP server, Node calls every listener on every upgrade, so each connection is handled twice, the client gets two HTTP 101 responses, and the second is parsed as a frame — `RangeError: Invalid WebSocket frame: RSV1 must be clear`. It breaks **every** channel, not just the new one, and per-channel tests will not catch it because each builds its own HTTP server with a single channel attached (`tests/ws/channel.test.ts` is the regression test that does).
 
@@ -214,7 +261,9 @@ Two consequences worth keeping: a non-participant gets **404, not 403**, identic
 `contracts/plan-contract-upgrade.md` documents intentional v1 gaps that v2 is designed around: no battle authorization (anyone can call `battle()`/`attack()` on anyone's pets), an EVM `changeDna` cheat that lets a level-20 pet set arbitrary DNA, and a Solana `create_starter_pet` that accepts client-supplied dna/rarity. v2 plan: EVM moves to UUPS proxies (`PetCoreProxy` + `GameLogicProxy`, with `CombatSimV1` deployed as a separate contract to stay under the 24KB bytecode ceiling); Solana adds versioned/reserved-space accounts and migrates pets to Metaplex Core NFTs. This is a plan doc; check current contract source before assuming any of it is implemented.
 
 ### Hardhat specifics worth knowing
-- Contract sources live in `contracts/ethereum/src/` (not `contracts/`): `PetCore.sol`, `GameLogic.sol`, `GameConfig.sol`, `DnaLib.sol`, `TestDeployer.sol`, plus `BattleBatchRegistry.sol` / `SeasonRewardDistributor.sol` for the backend-battle anchor and rewards.
+- Contract sources live in `contracts/ethereum/src/` (not `contracts/`): `PetCore.sol`, `GameLogic.sol`, `GameConfig.sol`, `DnaLib.sol`, `TestDeployer.sol`, plus `BattleBatchRegistry.sol` / `SeasonRewardDistributor.sol` for the backend-battle anchor and rewards, and `ItemCore.sol` for inventory (§4).
+- `@openzeppelin/contracts-upgradeable` is pinned to **4.7.3** while `@openzeppelin/contracts` is `^5.4.0`. A new upgradeable contract uses the 4.x initializer style (`__ERC1155_init`), not v5's `_update` hook — `ItemCore.sol` is the worked example.
+- `scripts/deploy.ts` has **no `localhost` network** (see `scripts/networks.ts`), so the documented local path does not run. To deploy locally, start `pnpm hh node`, deploy `MockEntropy`, write an `ignition/parameters/.runtime-localhost.json` naming it, and call `pnpm hh ignition deploy ignition/modules/CryptoPetsV2Live.ts --network localhost --parameters <file> --deployment-id <name>` directly.
 - Both compiler profiles (`default` and `production`) are pinned to `viaIR` explicitly, because Hardhat Ignition silently drops viaIR/optimizer settings from a flat config and the two profiles must match. `CombatSim.sol`'s "stack too deep" was the original reason; with it deleted the remaining sources compile without viaIR, so the setting is now an optimizer choice rather than a requirement.
 - The `localhost` network hardcodes the 5 standard Hardhat dev private keys; only live networks (Sepolia, Base Sepolia, see `scripts/networks.ts`) read `PRIVATE_KEY` from env.
 - Deployment is Hardhat Ignition-based (`ignition/modules/CryptoPetsV2Live.ts`); use `pnpm --prefix contracts/ethereum deploy:status` / `deploy:visualize` to inspect.
