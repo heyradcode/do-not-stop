@@ -12,8 +12,21 @@ import { hashRuleset, type Ruleset, SKILL_CONFIG_FIELDS, SOURCE_DEFAULT_RULESET 
 interface RulesetCase {
     name: string;
     note: string;
-    ruleset: Ruleset;
+    /** As stored: item types are decimal strings, since a uint256 is not a JSON number. */
+    ruleset: Omit<Ruleset, 'itemCatalog'> & {
+        itemCatalog?: { itemType: string; slot: number; hp: number; atk: number; def: number; int: number; mdef: number }[];
+    };
     expectedRulesetHash: string;
+}
+
+/** Widens the stored item types back to bigints, as `parseRulesetBundle` does. */
+function toRuleset(stored: RulesetCase['ruleset']): Ruleset {
+    return {
+        ...stored,
+        ...(stored.itemCatalog && {
+            itemCatalog: stored.itemCatalog.map((item) => ({ ...item, itemType: BigInt(item.itemType) })),
+        }),
+    };
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -25,7 +38,7 @@ const byName = new Map(vectors.cases.map((c) => [c.name, c]));
 describe('ruleset golden vectors', () => {
     for (const c of vectors.cases) {
         it(`matches the recorded hash for "${c.name}"`, () => {
-            expect(hashRuleset(c.ruleset)).toBe(c.expectedRulesetHash);
+            expect(hashRuleset(toRuleset(c.ruleset))).toBe(c.expectedRulesetHash);
         });
     }
 });
@@ -45,8 +58,27 @@ describe('properties the vectors exist to pin', () => {
     });
 
     it('anchors the source-default ruleset this build implements', () => {
-        const anchor = byName.get('source-defaults')!;
+        const anchor = byName.get('source-defaults-v2')!;
         expect(hashRuleset(SOURCE_DEFAULT_RULESET)).toBe(anchor.expectedRulesetHash);
+    });
+
+    // Version 1 rulesets have receipts signed against them, so their hash has to keep
+    // reproducing forever. This is the guard on the v1 encoder specifically: it is the one
+    // path that no longer runs in production and would otherwise rot unnoticed.
+    it('still reproduces the version 1 hash from before the item catalog existed', () => {
+        const v1 = byName.get('source-defaults')!;
+        expect(hashRuleset({ ...SOURCE_DEFAULT_RULESET, engineVersion: 1, schemaVersion: 1, itemCatalog: [] })).toBe(
+            v1.expectedRulesetHash,
+        );
+    });
+
+    // A rebalance must move the hash. Defence consent is bound to it, so re-pricing a
+    // sword invalidates consent given under the old numbers rather than silently
+    // reinterpreting it (§D).
+    it('separates a priced catalog from an empty one', () => {
+        expect(byName.get('item-catalog')!.expectedRulesetHash).not.toBe(
+            byName.get('source-defaults-v2')!.expectedRulesetHash,
+        );
     });
 
     it('moves the hash for a version or engine bump', () => {

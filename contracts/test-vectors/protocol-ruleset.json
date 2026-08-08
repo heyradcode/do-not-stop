@@ -3,7 +3,7 @@
   "cases": [
     {
       "name": "source-defaults",
-      "note": "The ruleset this build implements with GameConfig source defaults. Anchors every other case.",
+      "note": "Schema version 1 source defaults, under engine version 1. Kept exactly as recorded: version 1 rulesets have receipts signed against them and must keep hashing identically forever, so this pins the v1 encoder permanently.",
       "ruleset": {
         "version": 1,
         "engineId": "cryptopets-combat-ts",
@@ -308,6 +308,73 @@
         "maxLevel": 100
       },
       "expectedRulesetHash": "0x973e0ece8b3e48b96727ea5ec21e9dae39471f8ec5a358236b5c7c415215b2a6"
+    },
+    {
+      "name": "source-defaults-v2",
+      "note": "The ruleset this build implements: schema version 2 with an empty item catalog (roadmap §4). Differs from the v1 case by the schema version, the engine version, and a zero-length catalog.",
+      "ruleset": {
+        "version": 1,
+        "engineId": "cryptopets-combat-ts",
+        "engineVersion": 2,
+        "maxRounds": 30,
+        "skillConfig": {
+          "tankHpMult": 120,
+          "shellDefMult": 125,
+          "swiftCritBonus": 50,
+          "cunningCritCap": 4000,
+          "furyDmgMult": 130,
+          "furyHpThreshold": 3000,
+          "sageMdefMult": 125,
+          "bloodlustBps": 150
+        },
+        "maxLevel": 100,
+        "schemaVersion": 2,
+        "itemCatalog": []
+      },
+      "expectedRulesetHash": "0xe51caf2298cfd0afab7d4bb3e391bdc0e1187d014782dbbb72e10ca42a4ccbac"
+    },
+    {
+      "name": "item-catalog",
+      "note": "A ruleset pricing two items. Must differ from source-defaults-v2: a rebalance has to move rulesetHash, which is what invalidates defence consent given under the old numbers (§D, §4).",
+      "ruleset": {
+        "version": 1,
+        "engineId": "cryptopets-combat-ts",
+        "engineVersion": 2,
+        "maxRounds": 30,
+        "skillConfig": {
+          "tankHpMult": 120,
+          "shellDefMult": 125,
+          "swiftCritBonus": 50,
+          "cunningCritCap": 4000,
+          "furyDmgMult": 130,
+          "furyHpThreshold": 3000,
+          "sageMdefMult": 125,
+          "bloodlustBps": 150
+        },
+        "maxLevel": 100,
+        "schemaVersion": 2,
+        "itemCatalog": [
+          {
+            "itemType": "1",
+            "slot": 0,
+            "hp": 0,
+            "atk": 4,
+            "def": 0,
+            "int": 0,
+            "mdef": 0
+          },
+          {
+            "itemType": "11",
+            "slot": 1,
+            "hp": 30,
+            "atk": 0,
+            "def": 10,
+            "int": 0,
+            "mdef": 0
+          }
+        ]
+      },
+      "expectedRulesetHash": "0x9b4fe8ecacfecd7af6d6d39b82c62a38fb84f14a4228f94e95f2a3a97689ab38"
     }
   ]
 }

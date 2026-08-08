@@ -21,7 +21,8 @@ export const SCHEMA_VERSIONS = {
     defenseAuthorization: 1,
     /** 2 adds per-pet equipment (roadmap §4). Version 1 snapshots carry none. */
     snapshot: 2,
-    ruleset: 1,
+    /** 2 adds the combat-affecting item catalog (roadmap §4). */
+    ruleset: 2,
     commitment: 1,
     receipt: 1,
     combatLog: 1,
@@ -39,7 +40,9 @@ const SUPPORTED_VERSIONS: Record<SchemaKind, readonly number[]> = {
     // 1 stays supported: every receipt signed before equipment existed names a v1
     // snapshot, and those have to keep verifying forever (§H).
     snapshot: [1, 2],
-    ruleset: [1],
+    // 1 stays supported for the same reason: bundles published before equipment
+    // existed are named by receipts that must keep verifying.
+    ruleset: [1, 2],
     commitment: [1],
     receipt: [1],
     combatLog: [1],

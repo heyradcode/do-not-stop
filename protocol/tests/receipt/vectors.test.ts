@@ -9,7 +9,7 @@ import type { Hex } from '../../src/encoding/bytes';
 import { computeProgression } from '../../src/progression';
 import { deriveBattleSeed } from '../../src/randomness';
 import { type BattleReceipt, hashBattleReceipt, hashCombatLog } from '../../src/receipt';
-import { hashRuleset, SOURCE_DEFAULT_RULESET } from '../../src/ruleset';
+import { hashRuleset, type Ruleset, SOURCE_DEFAULT_RULESET } from '../../src/ruleset';
 import { type BattleSnapshot, hashBattleSnapshot, type PetSnapshot } from '../../src/snapshot';
 
 /**
@@ -21,6 +21,22 @@ import { type BattleSnapshot, hashBattleSnapshot, type PetSnapshot } from '../..
  * test cover the composition too, since a receipt whose seed does not follow from its own
  * inputs is rejected outright by validation.
  */
+/**
+ * The ruleset these vectors were generated under.
+ *
+ * Pinned rather than read from `SOURCE_DEFAULT_RULESET`, which tracks whatever this build
+ * currently implements. Taking the live constant made the vectors follow an engine bump
+ * instead of catching it: a receipt records the rules its fight actually ran under, and
+ * these fixtures ran under engine 1 with no item catalog. Anything else here still fails,
+ * which is the point — a change to the skill defaults is drift in the fight rules.
+ */
+const VECTOR_RULESET: Ruleset = {
+    ...SOURCE_DEFAULT_RULESET,
+    engineVersion: 1,
+    schemaVersion: 1,
+    itemCatalog: [],
+};
+
 interface PetFixture {
     petId: string;
     owner: string;
@@ -96,7 +112,7 @@ export function buildReceipt(fixture: ReceiptFixture): BattleReceipt {
         takenAt: fixture.snapshot.takenAt,
     };
     const domain = { chainId: fixture.chainId as ChainId, deploymentId: fixture.deploymentId };
-    const rulesetHash = hashRuleset(SOURCE_DEFAULT_RULESET);
+    const rulesetHash = hashRuleset(VECTOR_RULESET);
     const seed = deriveBattleSeed({
         domain,
         drandRandomness: fixture.beacon.randomness as Hex,
@@ -114,7 +130,7 @@ export function buildReceipt(fixture: ReceiptFixture): BattleReceipt {
         snapshot.defender.level,
         snapshot.defender.skill,
         seed.value,
-        SOURCE_DEFAULT_RULESET.skillConfig,
+        VECTOR_RULESET.skillConfig,
     );
 
     return {
@@ -131,7 +147,7 @@ export function buildReceipt(fixture: ReceiptFixture): BattleReceipt {
             randomness: fixture.beacon.randomness as Hex,
         },
         seed: seed.hex,
-        rulesetVersion: SOURCE_DEFAULT_RULESET.version,
+        rulesetVersion: VECTOR_RULESET.version,
         rulesetHash,
         result: {
             attackerWon: fixture.attackerWon,
