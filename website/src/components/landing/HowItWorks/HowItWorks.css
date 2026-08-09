@@ -1,89 +1,223 @@
+/* =============================================================================
+   How it works: a concave wall of extruded glass slabs.
+
+   Deliberately a different 3D language from the roadmap's drive. Nothing here
+   is scroll-pinned — the wall assembles on reveal and responds to the pointer,
+   so the section costs no extra scroll distance.
+
+   Depth is real, not painted: the world is a preserve-3d space, each slab has
+   side faces, and the token and heading float above the card surface on their
+   own Z, so they parallax against it as the wall turns.
+   ============================================================================= */
 .how-it-works {
-  & .track {
+  & .stage {
+    perspective: 1500px;
+    perspective-origin: 50% 42%;
+    padding-block: clamp(12px, 2vh, 26px) clamp(40px, 6vh, 70px);
+  }
+
+  & .world {
+    position: relative;
+    transform-style: preserve-3d;
+    /* Whole-scene tilt from the pointer. Small on purpose: past a few degrees
+       the text edges start to shimmer. */
+    transform:
+      rotateX(calc(var(--ty, 0) * -3.4deg))
+      rotateY(calc(var(--tx, 0) * 5deg));
+    transition: transform 460ms var(--ease-out);
+  }
+
+  /* Energy conduit, set behind the wall in Z so the slabs genuinely occlude it. */
+  & .conduit {
+    position: absolute;
+    inset-block-start: 42%;
+    inset-inline: 3%;
+    height: 2px;
+    transform: translateZ(-90px);
+    background: rgb(var(--border-rgb) / 18%);
+    border-radius: 2px;
+    overflow: hidden;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset-block: 0;
+      inset-inline-start: 0;
+      width: 0;
+      border-radius: inherit;
+      background: var(--gradient-rail);
+      box-shadow: 0 0 14px rgb(var(--glow-text-rgb) / 55%);
+      transition: width 1200ms var(--ease-out) 160ms;
+    }
+  }
+
+  & .steps {
+    position: relative;
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(4, minmax(160px, 1fr));
-    gap: 18px;
-    position: relative;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(12px, 1.8vw, 26px);
+    transform-style: preserve-3d;
+  }
 
-    /* Connector rail. Draws in when the track scrolls into view, keyed off the
-       reveal observer's `data-reveal-visible` rather than a scroll timeline —
-       animation-timeline has no Safari support, and the rail only needs to fire
-       once on entry, not track scroll position continuously. */
-    &::before {
-      content: '';
-      position: absolute;
-      top: 42px;
-      left: 6%;
-      right: 6%;
-      height: 2px;
-      background: var(--gradient-rail);
-      box-shadow: 0 0 12px rgb(var(--glow-text-rgb) / 45%);
-      z-index: var(--z-base);
-      scale: 0 1;
-      transform-origin: left center;
-      transition: scale 1100ms var(--ease-out) 140ms;
+  /* The wall's curve: outer slabs turn inward and sit further back, so the four
+     cards read as a shallow arc facing the reader. */
+  & .step {
+    --angle: 0deg;
+    --depth: 0px;
+
+    position: relative;
+    transform-style: preserve-3d;
+    transform: translateZ(var(--depth)) rotateY(var(--angle));
+    transition: transform 420ms var(--ease-out);
+
+    &:nth-child(1) { --angle: 13deg; --depth: -52px; }
+    &:nth-child(2) { --angle: 4.5deg; --depth: -14px; }
+    &:nth-child(3) { --angle: -4.5deg; --depth: -14px; }
+    &:nth-child(4) { --angle: -13deg; --depth: -52px; }
+
+    /* Straighten and step forward when picked out. */
+    &:hover,
+    &:focus-within {
+      --angle: 0deg;
+      --depth: 48px;
     }
   }
 
-  & .node {
+  & .slab {
     position: relative;
-    z-index: var(--z-raised);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    height: 100%;
+    transform-style: preserve-3d;
+  }
+
+  /* No backdrop-filter on the face: it forces flattening in most engines, which
+     would collapse the preserve-3d chain and kill the floating token. */
+  & .face {
+    position: relative;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 26px 22px 24px;
+    border-radius: var(--radius-lg);
+    transform-style: preserve-3d;
+    background: linear-gradient(
+      165deg,
+      rgb(18 24 46 / 96%) 0%,
+      rgb(9 13 28 / 97%) 55%,
+      rgb(7 10 22 / 98%) 100%
+    );
+    border: 1px solid rgb(var(--neon-violet-rgb) / 34%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 8%),
+      inset 0 0 30px rgb(var(--neon-cyan-rgb) / 7%),
+      var(--elev-3);
     text-align: center;
-
-    & h3 {
-      font-family: var(--title-font);
-      margin: 0 0 8px;
-      font-size: 1.1rem;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: var(--text-title);
-    }
-
-    & p {
-      font-family: var(--content-font);
-      margin: 0;
-      font-size: 0.94rem;
-      line-height: 1.55;
-      color: var(--text-body);
-      max-width: 240px;
-    }
+    transition:
+      border-color var(--dur-slow) var(--ease-out),
+      box-shadow var(--dur-slow) var(--ease-out);
   }
 
-  & .circle {
+  & .step:hover .face,
+  & .step:focus-within .face {
+    border-color: rgb(var(--neon-violet-rgb) / 78%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 12%),
+      inset 0 0 34px rgb(var(--neon-cyan-rgb) / 12%),
+      0 0 34px rgb(var(--neon-violet-rgb) / 30%),
+      var(--elev-4);
+  }
+
+  /* Slab thickness. Each side face hinges off its own edge and extends back in
+     Z; backface-visibility hides the one turned away from the reader. */
+  & .edge {
+    position: absolute;
+    inset-block: 10px;
+    width: 22px;
+    border-radius: 3px;
+    backface-visibility: hidden;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--neon-violet-rgb) / 30%),
+      rgb(10 14 30 / 92%) 42%,
+      rgb(6 9 20 / 96%)
+    );
+    box-shadow: inset 0 0 14px rgb(0 0 0 / 55%);
+  }
+
+  & .edge-l {
+    inset-inline-start: 0;
+    transform-origin: left center;
+    transform: rotateY(-90deg);
+  }
+
+  & .edge-r {
+    inset-inline-end: 0;
+    transform-origin: right center;
+    transform: rotateY(90deg);
+  }
+
+  /* Light pool lying on the floor beneath the slab — an actual horizontal
+     plane, not a drop shadow, so it foreshortens with the scene. */
+  & .pool {
+    position: absolute;
+    inset-block-end: -10px;
+    inset-inline-start: 50%;
+    width: 78%;
+    height: 70px;
+    transform: translateX(-50%) rotateX(82deg);
+    transform-origin: center top;
+    background: radial-gradient(
+      ellipse at center,
+      rgb(var(--neon-violet-rgb) / 34%),
+      transparent 68%
+    );
+    filter: blur(7px);
+    opacity: 0.7;
+    transition: opacity var(--dur-slow) var(--ease-out);
+  }
+
+  & .step:hover .pool,
+  & .step:focus-within .pool {
+    opacity: 1;
+  }
+
+  /* Floats clear of the card surface, so it parallaxes against the face as the
+     wall turns. This is the detail that reads as depth rather than as a
+     picture of depth. */
+  & .token {
     position: relative;
     display: grid;
     place-items: center;
-    width: 84px;
-    height: 84px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 25%, #1a2244 0%, #0a0f25 70%);
-    border: 1px solid rgb(var(--neon-violet-rgb) / 60%);
-    box-shadow:
-      0 0 22px rgb(var(--neon-violet-rgb) / 34%),
-      inset 0 0 18px rgb(var(--neon-cyan-rgb) / 16%);
-    font-family: var(--title-font);
-    font-weight: 800;
-    color: var(--text-title);
-    margin-bottom: 18px;
+    width: 76px;
+    height: 76px;
+    margin: 0 auto 18px;
+    transform: translateZ(38px);
+    transform-style: preserve-3d;
 
-    /* Orbiting arc, masked to a 2px ring. Held at zero until the node is
-       hovered or focused so four of them do not spin at once. */
     &::before {
       content: '';
       position: absolute;
-      inset: -5px;
+      inset: 0;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 26%, #202a52 0%, #0a0f25 72%);
+      border: 1px solid rgb(var(--neon-violet-rgb) / 55%);
+      box-shadow:
+        0 0 22px rgb(var(--neon-violet-rgb) / 34%),
+        inset 0 0 16px rgb(var(--neon-cyan-rgb) / 18%);
+    }
+
+    /* Orbiting arc, masked to a ring. */
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
       border-radius: 50%;
       background: conic-gradient(
         from 0deg,
         transparent 0deg,
-        rgb(var(--neon-cyan-rgb) / 65%) 70deg,
-        rgb(var(--neon-violet-rgb) / 75%) 155deg,
+        rgb(var(--neon-cyan-rgb) / 70%) 70deg,
+        rgb(var(--neon-violet-rgb) / 80%) 155deg,
         transparent 235deg,
         transparent 360deg
       );
@@ -93,45 +227,53 @@
       animation: hiw-orbit 9s linear infinite;
       transition: opacity var(--dur-slow) var(--ease-out);
     }
-
-    &::after {
-      content: '';
-      position: absolute;
-      inset: -13px;
-      border-radius: 50%;
-      border: 1px solid rgb(var(--neon-violet-rgb) / 22%);
-      pointer-events: none;
-    }
-
-    & span {
-      font-size: 1.45rem;
-      letter-spacing: 1px;
-      background: var(--gradient-spectrum);
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
   }
 
-  & .node:hover .circle::before,
-  & .node:focus-within .circle::before {
+  & .step:hover .token::after,
+  & .step:focus-within .token::after {
     opacity: 1;
   }
+
+  & .token-face {
+    position: relative;
+    font-family: var(--title-font);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: var(--gradient-spectrum);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  & .step h3 {
+    position: relative;
+    transform: translateZ(20px);
+    font-family: var(--title-font);
+    margin: 0 0 10px;
+    font-size: 1.1rem;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-title);
+  }
+
+  & .step p {
+    position: relative;
+    transform: translateZ(10px);
+    font-family: var(--content-font);
+    margin: 0;
+    font-size: 0.94rem;
+    line-height: 1.55;
+    color: var(--text-body);
+  }
 }
 
-/* Ignition. `animation-delay` reuses the stagger delay the reveal observer wrote
-   onto each node, so the circles light in document order behind the rail rather
-   than all at once the moment the track appears. */
-.js-reveal .how-it-works .node[data-reveal-visible] .circle {
-  animation: hiw-ignite 780ms var(--ease-out) var(--reveal-delay, 0ms) both;
-}
-
-.js-reveal .how-it-works .track[data-reveal-visible]::before {
-  scale: 1 1;
+.js-reveal .how-it-works .world[data-reveal-visible] .conduit::after {
+  width: 100%;
 }
 
 @supports not ((background-clip: text) or (-webkit-background-clip: text)) {
-  .how-it-works .circle span {
+  .how-it-works .token-face {
     -webkit-text-fill-color: var(--neon-cyan);
     background: none;
     color: var(--neon-cyan);
@@ -142,50 +284,46 @@
   to { rotate: 360deg; }
 }
 
-@keyframes hiw-ignite {
-  from {
-    border-color: rgb(var(--border-rgb) / 18%);
-    box-shadow:
-      0 0 0 rgb(var(--neon-violet-rgb) / 0%),
-      inset 0 0 0 rgb(var(--neon-cyan-rgb) / 0%);
-  }
-}
-
+/* =============================================================================
+   Responsive. Below the wide layout the arc is flattened: angled slabs in a
+   narrow column read as broken alignment rather than as depth. The slabs keep
+   their thickness and floating token — that still works head-on.
+   ============================================================================= */
 @media (max-width: 1024px) {
-  .how-it-works .track {
-    grid-template-columns: repeat(2, minmax(160px, 1fr));
-    gap: 36px 18px;
+  .how-it-works {
+    & .stage { perspective: 1200px; }
 
-    &::before { display: none; }
+    & .steps {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    & .conduit { display: none; }
+
+    & .step:nth-child(1),
+    & .step:nth-child(2),
+    & .step:nth-child(3),
+    & .step:nth-child(4) {
+      --angle: 0deg;
+      --depth: 0px;
+    }
   }
 }
 
-/* Single column gets the rail back, rotated: with the nodes stacked it reads as
-   a route again, which the two-column layout cannot. */
 @media (max-width: 600px) {
-  .how-it-works .track {
-    grid-template-columns: 1fr;
-    gap: 32px;
+  .how-it-works {
+    & .stage { perspective: none; padding-block-end: 24px; }
 
-    &::before {
-      display: block;
-      top: 42px;
-      bottom: 42px;
-      left: 50%;
-      right: auto;
-      width: 2px;
-      height: auto;
-      translate: -50% 0;
-      background: linear-gradient(
-        180deg,
-        transparent,
-        var(--neon-cyan) 12%,
-        var(--neon-violet) 50%,
-        var(--neon-magenta) 88%,
-        transparent
-      );
-      scale: 1 0;
-      transform-origin: center top;
-    }
+    & .world { transform: none; }
+
+    & .steps { grid-template-columns: 1fr; gap: 18px; }
+
+    & .edge,
+    & .pool { display: none; }
+
+    & .token { transform: none; }
+
+    & .step h3,
+    & .step p { transform: none; }
   }
 }
