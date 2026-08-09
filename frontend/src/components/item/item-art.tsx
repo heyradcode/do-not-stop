@@ -34,25 +34,20 @@ const fallbackUrl = (itemType: string): string | null =>
 /**
  * Whether this component will render a tile for `itemType`.
  *
- * Exported so a caller can lay itself out accordingly: the bag puts its "?" in the tile's
- * corner, and a corner only exists when there is a tile.
- *
- * Derived from the same URL builder the component uses, deliberately. An earlier version
- * asked the environment directly and the two could disagree — the card believed there was a
- * tile, the component rendered nothing, and the button inside it disappeared along with the
- * artwork. Sharing one expression makes that unrepresentable.
+ * Module-private on purpose. It was briefly exported so the bag could decide whether a tile
+ * existed before hanging a corner control on it; the tile now renders its corners as siblings
+ * of the art unconditionally, so nothing outside needs to ask. An exported predicate with no
+ * caller is worse than dead code — the next reader builds against a seam nobody validated.
  */
-export const hasItemArt = (itemType: string): boolean => artUrl(itemType) !== null;
+const hasItemArt = (itemType: string): boolean => artUrl(itemType) !== null;
 
 type ItemArtProps = {
     item: Pick<ItemDefinition, 'itemType' | 'name'>;
     /** Rendered at tile size in the bag; larger where an item is the subject. */
     size?: 'tile' | 'feature';
-    /** Controls drawn over the art, e.g. a stack count or a help button. */
-    overlay?: React.ReactNode;
 };
 
-const ItemArt: React.FC<ItemArtProps> = ({ item, size = 'tile', overlay }) => {
+const ItemArt: React.FC<ItemArtProps> = ({ item, size = 'tile' }) => {
     const [stage, setStage] = useState<'painted' | 'drawn' | 'none'>('painted');
     const [loaded, setLoaded] = useState(false);
 
@@ -89,7 +84,6 @@ const ItemArt: React.FC<ItemArtProps> = ({ item, size = 'tile', overlay }) => {
                     }}
                 />
             ) : null}
-            {overlay}
         </div>
     );
 };

@@ -26,7 +26,7 @@ import type { PetReader } from './chain.js';
 import { UnknownPetError, UnsupportedChainError } from './chain.js';
 import { renderItemSvg } from './itemArt.js';
 import { getOrCreateItemImage } from './itemPipeline.js';
-import { findItem } from './items.js';
+import { findItem, type ItemDefinition } from './items.js';
 import { buildItemMetadata } from './itemMetadata.js';
 import { buildPetMetadata } from './metadata.js';
 import { getOrCreatePetImage, type PipelineDeps } from './pipeline.js';
@@ -101,9 +101,7 @@ const METADATA_ROUTE = /^\/metadata\/([a-z0-9-]+)\/([0-9A-Za-z]{1,88})$/;
 
 // Items are addressed by token id alone: the id *is* the item type, and the catalog is the
 // same on every chain, so there is no chain segment to carry.
-const ITEM_ART_ROUTE = /^\/items\/([0-9a-fA-F]{1,64})\.svg$/;
-const ITEM_IMAGE_ROUTE = /^\/items\/([0-9a-fA-F]{1,64})\.png$/;
-const ITEM_METADATA_ROUTE = /^\/items\/([0-9a-fA-F]{1,64})\.json$/;
+const ITEM_ROUTE = /^\/items\/([0-9a-fA-F]{1,64})\.(svg|png|json)$/;
 
 /**
  * Resolves the `{id}` an ERC-1155 client substitutes into `uri()`.
@@ -145,12 +143,14 @@ const svg = (body: string): RouteResponse => {
     };
 };
 
-const serveItemArt = (rawId: string): RouteResponse => {
+/** Resolves an item route's id, or null for one nothing defines. Shared so the padded-hex
+ *  rule above is applied once rather than re-checked in three handlers. */
+const resolveItem = (rawId: string): ItemDefinition | null => {
     const itemType = resolveItemType(rawId);
-    const item = itemType === null ? undefined : findItem(itemType);
-    if (!item) return json(404, { error: 'Unknown item type' });
-    return svg(renderItemSvg(item));
+    return (itemType === null ? undefined : findItem(itemType)) ?? null;
 };
+
+const serveItemArt = (item: ItemDefinition): RouteResponse => svg(renderItemSvg(item));
 
 /**
  * Generated item art: painted once, then served from the store forever.
@@ -163,13 +163,9 @@ const serveItemArt = (rawId: string): RouteResponse => {
  */
 const serveItemImage = async (
     deps: RouteDeps,
-    rawId: string,
+    item: ItemDefinition,
     probeOnly: boolean,
 ): Promise<RouteResponse> => {
-    const itemType = resolveItemType(rawId);
-    const item = itemType === null ? undefined : findItem(itemType);
-    if (!item) return json(404, { error: 'Unknown item type' });
-
     // Same rule as pet art: HEAD reports readiness and never generates, so a link previewer
     // or a marketplace crawling the collection cannot bill 15 inferences for images nobody
     // has looked at yet.
@@ -196,11 +192,7 @@ const serveItemImage = async (
     }
 };
 
-const serveItemMetadata = (deps: RouteDeps, rawId: string): RouteResponse => {
-    const itemType = resolveItemType(rawId);
-    const item = itemType === null ? undefined : findItem(itemType);
-    if (!item) return json(404, { error: 'Unknown item type' });
-
+const serveItemMetadata = (deps: RouteDeps, item: ItemDefinition): RouteResponse => {
     const base = deps.publicBaseUrl.replace(/\/+$/, '');
     const metadata = buildItemMetadata(item, {
         // Decimal in the link we generate ourselves: shorter, and it is the id every other
@@ -248,15 +240,16 @@ export const handleRequest = async (
     const metadata = METADATA_ROUTE.exec(path);
     if (metadata) return await serveMetadata(deps, metadata[1]!, metadata[2]!);
 
-    // Synchronous: a pure function of the catalog, with no store or RPC behind it.
-    const itemArt = ITEM_ART_ROUTE.exec(path);
-    if (itemArt) return serveItemArt(itemArt[1]!);
-
-    const itemImage = ITEM_IMAGE_ROUTE.exec(path);
-    if (itemImage) return await serveItemImage(deps, itemImage[1]!, method === 'HEAD');
-
-    const itemMetadata = ITEM_METADATA_ROUTE.exec(path);
-    if (itemMetadata) return serveItemMetadata(deps, itemMetadata[1]!);
+    // One route, three representations. Resolved once so the id rule cannot be applied
+    // three slightly different ways.
+    const itemRoute = ITEM_ROUTE.exec(path);
+    if (itemRoute) {
+        const item = resolveItem(itemRoute[1]!);
+        if (!item) return json(404, { error: 'Unknown item type' });
+        if (itemRoute[2] === 'svg') return serveItemArt(item);
+        if (itemRoute[2] === 'png') return await serveItemImage(deps, item, method === 'HEAD');
+        return serveItemMetadata(deps, item);
+    }
 
     return json(404, { error: 'Not found' });
 };

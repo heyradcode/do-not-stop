@@ -34,12 +34,17 @@ export async function buildPetSnapshot(chainId: ChainId, petId: string): Promise
         return null;
     }
 
-    const progress = await getOrInitProgress(chainId, petId, {
-        level: roster.level,
-        winCount: roster.winCount,
-        lossCount: roster.lossCount,
-    });
-    const equipment = await resolveEquipment(family, petId);
+    // Independent: `resolveEquipment` needs only the family and the pet id, both already in
+    // hand, and reads neither the roster nor the progress row. Serial, these were two extra
+    // round trips on the accept path — and accept builds two snapshots.
+    const [progress, equipment] = await Promise.all([
+        getOrInitProgress(chainId, petId, {
+            level: roster.level,
+            winCount: roster.winCount,
+            lossCount: roster.lossCount,
+        }),
+        resolveEquipment(family, petId),
+    ]);
 
     return {
         petId: BigInt(petId),

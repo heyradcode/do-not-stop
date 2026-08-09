@@ -12,17 +12,27 @@ import { parseItemEffect, type InventoryEntry, type ItemDefinition } from '../..
  * key does not need an address in it — the session already varies with `baseURL`.
  */
 
+/**
+ * The catalog fields every item query selects.
+ *
+ * One constant rather than the same eight names typed into five documents. Omitting one is
+ * silent: `toItemDefinition` returns the field as `undefined`, and a consumer like the equip
+ * panel's `slot == null` filter then drops the item with no error anywhere.
+ */
+export const ITEM_FIELDS = 'itemType key category slot rarity effect name description';
+
 const INVENTORY_QUERY = `
     query Inventory($chain: String!) {
         inventory(chain: $chain) {
-            item { itemType key category slot rarity effect name description }
+            item { ${ITEM_FIELDS} }
             quantity
         }
     }
 `;
 
 /** The wire shape: `effect` arrives as a JSON string and is parsed on the way out. */
-interface WireItem extends Omit<ItemDefinition, 'effect'> {
+/** An item as it arrives over the wire, before `toItemDefinition` parses `effect`. */
+export interface WireItem extends Omit<ItemDefinition, 'effect'> {
     effect: string | null;
 }
 

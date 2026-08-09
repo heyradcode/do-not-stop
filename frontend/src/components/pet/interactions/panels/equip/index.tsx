@@ -44,7 +44,6 @@ const SLOTS = [
 ] as const;
 
 export type EquipPanelProps = {
-    isStandaloneView?: boolean;
     /**
      * Pet to open on, e.g. when the bag sends someone here to strip a specific one.
      *
@@ -55,7 +54,7 @@ export type EquipPanelProps = {
     initialPetId?: string | null;
 };
 
-const EquipPanel: React.FC<EquipPanelProps> = ({ isStandaloneView = true, initialPetId = null }) => {
+const EquipPanel: React.FC<EquipPanelProps> = ({ initialPetId = null }) => {
     const { activeKind: chain, isConnected } = useChainCapabilities();
     const { pets } = usePetList();
     const notifyError = useNotifyError();
@@ -71,7 +70,7 @@ const EquipPanel: React.FC<EquipPanelProps> = ({ isStandaloneView = true, initia
 
     const petId = selectedPet || null;
     const { entries } = useInventory({ chain });
-    const { bySlot, isLoading: slotsLoading, refetch: refetchSlots } = usePetEquipment({ chain, petId });
+    const { bySlot, isLoading: slotsLoading } = usePetEquipment({ chain, petId });
     const { canEquip, equip, unequip, equipLifecycle, unequipLifecycle, isPending } = useEquipItem({
         chain,
         petId,
@@ -112,7 +111,6 @@ const EquipPanel: React.FC<EquipPanelProps> = ({ isStandaloneView = true, initia
         try {
             await equip(slot, itemType);
             setChoice((current) => ({ ...current, [slot]: '' }));
-            refetchSlots();
         } catch (err) {
             console.error('[equip]', err);
         }
@@ -121,7 +119,6 @@ const EquipPanel: React.FC<EquipPanelProps> = ({ isStandaloneView = true, initia
     const handleUnequip = async (slot: number) => {
         try {
             await unequip(slot);
-            refetchSlots();
         } catch (err) {
             console.error('[equip]', err);
         }
@@ -130,15 +127,11 @@ const EquipPanel: React.FC<EquipPanelProps> = ({ isStandaloneView = true, initia
     return (
         <>
             <div className="interface">
-                {!isStandaloneView && (
-                    <>
-                        <h4>
-                            <Icon as={ShieldIcon} tone={Tones.Amber} />
-                            Equipment
-                        </h4>
-                        <p>Fit your pet with gear. Stats apply in backend battles.</p>
-                    </>
-                )}
+                <h4>
+                    <Icon as={ShieldIcon} tone={Tones.Amber} />
+                    Equipment
+                </h4>
+                <p>Fit your pet with gear. Stats apply in backend battles.</p>
 
                 <div className="interaction-visual">
                     {selectedPetObj ? (

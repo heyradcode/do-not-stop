@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const repo = {
     findAllDefinitions: vi.fn(),
     findBalances: vi.fn(),
-    findDefinitions: vi.fn(),
     findEquipment: vi.fn(),
     findUnclaimedEntitlements: vi.fn(),
 };
@@ -11,12 +10,11 @@ const repo = {
 vi.mock('@repositories/inventory.repository', () => ({
     findAllDefinitions: () => repo.findAllDefinitions(),
     findBalances: (chain: string, owner: string) => repo.findBalances(chain, owner),
-    findDefinitions: (itemTypes: string[]) => repo.findDefinitions(itemTypes),
     findEquipment: (chain: string, petId: string) => repo.findEquipment(chain, petId),
     findUnclaimedEntitlements: (chain: string, owner: string) => repo.findUnclaimedEntitlements(chain, owner),
 }));
 
-import { getInventory, getPendingItems, getPetEquipment } from '@features/inventory';
+import { getInventory, getPendingItems, getPetEquipment, resetItemCatalog } from '@features/inventory';
 
 const POTION = {
     itemType: '100',
@@ -42,13 +40,16 @@ const BLADE = {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    // The catalog is cached for the process's life, so it has to be dropped between cases or
+    // the first one's fixture answers all the rest.
+    resetItemCatalog();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 });
 
 describe('getInventory', () => {
     it('joins balances onto the catalog', async () => {
         repo.findBalances.mockResolvedValue([{ itemType: '100', quantity: 3n }]);
-        repo.findDefinitions.mockResolvedValue([POTION]);
+        repo.findAllDefinitions.mockResolvedValue([POTION]);
 
         const entries = await getInventory('evm', '0xABC');
 
@@ -76,7 +77,7 @@ describe('getInventory', () => {
     // A uint256 balance does not fit a JS number, so it has to leave as a string.
     it('serializes the quantity as a string', async () => {
         repo.findBalances.mockResolvedValue([{ itemType: '100', quantity: 9007199254740993n }]);
-        repo.findDefinitions.mockResolvedValue([POTION]);
+        repo.findAllDefinitions.mockResolvedValue([POTION]);
 
         const entries = await getInventory('evm', '0xabc');
 
@@ -88,7 +89,7 @@ describe('getInventory', () => {
             { itemType: '100', quantity: 1n },
             { itemType: '999', quantity: 5n },
         ]);
-        repo.findDefinitions.mockResolvedValue([POTION]);
+        repo.findAllDefinitions.mockResolvedValue([POTION]);
 
         const entries = await getInventory('evm', '0xabc');
 
@@ -99,14 +100,14 @@ describe('getInventory', () => {
     it('skips the catalog fetch entirely for an empty bag', async () => {
         repo.findBalances.mockResolvedValue([]);
         expect(await getInventory('evm', '0xabc')).toEqual([]);
-        expect(repo.findDefinitions).not.toHaveBeenCalled();
+        expect(repo.findAllDefinitions).not.toHaveBeenCalled();
     });
 
     // An unreadable payload costs that item its effect, not the whole page: this is a read
     // path, and the only writer is the seeder, so it means stored shape and reader diverged.
     it('keeps an item whose effect payload no longer parses, minus the effect', async () => {
         repo.findBalances.mockResolvedValue([{ itemType: '100', quantity: 1n }]);
-        repo.findDefinitions.mockResolvedValue([{ ...POTION, effect: { kind: 'teleport' } }]);
+        repo.findAllDefinitions.mockResolvedValue([{ ...POTION, effect: { kind: 'teleport' } }]);
 
         const entries = await getInventory('evm', '0xabc');
 
@@ -119,7 +120,7 @@ describe('getInventory', () => {
 describe('getPetEquipment', () => {
     it('returns filled slots joined to the catalog', async () => {
         repo.findEquipment.mockResolvedValue([{ slot: 0, itemType: '1' }]);
-        repo.findDefinitions.mockResolvedValue([BLADE]);
+        repo.findAllDefinitions.mockResolvedValue([BLADE]);
 
         expect(await getPetEquipment('evm', '7')).toEqual([
             { slot: 0, item: expect.objectContaining({ key: 'iron_fang' }) },
@@ -129,7 +130,7 @@ describe('getPetEquipment', () => {
     it('returns nothing for a pet with no gear', async () => {
         repo.findEquipment.mockResolvedValue([]);
         expect(await getPetEquipment('evm', '7')).toEqual([]);
-        expect(repo.findDefinitions).not.toHaveBeenCalled();
+        expect(repo.findAllDefinitions).not.toHaveBeenCalled();
     });
 });
 
@@ -145,7 +146,7 @@ describe('getPendingItems', () => {
 
     it('joins entitlements onto the catalog and names what paid them', async () => {
         repo.findUnclaimedEntitlements.mockResolvedValue([row]);
-        repo.findDefinitions.mockResolvedValue([POTION]);
+        repo.findAllDefinitions.mockResolvedValue([POTION]);
 
         expect(await getPendingItems('evm', '0xabc')).toEqual([
             {
@@ -172,7 +173,7 @@ describe('getPendingItems', () => {
 
     it('hides an entitlement naming an item the catalog does not have', async () => {
         repo.findUnclaimedEntitlements.mockResolvedValue([{ ...row, itemType: '999' }]);
-        repo.findDefinitions.mockResolvedValue([]);
+        repo.findAllDefinitions.mockResolvedValue([]);
 
         expect(await getPendingItems('evm', '0xabc')).toEqual([]);
         expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('e1'));
@@ -181,6 +182,6 @@ describe('getPendingItems', () => {
     it('skips the catalog fetch when nothing is waiting', async () => {
         repo.findUnclaimedEntitlements.mockResolvedValue([]);
         expect(await getPendingItems('evm', '0xabc')).toEqual([]);
-        expect(repo.findDefinitions).not.toHaveBeenCalled();
+        expect(repo.findAllDefinitions).not.toHaveBeenCalled();
     });
 });

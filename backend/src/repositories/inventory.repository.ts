@@ -35,13 +35,6 @@ export function findAllDefinitions(): Promise<ItemDefinitionRow[]> {
     return prisma.itemDefinition.findMany({ orderBy: { itemType: 'asc' } });
 }
 
-export function findDefinitions(itemTypes: string[]): Promise<ItemDefinitionRow[]> {
-    if (itemTypes.length === 0) {
-        return Promise.resolve([]);
-    }
-    return prisma.itemDefinition.findMany({ where: { itemType: { in: itemTypes } } });
-}
-
 export function findDefinitionByType(itemType: string): Promise<ItemDefinitionRow | null> {
     return prisma.itemDefinition.findUnique({ where: { itemType } });
 }

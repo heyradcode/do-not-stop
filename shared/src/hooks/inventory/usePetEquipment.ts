@@ -2,8 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../contexts/ApiClientContext';
 import { useAuth } from '../../contexts/AuthContext';
 import type { PetChain } from '../../types/pet';
-import type { EquippedItem, ItemDefinition } from '../../types/item';
-import { toItemDefinition } from './useInventory';
+import type { EquippedItem } from '../../types/item';
+import { ITEM_FIELDS, toItemDefinition, type WireItem } from './useInventory';
 
 /**
  * What a pet has equipped (roadmap §4).
@@ -17,14 +17,10 @@ const PET_EQUIPMENT_QUERY = `
     query PetEquipment($chain: String!, $petId: String!) {
         petEquipment(chain: $chain, petId: $petId) {
             slot
-            item { itemType key category slot rarity effect name description }
+            item { ${ITEM_FIELDS} }
         }
     }
 `;
-
-interface WireItem extends Omit<ItemDefinition, 'effect'> {
-    effect: string | null;
-}
 
 interface GraphQLResponse {
     data?: { petEquipment: { slot: number; item: WireItem }[] };

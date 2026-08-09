@@ -12,7 +12,6 @@ vi.mock('../../src/contexts/AuthContext', () => ({ useAuth: () => auth }));
 
 import { useInventory } from '../../src/hooks/inventory/useInventory';
 import { usePetEquipment } from '../../src/hooks/inventory/usePetEquipment';
-import { useItemCatalog } from '../../src/hooks/inventory/useItemCatalog';
 import { useSpendItem } from '../../src/hooks/inventory/useSpendItem';
 
 /** The wire shape: `effect` is a JSON string, as the server sends it. */
@@ -142,26 +141,6 @@ describe('usePetEquipment', () => {
         expect(result.current.equipped[0]!.item.effect).toEqual({
             kind: 'stat_bonus', hp: 0, atk: 4, def: 0, int: 0, mdef: 0,
         });
-    });
-});
-
-describe('useItemCatalog', () => {
-    beforeEach(() => {
-        post.mockResolvedValue({ data: { data: { itemCatalog: [POTION, BLADE] } } });
-    });
-
-    it('indexes the catalog by token id, which is what every read joins on', async () => {
-        const { result } = renderHook(() => useItemCatalog(), { wrapper });
-
-        await waitFor(() => expect(result.current.items).toHaveLength(2));
-        expect(result.current.byType.get('1')!.key).toBe('iron_fang');
-        expect(result.current.byType.get('100')!.key).toBe('xp_potion_i');
-    });
-
-    it('does not fetch when unauthenticated', () => {
-        auth.isAuthenticated = false;
-        renderHook(() => useItemCatalog(), { wrapper });
-        expect(post).not.toHaveBeenCalled();
     });
 });
 

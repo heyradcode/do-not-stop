@@ -3,7 +3,6 @@ import { normalizeAccount } from '@cryptopets/protocol';
 import {
     findAllDefinitions,
     findBalances,
-    findDefinitions,
     findEquipment,
     findEquipmentForPets,
     findUnclaimedEntitlements,
@@ -99,7 +98,7 @@ export async function getPendingItems(chain: string, owner: string): Promise<Pen
 }
 
 export async function getCatalog(): Promise<ItemView[]> {
-    return (await findAllDefinitions()).map(toItemView);
+    return [...(await catalogByType()).values()];
 }
 
 /**
@@ -190,10 +189,41 @@ export async function getPetEquipmentForPets(
     return [...byPet].map(([petId, equipped]) => ({ petId, equipped }));
 }
 
+/**
+ * The catalog, read once per process.
+ *
+ * `item_definition` is backend-owned content whose only writer is `scripts/seed-item-catalog.ts`
+ * — nothing in `src` inserts or updates it. Before this, every read path re-SELECTed it and
+ * re-validated each row's effect JSON: three queries just to open the bag, and two more on
+ * the battle-accept path, all to answer the same fifteen-row question.
+ *
+ * Caching for the process's life is also the *consistent* choice, not just the cheap one.
+ * `servedRuleset()` already caches catalog-derived data and documents that a catalog edit
+ * needs a restart. With one half frozen and the other live, a mid-process seeder run produced
+ * a ruleset that did not price an item the bag was already showing.
+ */
+let cached: Map<string, ItemView> | null = null;
+
+async function catalogByType(): Promise<Map<string, ItemView>> {
+    if (!cached) {
+        cached = new Map((await findAllDefinitions()).map((row) => [row.itemType, toItemView(row)]));
+    }
+    return cached;
+}
+
+/** Drops the cache, for the seeder and for tests. Mirrors `resetServedRuleset`. */
+export function resetItemCatalog(): void {
+    cached = null;
+}
+
 async function definitionsByType(itemTypes: string[]): Promise<Map<string, ItemView>> {
-    const unique = [...new Set(itemTypes)];
-    const rows = await findDefinitions(unique);
-    return new Map(rows.map((row) => [row.itemType, toItemView(row)]));
+    const catalog = await catalogByType();
+    const wanted = new Map<string, ItemView>();
+    for (const itemType of new Set(itemTypes)) {
+        const definition = catalog.get(itemType);
+        if (definition) wanted.set(itemType, definition);
+    }
+    return wanted;
 }
 
 function toItemView(row: ItemDefinitionRow): ItemView {

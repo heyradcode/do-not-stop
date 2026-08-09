@@ -8,6 +8,7 @@ export {
     getPendingItems,
     getPetEquipment,
     getPetEquipmentForPets,
+    resetItemCatalog,
     type EquippedItem,
     type InventoryEntry,
     type PendingItem,

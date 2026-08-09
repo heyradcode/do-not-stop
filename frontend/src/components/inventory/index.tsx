@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     explainItem,
+    ITEM_CATEGORIES,
     getRarityColor,
     getRarityName,
     useChainCapabilities,
@@ -46,8 +47,22 @@ function petName(pets: { id: unknown; name: string }[], petId: string): string {
     return pets.find((pet) => String(pet.id) === petId)?.name ?? `pet ${petId}`;
 }
 
-/** Display order: what you can act on first, what merely accumulates last. */
-const CATEGORY_ORDER = ['consumable', 'equipment', 'collectible', 'material'] as const;
+/**
+ * Display order: what you can act on first, what merely accumulates last.
+ *
+ * Derived from the shared vocabulary rather than restated, so a category added to
+ * `ITEM_CATEGORIES` cannot pass backend validation, be stored, be returned by the API, and
+ * then silently fail to render here because this list never heard about it.
+ */
+const CATEGORY_RANK: Record<string, number> = {
+    consumable: 0,
+    equipment: 1,
+    collectible: 2,
+    material: 3,
+};
+const CATEGORY_ORDER = [...ITEM_CATEGORIES].sort(
+    (a, b) => (CATEGORY_RANK[a] ?? Number.MAX_SAFE_INTEGER) - (CATEGORY_RANK[b] ?? Number.MAX_SAFE_INTEGER),
+);
 
 const CATEGORY_LABELS: Record<string, string> = {
     consumable: 'Consumables',
@@ -129,16 +144,20 @@ const Inventory: React.FC = () => {
     const selectedPet = petId ?? (pets[0] ? String(pets[0].id) : null);
 
     /**
-     * Which half of the bag is showing.
+     * Which half of the bag is showing, and — when it is the equipment half — which pet.
      *
      * Equipment lives here rather than on its own route. Escrow takes an equipped item out of
-     * the wallet, so it leaves the bag — and with `/equip` reachable only from an item in the
-     * bag, a player who equipped everything had no way back to the screen that takes it off.
+     * the wallet, so it leaves the bag, and with `/equip` reachable only from an item in the
+     * bag a player who equipped everything had no way back to the screen that takes it off.
      * Hanging it off Inventory, which is always in the sidebar, removes that trap.
+     *
+     * One state rather than a tab plus a separate pet id: the pet only means anything while
+     * the equipment half is showing, and as its own value it was never cleared — so a later
+     * plain click on "Equipment" reopened on whichever pet the bag last sent here.
      */
-    const [tab, setTab] = useState<'bag' | 'equipment'>('bag');
-    /** Pet the equipment tab should open on, set when the bag sends someone there. */
-    const [equipPetId, setEquipPetId] = useState<string | null>(null);
+    const [tab, setTab] = useState<{ name: 'bag' } | { name: 'equipment'; petId: string | null }>({
+        name: 'bag',
+    });
 
     /**
      * What the player's pets are wearing.
@@ -223,7 +242,7 @@ const Inventory: React.FC = () => {
                     className={styles.slotButton}
                     aria-label={`Equip ${entry.item.name} on a pet`}
                     title="Equip on a pet"
-                    onClick={() => setTab('equipment')}
+                    onClick={() => setTab({ name: 'equipment', petId: null })}
                 >
                     <Icon as={MuscleIcon} size="0.95em" noGap />
                 </button>
@@ -271,7 +290,7 @@ const Inventory: React.FC = () => {
                     size="sm"
                     onClick={() => {
                         setSelected(null);
-                        setTab('equipment');
+                        setTab({ name: 'equipment', petId: null });
                     }}
                 >
                     <Icon as={MuscleIcon} size="1.05em" noGap />
@@ -320,9 +339,9 @@ const Inventory: React.FC = () => {
                             key={id}
                             type="button"
                             role="tab"
-                            aria-selected={tab === id}
-                            className={tab === id ? `${styles.tab} ${styles.isActive}` : styles.tab}
-                            onClick={() => setTab(id)}
+                            aria-selected={tab.name === id}
+                            className={tab.name === id ? `${styles.tab} ${styles.isActive}` : styles.tab}
+                            onClick={() => setTab(id === 'equipment' ? { name: 'equipment', petId: null } : { name: 'bag' })}
                         >
                             {label}
                         </button>
@@ -330,12 +349,12 @@ const Inventory: React.FC = () => {
                 </div>
 
                 <div className={styles.scroll}>
-                    {tab === 'equipment' ? (
+                    {tab.name === 'equipment' ? (
                         // The same panel `/equip` used to host. Fitting gear is a wallet
                         // signature against one pet, which is a different shape from the rest
                         // of this screen, so it stays its own component rather than being
                         // dissolved into the grid.
-                        <EquipPanel isStandaloneView={false} initialPetId={equipPetId} />
+                        <EquipPanel initialPetId={tab.petId} />
                     ) : (
                     <>
                     {failure ? (
@@ -408,10 +427,9 @@ const Inventory: React.FC = () => {
                                                         type="button"
                                                         className={styles.open}
                                                         aria-label={`${entry.item.name}, equipped on ${entry.petName} — manage equipment`}
-                                                        onClick={() => {
-                                                            setEquipPetId(entry.petId);
-                                                            setTab('equipment');
-                                                        }}
+                                                        onClick={() =>
+                                                            setTab({ name: 'equipment', petId: entry.petId })
+                                                        }
                                                     />
                                                     <span className={styles.badge}>
                                                         {getRarityName(entry.item.rarity)}

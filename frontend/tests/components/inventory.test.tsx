@@ -39,6 +39,9 @@ vi.mock('@shared/core', () => ({
     getRarityName: (r: number) =>
         ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'][r - 1] ?? 'Unknown',
     SLOT_NAMES: { 0: 'weapon', 1: 'armor', 2: 'trinket' },
+    // The real list: the bag derives its display order from it, so stubbing a different set
+    // would stop this suite checking that a new category actually renders.
+    ITEM_CATEGORIES: ['consumable', 'equipment', 'collectible', 'material'],
     // Null by default: no image service, so ItemArt renders nothing and most cases stay
     // about grouping and labelling. The art has its own suite in components/item.
     itemArtUrl: (itemType: string) => itemArtUrl(itemType),

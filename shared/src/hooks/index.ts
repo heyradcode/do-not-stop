@@ -146,7 +146,6 @@ export {
     type UseInventoryOptions,
     type UseInventoryResult,
 } from './inventory/useInventory';
-export { useItemCatalog, type UseItemCatalogResult } from './inventory/useItemCatalog';
 export {
     usePetEquipment,
     petEquipmentQueryKey,

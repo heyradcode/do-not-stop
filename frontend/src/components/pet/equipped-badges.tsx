@@ -18,9 +18,6 @@ import styles from './equipped-badges.module.css';
  * placeholder on every card would cost more attention than the feature is worth.
  */
 
-/** Slot order, so a pet's icons do not reshuffle between renders or between cards. */
-const SLOT_ORDER = [0, 1, 2];
-
 export type EquippedBadgesProps = {
     equipped: readonly EquippedItem[] | undefined;
     /**
@@ -39,9 +36,10 @@ export type EquippedBadgesProps = {
 const EquippedBadges: React.FC<EquippedBadgesProps> = ({ equipped, rarity, size = 'sm' }) => {
     if (!equipped || equipped.length === 0) return null;
 
-    const ordered = [...equipped].sort(
-        (a, b) => SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot),
-    );
+    // By slot, so a pet's icons do not reshuffle between renders or between cards. Sorted on
+    // the number itself rather than through a lookup table, which would rank an unknown
+    // fourth slot ahead of the weapon instead of after the trinket.
+    const ordered = [...equipped].sort((a, b) => a.slot - b.slot);
 
     return (
         <div

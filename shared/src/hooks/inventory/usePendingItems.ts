@@ -3,7 +3,7 @@ import { useApiClient } from '../../contexts/ApiClientContext';
 import { useAuth } from '../../contexts/AuthContext';
 import type { PetChain } from '../../types/pet';
 import type { ItemDefinition } from '../../types/item';
-import { inventoryQueryKey, toItemDefinition } from './useInventory';
+import { inventoryQueryKey, ITEM_FIELDS, toItemDefinition, type WireItem } from './useInventory';
 
 /**
  * Items earned but not yet minted, and the claim that mints them (roadmap §4).
@@ -18,7 +18,7 @@ const PENDING_QUERY = `
     query PendingItems($chain: String!) {
         pendingItems(chain: $chain) {
             entitlementId
-            item { itemType key category slot rarity effect name description }
+            item { ${ITEM_FIELDS} }
             quantity
             source
             sourceRef
@@ -26,10 +26,6 @@ const PENDING_QUERY = `
         }
     }
 `;
-
-interface WireItem extends Omit<ItemDefinition, 'effect'> {
-    effect: string | null;
-}
 
 interface WirePending {
     entitlementId: string;

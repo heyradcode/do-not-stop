@@ -1,4 +1,4 @@
-import { hexToBytes, keccak256Hex, normalizeAccount, utf8ToBytes, type Hex } from '@cryptopets/protocol';
+import { concatBytes, hexToBytes, keccak256Hex, normalizeAccount, utf8ToBytes, type Hex } from '@cryptopets/protocol';
 import type { Prisma } from '@generated/prisma/client';
 
 import { ITEM_CATALOG } from './catalog.data';
@@ -118,7 +118,7 @@ function rollSide(seed: Hex, battleId: string, side: 'winner' | 'loser', chanceB
     // whether it pays and the low half decides what, so a near-miss on the chance roll
     // cannot bias which item a hit would have produced.
     const digest = hexToBytes(
-        keccak256Hex(concat(hexToBytes(seed), utf8ToBytes(`${battleId}:${side}:DROP`))),
+        keccak256Hex(concatBytes([hexToBytes(seed), utf8ToBytes(`${battleId}:${side}:DROP`)])),
     );
 
     if (readUint32(digest, 0) % 10_000 >= chanceBps) {
@@ -143,12 +143,6 @@ function readUint32(bytes: Uint8Array, offset: number): number {
     );
 }
 
-function concat(a: Uint8Array, b: Uint8Array): Uint8Array {
-    const out = new Uint8Array(a.length + b.length);
-    out.set(a, 0);
-    out.set(b, a.length);
-    return out;
-}
 
 /**
  * Records a battle's drops as unclaimed entitlements.

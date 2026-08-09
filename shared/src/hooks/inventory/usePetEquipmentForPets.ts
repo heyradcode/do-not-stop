@@ -2,8 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../contexts/ApiClientContext';
 import { useAuth } from '../../contexts/AuthContext';
 import type { PetChain } from '../../types/pet';
-import type { EquippedItem, ItemDefinition } from '../../types/item';
-import { toItemDefinition } from './useInventory';
+import type { EquippedItem } from '../../types/item';
+import { ITEM_FIELDS, toItemDefinition, type WireItem } from './useInventory';
 
 /**
  * What several pets have equipped, in one request (roadmap §4).
@@ -23,15 +23,11 @@ const PET_EQUIPMENT_FOR_PETS_QUERY = `
             petId
             equipped {
                 slot
-                item { itemType key category slot rarity effect name description }
+                item { ${ITEM_FIELDS} }
             }
         }
     }
 `;
-
-interface WireItem extends Omit<ItemDefinition, 'effect'> {
-    effect: string | null;
-}
 
 interface GraphQLResponse {
     data?: { petEquipmentForPets: { petId: string; equipped: { slot: number; item: WireItem }[] }[] };
@@ -80,6 +76,11 @@ export function petEquipmentForPetsQueryPrefix(baseURL: string, chain: PetChain 
     return ['petEquipmentForPets', baseURL, chain];
 }
 
+/** One shared empty map. `query.data ?? new Map()` mints a new identity on every render
+ *  while the query is loading or disabled, which invalidates callers' `useMemo` on gear
+ *  during exactly the window the memo exists for. */
+const NO_GEAR: Map<string, EquippedItem[]> = new Map();
+
 export const usePetEquipmentForPets = ({
     chain,
     petIds,
@@ -113,7 +114,7 @@ export const usePetEquipmentForPets = ({
     });
 
     return {
-        byPet: query.data ?? new Map(),
+        byPet: query.data ?? NO_GEAR,
         isLoading: query.isLoading,
         error: query.error as Error | null,
         refetch: () => void query.refetch(),
