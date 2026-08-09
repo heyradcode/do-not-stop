@@ -2,52 +2,48 @@
 
 import { useEffect, useRef } from 'react';
 
-/** Fraction of the viewport height at which the track starts filling. */
-const ENTER_AT = 0.82;
-/** Share of the track's own height over which the fill completes. */
-const SPAN = 0.62;
+/** Fraction of the viewport height at which the track starts advancing. */
+const ENTER_AT = 0.9;
+/** Share of the track's own height over which it completes. */
+const SPAN = 0.78;
 
 const clamp = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 
 /**
  * Drives a 0-1 `--track-progress` on an element from its position in the
- * viewport, and stamps `data-reached` on any descendant carrying `data-at` once
- * progress passes that descendant's threshold.
+ * viewport, and hands the same value to `onFrame` for anything CSS cannot
+ * express on its own.
  *
- * Written straight to the DOM rather than held in React state: this updates on
- * every frame of a scroll, and re-rendering a section that often to move a
- * stroke offset would be the expensive way to do it.
+ * Scroll-linked but **not** pinned: the section scrolls past at normal speed
+ * and the value simply tracks where it is. That keeps a scene like this free —
+ * it costs no extra page height — which matters when another section on the
+ * page already owns the pinned treatment.
  *
- * Scroll-linked rather than fired once on entry, because here the progress is
- * the content — the road is showing how far the project has actually got. CSS
- * `animation-timeline` would express this natively but has no Safari support,
- * so it is one rAF-throttled passive listener instead.
+ * Written straight to the DOM rather than held in React state, since this
+ * updates on every frame of a scroll.
  */
-export default function useTrackProgress<T extends HTMLElement>() {
+export default function useTrackProgress<T extends HTMLElement>(
+  onFrame?: (progress: number, element: T) => void,
+  fallbackQuery?: string,
+) {
   const ref = useRef<T>(null);
+  const callback = useRef(onFrame);
+  callback.current = onFrame;
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
 
-    const marks = Array.from(el.querySelectorAll<HTMLElement>('[data-at]'));
+    const narrow = fallbackQuery ? window.matchMedia(fallbackQuery) : null;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    let frame = 0;
+    let attached = false;
 
     const write = (progress: number) => {
       el.style.setProperty('--track-progress', progress.toFixed(4));
-      marks.forEach((mark) => {
-        const at = Number(mark.dataset.at);
-        if (progress >= at) mark.setAttribute('data-reached', '');
-        else mark.removeAttribute('data-reached');
-      });
+      callback.current?.(progress, el);
     };
-
-    // Reduced motion still gets the finished road, just not the drawing of it.
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      write(1);
-      return;
-    }
-
-    let frame = 0;
 
     const update = () => {
       frame = 0;
@@ -60,16 +56,45 @@ export default function useTrackProgress<T extends HTMLElement>() {
       if (!frame) frame = requestAnimationFrame(update);
     };
 
-    update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
+    const attach = () => {
+      if (attached) return;
+      attached = true;
+      window.addEventListener('scroll', onScroll, { passive: true });
+      window.addEventListener('resize', onScroll, { passive: true });
+      update();
+    };
 
-    return () => {
+    const detach = () => {
+      if (!attached) return;
+      attached = false;
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       if (frame) cancelAnimationFrame(frame);
+      frame = 0;
     };
-  }, []);
+
+    const sync = () => {
+      // Where the layout falls back to something static, the scene is handed a
+      // neutral value rather than a finished one — a carousel rewound to its
+      // last frame would show its final card, not its first.
+      if (narrow?.matches || reduced.matches) {
+        detach();
+        write(0);
+      } else {
+        attach();
+      }
+    };
+
+    sync();
+    narrow?.addEventListener('change', sync);
+    reduced.addEventListener('change', sync);
+
+    return () => {
+      detach();
+      narrow?.removeEventListener('change', sync);
+      reduced.removeEventListener('change', sync);
+    };
+  }, [fallbackQuery]);
 
   return ref;
 }

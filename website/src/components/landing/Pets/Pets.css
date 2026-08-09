@@ -6,7 +6,7 @@
   & .tone-gold { --tone-rgb: var(--rarity-legendary-rgb); }
 
   & .rarity {
-    margin-bottom: 40px;
+    margin-bottom: 34px;
   }
 
   & .rarity-track {
@@ -93,172 +93,188 @@
       color: var(--text-muted);
     }
   }
+}
 
-  /* =========================================================================
-     Roster
-     ========================================================================= */
-  & .grid {
+/* =============================================================================
+   Roster carousel — a 3D ring turned by scroll position.
+
+   Scroll-synced, never pinned: the section moves past at normal speed and the
+   ring simply tracks where it is, so the roster adds no page height. The
+   roadmap owns the page's one pinned set-piece.
+   ============================================================================= */
+.pets .carousel {
+  --track-progress: 0;
+  --radius: clamp(250px, 30vw, 380px);
+
+  position: relative;
+  height: clamp(360px, 44vh, 460px);
+  perspective: 1250px;
+  perspective-origin: 50% 44%;
+}
+
+/* Pool of light the ring stands on. A real horizontal plane, so it
+   foreshortens with the scene rather than reading as a flat blur. */
+.pets .floor {
+  position: absolute;
+  inset-block-end: 6%;
+  inset-inline-start: 50%;
+  width: min(84%, 760px);
+  height: 190px;
+  translate: -50% 0;
+  transform: rotateX(80deg);
+  transform-origin: center top;
+  background: radial-gradient(
+    ellipse at center,
+    rgb(var(--neon-violet-rgb) / 26%),
+    transparent 68%
+  );
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.pets .ring {
+  position: absolute;
+  inset: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  transform-style: preserve-3d;
+  /* One rotation per card across the section, so every pet faces front once. */
+  transform: rotateY(calc(var(--track-progress) * var(--sweep) * -1));
+}
+
+.pets .slot {
+  --dist: 0;
+
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  width: clamp(200px, 22vw, 268px);
+  margin-block-start: calc(clamp(200px, 22vw, 268px) * -0.72);
+  margin-inline-start: calc(clamp(200px, 22vw, 268px) * -0.5);
+  transform-style: preserve-3d;
+  transform: rotateY(var(--angle)) translateZ(var(--radius));
+  /* Cards on the far side of the ring would otherwise show mirrored art. */
+  backface-visibility: hidden;
+
+  &.r-legendary { --tone-rgb: var(--rarity-legendary-rgb); }
+  &.r-epic { --tone-rgb: var(--rarity-epic-rgb); }
+  &.r-rare { --tone-rgb: var(--rarity-rare-rgb); }
+}
+
+/* Falloff is continuous, driven by --dist rather than switching between
+   discrete states, so cards dim and soften as they turn away instead of
+   stepping. */
+.pets .pet-card {
+  position: relative;
+  padding: 12px 12px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  border: 1px solid rgb(var(--tone-rgb) / 36%);
+  box-shadow:
+    var(--glow-inset-md),
+    0 0 22px rgb(var(--tone-rgb) / 14%),
+    var(--elev-3);
+  text-align: center;
+  color: var(--text-bright);
+  opacity: calc(1 - var(--dist) * 0.26);
+  filter: brightness(calc(1 - var(--dist) * 0.16)) blur(calc(var(--dist) * 0.7px));
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out);
+}
+
+.pets .slot[data-front] .pet-card {
+  border-color: rgb(var(--tone-rgb) / 82%);
+  box-shadow:
+    var(--glow-inset-md),
+    0 0 40px rgb(var(--tone-rgb) / 34%),
+    var(--elev-4);
+}
+
+.pets .art {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 12px;
+  border: 1px solid rgb(var(--tone-rgb) / 40%);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 35%);
+
+  & img {
+    display: block;
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px;
+    height: 100%;
+    object-fit: cover;
   }
 
-  & .card {
-    --tone-rgb: var(--border-rgb);
-
-    position: relative;
-    overflow: hidden;
-    background: var(--surface-card);
-    border: 1px solid rgb(var(--tone-rgb) / 34%);
-    padding: 14px 14px 18px;
-    text-align: center;
-    color: var(--text-bright);
-    box-shadow: var(--glow-inset-md);
-    transition:
-      border-color var(--dur-base) var(--ease-out),
-      box-shadow var(--dur-base) var(--ease-out),
-      transform var(--dur-base) var(--ease-out);
-
-    &.r-legendary { --tone-rgb: var(--rarity-legendary-rgb); }
-    &.r-epic { --tone-rgb: var(--rarity-epic-rgb); }
-    &.r-rare { --tone-rgb: var(--rarity-rare-rgb); }
-
-    /* Rarity edge. */
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      padding: 1px;
-      pointer-events: none;
-      background: linear-gradient(135deg, transparent 38%, rgb(var(--tone-rgb) / 72%) 100%);
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor;
-              mask-composite: exclude;
-    }
-
-    &:hover {
-      border-color: rgb(var(--tone-rgb) / 60%);
-      box-shadow:
-        var(--glow-inset-md),
-        0 0 34px rgb(var(--tone-rgb) / 28%),
-        var(--elev-3);
-    }
-  }
-
-  /* Holographic sweep. Its own element because NeonCard owns ::after and the
-     rarity edge owns ::before. */
-  & .sheen {
+  /* Rarity tint over the art, so the tier reads before the badge does. */
+  &::after {
+    content: '';
     position: absolute;
     inset: 0;
-    border-radius: inherit;
     pointer-events: none;
-    background: linear-gradient(
-      115deg,
-      transparent 32%,
-      rgb(255 255 255 / 13%) 46%,
-      rgb(var(--tone-rgb) / 26%) 53%,
-      transparent 68%
-    );
-    translate: -130% 0;
-    opacity: 0;
-    transition:
-      translate 780ms var(--ease-out),
-      opacity var(--dur-base) var(--ease-out);
+    background: linear-gradient(180deg, transparent 55%, rgb(var(--tone-rgb) / 24%));
   }
+}
 
-  & .card:hover .sheen {
-    translate: 130% 0;
-    opacity: 1;
-  }
+/* Holographic sweep, run only on the card at the front of the ring. */
+.pets .sheen {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 34%,
+    rgb(255 255 255 / 14%) 46%,
+    rgb(var(--tone-rgb) / 26%) 53%,
+    transparent 68%
+  );
+  translate: -130% 0;
+  opacity: 0;
+}
 
-  /* Full-bleed square frame, not a circular avatar. The generator renders opaque
-     1:1 art with its own vignette and no alpha, so a circle would crop a composed
-     square and a `contain` fit would show its corners inside the ring. */
-  & .art {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1;
-    margin: 0 0 14px;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    border: 1px solid rgb(var(--tone-rgb) / 42%);
-    box-shadow:
-      inset 0 0 0 1px rgb(0 0 0 / 35%),
-      0 0 16px rgb(var(--tone-rgb) / 18%);
-    transition:
-      border-color var(--dur-base) var(--ease-out),
-      box-shadow var(--dur-base) var(--ease-out);
+.pets .slot[data-front] .sheen {
+  opacity: 1;
+  animation: pets-sheen 3.6s var(--ease-in-out) infinite;
+}
 
-    /* Rarity tint over the art, so the tier reads before the badge does. */
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background: linear-gradient(180deg, transparent 55%, rgb(var(--tone-rgb) / 22%));
-      opacity: 0.75;
-      transition: opacity var(--dur-slow) var(--ease-out);
-    }
+.pets .pet-card h3 {
+  font-family: var(--title-font);
+  margin: 0 0 8px;
+  font-size: 1.02rem;
+  letter-spacing: 0.4px;
+  color: var(--text-title);
+}
 
-    & img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: scale var(--dur-slow) var(--ease-out);
-    }
-  }
+.pets .meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 
-  & .card:hover .art {
-    border-color: rgb(var(--tone-rgb) / 80%);
-    box-shadow:
-      inset 0 0 0 1px rgb(0 0 0 / 35%),
-      0 0 26px rgb(var(--tone-rgb) / 34%);
+.pets .level {
+  font-family: var(--content-font);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
 
-    &::after { opacity: 1; }
-
-    & img { scale: 1.05; }
-  }
-
-  & .card h3 {
-    position: relative;
-    font-family: var(--title-font);
-    margin: 0 0 10px;
-    font-size: 1.1rem;
-    letter-spacing: 0.4px;
-    color: var(--text-title);
-  }
-
-  & .meta {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  & .level {
-    font-family: var(--content-font);
-    font-size: 0.78rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.7px;
-  }
-
-  & .tag {
-    font-family: var(--content-font);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    padding: 3px 9px;
-    border-radius: var(--radius-pill);
-    font-weight: 700;
-    color: rgb(var(--tone-rgb));
-    border: 1px solid rgb(var(--tone-rgb) / 70%);
-    background: rgb(var(--tone-rgb) / 12%);
-    box-shadow: 0 0 10px rgb(var(--tone-rgb) / 28%);
-  }
+.pets .tag {
+  font-family: var(--content-font);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  color: rgb(var(--tone-rgb));
+  border: 1px solid rgb(var(--tone-rgb) / 70%);
+  background: rgb(var(--tone-rgb) / 12%);
+  box-shadow: 0 0 10px rgb(var(--tone-rgb) / 28%);
 }
 
 .js-reveal .pets .rarity[data-reveal-visible] .rarity-segment {
@@ -271,17 +287,60 @@ html:not(.js-reveal) .pets .rarity-segment {
   flex-basis: var(--share);
 }
 
+@keyframes pets-sheen {
+  0%, 62% { translate: -130% 0; }
+  92%, 100% { translate: 130% 0; }
+}
+
 @media (max-width: 1024px) {
-  .pets {
-    & .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    & .rarity-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pets .rarity-legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 600px) {
-  .pets {
-    & .rarity-legend { grid-template-columns: 1fr; }
-    & .card { padding: 10px 10px 14px; }
-    & .card h3 { font-size: 1rem; }
+/* =============================================================================
+   Flat fallback.
+
+   A ring this size cannot be read on a narrow screen, and under reduced motion
+   a scroll-turned carousel is the whole problem. Both get the grid instead —
+   every card upright, full opacity, no perspective.
+   ============================================================================= */
+@media (max-width: 900px), (prefers-reduced-motion: reduce) {
+  .pets .carousel {
+    height: auto;
+    perspective: none;
   }
+
+  .pets .floor { display: none; }
+
+  .pets .ring {
+    position: relative;
+    inset: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    transform: none;
+    transform-style: flat;
+  }
+
+  .pets .slot {
+    position: relative;
+    inset: auto;
+    width: auto;
+    margin: 0;
+    transform: none;
+    backface-visibility: visible;
+  }
+
+  .pets .pet-card {
+    opacity: 1;
+    filter: none;
+  }
+
+  .pets .slot .sheen { display: none; }
+}
+
+@media (max-width: 600px) {
+  .pets .rarity-legend { grid-template-columns: 1fr; }
+  .pets .ring { grid-template-columns: 1fr; }
 }
