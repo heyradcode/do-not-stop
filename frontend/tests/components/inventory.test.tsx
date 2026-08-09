@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -132,9 +132,10 @@ describe('the bag', () => {
         expect(screen.queryByRole('heading', { name: 'Collectibles' })).not.toBeInTheDocument();
     });
 
-    // Rarity comes from the same helper the pet cards use, so the five tiers mean one thing
-    // across the app rather than two.
-    it('labels each item with its shared rarity tier and quantity', () => {
+    // The tile carries the picture, the name and the count and nothing else. The count stays
+    // because "how many do I have" is what a bag is scanned for; putting it behind a click
+    // would make the grid useless for its one job.
+    it('shows each item as a named tile with its stack count', () => {
         useInventory.mockReturnValue({
             entries: [{ item: BLADE, quantity: '2' }],
             isLoading: false,
@@ -144,11 +145,33 @@ describe('the bag', () => {
 
         renderBag();
 
-        expect(screen.getByText('Rare')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^Iron Fang, 2 held/ })).toBeInTheDocument();
         expect(screen.getByText('×2')).toBeInTheDocument();
+        // Detail belongs to the modal, so it is not on the tile.
+        expect(screen.queryByText('Rare')).not.toBeInTheDocument();
+        expect(screen.queryByText('A blunt starter blade.')).not.toBeInTheDocument();
     });
 
-    it('only offers Use on a consumable', () => {
+    // Rarity still comes from the same helper the pet cards use, so the five tiers mean one
+    // thing across the app — it just reads in the modal now.
+    it('opens a detail modal from a tile', async () => {
+        useInventory.mockReturnValue({
+            entries: [{ item: BLADE, quantity: '2' }],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+
+        renderBag();
+        await userEvent.click(screen.getByRole('button', { name: /^Iron Fang, 2 held/ }));
+
+        expect(screen.getByText('Rare')).toBeInTheDocument();
+        expect(screen.getByText('×2 held')).toBeInTheDocument();
+        expect(screen.getByText('A blunt starter blade.')).toBeInTheDocument();
+        expect(screen.getByText('What Iron Fang does, at length.')).toBeInTheDocument();
+    });
+
+    it('only offers Use on a consumable', async () => {
         useInventory.mockReturnValue({
             entries: [
                 { item: POTION, quantity: '1' },
@@ -162,9 +185,26 @@ describe('the bag', () => {
 
         renderBag();
 
-        // Icon-only now, so the accessible name is the only handle on it — which is exactly
-        // why it names the item and the pet rather than just saying "Use".
-        expect(screen.getAllByRole('button', { name: /^Use / })).toHaveLength(1);
+        // Nothing actionable on the tiles themselves any more.
+        expect(screen.queryByRole('button', { name: /Use on/ })).not.toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole('button', { name: /^Lesser Tonic, 1 held/ }));
+        expect(screen.getByRole('button', { name: /Use on Rex/ })).toBeInTheDocument();
+    });
+
+    it('offers nothing to do with a material', async () => {
+        useInventory.mockReturnValue({
+            entries: [{ item: SHARD, quantity: '1' }],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+
+        renderBag();
+        await userEvent.click(screen.getByRole('button', { name: /^Ember Shard, 1 held/ }));
+
+        expect(screen.queryByRole('button', { name: /Use on/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /Equip/ })).not.toBeInTheDocument();
     });
 
     it('spends the consumable on the selected pet', async () => {
@@ -176,9 +216,29 @@ describe('the bag', () => {
         });
 
         renderBag();
-        await userEvent.click(screen.getByRole('button', { name: /^Use / }));
+        await userEvent.click(screen.getByRole('button', { name: /^Lesser Tonic, 1 held/ }));
+        await userEvent.click(screen.getByRole('button', { name: /Use on Rex/ }));
 
         expect(spend).toHaveBeenCalledWith({ chain: 'evm', petId: '7', itemType: '100' });
+    });
+
+    // Closing on click would hide a failure; staying open on success would show a count that
+    // is already wrong.
+    it('closes the modal once the burn settles', async () => {
+        useInventory.mockReturnValue({
+            entries: [{ item: POTION, quantity: '1' }],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+
+        renderBag();
+        await userEvent.click(screen.getByRole('button', { name: /^Lesser Tonic, 1 held/ }));
+        await userEvent.click(screen.getByRole('button', { name: /Use on Rex/ }));
+
+        await waitFor(() => {
+            expect(screen.queryByText('Tastes of copper.')).not.toBeInTheDocument();
+        });
     });
 
     // Equipping is a wallet signature against one pet, so the bag sends the player to the
@@ -192,48 +252,11 @@ describe('the bag', () => {
         });
 
         renderBag();
-        await userEvent.click(screen.getByRole('button', { name: /^Equip .* on a pet$/ }));
+        await userEvent.click(screen.getByRole('button', { name: /^Iron Fang, 1 held/ }));
+        await userEvent.click(screen.getByRole('button', { name: /Equip on a pet/ }));
 
         expect(navigate).toHaveBeenCalledWith('/equip');
         expect(spend).not.toHaveBeenCalled();
-    });
-
-    /**
-     * The "?" belongs in the artwork's corner, and a corner only exists when there is a tile.
-     * Both halves are asserted because they are decided in different places: ItemArt reads
-     * the URL builder, the card reads the environment through isItemArtAvailable, and a card
-     * that disagreed with its own tile would position the button against nothing.
-     */
-    it('puts the help button on the artwork when there is artwork', () => {
-        vi.stubEnv('VITE_IMAGE_SERVICE_URL', 'https://art.example.com');
-        itemArtUrl.mockReturnValue('https://art.example.com/items/1.png');
-        useInventory.mockReturnValue({
-            entries: [{ item: BLADE, quantity: '1' }],
-            isLoading: false,
-            error: null,
-            refetch: vi.fn(),
-        });
-
-        renderBag();
-
-        const art = screen.getByAltText('Iron Fang');
-        const help = screen.getByRole('button', { name: /^What does Iron Fang do/ });
-        expect(art.parentElement).toContainElement(help);
-    });
-
-    it('falls back to the card footer when there is no artwork to hang it on', () => {
-        useInventory.mockReturnValue({
-            entries: [{ item: BLADE, quantity: '1' }],
-            isLoading: false,
-            error: null,
-            refetch: vi.fn(),
-        });
-
-        renderBag();
-
-        expect(screen.queryByAltText('Iron Fang')).not.toBeInTheDocument();
-        // Still reachable — the explanation must not disappear with the picture.
-        expect(screen.getByRole('button', { name: /^What does Iron Fang do/ })).toBeInTheDocument();
     });
 
     it('surfaces a read failure rather than rendering an empty bag', () => {

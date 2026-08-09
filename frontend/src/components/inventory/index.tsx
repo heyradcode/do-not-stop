@@ -1,17 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import {
-    explainItem,
     getRarityColor,
-    getRarityName,
-    itemStats,
-    SLOT_NAMES,
     useChainCapabilities,
     useInventory,
     usePendingItems,
     useSpendItem,
     usePetList,
+    type InventoryEntry,
     type ItemDefinition,
 } from '@shared/core';
 
@@ -19,7 +15,8 @@ import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
 import ItemArt, { hasItemArt } from '@components/item/item-art';
 import Icon, { BottleIcon, MuscleIcon } from '@components/ui/icon';
-import InfoTooltip from '@components/ui/info-tooltip';
+import NeonButton from '@components/ui/neon-button';
+import ItemDetailModal from './item-detail-modal';
 import { DASHBOARD_HOME, EQUIP_PATH } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import styles from './index.module.css';
@@ -53,69 +50,40 @@ const CATEGORY_LABELS: Record<string, string> = {
     material: 'Materials',
 };
 
-const ItemCard: React.FC<{
+/**
+ * One tile: the picture, the name, the stack count, and nothing else.
+ *
+ * A button rather than an article with a click handler, so it is reachable by keyboard and
+ * announced as something that opens — the whole card is the target, which is a much easier
+ * thing to hit on a phone than a control tucked in its corner.
+ *
+ * The stack count stays on the tile despite everything else moving to the modal. "How many
+ * do I have" is the one question a bag is scanned for, and answering it per item behind a
+ * click would make the grid useless for the thing it is for.
+ */
+const ItemTile: React.FC<{
     item: ItemDefinition;
     quantity: string;
-    action?: React.ReactNode;
-}> = ({ item, quantity, action }) => {
-    const stats = itemStats(item.effect);
-    const slot = item.category === 'equipment' && item.slot != null ? SLOT_NAMES[item.slot] : null;
-    const withArt = hasItemArt(item.itemType);
-
-    const help = (
-        <InfoTooltip subject={item.name}>
-            <p>{explainItem(item)}</p>
-        </InfoTooltip>
-    );
-
-    return (
-        <article
-            className={styles.card}
-            style={{ '--rarity': getRarityColor(item.rarity) } as React.CSSProperties}
-        >
-            {/* The "?" sits in the tile's top-right corner, which only exists when there is a
-                tile — with no image service the whole component renders nothing, so it moves
-                to the footer instead of being positioned against a box that is not there. */}
-            {withArt ? <ItemArt item={item} overlay={<span className={styles.artHelp}>{help}</span>} /> : null}
-            <header className={styles.cardHead}>
-                <h3 className={styles.cardName}>{item.name}</h3>
-                {/* Rendered even at one, so a stack of one and a stack of nine read the
-                    same shape rather than the badge appearing to mean something. */}
-                <span className={styles.quantity}>×{quantity}</span>
-            </header>
-
-            <p className={styles.meta}>
-                <span className={styles.rarity}>{getRarityName(item.rarity)}</span>
-                {slot ? <span className={styles.slot}>{slot}</span> : null}
-            </p>
-
-            {/* Abbreviated so a bonus reads at a glance and several fit one row. The long
-                form lives behind the "?" rather than being cut from the card entirely. */}
-            {stats.length > 0 ? (
-                <ul className={styles.stats}>
-                    {stats.map((stat) => (
-                        <li key={stat.label} className={styles.stat}>
-                            <span className={styles.statLabel}>{stat.label}</span>
-                            <span className={styles.statValue}>+{stat.value}</span>
-                        </li>
-                    ))}
-                </ul>
-            ) : null}
-
-            <p className={styles.description}>{item.description}</p>
-
-            {/* Omitted entirely when it would be empty: with the "?" on the artwork, a
-                collectible has nothing to put here and an empty row would still cost its
-                padding. */}
-            {action || !withArt ? (
-                <div className={styles.cardFoot}>
-                    {withArt ? null : <span className={styles.footHelp}>{help}</span>}
-                    {action ? <div className={styles.cardAction}>{action}</div> : null}
-                </div>
-            ) : null}
-        </article>
-    );
-};
+    onOpen: () => void;
+}> = ({ item, quantity, onOpen }) => (
+    <button
+        type="button"
+        className={styles.tile}
+        style={{ '--rarity': getRarityColor(item.rarity) } as React.CSSProperties}
+        onClick={onOpen}
+        aria-label={`${item.name}, ${quantity} held — open details`}
+    >
+        <ItemArt
+            item={item}
+            overlay={<span className={styles.count}>×{quantity}</span>}
+        />
+        {/* Without artwork the count has no corner to sit in, so it joins the name row. */}
+        <span className={styles.tileName}>
+            <span className={styles.tileTitle}>{item.name}</span>
+            {hasItemArt(item.itemType) ? null : <span className={styles.countInline}>×{quantity}</span>}
+        </span>
+    </button>
+);
 
 const Inventory: React.FC = () => {
     const navigate = useNavigate();
@@ -139,6 +107,10 @@ const Inventory: React.FC = () => {
     const [petId, setPetId] = useState<string | null>(null);
     const selectedPet = petId ?? (pets[0] ? String(pets[0].id) : null);
 
+    /** The item whose detail modal is open. Holds the entry, not just the id, so the modal
+     *  keeps rendering its own quantity while a refetch is in flight. */
+    const [selected, setSelected] = useState<InventoryEntry | null>(null);
+
     const grouped = useMemo(() => {
         const byCategory = new Map<string, typeof entries>();
         for (const entry of entries) {
@@ -157,6 +129,49 @@ const Inventory: React.FC = () => {
     }, [entries]);
 
     const failure = (error ?? spendError ?? claimError) as Error | null;
+
+    /**
+     * What the modal offers for one item. Built here rather than in the modal because only
+     * this component knows the chain and the selected pet — the modal's job is presenting an
+     * item, not deciding what may be done to one.
+     */
+    const actionFor = (entry: InventoryEntry): React.ReactNode => {
+        if (entry.item.category === 'consumable' && chain) {
+            return (
+                <NeonButton
+                    tone="amber"
+                    size="sm"
+                    disabled={isSpending || !selectedPet}
+                    onClick={() => {
+                        // Closes only once the burn has settled: closing on click would hide
+                        // the failure, and leaving it open on success would show a stale count.
+                        void spend({ chain, petId: selectedPet!, itemType: entry.item.itemType })
+                            .then(() => setSelected(null))
+                            .catch(() => undefined);
+                    }}
+                >
+                    <Icon as={BottleIcon} size="1.05em" noGap />
+                    {isSpending
+                        ? ' Using…'
+                        : selectedPet
+                            ? ` Use on ${petName(pets, selectedPet)}`
+                            : ' Pick a pet first'}
+                </NeonButton>
+            );
+        }
+        if (entry.item.category === 'equipment') {
+            // Equipping is a wallet signature against one pet, so it belongs on the pet
+            // rather than in the bag. A link, not a note: telling a player where to go
+            // without taking them there is a dead end.
+            return (
+                <NeonButton tone="amber" size="sm" onClick={() => navigate(EQUIP_PATH)}>
+                    <Icon as={MuscleIcon} size="1.05em" noGap />
+                    {' Equip on a pet'}
+                </NeonButton>
+            );
+        }
+        return null;
+    };
 
     return (
         <SessionGate
@@ -253,55 +268,11 @@ const Inventory: React.FC = () => {
                                     </h2>
                                     <div className={styles.grid}>
                                         {group.items.map((entry) => (
-                                            <ItemCard
+                                            <ItemTile
                                                 key={entry.item.itemType}
                                                 item={entry.item}
                                                 quantity={entry.quantity}
-                                                action={
-                                                    entry.item.category === 'consumable' && chain ? (
-                                                        // Icon-only, but never label-only: the
-                                                        // accessible name says which item and
-                                                        // which pet, because "Use" alone is the
-                                                        // one thing a screen reader user cannot
-                                                        // recover from the surrounding card.
-                                                        <button
-                                                            type="button"
-                                                            className={clsx(styles.iconAction, !selectedPet && styles.disabled)}
-                                                            disabled={isSpending || !selectedPet}
-                                                            aria-label={
-                                                                selectedPet
-                                                                    ? `Use ${entry.item.name} on ${petName(pets, selectedPet)}`
-                                                                    : `Use ${entry.item.name} — pick a pet first`
-                                                            }
-                                                            title={isSpending ? 'Using…' : 'Use'}
-                                                            onClick={() =>
-                                                                void spend({
-                                                                    chain,
-                                                                    petId: selectedPet!,
-                                                                    itemType: entry.item.itemType,
-                                                                })
-                                                            }
-                                                        >
-                                                            <Icon as={BottleIcon} size="1.15em" noGap />
-                                                        </button>
-                                                    ) : entry.item.category === 'equipment' ? (
-                                                        // Equipping is a wallet signature against
-                                                        // one pet, so it belongs on the pet rather
-                                                        // than in the bag. A link, not a note: the
-                                                        // player is holding gear and wants to use
-                                                        // it, and telling them where without
-                                                        // taking them there is a dead end.
-                                                        <button
-                                                            type="button"
-                                                            className={styles.iconAction}
-                                                            aria-label={`Equip ${entry.item.name} on a pet`}
-                                                            title="Equip on a pet"
-                                                            onClick={() => navigate(EQUIP_PATH)}
-                                                        >
-                                                            <Icon as={MuscleIcon} size="1.15em" noGap />
-                                                        </button>
-                                                    ) : null
-                                                }
+                                                onOpen={() => setSelected(entry)}
                                             />
                                         ))}
                                     </div>
@@ -311,6 +282,17 @@ const Inventory: React.FC = () => {
                     )}
                 </div>
             </DashboardPanel>
+
+            {selected ? (
+                <ItemDetailModal
+                    isOpen
+                    onClose={() => setSelected(null)}
+                    item={selected.item}
+                    quantity={selected.quantity}
+                    action={actionFor(selected)}
+                    error={spendError as Error | null}
+                />
+            ) : null}
         </SessionGate>
     );
 };

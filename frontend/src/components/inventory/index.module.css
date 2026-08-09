@@ -53,26 +53,33 @@
     display: grid;
     /* Auto-fill rather than a fixed column count: the bag is as wide as the window allows,
        and a fixed grid would leave a single potion stranded in a narrow column. */
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
     gap: 12px;
 }
 
-.card {
+/* A tile: picture, name, count. Everything else moved into the detail modal, because a grid
+   where every card also carried rarity, slot, stats and flavour was readable one card at a
+   time and a texture at any distance — the opposite of what a bag is scanned for. */
+.tile {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    padding: 14px 14px 14px 18px;
+    gap: 8px;
+    padding: 8px 8px 10px;
     border: 1px solid rgb(255 255 255 / 8%);
-    border-radius: 12px;
+    border-radius: 4px;
     background: rgb(255 255 255 / 3%);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
     overflow: hidden;
+    transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
 }
 
-/* The rarity reads as a stripe down the edge rather than as a border around the whole
-   card. A full border on five tiers turns a grid into a colour chart; a stripe stays
-   legible when nine of them sit side by side. */
-.card::before {
+/* Rarity as a stripe down the edge rather than a border around the whole tile: five tiers
+   bordering a dense grid turns it into a colour chart. */
+.tile::before {
     content: '';
     position: absolute;
     inset: 0 auto 0 0;
@@ -80,175 +87,66 @@
     background: var(--rarity, rgb(255 255 255 / 20%));
 }
 
-.cardHead {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
+.tile:hover {
+    border-color: rgb(125 214 255 / 34%);
+    background: rgb(255 255 255 / 6%);
+    transform: translateY(-2px);
 }
 
-.cardName {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 600;
-}
-
-.quantity {
-    font-variant-numeric: tabular-nums;
-    font-size: 0.85rem;
-    opacity: 0.7;
-    flex-shrink: 0;
-}
-
-/* Rarity and slot on one line: both answer "what kind of thing is this", and stacking them
-   spent two rows on one idea. */
-.meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-    font-size: 0.7rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-}
-
-.rarity {
-    color: var(--rarity, inherit);
-}
-
-.slot {
-    padding-left: 8px;
-    border-left: 1px solid rgb(255 255 255 / 14%);
-    opacity: 0.55;
-}
-
-/* Abbreviated stat chips. Several bonuses fit one row at a glance, which a sentence like
-   "+30 HP, +10 DEF" does not once a card is 210px wide and the name already wrapped. The
-   long wording is not lost, it moved behind the "?". */
-.stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin: 6px 0 0;
-    padding: 0;
-    list-style: none;
-}
-
-.stat {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 4px;
-    padding: 2px 7px;
-    border: 1px solid rgb(110 231 183 / 28%);
-    border-radius: 3px;
-    background: rgb(110 231 183 / 8%);
-    font-size: 0.72rem;
-    line-height: 1.35;
-}
-
-.statLabel {
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    opacity: 0.72;
-}
-
-.statValue {
-    color: rgb(110 231 183);
-    font-weight: 600;
-    /* Digits line up between chips and between cards. */
-    font-variant-numeric: tabular-nums;
-}
-
-.description {
-    margin: 6px 0 0;
-    font-size: 0.8rem;
-    line-height: 1.4;
-    opacity: 0.6;
-}
-
-/* Pushed to the bottom so the action sits on one baseline across a row of cards whose
-   descriptions are different lengths. Right-aligned, with the fallback "?" pushed to the
-   far edge when it is here at all. */
-.cardFoot {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: auto;
-    padding-top: 10px;
-}
-
-/* Only rendered when there is no artwork to hang the "?" on. */
-.footHelp {
-    margin-right: auto;
-    line-height: 0;
-}
-
-.cardAction {
-    display: flex;
-}
-
-/* Built from NeonButton's vocabulary rather than a flat amber rectangle: 2px corners, a dark
-   vertical gradient rather than a tinted wash, a bright border, and paired inset/outer glow.
-   The lift on hover is the same 1px NeonButton uses, so the card's controls feel like the
-   rest of the game's chrome instead of a plainer set bolted into it.
-
-   Square and sized to the "?" opposite them, so the footer reads as one row of controls. */
-.iconAction {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.05rem;
-    height: 2.05rem;
-    padding: 0;
-    border: 1px solid rgb(255 181 67 / 52%);
-    border-radius: 2px;
-    background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
-    color: var(--cp-amber, #ffcf70);
-    cursor: pointer;
-    box-shadow: inset 0 0 12px rgb(255 181 67 / 14%), 0 0 12px rgb(255 181 67 / 20%);
-    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
-}
-
-.iconAction:hover:not(:disabled) {
-    border-color: rgb(255 181 67 / 85%);
-    box-shadow: inset 0 0 16px rgb(255 181 67 / 22%), 0 0 18px rgb(255 181 67 / 38%);
-    transform: translateY(-1px);
-}
-
-.iconAction:active:not(:disabled) {
-    transform: translateY(0);
-}
-
-.iconAction:focus-visible {
-    outline: 2px solid rgb(255 181 67 / 85%);
+.tile:focus-visible {
+    outline: 2px solid var(--cp-cyan, #7dd6ff);
     outline-offset: 2px;
 }
 
-.iconAction:disabled {
-    opacity: 0.45;
-    box-shadow: none;
-    cursor: not-allowed;
-}
-
 @media (prefers-reduced-motion: reduce) {
-    .iconAction:hover:not(:disabled) {
+    .tile,
+    .tile:hover {
         transform: none;
     }
 }
 
-/* The "?" sits in the artwork's top-right corner. Absolute against ItemArt's own frame,
-   which is the positioned ancestor, so it tracks the tile rather than the card. */
-.artHelp {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    z-index: 1;
-    line-height: 0;
+.tileName {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px;
+    padding-left: 4px;
 }
 
-.disabled {
-    cursor: not-allowed;
+/* Two lines, then ellipsis. A name is the only text left on the tile, so truncating it to
+   one line would make several items indistinguishable; letting it run unbounded would make
+   the rows ragged. */
+.tileTitle {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+/* The stack count, in the artwork's corner the way an inventory slot carries it. */
+.count {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    z-index: 1;
+    padding: 1px 6px;
+    border: 1px solid rgb(125 214 255 / 30%);
+    border-radius: 2px;
+    background: rgb(5 13 30 / 88%);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+}
+
+/* Same count, for a deployment with no artwork to hang it on. */
+.countInline {
+    flex-shrink: 0;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
 }
 
 /* ─── pending claims ──────────────────────────────────────────────────────────
