@@ -213,6 +213,14 @@
   gap: 8px;
 }
 
+/* Pill CTA, to match the shell it sits in. NeonButton's default 2px radius is
+   right for the sharp-edged neon panels elsewhere, but reads as a rectangle
+   dropped inside a fully rounded bar. */
+.site-header .actions .neon-btn {
+  border-radius: var(--radius-pill);
+  padding-inline: 18px;
+}
+
 /* =============================================================================
    Menu toggle — two bars that cross into an X.
    ============================================================================= */

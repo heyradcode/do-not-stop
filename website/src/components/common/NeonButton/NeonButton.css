@@ -31,6 +31,10 @@
     content: '';
     position: absolute;
     inset: 0;
+    /* Follows whatever radius the button is given. Without this the sheen is a
+       hard rectangle, which is invisible at the default 2px but shows square
+       corners the moment a caller rounds the button. */
+    border-radius: inherit;
     pointer-events: none;
     background: linear-gradient(90deg, transparent, rgb(255 255 255 / 6%), transparent);
   }
