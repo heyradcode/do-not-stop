@@ -16,12 +16,13 @@ import {
 import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
 import ItemArt from '@components/item/item-art';
+import EquipPanel from '@components/pet/interactions/panels/equip';
 import PetSelect from '@components/ui/pet-select';
 import Icon, { MuscleIcon, RefreshIcon } from '@components/ui/icon';
 import InfoTooltip from '@components/ui/info-tooltip';
 import NeonButton from '@components/ui/neon-button';
 import ItemDetailModal from './item-detail-modal';
-import { DASHBOARD_HOME, EQUIP_PATH } from '@constants/interactionRoutes';
+import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import styles from './index.module.css';
 
@@ -126,6 +127,16 @@ const Inventory: React.FC = () => {
     const [petId, setPetId] = useState<string | null>(null);
     const selectedPet = petId ?? (pets[0] ? String(pets[0].id) : null);
 
+    /**
+     * Which half of the bag is showing.
+     *
+     * Equipment lives here rather than on its own route. Escrow takes an equipped item out of
+     * the wallet, so it leaves the bag — and with `/equip` reachable only from an item in the
+     * bag, a player who equipped everything had no way back to the screen that takes it off.
+     * Hanging it off Inventory, which is always in the sidebar, removes that trap.
+     */
+    const [tab, setTab] = useState<'bag' | 'equipment'>('bag');
+
     /** The item whose detail modal is open. Holds the entry, not just the id, so the modal
      *  keeps rendering its own quantity while a refetch is in flight. */
     const [selected, setSelected] = useState<InventoryEntry | null>(null);
@@ -185,7 +196,7 @@ const Inventory: React.FC = () => {
                     className={styles.slotButton}
                     aria-label={`Equip ${entry.item.name} on a pet`}
                     title="Equip on a pet"
-                    onClick={() => navigate(EQUIP_PATH)}
+                    onClick={() => setTab('equipment')}
                 >
                     <Icon as={MuscleIcon} size="0.95em" noGap />
                 </button>
@@ -228,7 +239,14 @@ const Inventory: React.FC = () => {
             // rather than in the bag. A link, not a note: telling a player where to go
             // without taking them there is a dead end.
             return (
-                <NeonButton tone="amber" size="sm" onClick={() => navigate(EQUIP_PATH)}>
+                <NeonButton
+                    tone="amber"
+                    size="sm"
+                    onClick={() => {
+                        setSelected(null);
+                        setTab('equipment');
+                    }}
+                >
                     <Icon as={MuscleIcon} size="1.05em" noGap />
                     {' Equip on a pet'}
                 </NeonButton>
@@ -269,7 +287,30 @@ const Inventory: React.FC = () => {
             >
                 {/* One scrolling region for the whole body. `.panel-body` clips, so without
                     this the bag is cut off at the panel's edge with no way to reach the rest. */}
+                <div className={styles.tabs} role="tablist" aria-label="Inventory">
+                    {([['bag', 'Bag'], ['equipment', 'Equipment']] as const).map(([id, label]) => (
+                        <button
+                            key={id}
+                            type="button"
+                            role="tab"
+                            aria-selected={tab === id}
+                            className={tab === id ? `${styles.tab} ${styles.isActive}` : styles.tab}
+                            onClick={() => setTab(id)}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
                 <div className={styles.scroll}>
+                    {tab === 'equipment' ? (
+                        // The same panel `/equip` used to host. Fitting gear is a wallet
+                        // signature against one pet, which is a different shape from the rest
+                        // of this screen, so it stays its own component rather than being
+                        // dissolved into the grid.
+                        <EquipPanel isStandaloneView={false} />
+                    ) : (
+                    <>
                     {failure ? (
                         <p className={styles.error} role="alert">
                             {failure.message}
@@ -357,6 +398,8 @@ const Inventory: React.FC = () => {
                                 </section>
                             ))}
                         </>
+                    )}
+                    </>
                     )}
                 </div>
             </DashboardPanel>

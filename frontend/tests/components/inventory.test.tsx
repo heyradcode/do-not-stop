@@ -17,6 +17,13 @@ vi.mock('react-router-dom', async () => {
     return { ...actual, useNavigate: () => navigate };
 });
 
+// The equipment tab hosts the real EquipPanel, which pulls in its own half of @shared/core.
+// Stubbed so these cases stay about the bag; the panel has its own suite in
+// tests/components/pet/interactions/panels/equip.test.tsx.
+vi.mock('@components/pet/interactions/panels/equip', () => ({
+    default: () => <div data-testid="equip-panel" />,
+}));
+
 vi.mock('@shared/core', () => ({
     useAuth: () => useAuth(),
     useChainCapabilities: () => useChainCapabilities(),
@@ -274,9 +281,20 @@ describe('the bag', () => {
         });
     });
 
-    // Equipping is a wallet signature against one pet, so the bag sends the player to the
-    // pet rather than offering a button that cannot work here.
-    it('sends equipment to the equip screen instead of acting on it', async () => {
+    /**
+     * Equipment lives here rather than on its own route: escrow takes an equipped item out of
+     * the wallet, so it leaves the bag, and a player who equipped everything had no item left
+     * to click through to `/equip`. Inventory is always in the sidebar, so this cannot happen.
+     */
+    it('switches to the equipment tab', async () => {
+        renderBag();
+
+        expect(screen.queryByTestId('equip-panel')).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('tab', { name: 'Equipment' }));
+        expect(screen.getByTestId('equip-panel')).toBeInTheDocument();
+    });
+
+    it('sends an item to the equipment tab instead of navigating away', async () => {
         useInventory.mockReturnValue({
             entries: [{ item: BLADE, quantity: '1' }],
             isLoading: false,
@@ -285,11 +303,10 @@ describe('the bag', () => {
         });
 
         renderBag();
-        await userEvent.click(screen.getByRole('button', { name: /^Iron Fang, 1 held/ }));
-        await userEvent.click(screen.getByRole('button', { name: /Equip on a pet/ }));
+        await userEvent.click(screen.getByRole('button', { name: 'Equip Iron Fang on a pet' }));
 
-        expect(navigate).toHaveBeenCalledWith('/equip');
-        expect(spend).not.toHaveBeenCalled();
+        expect(screen.getByTestId('equip-panel')).toBeInTheDocument();
+        expect(navigate).not.toHaveBeenCalled();
     });
 
     it('surfaces a read failure rather than rendering an empty bag', () => {
