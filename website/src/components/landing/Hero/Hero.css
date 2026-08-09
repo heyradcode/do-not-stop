@@ -1,3 +1,12 @@
+/* Registered so the CTA's conic border angle can be animated. Without @property
+   the angle is an unanimatable token and the ring simply sits still, which is
+   the intended degradation. */
+@property --cta-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 .hero {
   display: flex;
   flex-direction: column;
@@ -10,8 +19,8 @@
   min-height: calc(100dvh - var(--main-header-offset));
   background-color: var(--surface-base);
   position: relative;
-  /* Self-contained stack: art, scrim, glow, copy. Without this the layers below
-     resolve against an ancestor's stacking context. */
+  /* Self-contained stack: art, scrim, aurora, glow, content. Without this the
+     layers below resolve against an ancestor's stacking context. */
   isolation: isolate;
   border-bottom: 1px solid rgb(94 117 255 / 25%);
 
@@ -47,11 +56,40 @@
     pointer-events: none;
   }
 
-  & .copy {
+  /* Drifting mesh, built from soft radial stops rather than a blur filter — the
+     gradients already fall off smoothly, and blurring a viewport-sized layer
+     every frame is the expensive way to get the same picture. Only translate and
+     scale animate, so it stays on the compositor. */
+  & .aurora {
+    position: absolute;
+    inset: -18%;
+    z-index: 2;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.8;
+    background:
+      radial-gradient(38% 42% at 22% 28%, rgb(var(--neon-violet-rgb) / 26%), transparent 70%),
+      radial-gradient(34% 38% at 76% 34%, rgb(var(--neon-cyan-rgb) / 18%), transparent 72%),
+      radial-gradient(40% 36% at 58% 78%, rgb(var(--neon-magenta-rgb) / 14%), transparent 74%);
+    animation: hero-aurora 24s ease-in-out infinite alternate;
+    will-change: translate, scale;
+  }
+
+  & .inner {
     position: relative;
     z-index: 3;
+    width: 100%;
+    max-width: 1180px;
+    margin-inline: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    align-items: center;
+    gap: clamp(24px, 5vw, 64px);
+  }
+
+  & .copy {
     text-align: left;
-    max-width: 760px;
+    max-width: 640px;
   }
 
   & .eyebrow {
@@ -65,19 +103,19 @@
     font-weight: 600;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: #b6e2ff;
+    color: var(--text-accent);
     background: linear-gradient(90deg, rgb(40 110 255 / 18%), rgb(154 100 255 / 14%));
-    border: 1px solid rgb(118 154 255 / 38%);
-    border-radius: 999px;
-    box-shadow: inset 0 0 12px rgb(118 154 255 / 18%), 0 0 18px rgb(118 154 255 / 22%);
+    border: 1px solid rgb(var(--border-rgb) / 38%);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--glow-inset-sm), var(--glow-sm);
 
     &::before {
       content: '';
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #6cf6c5;
-      box-shadow: 0 0 8px #6cf6c5, 0 0 14px rgb(108 246 197 / 60%);
+      background: var(--neon-emerald);
+      box-shadow: 0 0 8px var(--neon-emerald), 0 0 14px rgb(var(--neon-emerald-rgb) / 60%);
       animation: hero-pulse 1.8s ease-in-out infinite;
     }
   }
@@ -90,16 +128,26 @@
     line-height: 1.12;
     font-weight: 700;
     letter-spacing: 0.4px;
-    text-shadow: 0 0 18px rgb(174 150 255 / 28%), 0 0 38px rgb(108 72 255 / 18%);
+    text-shadow: var(--glow-text-lg);
   }
 
+  /* Seamless because the ramp ends on the hue it starts with, so the looping
+     background-position never shows a seam. */
   & .title-accent {
-    background: linear-gradient(92deg, #7dd6ff 0%, #b58cff 48%, #ff7bcb 100%);
+    background: linear-gradient(
+      92deg,
+      var(--neon-cyan) 0%,
+      var(--neon-violet) 30%,
+      var(--neon-magenta) 62%,
+      var(--neon-cyan) 100%
+    );
+    background-size: 200% 100%;
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 14px rgb(181 140 255 / 45%));
+    filter: drop-shadow(0 0 14px rgb(var(--neon-violet-rgb) / 45%));
+    animation: hero-accent-sweep 9s linear infinite;
   }
 
   & p {
@@ -107,7 +155,7 @@
     margin: 0 0 32px;
     color: rgb(195 209 255 / 84%);
     font-size: 1.18rem;
-    max-width: 620px;
+    max-width: 560px;
     line-height: 1.55;
   }
 
@@ -118,11 +166,134 @@
     align-items: center;
   }
 
+  /* Orbiting ring, masked to the border so it reads as a lit edge rather than a
+     wash over the button face. */
+  & .primary-cta::after {
+    content: '';
+    position: absolute;
+    inset: -1.5px;
+    border-radius: inherit;
+    padding: 1.5px;
+    pointer-events: none;
+    background: conic-gradient(
+      from var(--cta-angle),
+      transparent 0deg,
+      rgb(var(--tone-emerald-rgb) / 90%) 45deg,
+      var(--neon-cyan) 95deg,
+      transparent 160deg,
+      transparent 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    animation: hero-cta-orbit 4.5s linear infinite;
+  }
+
   & .secondary-cta {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     text-decoration: none;
+  }
+
+  /* =========================================================================
+     Featured companion
+     ========================================================================= */
+  & .showcase {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: clamp(240px, 34vw, 400px);
+  }
+
+  & .stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    /* Capped at the source art's 500px so the mascot is never upscaled. */
+    width: clamp(200px, 24vw, 290px);
+    aspect-ratio: 1;
+    translate: calc(var(--px, 0) * 12px) calc(var(--py, 0) * 12px);
+    transition: translate 280ms var(--ease-out);
+  }
+
+  & .halo {
+    position: absolute;
+    inset: -7%;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      rgb(var(--neon-cyan-rgb) / 55%) 60deg,
+      rgb(var(--neon-violet-rgb) / 62%) 150deg,
+      transparent 240deg,
+      transparent 360deg
+    );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+    filter: drop-shadow(0 0 12px rgb(var(--neon-violet-rgb) / 45%));
+    animation: hero-halo-spin 16s linear infinite;
+  }
+
+  & .pedestal {
+    position: absolute;
+    inset-block-end: 1%;
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    width: 74%;
+    height: 13%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgb(var(--neon-violet-rgb) / 42%), transparent 70%);
+    filter: blur(5px);
+  }
+
+  & .pet {
+    position: relative;
+    z-index: var(--z-raised);
+    width: 78%;
+    height: auto;
+    object-fit: contain;
+    filter:
+      drop-shadow(0 16px 28px rgb(0 0 0 / 55%))
+      drop-shadow(0 0 22px rgb(var(--neon-gold-rgb) / 28%));
+    animation: hero-float 6.5s ease-in-out infinite;
+  }
+
+  & .badge {
+    position: absolute;
+    inset-block-end: -2%;
+    inset-inline-start: 50%;
+    translate: -50% 0;
+    z-index: var(--z-raised);
+    padding: 5px 14px;
+    border-radius: var(--radius-pill);
+    font-family: var(--content-font);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--badge-color, var(--text-accent));
+    border: 1px solid rgb(var(--badge-rgb, var(--border-rgb)) / 55%);
+    background: rgb(var(--surface-void-rgb) / 72%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 0 14px rgb(var(--badge-rgb, var(--border-rgb)) / 32%);
+
+    &[data-rarity='legendary'] {
+      --badge-rgb: var(--rarity-legendary-rgb);
+      --badge-color: var(--rarity-legendary);
+    }
+
+    &[data-rarity='epic'] {
+      --badge-rgb: var(--rarity-epic-rgb);
+      --badge-color: var(--rarity-epic);
+    }
+
+    &[data-rarity='rare'] {
+      --badge-rgb: var(--rarity-rare-rgb);
+      --badge-color: var(--rarity-rare);
+    }
   }
 
   & .scroll-hint {
@@ -135,7 +306,7 @@
     height: 42px;
     border: 1px solid rgb(174 200 255 / 55%);
     border-radius: 14px;
-    box-shadow: 0 0 14px rgb(118 154 255 / 28%);
+    box-shadow: var(--glow-sm);
     display: flex;
     justify-content: center;
     padding-top: 8px;
@@ -146,30 +317,85 @@
       height: 8px;
       border-radius: 2px;
       background: linear-gradient(180deg, #9ec8ff, #5e7dff);
-      box-shadow: 0 0 8px rgb(118 154 255 / 80%);
+      box-shadow: 0 0 8px rgb(var(--border-rgb) / 80%);
       animation: hero-scroll-dot 1.8s ease-in-out infinite;
     }
   }
 }
 
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .hero .title-accent {
+    color: var(--neon-cyan);
+    -webkit-text-fill-color: var(--neon-cyan);
+    background: none;
+    animation: none;
+  }
+}
+
 @keyframes hero-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.55; transform: scale(0.85); }
+  0%, 100% { opacity: 1; scale: 1; }
+  50% { opacity: 0.55; scale: 0.85; }
 }
 
 @keyframes hero-scroll-dot {
-  0% { transform: translateY(0); opacity: 0; }
+  0% { translate: 0 0; opacity: 0; }
   35% { opacity: 1; }
-  100% { transform: translateY(14px); opacity: 0; }
+  100% { translate: 0 14px; opacity: 0; }
 }
 
-@media (max-width: 1024px) {
+@keyframes hero-accent-sweep {
+  to { background-position: 200% 0; }
+}
+
+@keyframes hero-cta-orbit {
+  to { --cta-angle: 360deg; }
+}
+
+@keyframes hero-halo-spin {
+  to { rotate: 360deg; }
+}
+
+@keyframes hero-float {
+  0%, 100% { translate: 0 -2.5%; }
+  50% { translate: 0 3%; }
+}
+
+@keyframes hero-aurora {
+  0% { translate: -2% -1%; scale: 1; }
+  50% { translate: 3% 2%; scale: 1.06; }
+  100% { translate: -1% 3%; scale: 1.02; }
+}
+
+@media (max-width: 980px) {
   .hero {
     text-align: center;
+
+    & .inner {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 32px;
+    }
 
     & .copy {
       text-align: center;
       margin: 0 auto;
+      max-width: 620px;
+    }
+
+    & p {
+      margin-inline: auto;
+    }
+
+    & .actions {
+      justify-content: center;
+    }
+
+    & .showcase {
+      min-height: 0;
+      order: 2;
+    }
+
+    & .stage {
+      width: clamp(180px, 46vw, 240px);
     }
   }
 }

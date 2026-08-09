@@ -7,6 +7,7 @@
    ============================================================================= */
 .site-header {
   --header-inset: 18px;
+  --header-gutter: var(--landing-gutter);
   --shell-pad-block: 10px;
 
   position: fixed;
@@ -15,7 +16,7 @@
   z-index: var(--z-header);
   display: flex;
   justify-content: center;
-  padding: var(--header-inset) var(--landing-gutter);
+  padding: var(--header-inset) var(--header-gutter);
   pointer-events: none;
   transition: padding var(--dur-slow) var(--ease-out);
 }
@@ -132,13 +133,45 @@
   justify-content: center;
   min-width: 0;
 
+  /* The sliding indicator. Position and width come from JS measurement, because
+     the links are content-width and only layout knows how wide each one is. */
   & ul {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 2px;
     list-style: none;
     margin: 0;
     padding: 0;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset-block: 0;
+      inset-inline-start: 0;
+      width: var(--indicator-w, 0);
+      border-radius: var(--radius-pill);
+      background: linear-gradient(
+        180deg,
+        rgb(var(--border-rgb) / 26%),
+        rgb(var(--border-rgb) / 12%)
+      );
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 10%),
+        0 0 14px rgb(var(--border-rgb) / 22%);
+      opacity: var(--indicator-opacity, 0);
+      translate: var(--indicator-x, 0);
+      transition:
+        translate var(--dur-slow) var(--ease-spring),
+        width var(--dur-slow) var(--ease-spring),
+        opacity var(--dur-base) var(--ease-out);
+      pointer-events: none;
+    }
+  }
+
+  & li {
+    position: relative;
+    z-index: var(--z-raised);
   }
 
   & a {
@@ -161,6 +194,11 @@
       background: var(--surface-veil-2);
     }
 
+    &[aria-current] {
+      color: var(--text-title);
+      text-shadow: var(--glow-text-sm);
+    }
+
     &:focus-visible {
       outline: 2px solid rgb(var(--border-rgb) / 60%);
       outline-offset: 2px;
@@ -172,6 +210,184 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+/* =============================================================================
+   Menu toggle — two bars that cross into an X.
+   ============================================================================= */
+.site-header .menu-toggle {
+  display: none;
+  position: relative;
+  width: 38px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgb(var(--border-rgb) / 30%);
+  border-radius: var(--radius-pill);
+  background: var(--surface-veil-1);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    background var(--dur-base) var(--ease-out);
+
+  &:hover {
+    border-color: rgb(var(--border-rgb) / 55%);
+    background: var(--surface-veil-2);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgb(var(--border-rgb) / 60%);
+    outline-offset: 2px;
+  }
+
+  & .bars,
+  & .bars::before,
+  & .bars::after {
+    position: absolute;
+    left: 50%;
+    width: 16px;
+    height: 1.5px;
+    border-radius: 2px;
+    background: var(--text-accent);
+    box-shadow: 0 0 6px rgb(var(--border-rgb) / 55%);
+    transition:
+      translate var(--dur-base) var(--ease-out),
+      rotate var(--dur-base) var(--ease-out),
+      opacity var(--dur-fast) var(--ease-out);
+  }
+
+  & .bars {
+    top: 50%;
+    translate: -50% -50%;
+    opacity: 0;
+  }
+
+  & .bars::before,
+  & .bars::after {
+    content: '';
+    left: 0;
+  }
+
+  & .bars::before {
+    translate: 0 -5px;
+  }
+
+  & .bars::after {
+    translate: 0 5px;
+  }
+}
+
+.site-header.is-open .menu-toggle .bars {
+  &::before {
+    translate: 0 0;
+    rotate: 45deg;
+  }
+
+  &::after {
+    translate: 0 0;
+    rotate: -45deg;
+  }
+}
+
+/* =============================================================================
+   Drawer
+   ============================================================================= */
+.site-header .drawer {
+  pointer-events: auto;
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline: var(--header-gutter);
+  padding: 10px;
+  border-radius: var(--radius-xl);
+  border: 1px solid rgb(var(--border-rgb) / 32%);
+  background: linear-gradient(
+    180deg,
+    rgb(var(--surface-void-rgb) / 90%),
+    rgb(var(--surface-void-rgb) / 78%)
+  );
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 12%),
+    var(--elev-4),
+    0 0 34px rgb(var(--border-rgb) / 14%);
+  opacity: 0;
+  translate: 0 -10px;
+  transition:
+    opacity var(--dur-slow) var(--ease-out),
+    translate var(--dur-slow) var(--ease-out);
+
+  &.is-open {
+    opacity: 1;
+    translate: none;
+  }
+
+  & ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  & a {
+    display: block;
+    padding: 13px 16px;
+    border-radius: var(--radius-md);
+    font-family: var(--content-font);
+    font-size: 0.86rem;
+    font-weight: 600;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    transition:
+      color var(--dur-base) var(--ease-out),
+      background var(--dur-base) var(--ease-out);
+
+    &:hover {
+      color: var(--text-title);
+      background: var(--surface-veil-2);
+    }
+
+    &[aria-current] {
+      color: var(--text-title);
+      background: rgb(var(--border-rgb) / 16%);
+      text-shadow: var(--glow-text-sm);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgb(var(--border-rgb) / 60%);
+      outline-offset: -2px;
+    }
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site-header .drawer {
+    background: rgb(var(--surface-void-rgb) / 97%);
+  }
+}
+
+/* Dims the page behind the open drawer and gives a tap-anywhere close. Keyboard
+   users get Escape, which is why an aria-hidden div is acceptable here. */
+.site-header .scrim {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgb(2 4 10 / 55%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+.site-header.is-open .scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+body.is-drawer-open {
+  overflow: hidden;
 }
 
 /* =============================================================================
@@ -207,18 +423,30 @@
     display: none;
   }
 
+  .site-header .menu-toggle {
+    display: block;
+  }
+
   .site-header .shell {
     justify-content: space-between;
   }
 }
 
+/* Above the breakpoint the drawer never opens, so keep it out of the layout
+   entirely rather than relying on `inert` alone. */
+@media (min-width: 901px) {
+  .site-header .drawer,
+  .site-header .scrim {
+    display: none;
+  }
+}
+
 @media (max-width: 768px) {
   .site-header {
-    padding-inline: 14px;
+    --header-gutter: 14px;
   }
 
   .site-header .shell {
-    padding-inline: 10px 10px;
-    padding-inline-start: 16px;
+    padding-inline: 16px 10px;
   }
 }
