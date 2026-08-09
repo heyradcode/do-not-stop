@@ -66,33 +66,6 @@ const Pets = () => {
             <p className="section-subtitle">{subtitle}</p>
           </header>
 
-          {/* Kept inside the pin: the split is the claim the subtitle makes, so
-              it should be readable while the roster it describes is on screen. */}
-          <div className="rarity" aria-label="Rarity tier distribution" data-reveal="fade">
-            <div className="rarity-track">
-              {RARITY_TIERS.map(({ name, share, tone }, index) => (
-                <div
-                  key={name}
-                  className={`rarity-segment tone-${tone}`}
-                  style={{ '--share': share, '--seg-delay': `${index * 110}ms` } as CSSProperties}
-                  title={`${name} · ${share}`}
-                />
-              ))}
-            </div>
-            <ul className="rarity-legend">
-              {RARITY_TIERS.map(({ name, share, blurb, tone }) => (
-                <li key={name} className={`tone-${tone}`}>
-                  <span className="dot" aria-hidden="true" />
-                  <div>
-                    <strong>{name}</strong>
-                    <span className="share">{share}</span>
-                    <p>{blurb}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           <div className="carousel" style={{ '--sweep': `${SWEEP}deg` } as CSSProperties}>
             <span className="floor" aria-hidden="true" />
 
@@ -139,6 +112,34 @@ const Pets = () => {
               />
             ))}
           </ol>
+
+          {/* Anchored to the foot of the pin: it stays on screen for the whole
+              scene, but sits below the roster rather than between the heading
+              and the thing the heading introduces. */}
+          <div className="rarity" aria-label="Rarity tier distribution" data-reveal="fade">
+            <div className="rarity-track">
+              {RARITY_TIERS.map(({ name, share, tone }, index) => (
+                <div
+                  key={name}
+                  className={`rarity-segment tone-${tone}`}
+                  style={{ '--share': share, '--seg-delay': `${index * 110}ms` } as CSSProperties}
+                  title={`${name} · ${share}`}
+                />
+              ))}
+            </div>
+            <ul className="rarity-legend">
+              {RARITY_TIERS.map(({ name, share, blurb, tone }) => (
+                <li key={name} className={`tone-${tone}`}>
+                  <span className="dot" aria-hidden="true" />
+                  <div>
+                    <strong>{name}</strong>
+                    <span className="share">{share}</span>
+                    <p>{blurb}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
 

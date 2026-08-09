@@ -5,11 +5,13 @@
   & .tone-violet { --tone-rgb: var(--rarity-epic-rgb); }
   & .tone-gold { --tone-rgb: var(--rarity-legendary-rgb); }
 
-  /* Sits between the heading and the ring, so it shares the pin's height
-     budget — hence the tighter metrics than a standalone block would use. */
+  /* Foot of the pin, under the ring. It shares the pin's height budget, hence
+     the tighter metrics than a standalone block would use. */
   & .rarity {
     flex: 0 0 auto;
     margin: 0;
+    padding-block-start: clamp(12px, 2vh, 22px);
+    border-block-start: 1px solid rgb(var(--border-rgb) / 16%);
   }
 
   & .rarity-track {
@@ -398,7 +400,8 @@ html:not(.js-reveal) .pets .rarity-segment {
   }
 
   .pets .rarity {
-    margin-block-end: 30px;
+    margin-block-start: 32px;
+    padding-block-start: 24px;
   }
 
   .pets .rarity-legend p {
