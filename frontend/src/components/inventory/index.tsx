@@ -18,7 +18,7 @@ import {
 import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
 import ItemArt, { hasItemArt } from '@components/item/item-art';
-import Icon, { ShieldIcon, SparklesIcon } from '@components/ui/icon';
+import Icon, { BottleIcon, MuscleIcon } from '@components/ui/icon';
 import InfoTooltip from '@components/ui/info-tooltip';
 import { DASHBOARD_HOME, EQUIP_PATH } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
@@ -282,7 +282,7 @@ const Inventory: React.FC = () => {
                                                                 })
                                                             }
                                                         >
-                                                            <Icon as={SparklesIcon} size="1.05em" aria-hidden />
+                                                            <Icon as={BottleIcon} size="1.15em" noGap />
                                                         </button>
                                                     ) : entry.item.category === 'equipment' ? (
                                                         // Equipping is a wallet signature against
@@ -298,7 +298,7 @@ const Inventory: React.FC = () => {
                                                             title="Equip on a pet"
                                                             onClick={() => navigate(EQUIP_PATH)}
                                                         >
-                                                            <Icon as={ShieldIcon} size="1.05em" aria-hidden />
+                                                            <Icon as={MuscleIcon} size="1.15em" noGap />
                                                         </button>
                                                     ) : null
                                                 }
