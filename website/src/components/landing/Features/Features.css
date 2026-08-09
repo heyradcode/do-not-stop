@@ -2,72 +2,134 @@
   & .grid {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(4, minmax(160px, 1fr));
+    /* Six tracks so a wide card can take four and a narrow one two, giving the
+       alternating bento rhythm without a second grid definition per row. */
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 18px;
   }
 
   & .card {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    padding: 28px;
-    color: #e7efff;
-    text-align: left;
-    box-shadow: inset 0 0 26px rgb(67 85 180 / 10%), 0 8px 22px rgb(0 0 0 / 38%), 0 3px 8px rgb(0 0 0 / 22%);
-    background: linear-gradient(180deg, rgb(8 12 26 / 90%) 0%, rgb(7 10 20 / 92%) 100%);
-    border: 1px solid rgb(145 93 255 / 58%);
+    --accent-rgb: var(--neon-violet-rgb);
+
     position: relative;
+    display: flex;
+    gap: 20px;
+    padding: 28px;
+    color: var(--text-bright);
+    text-align: left;
+    background: var(--surface-card);
+    border: 1px solid rgb(var(--accent-rgb) / 46%);
+    box-shadow:
+      var(--glow-inset-md),
+      var(--elev-2),
+      var(--elev-1);
 
-    &:nth-child(2) { border-color: rgb(255 90 125 / 58%); }
-    &:nth-child(3) { border-color: rgb(41 168 255 / 58%); }
-    &:nth-child(4) { border-color: rgb(6 223 209 / 58%); }
+    /* Accent cycle. nth-child is exact here — every child of .grid is a card,
+       unlike the section washes this pattern used to drive. */
+    &:nth-child(2) { --accent-rgb: 255 90 125; }
+    &:nth-child(3) { --accent-rgb: 41 168 255; }
+    &:nth-child(4) { --accent-rgb: 6 223 209; }
 
+    /* Accent edge, masked to the border box so it lights the whole outline
+       rather than only the left rule the flat grid used. */
     &::before {
       content: '';
       position: absolute;
       inset: 0;
       border-radius: inherit;
-      border-left: 3px solid rgb(86 111 255 / 80%);
+      padding: 1px;
+      pointer-events: none;
+      background: linear-gradient(
+        135deg,
+        rgb(var(--accent-rgb) / 85%) 0%,
+        transparent 42%,
+        transparent 62%,
+        rgb(var(--accent-rgb) / 45%) 100%
+      );
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
     }
 
-    &:nth-child(1)::before { border-left-color: #915dff; box-shadow: 0 0 16px rgb(145 93 255 / 40%); }
-    &:nth-child(2)::before { border-left-color: #ff5a7d; box-shadow: 0 0 16px rgb(255 90 125 / 38%); }
-    &:nth-child(3)::before { border-left-color: #29a8ff; box-shadow: 0 0 16px rgb(41 168 255 / 36%); }
-    &:nth-child(4)::before { border-left-color: #06dfd1; box-shadow: 0 0 16px rgb(6 223 209 / 36%); }
+    &[data-span='wide'] {
+      grid-column: span 4;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    &[data-span='narrow'] {
+      grid-column: span 2;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 14px;
+    }
+  }
+
+  /* Cursor-tracked specular. Its own element rather than a pseudo: NeonCard
+     already owns ::after for the hover ring and the accent edge owns ::before. */
+  & .spot {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(
+      240px circle at var(--mx, 50%) var(--my, 0%),
+      rgb(var(--accent-rgb) / 22%),
+      transparent 68%
+    );
+    opacity: 0;
+    transition: opacity var(--dur-slow) var(--ease-out);
+  }
+
+  & .card:hover .spot {
+    opacity: 1;
   }
 
   & .icon {
+    position: relative;
     flex: 0 0 auto;
     width: 96px;
     height: 96px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 1;
-    background: transparent;
+    display: grid;
+    place-items: center;
+    z-index: var(--z-raised);
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 6%;
+      border-radius: 26px;
+      background: radial-gradient(circle at 50% 45%, rgb(var(--accent-rgb) / 30%), transparent 70%);
+    }
 
     & img {
+      position: relative;
       width: 100%;
       height: 100%;
       object-fit: contain;
       display: block;
-      filter: drop-shadow(0 0 10px rgb(255 182 77 / 32%));
+      filter: drop-shadow(0 6px 14px rgb(0 0 0 / 45%));
     }
+  }
+
+  & .card[data-span='narrow'] .icon {
+    width: 76px;
+    height: 76px;
   }
 
   & .copy {
     position: relative;
-    z-index: 1;
+    z-index: var(--z-raised);
     flex: 1;
 
     & h3 {
       font-family: var(--title-font);
       margin: 0 0 10px;
-      font-size: 1.35rem;
+      font-size: 1.3rem;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.6px;
+      color: var(--text-title);
     }
 
     & p {
@@ -75,15 +137,36 @@
       margin: 0;
       font-size: 1rem;
       line-height: 1.55;
-      color: rgb(195 210 255 / 80%);
+      color: var(--text-body);
     }
+  }
+
+  & .card[data-span='narrow'] .copy h3 {
+    font-size: 1.15rem;
   }
 }
 
 @media (max-width: 1024px) {
-  .features .grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+  .features .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .features .card[data-span='wide'],
+  .features .card[data-span='narrow'] {
+    grid-column: span 1;
+    flex-direction: row;
+    align-items: center;
+    gap: 18px;
+  }
+
+  .features .card[data-span='narrow'] .icon {
+    width: 84px;
+    height: 84px;
+  }
 }
 
 @media (max-width: 768px) {
-  .features .grid { grid-template-columns: 1fr; }
+  .features .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
