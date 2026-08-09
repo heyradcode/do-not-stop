@@ -1,32 +1,52 @@
 .footer {
-  padding: 56px var(--landing-gutter) 28px;
-  background: rgb(5 8 18 / 96%);
-  border-top: 1px solid rgb(96 123 255 / 20%);
-  color: #eaf0ff;
+  position: relative;
+  padding: 64px var(--landing-gutter) 30px;
+  background: rgb(var(--surface-void-rgb) / 96%);
+  color: var(--text-bright);
+
+  /* Lit top edge instead of a flat rule, so the footer reads as the end of the
+     page rather than another band. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--border-rgb) / 45%) 20%,
+      rgb(var(--neon-violet-rgb) / 45%) 50%,
+      rgb(var(--border-rgb) / 45%) 80%,
+      transparent
+    );
+    box-shadow: 0 0 16px rgb(var(--glow-text-rgb) / 30%);
+  }
 
   & .grid {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
-    gap: 36px;
+    gap: 40px;
     align-items: start;
   }
 
   & .brand {
     & h2 {
       font-family: var(--title-font);
-      margin: 0 0 8px;
-      color: #fff;
-      font-size: 1.3rem;
-      letter-spacing: 0.6px;
-      text-shadow: 0 0 12px rgb(174 150 255 / 35%);
+      margin: 0 0 10px;
+      font-size: 1.35rem;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-title);
+      text-shadow: var(--glow-text-md);
     }
 
     & p {
       font-family: var(--content-font);
       margin: 0;
-      color: rgb(191 205 255 / 70%);
+      color: var(--text-muted);
       font-size: 0.98rem;
-      line-height: 1.55;
+      line-height: 1.6;
       max-width: 460px;
     }
   }
@@ -34,11 +54,11 @@
   & .col {
     & h3 {
       font-family: var(--title-font);
-      margin: 0 0 12px;
-      font-size: 0.82rem;
-      letter-spacing: 1.6px;
+      margin: 0 0 14px;
+      font-size: 0.78rem;
+      letter-spacing: 1.8px;
       text-transform: uppercase;
-      color: rgb(200 215 255 / 70%);
+      color: var(--text-dim);
     }
 
     & ul {
@@ -47,37 +67,66 @@
       padding: 0;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
     }
 
     & a {
+      position: relative;
+      align-self: flex-start;
       font-family: var(--content-font);
       color: rgb(210 222 255 / 84%);
       font-size: 0.96rem;
-      transition: color 180ms ease, text-shadow 180ms ease;
+      transition:
+        color var(--dur-base) var(--ease-out),
+        text-shadow var(--dur-base) var(--ease-out);
+
+      /* Underline wipes in from the left rather than appearing whole. */
+      &::after {
+        content: '';
+        position: absolute;
+        inset-inline: 0;
+        inset-block-end: -3px;
+        height: 1px;
+        background: currentColor;
+        scale: 0 1;
+        transform-origin: left center;
+        transition: scale var(--dur-base) var(--ease-out);
+      }
 
       &:hover {
-        color: #b6e2ff;
-        text-shadow: 0 0 10px rgb(118 154 255 / 55%);
+        color: var(--text-accent);
+        text-shadow: 0 0 10px rgb(var(--border-rgb) / 55%);
+
+        &::after { scale: 1 1; }
+      }
+
+      &:focus-visible {
+        outline: 2px solid rgb(var(--border-rgb) / 60%);
+        outline-offset: 3px;
+        border-radius: 2px;
       }
     }
   }
 
   & .bottom {
-    margin-top: 24px;
-    padding-top: 16px;
-    border-top: 1px solid rgb(96 123 255 / 14%);
+    margin-block-start: 40px;
+    padding-block-start: 20px;
+    border-block-start: 1px solid rgb(var(--border-rgb) / 14%);
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 12px;
     font-family: var(--content-font);
     font-size: 0.82rem;
-    color: rgb(170 188 230 / 60%);
+    color: var(--text-dim);
 
     & .tag {
       letter-spacing: 0.6px;
       text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      border: 1px solid rgb(var(--border-rgb) / 22%);
+      background: var(--surface-veil-1);
     }
   }
 }
@@ -94,8 +143,9 @@
   .footer {
     & .grid {
       grid-template-columns: 1fr;
-      gap: 24px;
+      gap: 28px;
     }
+
     & .bottom {
       flex-direction: column;
       text-align: center;
