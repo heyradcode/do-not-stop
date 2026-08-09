@@ -133,17 +133,17 @@
   height: calc(100dvh + (var(--pet-count) * var(--pet-span)));
 }
 
-/* Sticks at the same offset anchors land on, so following the nav link leaves
-   the scene exactly filling the space under the header. */
+/* The pin owns the whole viewport: it sticks at 0 and pads its own content
+   clear of the floating glass — see the note on the roadmap pin. */
 .pets .pin {
   position: sticky;
-  inset-block-start: var(--anchor-offset);
-  height: calc(100dvh - var(--anchor-offset));
+  inset-block-start: 0;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: clamp(8px, 1.6vh, 18px);
-  padding-block: clamp(12px, 2vh, 28px);
+  padding-block: var(--anchor-offset) clamp(12px, 2vh, 28px);
   box-sizing: border-box;
 }
 

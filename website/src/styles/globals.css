@@ -12,8 +12,9 @@ html {
      rather than a hardcoded guess that drifts every time the header is
      redesigned; the layout constant is only the fallback for before that lands.
 
-     Pinned sections stick at this same offset, so following a nav link leaves
-     a scene exactly filling the space under the header.
+     The pinned scenes stick at 0 and use this as their own top padding instead
+     — the header is a floating pill, so a scene sticking below it would show
+     the previous section through the uncovered strip beside the glass.
 
      Do not also set `scroll-margin-top` on the targets — the two offsets add. */
   --anchor-offset: calc(var(--header-h, var(--main-header-offset)) + var(--anchor-gap));
