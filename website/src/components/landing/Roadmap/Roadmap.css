@@ -205,7 +205,7 @@
   position: absolute;
   inset-inline-start: 50%;
   inset-block-end: var(--gb, 54%);
-  width: min(52vw, 520px);
+  width: min(46vw, 470px);
   aspect-ratio: 2.15 / 1;
   translate: -50% 0;
   scale: var(--gs, 0.15);
@@ -343,7 +343,7 @@
   margin: 0;
   padding: 0;
   flex: 0 0 auto;
-  min-height: clamp(240px, 34vh, 330px);
+  min-height: clamp(280px, 40vh, 400px);
   perspective: 1100px;
 }
 
@@ -354,7 +354,7 @@
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
   align-items: center;
   gap: clamp(20px, 4vw, 56px);
-  max-width: 980px;
+  max-width: 1080px;
   margin-inline: auto;
   transition:
     opacity var(--dur-slow) var(--ease-out),
@@ -415,7 +415,7 @@
 .roadmap .panel {
   position: relative;
   z-index: 1;
-  padding: 24px 26px 22px;
+  padding: 30px 34px 28px;
   border-radius: var(--radius-lg);
   background: linear-gradient(
     180deg,
@@ -440,7 +440,7 @@
 
   & .phase {
     font-family: var(--title-font);
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     font-weight: 800;
     letter-spacing: 1.4px;
     color: var(--text-title);
@@ -462,8 +462,8 @@
 
   & h3 {
     font-family: var(--title-font);
-    margin: 0 0 12px;
-    font-size: clamp(1.15rem, 1.8vw, 1.45rem);
+    margin: 0 0 14px;
+    font-size: clamp(1.3rem, 2.1vw, 1.7rem);
     letter-spacing: 0.5px;
     text-transform: uppercase;
     color: var(--text-title);
@@ -475,13 +475,13 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 9px;
   }
 
   & ul li {
     font-family: var(--content-font);
-    font-size: 0.94rem;
-    line-height: 1.5;
+    font-size: 1rem;
+    line-height: 1.55;
     color: var(--text-body);
     padding-left: 16px;
     position: relative;
@@ -506,7 +506,7 @@
   position: relative;
   z-index: 1;
   justify-self: center;
-  width: clamp(170px, 24vh, 250px);
+  width: clamp(190px, 28vh, 300px);
   aspect-ratio: 1;
   border-radius: var(--radius-xl);
   overflow: hidden;

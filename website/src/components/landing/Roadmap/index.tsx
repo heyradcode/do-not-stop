@@ -19,6 +19,9 @@ const Z0 = 0.42;
 const FAR = 2.6;
 const FADE_IN = 0.6;
 const PASS_FADE = 0.28;
+/** How far past the camera a gate keeps growing before it is fully faded.
+    Kept shallow so the overshoot never balloons over the header strip. */
+const PASS_OVERSHOOT = 0.18;
 
 const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 
@@ -42,7 +45,7 @@ const Roadmap = () => {
     gates.current.forEach((el, index) => {
       if (!el) return;
       const zAhead = index + 0.5 - progress * COUNT;
-      const s = Z0 / (Math.max(zAhead, -PASS_FADE + 0.02) + Z0);
+      const s = Z0 / (Math.max(zAhead, -PASS_OVERSHOOT) + Z0);
 
       let opacity: number;
       if (zAhead <= 0) opacity = clamp01(1 + zAhead / PASS_FADE);
@@ -50,8 +53,13 @@ const Roadmap = () => {
       else if (zAhead > FAR - FADE_IN) opacity = (FAR - zAhead) / FADE_IN;
       else opacity = 1;
 
+      // The flight corridor stays inside the road band: gates descend from the
+      // horizon (54% from the bottom) only to ~44%, which sits above the
+      // enlarged stage area at every viewport this scene runs on. Nearness is
+      // carried almost entirely by scale, and transform-origin pins the base so
+      // the pass overshoot grows upward, away from the cards.
       el.style.setProperty('--gs', s.toFixed(4));
-      el.style.setProperty('--gb', `${(54 - 48 * Math.min(s, 1)).toFixed(2)}%`);
+      el.style.setProperty('--gb', `${(54 - 10 * Math.min(s, 1)).toFixed(2)}%`);
       el.style.setProperty('--go', opacity.toFixed(3));
     });
 
