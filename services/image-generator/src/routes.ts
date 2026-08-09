@@ -8,23 +8,29 @@
  *   GET /ready                         readiness: store and RPC actually work
  *   GET /image/:chain/:tokenId.png     the pet's art (generated once, then cached)
  *   GET /metadata/:chain/:tokenId      ERC-721 metadata, what tokenURI points at
- *   GET /items/:id.svg                 catalog item art (static, roadmap §4)
+ *   GET /items/:id.png                 catalog item art (generated once, then cached)
+ *   GET /items/:id.svg                 deterministic fallback art, never generates
  *   GET /items/:id.json                ERC-1155 metadata, what ItemCore.uri() points at
  *
  * The item routes take no chain. An item's token id is its *type*, and the catalog is one
  * document shared by every deployment, so unlike a pet there is nothing chain-specific to
- * read — the response is a pure function of the id, which is also why neither route touches
- * the store, the RPC or Workers AI.
+ * read and none of them touches the RPC.
+ *
+ * Two art routes, on purpose. The PNG is the painted art and is what metadata points at, so
+ * it is what a marketplace caches; the SVG is drawn from the catalog entry alone and is what
+ * answers before an item has been warmed, or on a deployment with no Workers AI credentials
+ * at all. Only the PNG costs an inference, and only on a miss.
  */
 
 import type { PetReader } from './chain.js';
 import { UnknownPetError, UnsupportedChainError } from './chain.js';
 import { renderItemSvg } from './itemArt.js';
+import { getOrCreateItemImage } from './itemPipeline.js';
 import { findItem } from './items.js';
 import { buildItemMetadata } from './itemMetadata.js';
 import { buildPetMetadata } from './metadata.js';
 import { getOrCreatePetImage, type PipelineDeps } from './pipeline.js';
-import { petImageKey } from './store.js';
+import { itemImageKey, petImageKey } from './store.js';
 import { checkReadiness } from './readiness.js';
 import { DeadlineExceeded, withDeadline } from './retry.js';
 import { ChainNotConfiguredError } from './readerRouter.js';
@@ -96,6 +102,7 @@ const METADATA_ROUTE = /^\/metadata\/([a-z0-9-]+)\/([0-9A-Za-z]{1,88})$/;
 // Items are addressed by token id alone: the id *is* the item type, and the catalog is the
 // same on every chain, so there is no chain segment to carry.
 const ITEM_ART_ROUTE = /^\/items\/([0-9a-fA-F]{1,64})\.svg$/;
+const ITEM_IMAGE_ROUTE = /^\/items\/([0-9a-fA-F]{1,64})\.png$/;
 const ITEM_METADATA_ROUTE = /^\/items\/([0-9a-fA-F]{1,64})\.json$/;
 
 /**
@@ -145,6 +152,50 @@ const serveItemArt = (rawId: string): RouteResponse => {
     return svg(renderItemSvg(item));
 };
 
+/**
+ * Generated item art: painted once, then served from the store forever.
+ *
+ * The `.svg` route above is the deterministic fallback and is what answers before an item has
+ * been warmed, or on a deployment with no Workers AI credentials at all. Both exist on
+ * purpose — the SVG can never fail and never costs anything, and the PNG is the art worth
+ * looking at — but only the PNG is what `uri()` metadata points at, so a marketplace caches
+ * the painted one.
+ */
+const serveItemImage = async (
+    deps: RouteDeps,
+    rawId: string,
+    probeOnly: boolean,
+): Promise<RouteResponse> => {
+    const itemType = resolveItemType(rawId);
+    const item = itemType === null ? undefined : findItem(itemType);
+    if (!item) return json(404, { error: 'Unknown item type' });
+
+    // Same rule as pet art: HEAD reports readiness and never generates, so a link previewer
+    // or a marketplace crawling the collection cannot bill 15 inferences for images nobody
+    // has looked at yet.
+    if (probeOnly) {
+        const cached = await deps.store.get(itemImageKey(item.itemType));
+        return cached ? png(cached.bytes, true) : notReady();
+    }
+
+    try {
+        const result = await withDeadline(
+            getOrCreateItemImage(deps, item.itemType),
+            deps.responseTimeoutMs ?? DEFAULT_RESPONSE_TIMEOUT_MS,
+        );
+        if (result.url) {
+            return {
+                status: 302,
+                headers: { location: result.url, 'cache-control': IMMUTABLE },
+                body: Buffer.alloc(0),
+            };
+        }
+        return png(result.bytes, result.cached);
+    } catch (error) {
+        return errorResponse(error);
+    }
+};
+
 const serveItemMetadata = (deps: RouteDeps, rawId: string): RouteResponse => {
     const itemType = resolveItemType(rawId);
     const item = itemType === null ? undefined : findItem(itemType);
@@ -154,7 +205,7 @@ const serveItemMetadata = (deps: RouteDeps, rawId: string): RouteResponse => {
     const metadata = buildItemMetadata(item, {
         // Decimal in the link we generate ourselves: shorter, and it is the id every other
         // surface in this project uses. The padded form only has to be *accepted*.
-        imageUrl: `${base}/items/${item.itemType}.svg`,
+        imageUrl: `${base}/items/${item.itemType}.png`,
         ...(deps.itemExternalUrlTemplate
             ? { externalUrl: deps.itemExternalUrlTemplate.replace('{id}', item.itemType) }
             : {}),
@@ -197,9 +248,12 @@ export const handleRequest = async (
     const metadata = METADATA_ROUTE.exec(path);
     if (metadata) return await serveMetadata(deps, metadata[1]!, metadata[2]!);
 
-    // Synchronous: both are pure functions of the catalog, with no store or RPC behind them.
+    // Synchronous: a pure function of the catalog, with no store or RPC behind it.
     const itemArt = ITEM_ART_ROUTE.exec(path);
     if (itemArt) return serveItemArt(itemArt[1]!);
+
+    const itemImage = ITEM_IMAGE_ROUTE.exec(path);
+    if (itemImage) return await serveItemImage(deps, itemImage[1]!, method === 'HEAD');
 
     const itemMetadata = ITEM_METADATA_ROUTE.exec(path);
     if (itemMetadata) return serveItemMetadata(deps, itemMetadata[1]!);

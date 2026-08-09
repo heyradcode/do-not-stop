@@ -21,7 +21,8 @@
         "start": "node dist/main.js",
         "generate": "tsx --env-file-if-exists=.env src/cli.ts",
         "warm": "tsx --env-file-if-exists=.env src/warmCli.ts",
-        "smoke": "pnpm build && node scripts/smoke.mjs"
+        "smoke": "pnpm build && node scripts/smoke.mjs",
+        "warm:items": "tsx --env-file-if-exists=.env src/warmItemsCli.ts"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.1098.0",

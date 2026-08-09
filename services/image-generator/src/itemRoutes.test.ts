@@ -49,7 +49,8 @@ describe('GET /items/:id.json', () => {
         expect(res.status).toBe(200);
         const body = JSON.parse(res.body.toString()) as ItemMetadata;
         expect(body.name).toBe('Iron Fang');
-        expect(body.image).toBe('https://art.example.com/items/1.svg');
+        // The painted PNG, not the fallback SVG: this is the URL a marketplace caches.
+        expect(body.image).toBe('https://art.example.com/items/1.png');
     });
 
     /**
@@ -132,9 +133,9 @@ describe('GET /items/:id.svg', () => {
     });
 });
 
-describe('item routes are self-contained', () => {
-    // The deps above throw on both. Passing proves an item request costs no inference and
-    // survives an RPC outage, which is what lets them be cached forever.
+describe('the metadata and fallback routes are self-contained', () => {
+    // The deps above throw on both. Passing proves these two cost no inference and survive an
+    // RPC outage, which is what lets the SVG answer before an item has ever been warmed.
     it('never touch the chain reader or the generator', async () => {
         for (const path of ['/items/1.json', '/items/1.svg', '/items/201.json', '/items/201.svg']) {
             expect((await get(path)).status).toBe(200);
@@ -148,6 +149,71 @@ describe('item routes are self-contained', () => {
 
     it('does not swallow unrelated paths', async () => {
         expect((await get('/items/')).status).toBe(404);
-        expect((await get('/items/1.png')).status).toBe(404);
+        expect((await get('/items/1.gif')).status).toBe(404);
+        expect((await get('/items/nope.json')).status).toBe(404);
+    });
+});
+
+describe('GET /items/:id.png', () => {
+    const painted = (overrides: Partial<RouteDeps> = {}) => {
+        const generate = vi.fn(async () => Buffer.from('painted-bytes'));
+        const d = deps({ generate: generate as unknown as NonNullable<PipelineDeps['generate']>, ...overrides });
+        return { d, generate };
+    };
+
+    it('paints on a miss and serves the bytes', async () => {
+        const { d, generate } = painted();
+        const res = await handleRequest(d, 'GET', '/items/1.png');
+
+        expect(res.status).toBe(200);
+        expect(res.headers['content-type']).toBe('image/png');
+        expect(res.headers['x-art-cache']).toBe('miss');
+        expect(generate).toHaveBeenCalledOnce();
+    });
+
+    it('serves the same bytes from cache on the next request, without paying again', async () => {
+        const { d, generate } = painted();
+        await handleRequest(d, 'GET', '/items/1.png');
+        const second = await handleRequest(d, 'GET', '/items/1.png');
+
+        expect(second.headers['x-art-cache']).toBe('hit');
+        expect(generate).toHaveBeenCalledOnce();
+    });
+
+    /**
+     * A marketplace indexing the collection probes image URLs before anyone looks at them.
+     * Generating for a probe would bill the whole catalog in one burst.
+     */
+    it('reports readiness on HEAD without generating', async () => {
+        const { d, generate } = painted();
+        const cold = await handleRequest(d, 'HEAD', '/items/1.png');
+
+        expect(cold.status).not.toBe(200);
+        expect(generate).not.toHaveBeenCalled();
+
+        await handleRequest(d, 'GET', '/items/1.png');
+        expect((await handleRequest(d, 'HEAD', '/items/1.png')).status).toBe(200);
+        expect(generate).toHaveBeenCalledOnce();
+    });
+
+    it('accepts the padded hex form a wallet sends', async () => {
+        const { d } = painted();
+        expect((await handleRequest(d, 'GET', `/items/${padded(1n)}.png`)).status).toBe(200);
+    });
+
+    it('404s an unknown item before spending an inference', async () => {
+        const { d, generate } = painted();
+        expect((await handleRequest(d, 'GET', '/items/424242.png')).status).toBe(404);
+        expect(generate).not.toHaveBeenCalled();
+    });
+
+    it('redirects to the bucket when the store has a public URL', async () => {
+        const store = new MemoryImageStore() as MemoryImageStore & { publicUrl: (k: string) => string };
+        store.publicUrl = (key: string) => `https://cdn.example.com/${key}`;
+        const { d } = painted({ store });
+
+        const res = await handleRequest(d, 'GET', '/items/1.png');
+        expect(res.status).toBe(302);
+        expect(res.headers.location).toContain('https://cdn.example.com/');
     });
 });
