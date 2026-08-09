@@ -68,7 +68,14 @@ const REVEAL_GUARD = "document.documentElement.classList.add('js-reveal')";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${orbitron.variable} ${inter.variable}`}>
+    /* The guard above mutates this element's class list before React hydrates,
+       so the server markup and the client tree disagree on className by design.
+       Without this, that shows up as a hydration mismatch on every load. */
+    <html
+      lang="en"
+      className={`${orbitron.variable} ${inter.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: REVEAL_GUARD }} />
       </head>

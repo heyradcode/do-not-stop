@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import clsx from 'clsx';
 
 import { NeonButton } from '@/components/common';
@@ -16,6 +16,9 @@ const NAV_IDS = NAV_LINKS.map(({ href }) => href.replace('#', ''));
 /** Width at which the inline nav gives way to the drawer. Matches SiteHeader.css. */
 const DRAWER_QUERY = '(max-width: 900px)';
 
+/** Breathing room below the header at an anchor. Matches --anchor-gap. */
+const ANCHOR_GAP = 22;
+
 type SiteHeaderProps = {
   title: string;
 };
@@ -30,6 +33,47 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
   const drawerRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => setOpen(false), []);
+
+  /**
+   * Scrolls to a section explicitly rather than leaving it to the browser's
+   * anchor jump.
+   *
+   * `scroll-padding-top` alone is not enough here: the two pinned sections are
+   * several screens tall, and a smooth scroll started against a target position
+   * computed before they settle lands short. Measuring at click time and
+   * scrolling to an absolute offset removes that dependency.
+   *
+   * The offset uses the published expanded header height, not the live one — the
+   * header may be condensed at click time and expanded on arrival (scrolling
+   * upward), which would otherwise land the heading underneath it.
+   */
+  const goToSection = useCallback(
+    (event: MouseEvent<HTMLAnchorElement>, href: string, fromDrawer = false) => {
+      // Leave modified clicks alone so open-in-new-tab still works.
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const target = document.querySelector(href);
+      if (!target) return;
+
+      event.preventDefault();
+      close();
+      if (fromDrawer) toggleRef.current?.focus();
+
+      const published = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--header-h'),
+      );
+      const headerHeight = Number.isFinite(published)
+        ? published
+        : (ref.current?.getBoundingClientRect().height ?? 0);
+
+      const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - ANCHOR_GAP;
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      window.scrollTo({ top: Math.max(top, 0), behavior: reduced ? 'auto' : 'smooth' });
+      window.history.pushState(null, '', href);
+    },
+    [close, ref],
+  );
 
   // Slide the indicator behind the active link. Measured rather than expressed
   // in CSS because the links are content-width, so the pill's offset and width
@@ -123,7 +167,7 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
       <span className="progress" aria-hidden="true" />
 
       <div className="shell">
-        <a className="brand" href="#top" onClick={close}>
+        <a className="brand" href="#top" onClick={(event) => goToSection(event, '#top')}>
           <span className="brand-name">{title}</span>
         </a>
 
@@ -137,6 +181,7 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
                     href={href}
                     data-nav-id={id}
                     aria-current={activeId === id ? 'true' : undefined}
+                    onClick={(event) => goToSection(event, href)}
                   >
                     {label}
                   </a>
@@ -183,7 +228,7 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
                   <a
                     href={href}
                     aria-current={activeId === id ? 'true' : undefined}
-                    onClick={handleClose}
+                    onClick={(event) => goToSection(event, href, true)}
                   >
                     {label}
                   </a>
