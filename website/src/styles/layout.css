@@ -1,4 +1,5 @@
-/* Landing layout shell — fonts come from next/font (Orbitron + Inter), wired in app/layout.tsx. */
+/* Layout shell — fonts come from next/font (Orbitron + Inter), wired in
+   app/layout.tsx. The header lives in components/layout/SiteHeader. */
 
 .main-container {
   --title-font: var(--font-display), 'Orbitron', 'Eurostile', 'Bank Gothic', system-ui, sans-serif;
@@ -13,82 +14,6 @@
   color: var(--text-bright);
 }
 
-.main-header {
-  position: fixed;
-  inset-block-start: 0;
-  inset-inline: 0;
-  width: 100%;
-  background: rgb(var(--surface-void-rgb) / 68%);
-  border-block-end: var(--border-subtle);
-  z-index: var(--z-header);
-  box-shadow: var(--elev-2);
-  box-sizing: border-box;
-  min-height: var(--main-header-offset);
-  padding-inline: clamp(20px, 5vw, 42px);
-  padding-block: 10px;
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-
-  & .brand-name {
-    display: block;
-    font-family: var(--title-font);
-    font-size: clamp(1.8rem, 3vw, 2.5rem);
-    line-height: 1.2;
-    margin: 0;
-    color: var(--text-title);
-    letter-spacing: 1.2px;
-    font-weight: 700;
-    text-transform: uppercase;
-    text-shadow: var(--glow-text-md);
-  }
-}
-
-.main-header {
-  & .title {
-    display: block;
-    position: relative;
-    flex: 1 1 auto;
-    min-width: 0;
-    text-align: start;
-  }
-
-  & .title::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    width: clamp(140px, 22vw, 260px);
-    height: 42px;
-    transform: translateY(-50%);
-    background: radial-gradient(ellipse at center, rgb(138 98 255 / 35%) 0%, rgb(74 128 255 / 16%) 48%, transparent 78%);
-    filter: blur(8px);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  & .title .brand-name {
-    position: relative;
-    z-index: 1;
-    text-shadow:
-      0 0 10px rgb(185 160 255 / 50%),
-      0 0 22px rgb(125 141 255 / 38%),
-      0 0 44px rgb(108 72 255 / 26%);
-  }
-}
-
-.wallet-section {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  flex: 0 0 auto;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 /* The document scrolls, not this element — a nested scroll container would break
    `position: sticky`, scroll-linked animation, and mobile URL-bar collapse. */
 .main-content {
@@ -99,26 +24,8 @@
   margin-inline: 0;
 }
 
-/* Landing: gap under fixed header can be painted by hero section. */
+/* Landing: the header floats over the hero, which paints the space itself. */
 .main-content:has(.landing) {
   margin-block-start: 0;
   background-color: var(--surface-base);
-}
-
-@media (max-width: 768px) {
-  .main-header {
-    padding-inline: clamp(14px, 4vw, 22px);
-    padding-block: 10px;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .main-header .brand-name {
-    font-size: 1.3rem;
-  }
-
-  .wallet-section {
-    max-width: 100%;
-    justify-content: center;
-  }
 }

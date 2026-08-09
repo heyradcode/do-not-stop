@@ -2,9 +2,8 @@
 
 import React from 'react';
 
-import { NeonButton } from '@/components/common';
+import SiteHeader from '@/components/layout/SiteHeader';
 import useRevealObserver from '@/hooks/useRevealObserver';
-import { openApp } from '@/lib/openApp';
 
 type LayoutProps = {
   children: React.ReactNode;
@@ -26,20 +25,7 @@ const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className={containerClass}>
-      <div className="main-header">
-        <div className="title">
-          {/* Brand lockup, not a heading — the page's single h1 is the hero
-              headline. A site name in the header is a landmark label, and
-              making it h1 pushed every real heading down a level. */}
-          <span className="brand-name">{title}</span>
-        </div>
-        <div className="wallet-section">
-          <NeonButton type="button" tone="emerald" onClick={openApp}>
-            Play Now
-          </NeonButton>
-        </div>
-      </div>
-
+      <SiteHeader title={title} />
       <div className={contentClass}>{children}</div>
     </div>
   );

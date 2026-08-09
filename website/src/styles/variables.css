@@ -227,7 +227,8 @@
   --section-pad-block: clamp(80px, 9vh, 120px);
   --section-pad-block-band: clamp(56px, 6vh, 80px);
 
-  /* Space reserved for fixed `.main-header`. */
+  /* Space the fixed `.site-header` occupies: pill height plus its inset.
+     Also the anchor scroll offset — see globals.css. */
   --main-header-offset: 100px;
 }
 
@@ -257,7 +258,6 @@
 
 @media (max-width: 768px) {
   :root {
-    --main-header-offset: 128px;
     --section-pad-block: 64px;
     --section-pad-block-band: 44px;
   }

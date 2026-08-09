@@ -51,6 +51,18 @@ export type Testimonial = {
 
 export type Backer = { name: string };
 
+export type NavLink = { label: string; href: string };
+
+/** Shared by the header nav and the footer's Explore column. */
+export const NAV_LINKS: NavLink[] = [
+  { label: 'How It Works', href: '#how' },
+  { label: 'Features', href: '#features' },
+  { label: 'Pets', href: '#pets' },
+  { label: 'Roadmap', href: '#roadmap' },
+  { label: 'FAQ', href: '#faq' },
+  { label: 'Community', href: '#community' },
+];
+
 export const FEATURES: FeatureCard[] = [
   { title: 'Breed Unique Pets', text: 'Combine rare DNA traits and hatch powerful new companions.', iconImage: '/images/icons/interaction/breed.png' },
   { title: 'Epic Battles', text: 'Challenge rivals and climb the leaderboard with tactical fights.', iconImage: '/images/icons/interaction/battle.png' },

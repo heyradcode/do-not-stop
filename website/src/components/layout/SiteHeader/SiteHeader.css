@@ -1,0 +1,224 @@
+/* =============================================================================
+   Site header — a floating glass pill rather than a full-width bar.
+
+   The shell carries the glass; the header itself is only a positioning frame and
+   is transparent to pointer events, so the gutter either side of the pill does
+   not swallow clicks on the hero beneath it.
+   ============================================================================= */
+.site-header {
+  --header-inset: 18px;
+  --shell-pad-block: 10px;
+
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: var(--z-header);
+  display: flex;
+  justify-content: center;
+  padding: var(--header-inset) var(--landing-gutter);
+  pointer-events: none;
+  transition: padding var(--dur-slow) var(--ease-out);
+}
+
+.site-header .shell {
+  pointer-events: auto;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 2vw, 28px);
+  width: min(100%, 1180px);
+  padding: var(--shell-pad-block) var(--shell-pad-block) var(--shell-pad-block) 22px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgb(var(--border-rgb) / 26%);
+  background: linear-gradient(
+    180deg,
+    rgb(var(--surface-void-rgb) / 62%),
+    rgb(var(--surface-void-rgb) / 46%)
+  );
+  /* saturate() is what keeps the neon behind the glass reading as neon. Without
+     it the backdrop blurs to grey and the pill looks like frosted plastic. */
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow:
+    /* Specular top edge — the single detail that reads as glass rather than
+       as a translucent rectangle. */
+    inset 0 1px 0 rgb(255 255 255 / 12%),
+    inset 0 -1px 0 rgb(0 0 0 / 28%),
+    var(--elev-3),
+    0 0 24px rgb(var(--border-rgb) / 10%);
+  transition:
+    padding var(--dur-slow) var(--ease-out),
+    border-color var(--dur-slow) var(--ease-out),
+    background var(--dur-slow) var(--ease-out),
+    box-shadow var(--dur-slow) var(--ease-out);
+}
+
+/* Older Safari and Firefox-with-backdrop-disabled would otherwise show the hero
+   straight through the pill and make the nav unreadable. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site-header .shell {
+    background: rgb(var(--surface-void-rgb) / 92%);
+  }
+}
+
+/* Condensed: tighter, brighter, more opaque once the page has moved. */
+.site-header.is-condensed {
+  --header-inset: 10px;
+  --shell-pad-block: 7px;
+}
+
+.site-header.is-condensed .shell {
+  border-color: rgb(var(--border-rgb) / 42%);
+  background: linear-gradient(
+    180deg,
+    rgb(var(--surface-void-rgb) / 82%),
+    rgb(var(--surface-void-rgb) / 68%)
+  );
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 16%),
+    inset 0 -1px 0 rgb(0 0 0 / 32%),
+    var(--elev-4),
+    0 0 30px rgb(var(--border-rgb) / 16%);
+}
+
+/* =============================================================================
+   Brand
+   ============================================================================= */
+.site-header .brand {
+  flex: 0 0 auto;
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+  line-height: 1;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -60% -30%;
+    background: radial-gradient(
+      ellipse at center,
+      rgb(var(--neon-violet-rgb) / 26%) 0%,
+      rgb(var(--border-rgb) / 12%) 48%,
+      transparent 76%
+    );
+    filter: blur(8px);
+    pointer-events: none;
+    z-index: var(--z-base);
+  }
+}
+
+.site-header .brand-name {
+  position: relative;
+  z-index: var(--z-raised);
+  display: block;
+  font-family: var(--title-font);
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-title);
+  text-shadow: var(--glow-text-md);
+  white-space: nowrap;
+}
+
+/* =============================================================================
+   Nav
+   ============================================================================= */
+.site-header .nav {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+
+  & ul {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  & a {
+    display: block;
+    padding: 8px 13px;
+    border-radius: var(--radius-pill);
+    font-family: var(--content-font);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--text-muted);
+    transition:
+      color var(--dur-base) var(--ease-out),
+      background var(--dur-base) var(--ease-out);
+
+    &:hover {
+      color: var(--text-title);
+      background: var(--surface-veil-2);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgb(var(--border-rgb) / 60%);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.site-header .actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+/* =============================================================================
+   Reading progress hairline
+   ============================================================================= */
+.site-header .progress {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  height: 2px;
+  --spectrum-angle: 90deg;
+  background: var(--gradient-spectrum);
+  box-shadow: 0 0 10px rgb(var(--glow-text-rgb) / 55%);
+  transform: scaleX(var(--scroll-progress, 0));
+  transform-origin: 0 50%;
+  opacity: 0;
+  transition: opacity var(--dur-slow) var(--ease-out);
+}
+
+.site-header.is-condensed .progress {
+  opacity: 1;
+}
+
+/* =============================================================================
+   Responsive
+
+   The nav collapses below 900px and is not yet replaced by anything — that is
+   the drawer's job, next. Hiding it here is not a regression: the header had no
+   nav at all before this.
+   ============================================================================= */
+@media (max-width: 900px) {
+  .site-header .nav {
+    display: none;
+  }
+
+  .site-header .shell {
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 768px) {
+  .site-header {
+    padding-inline: 14px;
+  }
+
+  .site-header .shell {
+    padding-inline: 10px 10px;
+    padding-inline-start: 16px;
+  }
+}

@@ -1,13 +1,5 @@
+import { NAV_LINKS } from '@/content/landing';
 import './Footer.css';
-
-const NAV_LINKS = [
-  { label: 'How It Works', href: '#how' },
-  { label: 'Features', href: '#features' },
-  { label: 'Pets', href: '#pets' },
-  { label: 'Roadmap', href: '#roadmap' },
-  { label: 'FAQ', href: '#faq' },
-  { label: 'Community', href: '#community' },
-];
 
 const META_LINKS = [
   { label: 'About', href: '#' },

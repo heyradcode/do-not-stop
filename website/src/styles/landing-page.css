@@ -1,11 +1,3 @@
-/* Landing-only: lighter header chrome so the hero shows through */
-.landing-layout .main-header {
-  background: rgb(var(--surface-void-rgb) / 42%);
-  border-block-end-color: rgb(var(--border-rgb) / 16%);
-  box-shadow: var(--elev-1);
-  backdrop-filter: blur(10px);
-}
-
 /* Section rhythm tokens live at :root — see variables.css §9. */
 .landing {
   display: flex;

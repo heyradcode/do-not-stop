@@ -4,7 +4,7 @@
 @import './landing-page.css';
 
 html {
-  /* Anchor targets clear the fixed `.main-header`. Do not also set
+  /* Anchor targets clear the fixed `.site-header`. Do not also set
      `scroll-margin-top` on the targets — the two offsets add up. */
   scroll-padding-top: var(--main-header-offset);
   scroll-behavior: smooth;
