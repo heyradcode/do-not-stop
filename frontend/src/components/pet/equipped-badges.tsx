@@ -23,11 +23,20 @@ const SLOT_ORDER = [0, 1, 2];
 
 export type EquippedBadgesProps = {
     equipped: readonly EquippedItem[] | undefined;
+    /**
+     * The **pet's** rarity tier, not each item's.
+     *
+     * So a pet's gear reads as one set belonging to that pet, rather than three chips arguing
+     * with each other and with the card's own rarity bar. The trade is real and worth knowing:
+     * a Legendary sword and a Common vest now look the same here, and an item's own tier is
+     * only visible in the inventory, where it is what the screen is about.
+     */
+    rarity: number;
     /** Bigger on a combatant card, which is the subject of its screen. */
     size?: 'sm' | 'md';
 };
 
-const EquippedBadges: React.FC<EquippedBadgesProps> = ({ equipped, size = 'sm' }) => {
+const EquippedBadges: React.FC<EquippedBadgesProps> = ({ equipped, rarity, size = 'sm' }) => {
     if (!equipped || equipped.length === 0) return null;
 
     const ordered = [...equipped].sort(
@@ -37,6 +46,9 @@ const EquippedBadges: React.FC<EquippedBadgesProps> = ({ equipped, size = 'sm' }
     return (
         <div
             className={size === 'md' ? styles.stripMd : styles.strip}
+            // Set once here and inherited by every badge: custom properties cascade, and one
+            // tint for the whole strip is exactly the point.
+            style={{ '--rarity': getRarityColor(rarity) } as React.CSSProperties}
             // One label for the strip rather than one per icon: a screen reader should hear
             // "wearing Iron Fang, Hide Vest", not three separate images interrupting the card.
             role="img"
@@ -48,7 +60,6 @@ const EquippedBadges: React.FC<EquippedBadgesProps> = ({ equipped, size = 'sm' }
                     <span
                         key={entry.slot}
                         className={styles.badge}
-                        style={{ '--rarity': getRarityColor(entry.item.rarity) } as React.CSSProperties}
                         // Native tooltip, so a mouse user can name a 20px icon without a
                         // popover competing with the card's own click target.
                         title={entry.item.name}

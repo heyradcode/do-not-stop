@@ -24,7 +24,7 @@ beforeEach(() => {
 
 describe('EquippedBadges', () => {
     it('shows one icon per equipped item', () => {
-        render(<EquippedBadges equipped={[BLADE, VEST]} />);
+        render(<EquippedBadges equipped={[BLADE, VEST]} rarity={5} />);
         const imgs = screen.getByRole('img', { name: /^Wearing/ }).querySelectorAll('img');
         expect(imgs).toHaveLength(2);
         expect(imgs[0]).toHaveAttribute('src', 'https://art.example.com/items/1.png');
@@ -33,18 +33,18 @@ describe('EquippedBadges', () => {
     // Most pets wear nothing, and a placeholder on every card would cost more attention than
     // the feature is worth.
     it('renders nothing for a bare pet', () => {
-        const { container } = render(<EquippedBadges equipped={[]} />);
+        const { container } = render(<EquippedBadges equipped={[]} rarity={5} />);
         expect(container).toBeEmptyDOMElement();
     });
 
     it('renders nothing before the batched read has answered', () => {
-        const { container } = render(<EquippedBadges equipped={undefined} />);
+        const { container } = render(<EquippedBadges equipped={undefined} rarity={5} />);
         expect(container).toBeEmptyDOMElement();
     });
 
     // Slot order, not arrival order: the icons must not reshuffle between cards or renders.
     it('orders icons by slot regardless of the order given', () => {
-        render(<EquippedBadges equipped={[CHARM, BLADE, VEST]} />);
+        render(<EquippedBadges equipped={[CHARM, BLADE, VEST]} rarity={5} />);
         expect(screen.getByRole('img', { name: 'Wearing Iron Fang, Hide Vest, River Charm' }))
             .toBeInTheDocument();
     });
@@ -52,20 +52,37 @@ describe('EquippedBadges', () => {
     // One label for the strip, not one per icon: a screen reader should hear what the pet is
     // wearing, not three images interrupting the card.
     it('announces the whole strip once', () => {
-        render(<EquippedBadges equipped={[BLADE, VEST]} />);
+        render(<EquippedBadges equipped={[BLADE, VEST]} rarity={5} />);
         expect(screen.getByRole('img', { name: 'Wearing Iron Fang, Hide Vest' })).toBeInTheDocument();
         expect(screen.queryAllByRole('img', { name: 'Iron Fang' })).toHaveLength(0);
     });
 
+    /**
+     * The pet's tier, not each item's. A pet's gear reads as one set belonging to that pet
+     * rather than three chips arguing with each other; the cost is that an item's own tier is
+     * only visible in the inventory.
+     */
+    it("tints every badge with the pet's rarity, not the item's", () => {
+        // Items are rarity 3 (gold); the pet is 5 (violet).
+        render(<EquippedBadges equipped={[BLADE, VEST]} rarity={5} />);
+
+        const strip = screen.getByRole('img', { name: /^Wearing/ });
+        expect(strip).toHaveStyle({ '--rarity': '#8A2BE2' });
+        // Set once on the strip and inherited, rather than repeated per badge.
+        for (const badge of strip.children) {
+            expect((badge as HTMLElement).style.getPropertyValue('--rarity')).toBe('');
+        }
+    });
+
     it('names each item for a mouse user, since the icons are tiny', () => {
-        render(<EquippedBadges equipped={[BLADE]} />);
+        render(<EquippedBadges equipped={[BLADE]} rarity={5} />);
         expect(screen.getByTitle('Iron Fang')).toBeInTheDocument();
     });
 
     // With no image service the rarity-tinted square still says the slot is filled.
     it('still marks the slots when there is no art service', () => {
         vi.stubEnv('VITE_IMAGE_SERVICE_URL', '');
-        render(<EquippedBadges equipped={[BLADE, VEST]} />);
+        render(<EquippedBadges equipped={[BLADE, VEST]} rarity={5} />);
 
         const strip = screen.getByRole('img', { name: /^Wearing/ });
         expect(strip.querySelectorAll('img')).toHaveLength(0);

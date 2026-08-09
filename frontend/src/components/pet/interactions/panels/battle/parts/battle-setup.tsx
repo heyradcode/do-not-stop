@@ -89,7 +89,7 @@ const CombatantCard: React.FC<{
                 pin it to the emoji's size instead of the card's. */}
             <div className={styles.combatantCardArt}>
                 <PetArt pet={pet} fill emojiClassName={styles.combatantCardAvatar} />
-                <EquippedBadges equipped={equipped} size="md" />
+                <EquippedBadges equipped={equipped} rarity={pet.rarity} size="md" />
             </div>
             {/* Nothing here is legible over arbitrary generated art without it. */}
             <div className={styles.combatantCardScrim} aria-hidden />

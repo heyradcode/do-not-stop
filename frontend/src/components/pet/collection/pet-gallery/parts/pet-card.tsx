@@ -75,7 +75,7 @@ const PetCard: React.FC<PetCardProps> = ({ pet, cooldown, equipped, onBattle, on
                     emoji's size. It goes on the emoji itself instead. */}
                 <PetArt pet={pet} fill emojiClassName={styles.avatar} />
                 {/* Inside the art wrapper, which is the positioned ancestor the badges pin to. */}
-                <EquippedBadges equipped={equipped} />
+                <EquippedBadges equipped={equipped} rarity={pet.rarity} />
             </div>
 
             <div className={styles.info}>
