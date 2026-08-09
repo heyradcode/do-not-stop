@@ -25,10 +25,26 @@ const mockState = {
 };
 
 const mockSwitchChainAsync = jest.fn(async () => undefined);
+const mockOpen = jest.fn(async () => undefined);
+const mockDisconnect = jest.fn(async () => undefined);
+const mockToast = {
+    show: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    success: jest.fn(),
+};
 
 jest.mock('wagmi', () => ({
     useAccount: () => ({ isConnected: mockState.isConnected, chainId: mockState.chainId }),
     useSwitchChain: () => ({ switchChainAsync: mockSwitchChainAsync }),
+}));
+
+jest.mock('@reown/appkit-react-native', () => ({
+    useAppKit: () => ({ open: mockOpen, disconnect: mockDisconnect }),
+}));
+
+jest.mock('../src/components/ui/toast', () => ({
+    useToast: () => mockToast,
 }));
 
 jest.mock('../src/hooks/useApprovedEvmChains', () => ({
@@ -71,6 +87,10 @@ beforeEach(() => {
     // call that would otherwise carry it into the next test.
     mockSwitchChainAsync.mockReset();
     mockSwitchChainAsync.mockResolvedValue(undefined);
+    mockOpen.mockClear();
+    mockDisconnect.mockClear();
+    mockToast.error.mockClear();
+    mockToast.info.mockClear();
 });
 
 describe('pickRequestChainId', () => {
@@ -209,19 +229,56 @@ describe('NetworkGate', () => {
         expect(textOf(tree)).toContain('signing will fail');
     });
 
-    it('offers the switch even when the target is unapproved', async () => {
-        // `wallet_addEthereumChain` is the only call that can widen a live
-        // session, so hiding the button strands the player on reconnect advice
-        // that does not help a wallet which hides testnets.
+    it('leads with reconnect when the target was never approved', async () => {
+        // A session's chain set is frozen at handshake, so a new proposal is the
+        // only path that reliably widens it. Switching leads only when the target
+        // is already approved, where it is a local provider call.
         mockState.chainId = TARGET_CHAIN_ID;
         mockState.approved = [mainnet.id];
         const tree = await render();
+
+        expect(textOf(tree)).toContain('Reconnect wallet');
 
         await ReactTestRenderer.act(async () => {
             tree.root.findAllByType(TouchableOpacity)[0].props.onPress();
         });
 
+        expect(mockDisconnect).toHaveBeenCalled();
+        expect(mockOpen).toHaveBeenCalled();
+        expect(mockSwitchChainAsync).not.toHaveBeenCalledWith({ chainId: TARGET_CHAIN_ID });
+    });
+
+    it('still offers the add attempt for wallets that honour it', async () => {
+        // `wallet_addEthereumChain` does widen a live session in some wallets, so
+        // the path stays reachable rather than being removed for everyone.
+        mockState.chainId = TARGET_CHAIN_ID;
+        mockState.approved = [mainnet.id];
+        const tree = await render();
+
+        await ReactTestRenderer.act(async () => {
+            tree.root.findAllByType(TouchableOpacity)[1].props.onPress();
+        });
+
         expect(mockSwitchChainAsync).toHaveBeenCalledWith({ chainId: TARGET_CHAIN_ID });
+    });
+
+    it('explains a wallet that ends the session instead of adding the chain', async () => {
+        // Rabby's behaviour: the request goes out, no prompt appears, and the
+        // session dies. The gate unmounts with it, so the message has to survive
+        // as a toast or the player is returned to Landing with no reason given.
+        mockState.chainId = TARGET_CHAIN_ID;
+        mockState.approved = [mainnet.id];
+        mockSwitchChainAsync.mockRejectedValue(
+            new Error('An unknown RPC error occurred.\n\nDetails: User disconnected.'),
+        );
+        const tree = await render();
+
+        await ReactTestRenderer.act(async () => {
+            tree.root.findAllByType(TouchableOpacity)[1].props.onPress();
+        });
+
+        expect(textOf(tree)).toContain('ended the session');
+        expect(mockToast.error).toHaveBeenCalledWith(expect.stringContaining('ended the session'));
     });
 
     it('repairs a session pinned to a chain it never approved', async () => {
@@ -260,8 +317,9 @@ describe('NetworkGate', () => {
         mockSwitchChainAsync.mockRejectedValue(new Error('unsupported chain'));
         const tree = await render();
 
+        // The add attempt is the secondary action now; reconnect leads.
         await ReactTestRenderer.act(async () => {
-            tree.root.findAllByType(TouchableOpacity)[0].props.onPress();
+            tree.root.findAllByType(TouchableOpacity)[1].props.onPress();
         });
 
         expect(textOf(tree)).toContain('disconnect and reconnect');
