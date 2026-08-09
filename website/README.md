@@ -9,7 +9,14 @@ Next.js landing page (`website/`). The playable app lives in `frontend/`.
 pnpm dev:web
 ```
 
-Copy `env.example` to `.env.local` and set `NEXT_PUBLIC_APP_URL` to your local or deployed app URL.
+Copy `env.example` to `.env.local` and set:
+
+- `NEXT_PUBLIC_APP_URL` — the local or deployed **app** URL, used by the "Play Now" CTA.
+- `NEXT_PUBLIC_SITE_URL` — the public origin of **this site**, used for canonical
+  URLs, `sitemap.xml`, `robots.txt` and Open Graph tags. It defaults to
+  `http://localhost:3002`, so a production deploy that leaves it unset publishes a
+  canonical tag and sitemap pointing at localhost. The two are different domains;
+  do not reuse `NEXT_PUBLIC_APP_URL` here.
 
 ## Deploy to Vercel (GitHub Actions)
 
@@ -43,6 +50,7 @@ CI runs `vercel pull` / `vercel deploy` from the monorepo root so `pnpm-lock.yam
 | `VERCEL_ORG_ID` | Secret | Team/user ID |
 | `VERCEL_WEBSITE_PROJECT_ID` | Secret | This website project’s ID |
 | `NEXT_PUBLIC_APP_URL` | Variable | Public URL of the `frontend` app |
+| `NEXT_PUBLIC_SITE_URL` | Variable | Public URL of this marketing site (canonical, sitemap, OG) |
 
 Workflow: none. `.github/workflows/website.yml` was removed in 49c5e63, and the
 secrets table above plus the triggers below describe that workflow. They have

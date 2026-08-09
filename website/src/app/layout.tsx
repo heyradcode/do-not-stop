@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { Inter, Orbitron } from 'next/font/google';
 
+import { SITE_URL } from '@/lib/siteUrl';
 import '../styles/globals.css';
 
 const orbitron = Orbitron({
@@ -17,9 +18,47 @@ const inter = Inter({
   display: 'swap',
 });
 
+const TITLE = 'Crypto Pets — Collect, Battle & Breed On-Chain Pets';
+const DESCRIPTION =
+  'Collect, breed and battle NFT pets on Ethereum and Solana. Every battle settles from a committed seed and ships with a receipt anyone can replay.';
+
 export const metadata: Metadata = {
-  title: 'Crypto Pets',
-  description: 'Collect, battle and breed unique on-chain pets in the ultimate Crypto Pets adventure.',
+  // Required for Next to resolve the relative URLs below into absolute ones.
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: TITLE,
+    template: '%s · Crypto Pets',
+  },
+  description: DESCRIPTION,
+  applicationName: 'Crypto Pets',
+  keywords: [
+    'NFT game',
+    'on-chain game',
+    'pet battler',
+    'Ethereum',
+    'Solana',
+    'provably fair',
+    'blockchain gaming',
+  ],
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    url: '/',
+    siteName: 'Crypto Pets',
+    title: TITLE,
+    description: DESCRIPTION,
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
+  },
 };
 
 /* Runs before first paint. Reveal targets start hidden only once this class is
