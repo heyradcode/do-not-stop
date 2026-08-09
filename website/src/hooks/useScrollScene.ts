@@ -50,6 +50,18 @@ export default function useScrollScene<
     let frame = 0;
     let attached = false;
 
+    /* Cached between frames. These change when the viewport does, not when the
+       page scrolls, and reading them per frame costs a style recalc plus two
+       layout reads on every frame of every scroll — doubled, since two scenes
+       are mounted. Only the scroll position below is read live. */
+    let scrollable = 0;
+    let stickyTop = 0;
+
+    const measure = () => {
+      stickyTop = parseFloat(getComputedStyle(pin).top) || 0;
+      scrollable = section.offsetHeight - pin.offsetHeight;
+    };
+
     /**
      * The hook owns the custom property, not its callers. Leaving that to each
      * onFrame meant a scene could silently render frozen if its callback forgot
@@ -62,12 +74,10 @@ export default function useScrollScene<
 
     const update = () => {
       frame = 0;
-      const scrollable = section.offsetHeight - pin.offsetHeight;
       if (scrollable <= 0) {
         write(1);
         return;
       }
-      const stickyTop = parseFloat(getComputedStyle(pin).top) || 0;
       const travelled = stickyTop - section.getBoundingClientRect().top;
       write(clamp(travelled / scrollable));
     };
@@ -76,11 +86,20 @@ export default function useScrollScene<
       if (!frame) frame = requestAnimationFrame(update);
     };
 
+    /* Both elements are sized in viewport units, so this fires on viewport
+       resize as well as any layout change that moves them. */
+    const sizeObserver = new ResizeObserver(() => {
+      measure();
+      if (attached) update();
+    });
+    sizeObserver.observe(section);
+    sizeObserver.observe(pin);
+
     const attach = () => {
       if (attached) return;
       attached = true;
       window.addEventListener('scroll', onScroll, { passive: true });
-      window.addEventListener('resize', onScroll, { passive: true });
+      measure();
       update();
     };
 
@@ -88,7 +107,6 @@ export default function useScrollScene<
       if (!attached) return;
       attached = false;
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
       if (frame) cancelAnimationFrame(frame);
       frame = 0;
     };
@@ -108,6 +126,7 @@ export default function useScrollScene<
 
     return () => {
       detach();
+      sizeObserver.disconnect();
       narrow.removeEventListener('change', sync);
       reduced.removeEventListener('change', sync);
     };

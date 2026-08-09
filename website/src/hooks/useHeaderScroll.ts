@@ -37,17 +37,21 @@ export default function useHeaderScroll<T extends HTMLElement>() {
       );
     };
 
-    const sizeObserver = header ? new ResizeObserver(publishHeight) : null;
-    if (header && sizeObserver) sizeObserver.observe(header);
-    publishHeight();
+    /* Cached: the document's scrollable extent changes when content or the
+       viewport does, not on every frame of a scroll. Reading scrollHeight per
+       frame forces a layout for a number that rarely moves. */
+    let scrollable = 0;
+
+    const measure = () => {
+      const doc = document.documentElement;
+      scrollable = doc.scrollHeight - doc.clientHeight;
+    };
 
     const update = () => {
       frame = 0;
-      const doc = document.documentElement;
-      const scrollable = doc.scrollHeight - doc.clientHeight;
       const y = window.scrollY;
 
-      ref.current?.style.setProperty(
+      header?.style.setProperty(
         '--scroll-progress',
         scrollable > 0 ? String(Math.min(y / scrollable, 1)) : '0',
       );
@@ -59,14 +63,24 @@ export default function useHeaderScroll<T extends HTMLElement>() {
       frame = requestAnimationFrame(update);
     };
 
+    /* Watching the body catches the document growing as images decode and
+       sections reveal, which is what actually changes the scrollable extent. */
+    const sizeObserver = new ResizeObserver(() => {
+      publishHeight();
+      measure();
+      onScroll();
+    });
+    if (header) sizeObserver.observe(header);
+    sizeObserver.observe(document.body);
+
+    publishHeight();
+    measure();
     update();
     window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
 
     return () => {
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      sizeObserver?.disconnect();
+      sizeObserver.disconnect();
       if (frame) cancelAnimationFrame(frame);
     };
   }, []);
