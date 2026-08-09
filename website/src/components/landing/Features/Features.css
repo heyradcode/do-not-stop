@@ -13,8 +13,14 @@
 
     position: relative;
     display: flex;
+    /* Every card lays out the same way regardless of span. Grid stretches both
+       cards in a row to equal height, so centring here lands their icons on the
+       same baseline; the previous column layout on narrow cards put one icon at
+       the top of the row and its neighbour's at mid-height. */
+    flex-direction: row;
+    align-items: center;
     gap: 20px;
-    padding: 28px;
+    padding: 26px;
     color: var(--text-bright);
     text-align: left;
     background: var(--surface-card);
@@ -51,18 +57,9 @@
               mask-composite: exclude;
     }
 
-    &[data-span='wide'] {
-      grid-column: span 4;
-      flex-direction: row;
-      align-items: center;
-    }
-
-    &[data-span='narrow'] {
-      grid-column: span 2;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 14px;
-    }
+    /* Span is the only thing the bento rhythm changes; layout stays uniform. */
+    &[data-span='wide'] { grid-column: span 4; }
+    &[data-span='narrow'] { grid-column: span 2; }
   }
 
   /* Cursor-tracked specular. Its own element rather than a pseudo: NeonCard
@@ -85,6 +82,8 @@
     opacity: 1;
   }
 
+  /* The glyphs are transparent PNGs, so they float on an accent glow plate
+     rather than being framed. One size for every card, whatever its span. */
   & .icon {
     position: relative;
     flex: 0 0 auto;
@@ -112,11 +111,6 @@
     }
   }
 
-  & .card[data-span='narrow'] .icon {
-    width: 76px;
-    height: 76px;
-  }
-
   & .copy {
     position: relative;
     z-index: var(--z-raised);
@@ -125,7 +119,7 @@
     & h3 {
       font-family: var(--title-font);
       margin: 0 0 10px;
-      font-size: 1.3rem;
+      font-size: 1.18rem;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.6px;
@@ -141,9 +135,6 @@
     }
   }
 
-  & .card[data-span='narrow'] .copy h3 {
-    font-size: 1.15rem;
-  }
 }
 
 @media (max-width: 1024px) {
@@ -154,14 +145,6 @@
   .features .card[data-span='wide'],
   .features .card[data-span='narrow'] {
     grid-column: span 1;
-    flex-direction: row;
-    align-items: center;
-    gap: 18px;
-  }
-
-  .features .card[data-span='narrow'] .icon {
-    width: 84px;
-    height: 84px;
   }
 }
 

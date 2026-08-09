@@ -67,6 +67,11 @@ export type Stat = {
   decimals?: number;
 };
 
+/**
+ * Icons are the interaction glyphs, not item art: each one names the action the
+ * card describes. Item renders were tried here and read as inventory loot rather
+ * than as a capability.
+ */
 export const FEATURES: FeatureCard[] = [
   { title: 'Breed and Marry', text: 'Pair two pets to pass traits down a bloodline, or marry a partner pet and unlock a private thread only the two owners can read.', iconImage: '/images/icons/interaction/breed.png' },
   { title: 'Battle for Rank', text: 'Both owners sign in before a fight. It settles from a seed committed in advance, and the result is signed and anchored on chain.', iconImage: '/images/icons/interaction/battle.png' },
