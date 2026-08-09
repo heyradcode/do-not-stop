@@ -1,10 +1,12 @@
-import { FAQS } from '@/content/landing';
+import { FAQS, SECTION_COPY } from '@/content/landing';
 import './Faq.css';
+
+const { title, subtitle } = SECTION_COPY.faq;
 
 const Faq = () => (
   <section className="landing-section faq" id="faq" data-wash="magenta">
-    <h2 className="section-title" data-reveal="up">Questions, Answered</h2>
-    <p className="section-subtitle" data-reveal="up">Everything you need to know before you mint your first pet.</p>
+    <h2 className="section-title" data-reveal="up">{title}</h2>
+    <p className="section-subtitle" data-reveal="up">{subtitle}</p>
     <div className="list" data-reveal-stagger="55">
       {FAQS.map(({ question, answer }, idx) => (
         <details className="item" key={question} open={idx === 0} data-reveal="up">

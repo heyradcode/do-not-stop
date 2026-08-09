@@ -1,9 +1,9 @@
-import { BACKERS } from '@/content/landing';
+import { BACKERS, BACKERS_LABEL } from '@/content/landing';
 import './Backers.css';
 
 const Backers = () => (
   <section className="backers" aria-label="Powered by">
-    <p className="label" data-reveal="up">Powered by &amp; built with</p>
+    <p className="label" data-reveal="up">{BACKERS_LABEL}</p>
     <div className="marquee" data-reveal="fade">
       <div className="row">
         <ul>

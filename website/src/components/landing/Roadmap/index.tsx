@@ -1,7 +1,9 @@
 import type { CSSProperties } from 'react';
 
-import { ROADMAP, ROADMAP_STATUS_LABEL } from '@/content/landing';
+import { ROADMAP, ROADMAP_STATUS_LABEL, SECTION_COPY } from '@/content/landing';
 import './Roadmap.css';
+
+const { title: sectionTitle, subtitle } = SECTION_COPY.roadmap;
 
 /**
  * How far the rail fills: to the centre of the last stop that is not still
@@ -20,8 +22,8 @@ const railFill =
 
 const Roadmap = () => (
   <section className="landing-section roadmap" id="roadmap" data-wash="cyan">
-    <h2 className="section-title" data-reveal="up">Roadmap</h2>
-    <p className="section-subtitle" data-reveal="up">Where we&apos;ve been, what&apos;s shipping next.</p>
+    <h2 className="section-title" data-reveal="up">{sectionTitle}</h2>
+    <p className="section-subtitle" data-reveal="up">{subtitle}</p>
     <ol
       className="track"
       style={{ '--rail-fill': railFill } as CSSProperties}

@@ -1,16 +1,18 @@
 import Image from 'next/image';
 
-import { FEATURES } from '@/content/landing';
+import { FEATURES, SECTION_COPY } from '@/content/landing';
 import { NeonCard, SpotlightGroup } from '../../common';
 import './Features.css';
+
+const { title: sectionTitle, subtitle } = SECTION_COPY.features;
 
 /** Bento rhythm: the first and last cards run wide, the middle pair narrow. */
 const isWide = (index: number) => index === 0 || index === FEATURES.length - 1;
 
 const Features = () => (
   <section className="landing-section features" id="features" data-wash="violet">
-    <h2 className="section-title" data-reveal="up">What You Can Do</h2>
-    <p className="section-subtitle" data-reveal="up">Every pet is a fully on-chain asset — yours to grow, fight, and trade.</p>
+    <h2 className="section-title" data-reveal="up">{sectionTitle}</h2>
+    <p className="section-subtitle" data-reveal="up">{subtitle}</p>
     <SpotlightGroup className="grid" data-reveal-stagger="90">
       {FEATURES.map(({ title, text, iconImage }, index) => (
         <NeonCard

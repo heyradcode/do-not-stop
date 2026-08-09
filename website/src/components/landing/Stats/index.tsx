@@ -2,22 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
+import { STATS, type Stat } from '@/content/landing';
 import './Stats.css';
-
-type Stat = {
-  value: number;
-  label: string;
-  prefix?: string;
-  suffix?: string;
-  decimals?: number;
-};
-
-const ITEMS: Stat[] = [
-  { value: 10000, suffix: '+', label: 'Unique Pets' },
-  { value: 5250, suffix: '+', label: 'Pet Holders' },
-  { value: 1, suffix: 'M+', label: 'Battles Fought' },
-  { value: 2.5, prefix: '$', suffix: 'M', decimals: 1, label: 'Rewards Earned' },
-];
 
 const COUNT_MS = 1500;
 
@@ -36,7 +22,7 @@ const Stats = () => {
     if (!section) return;
 
     const write = (progress: number) => {
-      ITEMS.forEach((item, index) => {
+      STATS.forEach((item, index) => {
         const el = valueRefs.current[index];
         if (el) el.textContent = format(item, item.value * progress);
       });
@@ -80,7 +66,7 @@ const Stats = () => {
       id="stats"
       data-reveal-stagger="80"
     >
-      {ITEMS.map((item, index) => (
+      {STATS.map((item, index) => (
         <div className="item" key={item.label} data-reveal="up">
           {/* Rendered at its final value so the figure is correct before hydration
               and without JS; the counter only rewinds once it is on screen. */}

@@ -53,6 +53,105 @@ export type Backer = { name: string };
 
 export type NavLink = { label: string; href: string };
 
+export type SectionCopy = {
+  title: string;
+  subtitle: string;
+};
+
+export type Stat = {
+  value: number;
+  label: string;
+  prefix?: string;
+  suffix?: string;
+  decimals?: number;
+};
+
+/* =============================================================================
+   Site chrome
+   ============================================================================= */
+export const SITE = {
+  name: 'Crypto Pets',
+  playCta: 'Play Now',
+};
+
+/* =============================================================================
+   Section copy. Every string the landing page renders lives in this file — a
+   wording change should never require opening a component.
+   ============================================================================= */
+export const HERO = {
+  eyebrow: 'On-Chain Pet Adventure',
+  titleLead: 'Collect, Battle & Breed',
+  titleAccent: 'Your Dream Pets',
+  body: '10,000+ handcrafted neon companions, fully owned by you. Hatch them, train them, send them into the arena.',
+  primaryCta: 'Play Now',
+  secondaryCta: 'Explore Features',
+  scrollLabel: 'Scroll to features',
+};
+
+export const SECTION_COPY = {
+  how: {
+    title: 'How It Works',
+    subtitle: 'From wallet to first win in four short steps.',
+  },
+  features: {
+    title: 'What You Can Do',
+    subtitle: 'Every pet is a fully on-chain asset — yours to grow, fight, and trade.',
+  },
+  pets: {
+    title: 'Meet the Companions',
+    subtitle: 'Four rarity tiers, ten thousand creatures, one shot at the legendary roster.',
+  },
+  roadmap: {
+    title: 'Roadmap',
+    subtitle: "Where we've been, what's shipping next.",
+  },
+  testimonials: {
+    title: 'From the Pack',
+    subtitle: 'What players are saying after their first 100 battles.',
+  },
+  faq: {
+    title: 'Questions, Answered',
+    subtitle: 'Everything you need to know before you mint your first pet.',
+  },
+  community: {
+    title: 'Join the Pack',
+    subtitle: 'Strategy threads, alpha drops, and degen chatter — pick your channel.',
+  },
+} satisfies Record<string, SectionCopy>;
+
+export const STATS: Stat[] = [
+  { value: 10000, suffix: '+', label: 'Unique Pets' },
+  { value: 5250, suffix: '+', label: 'Pet Holders' },
+  { value: 1, suffix: 'M+', label: 'Battles Fought' },
+  { value: 2.5, prefix: '$', suffix: 'M', decimals: 1, label: 'Rewards Earned' },
+];
+
+export const CTA_BAND = {
+  eyebrow: 'Next Drop · Live Soon',
+  title: "Don't miss the next mint.",
+  body: 'Connect your wallet now and claim your spot on the whitelist.',
+  action: 'Connect Wallet',
+};
+
+export const BACKERS_LABEL = 'Powered by & built with';
+
+export const FOOTER = {
+  brand: 'CryptoPet',
+  blurb: 'Build your dream pet roster, rule the arena, and trade legendary companions.',
+  exploreHeading: 'Explore',
+  resourcesHeading: 'Resources',
+  copyrightHolder: 'CryptoPet',
+  rights: 'All rights reserved.',
+  tag: 'Built on-chain.',
+};
+
+export const RESOURCE_LINKS: NavLink[] = [
+  { label: 'About', href: '#' },
+  { label: 'Roadmap', href: '#roadmap' },
+  { label: 'Docs', href: '#' },
+  { label: 'Support', href: '#' },
+];
+
 /** Shared by the header nav and the footer's Explore column. */
 export const NAV_LINKS: NavLink[] = [
   { label: 'How It Works', href: '#how' },

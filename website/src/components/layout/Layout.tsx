@@ -3,6 +3,7 @@
 import React from 'react';
 
 import SiteHeader from '@/components/layout/SiteHeader';
+import { SITE } from '@/content/landing';
 import useRevealObserver from '@/hooks/useRevealObserver';
 
 type LayoutProps = {
@@ -16,7 +17,7 @@ const Layout: React.FC<LayoutProps> = ({
   children,
   containerClassName,
   contentClassName,
-  title = 'Crypto Pets',
+  title = SITE.name,
 }) => {
   useRevealObserver();
 

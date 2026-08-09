@@ -1,5 +1,6 @@
 'use client';
 
+import { CTA_BAND } from '@/content/landing';
 import { openApp } from '@/lib/openApp';
 import { NeonButton } from '../../common';
 import './Cta.css';
@@ -8,12 +9,12 @@ const Cta = () => (
   <section className="cta" aria-label="Get started">
     <div className="inner" data-reveal="scale">
       <div>
-        <span className="eyebrow">Next Drop · Live Soon</span>
-        <h2>Don&apos;t miss the next mint.</h2>
-        <p>Connect your wallet now and claim your spot on the whitelist.</p>
+        <span className="eyebrow">{CTA_BAND.eyebrow}</span>
+        <h2>{CTA_BAND.title}</h2>
+        <p>{CTA_BAND.body}</p>
       </div>
       <NeonButton type="button" tone="emerald" onClick={openApp}>
-        Connect Wallet
+        {CTA_BAND.action}
       </NeonButton>
     </div>
   </section>

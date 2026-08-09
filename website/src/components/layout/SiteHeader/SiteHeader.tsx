@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 
 import { NeonButton } from '@/components/common';
-import { NAV_LINKS } from '@/content/landing';
+import { NAV_LINKS, SITE } from '@/content/landing';
 import useActiveSection from '@/hooks/useActiveSection';
 import useHeaderScroll from '@/hooks/useHeaderScroll';
 import { openApp } from '@/lib/openApp';
@@ -132,7 +132,7 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
 
         <div className="actions">
           <NeonButton type="button" tone="emerald" size="sm" onClick={openApp}>
-            Play Now
+            {SITE.playCta}
           </NeonButton>
 
           <button

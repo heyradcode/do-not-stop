@@ -1,16 +1,18 @@
 import type { CSSProperties } from 'react';
 import Image from 'next/image';
 
-import { PETS, RARITY_TIERS } from '@/content/landing';
+import { PETS, RARITY_TIERS, SECTION_COPY } from '@/content/landing';
 import { NeonCard } from '../../common';
 import './Pets.css';
 
 const rarityMod = (rarity: string) => rarity.toLowerCase();
 
+const { title, subtitle } = SECTION_COPY.pets;
+
 const Pets = () => (
   <section className="landing-section pets" id="pets" data-wash="magenta">
-    <h2 className="section-title" data-reveal="up">Meet the Companions</h2>
-    <p className="section-subtitle" data-reveal="up">Four rarity tiers, ten thousand creatures, one shot at the legendary roster.</p>
+    <h2 className="section-title" data-reveal="up">{title}</h2>
+    <p className="section-subtitle" data-reveal="up">{subtitle}</p>
 
     <div className="rarity" aria-label="Rarity tier distribution" data-reveal="fade">
       <div className="rarity-track">

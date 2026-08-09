@@ -1,10 +1,12 @@
-import { TESTIMONIALS } from '@/content/landing';
+import { SECTION_COPY, TESTIMONIALS } from '@/content/landing';
 import './Testimonials.css';
+
+const { title, subtitle } = SECTION_COPY.testimonials;
 
 const Testimonials = () => (
   <section className="landing-section testimonials" id="players" data-wash="violet">
-    <h2 className="section-title" data-reveal="up">From the Pack</h2>
-    <p className="section-subtitle" data-reveal="up">What players are saying after their first 100 battles.</p>
+    <h2 className="section-title" data-reveal="up">{title}</h2>
+    <p className="section-subtitle" data-reveal="up">{subtitle}</p>
     <div className="grid" data-reveal-stagger="90">
       {TESTIMONIALS.map(({ quote, author, role }) => (
         <figure className="card" key={author} data-reveal="rise">
