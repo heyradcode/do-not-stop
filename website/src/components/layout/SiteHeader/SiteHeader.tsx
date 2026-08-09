@@ -6,8 +6,10 @@ import clsx from 'clsx';
 import { NeonButton } from '@/components/common';
 import { NAV_LINKS, SITE } from '@/content/landing';
 import useActiveSection from '@/hooks/useActiveSection';
+import useHashLanding from '@/hooks/useHashLanding';
 import useHeaderScroll from '@/hooks/useHeaderScroll';
 import { openApp } from '@/lib/openApp';
+import { findSection, scrollToSection } from '@/lib/scrollToSection';
 import './SiteHeader.css';
 
 /** Module scope keeps the array referentially stable across renders. */
@@ -15,113 +17,6 @@ const NAV_IDS = NAV_LINKS.map(({ href }) => href.replace('#', ''));
 
 /** Width at which the inline nav gives way to the drawer. Matches SiteHeader.css. */
 const DRAWER_QUERY = '(max-width: 900px)';
-
-/**
- * How far `target` is from where it should land, in px.
- *
- * Two cases, because the header is a floating pill and not an opaque bar —
- * nothing hides the strip of viewport around it, so a landing must never leave
- * the previous section visible in that strip:
- *
- * - A section with a full-viewport pinned scene lands flush at the viewport
- *   top. The scene owns the whole screen and pads its own content clear of the
- *   glass.
- * - Any other section lands with its content resting at the anchor offset when
- *   its own top padding is deep enough to reach the border, and at the
- *   header's edge otherwise — never higher, so the heading cannot tuck under
- *   the glass, and never lower than its padding can cover, so the previous
- *   section's tail cannot show above the border.
- *
- * The offset is read back from the resolved `scroll-padding-top`: custom
- * properties do not resolve calc() through getComputedStyle, real properties
- * do, so this is the one place the number exists and JS and CSS cannot drift.
- */
-const landingError = (target: Element) => {
-  const pin = target.querySelector('.pin');
-  if (pin && getComputedStyle(pin).position === 'sticky') {
-    return Math.round(target.getBoundingClientRect().top);
-  }
-
-  const root = getComputedStyle(document.documentElement);
-  const offset = parseFloat(root.scrollPaddingTop) || 0;
-  const gap = parseFloat(root.getPropertyValue('--anchor-gap')) || 0;
-  const headerHeight = offset - gap;
-
-  const padding = parseFloat(getComputedStyle(target).paddingTop) || 0;
-  const contentY = Math.max(headerHeight, Math.min(padding, offset));
-
-  return Math.round(target.getBoundingClientRect().top + padding - contentY);
-};
-
-/**
- * Once the scroll has come to rest, re-measure and instantly remove whatever
- * error remains. A single scrollTo cannot be pixel-perfect: any layout shift
- * while the animation runs — an image decoding, a font swapping, dvh settling —
- * moves the target by exactly the amount the landing ends up off by.
- *
- * Cancelled the moment the reader scrolls themselves, so the correction can
- * never yank the page away from someone who changed their mind mid-flight.
- */
-const settleOnArrival = (target: Element) => {
-  let cancelled = false;
-
-  const cancel = () => {
-    cancelled = true;
-    cleanup();
-  };
-
-  const cleanup = () => {
-    window.removeEventListener('wheel', cancel);
-    window.removeEventListener('touchstart', cancel);
-    window.removeEventListener('keydown', cancel);
-    window.removeEventListener('scrollend', onEnd);
-  };
-
-  const correct = () => {
-    if (cancelled) return;
-    const error = landingError(target);
-    if (Math.abs(error) > 1) window.scrollBy({ top: error, behavior: 'auto' });
-  };
-
-  const onEnd = () => {
-    cleanup();
-    correct();
-  };
-
-  window.addEventListener('wheel', cancel, { passive: true, once: true });
-  window.addEventListener('touchstart', cancel, { passive: true, once: true });
-  window.addEventListener('keydown', cancel, { once: true });
-
-  if ('onscrollend' in window) {
-    window.addEventListener('scrollend', onEnd, { once: true });
-  } else {
-    // Safari has no scrollend: treat three frames without movement as arrival.
-    let last = -1;
-    let still = 0;
-    const tick = () => {
-      if (cancelled) return;
-      const y = window.scrollY;
-      if (Math.abs(y - last) < 1) {
-        if (++still >= 3) {
-          cleanup();
-          correct();
-          return;
-        }
-      } else {
-        still = 0;
-      }
-      last = y;
-      requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }
-};
-
-const scrollToTarget = (target: Element, smooth: boolean) => {
-  const top = window.scrollY + landingError(target);
-  window.scrollTo({ top: Math.max(top, 0), behavior: smooth ? 'smooth' : 'auto' });
-  settleOnArrival(target);
-};
 
 type SiteHeaderProps = {
   title: string;
@@ -138,17 +33,18 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
 
   const close = useCallback(() => setOpen(false), []);
 
+  useHashLanding();
+
   /**
-   * Scrolls to a section explicitly rather than leaving it to the browser's
-   * anchor jump: the jump cannot skip a section's own top padding, and the
-   * settle pass in scrollToTarget is what makes the landing exact.
+   * Takes over the anchor jump, which cannot skip a section's own top padding.
+   * The landing itself is `scrollToSection`'s problem, not the header's.
    */
   const goToSection = useCallback(
     (event: MouseEvent<HTMLAnchorElement>, href: string, fromDrawer = false) => {
       // Leave modified clicks alone so open-in-new-tab still works.
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
-      const target = document.querySelector(href);
+      const target = findSection(href);
       if (!target) return;
 
       event.preventDefault();
@@ -156,30 +52,11 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
       if (fromDrawer) toggleRef.current?.focus();
 
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      scrollToTarget(target, !reduced);
+      scrollToSection(target, { smooth: !reduced });
       window.history.pushState(null, '', href);
     },
     [close],
   );
-
-  // Arriving with a hash in the URL takes the browser's native jump, which
-  // lands on the border box with the fallback offset. Correct it once layout
-  // has something real to measure.
-  useEffect(() => {
-    const { hash } = window.location;
-    if (!hash || hash === '#top') return;
-
-    let target: Element | null = null;
-    try {
-      target = document.querySelector(hash);
-    } catch {
-      return; // Not a valid selector — an external tool's tracking hash.
-    }
-    if (!target) return;
-
-    const frame = requestAnimationFrame(() => scrollToTarget(target, false));
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   // Slide the indicator behind the active link. Measured rather than expressed
   // in CSS because the links are content-width, so the pill's offset and width
