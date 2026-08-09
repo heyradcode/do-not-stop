@@ -1,21 +1,23 @@
 /* =============================================================================
-   Roadmap: a pinned, scroll-linked scene.
+   Roadmap: a pinned, scroll-linked 3D drive.
 
    The section is deliberately tall and its contents are pinned with sticky
    positioning while the page scrolls past. Nothing intercepts the wheel — the
-   scrollbar stays truthful, keyboard paging works, and a reader can leave at any
-   point. Only the picture holds still.
+   scrollbar stays truthful, keyboard paging works, and a reader can leave at
+   any point. Only the picture holds still.
 
-   The active phase (section[data-phase]) retints the whole scene: the nebula,
-   the road fill, the comet, the HUD and the ghost numeral all read one
-   --scene-rgb, so crossing a marker feels like entering new territory rather
-   than swapping a card.
+   Below the horizon is a perspective grid floor whose lines stream toward the
+   camera as progress advances; each phase is a neon gate that approaches from
+   the horizon and sweeps past. The active phase retints the whole scene via
+   --scene-rgb.
    ============================================================================= */
 .roadmap {
   /* Scroll distance granted to each phase. Bigger reads slower. */
   --phase-span: 68vh;
   --track-progress: 0;
   --scene-rgb: var(--neon-emerald-rgb);
+  /* Sky/ground split, from the top. */
+  --horizon: 46%;
 
   padding-block: 0;
   height: calc(100dvh + (var(--phase-count) * var(--phase-span)));
@@ -25,37 +27,43 @@
 .roadmap[data-phase='2'] { --scene-rgb: var(--neon-gold-rgb); }
 .roadmap[data-phase='3'] { --scene-rgb: var(--neon-violet-rgb); }
 
+/* Full-bleed: the pin escapes the section gutter so the scene reaches the
+   screen edges, then restores the gutter as its own padding so content still
+   aligns with the rest of the page. */
 .roadmap .pin {
   position: sticky;
   inset-block-start: var(--main-header-offset);
   height: calc(100dvh - var(--main-header-offset));
+  margin-inline: calc(var(--landing-gutter) * -1);
+  padding: clamp(18px, 3.5vh, 40px) var(--landing-gutter) clamp(18px, 3vh, 34px);
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: clamp(10px, 2vh, 22px);
+  justify-content: space-between;
+  gap: clamp(10px, 2vh, 20px);
   overflow: hidden;
 
   & > * {
     position: relative;
-    z-index: var(--z-raised);
+    z-index: 2;
   }
 }
 
 /* =============================================================================
-   Backdrop
+   Scene
    ============================================================================= */
 .roadmap .scene {
   position: absolute;
   inset: 0;
-  z-index: var(--z-base);
+  z-index: 0;
   pointer-events: none;
 }
 
-/* Three star layers, each a repeating tile of radial dots, translated at
-   different rates by the same progress value — parallax without images. */
+/* Three star layers above the horizon, each a repeating tile of radial dots,
+   translated at different rates by the same progress value. */
 .roadmap .stars {
   position: absolute;
-  inset: -12% 0;
+  inset: -10% 0 calc(100% - var(--horizon) - 4%);
   background-repeat: repeat;
 }
 
@@ -66,7 +74,7 @@
     radial-gradient(1px 1px at 76px 158px, rgb(255 255 255 / 38%) 50%, transparent 50%),
     radial-gradient(1px 1px at 190px 210px, rgb(255 255 255 / 26%) 50%, transparent 50%);
   background-size: 240px 240px;
-  translate: 0 calc(var(--track-progress) * -26px);
+  translate: 0 calc(var(--track-progress) * -22px);
 }
 
 .roadmap .stars.s2 {
@@ -75,7 +83,7 @@
     radial-gradient(1px 1px at 160px 20px, rgb(255 255 255 / 45%) 50%, transparent 50%),
     radial-gradient(1.5px 1.5px at 110px 140px, rgb(var(--neon-violet-rgb) / 45%) 50%, transparent 50%);
   background-size: 300px 300px;
-  translate: 0 calc(var(--track-progress) * -62px);
+  translate: 0 calc(var(--track-progress) * -52px);
 }
 
 .roadmap .stars.s3 {
@@ -83,7 +91,7 @@
     radial-gradient(2px 2px at 80px 44px, rgb(255 255 255 / 65%) 50%, transparent 50%),
     radial-gradient(2px 2px at 210px 170px, rgb(var(--neon-cyan-rgb) / 60%) 50%, transparent 50%);
   background-size: 340px 340px;
-  translate: 0 calc(var(--track-progress) * -110px);
+  translate: 0 calc(var(--track-progress) * -92px);
   animation: roadmap-twinkle 3.4s ease-in-out infinite;
 }
 
@@ -92,14 +100,145 @@
    sky retints smoothly instead of snapping. */
 .roadmap .nebula {
   position: absolute;
-  inset: -8%;
+  inset: -6% 0 calc(100% - var(--horizon));
   color: rgb(var(--scene-rgb));
   transition: color 900ms var(--ease-in-out);
   background:
-    radial-gradient(42% 44% at 18% 24%, color-mix(in srgb, currentColor 16%, transparent), transparent 70%),
-    radial-gradient(38% 40% at 84% 70%, color-mix(in srgb, currentColor 11%, transparent), transparent 72%),
-    radial-gradient(30% 34% at 58% 8%, rgb(var(--neon-violet-rgb) / 8%), transparent 74%);
+    radial-gradient(48% 60% at 22% 30%, color-mix(in srgb, currentColor 15%, transparent), transparent 72%),
+    radial-gradient(42% 55% at 80% 55%, color-mix(in srgb, currentColor 10%, transparent), transparent 74%),
+    radial-gradient(30% 40% at 55% 10%, rgb(var(--neon-violet-rgb) / 8%), transparent 74%);
   mix-blend-mode: screen;
+}
+
+/* Glowing seam where sky meets floor. */
+.roadmap .horizon {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: var(--horizon);
+  height: 2px;
+  color: rgb(var(--scene-rgb));
+  transition: color 900ms var(--ease-in-out);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, currentColor 65%, transparent) 22%,
+    currentColor 50%,
+    color-mix(in srgb, currentColor 65%, transparent) 78%,
+    transparent
+  );
+  filter: drop-shadow(0 0 12px currentColor);
+}
+
+/* The ground. A large plane laid down with rotateX inside a perspective
+   wrapper; its grid is drawn with repeating gradients off currentColor (same
+   retint trick as the nebula) and the cross-lines stream toward the camera as
+   progress advances — scrolling reads as driving forward. */
+.roadmap .floor-wrap {
+  position: absolute;
+  inset: var(--horizon) 0 0;
+  perspective: 620px;
+  perspective-origin: 50% 0%;
+  overflow: hidden;
+  /* Grid fades up from the horizon rather than starting with a hard edge. */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 16%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 16%);
+}
+
+.roadmap .floor {
+  position: absolute;
+  inset: -4% -42% -150%;
+  transform: rotateX(58deg);
+  transform-origin: top center;
+  color: rgb(var(--scene-rgb));
+  transition: color 900ms var(--ease-in-out);
+  background-image:
+    /* Road strip up the middle, edges brighter than the bed. */
+    linear-gradient(
+      90deg,
+      transparent 0 40.5%,
+      color-mix(in srgb, currentColor 55%, transparent) 40.5% 41%,
+      color-mix(in srgb, currentColor 9%, transparent) 41% 59%,
+      color-mix(in srgb, currentColor 55%, transparent) 59% 59.5%,
+      transparent 59.5%
+    ),
+    /* Longitudinal grid lines. */
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in srgb, currentColor 22%, transparent) 0 2px,
+      transparent 2px 90px
+    ),
+    /* Cross lines — the layer that streams. */
+    repeating-linear-gradient(
+      0deg,
+      color-mix(in srgb, currentColor 28%, transparent) 0 2px,
+      transparent 2px 96px
+    );
+  background-position: 0 0, 0 0, 0 calc(var(--track-progress) * 640px);
+}
+
+/* Blends the pinned frame into the neighbouring sections at top and bottom. */
+.roadmap .frame-fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    var(--surface-base) 0,
+    transparent 9%,
+    transparent 91%,
+    var(--surface-base) 100%
+  );
+}
+
+/* =============================================================================
+   Gates — one per phase, flown along the road from JS (--gs scale, --gb
+   bottom, --go opacity). transform-origin at the base keeps them standing on
+   the ground as they scale.
+   ============================================================================= */
+.roadmap .gates {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.roadmap .gate {
+  position: absolute;
+  inset-inline-start: 50%;
+  inset-block-end: var(--gb, 54%);
+  width: min(52vw, 520px);
+  aspect-ratio: 2.15 / 1;
+  translate: -50% 0;
+  scale: var(--gs, 0.15);
+  opacity: var(--go, 0);
+  transform-origin: 50% 100%;
+  border: 3px solid color-mix(in srgb, currentColor 85%, transparent);
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+  box-shadow:
+    0 0 26px color-mix(in srgb, currentColor 45%, transparent),
+    inset 0 0 34px color-mix(in srgb, currentColor 14%, transparent);
+  will-change: scale, opacity;
+
+  &.status-shipped { color: var(--status-shipped); }
+  &.status-in-progress { color: var(--status-active); }
+  &.status-planned { color: var(--status-planned); }
+}
+
+.roadmap .gate-label {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 50%;
+  translate: -50% -58%;
+  padding: 4px 16px;
+  border-radius: var(--radius-pill);
+  font-family: var(--title-font);
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 2.4px;
+  color: currentColor;
+  background: rgb(var(--surface-void-rgb) / 88%);
+  border: 1px solid color-mix(in srgb, currentColor 70%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, currentColor 50%, transparent);
 }
 
 /* =============================================================================
@@ -128,25 +267,27 @@
 .roadmap .hud-count {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
   font-family: var(--title-font);
   font-weight: 800;
   letter-spacing: 2px;
 }
 
-/* The current phase number: all four are stacked, the active one rolls in.
-   Which is active is pure CSS keyed off section[data-phase]. */
+/* The rolling counter sizes its clip box in its own font size — spans inherit
+   it, so the digits can never overflow the window that crops them. */
 .roadmap .hud-now {
   position: relative;
   display: inline-block;
-  width: 2.2ch;
-  height: 1.4em;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  width: 2.4ch;
+  height: 1.2em;
   overflow: hidden;
 
   & span {
     position: absolute;
     inset: 0;
-    font-size: 1.5rem;
+    text-align: center;
     color: rgb(var(--scene-rgb));
     text-shadow: 0 0 14px rgb(var(--scene-rgb) / 55%);
     opacity: 0;
@@ -193,179 +334,8 @@
 }
 
 /* =============================================================================
-   Road
-   ============================================================================= */
-.roadmap .road {
-  position: relative;
-  width: 100%;
-  height: clamp(140px, 20vh, 200px);
-  flex: 0 0 auto;
-}
-
-/* preserveAspectRatio="none" stretches the canvas to the box, which would
-   stretch the stroke with it — non-scaling-stroke keeps every lane even. */
-.roadmap .tarmac {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-
-  & .lane {
-    fill: none;
-    stroke-linecap: round;
-    vector-effect: non-scaling-stroke;
-  }
-
-  & .lane-base {
-    stroke: rgb(var(--border-rgb) / 20%);
-    stroke-width: 5;
-  }
-
-  /* Centre line. The dash pattern's offset is driven by progress, so the lane
-     markings stream backwards under the comet as it advances. */
-  & .lane-dash {
-    stroke: rgb(255 255 255 / 16%);
-    stroke-width: 1.5;
-    stroke-dasharray: 0.008 0.014;
-    stroke-dashoffset: calc(var(--track-progress) * -0.22);
-  }
-
-  & .lane-fill {
-    stroke: rgb(var(--scene-rgb));
-    stroke-width: 3;
-    stroke-dasharray: 1;
-    stroke-dashoffset: calc(1 - var(--track-progress));
-    filter: drop-shadow(0 0 7px rgb(var(--scene-rgb) / 70%));
-    transition: stroke 600ms var(--ease-in-out);
-  }
-
-  /* A short bright segment ending exactly at the head — the comet's tail. */
-  & .lane-comet {
-    stroke: rgb(255 255 255 / 85%);
-    stroke-width: 3.5;
-    stroke-dasharray: 0.05 1;
-    stroke-dashoffset: calc(0.05 - var(--track-progress));
-    filter: drop-shadow(0 0 9px rgb(var(--scene-rgb) / 90%));
-  }
-
-  & .head-glow {
-    fill: rgb(var(--scene-rgb) / 24%);
-    transition: fill 600ms var(--ease-in-out);
-  }
-
-  & .head-core {
-    fill: var(--text-on-accent);
-    filter: drop-shadow(0 0 8px rgb(var(--scene-rgb) / 95%));
-  }
-}
-
-.roadmap .markers {
-  position: absolute;
-  inset: 0;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-}
-
-.roadmap .marker {
-  position: relative;
-
-  &.status-shipped { color: var(--status-shipped); --status-rgb: var(--status-shipped-rgb); }
-  &.status-in-progress { color: var(--status-active); --status-rgb: var(--status-active-rgb); }
-  &.status-planned { color: var(--status-planned); --status-rgb: var(--status-planned-rgb); }
-
-  /* Percentages mirror CREST/TROUGH over the view height in index.tsx. */
-  &[data-side='crest'] {
-    & .dot { inset-block-start: 28%; }
-    & .tag { inset-block-start: calc(28% + 30px); }
-  }
-
-  &[data-side='trough'] {
-    & .dot { inset-block-start: 72%; }
-    & .tag { inset-block-start: calc(72% - 46px); }
-  }
-}
-
-.roadmap .dot {
-  position: absolute;
-  inset-inline-start: 50%;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  translate: -50% -50%;
-  background: radial-gradient(circle at 30% 25%, #232c52 0%, #0a0f25 72%);
-  border: 2px solid rgb(var(--border-rgb) / 26%);
-  box-shadow: 0 0 0 5px rgb(var(--surface-void-rgb) / 88%);
-  transition:
-    border-color var(--dur-slow) var(--ease-out),
-    box-shadow var(--dur-slow) var(--ease-out),
-    scale var(--dur-slow) var(--ease-spring);
-}
-
-.roadmap .tag {
-  position: absolute;
-  inset-inline-start: 50%;
-  translate: -50% 0;
-  font-family: var(--title-font);
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 1.6px;
-  color: var(--text-dim);
-  transition: color var(--dur-slow) var(--ease-out);
-}
-
-/* Reaching a marker is what lights it; until the comet arrives it is an unlit
-   waypoint, whatever its status. */
-.roadmap .marker[data-reached] {
-  & .dot {
-    border-color: rgb(var(--status-rgb) / 90%);
-    scale: 1.1;
-    box-shadow:
-      0 0 0 5px rgb(var(--surface-void-rgb) / 88%),
-      0 0 20px rgb(var(--status-rgb) / 62%);
-  }
-
-  & .tag { color: currentColor; }
-}
-
-.roadmap .glyph {
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  /* Stamped on arrival rather than pre-drawn. */
-  stroke-dasharray: 24;
-  stroke-dashoffset: 24;
-  transition: stroke-dashoffset 420ms var(--ease-out) 100ms;
-}
-
-.roadmap .marker[data-reached] .glyph { stroke-dashoffset: 0; }
-
-.roadmap .pip {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0;
-  transition: opacity var(--dur-slow) var(--ease-out);
-}
-
-.roadmap .marker[data-reached] .pip {
-  opacity: 1;
-  animation: roadmap-pip 1.8s ease-in-out infinite;
-}
-
-/* =============================================================================
-   Stages — all stacked in one slot; scroll decides which is on stage.
+   Stages — all stacked in one slot; scroll decides which is on stage. The
+   container carries perspective so the swap is a genuine 3D tilt.
    ============================================================================= */
 .roadmap .stages {
   position: relative;
@@ -373,7 +343,8 @@
   margin: 0;
   padding: 0;
   flex: 0 0 auto;
-  min-height: clamp(240px, 32vh, 320px);
+  min-height: clamp(240px, 34vh, 330px);
+  perspective: 1100px;
 }
 
 .roadmap .stage {
@@ -388,6 +359,7 @@
   transition:
     opacity var(--dur-slow) var(--ease-out),
     translate var(--dur-slow) var(--ease-out),
+    rotate var(--dur-slow) var(--ease-out),
     scale var(--dur-slow) var(--ease-out),
     filter var(--dur-slow) var(--ease-out);
 
@@ -397,8 +369,9 @@
 
   &[data-state='ahead'] {
     opacity: 0;
-    translate: 0 52px;
-    scale: 0.95;
+    translate: 0 56px;
+    rotate: x 22deg;
+    scale: 0.94;
     filter: blur(7px);
     pointer-events: none;
   }
@@ -406,14 +379,16 @@
   &[data-state='active'] {
     opacity: 1;
     translate: none;
+    rotate: none;
     scale: 1;
     filter: none;
   }
 
   &[data-state='behind'] {
     opacity: 0;
-    translate: 0 -52px;
-    scale: 0.95;
+    translate: 0 -56px;
+    rotate: x -18deg;
+    scale: 0.94;
     filter: blur(7px);
     pointer-events: none;
   }
@@ -439,7 +414,7 @@
 
 .roadmap .panel {
   position: relative;
-  z-index: var(--z-raised);
+  z-index: 1;
   padding: 24px 26px 22px;
   border-radius: var(--radius-lg);
   background: linear-gradient(
@@ -525,23 +500,22 @@
   }
 }
 
-/* Holo card: the phase's companion, presented as a tilted collectible slab.
-   The renders are opaque squares, so they are framed, never floated. */
+/* Holo slab: the phase's companion. The renders are opaque squares, so they
+   are framed, never floated; the slab idles on a slow 3D sway. */
 .roadmap .holo {
   position: relative;
-  z-index: var(--z-raised);
+  z-index: 1;
   justify-self: center;
   width: clamp(170px, 24vh, 250px);
   aspect-ratio: 1;
   border-radius: var(--radius-xl);
   overflow: hidden;
-  rotate: 4deg;
   border: 1px solid rgb(var(--status-rgb) / 55%);
   box-shadow:
     inset 0 0 0 1px rgb(0 0 0 / 40%),
     0 0 30px rgb(var(--status-rgb) / 26%),
     var(--elev-3);
-  animation: roadmap-holo-float 7s ease-in-out infinite;
+  animation: roadmap-holo-idle 8s ease-in-out infinite;
 
   & img {
     display: block;
@@ -563,7 +537,6 @@
     mix-blend-mode: screen;
   }
 
-  /* A glint that sweeps the slab on a long loop. */
   & .holo-glint {
     position: absolute;
     inset: 0;
@@ -580,19 +553,14 @@
   }
 }
 
-@keyframes roadmap-pip {
-  0%, 100% { scale: 1; opacity: 1; }
-  50% { scale: 0.7; opacity: 0.55; }
-}
-
 @keyframes roadmap-twinkle {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
 }
 
-@keyframes roadmap-holo-float {
-  0%, 100% { translate: 0 -6px; rotate: 4deg; }
-  50% { translate: 0 8px; rotate: 2.5deg; }
+@keyframes roadmap-holo-idle {
+  0%, 100% { translate: 0 -6px; rotate: y 7deg; }
+  50% { translate: 0 7px; rotate: y -7deg; }
 }
 
 @keyframes roadmap-holo-glint {
@@ -616,12 +584,14 @@
   .roadmap .pin {
     position: static;
     height: auto;
+    margin-inline: 0;
+    padding: 0;
     overflow: visible;
     gap: 0;
   }
 
   .roadmap .scene,
-  .roadmap .road,
+  .roadmap .gates,
   .roadmap .hud,
   .roadmap .numeral,
   .roadmap .holo {
@@ -634,6 +604,7 @@
     flex-direction: column;
     gap: 16px;
     margin-top: 24px;
+    perspective: none;
   }
 
   .roadmap .stage,
@@ -644,6 +615,7 @@
     max-width: none;
     opacity: 1;
     translate: none;
+    rotate: none;
     scale: none;
     filter: none;
     pointer-events: auto;

@@ -9,76 +9,50 @@ import './Roadmap.css';
 
 const { title: sectionTitle, subtitle } = SECTION_COPY.roadmap;
 
-/** Road canvas. Stretched to fit, so these are proportions, not pixels. */
-const VIEW_W = 1000;
-const VIEW_H = 200;
-const CREST = 56;
-const TROUGH = 144;
-const MID = (CREST + TROUGH) / 2;
-
 const COUNT = ROADMAP.length;
 const SLICE = 1 / COUNT;
 
-/**
- * Builds the road as a smooth curve through one point per phase, alternating
- * crest and trough. Generated rather than hand-drawn so adding or removing a
- * phase reshapes the road instead of leaving a marker off the tarmac.
- */
-const buildRoad = (count: number) => {
-  const points: [number, number][] = [
-    [0, MID],
-    ...Array.from({ length: count }, (_, i): [number, number] => [
-      ((i + 0.5) / count) * VIEW_W,
-      i % 2 === 0 ? CREST : TROUGH,
-    ]),
-    [VIEW_W, MID],
-  ];
+/* Perspective constants for the gates. A gate sits `zAhead` phases in front of
+   the camera; apparent size falls off as Z0/(z+Z0), the classic 1/z with a
+   softening constant so the pass never divides by zero. */
+const Z0 = 0.42;
+const FAR = 2.6;
+const FADE_IN = 0.6;
+const PASS_FADE = 0.28;
 
-  return points.slice(1).reduce((d, [x, y], index) => {
-    const [px, py] = points[index]!;
-    const handle = (x - px) / 2;
-    return `${d} C ${px + handle} ${py}, ${x - handle} ${y}, ${x} ${y}`;
-  }, `M ${points[0]![0]} ${points[0]![1]}`);
-};
-
-const ROAD_PATH = buildRoad(COUNT);
-
-const Check = () => (
-  <svg className="glyph" viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M5 12.5 10 17.5 19 7" />
-  </svg>
-);
+const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 
 const Roadmap = () => {
-  const laneRef = useRef<SVGPathElement>(null);
-  const headRef = useRef<SVGGElement>(null);
-  const laneLength = useRef(0);
-  const markers = useRef<(HTMLElement | null)[]>([]);
+  const gates = useRef<(HTMLElement | null)[]>([]);
   const stages = useRef<(HTMLElement | null)[]>([]);
 
   const onFrame = useCallback((progress: number, section: HTMLElement) => {
     section.style.setProperty('--track-progress', progress.toFixed(4));
 
-    // The active phase drives the scene hue, the HUD readout and the ghost
-    // numeral through one attribute. Written only on change — every CSS
-    // selector keyed to it invalidates when it flips.
+    // The active phase drives the scene hue, the HUD readout and the stage
+    // swap through one attribute. Written only on change — every selector
+    // keyed to it invalidates when it flips.
     const active = Math.min(Math.floor(progress / SLICE), COUNT - 1);
     if (section.dataset.phase !== String(active)) {
       section.dataset.phase = String(active);
     }
 
-    // Park the comet on the curve itself. getTotalLength is measured once —
-    // it cannot change unless the path does, and it is the costly half.
-    const lane = laneRef.current;
-    const head = headRef.current;
-    if (lane && head) {
-      if (!laneLength.current) laneLength.current = lane.getTotalLength();
-      const point = lane.getPointAtLength(progress * laneLength.current);
-      head.setAttribute('transform', `translate(${point.x} ${point.y})`);
-    }
+    // Fly each gate along the road. Passed gates keep growing for a beat while
+    // they fade, which is what sells the fly-through.
+    gates.current.forEach((el, index) => {
+      if (!el) return;
+      const zAhead = index + 0.5 - progress * COUNT;
+      const s = Z0 / (Math.max(zAhead, -PASS_FADE + 0.02) + Z0);
 
-    markers.current.forEach((el, index) => {
-      el?.toggleAttribute('data-reached', progress >= (index + 0.5) * SLICE);
+      let opacity: number;
+      if (zAhead <= 0) opacity = clamp01(1 + zAhead / PASS_FADE);
+      else if (zAhead >= FAR) opacity = 0;
+      else if (zAhead > FAR - FADE_IN) opacity = (FAR - zAhead) / FADE_IN;
+      else opacity = 1;
+
+      el.style.setProperty('--gs', s.toFixed(4));
+      el.style.setProperty('--gb', `${(54 - 48 * Math.min(s, 1)).toFixed(2)}%`);
+      el.style.setProperty('--go', opacity.toFixed(3));
     });
 
     stages.current.forEach((el, index) => {
@@ -99,14 +73,35 @@ const Roadmap = () => {
       style={{ '--phase-count': COUNT } as CSSProperties}
     >
       <div className="pin" ref={pinRef}>
-        {/* Backdrop: parallax starfield plus a nebula that borrows the active
-            phase's hue via currentColor, so the whole sky retints as the
-            journey advances. */}
+        {/* Backdrop: starfield and nebula above the horizon, a perspective
+            grid floor below it. The floor's grid streams toward the camera as
+            progress advances, so scrolling reads as driving. */}
         <div className="scene" aria-hidden="true">
           <span className="stars s1" />
           <span className="stars s2" />
           <span className="stars s3" />
           <span className="nebula" />
+          <span className="horizon" />
+          <span className="floor-wrap">
+            <span className="floor" />
+          </span>
+          <span className="frame-fade" />
+        </div>
+
+        {/* Neon gates standing on the road, one per phase. They approach from
+            the horizon and sweep past the camera as their phase arrives. */}
+        <div className="gates" aria-hidden="true">
+          {ROADMAP.map(({ phase, status }, index) => (
+            <span
+              key={phase}
+              className={`gate status-${status}`}
+              ref={(el) => {
+                gates.current[index] = el;
+              }}
+            >
+              <span className="gate-label">{phase}</span>
+            </span>
+          ))}
         </div>
 
         <header className="strip">
@@ -127,50 +122,6 @@ const Roadmap = () => {
             <span className="hud-bar" />
           </div>
         </header>
-
-        <div className="road">
-          <svg
-            className="tarmac"
-            viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
-            {/* pathLength normalises every lane to 1, so all the dash maths
-                below is written directly in progress fractions. */}
-            <path className="lane lane-base" d={ROAD_PATH} pathLength={1} />
-            <path className="lane lane-dash" d={ROAD_PATH} pathLength={1} />
-            <path
-              ref={laneRef}
-              className="lane lane-fill"
-              d={ROAD_PATH}
-              pathLength={1}
-            />
-            <path className="lane lane-comet" d={ROAD_PATH} pathLength={1} />
-            <g ref={headRef} className="head">
-              <circle className="head-glow" r="14" />
-              <circle className="head-core" r="5" />
-            </g>
-          </svg>
-
-          <ol className="markers">
-            {ROADMAP.map(({ phase, status }, index) => (
-              <li
-                key={phase}
-                className={`marker status-${status}`}
-                data-side={index % 2 === 0 ? 'crest' : 'trough'}
-                ref={(el) => {
-                  markers.current[index] = el;
-                }}
-              >
-                <span className="dot" aria-hidden="true">
-                  {status === 'shipped' && <Check />}
-                  {status === 'in-progress' && <span className="pip" />}
-                </span>
-                <span className="tag">{phase}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
 
         {/* Every stage stays in the document; only its visual state changes, so
             the whole roadmap is available to a screen reader at any scroll
