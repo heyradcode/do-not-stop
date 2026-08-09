@@ -2,7 +2,7 @@ import { STEPS } from '@/content/landing';
 import './HowItWorks.css';
 
 const HowItWorks = () => (
-  <section className="landing-section how-it-works" id="how">
+  <section className="landing-section how-it-works" id="how" data-wash="cyan">
     <h3 className="section-title" data-reveal="up">How It Works</h3>
     <p className="section-subtitle" data-reveal="up">From wallet to first win in four short steps.</p>
     <ol className="track" aria-label="How it works" data-reveal-stagger>

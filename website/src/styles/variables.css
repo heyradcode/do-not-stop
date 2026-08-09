@@ -49,6 +49,13 @@
   --rarity-legendary: #ffcf5c;
   --rarity-legendary-rgb: 255 207 92;
 
+  /* Section mood washes. Deeper and more saturated than the display accents
+     above: they sit at 8-16% alpha over near-black and need the saturation to
+     register at all. */
+  --wash-cyan-rgb: 41 168 255;
+  --wash-violet-rgb: 155 100 255;
+  --wash-magenta-rgb: 255 110 196;
+
   /* Status tones — roadmap pins, rail segments, badges. */
   --status-shipped: var(--neon-emerald);
   --status-shipped-rgb: var(--neon-emerald-rgb);

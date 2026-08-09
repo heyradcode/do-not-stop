@@ -5,7 +5,7 @@ import { NeonCard } from '../../common';
 import './Features.css';
 
 const Features = () => (
-  <section className="landing-section features" id="features">
+  <section className="landing-section features" id="features" data-wash="violet">
     <h3 className="section-title" data-reveal="up">What You Can Do</h3>
     <p className="section-subtitle" data-reveal="up">Every pet is a fully on-chain asset — yours to grow, fight, and trade.</p>
     <div className="grid" data-reveal-stagger>

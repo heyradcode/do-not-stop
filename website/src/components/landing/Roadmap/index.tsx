@@ -2,7 +2,7 @@ import { ROADMAP, ROADMAP_STATUS_LABEL } from '@/content/landing';
 import './Roadmap.css';
 
 const Roadmap = () => (
-  <section className="landing-section roadmap" id="roadmap">
+  <section className="landing-section roadmap" id="roadmap" data-wash="cyan">
     <h3 className="section-title" data-reveal="up">Roadmap</h3>
     <p className="section-subtitle" data-reveal="up">Where we&apos;ve been, what&apos;s shipping next.</p>
     <ol className="track" data-reveal-stagger="110">

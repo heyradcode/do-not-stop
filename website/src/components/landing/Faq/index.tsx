@@ -2,7 +2,7 @@ import { FAQS } from '@/content/landing';
 import './Faq.css';
 
 const Faq = () => (
-  <section className="landing-section faq" id="faq">
+  <section className="landing-section faq" id="faq" data-wash="magenta">
     <h3 className="section-title" data-reveal="up">Questions, Answered</h3>
     <p className="section-subtitle" data-reveal="up">Everything you need to know before you mint your first pet.</p>
     <div className="list" data-reveal-stagger="55">

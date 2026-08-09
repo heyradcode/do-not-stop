@@ -7,7 +7,7 @@ import './Pets.css';
 const rarityMod = (rarity: string) => rarity.toLowerCase();
 
 const Pets = () => (
-  <section className="landing-section pets" id="pets">
+  <section className="landing-section pets" id="pets" data-wash="magenta">
     <h3 className="section-title" data-reveal="up">Meet the Companions</h3>
     <p className="section-subtitle" data-reveal="up">Four rarity tiers, ten thousand creatures, one shot at the legendary roster.</p>
 

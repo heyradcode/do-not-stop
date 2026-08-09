@@ -23,34 +23,54 @@
   background: transparent;
 }
 
-/* Alternating mood washes — every .landing-section cycles cyan / violet / magenta */
-.landing-section::before {
+/* =============================================================================
+   Mood washes.
+
+   Assigned per section with `data-wash`, not an nth-of-type cycle. Only 7 of the
+   12 landing children carry `.landing-section`, but nth-of-type counted all 11
+   `<section>` siblings, so the "cyan / violet / magenta" cycle the old comment
+   described actually rendered as violet, magenta, cyan, cyan, violet, magenta,
+   violet — and reordering or adding any section reshuffled every wash after it.
+
+   The second stop is a constant fraction of the first, so a hue is tuned by one
+   `--wash-strength` value rather than two hand-balanced alphas.
+   ============================================================================= */
+.landing-section[data-wash]::before {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: var(--z-base);
   opacity: 0.55;
+  background:
+    radial-gradient(circle at var(--wash-from), rgb(var(--wash-rgb) / var(--wash-strength)), transparent 44%),
+    radial-gradient(circle at var(--wash-to), rgb(var(--wash-rgb) / calc(var(--wash-strength) * 0.65)), transparent 40%);
 }
 
 .landing-section > * {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-raised);
 }
 
-.landing-section:nth-of-type(3n + 1)::before {
-  background: radial-gradient(circle at 12% 0%, rgb(41 168 255 / 14%), transparent 42%),
-              radial-gradient(circle at 90% 100%, rgb(41 168 255 / 9%), transparent 38%);
+.landing-section[data-wash='cyan'] {
+  --wash-rgb: var(--wash-cyan-rgb);
+  --wash-strength: 14%;
+  --wash-from: 12% 0%;
+  --wash-to: 90% 100%;
 }
 
-.landing-section:nth-of-type(3n + 2)::before {
-  background: radial-gradient(circle at 88% 8%, rgb(155 100 255 / 16%), transparent 44%),
-              radial-gradient(circle at 6% 92%, rgb(155 100 255 / 10%), transparent 40%);
+.landing-section[data-wash='violet'] {
+  --wash-rgb: var(--wash-violet-rgb);
+  --wash-strength: 16%;
+  --wash-from: 88% 8%;
+  --wash-to: 6% 92%;
 }
 
-.landing-section:nth-of-type(3n)::before {
-  background: radial-gradient(circle at 50% 0%, rgb(255 110 196 / 12%), transparent 46%),
-              radial-gradient(circle at 20% 100%, rgb(255 110 196 / 8%), transparent 42%);
+.landing-section[data-wash='magenta'] {
+  --wash-rgb: var(--wash-magenta-rgb);
+  --wash-strength: 12%;
+  --wash-from: 50% 0%;
+  --wash-to: 20% 100%;
 }
 
 .section-title {

@@ -3,7 +3,7 @@ import Icon from './Icon';
 import './Community.css';
 
 const Community = () => (
-  <section className="landing-section community" id="community">
+  <section className="landing-section community" id="community" data-wash="cyan">
     <div className="block" data-reveal="scale">
       <div className="copy">
         <h3 className="section-title">Join the Pack</h3>
