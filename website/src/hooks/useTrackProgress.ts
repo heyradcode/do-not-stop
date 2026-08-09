@@ -2,10 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 
-/** Fraction of the viewport height at which the track starts advancing. */
-const ENTER_AT = 0.9;
-/** Share of the track's own height over which it completes. */
-const SPAN = 0.78;
+/** Progress starts when the element's top crosses this fraction of the viewport. */
+const ENTER_AT = 0.95;
+/** ...and finishes when its bottom crosses this one. */
+const EXIT_AT = 0.05;
 
 const clamp = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 
@@ -48,8 +48,15 @@ export default function useTrackProgress<T extends HTMLElement>(
     const update = () => {
       frame = 0;
       const rect = el.getBoundingClientRect();
-      const enter = window.innerHeight * ENTER_AT;
-      write(clamp((enter - rect.top) / (rect.height * SPAN)));
+      const viewport = window.innerHeight;
+      const enter = viewport * ENTER_AT;
+
+      // Measured over the element's whole traversal of the viewport, not over a
+      // share of its own height. A short element covered by its own height alone
+      // completes in a few hundred pixels of scroll, which for anything with
+      // several steps is far too fast to read.
+      const distance = viewport * (ENTER_AT - EXIT_AT) + rect.height;
+      write(clamp((enter - rect.top) / distance));
     };
 
     const onScroll = () => {

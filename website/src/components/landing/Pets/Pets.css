@@ -107,7 +107,9 @@
   --radius: clamp(250px, 30vw, 380px);
 
   position: relative;
-  height: clamp(360px, 44vh, 460px);
+  /* Taller than the cards need: the element's own height is part of the scroll
+     distance the ring is paced over, so a taller stage is a slower turn. */
+  height: clamp(420px, 58vh, 560px);
   perspective: 1250px;
   perspective-origin: 50% 44%;
 }
@@ -141,6 +143,10 @@
   transform-style: preserve-3d;
   /* One rotation per card across the section, so every pet faces front once. */
   transform: rotateY(calc(var(--track-progress) * var(--sweep) * -1));
+  /* Damping. The angle is rewritten every frame, so each change restarts this
+     transition from wherever the ring currently is — the ring trails the scroll
+     and settles, instead of snapping frame to frame. */
+  transition: transform 300ms var(--ease-out);
 }
 
 .pets .slot {

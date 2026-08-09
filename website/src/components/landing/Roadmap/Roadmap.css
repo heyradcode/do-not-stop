@@ -12,8 +12,9 @@
    --scene-rgb.
    ============================================================================= */
 .roadmap {
-  /* Scroll distance granted to each phase. Bigger reads slower. */
-  --phase-span: 68vh;
+  /* Scroll distance granted to each phase. Bigger reads slower — roughly one
+     full screen of scrolling per phase is the pace a pinned scene wants. */
+  --phase-span: 100vh;
   --track-progress: 0;
   --scene-rgb: var(--neon-emerald-rgb);
   /* Sky/ground split, from the top. */
@@ -218,6 +219,11 @@
     0 0 26px color-mix(in srgb, currentColor 45%, transparent),
     inset 0 0 34px color-mix(in srgb, currentColor 14%, transparent);
   will-change: scale, opacity;
+  /* Short damping so a fast flick does not step the gates in visible jumps.
+     Kept brief — longer and they lag behind the road they stand on. */
+  transition:
+    scale 200ms var(--ease-out),
+    opacity 200ms var(--ease-out);
 
   &.status-shipped { color: var(--status-shipped); }
   &.status-in-progress { color: var(--status-active); }
