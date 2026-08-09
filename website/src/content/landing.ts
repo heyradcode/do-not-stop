@@ -25,7 +25,8 @@ export type Step = {
 };
 
 export type RoadmapItem = {
-  quarter: string;
+  /** Build-order label, not a date. The project ships in phases, not quarters. */
+  phase: string;
   title: string;
   status: 'shipped' | 'in-progress' | 'planned';
   bullets: string[];
@@ -67,10 +68,10 @@ export type Stat = {
 };
 
 export const FEATURES: FeatureCard[] = [
-  { title: 'Breed New Bloodlines', text: 'Pair two pets and pass their traits down. Every hatch rolls against the same published rules.', iconImage: '/images/icons/interaction/breed.png' },
-  { title: 'Battle for Rank', text: 'Tactical fights settled from a seed committed before the match, then signed. Climb the season leaderboard.', iconImage: '/images/icons/interaction/battle.png' },
-  { title: 'Train and Gear Up', text: 'Level up, tune stats, and equip items that are held in escrow on chain for as long as they are worn.', iconImage: '/images/icons/interaction/levelup.png' },
-  { title: 'Own and Trade', text: 'Pets and items are NFTs in your own wallet. Move them, trade them, or walk away with them.', iconImage: '/images/icons/interaction/trading.png' },
+  { title: 'Breed and Marry', text: 'Pair two pets to pass traits down a bloodline, or marry a partner pet and unlock a private thread only the two owners can read.', iconImage: '/images/icons/interaction/breed.png' },
+  { title: 'Battle for Rank', text: 'Both owners sign in before a fight. It settles from a seed committed in advance, and the result is signed and anchored on chain.', iconImage: '/images/icons/interaction/battle.png' },
+  { title: 'Train and Equip', text: 'Level up, train stats, rename, and equip ERC-1155 gear that is escrowed on chain for as long as your pet wears it.', iconImage: '/images/icons/interaction/levelup.png' },
+  { title: 'Own and Trade', text: 'Pets are NFTs in your own wallet on Ethereum or Solana. Transfer them, trade them, or walk away with them.', iconImage: '/images/icons/interaction/trading.png' },
 ];
 
 export const PETS: Pet[] = [
@@ -91,17 +92,17 @@ export const COMMUNITIES: CommunityCard[] = [
 ];
 
 export const STEPS: Step[] = [
-  { number: '01', title: 'Connect', text: 'Bring the wallet you already have — MetaMask on Ethereum, Phantom on Solana.' },
-  { number: '02', title: 'Mint', text: 'Hatch your first pet and roll its traits from a committed random seed.' },
-  { number: '03', title: 'Train', text: 'Level up, breed new bloodlines, and equip gear that stays with the pet.' },
-  { number: '04', title: 'Battle', text: 'Enter the arena, climb the leaderboard, and keep a receipt for every fight.' },
+  { number: '01', title: 'Connect', text: 'Bring the wallet you already have. MetaMask on Ethereum, Phantom on Solana — the same game runs on both.' },
+  { number: '02', title: 'Hatch', text: 'Mint a starter pet. Its traits come from on-chain randomness, not a number we picked for you.' },
+  { number: '03', title: 'Raise', text: 'Level up, train stats, equip gear, breed new bloodlines, and marry a partner pet.' },
+  { number: '04', title: 'Battle', text: 'Both owners opt in, the fight settles from a public beacon round, and you keep the receipt.' },
 ];
 
 export const ROADMAP: RoadmapItem[] = [
-  { quarter: 'Q1', title: 'Genesis', status: 'shipped', bullets: ['Dual-chain pet minting', 'On-chain breeding', 'Four-tier rarity system'] },
-  { quarter: 'Q2', title: 'Arena', status: 'shipped', bullets: ['Tactical battle engine', 'Global leaderboard', 'Seasonal rewards'] },
-  { quarter: 'Q3', title: 'Provable Play', status: 'in-progress', bullets: ['Beacon-seeded battles', 'Signed battle receipts', 'Open-source verifier'] },
-  { quarter: 'Q4', title: 'Loadouts', status: 'planned', bullets: ['Equipment and consumables', 'Guilds and rivalries', 'Native marketplace'] },
+  { phase: '01', title: 'Foundation', status: 'shipped', bullets: ['Dual-chain pet minting', 'Breeding, bloodlines and marriage', 'Level up, train, rename, transfer'] },
+  { phase: '02', title: 'Provable Arena', status: 'shipped', bullets: ['Beacon-seeded battles', 'Signed, chain-anchored receipts', 'Open-source public verifier'] },
+  { phase: '03', title: 'Progression', status: 'in-progress', bullets: ['Leaderboard and seasons', 'CPET season rewards', 'Equipment and item NFTs'] },
+  { phase: '04', title: 'Expansion', status: 'planned', bullets: ['Daily quests', 'Team battles', 'Pet and item marketplace'] },
 ];
 
 export const ROADMAP_STATUS_LABEL: Record<RoadmapItem['status'], string> = {
@@ -118,12 +119,13 @@ export const RARITY_TIERS: RarityTier[] = [
 ];
 
 export const FAQS: Faq[] = [
-  { question: 'What is CryptoPets?', answer: 'A creature collection and battle game where the pets are NFTs. Mint one, train it, breed it, and send it into the arena — on the web or on mobile.' },
-  { question: 'Which chains are supported?', answer: 'Ethereum and Solana. The same game runs on both, and you use whichever wallet you already have.' },
-  { question: 'Do I really own my pets?', answer: 'Yes. Pets and items live in your wallet as NFTs. They are transferable and tradable, and they stay yours regardless of what happens to this app.' },
-  { question: 'How do I know a battle was fair?', answer: 'Each battle is seeded from a public randomness beacon round committed before the fight resolves, and the result is signed. An open-source verifier replays any receipt independently and checks the seed, the signature, the beacon, the combat maths, the progression and the gear — no account and no access to our servers required.' },
+  { question: 'What is CryptoPets?', answer: 'A creature collection and battle game where the pets are NFTs. Mint one, train it, breed it, marry it off, and send it into the arena — on the web or on mobile.' },
+  { question: 'Which chains are supported?', answer: 'Ethereum and Solana. Pets, breeding and battles run on both. Equipment and item NFTs are on Ethereum today.' },
+  { question: 'Do I really own my pets?', answer: 'Yes. Pets are NFTs in your wallet. They are transferable and tradable, and they stay yours regardless of what happens to this app.' },
+  { question: 'How do I know a battle was fair?', answer: 'The battle is seeded from a public randomness beacon round committed before the fight resolves, and the result is signed and folded into a Merkle batch anchored on chain. An open-source verifier replays any receipt and reports seven checks separately: seed derivation, the operator signature, the beacon signature, the combat replay, progression, equipment, and hash-chain continuity. It needs no account and no access to our servers.' },
+  { question: 'Can someone battle my pet while I am offline?', answer: 'Not without your say-so. Defending takes a wallet-signed authorization that names the pet, the level band it will accept, the exact rule set, a validity window and a daily cap. Outside those bounds the battle is refused.' },
   { question: 'What does it cost to start?', answer: 'Connecting a wallet is free. Mint price varies per drop and is announced in advance on our community channels.' },
-  { question: 'Can I earn from playing?', answer: 'Pets and items are tradable assets, and seasons pay out rewards to the top of the leaderboard. Treat it as a game you own a piece of, not as an income.' },
+  { question: 'Can I earn from playing?', answer: 'Seasons pay CPET rewards to the top of the leaderboard, claimed against an on-chain Merkle root, and your pets and items are tradable assets. CPET has a fixed supply with no mint function. Treat it as a game you own a piece of, not as an income.' },
 ];
 
 /**
@@ -197,7 +199,7 @@ export const SECTION_COPY = {
   },
   roadmap: {
     title: 'Roadmap',
-    subtitle: "What's shipped, and what's coming next.",
+    subtitle: 'Built in phases, not to a calendar. Here is where each one stands.',
   },
   proof: {
     title: 'Provably Fair',
@@ -219,9 +221,9 @@ export const SECTION_COPY = {
  * check. These four are readable off the game's own design and source.
  */
 export const STATS: Stat[] = [
-  { value: 10000, label: 'Genesis Supply' },
   { value: 2, label: 'Chains Live' },
   { value: 4, label: 'Rarity Tiers' },
+  { value: 7, label: 'Verifier Checks' },
   { value: 100, suffix: '%', label: 'Replayable Battles' },
 ];
 

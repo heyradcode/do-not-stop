@@ -10,27 +10,39 @@ tradable, and transferable independent of the app.
 ## Overview
 
 - **What it is:** on-chain pet collection and tactical battle game (NFTs).
-- **Chains:** Ethereum and Solana.
+- **Chains:** Ethereum and Solana. Pets, breeding and battles run on both;
+  equipment and item NFTs are on Ethereum today.
 - **Wallets:** MetaMask on Ethereum, Phantom on Solana.
 - **Platforms:** web and mobile.
 
 ## Gameplay
 
 - **Connect** the wallet you already have.
-- **Mint** a pet and roll its traits from a committed random seed.
-- **Train** — level up, breed new bloodlines, equip gear that stays with the pet.
+- **Hatch** a starter pet whose traits come from on-chain randomness.
+- **Raise** it — level up, train stats, equip gear, breed bloodlines, marry a
+  partner pet (which unlocks a private thread between the two owners).
 - **Battle** rivals in the arena and climb the season leaderboard.
 
 ## Provably fair battles
 
+- Defending requires a wallet-signed authorization naming the pet, the level band,
+  the exact rule set, a validity window and a daily cap. A pet cannot be dragged
+  into a fight its owner did not agree to.
 - Each battle is seeded from a public randomness beacon round committed **before**
   the fight resolves, so no party can grind the roll.
 - Every result is a signed receipt over the exact inputs it used, and batches of
   receipts are committed to a Merkle root written on chain.
-- An open-source verifier replays any receipt independently and reports on seed
-  derivation, operator signature, beacon signature, combat replay, progression,
-  equipment and hash-chain continuity. It needs no account and no access to the
-  project's servers.
+- An open-source verifier replays any receipt independently and reports seven
+  checks separately: seed derivation, operator signature, beacon signature,
+  combat replay, progression, equipment and hash-chain continuity. It needs no
+  account and no access to the project's servers.
+
+## Rewards
+
+- Seasons pay CPET to the top of the leaderboard, claimed against an on-chain
+  Merkle root with per-wallet and per-season ceilings.
+- CPET has a fixed supply and no mint function, so the total is checkable by
+  anyone and cannot be inflated later.
 
 ## Rarity tiers
 
@@ -41,10 +53,15 @@ tradable, and transferable independent of the app.
 
 ## Roadmap
 
-- Q1 — Genesis (shipped): dual-chain minting, on-chain breeding, four-tier rarity.
-- Q2 — Arena (shipped): tactical battle engine, global leaderboard, seasonal rewards.
-- Q3 — Provable Play (in progress): beacon-seeded battles, signed receipts, open verifier.
-- Q4 — Loadouts (planned): equipment and consumables, guilds, native marketplace.
+Phases, not dates.
+
+- 01 Foundation (shipped): dual-chain minting, breeding and bloodlines, marriage,
+  level up, train, rename, transfer.
+- 02 Provable Arena (shipped): beacon-seeded battles, signed and chain-anchored
+  receipts, open-source public verifier.
+- 03 Progression (in progress): leaderboard and seasons, CPET season rewards,
+  equipment and item NFTs.
+- 04 Expansion (planned): daily quests, team battles, pet and item marketplace.
 
 ## Built with
 

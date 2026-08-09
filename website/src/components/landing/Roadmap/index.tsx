@@ -30,15 +30,15 @@ const Roadmap = () => (
       data-reveal="fade"
       data-reveal-stagger="130"
     >
-      {ROADMAP.map(({ quarter, title, status, bullets }, idx) => (
+      {ROADMAP.map(({ phase, title, status, bullets }, idx) => (
         <li
           className={`stop status-${status} ${idx % 2 === 0 ? 'above' : 'below'}`}
-          key={quarter}
+          key={phase}
           data-reveal="rise"
         >
           <div className="card">
             <div className="head">
-              <span className="quarter">{quarter}</span>
+              <span className="phase">{phase}</span>
               <span className="status">{ROADMAP_STATUS_LABEL[status]}</span>
             </div>
             <h3>{title}</h3>
