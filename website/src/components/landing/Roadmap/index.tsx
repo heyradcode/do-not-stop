@@ -3,11 +3,15 @@ import './Roadmap.css';
 
 const Roadmap = () => (
   <section className="landing-section roadmap" id="roadmap">
-    <h3 className="section-title">Roadmap</h3>
-    <p className="section-subtitle">Where we&apos;ve been, what&apos;s shipping next.</p>
-    <ol className="track">
+    <h3 className="section-title" data-reveal="up">Roadmap</h3>
+    <p className="section-subtitle" data-reveal="up">Where we&apos;ve been, what&apos;s shipping next.</p>
+    <ol className="track" data-reveal-stagger="110">
       {ROADMAP.map(({ quarter, title, status, bullets }, idx) => (
-        <li className={`stop status-${status} ${idx % 2 === 0 ? 'above' : 'below'}`} key={quarter}>
+        <li
+          className={`stop status-${status} ${idx % 2 === 0 ? 'above' : 'below'}`}
+          key={quarter}
+          data-reveal="rise"
+        >
           <div className="card">
             <div className="head">
               <span className="quarter">{quarter}</span>

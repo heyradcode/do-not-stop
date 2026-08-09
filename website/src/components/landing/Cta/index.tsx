@@ -6,7 +6,7 @@ import './Cta.css';
 
 const Cta = () => (
   <section className="cta" aria-label="Get started">
-    <div className="inner">
+    <div className="inner" data-reveal="scale">
       <div>
         <span className="eyebrow">Next Drop · Live Soon</span>
         <h3>Don&apos;t miss the next mint.</h3>

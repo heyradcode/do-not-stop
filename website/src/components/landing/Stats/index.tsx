@@ -8,9 +8,9 @@ const ITEMS = [
 ];
 
 const Stats = () => (
-  <section className="stats" aria-label="Project statistics" id="stats">
+  <section className="stats" aria-label="Project statistics" id="stats" data-reveal-stagger="80">
     {ITEMS.map(({ value, label }) => (
-      <div className="item" key={label}>
+      <div className="item" key={label} data-reveal="up">
         <strong>{value}</strong>
         <span>{label}</span>
       </div>

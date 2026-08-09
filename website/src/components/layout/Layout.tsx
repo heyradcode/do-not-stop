@@ -3,6 +3,7 @@
 import React from 'react';
 
 import { NeonButton } from '@/components/common';
+import useRevealObserver from '@/hooks/useRevealObserver';
 import { openApp } from '@/lib/openApp';
 
 type LayoutProps = {
@@ -18,6 +19,8 @@ const Layout: React.FC<LayoutProps> = ({
   contentClassName,
   title = 'Crypto Pets',
 }) => {
+  useRevealObserver();
+
   const containerClass = ['main-container', containerClassName].filter(Boolean).join(' ');
   const contentClass = ['main-content', contentClassName].filter(Boolean).join(' ');
 

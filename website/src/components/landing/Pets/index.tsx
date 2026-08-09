@@ -8,10 +8,10 @@ const rarityMod = (rarity: string) => rarity.toLowerCase();
 
 const Pets = () => (
   <section className="landing-section pets" id="pets">
-    <h3 className="section-title">Meet the Companions</h3>
-    <p className="section-subtitle">Four rarity tiers, ten thousand creatures, one shot at the legendary roster.</p>
+    <h3 className="section-title" data-reveal="up">Meet the Companions</h3>
+    <p className="section-subtitle" data-reveal="up">Four rarity tiers, ten thousand creatures, one shot at the legendary roster.</p>
 
-    <div className="rarity" aria-label="Rarity tier distribution">
+    <div className="rarity" aria-label="Rarity tier distribution" data-reveal="fade">
       <div className="rarity-track">
         {RARITY_TIERS.map(({ name, share, tone }) => (
           <div
@@ -36,9 +36,9 @@ const Pets = () => (
       </ul>
     </div>
 
-    <div className="grid">
+    <div className="grid" data-reveal-stagger="60">
       {PETS.map(({ name, level, rarity, image }) => (
-        <NeonCard key={name} className={`card r-${rarityMod(rarity)}`}>
+        <NeonCard key={name} className={`card r-${rarityMod(rarity)}`} data-reveal="rise">
           <div className="avatar">
             <Image src={image} alt={name} width={78} height={78} />
           </div>

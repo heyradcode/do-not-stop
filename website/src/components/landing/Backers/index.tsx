@@ -6,8 +6,8 @@ const Backers = () => {
 
   return (
     <section className="backers" aria-label="Powered by">
-      <p className="label">Powered by &amp; built with</p>
-      <div className="marquee">
+      <p className="label" data-reveal="up">Powered by &amp; built with</p>
+      <div className="marquee" data-reveal="fade">
         <ul className="row">
           {loop.map(({ name }, idx) => (
             <li key={`${name}-${idx}`}>{name}</li>

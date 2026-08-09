@@ -3,11 +3,11 @@ import './Faq.css';
 
 const Faq = () => (
   <section className="landing-section faq" id="faq">
-    <h3 className="section-title">Questions, Answered</h3>
-    <p className="section-subtitle">Everything you need to know before you mint your first pet.</p>
-    <div className="list">
+    <h3 className="section-title" data-reveal="up">Questions, Answered</h3>
+    <p className="section-subtitle" data-reveal="up">Everything you need to know before you mint your first pet.</p>
+    <div className="list" data-reveal-stagger="55">
       {FAQS.map(({ question, answer }, idx) => (
-        <details className="item" key={question} open={idx === 0}>
+        <details className="item" key={question} open={idx === 0} data-reveal="up">
           <summary>
             <span>{question}</span>
             <span className="chevron" aria-hidden="true" />

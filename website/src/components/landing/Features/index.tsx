@@ -6,11 +6,11 @@ import './Features.css';
 
 const Features = () => (
   <section className="landing-section features" id="features">
-    <h3 className="section-title">What You Can Do</h3>
-    <p className="section-subtitle">Every pet is a fully on-chain asset — yours to grow, fight, and trade.</p>
-    <div className="grid">
+    <h3 className="section-title" data-reveal="up">What You Can Do</h3>
+    <p className="section-subtitle" data-reveal="up">Every pet is a fully on-chain asset — yours to grow, fight, and trade.</p>
+    <div className="grid" data-reveal-stagger>
       {FEATURES.map(({ title, text, iconImage }) => (
-        <NeonCard key={title} className="card">
+        <NeonCard key={title} className="card" data-reveal="rise">
           <div className="icon" aria-hidden="true">
             {iconImage && <Image src={iconImage} alt="" width={96} height={96} />}
           </div>
