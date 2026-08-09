@@ -1,33 +1,47 @@
 .pets {
+  /* Tier tones map onto the shared rarity tokens rather than restating hexes. */
+  & .tone-silver { --tone-rgb: var(--rarity-common-rgb); }
+  & .tone-cyan { --tone-rgb: var(--rarity-rare-rgb); }
+  & .tone-violet { --tone-rgb: var(--rarity-epic-rgb); }
+  & .tone-gold { --tone-rgb: var(--rarity-legendary-rgb); }
+
   & .rarity {
-    margin-bottom: 36px;
+    margin-bottom: 40px;
   }
 
   & .rarity-track {
     display: flex;
     width: 100%;
-    height: 18px;
-    border-radius: 999px;
+    height: 16px;
+    border-radius: var(--radius-pill);
     overflow: hidden;
-    background: rgb(255 255 255 / 4%);
-    border: 1px solid rgb(118 154 255 / 22%);
+    background: var(--surface-veil-1);
+    border: 1px solid rgb(var(--border-rgb) / 22%);
     box-shadow: inset 0 0 14px rgb(0 0 0 / 35%);
-    margin-bottom: 20px;
+    margin-bottom: 22px;
   }
 
+  /* Segments start collapsed and grow to their share when the block scrolls in,
+     staggered left to right, so the distribution reads as a figure being drawn
+     rather than a bar that was always there. */
   & .rarity-segment {
-    flex: 0 0 auto;
+    flex: 0 0 0%;
     height: 100%;
-    background: var(--tone);
-    box-shadow: inset 0 0 14px rgb(255 255 255 / 18%), 0 0 12px var(--tone);
-    transition: filter 200ms ease;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--tone-rgb) / 100%),
+      rgb(var(--tone-rgb) / 72%)
+    );
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 28%),
+      0 0 12px rgb(var(--tone-rgb) / 70%);
+    transition:
+      flex-basis 950ms var(--ease-out) var(--seg-delay, 0ms),
+      filter var(--dur-base) var(--ease-out);
 
-    &:hover { filter: brightness(1.15); }
-
-    &.tone-silver { --tone: #b2c8eb; }
-    &.tone-cyan { --tone: #50b8ff; }
-    &.tone-violet { --tone: #b878ff; }
-    &.tone-gold { --tone: #ffcf5c; }
+    &:hover {
+      filter: brightness(1.18);
+    }
   }
 
   & .rarity-legend {
@@ -42,12 +56,7 @@
       display: flex;
       align-items: flex-start;
       gap: 10px;
-      color: #e7efff;
-
-      &.tone-silver { --tone: #b2c8eb; }
-      &.tone-cyan { --tone: #50b8ff; }
-      &.tone-violet { --tone: #b878ff; }
-      &.tone-gold { --tone: #ffcf5c; }
+      color: var(--text-bright);
     }
 
     & .dot {
@@ -56,8 +65,8 @@
       height: 10px;
       border-radius: 50%;
       margin-top: 7px;
-      background: var(--tone);
-      box-shadow: 0 0 10px var(--tone);
+      background: rgb(var(--tone-rgb));
+      box-shadow: 0 0 10px rgb(var(--tone-rgb) / 90%);
     }
 
     & strong {
@@ -65,7 +74,7 @@
       font-size: 0.92rem;
       letter-spacing: 0.6px;
       text-transform: uppercase;
-      color: #f6f3ff;
+      color: var(--text-title);
     }
 
     & .share {
@@ -73,7 +82,7 @@
       margin-left: 8px;
       font-family: var(--content-font);
       font-weight: 700;
-      color: var(--tone, #b6e2ff);
+      color: rgb(var(--tone-rgb));
     }
 
     & p {
@@ -81,86 +90,150 @@
       margin: 4px 0 0;
       font-size: 0.86rem;
       line-height: 1.45;
-      color: rgb(195 210 255 / 72%);
+      color: var(--text-muted);
     }
   }
 
+  /* =========================================================================
+     Roster
+     ========================================================================= */
   & .grid {
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(6, minmax(130px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
   }
 
   & .card {
-    background: linear-gradient(180deg, rgb(10 14 28 / 95%) 0%, rgb(7 11 24 / 95%) 100%);
-    border: 1px solid rgb(100 132 255 / 20%);
-    padding: 22px 22px 20px;
-    text-align: center;
-    color: #eaf0ff;
-    box-shadow: inset 0 0 22px rgb(55 68 148 / 12%);
+    --tone-rgb: var(--border-rgb);
+
     position: relative;
     overflow: hidden;
+    background: var(--surface-card);
+    border: 1px solid rgb(var(--tone-rgb) / 34%);
+    padding: 30px 24px 26px;
+    text-align: center;
+    color: var(--text-bright);
+    box-shadow: var(--glow-inset-md);
+    transition:
+      border-color var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out),
+      transform var(--dur-base) var(--ease-out);
 
+    &.r-legendary { --tone-rgb: var(--rarity-legendary-rgb); }
+    &.r-epic { --tone-rgb: var(--rarity-epic-rgb); }
+    &.r-rare { --tone-rgb: var(--rarity-rare-rgb); }
+
+    /* Rarity edge. */
     &::before {
       content: '';
       position: absolute;
-      inset: -1px;
+      inset: 0;
       border-radius: inherit;
       padding: 1px;
-      background: linear-gradient(135deg, transparent 40%, var(--edge, rgb(120 150 255 / 45%)) 100%);
       pointer-events: none;
+      background: linear-gradient(135deg, transparent 38%, rgb(var(--tone-rgb) / 72%) 100%);
       -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
       -webkit-mask-composite: xor;
               mask-composite: exclude;
-      opacity: 0.85;
     }
 
-    &.r-legendary { --edge: rgb(255 207 92 / 70%); }
-    &.r-epic { --edge: rgb(184 120 255 / 70%); }
-    &.r-rare { --edge: rgb(80 184 255 / 70%); }
+    &:hover {
+      border-color: rgb(var(--tone-rgb) / 60%);
+      box-shadow:
+        var(--glow-inset-md),
+        0 0 34px rgb(var(--tone-rgb) / 28%),
+        var(--elev-3);
+    }
+  }
+
+  /* Holographic sweep. Its own element because NeonCard owns ::after and the
+     rarity edge owns ::before. */
+  & .sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(
+      115deg,
+      transparent 32%,
+      rgb(255 255 255 / 13%) 46%,
+      rgb(var(--tone-rgb) / 26%) 53%,
+      transparent 68%
+    );
+    translate: -130% 0;
+    opacity: 0;
+    transition:
+      translate 780ms var(--ease-out),
+      opacity var(--dur-base) var(--ease-out);
+  }
+
+  & .card:hover .sheen {
+    translate: 130% 0;
+    opacity: 1;
   }
 
   & .avatar {
-    width: 92px;
-    height: 92px;
-    margin: 0 auto 14px;
+    position: relative;
+    width: 132px;
+    height: 132px;
+    margin: 0 auto 16px;
     border-radius: 50%;
     display: grid;
     place-items: center;
     background: radial-gradient(circle at 30% 20%, #171d38, #0f1430);
-    border: 2px solid rgb(121 148 255 / 35%);
-    box-shadow: inset 0 0 14px rgb(80 110 220 / 18%);
+    border: 2px solid rgb(var(--tone-rgb) / 55%);
+    box-shadow:
+      inset 0 0 18px rgb(var(--tone-rgb) / 20%),
+      0 0 18px rgb(var(--tone-rgb) / 26%);
+    transition:
+      border-color var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out);
+
+    /* Aura bloom, held behind the art and lifted on hover. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -18%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgb(var(--tone-rgb) / 26%), transparent 68%);
+      opacity: 0;
+      transition: opacity var(--dur-slow) var(--ease-out);
+    }
 
     & img {
-      width: 78px;
-      height: 78px;
+      position: relative;
+      width: 108px;
+      height: 108px;
       object-fit: contain;
       display: block;
+      filter: drop-shadow(0 8px 16px rgb(0 0 0 / 50%));
+      transition: scale var(--dur-slow) var(--ease-out);
     }
   }
 
-  & .card.r-legendary .avatar {
-    border-color: rgb(255 207 92 / 70%);
-    box-shadow: inset 0 0 18px rgb(255 207 92 / 22%), 0 0 16px rgb(255 207 92 / 30%);
-  }
-  & .card.r-epic .avatar {
-    border-color: rgb(184 120 255 / 70%);
-    box-shadow: inset 0 0 18px rgb(184 120 255 / 22%), 0 0 16px rgb(184 120 255 / 28%);
-  }
-  & .card.r-rare .avatar {
-    border-color: rgb(80 184 255 / 70%);
-    box-shadow: inset 0 0 18px rgb(80 184 255 / 22%), 0 0 16px rgb(80 184 255 / 28%);
+  & .card:hover .avatar {
+    border-color: rgb(var(--tone-rgb) / 85%);
+    box-shadow:
+      inset 0 0 20px rgb(var(--tone-rgb) / 28%),
+      0 0 26px rgb(var(--tone-rgb) / 42%);
+
+    &::before { opacity: 1; }
+
+    & img { scale: 1.06; }
   }
 
   & .card h3 {
+    position: relative;
     font-family: var(--title-font);
     margin: 0 0 10px;
-    font-size: 1.05rem;
+    font-size: 1.1rem;
     letter-spacing: 0.4px;
+    color: var(--text-title);
   }
 
   & .meta {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -169,7 +242,7 @@
   & .level {
     font-family: var(--content-font);
     font-size: 0.78rem;
-    color: rgb(195 210 255 / 70%);
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.7px;
   }
@@ -180,39 +253,37 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     padding: 3px 9px;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     font-weight: 700;
-    border: 1px solid currentColor;
-
-    &.r-legendary {
-      color: #ffd76b;
-      background: rgb(255 207 92 / 12%);
-      box-shadow: 0 0 10px rgb(255 207 92 / 28%);
-    }
-    &.r-epic {
-      color: #d6b4ff;
-      background: rgb(184 120 255 / 12%);
-      box-shadow: 0 0 10px rgb(184 120 255 / 28%);
-    }
-    &.r-rare {
-      color: #9ed7ff;
-      background: rgb(80 184 255 / 12%);
-      box-shadow: 0 0 10px rgb(80 184 255 / 28%);
-    }
+    color: rgb(var(--tone-rgb));
+    border: 1px solid rgb(var(--tone-rgb) / 70%);
+    background: rgb(var(--tone-rgb) / 12%);
+    box-shadow: 0 0 10px rgb(var(--tone-rgb) / 28%);
   }
+}
+
+.js-reveal .pets .rarity[data-reveal-visible] .rarity-segment {
+  flex-basis: var(--share);
+}
+
+/* Without the observer the segments must still show their share, or the chart
+   renders as an empty bar. */
+html:not(.js-reveal) .pets .rarity-segment {
+  flex-basis: var(--share);
 }
 
 @media (max-width: 1024px) {
   .pets {
-    & .grid { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+    & .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     & .rarity-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 }
 
-@media (max-width: 768px) {
-  .pets .grid { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
-}
-
 @media (max-width: 600px) {
-  .pets .rarity-legend { grid-template-columns: 1fr; }
+  .pets {
+    & .rarity-legend { grid-template-columns: 1fr; }
+    & .card { padding: 24px 16px 20px; }
+    & .avatar { width: 108px; height: 108px; }
+    & .avatar img { width: 88px; height: 88px; }
+  }
 }

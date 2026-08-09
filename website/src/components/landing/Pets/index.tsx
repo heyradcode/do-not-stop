@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import Image from 'next/image';
 
 import { PETS, RARITY_TIERS } from '@/content/landing';
@@ -13,11 +14,11 @@ const Pets = () => (
 
     <div className="rarity" aria-label="Rarity tier distribution" data-reveal="fade">
       <div className="rarity-track">
-        {RARITY_TIERS.map(({ name, share, tone }) => (
+        {RARITY_TIERS.map(({ name, share, tone }, index) => (
           <div
             key={name}
             className={`rarity-segment tone-${tone}`}
-            style={{ flexBasis: share }}
+            style={{ '--share': share, '--seg-delay': `${index * 110}ms` } as CSSProperties}
             title={`${name} · ${share}`}
           />
         ))}
@@ -36,11 +37,12 @@ const Pets = () => (
       </ul>
     </div>
 
-    <div className="grid" data-reveal-stagger="60">
+    <div className="grid" data-reveal-stagger="70">
       {PETS.map(({ name, level, rarity, image }) => (
         <NeonCard key={name} className={`card r-${rarityMod(rarity)}`} data-reveal="rise">
+          <span className="sheen" aria-hidden="true" />
           <div className="avatar">
-            <Image src={image} alt={name} width={78} height={78} />
+            <Image src={image} alt={name} width={220} height={220} />
           </div>
           <h3>{name}</h3>
           <div className="meta">
