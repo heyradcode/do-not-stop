@@ -205,6 +205,28 @@
     line-height: 0;
 }
 
+/* Which pet is wearing it, where a bag tile carries its stack count. Same corner, because
+   it answers the same question — "how much of this do I have here" versus "where is it". */
+.wornBy {
+    position: absolute;
+    left: 5px;
+    bottom: 5px;
+    right: 5px;
+    z-index: 2;
+    pointer-events: none;
+    padding: 1px 6px;
+    border: 1px solid rgb(125 214 255 / 30%);
+    border-radius: 2px;
+    background: rgb(5 13 30 / 90%);
+    color: var(--cp-cyan, #7dd6ff);
+    font-size: 0.66rem;
+    line-height: 1.5;
+    /* A long pet name must not push the chip out of the tile. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* Square, to the "?" circle's round: one acts on the item, the other explains it. */
 .slotButton {
     display: inline-flex;

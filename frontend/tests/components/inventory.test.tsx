@@ -11,6 +11,7 @@ const useSpendItem = vi.fn();
 const useAuth = vi.fn();
 const navigate = vi.fn();
 const itemArtUrl = vi.fn<(itemType: string) => string | null>(() => null);
+const usePetEquipmentForPets = vi.fn();
 
 vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -30,6 +31,7 @@ vi.mock('@shared/core', () => ({
     useInventory: (opts: unknown) => useInventory(opts),
     usePendingItems: (chain: unknown) => usePendingItems(chain),
     usePetList: () => usePetList(),
+    usePetEquipmentForPets: () => usePetEquipmentForPets(),
     useSpendItem: () => useSpendItem(),
     // The real ones: the five rarity tiers and the effect wording are shared with the pet
     // cards on purpose, so a test that stubbed them would stop checking that.
@@ -110,6 +112,7 @@ beforeEach(() => {
     useInventory.mockReturnValue({ entries: [], isLoading: false, error: null, refetch: vi.fn() });
     usePendingItems.mockReturnValue({ pending: [], claim: vi.fn(), claimingId: null, claimError: null });
     usePetList.mockReturnValue({ pets: [{ id: '7', name: 'Rex' }] });
+    usePetEquipmentForPets.mockReturnValue({ byPet: new Map(), isLoading: false, error: null, refetch: vi.fn() });
     useSpendItem.mockReturnValue({ spend, isPending: false, error: null, reset: vi.fn() });
     spend.mockResolvedValue({ burnTxHash: '0xburn', level: 5, xp: 0, readyAt: 0, leveledUp: false });
 });
@@ -307,6 +310,48 @@ describe('the bag', () => {
 
         expect(screen.getByTestId('equip-panel')).toBeInTheDocument();
         expect(navigate).not.toHaveBeenCalled();
+    });
+
+    /**
+     * Equipping escrows the token into ItemCore, so it leaves the wallet and the bag — which
+     * reads balances — stopped showing it at all. A player with one sword equipped it and
+     * could not find it anywhere on this screen.
+     */
+    it('shows equipped items, marked with the pet wearing them', () => {
+        usePetEquipmentForPets.mockReturnValue({
+            byPet: new Map([['7', [{ slot: 0, item: BLADE }]]]),
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+
+        renderBag();
+
+        const heading = screen.getByRole('heading', { name: 'Equipped' });
+        // Scoped: the pet picker names Rex too, so an unscoped query proves nothing about
+        // the chip on the tile.
+        const section = within(heading.closest('section')!);
+        expect(section.getByText('Rex')).toBeInTheDocument();
+        expect(section.getByRole('button', { name: /^Iron Fang, equipped on Rex/ })).toBeInTheDocument();
+    });
+
+    it('opens the equipment tab on the pet wearing the item', async () => {
+        usePetEquipmentForPets.mockReturnValue({
+            byPet: new Map([['7', [{ slot: 0, item: BLADE }]]]),
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+
+        renderBag();
+        await userEvent.click(screen.getByRole('button', { name: /^Iron Fang, equipped on Rex/ }));
+
+        expect(screen.getByTestId('equip-panel')).toBeInTheDocument();
+    });
+
+    it('shows no Equipped section for a player wearing nothing', () => {
+        renderBag();
+        expect(screen.queryByRole('heading', { name: 'Equipped' })).not.toBeInTheDocument();
     });
 
     it('surfaces a read failure rather than rendering an empty bag', () => {

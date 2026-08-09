@@ -7,6 +7,7 @@ import {
     useChainCapabilities,
     useInventory,
     usePendingItems,
+    usePetEquipmentForPets,
     useSpendItem,
     usePetList,
     type InventoryEntry,
@@ -136,6 +137,32 @@ const Inventory: React.FC = () => {
      * Hanging it off Inventory, which is always in the sidebar, removes that trap.
      */
     const [tab, setTab] = useState<'bag' | 'equipment'>('bag');
+    /** Pet the equipment tab should open on, set when the bag sends someone there. */
+    const [equipPetId, setEquipPetId] = useState<string | null>(null);
+
+    /**
+     * What the player's pets are wearing.
+     *
+     * The bag reads wallet balances, and equipping escrows the token into ItemCore — so an
+     * equipped item is not in the wallet and simply vanished from this screen. A player with
+     * one sword equipped it and could not find it anywhere. These rows put it back, marked
+     * with the pet holding it.
+     */
+    const petIds = useMemo(() => pets.map((pet) => String(pet.id)), [pets]);
+    const { byPet: equippedByPet } = usePetEquipmentForPets({ chain, petIds });
+
+    const equippedEntries = useMemo(
+        () =>
+            pets.flatMap((pet) =>
+                (equippedByPet.get(String(pet.id)) ?? []).map((entry) => ({
+                    key: `${String(pet.id)}-${entry.slot}`,
+                    petId: String(pet.id),
+                    petName: pet.name,
+                    item: entry.item,
+                })),
+            ),
+        [pets, equippedByPet],
+    );
 
     /** The item whose detail modal is open. Holds the entry, not just the id, so the modal
      *  keeps rendering its own quantity while a refetch is in flight. */
@@ -308,7 +335,7 @@ const Inventory: React.FC = () => {
                         // signature against one pet, which is a different shape from the rest
                         // of this screen, so it stays its own component rather than being
                         // dissolved into the grid.
-                        <EquipPanel isStandaloneView={false} />
+                        <EquipPanel isStandaloneView={false} initialPetId={equipPetId} />
                     ) : (
                     <>
                     {failure ? (
@@ -355,12 +382,49 @@ const Inventory: React.FC = () => {
 
                     {isLoading ? (
                         <p className={styles.muted}>Loading your items…</p>
-                    ) : grouped.length === 0 ? (
+                    ) : grouped.length === 0 && equippedEntries.length === 0 ? (
                         <p className={styles.muted}>
                             Nothing yet. Items drop from battles, so fight something.
                         </p>
                     ) : (
                         <>
+                            {equippedEntries.length > 0 ? (
+                                <section aria-labelledby="group-equipped">
+                                    <h2 id="group-equipped" className={styles.sectionTitle}>
+                                        Equipped
+                                    </h2>
+                                    <div className={styles.grid}>
+                                        {equippedEntries.map((entry) => (
+                                            <div key={entry.key} className={styles.tile}>
+                                                <div
+                                                    className={styles.slot}
+                                                    style={{ '--rarity': getRarityColor(entry.item.rarity) } as React.CSSProperties}
+                                                >
+                                                    <ItemArt item={entry.item} />
+                                                    {/* One control, not a tile with corners: these are
+                                                        not in the bag to be spent, and the only thing
+                                                        to do with one is take it off. */}
+                                                    <button
+                                                        type="button"
+                                                        className={styles.open}
+                                                        aria-label={`${entry.item.name}, equipped on ${entry.petName} — manage equipment`}
+                                                        onClick={() => {
+                                                            setEquipPetId(entry.petId);
+                                                            setTab('equipment');
+                                                        }}
+                                                    />
+                                                    <span className={styles.badge}>
+                                                        {getRarityName(entry.item.rarity)}
+                                                    </span>
+                                                    <span className={styles.wornBy}>{entry.petName}</span>
+                                                </div>
+                                                <span className={styles.tileTitle}>{entry.item.name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            ) : null}
+
                             {pets.length > 0 ? (
                                 <div className={styles.petPicker}>
                                     {/* A label element, not a wrapping <label>: PetSelect is a

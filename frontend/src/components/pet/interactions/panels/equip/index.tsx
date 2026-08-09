@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     describeItemEffect,
     getPetClass,
@@ -45,14 +45,27 @@ const SLOTS = [
 
 export type EquipPanelProps = {
     isStandaloneView?: boolean;
+    /**
+     * Pet to open on, e.g. when the bag sends someone here to strip a specific one.
+     *
+     * A starting value, not a controlled prop: the picker inside stays usable, so arriving
+     * with a pet chosen does not trap you on it. Changing it later re-selects, which is what
+     * makes a second click from the bag land on the second pet.
+     */
+    initialPetId?: string | null;
 };
 
-const EquipPanel: React.FC<EquipPanelProps> = ({ isStandaloneView = true }) => {
+const EquipPanel: React.FC<EquipPanelProps> = ({ isStandaloneView = true, initialPetId = null }) => {
     const { activeKind: chain, isConnected } = useChainCapabilities();
     const { pets } = usePetList();
     const notifyError = useNotifyError();
 
-    const [selectedPet, setSelectedPet] = useState<string>('');
+    const [selectedPet, setSelectedPet] = useState<string>(initialPetId ?? '');
+    // Follows the caller when it changes, so clicking a second pet in the bag moves the
+    // selection rather than leaving the panel on the first.
+    useEffect(() => {
+        if (initialPetId) setSelectedPet(initialPetId);
+    }, [initialPetId]);
     /** Which item is chosen per slot, before the player commits it. */
     const [choice, setChoice] = useState<Record<number, string>>({});
 
