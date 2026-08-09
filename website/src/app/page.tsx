@@ -9,9 +9,9 @@ import {
   Hero,
   HowItWorks,
   Pets,
+  Proof,
   Roadmap,
   Stats,
-  Testimonials,
 } from '@/components/landing';
 
 const LandingPage = () => (
@@ -24,7 +24,7 @@ const LandingPage = () => (
       <Stats />
       <Cta />
       <Roadmap />
-      <Testimonials />
+      <Proof />
       <Faq />
       <Backers />
       <Community />

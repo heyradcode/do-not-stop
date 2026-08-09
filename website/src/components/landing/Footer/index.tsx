@@ -21,9 +21,14 @@ const Footer = () => (
       <nav className="col" aria-label="Resources" data-reveal="up">
         <h3>{FOOTER.resourcesHeading}</h3>
         <ul>
-          {RESOURCE_LINKS.map(({ label, href }) => (
+          {RESOURCE_LINKS.map(({ label, href, external }) => (
             <li key={label}>
-              <a href={href}>{label}</a>
+              <a
+                href={href}
+                {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              >
+                {label}
+              </a>
             </li>
           ))}
         </ul>

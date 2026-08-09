@@ -12,7 +12,7 @@ const Community = () => (
         <p className="section-subtitle">{subtitle}</p>
       </div>
       <ul className="chips" data-reveal-stagger="70">
-        {COMMUNITIES.map(({ name, members, color, href }) => (
+        {COMMUNITIES.map(({ name, blurb, color, href }) => (
           <li key={name} data-reveal="up">
             <a href={href ?? '#'} target="_blank" rel="noopener noreferrer" className={`chip ${color}`}>
               <span className="chip-icon" aria-hidden="true">
@@ -20,7 +20,7 @@ const Community = () => (
               </span>
               <span className="chip-text">
                 <strong>{name}</strong>
-                <span>{members}</span>
+                <span>{blurb}</span>
               </span>
             </a>
           </li>

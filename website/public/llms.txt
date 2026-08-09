@@ -1,25 +1,36 @@
 # CryptoPets
 
-> A fully on-chain creature collection and battle game. Mint, breed, train, and
-> battle pet NFTs across Ethereum and Solana — playable on web and mobile.
+> A creature collection and battle game where the pets are NFTs. Mint, breed,
+> train and battle across Ethereum and Solana — on web and mobile.
 
 This is the marketing landing site. The playable app lives at a separate URL
-(see Links). Pets are NFTs held in the player's own wallet — mintable, tradable,
-and transferable independent of the app.
+(see Links). Pets and items are NFTs held in the player's own wallet — mintable,
+tradable, and transferable independent of the app.
 
 ## Overview
 
-- **What it is:** on-chain pet collection + tactical battle game (NFTs).
-- **Chains:** Ethereum and Solana, with additional rollups planned through Q3.
-- **Wallets:** MetaMask, Phantom, or social login.
+- **What it is:** on-chain pet collection and tactical battle game (NFTs).
+- **Chains:** Ethereum and Solana.
+- **Wallets:** MetaMask on Ethereum, Phantom on Solana.
 - **Platforms:** web and mobile.
 
 ## Gameplay
 
-- **Connect** any wallet (MetaMask, Phantom, social login).
-- **Mint** a pet from the egg pool and roll for a rare trait.
-- **Train** — level up, breed new bloodlines, unlock signature abilities.
-- **Battle** rivals in the arena and climb the global leaderboard.
+- **Connect** the wallet you already have.
+- **Mint** a pet and roll its traits from a committed random seed.
+- **Train** — level up, breed new bloodlines, equip gear that stays with the pet.
+- **Battle** rivals in the arena and climb the season leaderboard.
+
+## Provably fair battles
+
+- Each battle is seeded from a public randomness beacon round committed **before**
+  the fight resolves, so no party can grind the roll.
+- Every result is a signed receipt over the exact inputs it used, and batches of
+  receipts are committed to a Merkle root written on chain.
+- An open-source verifier replays any receipt independently and reports on seed
+  derivation, operator signature, beacon signature, combat replay, progression,
+  equipment and hash-chain continuity. It needs no account and no access to the
+  project's servers.
 
 ## Rarity tiers
 
@@ -30,24 +41,30 @@ and transferable independent of the app.
 
 ## Roadmap
 
-- Q1 — Genesis Drop (shipped): genesis mint, socials, first 10k supply.
-- Q2 — Arena (shipped): battle system v1, leaderboards, weekly tournaments.
-- Q3 — Bloodlines (in progress): breeding, cross-chain support, new rarity tier.
-- Q4 — Marketplace 2.0 (planned): native P2P trades, mobile app, guild system.
+- Q1 — Genesis (shipped): dual-chain minting, on-chain breeding, four-tier rarity.
+- Q2 — Arena (shipped): tactical battle engine, global leaderboard, seasonal rewards.
+- Q3 — Provable Play (in progress): beacon-seeded battles, signed receipts, open verifier.
+- Q4 — Loadouts (planned): equipment and consumables, guilds, native marketplace.
+
+## Built with
+
+Ethereum, Solana, Base, Pyth Entropy, Switchboard, drand, Metaplex, The Graph.
 
 ## Links
 
 - [Play the app](https://cryptopets.vercel.app)
 - [Source code (GitHub)](https://github.com/radcrew/do-not-stop)
-- [Features](/#features)
+- [Receipt verifier](https://github.com/radcrew/do-not-stop/tree/main/verifier)
 - [How to play](/#how)
+- [Features](/#features)
 - [Pets](/#pets)
+- [Provably fair](/#proof)
 - [Roadmap](/#roadmap)
 - [FAQ](/#faq)
 
-## Optional
+## Notes
 
-- Contracts are independently audited; audit reports are linked in the docs and
-  updated on every major release.
 - Connecting a wallet is free; mint price varies per drop and is announced ahead
-  of time on community channels (Discord, Twitter).
+  of time on community channels.
+- Pets and items are tradable assets and seasons pay rewards to the top of the
+  leaderboard. This is a game you own a piece of, not an income stream.
