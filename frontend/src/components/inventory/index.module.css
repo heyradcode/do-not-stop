@@ -20,6 +20,26 @@
     height: 100%;
 }
 
+/* The part that scrolls, and the reason the rule above is not enough on its own.
+   `.panel-body` is `overflow: hidden` so each page decides what scrolls rather than letting
+   a long list push the whole shell; a page that declares no scrolling region simply gets
+   clipped at the panel's edge with no way to reach the rest. That is what happened here —
+   the bag was short enough to fit until item art made the cards taller, and then everything
+   past the first rows became unreachable.
+
+   Everything scrolls together, including the pending strip and the pet picker: they are a
+   preamble to the bag, not chrome pinned around it, and freezing them would spend vertical
+   space that the items need on a screen already short enough to overflow. */
+.scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    /* Keeps the scrollbar off the cards' right edge without reserving a gutter when no
+       scrollbar is present. */
+    scrollbar-gutter: stable;
+    padding-right: 4px;
+}
+
 .sectionTitle {
     margin: 18px 0 10px;
     font-size: 0.78rem;

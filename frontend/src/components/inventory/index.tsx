@@ -142,122 +142,126 @@ const Inventory: React.FC = () => {
                     </button>
                 }
             >
-                {failure ? (
-                    <p className={styles.error} role="alert">
-                        {failure.message}
-                    </p>
-                ) : null}
+                {/* One scrolling region for the whole body. `.panel-body` clips, so without
+                    this the bag is cut off at the panel's edge with no way to reach the rest. */}
+                <div className={styles.scroll}>
+                    {failure ? (
+                        <p className={styles.error} role="alert">
+                            {failure.message}
+                        </p>
+                    ) : null}
 
-                {pending.length > 0 ? (
-                    <section className={styles.pending} aria-labelledby="pending-heading">
-                        <h2 id="pending-heading" className={styles.sectionTitle}>
-                            Waiting to be claimed
-                        </h2>
-                        {/* Its own strip above the bag, because these are not items yet:
-                            claiming is what mints them, and until then there is nothing on
-                            chain to spend. */}
-                        <ul className={styles.pendingList}>
-                            {pending.map((entry) => (
-                                <li key={entry.entitlementId} className={styles.pendingRow}>
-                                    <span
-                                        className={styles.pendingDot}
-                                        style={{ background: getRarityColor(entry.item.rarity) }}
-                                        aria-hidden
-                                    />
-                                    <span className={styles.pendingName}>
-                                        {entry.item.name} ×{entry.quantity}
-                                    </span>
-                                    <span className={styles.pendingSource}>
-                                        {entry.source === 'battle_drop' ? 'Battle drop' : 'Granted'}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        className={styles.claim}
-                                        onClick={() => void claim(entry.entitlementId)}
-                                        disabled={claimingId != null}
-                                    >
-                                        {claimingId === entry.entitlementId ? 'Claiming…' : 'Claim'}
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                ) : null}
-
-                {isLoading ? (
-                    <p className={styles.muted}>Loading your items…</p>
-                ) : grouped.length === 0 ? (
-                    <p className={styles.muted}>
-                        Nothing yet. Items drop from battles, so fight something.
-                    </p>
-                ) : (
-                    <>
-                        {pets.length > 0 ? (
-                            <label className={styles.petPicker}>
-                                <span className={styles.petPickerLabel}>Use items on</span>
-                                <select
-                                    value={selectedPet ?? ''}
-                                    onChange={(event) => setPetId(event.target.value)}
-                                >
-                                    {pets.map((pet) => (
-                                        <option key={String(pet.id)} value={String(pet.id)}>
-                                            {pet.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                        ) : null}
-
-                        {grouped.map((group) => (
-                            <section key={group.category} aria-labelledby={`group-${group.category}`}>
-                                <h2 id={`group-${group.category}`} className={styles.sectionTitle}>
-                                    {group.label}
-                                </h2>
-                                <div className={styles.grid}>
-                                    {group.items.map((entry) => (
-                                        <ItemCard
-                                            key={entry.item.itemType}
-                                            item={entry.item}
-                                            quantity={entry.quantity}
-                                            action={
-                                                entry.item.category === 'consumable' && chain ? (
-                                                    <button
-                                                        type="button"
-                                                        className={clsx(styles.use, !selectedPet && styles.disabled)}
-                                                        disabled={isSpending || !selectedPet}
-                                                        onClick={() =>
-                                                            void spend({
-                                                                chain,
-                                                                petId: selectedPet!,
-                                                                itemType: entry.item.itemType,
-                                                            })
-                                                        }
-                                                    >
-                                                        {isSpending ? 'Using…' : 'Use'}
-                                                    </button>
-                                                ) : entry.item.category === 'equipment' ? (
-                                                    // Equipping is a wallet signature against
-                                                    // one pet, so it belongs on the pet rather
-                                                    // than in the bag. A link, not a note: the
-                                                    // player is holding gear and wants to use
-                                                    // it, and telling them where without
-                                                    // taking them there is a dead end.
-                                                    <button
-                                                        type="button"
-                                                        className={styles.hintLink}
-                                                        onClick={() => navigate(EQUIP_PATH)}
-                                                    >
-                                                        Equip on a pet →
-                                                    </button>
-                                                ) : null
-                                            }
+                    {pending.length > 0 ? (
+                        <section className={styles.pending} aria-labelledby="pending-heading">
+                            <h2 id="pending-heading" className={styles.sectionTitle}>
+                                Waiting to be claimed
+                            </h2>
+                            {/* Its own strip above the bag, because these are not items yet:
+                                claiming is what mints them, and until then there is nothing on
+                                chain to spend. */}
+                            <ul className={styles.pendingList}>
+                                {pending.map((entry) => (
+                                    <li key={entry.entitlementId} className={styles.pendingRow}>
+                                        <span
+                                            className={styles.pendingDot}
+                                            style={{ background: getRarityColor(entry.item.rarity) }}
+                                            aria-hidden
                                         />
-                                    ))}
-                                </div>
-                            </section>
-                        ))}
-                    </>
-                )}
+                                        <span className={styles.pendingName}>
+                                            {entry.item.name} ×{entry.quantity}
+                                        </span>
+                                        <span className={styles.pendingSource}>
+                                            {entry.source === 'battle_drop' ? 'Battle drop' : 'Granted'}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className={styles.claim}
+                                            onClick={() => void claim(entry.entitlementId)}
+                                            disabled={claimingId != null}
+                                        >
+                                            {claimingId === entry.entitlementId ? 'Claiming…' : 'Claim'}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    ) : null}
+
+                    {isLoading ? (
+                        <p className={styles.muted}>Loading your items…</p>
+                    ) : grouped.length === 0 ? (
+                        <p className={styles.muted}>
+                            Nothing yet. Items drop from battles, so fight something.
+                        </p>
+                    ) : (
+                        <>
+                            {pets.length > 0 ? (
+                                <label className={styles.petPicker}>
+                                    <span className={styles.petPickerLabel}>Use items on</span>
+                                    <select
+                                        value={selectedPet ?? ''}
+                                        onChange={(event) => setPetId(event.target.value)}
+                                    >
+                                        {pets.map((pet) => (
+                                            <option key={String(pet.id)} value={String(pet.id)}>
+                                                {pet.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                            ) : null}
+
+                            {grouped.map((group) => (
+                                <section key={group.category} aria-labelledby={`group-${group.category}`}>
+                                    <h2 id={`group-${group.category}`} className={styles.sectionTitle}>
+                                        {group.label}
+                                    </h2>
+                                    <div className={styles.grid}>
+                                        {group.items.map((entry) => (
+                                            <ItemCard
+                                                key={entry.item.itemType}
+                                                item={entry.item}
+                                                quantity={entry.quantity}
+                                                action={
+                                                    entry.item.category === 'consumable' && chain ? (
+                                                        <button
+                                                            type="button"
+                                                            className={clsx(styles.use, !selectedPet && styles.disabled)}
+                                                            disabled={isSpending || !selectedPet}
+                                                            onClick={() =>
+                                                                void spend({
+                                                                    chain,
+                                                                    petId: selectedPet!,
+                                                                    itemType: entry.item.itemType,
+                                                                })
+                                                            }
+                                                        >
+                                                            {isSpending ? 'Using…' : 'Use'}
+                                                        </button>
+                                                    ) : entry.item.category === 'equipment' ? (
+                                                        // Equipping is a wallet signature against
+                                                        // one pet, so it belongs on the pet rather
+                                                        // than in the bag. A link, not a note: the
+                                                        // player is holding gear and wants to use
+                                                        // it, and telling them where without
+                                                        // taking them there is a dead end.
+                                                        <button
+                                                            type="button"
+                                                            className={styles.hintLink}
+                                                            onClick={() => navigate(EQUIP_PATH)}
+                                                        >
+                                                            Equip on a pet →
+                                                        </button>
+                                                    ) : null
+                                                }
+                                            />
+                                        ))}
+                                    </div>
+                                </section>
+                            ))}
+                        </>
+                    )}
+                </div>
             </DashboardPanel>
         </SessionGate>
     );
