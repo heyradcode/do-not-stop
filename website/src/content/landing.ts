@@ -30,6 +30,8 @@ export type RoadmapItem = {
   title: string;
   status: 'shipped' | 'in-progress' | 'planned';
   bullets: string[];
+  /** Companion art for the phase stage — the project's own renders, not stock. */
+  art: string;
 };
 
 export type RarityTier = {
@@ -114,10 +116,10 @@ export const STEPS: Step[] = [
 ];
 
 export const ROADMAP: RoadmapItem[] = [
-  { phase: '01', title: 'Foundation', status: 'shipped', bullets: ['Dual-chain pet minting', 'Breeding, bloodlines and marriage', 'Level up, train, rename, transfer'] },
-  { phase: '02', title: 'Provable Arena', status: 'shipped', bullets: ['Beacon-seeded battles', 'Signed, chain-anchored receipts', 'Open-source public verifier'] },
-  { phase: '03', title: 'Progression', status: 'in-progress', bullets: ['Leaderboard and seasons', 'CPET season rewards', 'Equipment and item NFTs'] },
-  { phase: '04', title: 'Expansion', status: 'planned', bullets: ['Daily quests', 'Team battles', 'Pet and item marketplace'] },
+  { phase: '01', title: 'Foundation', status: 'shipped', bullets: ['Dual-chain pet minting', 'Breeding, bloodlines and marriage', 'Level up, train, rename, transfer'], art: '/images/pets/starlit-prowler.png' },
+  { phase: '02', title: 'Provable Arena', status: 'shipped', bullets: ['Beacon-seeded battles', 'Signed, chain-anchored receipts', 'Open-source public verifier'], art: '/images/pets/nova-brute.png' },
+  { phase: '03', title: 'Progression', status: 'in-progress', bullets: ['Leaderboard and seasons', 'CPET season rewards', 'Equipment and item NFTs'], art: '/images/pets/ember-oracle.png' },
+  { phase: '04', title: 'Expansion', status: 'planned', bullets: ['Daily quests', 'Team battles', 'Pet and item marketplace'], art: '/images/pets/tidefang.png' },
 ];
 
 export const ROADMAP_STATUS_LABEL: Record<RoadmapItem['status'], string> = {

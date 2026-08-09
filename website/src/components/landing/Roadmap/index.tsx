@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef, type CSSProperties } from 'react';
+import Image from 'next/image';
 
 import { ROADMAP, ROADMAP_STATUS_LABEL, SECTION_COPY } from '@/content/landing';
 import useScrollScene from '@/hooks/useScrollScene';
@@ -53,14 +54,21 @@ const Roadmap = () => {
   const headRef = useRef<SVGGElement>(null);
   const laneLength = useRef(0);
   const markers = useRef<(HTMLElement | null)[]>([]);
-  const cards = useRef<(HTMLElement | null)[]>([]);
+  const stages = useRef<(HTMLElement | null)[]>([]);
 
   const onFrame = useCallback((progress: number, section: HTMLElement) => {
     section.style.setProperty('--track-progress', progress.toFixed(4));
 
-    // Park the travelling head on the curve itself. getTotalLength is measured
-    // once — it cannot change without the path changing, and it is the costly
-    // half of this pair.
+    // The active phase drives the scene hue, the HUD readout and the ghost
+    // numeral through one attribute. Written only on change — every CSS
+    // selector keyed to it invalidates when it flips.
+    const active = Math.min(Math.floor(progress / SLICE), COUNT - 1);
+    if (section.dataset.phase !== String(active)) {
+      section.dataset.phase = String(active);
+    }
+
+    // Park the comet on the curve itself. getTotalLength is measured once —
+    // it cannot change unless the path does, and it is the costly half.
     const lane = laneRef.current;
     const head = headRef.current;
     if (lane && head) {
@@ -69,15 +77,14 @@ const Roadmap = () => {
       head.setAttribute('transform', `translate(${point.x} ${point.y})`);
     }
 
-    const active = Math.min(Math.floor(progress / SLICE), COUNT - 1);
-
     markers.current.forEach((el, index) => {
       el?.toggleAttribute('data-reached', progress >= (index + 0.5) * SLICE);
     });
 
-    cards.current.forEach((el, index) => {
+    stages.current.forEach((el, index) => {
       if (!el) return;
-      el.dataset.state = index < active ? 'behind' : index > active ? 'ahead' : 'active';
+      const state = index < active ? 'behind' : index > active ? 'ahead' : 'active';
+      if (el.dataset.state !== state) el.dataset.state = state;
     });
   }, []);
 
@@ -88,11 +95,38 @@ const Roadmap = () => {
       ref={sectionRef}
       className="landing-section roadmap"
       id="roadmap"
+      data-phase="0"
       style={{ '--phase-count': COUNT } as CSSProperties}
     >
       <div className="pin" ref={pinRef}>
-        <h2 className="section-title" data-reveal="up">{sectionTitle}</h2>
-        <p className="section-subtitle" data-reveal="up">{subtitle}</p>
+        {/* Backdrop: parallax starfield plus a nebula that borrows the active
+            phase's hue via currentColor, so the whole sky retints as the
+            journey advances. */}
+        <div className="scene" aria-hidden="true">
+          <span className="stars s1" />
+          <span className="stars s2" />
+          <span className="stars s3" />
+          <span className="nebula" />
+        </div>
+
+        <header className="strip">
+          <div className="strip-copy">
+            <h2 className="section-title">{sectionTitle}</h2>
+            <p className="section-subtitle">{subtitle}</p>
+          </div>
+
+          <div className="hud" aria-hidden="true">
+            <div className="hud-count">
+              <span className="hud-now">
+                {ROADMAP.map(({ phase }, index) => (
+                  <span key={phase} data-idx={index}>{phase}</span>
+                ))}
+              </span>
+              <span className="hud-total">/ {String(COUNT).padStart(2, '0')}</span>
+            </div>
+            <span className="hud-bar" />
+          </div>
+        </header>
 
         <div className="road">
           <svg
@@ -101,15 +135,17 @@ const Roadmap = () => {
             preserveAspectRatio="none"
             aria-hidden="true"
           >
-            {/* pathLength normalises both lanes to 1, so the dash offset is the
-                progress value itself, whatever the curve's real length. */}
+            {/* pathLength normalises every lane to 1, so all the dash maths
+                below is written directly in progress fractions. */}
             <path className="lane lane-base" d={ROAD_PATH} pathLength={1} />
+            <path className="lane lane-dash" d={ROAD_PATH} pathLength={1} />
             <path
               ref={laneRef}
               className="lane lane-fill"
               d={ROAD_PATH}
               pathLength={1}
             />
+            <path className="lane lane-comet" d={ROAD_PATH} pathLength={1} />
             <g ref={headRef} className="head">
               <circle className="head-glow" r="14" />
               <circle className="head-core" r="5" />
@@ -136,29 +172,39 @@ const Roadmap = () => {
           </ol>
         </div>
 
-        {/* Every phase stays in the document; only its visual state changes, so
+        {/* Every stage stays in the document; only its visual state changes, so
             the whole roadmap is available to a screen reader at any scroll
             position rather than one card at a time. */}
-        <ol className="phases">
-          {ROADMAP.map(({ phase, title, status, bullets }, index) => (
+        <ol className="stages">
+          {ROADMAP.map(({ phase, title, status, bullets, art }, index) => (
             <li
               key={phase}
-              className={`phase-card status-${status}`}
+              className={`stage status-${status}`}
               data-state={index === 0 ? 'active' : 'ahead'}
               ref={(el) => {
-                cards.current[index] = el;
+                stages.current[index] = el;
               }}
             >
-              <div className="head">
-                <span className="phase">{phase}</span>
-                <span className="status">{ROADMAP_STATUS_LABEL[status]}</span>
+              <span className="numeral" aria-hidden="true">{phase}</span>
+
+              <div className="panel">
+                <div className="head">
+                  <span className="phase">{phase}</span>
+                  <span className="status">{ROADMAP_STATUS_LABEL[status]}</span>
+                </div>
+                <h3>{title}</h3>
+                <ul>
+                  {bullets.map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
+                  ))}
+                </ul>
               </div>
-              <h3>{title}</h3>
-              <ul>
-                {bullets.map((bullet) => (
-                  <li key={bullet}>{bullet}</li>
-                ))}
-              </ul>
+
+              <div className="holo" aria-hidden="true">
+                <Image src={art} alt="" width={512} height={512} sizes="260px" />
+                <span className="holo-scan" />
+                <span className="holo-glint" />
+              </div>
             </li>
           ))}
         </ol>
