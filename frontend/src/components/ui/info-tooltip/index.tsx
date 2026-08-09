@@ -1,6 +1,5 @@
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import Icon, { HelpIcon } from '@components/ui/icon';
 import styles from './index.module.css';
 
 /**
@@ -91,7 +90,13 @@ const InfoTooltip: React.FC<InfoTooltipProps> = ({ subject, children }) => {
                 aria-label={`What does ${subject} do?`}
                 onClick={() => setOpen((current) => !current)}
             >
-                <Icon as={HelpIcon} size="1em" aria-hidden />
+                {/* A typographic "?" rather than an icon glyph. At this size a drawn question
+                    mark is mush, while the typeface already has one designed to be read
+                    small. `aria-hidden` because the button's own label already says what it
+                    does — a screen reader announcing "question mark" adds nothing. */}
+                <span className={styles.glyph} aria-hidden>
+                    ?
+                </span>
             </button>
             {open && position
                 ? createPortal(

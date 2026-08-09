@@ -34,6 +34,17 @@ describe('InfoTooltip', () => {
         expect(screen.getByRole('button', { name: 'What does Iron Fang do?' })).toBeInTheDocument();
     });
 
+    // A typographic question mark, not a drawn one: at this size the typeface's own glyph is
+    // sharper than any icon path. Hidden from assistive tech because the button's label
+    // already says what it does, so announcing "question mark" would only add noise.
+    it('draws the mark as text rather than an icon', () => {
+        renderTooltip();
+        const glyph = screen.getByRole('button').querySelector('span');
+        expect(glyph).toHaveTextContent('?');
+        expect(glyph).toHaveAttribute('aria-hidden', 'true');
+        expect(screen.getByRole('button').querySelector('svg')).toBeNull();
+    });
+
     it('toggles shut on a second click', async () => {
         renderTooltip();
         await open();
