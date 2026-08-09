@@ -47,11 +47,6 @@ body {
   color: inherit;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
 button {
   border-radius: var(--radius-sm);
   border: 1px solid transparent;

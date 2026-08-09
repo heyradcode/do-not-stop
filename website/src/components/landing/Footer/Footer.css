@@ -12,7 +12,7 @@
   }
 
   & .brand {
-    & h4 {
+    & h2 {
       font-family: var(--title-font);
       margin: 0 0 8px;
       color: #fff;
@@ -32,7 +32,7 @@
   }
 
   & .col {
-    & h5 {
+    & h3 {
       font-family: var(--title-font);
       margin: 0 0 12px;
       font-size: 0.82rem;

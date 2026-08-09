@@ -33,7 +33,8 @@
   justify-content: space-between;
   gap: 16px;
 
-  & h1 {
+  & .brand-name {
+    display: block;
     font-family: var(--title-font);
     font-size: clamp(1.8rem, 3vw, 2.5rem);
     line-height: 1.2;
@@ -69,7 +70,7 @@
     z-index: 0;
   }
 
-  & .title h1 {
+  & .title .brand-name {
     position: relative;
     z-index: 1;
     text-shadow:
@@ -112,7 +113,7 @@
     flex-wrap: wrap;
   }
 
-  .main-header h1 {
+  .main-header .brand-name {
     font-size: 1.3rem;
   }
 

@@ -6,7 +6,7 @@ const Community = () => (
   <section className="landing-section community" id="community" data-wash="cyan">
     <div className="block" data-reveal="scale">
       <div className="copy">
-        <h3 className="section-title">Join the Pack</h3>
+        <h2 className="section-title">Join the Pack</h2>
         <p className="section-subtitle">Strategy threads, alpha drops, and degen chatter — pick your channel.</p>
       </div>
       <ul className="chips" data-reveal-stagger="70">

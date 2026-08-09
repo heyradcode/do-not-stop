@@ -6,7 +6,7 @@ import './Features.css';
 
 const Features = () => (
   <section className="landing-section features" id="features" data-wash="violet">
-    <h3 className="section-title" data-reveal="up">What You Can Do</h3>
+    <h2 className="section-title" data-reveal="up">What You Can Do</h2>
     <p className="section-subtitle" data-reveal="up">Every pet is a fully on-chain asset — yours to grow, fight, and trade.</p>
     <div className="grid" data-reveal-stagger>
       {FEATURES.map(({ title, text, iconImage }) => (
@@ -15,7 +15,7 @@ const Features = () => (
             {iconImage && <Image src={iconImage} alt="" width={96} height={96} />}
           </div>
           <div className="copy">
-            <h4>{title}</h4>
+            <h3>{title}</h3>
             <p>{text}</p>
           </div>
         </NeonCard>

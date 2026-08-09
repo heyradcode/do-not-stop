@@ -20,11 +20,11 @@ const Footer = () => (
   <footer className="footer">
     <div className="grid" data-reveal-stagger>
       <div className="brand" data-reveal="up">
-        <h4>CryptoPet</h4>
+        <h2>CryptoPet</h2>
         <p>Build your dream pet roster, rule the arena, and trade legendary companions.</p>
       </div>
       <nav className="col" aria-label="Sections" data-reveal="up">
-        <h5>Explore</h5>
+        <h3>Explore</h3>
         <ul>
           {NAV_LINKS.map(({ label, href }) => (
             <li key={label}>
@@ -34,7 +34,7 @@ const Footer = () => (
         </ul>
       </nav>
       <nav className="col" aria-label="Resources" data-reveal="up">
-        <h5>Resources</h5>
+        <h3>Resources</h3>
         <ul>
           {META_LINKS.map(({ label, href }) => (
             <li key={label}>

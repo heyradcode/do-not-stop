@@ -82,7 +82,7 @@
     }
   }
 
-  & h2 {
+  & h1 {
     font-family: var(--title-font);
     margin: 0 0 18px;
     color: #f3f7ff;

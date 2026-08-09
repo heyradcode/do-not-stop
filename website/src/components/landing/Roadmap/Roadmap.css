@@ -106,7 +106,7 @@
       box-shadow: 0 0 10px color-mix(in srgb, currentColor 30%, transparent);
     }
 
-    & h4 {
+    & h3 {
       font-family: var(--title-font);
       margin: 0 0 10px;
       font-size: 1.05rem;

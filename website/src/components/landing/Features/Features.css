@@ -61,7 +61,7 @@
     z-index: 1;
     flex: 1;
 
-    & h4 {
+    & h3 {
       font-family: var(--title-font);
       margin: 0 0 10px;
       font-size: 1.35rem;

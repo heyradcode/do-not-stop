@@ -3,7 +3,7 @@ import './HowItWorks.css';
 
 const HowItWorks = () => (
   <section className="landing-section how-it-works" id="how" data-wash="cyan">
-    <h3 className="section-title" data-reveal="up">How It Works</h3>
+    <h2 className="section-title" data-reveal="up">How It Works</h2>
     <p className="section-subtitle" data-reveal="up">From wallet to first win in four short steps.</p>
     <ol className="track" aria-label="How it works" data-reveal-stagger>
       {STEPS.map(({ number, title, text }) => (
@@ -11,7 +11,7 @@ const HowItWorks = () => (
           <span className="circle" aria-hidden="true">
             <span>{number}</span>
           </span>
-          <h4>{title}</h4>
+          <h3>{title}</h3>
           <p>{text}</p>
         </li>
       ))}

@@ -29,7 +29,7 @@
     align-items: center;
     text-align: center;
 
-    & h4 {
+    & h3 {
       font-family: var(--title-font);
       margin: 0 0 8px;
       font-size: 1.1rem;

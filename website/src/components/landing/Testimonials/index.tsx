@@ -3,7 +3,7 @@ import './Testimonials.css';
 
 const Testimonials = () => (
   <section className="landing-section testimonials" id="players" data-wash="violet">
-    <h3 className="section-title" data-reveal="up">From the Pack</h3>
+    <h2 className="section-title" data-reveal="up">From the Pack</h2>
     <p className="section-subtitle" data-reveal="up">What players are saying after their first 100 battles.</p>
     <div className="grid" data-reveal-stagger="90">
       {TESTIMONIALS.map(({ quote, author, role }) => (

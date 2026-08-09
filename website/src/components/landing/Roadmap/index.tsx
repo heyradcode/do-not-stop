@@ -3,7 +3,7 @@ import './Roadmap.css';
 
 const Roadmap = () => (
   <section className="landing-section roadmap" id="roadmap" data-wash="cyan">
-    <h3 className="section-title" data-reveal="up">Roadmap</h3>
+    <h2 className="section-title" data-reveal="up">Roadmap</h2>
     <p className="section-subtitle" data-reveal="up">Where we&apos;ve been, what&apos;s shipping next.</p>
     <ol className="track" data-reveal-stagger="110">
       {ROADMAP.map(({ quarter, title, status, bullets }, idx) => (
@@ -17,7 +17,7 @@ const Roadmap = () => (
               <span className="quarter">{quarter}</span>
               <span className="status">{ROADMAP_STATUS_LABEL[status]}</span>
             </div>
-            <h4>{title}</h4>
+            <h3>{title}</h3>
             <ul>
               {bullets.map((bullet) => (
                 <li key={bullet}>{bullet}</li>

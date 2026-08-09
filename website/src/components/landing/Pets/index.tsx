@@ -8,7 +8,7 @@ const rarityMod = (rarity: string) => rarity.toLowerCase();
 
 const Pets = () => (
   <section className="landing-section pets" id="pets" data-wash="magenta">
-    <h3 className="section-title" data-reveal="up">Meet the Companions</h3>
+    <h2 className="section-title" data-reveal="up">Meet the Companions</h2>
     <p className="section-subtitle" data-reveal="up">Four rarity tiers, ten thousand creatures, one shot at the legendary roster.</p>
 
     <div className="rarity" aria-label="Rarity tier distribution" data-reveal="fade">
@@ -42,7 +42,7 @@ const Pets = () => (
           <div className="avatar">
             <Image src={image} alt={name} width={78} height={78} />
           </div>
-          <h4>{name}</h4>
+          <h3>{name}</h3>
           <div className="meta">
             <span className="level">Lv. {level}</span>
             <span className={`tag r-${rarityMod(rarity)}`}>{rarity}</span>

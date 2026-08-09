@@ -28,7 +28,10 @@ const Layout: React.FC<LayoutProps> = ({
     <div className={containerClass}>
       <div className="main-header">
         <div className="title">
-          <h1>{title}</h1>
+          {/* Brand lockup, not a heading — the page's single h1 is the hero
+              headline. A site name in the header is a landmark label, and
+              making it h1 pushed every real heading down a level. */}
+          <span className="brand-name">{title}</span>
         </div>
         <div className="wallet-section">
           <NeonButton type="button" tone="emerald" onClick={openApp}>

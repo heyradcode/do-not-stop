@@ -9,7 +9,7 @@ const Cta = () => (
     <div className="inner" data-reveal="scale">
       <div>
         <span className="eyebrow">Next Drop · Live Soon</span>
-        <h3>Don&apos;t miss the next mint.</h3>
+        <h2>Don&apos;t miss the next mint.</h2>
         <p>Connect your wallet now and claim your spot on the whitelist.</p>
       </div>
       <NeonButton type="button" tone="emerald" onClick={openApp}>

@@ -20,11 +20,11 @@ const Hero = () => (
     />
     <div className="copy" data-reveal-stagger="90">
       <span className="eyebrow" data-reveal="down">On-Chain Pet Adventure</span>
-      <h2 data-reveal="up">
+      <h1 data-reveal="up">
         Collect, Battle &amp; Breed
         <br />
         <span className="title-accent">Your Dream Pets</span>
-      </h2>
+      </h1>
       <p data-reveal="up">10,000+ handcrafted neon companions, fully owned by you. Hatch them, train them, send them into the arena.</p>
       <div className="actions" data-reveal="up">
         <NeonButton type="button" tone="emerald" onClick={openApp}>
