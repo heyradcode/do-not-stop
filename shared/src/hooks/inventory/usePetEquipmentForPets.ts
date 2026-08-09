@@ -65,7 +65,19 @@ export function petEquipmentForPetsQueryKey(
     chain: PetChain | null,
     petIds: string[],
 ): unknown[] {
-    return ['petEquipmentForPets', baseURL, chain, [...petIds].sort().join(',')];
+    return [...petEquipmentForPetsQueryPrefix(baseURL, chain), [...petIds].sort().join(',')];
+}
+
+/**
+ * Every batched-equipment query for one chain, whatever set of pets it asked about.
+ *
+ * Invalidating needs this rather than the full key. An equip happens on one pet, but the
+ * cached entries are keyed by the *list* a screen asked for — the gallery's twenty ids, the
+ * arena's two — and the mutation has no idea which lists exist. Matching on the prefix
+ * catches all of them; matching on an exact key would silently miss every one.
+ */
+export function petEquipmentForPetsQueryPrefix(baseURL: string, chain: PetChain | null): unknown[] {
+    return ['petEquipmentForPets', baseURL, chain];
 }
 
 export const usePetEquipmentForPets = ({

@@ -5,6 +5,7 @@ import type { TxLifecycle } from '../adapters/types';
 import type { PetChain } from '../../types/pet';
 import { inventoryQueryKey } from './useInventory';
 import { petEquipmentQueryKey } from './usePetEquipment';
+import { petEquipmentForPetsQueryPrefix } from './usePetEquipmentForPets';
 
 /**
  * Equipping and unequipping (roadmap §4).
@@ -55,6 +56,10 @@ export const useEquipItem = ({ chain, petId }: UseEquipItemOptions): UseEquipIte
     const refresh = async (): Promise<void> => {
         await Promise.all([
             queryClient.invalidateQueries({ queryKey: petEquipmentQueryKey(baseURL, chain, petId) }),
+            // The batched read too, by prefix. The gallery and the arena cache their gear
+            // under the *list* of pets they asked about, so an equip that refreshed only the
+            // single-pet key left every badge on those screens showing the old loadout.
+            queryClient.invalidateQueries({ queryKey: petEquipmentForPetsQueryPrefix(baseURL, chain) }),
             queryClient.invalidateQueries({ queryKey: inventoryQueryKey(baseURL, chain) }),
         ]);
     };

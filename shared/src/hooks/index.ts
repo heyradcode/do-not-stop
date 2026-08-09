@@ -173,6 +173,7 @@ export {
 export {
     usePetEquipmentForPets,
     petEquipmentForPetsQueryKey,
+    petEquipmentForPetsQueryPrefix,
     type UsePetEquipmentForPetsOptions,
     type UsePetEquipmentForPetsResult,
 } from './inventory/usePetEquipmentForPets';

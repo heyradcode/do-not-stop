@@ -124,7 +124,12 @@ describe('useInventoryAdapter', () => {
 describe('useEquipItem', () => {
     // Equipping escrows the token, so it moves the pet's slots and the wallet's balance.
     // Refreshing only the first would leave the bag showing an item that is no longer there.
-    it('invalidates both the pet equipment and the inventory after a confirmed equip', async () => {
+    /**
+     * All three reads an equip moves. The batched one is easy to forget and its absence is
+     * invisible in the equip panel itself: it only shows up as a gallery or arena badge still
+     * displaying the old loadout, on a different screen, minutes later.
+     */
+    it('invalidates the pet equipment, the batched equipment and the inventory after a confirmed equip', async () => {
         const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         const invalidate = vi.spyOn(client, 'invalidateQueries');
         const localWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -134,9 +139,16 @@ describe('useEquipItem', () => {
         const { result } = renderHook(() => useEquipItem({ chain: 'evm', petId: '7' }), { wrapper: localWrapper });
         await result.current.equip(0, '100');
 
-        await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(2));
+        await waitFor(() => expect(invalidate).toHaveBeenCalledTimes(3));
         const keys = invalidate.mock.calls.map((call) => (call[0] as { queryKey: unknown[] }).queryKey[0]);
-        expect(new Set(keys)).toEqual(new Set(['petEquipment', 'inventory']));
+        expect(new Set(keys)).toEqual(new Set(['petEquipment', 'petEquipmentForPets', 'inventory']));
+
+        // By prefix, not a full key: the cached entries are keyed by the list of pets each
+        // screen asked for, and an equip does not know which lists exist.
+        const batched = invalidate.mock.calls
+            .map((call) => (call[0] as { queryKey: unknown[] }).queryKey)
+            .find((key) => key[0] === 'petEquipmentForPets');
+        expect(batched).toHaveLength(3);
     });
 
     it('refuses without a selected pet rather than sending a transaction', async () => {
