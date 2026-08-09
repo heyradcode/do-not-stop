@@ -1,3 +1,11 @@
+/* =============================================================================
+   How it works: a flat, four-stop process rail.
+
+   Deliberately the calmest section on the page. The roster and the roadmap are
+   both full 3D scenes; a third would leave nothing quiet between them, and this
+   is the section whose only job is to make starting look easy. No perspective,
+   no tilt — a rail that draws in, and four stops that light along it.
+   ============================================================================= */
 .how-it-works {
   & .track {
     list-style: none;
@@ -5,37 +13,44 @@
     padding: 0;
     display: grid;
     grid-template-columns: repeat(4, minmax(160px, 1fr));
-    gap: 18px;
+    gap: 20px;
     position: relative;
 
+    /* Connector rail. Draws in when the track scrolls into view, keyed off the
+       reveal observer's `data-reveal-visible` rather than a scroll timeline —
+       animation-timeline has no Safari support, and the rail only needs to fire
+       once on entry, not track scroll position continuously. */
     &::before {
       content: '';
       position: absolute;
-      top: 38px;
+      top: 42px;
       left: 6%;
       right: 6%;
       height: 2px;
-      background: linear-gradient(90deg, transparent, #7dd6ff 12%, #b58cff 50%, #ff7bcb 88%, transparent);
-      box-shadow: 0 0 12px rgb(170 140 255 / 45%);
-      z-index: 0;
+      background: var(--gradient-rail);
+      box-shadow: 0 0 12px rgb(var(--glow-text-rgb) / 45%);
+      z-index: var(--z-base);
+      scale: 0 1;
+      transform-origin: left center;
+      transition: scale 1100ms var(--ease-out) 140ms;
     }
   }
 
   & .node {
     position: relative;
-    z-index: 1;
+    z-index: var(--z-raised);
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
 
-    & h4 {
+    & h3 {
       font-family: var(--title-font);
       margin: 0 0 8px;
       font-size: 1.1rem;
       letter-spacing: 0.8px;
       text-transform: uppercase;
-      color: #f6f3ff;
+      color: var(--text-title);
     }
 
     & p {
@@ -43,44 +58,104 @@
       margin: 0;
       font-size: 0.94rem;
       line-height: 1.55;
-      color: rgb(195 210 255 / 78%);
-      max-width: 240px;
+      color: var(--text-body);
+      max-width: 250px;
     }
   }
 
   & .circle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 76px;
-    height: 76px;
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 84px;
+    height: 84px;
     border-radius: 50%;
     background: radial-gradient(circle at 30% 25%, #1a2244 0%, #0a0f25 70%);
-    border: 2px solid rgb(184 140 255 / 75%);
-    box-shadow: 0 0 22px rgb(184 140 255 / 38%), inset 0 0 18px rgb(125 214 255 / 18%);
+    border: 1px solid rgb(var(--neon-violet-rgb) / 60%);
+    box-shadow:
+      0 0 22px rgb(var(--neon-violet-rgb) / 34%),
+      inset 0 0 18px rgb(var(--neon-cyan-rgb) / 16%);
     font-family: var(--title-font);
     font-weight: 800;
-    color: #f6f3ff;
-    margin-bottom: 16px;
-    position: relative;
+    color: var(--text-title);
+    margin-bottom: 18px;
+
+    /* Orbiting arc, masked to a ring. Held at zero until the node is hovered or
+       focused so four of them do not spin at once. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        rgb(var(--neon-cyan-rgb) / 65%) 70deg,
+        rgb(var(--neon-violet-rgb) / 75%) 155deg,
+        transparent 235deg,
+        transparent 360deg
+      );
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+              mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+      opacity: 0;
+      animation: hiw-orbit 9s linear infinite;
+      transition: opacity var(--dur-slow) var(--ease-out);
+    }
 
     &::after {
       content: '';
       position: absolute;
-      inset: -6px;
+      inset: -13px;
       border-radius: 50%;
-      border: 1px solid rgb(184 140 255 / 25%);
+      border: 1px solid rgb(var(--neon-violet-rgb) / 22%);
       pointer-events: none;
     }
 
     & span {
-      font-size: 1.4rem;
+      font-size: 1.45rem;
       letter-spacing: 1px;
-      background: linear-gradient(92deg, #7dd6ff, #b58cff, #ff7bcb);
+      background: var(--gradient-spectrum);
       background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
+  }
+
+  & .node:hover .circle::before,
+  & .node:focus-within .circle::before {
+    opacity: 1;
+  }
+}
+
+/* Ignition. `animation-delay` reuses the stagger delay the reveal observer
+   wrote onto each node, so the circles light in document order behind the rail
+   rather than all at once the moment the track appears. */
+.js-reveal .how-it-works .node[data-reveal-visible] .circle {
+  animation: hiw-ignite 780ms var(--ease-out) var(--reveal-delay, 0ms) both;
+}
+
+.js-reveal .how-it-works .track[data-reveal-visible]::before {
+  scale: 1 1;
+}
+
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .how-it-works .circle span {
+    -webkit-text-fill-color: var(--neon-cyan);
+    background: none;
+    color: var(--neon-cyan);
+  }
+}
+
+@keyframes hiw-orbit {
+  to { rotate: 360deg; }
+}
+
+@keyframes hiw-ignite {
+  from {
+    border-color: rgb(var(--border-rgb) / 18%);
+    box-shadow:
+      0 0 0 rgb(var(--neon-violet-rgb) / 0%),
+      inset 0 0 0 rgb(var(--neon-cyan-rgb) / 0%);
   }
 }
 
@@ -93,9 +168,32 @@
   }
 }
 
+/* Single column gets the rail back, rotated: with the nodes stacked it reads as
+   a route again, which the two-column layout cannot. */
 @media (max-width: 600px) {
   .how-it-works .track {
     grid-template-columns: 1fr;
     gap: 32px;
+
+    &::before {
+      display: block;
+      top: 42px;
+      bottom: 42px;
+      left: 50%;
+      right: auto;
+      width: 2px;
+      height: auto;
+      translate: -50% 0;
+      background: linear-gradient(
+        180deg,
+        transparent,
+        var(--neon-cyan) 12%,
+        var(--neon-violet) 50%,
+        var(--neon-magenta) 88%,
+        transparent
+      );
+      scale: 1 0;
+      transform-origin: center top;
+    }
   }
 }

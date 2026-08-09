@@ -1,30 +1,60 @@
 .faq {
+  /* Lets `block-size: auto` be interpolated, which is what makes a native
+     <details> animate open without JS measuring the panel. Scoped rather than
+     set on :root so it cannot surprise unrelated layout. */
+  interpolate-size: allow-keywords;
+
   & .list {
     display: flex;
     flex-direction: column;
-    max-width: 860px;
+    max-width: 880px;
   }
 
   & .item {
+    position: relative;
     background: transparent;
     border: none;
-    border-radius: 0;
-    padding: 22px 4px;
-    position: relative;
-    transition: background 200ms ease;
+    border-radius: var(--radius-md);
+    padding: 4px 18px;
+    transition: background var(--dur-slow) var(--ease-out);
 
-    & + .item {
-      border-top: 1px solid transparent;
-      background-image: linear-gradient(90deg, transparent, rgb(118 154 255 / 22%) 22%, rgb(184 140 255 / 22%) 50%, rgb(255 123 203 / 22%) 78%, transparent);
-      background-size: 100% 1px;
-      background-repeat: no-repeat;
-      background-position: top left;
+    /* Hairline between rows, spectrum-tinted, skipped before the first. */
+    & + .item::before {
+      content: '';
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline: 0;
+      height: 1px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgb(var(--border-rgb) / 26%) 22%,
+        rgb(var(--neon-violet-rgb) / 26%) 50%,
+        rgb(var(--neon-magenta-rgb) / 26%) 78%,
+        transparent
+      );
+    }
+
+    /* Accent bar that grows down the open row. */
+    &::after {
+      content: '';
+      position: absolute;
+      inset-block: 12px;
+      inset-inline-start: 0;
+      width: 2px;
+      border-radius: 2px;
+      background: var(--gradient-rail);
+      scale: 1 0;
+      transform-origin: center top;
+      transition: scale var(--dur-slow) var(--ease-out);
     }
 
     &[open] {
-      background-color: rgb(184 140 255 / 6%);
+      background: rgb(var(--neon-violet-rgb) / 7%);
 
-      & .chevron { transform: rotate(-135deg); }
+      &::after { scale: 1 1; }
+
+      & .chevron { rotate: -135deg; }
     }
 
     & summary {
@@ -34,38 +64,68 @@
       justify-content: space-between;
       align-items: center;
       gap: 14px;
+      padding-block: 20px;
       font-family: var(--title-font);
       font-size: 1.02rem;
       letter-spacing: 0.4px;
-      color: #f6f3ff;
-      transition: color 180ms ease, text-shadow 180ms ease;
+      color: var(--text-title);
+      transition:
+        color var(--dur-base) var(--ease-out),
+        text-shadow var(--dur-base) var(--ease-out);
 
       &::-webkit-details-marker { display: none; }
 
       &:hover {
         color: #d6e6ff;
-        text-shadow: 0 0 12px rgb(118 154 255 / 50%);
+        text-shadow: 0 0 12px rgb(var(--border-rgb) / 50%);
+      }
+
+      &:focus-visible {
+        outline: 2px solid rgb(var(--border-rgb) / 60%);
+        outline-offset: 2px;
+        border-radius: var(--radius-sm);
       }
     }
 
     & .chevron {
       flex: 0 0 auto;
-      width: 12px;
-      height: 12px;
-      border-right: 2px solid #b58cff;
-      border-bottom: 2px solid #b58cff;
-      transform: rotate(45deg);
-      transition: transform 200ms ease;
-      filter: drop-shadow(0 0 6px rgb(184 140 255 / 60%));
+      width: 11px;
+      height: 11px;
+      border-right: 2px solid var(--neon-violet);
+      border-bottom: 2px solid var(--neon-violet);
+      rotate: 45deg;
+      transition: rotate var(--dur-slow) var(--ease-spring);
+      filter: drop-shadow(0 0 6px rgb(var(--neon-violet-rgb) / 60%));
     }
 
     & p {
       font-family: var(--content-font);
-      margin: 12px 0 0;
+      margin: 0;
+      padding-block: 0 20px;
       font-size: 0.98rem;
       line-height: 1.65;
-      color: rgb(195 210 255 / 80%);
+      color: var(--text-body);
       max-width: 720px;
     }
+  }
+}
+
+/* Animated disclosure, where the browser supports styling the generated content
+   box. Everything else gets the native instant open, which is the correct
+   degradation — the panel still opens, it just does not slide. */
+@supports selector(::details-content) {
+  .faq .item::details-content {
+    block-size: 0;
+    overflow: clip;
+    opacity: 0;
+    transition:
+      block-size var(--dur-slow) var(--ease-out),
+      opacity var(--dur-slow) var(--ease-out),
+      content-visibility var(--dur-slow) allow-discrete;
+  }
+
+  .faq .item[open]::details-content {
+    block-size: auto;
+    opacity: 1;
   }
 }

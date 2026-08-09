@@ -1,0 +1,99 @@
+.proof {
+  & .grid {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+    gap: 20px;
+    counter-reset: proof;
+  }
+
+  & .card {
+    position: relative;
+    padding: 28px 26px 26px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(
+      180deg,
+      rgb(var(--surface-void-rgb) / 72%),
+      rgb(var(--surface-void-rgb) / 52%)
+    );
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgb(var(--border-rgb) / 26%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 7%),
+      var(--elev-2);
+    color: var(--text-bright);
+    transition:
+      border-color var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out);
+
+    /* Sequence rule down the left edge: these three are a chain, not a list of
+       unrelated assurances. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset-block: 26px;
+      inset-inline-start: 0;
+      width: 2px;
+      border-radius: 2px;
+      background: var(--gradient-rail);
+      opacity: 0.75;
+    }
+
+    &:hover {
+      border-color: rgb(var(--border-rgb) / 52%);
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 10%),
+        0 0 26px rgb(var(--border-rgb) / 18%),
+        var(--elev-3);
+    }
+  }
+
+  & .step {
+    display: block;
+    font-family: var(--title-font);
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 2.2px;
+    margin-bottom: 14px;
+    background: var(--gradient-spectrum);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  & h3 {
+    font-family: var(--title-font);
+    margin: 0 0 10px;
+    font-size: 1.08rem;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-title);
+    text-shadow: var(--glow-text-sm);
+  }
+
+  & p {
+    font-family: var(--content-font);
+    margin: 0;
+    font-size: 0.96rem;
+    line-height: 1.62;
+    color: var(--text-body);
+  }
+}
+
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .proof .step {
+    -webkit-text-fill-color: var(--neon-cyan);
+    background: none;
+    color: var(--neon-cyan);
+  }
+}
+
+@media (max-width: 1024px) {
+  .proof .grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}

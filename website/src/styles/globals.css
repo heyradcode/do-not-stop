@@ -1,6 +1,27 @@
 @import './variables.css';
+@import './motion.css';
 @import './layout.css';
 @import './landing-page.css';
+
+html {
+  /* Breathing room between the header and whatever an anchor lands on. */
+  --anchor-gap: 16px;
+
+  /* Where an anchored section's content should come to rest. `--header-h` is
+     measured and published by useHeaderScroll, so this tracks the real chrome
+     rather than a hardcoded guess that drifts every time the header is
+     redesigned; the layout constant is only the fallback for before that lands.
+
+     The pinned scenes stick at 0 and use this as their own top padding instead
+     — the header is a floating pill, so a scene sticking below it would show
+     the previous section through the uncovered strip beside the glass.
+
+     Do not also set `scroll-margin-top` on the targets — the two offsets add. */
+  --anchor-offset: calc(var(--header-h, var(--main-header-offset)) + var(--anchor-gap));
+
+  scroll-padding-top: var(--anchor-offset);
+  scroll-behavior: smooth;
+}
 
 :root {
   font-family: var(--font-body), 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -8,8 +29,8 @@
   font-weight: 400;
 
   color-scheme: dark;
-  color: var(--cp-body-text-dark);
-  background-color: var(--cp-body-bg-dark);
+  color: var(--text-bright);
+  background-color: var(--surface-void);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -19,41 +40,40 @@
 
 a {
   font-weight: 500;
-  color: var(--cp-link);
+  color: var(--neon-azure);
   text-decoration: inherit;
+  transition: color var(--dur-base) var(--ease-out);
 }
 
 a:hover {
-  color: var(--cp-link-hover);
+  color: var(--neon-cyan);
 }
 
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100dvh;
+  /* `clip`, not `hidden`: `hidden` would make this a scroll container and
+     re-break `position: sticky` for everything inside it. */
+  overflow-x: clip;
   background: inherit;
   color: inherit;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
 button {
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--surface-void);
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: border-color var(--dur-slow) var(--ease-out);
 }
 
 button:hover {
-  border-color: var(--cp-link);
+  border-color: var(--neon-azure);
 }
 
 button:focus,

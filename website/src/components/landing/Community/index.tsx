@@ -1,24 +1,26 @@
-import { COMMUNITIES } from '@/content/landing';
+import { COMMUNITIES, SECTION_COPY } from '@/content/landing';
 import Icon from './Icon';
 import './Community.css';
 
+const { title, subtitle } = SECTION_COPY.community;
+
 const Community = () => (
-  <section className="landing-section community" id="community">
-    <div className="block">
+  <section className="landing-section community" id="community" data-wash="cyan">
+    <div className="block" data-reveal="scale">
       <div className="copy">
-        <h3 className="section-title">Join the Pack</h3>
-        <p className="section-subtitle">Strategy threads, alpha drops, and degen chatter — pick your channel.</p>
+        <h2 className="section-title">{title}</h2>
+        <p className="section-subtitle">{subtitle}</p>
       </div>
-      <ul className="chips">
-        {COMMUNITIES.map(({ name, members, color, href }) => (
-          <li key={name}>
+      <ul className="chips" data-reveal-stagger="70">
+        {COMMUNITIES.map(({ name, blurb, color, href }) => (
+          <li key={name} data-reveal="up">
             <a href={href ?? '#'} target="_blank" rel="noopener noreferrer" className={`chip ${color}`}>
               <span className="chip-icon" aria-hidden="true">
                 <Icon brand={color} />
               </span>
               <span className="chip-text">
                 <strong>{name}</strong>
-                <span>{members}</span>
+                <span>{blurb}</span>
               </span>
             </a>
           </li>

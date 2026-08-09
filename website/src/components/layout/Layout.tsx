@@ -2,8 +2,9 @@
 
 import React from 'react';
 
-import { NeonButton } from '@/components/common';
-import { openApp } from '@/lib/openApp';
+import SiteHeader from '@/components/layout/SiteHeader';
+import { SITE } from '@/content/landing';
+import useRevealObserver from '@/hooks/useRevealObserver';
 
 type LayoutProps = {
   children: React.ReactNode;
@@ -16,24 +17,16 @@ const Layout: React.FC<LayoutProps> = ({
   children,
   containerClassName,
   contentClassName,
-  title = 'Crypto Pets',
+  title = SITE.name,
 }) => {
+  useRevealObserver();
+
   const containerClass = ['main-container', containerClassName].filter(Boolean).join(' ');
   const contentClass = ['main-content', contentClassName].filter(Boolean).join(' ');
 
   return (
     <div className={containerClass}>
-      <div className="main-header">
-        <div className="title">
-          <h1>{title}</h1>
-        </div>
-        <div className="wallet-section">
-          <NeonButton type="button" tone="emerald" onClick={openApp}>
-            Play Now
-          </NeonButton>
-        </div>
-      </div>
-
+      <SiteHeader title={title} />
       <div className={contentClass}>{children}</div>
     </div>
   );

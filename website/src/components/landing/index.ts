@@ -7,6 +7,6 @@ export { default as Footer } from './Footer';
 export { default as Hero } from './Hero';
 export { default as HowItWorks } from './HowItWorks';
 export { default as Pets } from './Pets';
+export { default as Proof } from './Proof';
 export { default as Roadmap } from './Roadmap';
 export { default as Stats } from './Stats';
-export { default as Testimonials } from './Testimonials';
