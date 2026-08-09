@@ -35,69 +35,17 @@
     }
 }
 
-/* ── Name themes (naming aid) ────────────────────────────────────────────── */
-.themesTitle {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: rgb(195 210 255 / 50%);
-    margin-bottom: 10px;
-}
-
-.themesGrid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-
-    @media (max-width: 560px) {
-        grid-template-columns: 1fr;
-    }
-}
-
-.theme {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 2px solid rgb(101 131 255 / 18%);
-    background: rgb(10 16 32 / 70%);
-    cursor: pointer;
-    text-align: left;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-
-    &:hover {
-        background: rgb(125 214 255 / 5%);
-        border-color: rgb(125 214 255 / 32%);
-    }
-
-    &.isActive {
-        background: rgb(125 214 255 / 6%);
-    }
-}
-
-.themeIcon {
-    font-size: 18px;
-    line-height: 1;
-}
-
-.themeLabel {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.6px;
-}
-
-.themeExample {
-    font-family: var(--cp-title-font);
-    font-size: 9px;
-    color: rgb(195 210 255 / 50%);
-    word-break: break-all;
-}
-
 /* Extra breathing room above the shared .action-controls, specific to this
-   panel since it sits right under the theme grid rather than a form field. */
+   panel. */
 .actionControls {
     margin-top: 18px;
+}
+
+/* Why the pet list is empty. Amber rather than the muted body colour: this is the
+   answer to "why can I not rename anything", so it has to be read, not skimmed past. */
+.emptyNote {
+    margin: 6px 0 0;
+    color: rgb(255 199 120 / 85%);
+    font-size: 11px;
+    line-height: 1.45;
 }

@@ -1,4 +1,5 @@
 import { addHeal, strike } from './strike';
+import { applyBonus, type AttrBonus, NO_BONUS } from './equipment';
 import { elementMod, extract, toUint16 } from './dna';
 import { roundSeed } from './rng';
 import { DEFAULT_SKILL_CONFIG, SKILL_REBIRTH, SKILL_SAGE, SKILL_SHELL, SKILL_SWIFT, SKILL_TANK, type SkillConfig } from './skills';
@@ -16,8 +17,8 @@ export interface SimResult {
 }
 
 /**
- * One resolved attack, in fight order, for blow-by-blow animation
- * (plan-realtime-battle-impl.md Phase 4). Recorded inline as `simulate` runs
+ * One resolved attack, in fight order, for blow-by-blow animation.
+ * Recorded inline as `simulate` runs
  * the same computation the result is derived from — never a second pass, so
  * the log can't drift from the math it's describing.
  */
@@ -54,10 +55,10 @@ export interface SimOutcome {
  * Runs a full battle between pet 1 and pet 2 seeded by a 32-byte combat seed
  * (the on-chain uint256 `seed`/`randomness`). A move-for-move port of
  * CombatSim.simulate / combat::simulate / indexer-go's sim.go Simulate, with
- * one addition: it also returns a per-strike log for live animation
- * (plan-realtime-battle-impl.md Phase 4). Presentation only — the on-chain
- * `BattleResolved` event is always the authoritative result; see this port's
- * package README / the plan docs for the reconciliation rule.
+ * one addition: it also returns a per-strike log for live animation.
+ * Presentation only — the on-chain `BattleResolved` event is always the
+ * authoritative result; see this port's package README for the reconciliation
+ * rule.
  */
 export function simulate(
     dna1: bigint,
@@ -70,9 +71,25 @@ export function simulate(
     skill2: number,
     seed: bigint,
     sc: SkillConfig = DEFAULT_SKILL_CONFIG,
+    /** Pet 1's equipment total (roadmap §4). Defaults to ungeared. */
+    bonus1: AttrBonus = NO_BONUS,
+    /** Pet 2's equipment total. */
+    bonus2: AttrBonus = NO_BONUS,
 ): SimOutcome {
     const a = extract(dna1, rarity1, level1);
     const b = extract(dna2, rarity2, level2);
+
+    // Equipment lands between extraction and the skill modifiers, and the order is a
+    // real decision. Applying it first means Tank's +20% HP multiplies the geared total
+    // rather than the bare one, so armour and the archetype compound the way a player
+    // expects. It also keeps one clamp site: gear is the only additive input here, and
+    // everything after it is a percentage of whatever it produced.
+    //
+    // The Go verifier applies it at the identical point. These two ports were written to
+    // disagree if either drifts (§F), which is worth nothing if a reordering here goes
+    // unmatched there.
+    applyBonus(a, bonus1);
+    applyBonus(b, bonus2);
 
     // Pre-battle skill modifiers (Tank, Shell, Sage) — mutate the extracted
     // attrs in place, exactly like the Go/Solidity/Rust ports do.

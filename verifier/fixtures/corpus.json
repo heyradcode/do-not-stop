@@ -1,8 +1,8 @@
 {
   "receipts": [
     {
-      "receiptHash": "0x5a7e76a7d8b5676b575d7afcd836f461aacc303152a2932e02afba38cb5cf245",
-      "signature": "0xb4b8bbc088c6abe5c8e7e3a5a3e8131de91c80bb305784096df71da3f3ea22b442b633b06f2026970b832bacefe8edc4f7d2ebae591f56435653c0e8c7d720391b",
+      "receiptHash": "0xf0a4d590f92627eaf8ff6a4ae4e296603c7ea2f39bd547382d523ff4caa082e8",
+      "signature": "0x8cd667930bbbe07e00110cd2a834a4619617f71d499fb64728f0d7610c56c2a104429640193f509f02d7bd19eda9a739e84d725d77f7ac7d2e862a208750c6151b",
       "signingKeyId": "battle-signer-2026-07",
       "payload": {
         "domain": {
@@ -52,15 +52,15 @@
           "signature": "0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39",
           "randomness": "0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd"
         },
-        "seed": "0x3a43529c116460f0bfc4c23ea9a07a13379f301907411f269fcfbf305c523ee9",
+        "seed": "0xa2ee93d0c0932cd912dd8a3a5edc4f13995d7e76fea38e442d2ad0fc76d9369c",
         "rulesetVersion": 1,
-        "rulesetHash": "0x6175c04e45eac5c8f3f5d319f825965c8ec6ac12a7206fdcf5248d57a63a2ed8",
+        "rulesetHash": "0xe51caf2298cfd0afab7d4bb3e391bdc0e1187d014782dbbb72e10ca42a4ccbac",
         "result": {
           "attackerWon": true,
-          "rounds": 6,
-          "winnerHpRemaining": 163
+          "rounds": 5,
+          "winnerHpRemaining": 199
         },
-        "combatLogHash": "0x9b29c8103de014db6af3ce262da082bb7084a3b971b8eded1ec02cbe6103e491",
+        "combatLogHash": "0xe18fb4b0b628ef750eb879dd20a460cbfc72709fbf6b37300ec99b04a467c930",
         "progression": {
           "attacker": {
             "petId": "1",
@@ -94,8 +94,8 @@
       }
     },
     {
-      "receiptHash": "0x4bdb4bc231f1e41c3205c1d1da88a1c94c3fed2ad38f91fdcc019df85fdab12c",
-      "signature": "0xfae9832c1596e1a6c0d6eb602f6632688a3906fd3df8f4ddf19e82228eeb45564f50036db14bf9a407900b05924ed47484c4f9db15a988c75a56cbeb5ef633611b",
+      "receiptHash": "0x0a2f38535771435de01bc45a9a92bc61af294a22cb3fd40147fa16d4abcb2085",
+      "signature": "0xe2d8c738d77d4e2577ef3bcf3693037b71f6b9e197558fb2da18fd1972696b9c26e9230b888c0acdba70e133b846936e95c37c20e38699dbd32dc07ef0c52d3a1c",
       "signingKeyId": "battle-signer-2026-07",
       "payload": {
         "domain": {
@@ -145,15 +145,15 @@
           "signature": "0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39",
           "randomness": "0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd"
         },
-        "seed": "0xfee7c217ea4a80e130ba2cd6a3b3ff1472176f76ffcf32fbf36ab1ef6d3cc941",
+        "seed": "0x20d08270cccff3605dc2c8b4dfd72d5c6cc7a1de8333daa06a1f6a529d24e3ec",
         "rulesetVersion": 1,
-        "rulesetHash": "0x6175c04e45eac5c8f3f5d319f825965c8ec6ac12a7206fdcf5248d57a63a2ed8",
+        "rulesetHash": "0xe51caf2298cfd0afab7d4bb3e391bdc0e1187d014782dbbb72e10ca42a4ccbac",
         "result": {
           "attackerWon": true,
-          "rounds": 4,
-          "winnerHpRemaining": 235
+          "rounds": 5,
+          "winnerHpRemaining": 199
         },
-        "combatLogHash": "0xc5acdcf5dee811d8d109727c3867a6db28f102046c29031eb04adb42e19b4449",
+        "combatLogHash": "0x9be195db9d0ea524beea04ac2f3f04702b6c63cb4f45689fc6c580c6d506ced2",
         "progression": {
           "attacker": {
             "petId": "1",
@@ -179,16 +179,16 @@
           }
         },
         "sequence": 2,
-        "previousReceiptHash": "0x5a7e76a7d8b5676b575d7afcd836f461aacc303152a2932e02afba38cb5cf245",
-        "attackerPreviousReceiptHash": "0x5a7e76a7d8b5676b575d7afcd836f461aacc303152a2932e02afba38cb5cf245",
-        "defenderPreviousReceiptHash": "0x5a7e76a7d8b5676b575d7afcd836f461aacc303152a2932e02afba38cb5cf245",
+        "previousReceiptHash": "0xf0a4d590f92627eaf8ff6a4ae4e296603c7ea2f39bd547382d523ff4caa082e8",
+        "attackerPreviousReceiptHash": "0xf0a4d590f92627eaf8ff6a4ae4e296603c7ea2f39bd547382d523ff4caa082e8",
+        "defenderPreviousReceiptHash": "0xf0a4d590f92627eaf8ff6a4ae4e296603c7ea2f39bd547382d523ff4caa082e8",
         "createdAt": 1692806369,
         "signingKeyId": "battle-signer-2026-07"
       }
     },
     {
-      "receiptHash": "0xb6706876dca8338897b8e55665072ca7d5069e52ef5bada6756e3e3fac67b385",
-      "signature": "0xbc71375a7af530b9fcb324133b45088fc73db95884f51d337ff76f18eb826d7330411780d1f8b19d7247b6937f15046aee72b7419619813d2b8440751f183a571b",
+      "receiptHash": "0x3fb6e9e01a9ee7ac6d649254ddfaa4e5f0a2d1dd6336cb448ef318604bf418ad",
+      "signature": "0x8f63f41c3f106d33148e1a2e91058147d87fff49bac9ea95722ec827afa1119d6a1298624691208e627ce34d959f25ceb06ec84b8225cac152d77c768fe322f01c",
       "signingKeyId": "battle-signer-2026-07",
       "payload": {
         "domain": {
@@ -215,7 +215,27 @@
             "lastOpponentId": "0",
             "streak": 0,
             "readyAt": 1692806267,
-            "sourceVersion": "1692806317"
+            "sourceVersion": "1692806317",
+            "equipment": [
+              {
+                "slot": 0,
+                "itemType": "1",
+                "hp": 0,
+                "atk": 4,
+                "def": 0,
+                "int": 0,
+                "mdef": 0
+              },
+              {
+                "slot": 1,
+                "itemType": "11",
+                "hp": 30,
+                "atk": 0,
+                "def": 10,
+                "int": 0,
+                "mdef": 0
+              }
+            ]
           },
           "defender": {
             "petId": "2",
@@ -230,7 +250,8 @@
             "readyAt": 1692806267,
             "sourceVersion": "1692806317"
           },
-          "takenAt": 1692806361
+          "takenAt": 1692806361,
+          "schemaVersion": 2
         },
         "beacon": {
           "chainHash": "0x52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
@@ -238,15 +259,15 @@
           "signature": "0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39",
           "randomness": "0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd"
         },
-        "seed": "0xbedd2dc5371c75eb1502e3657d2c9febc81c899740e919259e15d9a851cbb844",
+        "seed": "0xe9753fb217140a8a38c6527997e1e438426a022ded2043a3d60937fa8691656c",
         "rulesetVersion": 1,
-        "rulesetHash": "0x6175c04e45eac5c8f3f5d319f825965c8ec6ac12a7206fdcf5248d57a63a2ed8",
+        "rulesetHash": "0x9b4fe8ecacfecd7af6d6d39b82c62a38fb84f14a4228f94e95f2a3a97689ab38",
         "result": {
           "attackerWon": true,
           "rounds": 5,
-          "winnerHpRemaining": 217
+          "winnerHpRemaining": 218
         },
-        "combatLogHash": "0xe5e54f05aa6be342cfb124b047f0987acfe75651be82c374b8b5155a3f354671",
+        "combatLogHash": "0x133d7ed5ec19f64213075c07e1a42439a5d68f49ab33a310c0f6e488f9937f2f",
         "progression": {
           "attacker": {
             "petId": "1",
@@ -272,9 +293,9 @@
           }
         },
         "sequence": 3,
-        "previousReceiptHash": "0x4bdb4bc231f1e41c3205c1d1da88a1c94c3fed2ad38f91fdcc019df85fdab12c",
-        "attackerPreviousReceiptHash": "0x4bdb4bc231f1e41c3205c1d1da88a1c94c3fed2ad38f91fdcc019df85fdab12c",
-        "defenderPreviousReceiptHash": "0x4bdb4bc231f1e41c3205c1d1da88a1c94c3fed2ad38f91fdcc019df85fdab12c",
+        "previousReceiptHash": "0x0a2f38535771435de01bc45a9a92bc61af294a22cb3fd40147fa16d4abcb2085",
+        "attackerPreviousReceiptHash": "0x0a2f38535771435de01bc45a9a92bc61af294a22cb3fd40147fa16d4abcb2085",
+        "defenderPreviousReceiptHash": "0x0a2f38535771435de01bc45a9a92bc61af294a22cb3fd40147fa16d4abcb2085",
         "createdAt": 1692806370,
         "signingKeyId": "battle-signer-2026-07"
       }

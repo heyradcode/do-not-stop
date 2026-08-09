@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import clsx from 'clsx';
 import {
     getLifePercent,
@@ -10,13 +10,19 @@ import {
     type Pet,
     type ReadyPet,
     type WinEstimateResult,
+    type EquippedItem,
+    useChainCapabilities,
+    usePetEquipmentForPets,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
 import Icon, { BattleIcon } from '@components/ui/icon';
-import { opponentKey, shortAddress } from '../battle-utils';
+import { opponentKey } from '../battle-utils';
+import { shortAddress } from '@utils/address';
 import styles from '../index.module.css';
 import PetArt from '@components/pet/pet-art';
+import EquippedBadges from '@components/pet/equipped-badges';
+import PetSelect from '@components/ui/pet-select';
 
 export type BattleSetupProps = {
     isStandaloneView: boolean;
@@ -55,7 +61,9 @@ const CombatantCard: React.FC<{
     side: 'fighter' | 'rival';
     emptyLabel: string;
     owner?: string;
-}> = ({ pet, side, emptyLabel, owner }) => {
+    /** Gear this combatant is wearing. It changes the fight, so it is worth seeing first. */
+    equipped?: readonly EquippedItem[];
+}> = ({ pet, side, emptyLabel, owner, equipped }) => {
     if (!pet) {
         return (
             <div
@@ -74,40 +82,51 @@ const CombatantCard: React.FC<{
     const hp = getLifePercent(pet);
     return (
         <div className={clsx(styles.combatantCard, side === 'rival' && styles.combatantCardRival)}>
-            <div className={styles.combatantCardAvatarWrap}>
-                <span className={styles.combatantCardAvatar} aria-hidden>
-                    <PetArt pet={pet} />
-                </span>
+            {/* Art fills the card, and the pet's numbers read over it. The
+                emoji class goes on the glyph rather than this wrapper: it
+                carries a drop-shadow and an animated transform, and either
+                would become the containing block for the filling image and
+                pin it to the emoji's size instead of the card's. */}
+            <div className={styles.combatantCardArt}>
+                <PetArt pet={pet} fill emojiClassName={styles.combatantCardAvatar} />
+                <EquippedBadges equipped={equipped} rarity={pet.rarity} size="md" />
             </div>
-            <div className={styles.combatantCardName}>{pet.name}</div>
-            <div className={styles.combatantCardMeta}>
-                Lv.{pet.level} · {getPetClass(pet.dna)} ·{' '}
-                <span style={{ color: rarityColor }}>{getRarityName(pet.rarity).toUpperCase()}</span>
-            </div>
-            {owner ? <div className={styles.combatantCardOwner}>{owner}</div> : null}
-            <div className={styles.combatantCardStats}>
-                {STAT_KEYS.map((stat) => (
-                    <div className={styles.combatantStat} key={stat.label}>
-                        <div className={styles.combatantStatLabel}>{stat.label}</div>
-                        <div className={styles.combatantStatVal}>{props[stat.key]}</div>
-                    </div>
-                ))}
-            </div>
-            <div className={styles.combatantCardHp}>
-                <div className={styles.combatantCardHpHead}>
-                    <span>HP</span>
-                    <span className={styles.combatantCardHpVal}>{hp}/100</span>
+            {/* Nothing here is legible over arbitrary generated art without it. */}
+            <div className={styles.combatantCardScrim} aria-hidden />
+
+            <div className={styles.combatantCardBody}>
+                <div className={styles.combatantCardName}>{pet.name}</div>
+                <div className={styles.combatantCardMeta}>
+                    Lv.{pet.level} · {getPetClass(pet.dna)} ·{' '}
+                    <span style={{ color: rarityColor }}>
+                        {getRarityName(pet.rarity).toUpperCase()}
+                    </span>
                 </div>
-                <div className={styles.combatantCardHpTrack}>
-                    <div
-                        className={clsx(
-                            styles.combatantCardHpFill,
-                            side === 'fighter'
-                                ? styles.combatantCardHpFillFighter
-                                : styles.combatantCardHpFillRival,
-                        )}
-                        style={{ width: `${hp}%` }}
-                    />
+                {owner ? <div className={styles.combatantCardOwner}>{owner}</div> : null}
+                <div className={styles.combatantCardStats}>
+                    {STAT_KEYS.map((stat) => (
+                        <div className={styles.combatantStat} key={stat.label}>
+                            <div className={styles.combatantStatLabel}>{stat.label}</div>
+                            <div className={styles.combatantStatVal}>{props[stat.key]}</div>
+                        </div>
+                    ))}
+                </div>
+                <div className={styles.combatantCardHp}>
+                    <div className={styles.combatantCardHpHead}>
+                        <span>HP</span>
+                        <span className={styles.combatantCardHpVal}>{hp}/100</span>
+                    </div>
+                    <div className={styles.combatantCardHpTrack}>
+                        <div
+                            className={clsx(
+                                styles.combatantCardHpFill,
+                                side === 'fighter'
+                                    ? styles.combatantCardHpFillFighter
+                                    : styles.combatantCardHpFillRival,
+                            )}
+                            style={{ width: `${hp}%` }}
+                        />
+                    </div>
                 </div>
             </div>
         </div>
@@ -136,11 +155,32 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
     onCancel,
     winEstimate,
 }) => {
+    /**
+     * Gear for both combatants in one request.
+     *
+     * The rival's gear matters as much as your own here — it is what makes an opponent
+     * stronger than their level suggests — and it is a claim about chain state anyone is
+     * entitled to check, which is why the read is public.
+     */
+    const { activeKind: chain } = useChainCapabilities();
+    const petIds = useMemo(
+        () => [selectedFighter?.id, opponent?.id].filter(Boolean).map(String),
+        [selectedFighter?.id, opponent?.id],
+    );
+    const { byPet: equippedByPet } = usePetEquipmentForPets({ chain, petIds });
+
     const winRate = winEstimate.isLoading
         ? '…'
         : winEstimate.winProbability != null
         ? `${Math.round(winEstimate.winProbability * 100)}%`
         : '—';
+
+    // The rival list is keyed by owner+id, not by pet id: two players can hold the same
+    // token id on different chains, and the panel reports the composite key back.
+    const opponentOptions = useMemo(
+        () => sortedOpponents.map((o) => ({ id: opponentKey(o.owner, o.id), pet: o })),
+        [sortedOpponents],
+    );
 
     const opponentEmpty = opponentsLoading
         ? 'Finding challengers…'
@@ -165,25 +205,26 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 <div className={clsx(styles.combatantCol, styles.combatantColFighter)}>
                     <div className={styles.combatantColLabel}>Your Fighter</div>
                     <div className={styles.combatantSelect}>
-                        <select
-                            aria-label="Choose your fighter"
-                            value={selectedPet1}
-                            onChange={(e) => onSelectFighter(e.target.value)}
-                        >
-                            <option value="">
-                                {readyPets.length === 0 ? 'No ready fighters' : 'Choose your fighter…'}
-                            </option>
-                            {readyPets.map(({ id, pet }) => (
-                                <option key={id} value={id}>
-                                    {pet.name} (Lv {pet.level})
-                                </option>
-                            ))}
-                        </select>
+                        <div className={styles.combatantSelectField}>
+                            <PetSelect
+                                label="Choose your fighter"
+                                pets={readyPets}
+                                value={selectedPet1}
+                                onChange={onSelectFighter}
+                                placeholder={
+                                    readyPets.length === 0
+                                        ? 'No ready fighters'
+                                        : 'Choose your fighter…'
+                                }
+                                disabled={readyPets.length === 0}
+                            />
+                        </div>
                     </div>
                     <CombatantCard
                         pet={selectedFighter}
                         side="fighter"
                         emptyLabel={readyPets.length === 0 ? 'No ready fighters' : 'Choose your fighter'}
+                        equipped={selectedFighter ? equippedByPet.get(String(selectedFighter.id)) : undefined}
                     />
                 </div>
 
@@ -202,22 +243,17 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                 <div className={clsx(styles.combatantCol, styles.combatantColRival)}>
                     <div className={styles.combatantColLabel}>On-Chain Rival</div>
                     <div className={styles.combatantSelect}>
-                        <select
-                            aria-label="Select an opponent"
-                            value={selectedOpponentKey}
-                            onChange={(e) => onSelectOpponent(e.target.value)}
-                            disabled={sortedOpponents.length === 0}
-                        >
-                            <option value="">{opponentEmpty}</option>
-                            {sortedOpponents.map((o) => {
-                                const key = opponentKey(o.owner, o.id);
-                                return (
-                                    <option key={key} value={key}>
-                                        {o.name} (Lv {o.level})
-                                    </option>
-                                );
-                            })}
-                        </select>
+                        <div className={styles.combatantSelectField}>
+                            <PetSelect
+                                label="Select an opponent"
+                                pets={opponentOptions}
+                                value={selectedOpponentKey}
+                                onChange={onSelectOpponent}
+                                placeholder={opponentEmpty}
+                                disabled={sortedOpponents.length === 0}
+                                accent="var(--cp-magenta)"
+                            />
+                        </div>
                         <button
                             type="button"
                             className={styles.combatantSelectBtn}
@@ -245,6 +281,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                         side="rival"
                         emptyLabel={opponentEmpty}
                         owner={opponent ? shortAddress(opponent.owner) : undefined}
+                        equipped={opponent ? equippedByPet.get(String(opponent.id)) : undefined}
                     />
                 </div>
             </div>

@@ -3,8 +3,7 @@
 Canonical definitions for the backend-authoritative battle protocol: canonical encodings, hashes,
 drand seed derivation, the versioned combat ruleset, and the receipt and commitment schemas.
 
-Design: [docs/plan-backend-battle-architecture.md](../docs/plan-backend-battle-architecture.md).
-Sequencing: [docs/plan-backend-battle-steps.md](../docs/plan-backend-battle-steps.md).
+Design: [docs/battle-protocol.md](../docs/battle-protocol.md).
 
 ## Why this package exists, and why it is MIT
 
@@ -20,7 +19,7 @@ on this package.
 
 The combat engine moved here from `shared/src/utils/combat/` for the same reason. The identical
 algorithm is already MIT in `contracts/ethereum/src/CombatSim.sol`,
-`contracts/solana/cryptopets`, and `indexer-go/internal/combat`, so this changes the license of a
+`contracts/solana/cryptopets`, and `services/indexer-go/internal/combat`, so this changes the license of a
 fourth copy of published math, not of anything proprietary.
 
 **Rule for new files here:** MIT only, and nothing in this package may import from a PolyForm

@@ -1,15 +1,23 @@
 name: Image generator
 
 # The service is deliberately not a pnpm workspace member (see
-# image-generator/README.md), so the root `pnpm lint` / `pnpm test` aggregates and
-# the Coverage workflow do not reach it. Without this workflow nothing runs its
+# services/image-generator/README.md), so the root `pnpm lint` / `pnpm test` aggregates
+# and the Coverage workflow do not reach it. Without this workflow nothing runs its
 # suite at all.
-# The path filter must also list the files `src/solanaLayout.test.ts` reads, not just
-# this package. That suite pins the PetAccount byte layout against the Anchor IDL and
-# `pet.rs`, so a Solana account change breaks it while touching nothing under
-# `image-generator/`. Filtered on this package alone the suite simply does not run, which
-# is how `open_to_challenges` was removed from the program while the decoder kept its
-# byte — every field after it misaligned, and a pet rendered as a different pet.
+# The path filter must also list the files this package's cross-boundary suites READ, not
+# just the package itself. Two of them reach outside it:
+#
+#   src/solanaLayout.test.ts pins the PetAccount byte layout against the Anchor IDL and
+#   `pet.rs`, so a Solana account change breaks it while touching nothing under
+#   `services/image-generator/`. Filtered on this package alone the suite simply does not
+#   run, which is how `open_to_challenges` was removed from the program while the decoder
+#   kept its byte — every field after it misaligned, and a pet rendered as a different pet.
+#
+#   src/items.test.ts asserts `src/items.ts` still matches the backend item catalog, which
+#   this package cannot import at build time (it installs `--ignore-workspace`). The drift
+#   it guards against is caused by editing the *backend* catalog, so without that path
+#   listed here the guard never runs on the change that trips it — a new item merges with a
+#   stale copy, green.
 #
 # The two lists below are duplicated on purpose: GitHub Actions does not support YAML
 # anchors, so factoring them out would silently disable the filter rather than share it.
@@ -17,17 +25,19 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'image-generator/**'
+      - 'services/image-generator/**'
       - '.github/workflows/image-generator.yml'
       - 'contracts/solana/cryptopets/programs/cryptopets/src/state/**'
-      - 'indexer-go/internal/solana/idl/**'
+      - 'services/indexer-go/internal/solana/idl/**'
+      - 'backend/src/features/inventory/catalog.data.ts'
   push:
     branches: [main]
     paths:
-      - 'image-generator/**'
+      - 'services/image-generator/**'
       - '.github/workflows/image-generator.yml'
       - 'contracts/solana/cryptopets/programs/cryptopets/src/state/**'
-      - 'indexer-go/internal/solana/idl/**'
+      - 'services/indexer-go/internal/solana/idl/**'
+      - 'backend/src/features/inventory/catalog.data.ts'
 
 permissions:
   contents: read
@@ -38,7 +48,7 @@ concurrency:
 
 defaults:
   run:
-    working-directory: image-generator
+    working-directory: services/image-generator
 
 jobs:
   check:
@@ -55,7 +65,7 @@ jobs:
           node-version: 22
           cache: pnpm
           # Its own lockfile, not the monorepo root's.
-          cache-dependency-path: image-generator/pnpm-lock.yaml
+          cache-dependency-path: services/image-generator/pnpm-lock.yaml
 
       # --ignore-workspace, or pnpm walks up to the monorepo root and installs
       # that instead, leaving this package with no node_modules.

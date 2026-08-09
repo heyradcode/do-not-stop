@@ -1,12 +1,14 @@
-﻿import React from 'react';
+import React from 'react';
 import clsx from 'clsx';
-import { formatExpiry, useMarriageInfo, type Pet } from '@shared/core';
+import { formatExpiry, useMarriageInfo, type OpponentPet, type Pet } from '@shared/core';
 import { AuthActionButton } from '@components/common';
+import ProposalPet from './proposal-pet';
 import styles from '../index.module.css';
 
 type OutgoingProposalRowProps = {
     pet: Pet;
     walletAddress: string | null;
+    petById: Map<string, OpponentPet>;
     onCancel: (petId: string) => void;
     busy: boolean;
 };
@@ -16,6 +18,7 @@ type OutgoingProposalRowProps = {
 const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({
     pet,
     walletAddress,
+    petById,
     onCancel,
     busy,
 }) => {
@@ -27,15 +30,18 @@ const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({
     if (!isOwn) return null;
 
     const expirySec = info.proposalExpiry ? Number(info.proposalExpiry) : 0;
+    const targetId = info.proposalPetIdB?.toString() ?? '';
 
     return (
         <li className={clsx(styles.proposalCard, styles.outgoing)}>
             <div className={styles.proposalPets}>
-                <span className={styles.proposalProposer}>
-                    {pet.name} <span className={styles.proposalId}>#{pet.id}</span>
-                </span>
+                <ProposalPet className={styles.proposalProposer} id={pet.id} pet={pet} />
                 <span className={styles.proposalArrow}>â†’</span>
-                <span className={styles.proposalTarget}>#{info.proposalPetIdB?.toString()}</span>
+                <ProposalPet
+                    className={styles.proposalTarget}
+                    id={targetId}
+                    pet={petById.get(targetId)}
+                />
             </div>
             <div className={styles.proposalMeta}>
                 <span className={styles.proposalExpiry}>Expires {formatExpiry(expirySec)}</span>

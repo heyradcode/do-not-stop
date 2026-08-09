@@ -1,0 +1,30 @@
+/* CSS Module — class names are local; reference via `import styles from './pet-art.module.css'`.
+   Placeholder shown while a pet's generated art is still on its way. */
+
+/* Sized in em, like the art itself, so it tracks whatever font-size the caller set —
+   PetArt is rendered at 1em in a leaderboard row, at 5.5rem in the rename hero, and
+   filling a card in the gallery. A fixed pixel size would be a speck in one and a slab
+   in another. */
+.spinner {
+    width: 0.45em;
+    height: 0.45em;
+    box-sizing: border-box;
+    border: 0.07em solid rgb(125 214 255 / 22%);
+    border-block-start-color: var(--cp-cyan, #7dd6ff);
+    border-radius: 50%;
+    animation: cp-art-spin 0.9s linear infinite;
+}
+
+@keyframes cp-art-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* A still ring still reads as "something belongs here and has not arrived", which is
+       the whole job. */
+    .spinner {
+        animation: none;
+    }
+}

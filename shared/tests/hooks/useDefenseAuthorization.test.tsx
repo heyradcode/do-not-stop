@@ -23,15 +23,15 @@ const post = vi.hoisted(() => vi.fn());
 const del = vi.hoisted(() => vi.fn());
 const configQuery = vi.hoisted(() => ({ current: undefined as unknown }));
 
-vi.mock('../../src/hooks/useActiveChain', () => ({ useActiveChain: () => chain.current }));
+vi.mock('../../src/hooks/session/useActiveChain', () => ({ useActiveChain: () => chain.current }));
 vi.mock('wagmi', () => ({ useSignTypedData: () => ({ signTypedDataAsync }) }));
 vi.mock('../../src/auth/solanaAuthStore', () => ({ getSolanaAuthSigner: () => solanaSigner.current }));
 vi.mock('../../src/contexts/ApiClientContext', () => ({
     useApiClient: () => ({ post, delete: del, get: vi.fn() }),
 }));
-vi.mock('../../src/hooks/useBattleConfig', () => ({ useBattleConfig: () => ({ data: configQuery.current }) }));
+vi.mock('../../src/hooks/battle/useBattleConfig', () => ({ useBattleConfig: () => ({ data: configQuery.current }) }));
 
-import { useDefenseAuthorization } from '../../src/hooks/useDefenseAuthorization';
+import { useDefenseAuthorization } from '../../src/hooks/battle/useDefenseAuthorization';
 
 const AUTH_HASH = `0x${'55'.repeat(32)}`;
 

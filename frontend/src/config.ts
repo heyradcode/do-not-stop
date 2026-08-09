@@ -4,7 +4,7 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 /**
  * Per-room notification channel for backend-authoritative battles
- * (`docs/plan-backend-battle-architecture.md` §J).
+ * (`docs/battle-protocol.md` §J).
  *
  * Lives here rather than in `petsContractParams` because it is chain-neutral: backend
  * battles run on both EVM and Solana, while that module is the EVM contract config and
@@ -14,6 +14,14 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
  * APIs, so an unreachable socket costs latency, never correctness.
  */
 export const BATTLE_ROOM_WS_URL = `${API_URL.replace(/^http/, 'ws')}/ws/battle-room`;
+
+/**
+ * Per-thread notification channel for private chat (roadmap §2).
+ *
+ * Carries no message text, only "this thread changed" — the authenticated read is what
+ * returns messages, so an unreachable socket costs liveness, never access.
+ */
+export const CHAT_WS_URL = `${API_URL.replace(/^http/, 'ws')}/ws/chat`;
 
 const AUTH_TOKEN_KEY = 'authToken';
 

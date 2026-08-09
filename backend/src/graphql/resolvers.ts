@@ -1,6 +1,19 @@
 import { findReadyOpponents, getAllPets, getPetById, searchPets, type RosterPet } from '@repositories/roster.repository';
 import { findBattleProgress, withBattleProgress } from '@repositories/battleProgress.overlay';
+import {
+    findPetLeaderboard,
+    findPlayerLeaderboard,
+    findPlayerRank,
+} from '@repositories/leaderboard.repository';
 import { tryGrpcEstimateWin } from '@grpc-client/estimateWin';
+import {
+    getCatalog,
+    getInventory,
+    getPendingItems,
+    getPetEquipment,
+    getPetEquipmentForPets,
+    type ItemView,
+} from '@features/inventory';
 import { isSupportedChain, SUPPORTED_CHAINS } from '@typings/chain';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -15,6 +28,14 @@ interface OpponentsArgs {
     minLevel?: number | null;
     page?: number | null;
     pageSize?: number | null;
+}
+
+interface LeaderboardArgs {
+    chain: string;
+    page?: number | null;
+    pageSize?: number | null;
+    /** Substring filter; ranks stay absolute, so it narrows the board without renumbering it. */
+    search?: string | null;
 }
 
 interface BattleProgressArgs {
@@ -45,9 +66,32 @@ interface AllPetsArgs {
     limit?: number | null;
 }
 
+interface PetEquipmentArgs {
+    chain: string;
+    petId: string;
+}
+
+interface PetEquipmentForPetsArgs {
+    chain: string;
+    petIds: string[];
+}
+
 export interface GraphQLContext {
     /** Authenticated wallet address; empty string when unauthenticated. */
     caller: string;
+}
+
+/**
+ * Project an `ItemView` to the GraphQL `ItemDefinition` shape.
+ *
+ * The effect is serialized to a JSON string rather than exposed as a typed union. The
+ * payload shape differs per category and gains a variant each time a new effect kind
+ * lands, so a union would need a schema change for a value the client only ever renders.
+ * Null stays null, so "inert item" and "unreadable payload" both read as absence, which
+ * is what they mean to a client either way.
+ */
+function toItemDefinition(item: ItemView) {
+    return { ...item, effect: item.effect ? JSON.stringify(item.effect) : null };
 }
 
 /**
@@ -92,6 +136,58 @@ export const rootValue = {
             page,
             pageSize,
         };
+    },
+
+    leaderboard: async (args: LeaderboardArgs) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        const page = Math.max(0, args.page ?? 0);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, args.pageSize ?? DEFAULT_PAGE_SIZE));
+
+        // No overlay here, for the same reason as `opponents`: the ranking is the merge,
+        // so `findPetLeaderboard` does it in the query.
+        const { entries, total } = await findPetLeaderboard({
+            chain: args.chain,
+            page,
+            pageSize,
+            search: args.search ?? undefined,
+        });
+
+        return {
+            entries: entries.map(({ petId: id, ...rest }) => ({ id, ...rest })),
+            total,
+            page,
+            pageSize,
+        };
+    },
+
+    playerLeaderboard: async (args: LeaderboardArgs) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        const page = Math.max(0, args.page ?? 0);
+        const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, args.pageSize ?? DEFAULT_PAGE_SIZE));
+        const { entries, total } = await findPlayerLeaderboard({
+            chain: args.chain,
+            page,
+            pageSize,
+            search: args.search ?? undefined,
+        });
+
+        return { entries, total, page, pageSize };
+    },
+
+    playerRank: async (args: { chain: string }, context: GraphQLContext) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        // The session address, already normalized the way the board groups owners. An
+        // unauthenticated caller has no standing to report rather than an error.
+        return findPlayerRank(args.chain, context.caller);
     },
 
     searchPets: async (args: SearchPetsArgs) => {
@@ -156,5 +252,70 @@ export const rootValue = {
                 samples: Math.min(MAX_WIN_SAMPLES, Math.max(0, args.samples)),
             }),
         });
+    },
+
+    itemCatalog: async () => (await getCatalog()).map(toItemDefinition),
+
+    inventory: async (args: { chain: string }, context: GraphQLContext) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        // An unauthenticated caller owns nothing rather than erroring, matching how
+        // `playerRank` treats having no standing. The address is never an argument, so
+        // there is no spelling of this query that reads someone else's bag.
+        if (!context.caller) {
+            return [];
+        }
+        return (await getInventory(args.chain, context.caller)).map((entry) => ({
+            item: toItemDefinition(entry.item),
+            quantity: entry.quantity,
+        }));
+    },
+
+    pendingItems: async (args: { chain: string }, context: GraphQLContext) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        // Same rule as `inventory`: an unauthenticated caller has nothing waiting rather
+        // than an error, and the owner is never an argument.
+        if (!context.caller) {
+            return [];
+        }
+        return (await getPendingItems(args.chain, context.caller)).map((pending) => ({
+            ...pending,
+            item: toItemDefinition(pending.item),
+        }));
+    },
+
+    petEquipment: async (args: PetEquipmentArgs) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        return (await getPetEquipment(args.chain, args.petId)).map((equipped) => ({
+            slot: equipped.slot,
+            item: toItemDefinition(equipped.item),
+        }));
+    },
+
+    petEquipmentForPets: async (args: PetEquipmentForPetsArgs) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        // Bounded like battleProgress, and against the same thing: one call must not be
+        // able to ask for every pet in the table.
+        const petIds = args.petIds.slice(0, MAX_PROGRESS_PET_IDS);
+        const groups = await getPetEquipmentForPets(args.chain, petIds);
+
+        return groups.map((group) => ({
+            petId: group.petId,
+            equipped: group.equipped.map((equipped) => ({
+                slot: equipped.slot,
+                item: toItemDefinition(equipped.item),
+            })),
+        }));
     },
 };

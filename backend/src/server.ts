@@ -2,11 +2,11 @@ import './register-path-aliases';
 import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import app from './app';
-import { configureSigner, loadPersistedSigningKeys } from '@features/battle-signer';
+import { configureSigner, loadPersistedSigningKeys } from '@features/battle/signer';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
-import { type BattleWorkerHandle, startBattleWorker } from '@features/battle-worker';
-import { startBatchAnchor, stopBatchAnchor } from '@features/battle-anchor';
-import { startBattleRoomSocket, stopBattleRoomSocket } from '@ws/battleRoomSocket';
+import { type BattleWorkerHandle, startBattleWorker } from '@features/battle/worker';
+import { startBatchAnchor, stopBatchAnchor } from '@features/battle/anchor';
+import { startWsChannels, stopWsChannels } from '@ws/channel';
 
 let battleWorker: BattleWorkerHandle | undefined;
 
@@ -20,16 +20,17 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     console.log(`🛡️  Protected endpoints: http://localhost:${port}/api/protected`);
     console.log(`⚔️  GraphQL endpoint: http://localhost:${port}/graphql`);
 
-    // Notification-only per-room channel for backend-authoritative battles (§J). Always on;
-    // a client only gets pushed to if it connected with a roomId it already knows about.
-    startBattleRoomSocket(server);
+    // Every notification-only channel (battle rooms §J, chat §2) behind one upgrade
+    // listener. They cannot each attach their own: Node would call all of them per
+    // upgrade and every connection would be handled twice — see @ws/channel.
+    startWsChannels(server);
     // Settles GameLogic battle/breed/mint requests once entropy reveals. No-op unless
     // KEEPER_ENABLED is set.
     startSettleKeeper();
 
-    // Backend-authoritative battles (docs/plan-backend-battle-architecture.md §L Phase 3).
+    // Backend-authoritative battles (docs/battle-protocol.md §L Phase 3).
     // Selects the signing backend (refuses an in-process key in production; see
-    // @features/battle-signer) and starts the outbox worker that carries accepted battles
+    // @features/battle/signer) and starts the outbox worker that carries accepted battles
     // through to a signed receipt.
     //
     // Both are gated on the mode, so a deployment running only the on-chain path needs no
@@ -76,7 +77,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     stopSettleKeeper();
     battleWorker?.stop();
     stopBatchAnchor();
-    stopBattleRoomSocket();
+    stopWsChannels();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await prisma.$disconnect();
 

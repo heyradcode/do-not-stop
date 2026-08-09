@@ -20,10 +20,11 @@ import { assertBattleSnapshot, type BattleSnapshot, type PetSnapshot } from './t
  */
 export function encodeBattleSnapshot(snapshot: BattleSnapshot): Uint8Array {
     const checked = assertBattleSnapshot(snapshot);
+    const version = checked.schemaVersion ?? 1;
     const writer = CanonicalWriter.withDomain(DOMAIN_TAGS.SNAPSHOT);
-    writeHeader(writer, 'snapshot', checked.domain);
-    writePet(writer, checked.attacker);
-    writePet(writer, checked.defender);
+    writeHeader(writer, 'snapshot', checked.domain, version);
+    writePet(writer, checked.attacker, version);
+    writePet(writer, checked.defender, version);
     return writer.u64(checked.takenAt).build();
 }
 
@@ -32,7 +33,15 @@ export function hashBattleSnapshot(snapshot: BattleSnapshot): Hex {
     return keccak256Hex(encodeBattleSnapshot(snapshot));
 }
 
-function writePet(writer: CanonicalWriter, pet: PetSnapshot): void {
+/**
+ * One pet's fields, in the layout `version` defines.
+ *
+ * Version 1 stops at `sourceVersion`; version 2 appends the equipment list (roadmap §4).
+ * Everything before it is byte-identical across the two, so an ungeared v2 snapshot
+ * differs from the v1 of the same pet only by the version in the header and a zero-length
+ * array — which is the point: adding the field cannot change what an old fight hashed to.
+ */
+function writePet(writer: CanonicalWriter, pet: PetSnapshot, version: number): void {
     writer
         .u256(pet.petId)
         .account(pet.owner)
@@ -45,4 +54,21 @@ function writePet(writer: CanonicalWriter, pet: PetSnapshot): void {
         .u32(pet.streak)
         .u64(pet.readyAt)
         .u64(pet.sourceVersion);
+
+    if (version < 2) {
+        return;
+    }
+
+    // Count-prefixed and in slot order, which `assertPetSnapshot` has already enforced.
+    // The item type is hashed alongside the resolved numbers so a verifier can hold us to
+    // both: the modifiers the fight used, and which item was supposed to have granted them.
+    writer.array(pet.equipment ?? [], (w, entry) => {
+        w.u8(entry.slot)
+            .u256(entry.itemType)
+            .u16(entry.hp)
+            .u16(entry.atk)
+            .u16(entry.def)
+            .u16(entry.int)
+            .u16(entry.mdef);
+    });
 }

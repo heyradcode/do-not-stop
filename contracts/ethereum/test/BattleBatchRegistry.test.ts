@@ -30,7 +30,7 @@ async function rejectsWithError(promise: Promise<unknown>, signature: string): P
 }
 
 /**
- * BattleBatchRegistry (docs/plan-backend-battle-architecture.md §I).
+ * BattleBatchRegistry (docs/battle-protocol.md §I).
  *
  * The contract's only real guarantee is ordering: batches are append-only, linked, and
  * sequence-contiguous. Most of what follows is aimed at that, because a registry that

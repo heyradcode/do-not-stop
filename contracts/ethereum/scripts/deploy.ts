@@ -146,6 +146,7 @@ async function injectContractAddresses(network: NetworkSpec, deploymentId?: stri
         const petCoreAddress    = deployedAddresses['CryptoPetsV2Live#PetCoreProxy']   as string | undefined;
         const gameLogicAddress  = deployedAddresses['CryptoPetsV2Live#GameLogicProxy'] as string | undefined;
         const gameConfigAddress = deployedAddresses['CryptoPetsV2Live#GameConfig']     as string | undefined;
+        const itemCoreAddress   = deployedAddresses['CryptoPetsV2Live#ItemCoreProxy']  as string | undefined;
         const batchRegistryAddress = deployedAddresses['CryptoPetsV2Live#BattleBatchRegistry']    as string | undefined;
         const rewardDistributorAddress = deployedAddresses['CryptoPetsV2Live#SeasonRewardDistributor'] as string | undefined;
 
@@ -157,14 +158,20 @@ async function injectContractAddresses(network: NetworkSpec, deploymentId?: stri
         console.log(`📝 PetCore:    ${petCoreAddress}`);
         console.log(`📝 GameLogic:  ${gameLogicAddress  ?? '(not found)'}`);
         console.log(`📝 GameConfig: ${gameConfigAddress ?? '(not found)'}`);
+        console.log(`📝 ItemCore:   ${itemCoreAddress   ?? '(not found)'}`);
         console.log(`📝 BattleBatchRegistry:     ${batchRegistryAddress      ?? '(not found)'}`);
         console.log(`📝 SeasonRewardDistributor: ${rewardDistributorAddress  ?? '(not found)'}`);
 
-        // These two are read by the backend, not the frontend, so they are printed for the
+        // These are read by the backend, not the frontend, so they are printed for the
         // operator to copy rather than written into frontend/.env.local.
         if (batchRegistryAddress) {
             console.log(`
    backend/.env: BATTLE_ANCHOR_REGISTRY_ADDRESS=${batchRegistryAddress}`);
+        }
+        // ItemCore goes to both: the backend mints and burns through it, and the frontend
+        // sends equip/unequip itself, so its address is injected below as well.
+        if (itemCoreAddress) {
+            console.log(`   backend/.env: ITEM_CORE_ADDRESS=${itemCoreAddress}`);
         }
 
         const frontendEnvLocalPath = join(process.cwd(), '..', '..', 'frontend', '.env.local');
@@ -189,6 +196,7 @@ async function injectContractAddresses(network: NetworkSpec, deploymentId?: stri
         upsertEnvLine(lines, 'VITE_PETCORE_ADDRESS', petCoreAddress);
         if (gameLogicAddress)  upsertEnvLine(lines, 'VITE_GAMELOGIC_ADDRESS',  gameLogicAddress);
         if (gameConfigAddress) upsertEnvLine(lines, 'VITE_GAMECONFIG_ADDRESS', gameConfigAddress);
+        if (itemCoreAddress)   upsertEnvLine(lines, 'VITE_ITEMCORE_ADDRESS',   itemCoreAddress);
 
         if (!lines.some((l) => l.startsWith('VITE_API_URL='))) {
             lines.push('VITE_API_URL=http://localhost:3001');

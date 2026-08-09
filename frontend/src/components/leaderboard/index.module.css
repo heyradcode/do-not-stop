@@ -1,0 +1,441 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+
+   Leaderboard: a podium over a ledger.
+
+   The split is the design, and it is true of the content rather than imposed on it — the
+   top three are a *result* and everything below is a *record*, which is why medals exist
+   at all. So the top three get cards at the size their placing earns, with the pet art as
+   the hero; everywhere else in the app that art is an identifier, here being looked at is
+   the whole point. Below them the rows go tighter and more typographic, with the rank at
+   display size because the rank is what a reader came for.
+
+   Gold, silver and bronze are the real metals rather than three tints of the page accent:
+   the colour then encodes the placing instead of decorating it. Amber stays the page's
+   own accent — the trophy, the tabs, the search — and gold belongs to first place alone. */
+
+/* Ends at the bottom of the window rather than at the bottom of its rows, so the pager
+   stays reachable without scrolling the page and short pages leave no dead space.
+
+   `height: 100%` rather than a flex rule, for the reason spelled out in the chat panel's
+   stylesheet: the shell's content slot is a scrollable *block*, so a `flex` declaration
+   on the panel is inert. The percentage resolves against the slot's content box, which
+   is what keeps the panel inside the shell's padding. */
+.page {
+    height: 100%;
+}
+
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    /* Header-ish: never absorbs the space the list should get. */
+    flex-shrink: 0;
+}
+
+.tab {
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1px solid rgb(251 191 36 / 25%);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.tab:hover {
+    opacity: 1;
+}
+
+.tab.isActive {
+    opacity: 1;
+    border-color: rgb(251 191 36 / 60%);
+    background: rgb(251 191 36 / 12%);
+}
+
+/* The one part that scrolls. Everything else in the panel keeps its natural height, so
+   the pager stays pinned below the rows instead of being pushed off the bottom. */
+/* Podium and ledger scroll together: with a podium on screen the rows below are a
+   remainder, and scrolling only the remainder would strand it in a sliver. */
+.board {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* ── Podium ────────────────────────────────────────────────────────────────────
+   Second, first, third across, the way a podium is actually arranged: the winner in the
+   middle and taller. `order` does it, so the DOM keeps rank order for a screen reader
+   and for anyone tabbing through. */
+.podium {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: end;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.podiumCard {
+    --medal: var(--cp-amber);
+    --art: 78px;
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 18px 12px 14px;
+    border: 1px solid rgb(from var(--medal) r g b / 32%);
+    border-radius: 14px;
+    background:
+        radial-gradient(
+            120% 90% at 50% 0%,
+            rgb(from var(--accent, var(--medal)) r g b / 14%),
+            transparent 62%
+        ),
+        var(--cp-surface);
+    text-align: center;
+    overflow: hidden;
+}
+
+/* The lit edge along the top: the placing, drawn rather than described. */
+.podiumCard::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--medal), transparent);
+}
+
+.podiumCard.gold {
+    --medal: #ffcf70;
+}
+
+.podiumCard.silver {
+    --medal: #c9d4e8;
+}
+
+.podiumCard.bronze {
+    --medal: #e0955f;
+}
+
+/* First place stands taller and shows its pet bigger. On a board of four that means the
+   page is mostly podium, which is the honest shape of a four-entry ranking: a result,
+   not a spreadsheet with thirty-six empty rows. */
+.podiumCard.isLeader {
+    --art: 104px;
+
+    order: 2;
+    padding-block: 26px 18px;
+    box-shadow: 0 0 26px rgb(from var(--medal) r g b / 14%);
+}
+
+.podiumCard:first-child {
+    order: 1;
+}
+
+.podiumCard:last-child {
+    order: 3;
+}
+
+.podiumRank {
+    font-family: var(--cp-title-font);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--medal);
+    font-variant-numeric: tabular-nums;
+}
+
+/* PetArt draws at 1em, so font-size is the lever; see PetArt. */
+.podiumArt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--art);
+    height: var(--art);
+    font-size: calc(var(--art) * 0.86);
+    line-height: 1;
+}
+
+.podiumArt img {
+    border-radius: 14px;
+}
+
+.podiumName {
+    margin: 6px 0 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--cp-title-font);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.podiumSub,
+.podiumRate {
+    margin: 0;
+    font-size: 0.72rem;
+    opacity: 0.55;
+}
+
+.podiumRecord {
+    margin: 2px 0 0;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.dash {
+    opacity: 0.35;
+}
+
+@media (max-width: 620px) {
+    /* Three cards side by side stop being a podium and start being three slivers. */
+    .podium {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .podiumCard,
+    .podiumCard.isLeader {
+        order: 0;
+        --art: 72px;
+    }
+}
+
+/* ── Ledger ────────────────────────────────────────────────────────────────────
+   Fixed track widths so ranks, records and rates line up down the column; only the name
+   track flexes. The meter spans the full width on its own row beneath. */
+.row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2.6rem 2.2rem minmax(0, 1fr) 6.5rem 3.2rem;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px 11px;
+    border-radius: 10px;
+    border: 1px solid rgb(148 163 184 / 14%);
+    background: var(--cp-surface);
+}
+
+/* The connected wallet's own rows, so a player finds themselves without reading
+   every address. */
+.row.isYou {
+    border-color: rgb(251 191 36 / 55%);
+    background: rgb(251 191 36 / 8%);
+}
+
+/* The rank at display size: it is what the reader came for, so the row text is quieter
+   than it rather than the other way round. */
+.rank {
+    font-family: var(--cp-title-font);
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+    color: rgb(255 207 112 / 55%);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+/* Win rate as a hairline under the row. A column of percentages has to be read one at a
+   time; a column of bars shows the shape of the board at a glance. Kept faint on purpose
+   — the podium is where this page spends its boldness. */
+.meter {
+    position: absolute;
+    inset: auto 12px 5px;
+    height: 2px;
+    border-radius: 2px;
+    background: rgb(148 163 184 / 14%);
+    overflow: hidden;
+}
+
+.meterFill {
+    display: block;
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, rgb(52 211 153 / 55%), rgb(255 207 112 / 75%));
+}
+
+.avatar {
+    font-size: 1.4rem;
+    line-height: 1;
+    text-align: center;
+}
+
+.name {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    /* `#root` in App.css centres the whole app, so a left-aligned column has to say so.
+       The podium cards want the centring and keep it. */
+    text-align: left;
+}
+
+.sub {
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+.record {
+    display: flex;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.wins {
+    color: rgb(52 211 153);
+}
+
+.losses {
+    color: rgb(251 113 133);
+}
+
+.rate {
+    text-align: right;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
+}
+
+.pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 16px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.pageNav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Square-ish, so a run of page numbers reads as a strip rather than as a row of
+   differently-sized buttons: "1" and "10" would otherwise be different widths. */
+.pager button {
+    box-sizing: border-box;
+    min-width: 32px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    border: 1px solid rgb(148 163 184 / 25%);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.pager button:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.pager button:hover:not(:disabled):not(.isCurrent) {
+    border-color: rgb(255 207 112 / 45%);
+}
+
+/* Amber, matching the board's own accent. */
+.pager button.isCurrent {
+    border-color: rgb(255 207 112 / 55%);
+    background: rgb(255 207 112 / 14%);
+    cursor: default;
+}
+
+.pageGap {
+    padding: 0 2px;
+    opacity: 0.4;
+}
+
+.pageLabel {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    font-variant-numeric: tabular-nums;
+}
+
+.empty,
+.error {
+    margin: 24px 0;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.empty {
+    opacity: 0.7;
+}
+
+.error {
+    color: rgb(251 113 133);
+}
+
+@media (width <= 640px) {
+    /* The rate is the one column derivable from the record beside it, so it is what
+       goes when the row runs out of room. */
+    .row {
+        grid-template-columns: 2.5rem 2rem minmax(0, 1fr) 5.5rem;
+    }
+
+    .rate {
+        display: none;
+    }
+}
+
+/* Search. One box for whichever board is showing — the two search different things, so
+   the placeholder says which, and switching boards clears it. */
+.search {
+    margin-bottom: 12px;
+    flex-shrink: 0;
+}
+
+.search input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid rgb(148 163 184 / 25%);
+    border-radius: 8px;
+    background: rgb(4 10 26 / 96%);
+    color: inherit;
+    font: inherit;
+    font-size: 0.9rem;
+    caret-color: var(--cp-amber);
+}
+
+.search input::placeholder {
+    color: rgb(195 210 255 / 35%);
+    font-style: italic;
+}
+
+.search input:hover {
+    border-color: rgb(255 207 112 / 40%);
+}
+
+.search input:focus {
+    outline: none;
+    border-color: var(--cp-amber);
+    box-shadow: 0 0 0 2px rgb(255 207 112 / 30%);
+}

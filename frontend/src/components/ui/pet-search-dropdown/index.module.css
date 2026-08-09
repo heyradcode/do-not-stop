@@ -25,7 +25,7 @@
     background: rgb(4 10 26 / 96%);
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
     box-shadow: inset 0 0 20px rgb(125 214 255 / 4%), inset 0 1px 0 rgb(125 214 255 / 8%);
-    min-height: 42px;
+    min-height: 48px;
     cursor: text;
 
     &:hover:not(.isSelected) {
@@ -200,4 +200,40 @@
     border: 1px solid rgb(181 140 255 / 24%);
     border-radius: 999px;
     padding: 1px 7px;
+}
+
+/* ── Pet art ───────────────────────────────────────────────────────────────────
+   Square frames; PetArt draws at 1em inside them, so font-size is what sizes the
+   image (see PetArt). The emoji fallback rides the same box. */
+
+.psdRowArt,
+.psdSelectedArt {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    overflow: hidden;
+    line-height: 1;
+    background: radial-gradient(circle at 50% 45%, rgb(125 214 255 / 16%), transparent 68%);
+}
+
+.psdRowArt {
+    width: 30px;
+    height: 30px;
+    font-size: 1.6rem;
+}
+
+.psdSelectedArt {
+    width: 26px;
+    height: 26px;
+    font-size: 1.4rem;
+    /* The wrapper's left padding is sized for text, so the art needs to sit closer
+       to the edge or the field reads as indented. */
+    margin-inline-start: -6px;
+}
+
+.psdRowArt img,
+.psdSelectedArt img {
+    border-radius: 6px;
 }

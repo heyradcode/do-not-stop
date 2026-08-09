@@ -7,11 +7,11 @@ const parseError = vi.fn((err: unknown, fallback: string) => ({
     isUserRejection: err instanceof Error && err.message.includes('rejected'),
 }));
 
-vi.mock('../../src/hooks/useChainCapabilities', () => ({
+vi.mock('../../src/hooks/session/useChainCapabilities', () => ({
     useChainCapabilities: () => ({ parseError }),
 }));
 
-import { useTxError } from '../../src/hooks/useTxError';
+import { useTxError } from '../../src/hooks/tx/useTxError';
 
 describe('useTxError', () => {
     it('returns null when there is no error', () => {

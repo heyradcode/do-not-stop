@@ -21,10 +21,20 @@ function fieldsOf(typeName: string): Record<string, { type: string }> {
 describe('GraphQL schema — Query surface', () => {
     const query = fieldsOf('Query');
 
-    it('exposes opponents, pet, searchPets, allPets, battleProgress, and winEstimate', () => {
+    it('exposes the pet reads, both leaderboards, battleProgress, winEstimate, and the inventory reads', () => {
         expect(Object.keys(query).sort()).toEqual([
-            'allPets', 'battleProgress', 'opponents', 'pet', 'searchPets', 'winEstimate',
+            'allPets', 'battleProgress', 'inventory', 'itemCatalog', 'leaderboard', 'opponents',
+            'pendingItems', 'pet', 'petEquipment', 'petEquipmentForPets', 'playerLeaderboard',
+            'playerRank', 'searchPets',
+            'winEstimate',
         ]);
+    });
+
+    // The owner is the session, never an argument. A chain-only signature is what makes
+    // "read someone else's bag" unspellable rather than merely unauthorized.
+    it('takes no owner argument on inventory', () => {
+        const inventory = (schema.getType('Query') as GraphQLObjectType).getFields().inventory;
+        expect(inventory!.args.map((a) => a.name)).toEqual(['chain']);
     });
 
     it('returns a non-null list of PetBattleProgress from battleProgress', () => {
@@ -43,6 +53,53 @@ describe('GraphQL schema — Query surface', () => {
 
     it('returns a nullable WinEstimate (null = odds unavailable)', () => {
         expect(query.winEstimate?.type).toBe('WinEstimate');
+    });
+
+    it('returns a non-null LeaderboardPage from leaderboard', () => {
+        expect(query.leaderboard?.type).toBe('LeaderboardPage!');
+    });
+
+    it('returns a non-null PlayerLeaderboardPage from playerLeaderboard', () => {
+        expect(query.playerLeaderboard?.type).toBe('PlayerLeaderboardPage!');
+    });
+
+    it('returns a nullable PlayerLeaderboardEntry from playerRank (null = unranked)', () => {
+        expect(query.playerRank?.type).toBe('PlayerLeaderboardEntry');
+    });
+
+    it('takes no owner argument on playerRank — the session decides whose rank it is', () => {
+        const args = (schema.getQueryType()?.getFields().playerRank?.args ?? []).map((a) => a.name);
+        expect(args).toEqual(['chain']);
+    });
+});
+
+describe('GraphQL schema — LeaderboardEntry', () => {
+    const entry = fieldsOf('LeaderboardEntry');
+
+    it('carries the rank plus the fields a row displays', () => {
+        for (const f of ['rank', 'id', 'chain', 'owner', 'name', 'dna', 'level', 'rarity', 'winCount', 'lossCount', 'asset']) {
+            expect(entry, `missing field ${f}`).toHaveProperty(f);
+        }
+    });
+
+    it('types rank as Int and carries `asset` so Solana rows can address pet art', () => {
+        expect(entry.rank?.type).toBe('Int!');
+        expect(entry.asset?.type).toBe('String!');
+    });
+});
+
+describe('GraphQL schema — PlayerLeaderboardEntry', () => {
+    const entry = fieldsOf('PlayerLeaderboardEntry');
+
+    it('carries the rank, owner, and the summed record', () => {
+        for (const f of ['rank', 'owner', 'winCount', 'lossCount', 'petCount']) {
+            expect(entry, `missing field ${f}`).toHaveProperty(f);
+        }
+    });
+
+    it('has no pet-specific fields — a player row is an aggregate, not a pet', () => {
+        expect(entry).not.toHaveProperty('id');
+        expect(entry).not.toHaveProperty('dna');
     });
 });
 

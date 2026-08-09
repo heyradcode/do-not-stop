@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import Layout from '@components/layout/Layout';
+import RouteLayout from '@components/layout/route-layout';
 
 // Each page is a thin wrapper around one interaction panel with no shared state,
 // so route-level splitting keeps a page's panel code (SVG art, DNA helix, …) out
@@ -13,7 +13,9 @@ const LevelUpPage = lazy(() => import('@pages/level-up'));
 const TrainPage = lazy(() => import('@pages/train'));
 const MarriagePage = lazy(() => import('@pages/marriage'));
 const RenamePage = lazy(() => import('@pages/rename'));
-const DefensePage = lazy(() => import('@pages/defense'));
+const LeaderboardPage = lazy(() => import('@pages/leaderboard'));
+const ChatPage = lazy(() => import('@pages/chat'));
+const InventoryPage = lazy(() => import('@pages/inventory'));
 // SCRATCH — remove after visual verification.
 const BattleOverlayPreview = lazy(() => import('@pages/__preview/battle-overlay-preview'));
 
@@ -29,7 +31,7 @@ const AppRoutes: React.FC = () => {
     return (
         <Suspense fallback={<RouteFallback />}>
             <Routes>
-                <Route element={<Layout />}>
+                <Route element={<RouteLayout />}>
                     <Route path="/main" element={<HomePage />} />
                     <Route path="/breed" element={<BreedPage />} />
                     {/* :roomId is optional — set once Start Battle mints a room id
@@ -39,7 +41,9 @@ const AppRoutes: React.FC = () => {
                     <Route path="/train" element={<TrainPage />} />
                     <Route path="/marriage" element={<MarriagePage />} />
                     <Route path="/rename" element={<RenamePage />} />
-                    <Route path="/defense" element={<DefensePage />} />
+                    <Route path="/leaderboard" element={<LeaderboardPage />} />
+                    <Route path="/messages" element={<ChatPage />} />
+                    <Route path="/inventory" element={<InventoryPage />} />
                 </Route>
                 <Route path="/__preview/battle-overlay" element={<BattleOverlayPreview />} />
                 <Route path="*" element={<Navigate to="/main" replace />} />

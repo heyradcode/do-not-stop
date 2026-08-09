@@ -14,10 +14,21 @@ import {
     GiSandsOfTime,
     GiShield,
     GiSparkles,
+    GiMuscleUp,
     GiSpellBook,
+    GiTrophy,
     GiUpgrade,
 } from 'react-icons/gi';
-import { IoCheckmarkSharp, IoClose, IoCopy, IoPauseSharp, IoWarning } from 'react-icons/io5';
+import {
+    IoCheckmarkSharp,
+    IoClose,
+    IoCopy,
+    IoPauseSharp,
+    IoPin,
+    IoPinOutline,
+    IoRefresh,
+    IoWarning,
+} from 'react-icons/io5';
 import clsx from 'clsx';
 import { type Tone } from '@constants/tones';
 import styles from './index.module.css';
@@ -95,11 +106,16 @@ export {
     GiSandsOfTime as HourglassIcon,
     GiShield as ShieldIcon,
     GiSparkles as SparklesIcon,
+    GiMuscleUp as MuscleIcon,
     GiSpellBook as SpellbookIcon,
+    GiTrophy as TrophyIcon,
     GiUpgrade as LevelUpIcon,
     IoCheckmarkSharp as CheckIcon,
     IoClose as CloseIcon,
     IoCopy as CopyIcon,
     IoPauseSharp as PauseIcon,
+    IoPin as PinFilledIcon,
+    IoPinOutline as PinIcon,
+    IoRefresh as RefreshIcon,
     IoWarning as WarningIcon,
 };

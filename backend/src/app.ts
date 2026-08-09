@@ -11,6 +11,8 @@ import battleRoomRoutes from '@routes/battle-room';
 import battleRoutes from '@routes/battle';
 import receiptRoutes from '@routes/receipts';
 import rewardRoutes from '@routes/rewards';
+import chatRoutes from '@routes/chat';
+import inventoryRoutes from '@routes/inventory';
 
 const app = express();
 
@@ -38,6 +40,8 @@ app.use('/api/battle-room', battleRoomRoutes);
 app.use('/api/battle', battleRoutes);
 app.use('/api/receipts', receiptRoutes);
 app.use('/api/rewards', rewardRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/inventory', inventoryRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
     res.json({
@@ -50,6 +54,7 @@ app.get('/', (_req: Request, res: Response) => {
             graphql: '/graphql',
             battleDialogue: '/api/battle-dialogue',
             battleRoom: '/api/battle-room',
+            chat: '/api/chat',
         },
     });
 });

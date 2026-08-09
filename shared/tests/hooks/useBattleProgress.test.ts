@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mergeBattleProgress } from '../../src/hooks/useBattleProgress';
+import { mergeBattleProgress } from '../../src/hooks/battle/useBattleProgress';
 import type { Pet } from '../../src/types/pet';
 
 /**

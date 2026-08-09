@@ -1,6 +1,4 @@
-/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
-   The logo float keyframe (cp-orb-float, used only here) lives in this module so
-   the animation reference and @keyframes hash consistently. */
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`. */
 .sidebar {
     --label-opacity: 0;
     position: relative;
@@ -19,10 +17,75 @@
 }
 
 .sidebar:hover,
-.sidebar:focus-within {
+.sidebar:focus-within,
+.sidebar.isPinned {
     --label-opacity: 1;
     width: var(--cp-shell-sidebar-expanded);
     min-width: var(--cp-shell-sidebar-expanded);
+}
+
+/* Brand and pin share the header strip. The pin sits outside the brand button
+   because it is a separate action: nesting it would make the whole row one
+   control, and clicking the pin would also navigate home. */
+.brandRow {
+    display: flex;
+    align-items: center;
+    height: var(--cp-shell-header-height);
+    border-bottom: 1px solid rgb(101 131 255 / 10%);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.brandRow .brand {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border-bottom: none;
+}
+
+/* The row owns the divider now; without this the brand's own hover rule paints
+   a second line directly on top of it. */
+.brandRow .brand:hover {
+    border-bottom-color: transparent;
+}
+
+/* Hidden outright while collapsed, not just faded: at rail width there is no
+   room for it, and an invisible button still holds its 44px of the row and
+   crushes whatever shares it. Tabbing into the sidebar trips :focus-within,
+   which expands the rail and brings the pin into the tab order with it. */
+.pin {
+    display: none;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    margin-right: 10px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: rgb(125 214 255 / 55%);
+    cursor: pointer;
+    transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.sidebar:hover .pin,
+.sidebar:focus-within .pin,
+.sidebar.isPinned .pin {
+    display: flex;
+}
+
+.pin:hover {
+    color: var(--cp-cyan);
+    background: rgb(125 214 255 / 10%);
+    border-color: rgb(125 214 255 / 28%);
+}
+
+.pin[aria-pressed='true'] {
+    color: var(--cp-cyan);
+    border-color: rgb(125 214 255 / 34%);
+    background: rgb(125 214 255 / 12%);
 }
 
 /* Labels fade with the rail; kept out of layout flow width so text doesn't wrap */
@@ -56,13 +119,6 @@
     box-shadow: none;
     border-color: transparent;
     border-bottom-color: rgb(101 131 255 / 10%);
-}
-
-.logo {
-    font-size: 22px;
-    line-height: 1;
-    flex-shrink: 0;
-    animation: cp-orb-float 4s ease-in-out infinite;
 }
 
 .wordmark {
@@ -255,7 +311,7 @@
     box-shadow: 0 0 5px rgb(125 214 255 / 40%);
 }
 
-/* Rank footer (placeholder) */
+/* Rank footer — the player's own leaderboard standing */
 .rank {
     flex-shrink: 0;
     border-top: 1px solid rgb(101 131 255 / 10%);
@@ -298,12 +354,3 @@
     }
 }
 
-@keyframes cp-orb-float {
-    0%,
-    100% {
-        transform: translateY(0) rotate(0deg);
-    }
-    50% {
-        transform: translateY(-12px) rotate(4deg);
-    }
-}

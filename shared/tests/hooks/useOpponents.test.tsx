@@ -10,7 +10,7 @@ const auth = { isAuthenticated: true };
 vi.mock('../../src/contexts/ApiClientContext', () => ({ useApiClient: () => apiClient }));
 vi.mock('../../src/contexts/AuthContext', () => ({ useAuth: () => auth }));
 
-import { useOpponents } from '../../src/hooks/useOpponents';
+import { useOpponents } from '../../src/hooks/battle/useOpponents';
 
 const dto = {
     id: 'o1',

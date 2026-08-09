@@ -7,8 +7,8 @@ vi.mock('@typings/pregen', () => ({
     PREGEN_TTL_SEC: 60,
 }));
 
-// Reset the module between tests so each suite gets a fresh singleton store.
-import { getPregenStore } from '../../src/repositories/pregen.repository';
+// Reset the module between tests so each suite gets a fresh singleton store: every
+// test re-imports it dynamically below, after vi.resetModules().
 import type { PregenDialogue } from '../../src/types/pregen';
 
 const payload: PregenDialogue = {

@@ -82,48 +82,42 @@ const ParentCard: React.FC<{ pet: Pet | null; side: 'a' | 'b' }> = ({ pet, side 
 
     return (
         <div className={clsx(styles.parent, side === 'b' && styles.parentB)}>
-            <div className={styles.parentVisual}>
-                <div
-                    className={styles.parentRarity}
-                    style={{ color: rarityColor, borderColor: rarityColor }}
-                >
-                    {getRarityName(pet.rarity)}
-                </div>
-                <div className={styles.parentLevel}>Lv.{pet.level}</div>
-                {pet.breedCount != null && (
-                    <div className={styles.parentBred}>{pet.breedCount} bred</div>
-                )}
-                <span className={styles.parentAvatar}><PetArt pet={pet} /></span>
+            {/* Art fills the card, matching the battle page. The emoji class goes
+                on the glyph, not this wrapper: it carries a drop-shadow and an
+                animated transform, and either would become the containing block
+                for the filling image and pin it to the emoji's size. */}
+            <div className={styles.parentArt}>
+                <PetArt pet={pet} fill emojiClassName={styles.parentAvatar} />
             </div>
+            <div className={styles.parentScrim} aria-hidden />
+
+            <div
+                className={styles.parentRarity}
+                style={{ color: rarityColor, borderColor: rarityColor }}
+            >
+                {getRarityName(pet.rarity)}
+            </div>
+            <div className={styles.parentLevel}>Lv.{pet.level}</div>
+            {pet.breedCount != null && (
+                <div className={styles.parentBred}>{pet.breedCount} bred</div>
+            )}
 
             <div className={styles.parentBody}>
                 <div className={styles.parentName}>{pet.name}</div>
                 <div className={styles.parentClass}>{getPetClass(pet.dna)}</div>
 
+                {/* Tiles, not meters. These are raw DNA stats, not progress
+                    toward anything, so a filled track invited a reading the
+                    number does not support — there is no 100 to be 40% of. */}
                 <div className={styles.parentStats}>
-                    {STAT_ROWS.map((row) => {
-                        const value = props[row.key];
-                        return (
-                            <div className={styles.parentStat} key={row.label}>
-                                <span
-                                    className={styles.parentStatLabel}
-                                    style={{ color: row.color }}
-                                >
-                                    {row.label}
-                                </span>
-                                <span className={styles.parentStatValue}>{value}</span>
-                                <div className={styles.parentStatTrack}>
-                                    <div
-                                        className={styles.parentStatFill}
-                                        style={{
-                                            width: `${Math.min(100, value)}%`,
-                                            background: row.color,
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {STAT_ROWS.map((row) => (
+                        <div className={styles.parentStat} key={row.label}>
+                            <span className={styles.parentStatLabel} style={{ color: row.color }}>
+                                {row.label}
+                            </span>
+                            <span className={styles.parentStatValue}>{props[row.key]}</span>
+                        </div>
+                    ))}
                 </div>
 
                 <div className={styles.parentMeters}>

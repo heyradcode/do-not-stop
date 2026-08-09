@@ -6,9 +6,15 @@ name: Combat parity
 # `verifier`, and the three suites that actually replay the vectors were covered by
 # neither:
 #
-#   protocol          tests/combat/goldenVectors.test.ts   (the canonical TS engine)
-#   indexer-go        internal/combat/combat_golden_test.go (the independent Go port)
-#   contracts/ethereum test/XpFormula.test.ts               (the XP fixture)
+#   protocol          tests/combat/goldenVectors.test.ts    (the canonical TS engine)
+#   protocol          tests/combat/equipmentVectors.test.ts (gear, roadmap §4)
+#   services/indexer-go  internal/combat/combat_golden_test.go    (the independent Go port)
+#   services/indexer-go  internal/combat/equipment_golden_test.go (gear, the same file)
+#   contracts/ethereum test/XpFormula.test.ts                (the XP fixture)
+#
+# `equipment.json` is read by the two live ports only — the frozen Solana port predates
+# equipment and never applies it, so it is not a witness to that file. Its first case
+# reproduces a `battle.json` row, which is how an ungeared fight is proven unchanged.
 #
 # §F's circuit breaker only has value while the TS and Go ports are independent and both
 # match the vectors. A drift that CI never runs is a circuit breaker nobody armed.
@@ -84,19 +90,19 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: indexer-go/go.mod
-          cache-dependency-path: indexer-go/go.sum
+          go-version-file: services/indexer-go/go.mod
+          cache-dependency-path: services/indexer-go/go.sum
 
       - name: Vet
-        working-directory: indexer-go
+        working-directory: services/indexer-go
         run: go vet ./...
 
       # Unit tests only. The Postgres-backed tests are gated on TEST_DATABASE_URL and
       # truncate tables, so they are deliberately not given one here.
       - name: Test
-        working-directory: indexer-go
+        working-directory: services/indexer-go
         run: go test ./...
 
       - name: Build
-        working-directory: indexer-go
+        working-directory: services/indexer-go
         run: go build -o /dev/null ./cmd/indexer

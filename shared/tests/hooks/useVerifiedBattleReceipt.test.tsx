@@ -26,7 +26,7 @@ import { keccak_256 } from '@noble/hashes/sha3';
 const get = vi.hoisted(() => vi.fn());
 vi.mock('../../src/contexts/ApiClientContext', () => ({ useApiClient: () => ({ get, post: vi.fn() }) }));
 
-import { useVerifiedBattleReceipt } from '../../src/hooks/useVerifiedBattleReceipt';
+import { useVerifiedBattleReceipt } from '../../src/hooks/battle/useVerifiedBattleReceipt';
 
 /**
  * Real signatures, a real drand round, and the real combat engine throughout. The point of

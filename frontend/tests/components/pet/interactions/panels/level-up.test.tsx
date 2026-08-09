@@ -30,6 +30,8 @@ const capabilities = { levelUpFee: null as { amount: number; symbol: string } | 
 
 vi.mock('@shared/core', () => ({
     getPetAvatar: () => '🐉',
+    // No art service in these tests: PetArt renders the emoji alone.
+    petArtUrl: () => null,
     getPetClass: () => 'Warrior',
     getXpNumbers: () => ({ xpCurrent: 10, xpMax: 100 }),
     getXpPercent: () => 10,
@@ -57,11 +59,31 @@ beforeEach(() => {
     levelUpPet.isPending = false;
 });
 
+
+/**
+ * Picks a pet from `PetPicker`: every pet is a visible tile, so this is one click on the
+ * tile rather than opening anything.
+ */
+async function choosePet(name: string) {
+    await userEvent.click(screen.getByRole('radio', { name: new RegExp(name) }));
+}
+
 describe('LevelUpPanel', () => {
-    it('lists the ready pets as options', () => {
+    it('shows every ready pet as a tile, with no menu to open', () => {
         render(<LevelUpPanel />);
-        expect(screen.getByRole('option', { name: 'Alpha (Level 2)' })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: 'Beta (Level 5)' })).toBeInTheDocument();
+
+        expect(screen.getByRole('radio', { name: /Alpha/ })).toBeInTheDocument();
+        expect(screen.getByRole('radio', { name: /Beta/ })).toBeInTheDocument();
+        expect(screen.getByRole('radio', { name: /Lv 2/ })).toBeInTheDocument();
+        expect(screen.queryByRole('combobox')).toBeNull();
+    });
+
+    it('marks only the chosen pet as selected', async () => {
+        render(<LevelUpPanel />);
+        await choosePet('Beta');
+
+        expect(screen.getByRole('radio', { name: /Beta/ })).toBeChecked();
+        expect(screen.getByRole('radio', { name: /Alpha/ })).not.toBeChecked();
     });
 
     it('labels the button with the fee when one is configured', () => {
@@ -80,13 +102,13 @@ describe('LevelUpPanel', () => {
         const submit = screen.getByRole('button', { name: 'Level Up' });
         expect(submit).toBeDisabled();
 
-        await userEvent.selectOptions(screen.getByRole('combobox'), '2');
+        await choosePet('Beta');
         expect(submit).toBeEnabled();
     });
 
     it('submits the level-up mutation for the chosen pet', async () => {
         render(<LevelUpPanel />);
-        await userEvent.selectOptions(screen.getByRole('combobox'), '2');
+        await choosePet('Beta');
         await userEvent.click(screen.getByRole('button', { name: 'Level Up' }));
 
         expect(levelUpPet.reset).toHaveBeenCalled();

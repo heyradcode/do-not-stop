@@ -8,6 +8,14 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./GameConfig.sol";
 import "./DnaLib.sol";
 
+/// @dev Just the one view PetCore needs from ItemCore. Declared here rather than imported
+///      so the dependency stays one-directional at compile time: ItemCore already imports
+///      an ERC-721 interface to reach PetCore, and importing the real contract back would
+///      make the two mutually dependent for a single `view`.
+interface IItemCoreEquipment {
+    function equipmentOf(uint256 petId) external view returns (uint256[3] memory);
+}
+
 /**
  * @title PetCore
  * @dev UUPS-upgradeable ERC-721 that owns all pet data (DNA, stats, lineage, cooldowns).
@@ -29,6 +37,7 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     event CallerAuthorized(address indexed caller);
     event CallerRevoked(address indexed caller);
     event GameConfigUpdated(address config);
+    event ItemCoreUpdated(address indexed itemCore);
     event BaseTokenUriUpdated(string baseUri);
 
     /// @dev No battle record here. Win/loss counts and the same-opponent decay state
@@ -93,10 +102,15 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     // proxy behaves exactly as it did before the setter existed.
     string private _baseTokenUri;
 
-    // Reserve 41 slots: 9 declared above (through _baseTokenUri) + 41 gap = 50 for PetCore's scope.
+    /// @dev ItemCore, consulted on transfer so a geared pet cannot move. Zero disables the
+    ///      check, which is both the pre-inventory default and the escape hatch: a broken
+    ///      or wrongly-set ItemCore would otherwise make every pet permanently untradeable.
+    address public itemCore;
+
+    // Reserve 40 slots: 10 declared above (through itemCore) + 40 gap = 50 for PetCore's scope.
     // A new variable takes one slot off the gap rather than being appended after it,
     // which is what keeps every later contract's layout unchanged.
-    uint256[41] private __gap;
+    uint256[40] private __gap;
 
     // ─── modifiers ────────────────────────────────────────────────────────────
 
@@ -145,6 +159,23 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
         require(gameConfig_ != address(0), "Zero address");
         gameConfig = GameConfig(gameConfig_);
         emit GameConfigUpdated(gameConfig_);
+    }
+
+    /// @notice Point at ItemCore, which makes a geared pet untransferable until it is stripped.
+    ///
+    /// @dev    Zero is accepted, unlike setGameConfig's address, and that is the whole safety
+    ///         story here. This address gets called on every transfer, so an ItemCore that
+    ///         reverts — wrong address, a bad upgrade — would freeze every pet in the
+    ///         collection with no way out. Being able to unset it is that way out, and the
+    ///         cost of the escape hatch is that the guarantee is only as good as the owner,
+    ///         who could already replace this contract's implementation outright.
+    ///
+    ///         Setting it does not strand anything already equipped: gear predating this can
+    ///         still be unequipped normally, it just has to happen before a transfer instead
+    ///         of after one.
+    function setItemCore(address itemCore_) external onlyOwner {
+        itemCore = itemCore_;
+        emit ItemCoreUpdated(itemCore_);
     }
 
     /// @notice Point tokenURI at a metadata service. The token id is appended verbatim,
@@ -473,6 +504,24 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
         return string(abi.encodePacked(baseTokenUri(), _toString(tokenId)));
     }
 
+    /// @dev The single chokepoint for every transfer path — transferFrom, safeTransferFrom
+    ///      and anything built on them all route through here, which is why the equipment
+    ///      rule lives at this level rather than in a wrapper function a caller can skip.
+    ///
+    ///      Pets and items are separate assets, and enforcing that in the UI alone enforced
+    ///      nothing: a transferFrom sent straight to the contract handed over the pet's gear
+    ///      with it, silently, because equipped items are escrowed in ItemCore and paid out
+    ///      to whoever owns the pet at unequip time.
+    ///
+    ///      Blocking is deliberate, over auto-returning the gear to the sender. Returning it
+    ///      means an ERC-1155 transfer *inside* an ERC-721 transfer, and its acceptance
+    ///      callback would hand control to the sender mid-transfer — reentrancy on the one
+    ///      operation that must not be reentrant. Blocking needs no such call, costs an
+    ///      ungeared transfer three cold SLOADs, and leaves the choice with the owner.
+    ///
+    ///      Only real transfers are checked. `from == 0` is a mint, where no pet exists to
+    ///      have gear yet; there is no burn path in this contract, so a geared pet cannot be
+    ///      destroyed out from under its escrow either.
     function _beforeTokenTransfer(
         address from,
         address to,
@@ -480,8 +529,19 @@ contract PetCore is ERC721PausableUpgradeable, UUPSUpgradeable, OwnableUpgradeab
     ) internal override {
         super._beforeTokenTransfer(from, to, tokenId);
         if (from != address(0) && to != address(0)) {
+            require(!_hasEquipment(tokenId), "Unequip items before transferring");
             emit PetTransferred(tokenId, from, to);
         }
+    }
+
+    /// @dev False when no ItemCore is set, which is the pre-inventory state and the escape
+    ///      hatch described on setItemCore.
+    function _hasEquipment(uint256 tokenId) private view returns (bool) {
+        if (itemCore == address(0)) {
+            return false;
+        }
+        uint256[3] memory items = IItemCoreEquipment(itemCore).equipmentOf(tokenId);
+        return items[0] != 0 || items[1] != 0 || items[2] != 0;
     }
 
     // ─── internal helpers ─────────────────────────────────────────────────────

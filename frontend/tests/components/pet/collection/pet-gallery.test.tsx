@@ -48,6 +48,8 @@ vi.mock('@shared/core', () => ({
     getXpNumbers: () => ({ xpCurrent: 10, xpMax: 100 }),
     getXpPercent: () => 10,
     getPetAvatar: () => 'avatar',
+    // No art service in these tests: PetArt renders the emoji alone.
+    petArtUrl: () => null,
     getPetClass: () => 'Warrior',
     getPetProperties: () => ({ life: 5, attack: 6, defense: 7, intelligence: 8 }),
     getPetSkill: () => null,
@@ -55,6 +57,10 @@ vi.mock('@shared/core', () => ({
     getRarityName: () => 'Rare',
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
+    // No gear in these cases: an empty map is what a bare roster looks like, and the badges
+    // have their own suite.
+    usePetEquipmentForPets: () => ({ byPet: new Map(), isLoading: false, error: null, refetch: () => {} }),
+    itemArtUrl: () => null,
 }));
 
 import PetGallery from '@components/pet/collection/pet-gallery';

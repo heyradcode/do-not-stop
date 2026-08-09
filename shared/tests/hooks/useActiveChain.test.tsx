@@ -18,7 +18,7 @@ vi.mock('../../src/auth/solanaAuthStore', () => ({
     },
 }));
 
-import { useActiveChain } from '../../src/hooks/useActiveChain';
+import { useActiveChain } from '../../src/hooks/session/useActiveChain';
 
 beforeEach(() => {
     account.address = undefined;

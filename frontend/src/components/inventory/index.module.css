@@ -1,0 +1,375 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+
+   Inventory: a bag, grouped by what you can do with a thing.
+
+   The grouping is the design. Categories here are not a taxonomy laid over the items, they
+   are the set of available actions: a consumable has a button, equipment goes on a pet
+   somewhere else, a collectible does nothing. Sorted together, the screen's only real
+   question — what can I use right now — becomes the hardest one to answer.
+
+   Rarity is the one colour that carries meaning, and it comes from the same
+   `getRarityColor` the pet cards use, exposed per card as `--rarity`. Amber is the page's
+   own accent, matching the sidebar entry, and never competes with a rarity: the accent
+   belongs to the chrome, the rarity to the contents. */
+
+/* Ends at the bottom of the window rather than at the bottom of its rows, so a long bag
+   scrolls inside the panel instead of pushing the page. `height: 100%` rather than a flex
+   rule, for the reason the leaderboard's stylesheet spells out: the shell's content slot
+   is a scrollable block, so a `flex` declaration on the panel is inert. */
+.page {
+    height: 100%;
+}
+
+/* Same pill tabs the leaderboard uses, in the page's amber. Outside `.scroll` on purpose:
+   the tabs are chrome and stay put while the panel under them scrolls. */
+.tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-shrink: 0;
+}
+
+.tab {
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1px solid rgb(251 191 36 / 25%);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.tab:hover {
+    opacity: 1;
+}
+
+.tab:focus-visible {
+    outline: 2px solid rgb(251 191 36 / 85%);
+    outline-offset: 2px;
+}
+
+.tab.isActive {
+    opacity: 1;
+    border-color: rgb(251 191 36 / 60%);
+    background: rgb(251 191 36 / 12%);
+}
+
+/* The part that scrolls, and the reason the rule above is not enough on its own.
+   `.panel-body` is `overflow: hidden` so each page decides what scrolls rather than letting
+   a long list push the whole shell; a page that declares no scrolling region simply gets
+   clipped at the panel's edge with no way to reach the rest. That is what happened here —
+   the bag was short enough to fit until item art made the cards taller, and then everything
+   past the first rows became unreachable.
+
+   Everything scrolls together, including the pending strip and the pet picker: they are a
+   preamble to the bag, not chrome pinned around it, and freezing them would spend vertical
+   space that the items need on a screen already short enough to overflow. */
+.scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    /* Keeps the scrollbar off the cards' right edge without reserving a gutter when no
+       scrollbar is present. */
+    scrollbar-gutter: stable;
+    padding-right: 4px;
+}
+
+.sectionTitle {
+    margin: 18px 0 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(251 191 36 / 75%);
+}
+
+.grid {
+    display: grid;
+    /* Auto-fill rather than a fixed column count: the bag is as wide as the window allows,
+       and a fixed grid would leave a single potion stranded in a narrow column. */
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+/* An inventory slot: art with four corners on it — rarity, what it does, how many, and what
+   you can do with it. Everything else lives in the detail modal.
+
+   Stacking is load-bearing here. `.open` is a transparent button stretched across the slot so
+   the whole picture opens the modal; the corner controls sit above it so they stay clickable,
+   and the two read-only corners sit above the art but take no pointer events, or they would
+   swallow clicks meant for `.open`. */
+.tile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.slot {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 4px;
+    /* Reads as an empty slot rather than a gap when a deployment has no image service. */
+    background: rgb(5 13 30 / 55%);
+    overflow: hidden;
+    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+/* Rarity edges the whole slot here rather than striping it: at this size a 3px stripe under
+   four corner controls is lost, and the tile has no other border colour competing. */
+.slot {
+    border-color: color-mix(in srgb, var(--rarity, #ffffff) 34%, transparent);
+}
+
+.tile:hover .slot {
+    border-color: color-mix(in srgb, var(--rarity, #ffffff) 75%, transparent);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--rarity, #ffffff) 26%, transparent);
+    transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .slot,
+    .tile:hover .slot {
+        transform: none;
+    }
+}
+
+.open {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.open:focus-visible {
+    outline: 2px solid var(--cp-cyan, #7dd6ff);
+    outline-offset: -2px;
+}
+
+/* ── the four corners ───────────────────────────────────────────────────────── */
+
+.badge,
+.count {
+    position: absolute;
+    z-index: 2;
+    /* Above the art so they are legible, but transparent to the pointer: a click here means
+       "open this item", not "miss the button". */
+    pointer-events: none;
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: rgb(5 13 30 / 88%);
+    font-size: 0.62rem;
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+    text-transform: uppercase;
+}
+
+.badge {
+    top: 5px;
+    left: 5px;
+    border: 1px solid color-mix(in srgb, var(--rarity, #ffffff) 55%, transparent);
+    color: var(--rarity, inherit);
+    font-weight: 700;
+}
+
+.count {
+    bottom: 5px;
+    left: 5px;
+    border: 1px solid rgb(255 255 255 / 16%);
+    font-variant-numeric: tabular-nums;
+    /* Digits, not a label — the uppercasing above is for the badge. */
+    text-transform: none;
+    font-size: 0.7rem;
+}
+
+.help {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 3;
+    line-height: 0;
+}
+
+.slotAction {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    z-index: 3;
+    line-height: 0;
+}
+
+/* Which pet is wearing it, where a bag tile carries its stack count. Same corner, because
+   it answers the same question — "how much of this do I have here" versus "where is it". */
+.wornBy {
+    position: absolute;
+    left: 5px;
+    bottom: 5px;
+    right: 5px;
+    z-index: 2;
+    pointer-events: none;
+    padding: 1px 6px;
+    border: 1px solid rgb(125 214 255 / 30%);
+    border-radius: 2px;
+    background: rgb(5 13 30 / 90%);
+    color: var(--cp-cyan, #7dd6ff);
+    font-size: 0.66rem;
+    line-height: 1.5;
+    /* A long pet name must not push the chip out of the tile. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Square, to the "?" circle's round: one acts on the item, the other explains it. */
+.slotButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    padding: 0;
+    border: 1px solid rgb(255 181 67 / 55%);
+    border-radius: 2px;
+    background: rgb(5 13 30 / 88%);
+    color: var(--cp-amber, #ffcf70);
+    cursor: pointer;
+    box-shadow: inset 0 0 8px rgb(255 181 67 / 16%), 0 0 8px rgb(255 181 67 / 22%);
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.slotButton:hover:not(:disabled) {
+    border-color: rgb(255 181 67 / 90%);
+    box-shadow: inset 0 0 12px rgb(255 181 67 / 26%), 0 0 14px rgb(255 181 67 / 42%);
+}
+
+.slotButton:focus-visible {
+    outline: 2px solid rgb(255 181 67 / 85%);
+    outline-offset: 2px;
+}
+
+.slotButton:disabled {
+    opacity: 0.4;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+/* Two lines, then ellipsis. The name is the only text below the slot, so one line would make
+   several items indistinguishable while unbounded would leave the rows ragged. */
+.tileTitle {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    padding: 0 2px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+/* ─── pending claims ──────────────────────────────────────────────────────────
+   Above the bag and visually distinct from it, because these are not items yet.
+   Claiming is what mints them, and until it lands there is nothing on chain to spend. */
+
+.pending {
+    padding: 12px 14px;
+    border: 1px dashed rgb(251 191 36 / 35%);
+    border-radius: 12px;
+    background: rgb(251 191 36 / 6%);
+}
+
+.pending .sectionTitle {
+    margin-top: 0;
+}
+
+.pendingList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pendingRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.pendingDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.pendingName {
+    font-size: 0.88rem;
+}
+
+.pendingSource {
+    font-size: 0.72rem;
+    opacity: 0.5;
+    /* Pushes the button to the far edge without a spacer element. */
+    margin-right: auto;
+}
+
+.claim {
+    padding: 4px 14px;
+    border-radius: 999px;
+    border: 1px solid rgb(251 191 36 / 50%);
+    background: rgb(251 191 36 / 15%);
+    color: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.claim:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ─── chrome ─────────────────────────────────────────────────────────────────── */
+
+/* The control is <PetSelect>, which brings its own look — the rules that used to style a
+   native <select> here are gone with it. This only lays the row out and bounds the width, so
+   a long pet name does not stretch the picker across the whole panel. */
+.petPicker {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+    font-size: 0.82rem;
+}
+
+.petPickerLabel {
+    opacity: 0.6;
+}
+
+.petPicker > *:last-child {
+    flex: 0 1 220px;
+    min-width: 0;
+}
+
+.muted {
+    margin-top: 24px;
+    opacity: 0.6;
+    font-size: 0.9rem;
+}
+
+.error {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgb(248 113 113 / 35%);
+    background: rgb(248 113 113 / 10%);
+    font-size: 0.85rem;
+}

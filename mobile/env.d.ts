@@ -22,4 +22,10 @@ declare module '@env' {
     export const CRYPTOPETS_PROGRAM_ID: string | undefined;
     /** Optional custom RPC; default is public Solana devnet if unset. */
     export const CRYPTOPETS_SOLANA_RPC: string | undefined;
+    /**
+     * Pet art service (image-generator), same as frontend `VITE_IMAGE_SERVICE_URL`.
+     * Optional: leave unset and pets keep their emoji avatars. A phone cannot
+     * reach `localhost`, so use your machine's LAN IP for a local service.
+     */
+    export const IMAGE_SERVICE_URL: string | undefined;
 }

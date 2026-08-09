@@ -24,21 +24,47 @@ export function serializeRuleset(ruleset: Ruleset): string {
     for (const field of SKILL_CONFIG_FIELDS) {
         skillConfig[field] = checked.skillConfig[field];
     }
-    return `${JSON.stringify(
-        {
-            version: checked.version,
-            engineId: checked.engineId,
-            engineVersion: checked.engineVersion,
-            maxRounds: checked.maxRounds,
-            maxLevel: checked.maxLevel,
-            skillConfig,
-        },
-        null,
-        2,
-    )}\n`;
+    const document: Record<string, unknown> = {
+        version: checked.version,
+        engineId: checked.engineId,
+        engineVersion: checked.engineVersion,
+        maxRounds: checked.maxRounds,
+        maxLevel: checked.maxLevel,
+        skillConfig,
+    };
+
+    // Emitted only from version 2 on, so a bundle published before the item catalog
+    // existed serializes byte-identically to how it always did. Item types are decimal
+    // strings: a uint256 does not survive JSON's number type, and a bundle that lost
+    // precision on an id would name the wrong item.
+    if ((checked.schemaVersion ?? 1) >= 2) {
+        document.schemaVersion = checked.schemaVersion;
+        document.itemCatalog = (checked.itemCatalog ?? []).map((item) => ({
+            itemType: item.itemType.toString(),
+            slot: item.slot,
+            hp: item.hp,
+            atk: item.atk,
+            def: item.def,
+            int: item.int,
+            mdef: item.mdef,
+        }));
+    }
+
+    return `${JSON.stringify(document, null, 2)}\n`;
 }
 
-const RULESET_KEYS = ['version', 'engineId', 'engineVersion', 'maxRounds', 'maxLevel', 'skillConfig'] as const;
+const RULESET_KEYS = [
+    'version',
+    'engineId',
+    'engineVersion',
+    'maxRounds',
+    'maxLevel',
+    'skillConfig',
+    'itemCatalog',
+    'schemaVersion',
+] as const;
+
+const ITEM_KEYS = ['itemType', 'slot', 'hp', 'atk', 'def', 'int', 'mdef'] as const;
 
 /**
  * Parses a published bundle.
@@ -74,7 +100,30 @@ export function parseRulesetBundle(json: string): Ruleset {
         }
     }
 
-    return assertRuleset(record as unknown as Ruleset);
+    // Item types come back as decimal strings; `assertRuleset` wants bigints, and doing the
+    // conversion here keeps the JSON transport detail out of the validator.
+    const parsedCatalog = Array.isArray(record.itemCatalog)
+        ? record.itemCatalog.map((entry, index) => {
+              if (typeof entry !== 'object' || entry === null) {
+                  throw new Error(`ruleset bundle itemCatalog[${index}] is not an object`);
+              }
+              const item = entry as Record<string, unknown>;
+              const unexpectedItemKeys = Object.keys(item).filter((key) => !ITEM_KEYS.includes(key as never));
+              if (unexpectedItemKeys.length > 0) {
+                  throw new Error(
+                      `ruleset bundle itemCatalog[${index}] has unexpected keys: ${unexpectedItemKeys.join(', ')}`,
+                  );
+              }
+              if (typeof item.itemType !== 'string' || !/^[0-9]+$/.test(item.itemType)) {
+                  throw new Error(
+                      `ruleset bundle itemCatalog[${index}].itemType must be a decimal string, got ${JSON.stringify(item.itemType)}`,
+                  );
+              }
+              return { ...item, itemType: BigInt(item.itemType) };
+          })
+        : record.itemCatalog;
+
+    return assertRuleset({ ...record, itemCatalog: parsedCatalog } as unknown as Ruleset);
 }
 
 /**

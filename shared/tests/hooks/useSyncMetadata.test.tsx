@@ -12,7 +12,7 @@ const actions = { syncMetadata };
 
 let activeKind: string = 'solana';
 
-vi.mock('../../src/hooks/useChainCapabilities', () => ({
+vi.mock('../../src/hooks/session/useChainCapabilities', () => ({
     useChainCapabilities: () => ({ activeKind }),
 }));
 vi.mock('../../src/hooks/chains/solana/usePetActions', () => ({
@@ -23,11 +23,11 @@ const testPets = [
     { id: '5', assetKey: 'asset-key-5', name: 'LeveledUp' },
     { id: '7', assetKey: undefined, name: 'NoKey' },
 ];
-vi.mock('../../src/hooks/usePetList', () => ({
+vi.mock('../../src/hooks/pets/usePetList', () => ({
     usePetList: () => ({ pets: testPets }),
 }));
 
-import { useSyncMetadata } from '../../src/hooks/useSyncMetadata';
+import { useSyncMetadata } from '../../src/hooks/pets/useSyncMetadata';
 
 beforeEach(() => {
     vi.clearAllMocks();

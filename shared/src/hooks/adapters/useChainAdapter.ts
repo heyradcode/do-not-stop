@@ -1,4 +1,4 @@
-import { useActiveChain } from '../useActiveChain';
+import { useActiveChain } from '../session/useActiveChain';
 import { useEvmAdapter } from './useEvmAdapter';
 import { useSolanaAdapter } from './useSolanaAdapter';
 import { noneAdapter } from './noneAdapter';

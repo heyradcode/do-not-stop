@@ -1,4 +1,4 @@
-export { useNonce } from '../../useNonce';
+export { useNonce } from '../../session/useNonce';
 export { useVerifySignature, setTokenSuccessCallback } from './useVerifySignature';
 export { usePetsContract } from './usePetsContract';
 export type { Pet } from './usePetsContract';

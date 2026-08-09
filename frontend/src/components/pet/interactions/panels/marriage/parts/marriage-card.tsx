@@ -7,6 +7,7 @@ import {
     type PetChain,
 } from '@shared/core';
 import { AuthActionButton } from '@components/common';
+import PetArt from '@components/pet/pet-art';
 import styles from '../index.module.css';
 
 type MarriageCardProps = {
@@ -37,21 +38,36 @@ const MarriageCard: React.FC<MarriageCardProps> = ({ pet, chain, petById, onDivo
     return (
         <li className={styles.card}>
             <div className={styles.pair}>
-                <div className={styles.partner}>
-                    <span className={styles.partnerName}>{pet.name}</span>
-                    <span className={styles.partnerMeta}>
-                        #{pet.id} · Lv {pet.level}
+                <div className={styles.partnerSide}>
+                    <span className={styles.partnerArt} aria-hidden>
+                        <PetArt pet={pet} />
                     </span>
+                    <div className={styles.partner}>
+                        <span className={styles.partnerName}>{pet.name}</span>
+                        <span className={styles.partnerMeta}>
+                            #{pet.id} · Lv {pet.level}
+                        </span>
+                    </div>
                 </div>
                 <span className={styles.heart} aria-hidden>
                     ❤
                 </span>
-                <div className={styles.partner}>
-                    <span className={styles.partnerName}>{spouseName}</span>
-                    <span className={styles.partnerMeta}>
-                        #{spouseId}
-                        {spouseLevel != null ? ` · Lv ${spouseLevel}` : ''}
-                    </span>
+                <div className={styles.partnerSide}>
+                    {/* Only the roster carries the spouse's dna, and so its art. The
+                        single-pet fallback below returns a name and a level, which is
+                        enough to identify the marriage but not to draw the pet. */}
+                    {fromMap && (
+                        <span className={styles.partnerArt} aria-hidden>
+                            <PetArt pet={fromMap} />
+                        </span>
+                    )}
+                    <div className={styles.partner}>
+                        <span className={styles.partnerName}>{spouseName}</span>
+                        <span className={styles.partnerMeta}>
+                            #{spouseId}
+                            {spouseLevel != null ? ` · Lv ${spouseLevel}` : ''}
+                        </span>
+                    </div>
                 </div>
             </div>
             <AuthActionButton

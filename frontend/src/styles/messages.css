@@ -25,13 +25,30 @@
 }
 
 /* Loading / error states — shared across views (gallery, interaction panels). */
+
+/* Centring the *contents* is not enough: this box only ever grew to fit its spinner, so
+   it sat at the top of whatever contained it and the spinner appeared near the header
+   rather than in the middle of the screen.
+
+   Two rules, because the parents differ. Panel bodies are flex columns and honour `flex`,
+   which takes the leftover space below any header or tab row. The shell's content slot,
+   where the router's Suspense fallback renders, is a scrollable *block* — `flex` is inert
+   there and only a percentage resolves. The percentage is scoped to `:only-child` so it
+   cannot stack its own full height beside a sibling (the leaderboard's tabs) and overflow
+   the panel. */
 .loading-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    flex: 1 1 auto;
     padding: var(--cp-spacing-2xl);
     color: var(--cp-color-text-muted);
+}
+
+.loading-container:only-child {
+    min-height: 100%;
+    box-sizing: border-box;
 }
 
 .loading-spinner {

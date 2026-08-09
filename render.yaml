@@ -39,7 +39,7 @@ services:
       - key: INDEXER_GRPC_ADDR
         value: ""
 
-  # indexer-go: unified cross-chain indexer (see indexer-go/README.md).
+  # indexer-go: unified cross-chain indexer (see services/indexer-go/README.md).
   # Deployed as a web service (not a worker) so it stays on the free plan —
   # /healthz answers Render's checks and /metrics rides the same port via the
   # PORT env convention. Trade-off: free web services sleep when idle; the
@@ -60,10 +60,57 @@ services:
     name: do-not-stop-indexer
     runtime: go
     plan: free
-    rootDir: indexer-go
+    rootDir: services/indexer-go
     buildCommand: go build -o bin/indexer ./cmd/indexer
     startCommand: ./bin/indexer
     healthCheckPath: /healthz
     envVars:
       - key: LOG_FORMAT
         value: json
+
+  # image-generator: pet NFT art (see services/image-generator/README.md).
+  #
+  # rootDir is the whole story here: this package is NOT a pnpm workspace member
+  # and keeps its own lockfile, so --ignore-workspace stops the install walking
+  # up to the monorepo root and installing that instead, which would leave this
+  # service with no node_modules.
+  #
+  # Art is optional by construction: leave VITE_IMAGE_SERVICE_URL unset on the
+  # frontend, or let this service sleep, and pets fall back to emoji avatars.
+  # Nothing else degrades.
+  - type: web
+    name: do-not-stop-image-generator
+    runtime: node
+    plan: free
+    rootDir: services/image-generator
+    # Do not set NODE_ENV=production here — it skips the TypeScript
+    # devDependency the build needs. Same corepack workaround as the API service
+    # above: install a standalone pnpm rather than touching the read-only shim.
+    buildCommand: |
+      export PNPM_PREFIX="$HOME/.npm-global"
+      export PATH="$PNPM_PREFIX/bin:$PATH"
+      npm install -g --prefix "$PNPM_PREFIX" pnpm@9.15.9
+      pnpm install --ignore-workspace --frozen-lockfile && pnpm build
+    startCommand: node dist/main.js
+    # /health, not /ready: /ready calls out to R2 and every chain RPC, so wiring
+    # the platform probe to it lets an upstream blip cycle a healthy service.
+    # Check /ready yourself once after deploying instead.
+    healthCheckPath: /health
+    envVars:
+      # Must match this service's own URL, or metadata hands marketplaces
+      # image links that 404. Pinned rather than sync:false because a forgotten
+      # value here fails silently: the service boots, serves images, and only
+      # the metadata links are wrong. Change it if the service is renamed or
+      # moves to a custom domain.
+      - key: PUBLIC_BASE_URL
+        value: https://do-not-stop-image-generator.onrender.com
+      # r2, not filesystem: free web services sleep when idle, and a service
+      # that slept on local disk wakes up and regenerates art every pet owner
+      # has already seen. Generated art must survive the instance.
+      - key: IMAGE_STORE
+        value: r2
+      # Set in the dashboard, not here: CF_ACCOUNT_ID, CF_API_TOKEN, R2_BUCKET,
+      # R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, EVM_RPC_URL, PETCORE_ADDRESS,
+      # and SOLANA_RPC_URL + SOLANA_PROGRAM_ID together if serving Solana pets.
+      # Note the Solana lookup uses getProgramAccounts, which some hosted
+      # providers disable.

@@ -2,7 +2,10 @@ import { type BattleReceipt, hashBattleReceipt, type Hex } from '@cryptopets/pro
 
 import type { SignedReceiptEnvelope, TrustedSigningKey } from '../../src/io/types';
 
-import { buildReceipt, envelopeFor, FORGED_BEACON, testTrustedKey } from './signedReceipt';
+import { buildReceipt, envelopeFor, FORGED_BEACON, testTrustedKey,
+    GEARED_RULESET,
+    gearedSnapshot,
+} from './signedReceipt';
 
 /**
  * The committed regression corpus (§H item 3's export shape, used here as a fixture).
@@ -48,11 +51,19 @@ function buildChain(tamperAt?: number): BattleReceipt[] {
             ...(createdAt === undefined ? {} : { createdAt }),
         };
 
-        const receipt = index === tamperAt ? tamper(links) : buildReceipt(links);
+        // The last receipt is geared, under a ruleset that prices what it wears (roadmap
+        // §4). Appended rather than swapped in: the earlier receipts stay ungeared under
+        // the original ruleset, so this corpus keeps proving that battles signed before
+        // equipment existed still verify.
+        const geared =
+            index === CORPUS_SIZE - 1
+                ? { snapshot: gearedSnapshot(), ruleset: GEARED_RULESET }
+                : {};
+        const receipt = index === tamperAt ? tamper({ ...links, ...geared }) : buildReceipt({ ...links, ...geared });
         receipts.push(receipt);
         // Deliberately the *honest* hash: a chain built on the tampered receipt's own hash
         // would be internally consistent again, which is the opposite of the fixture's job.
-        previousReceiptHash = hashBattleReceipt(buildReceipt(links));
+        previousReceiptHash = hashBattleReceipt(buildReceipt({ ...links, ...geared }));
         createdAt = receipt.createdAt + 1;
     }
 

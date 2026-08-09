@@ -2,37 +2,93 @@ import React from 'react';
 import clsx from 'clsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import Icon, { DragonIcon } from '@components/ui/icon';
+import { useChainCapabilities, usePlayerRank } from '@shared/core';
+
+import Icon, { PinFilledIcon, PinIcon } from '@components/ui/icon';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
+import { useSidebarPin } from '@hooks/useSidebarPin';
 import { NAV_ITEMS } from './nav-items';
 import styles from './index.module.css';
 
 /**
- * Collapsible left navigation for the app shell. Collapsed to an icon rail by
- * default; expands on hover / keyboard focus (CSS-driven). Nav items drive the
- * existing router so deep-links keep working; the logo returns to the gallery.
+ * The player's own standing, from the leaderboard the sidebar links to.
  *
- * Daily Quests and the rank footer are static placeholders pending real data
- * (see FRONTEND_REDESIGN_PLAN.md §8 Q3).
+ * Its own component so the sidebar itself stays free of data fetching, and so the
+ * hook is not called on every re-render of a nav item.
+ *
+ * Three states, all real: a rank, unranked (connected but no pet has fought), and
+ * nothing at all while it loads or before a session exists. The last one renders
+ * no footer rather than a zero, which would be indistinguishable from a genuine
+ * last place.
+ */
+const RankFooter: React.FC = () => {
+    const { activeKind } = useChainCapabilities();
+    const { rank, isLoading } = usePlayerRank(activeKind);
+
+    if (isLoading) return null;
+
+    return (
+        <div className={styles.rank}>
+            <span className={styles.rankIcon} aria-hidden>
+                🏆
+            </span>
+            <div className={styles.rankCopy}>
+                <div className={styles.rankTitle}>
+                    {rank ? `RANK #${rank.rank} GLOBAL` : 'UNRANKED'}
+                </div>
+                <div className={styles.rankSub}>
+                    {rank
+                        ? `${rank.winCount} Total Win${rank.winCount === 1 ? '' : 's'}`
+                        : 'Win a battle to enter the board'}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/**
+ * Collapsible left navigation for the app shell. Collapsed to an icon rail by
+ * default; expands on hover / keyboard focus (CSS-driven), or stays open when
+ * pinned. Nav items drive the existing router so deep-links keep working; the
+ * logo returns to the gallery.
+ *
+ * Daily Quests is still a static placeholder pending real data
+ * (see FRONTEND_REDESIGN_PLAN.md §8 Q3); the rank footer is live.
  */
 const Sidebar: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const currentPath = location.pathname.replace(/\/$/, '') || '/';
+    const { pinned, toggle } = useSidebarPin();
 
     return (
-        <nav className={styles.sidebar} aria-label="Primary">
-            <button
-                type="button"
-                className={styles.brand}
-                onClick={() => navigate(DASHBOARD_HOME)}
-                aria-label="Crypto Pets home"
-            >
-                <span className={styles.logo} aria-hidden>
-                    <Icon as={DragonIcon} tone="violet" glow="strong" noGap />
-                </span>
-                <span className={styles.wordmark}>CRYPTOPETS</span>
-            </button>
+        <nav
+            className={clsx(styles.sidebar, pinned && styles.isPinned)}
+            aria-label="Primary"
+        >
+            <div className={styles.brandRow}>
+                <button
+                    type="button"
+                    className={styles.brand}
+                    onClick={() => navigate(DASHBOARD_HOME)}
+                    aria-label="Crypto Pets home"
+                >
+                    <span className={styles.wordmark}>CRYPTOPETS</span>
+                </button>
+
+                {/* aria-pressed rather than a label that flips: the control is the
+                    same control either way, and its state is what changes. */}
+                <button
+                    type="button"
+                    className={styles.pin}
+                    onClick={toggle}
+                    aria-pressed={pinned}
+                    aria-label="Keep sidebar open"
+                    title={pinned ? 'Unpin sidebar' : 'Pin sidebar open'}
+                >
+                    <Icon as={pinned ? PinFilledIcon : PinIcon} tone="cyan" glow="none" noGap />
+                </button>
+            </div>
 
             <div className={styles.nav}>
                 {NAV_ITEMS.map((item) => {
@@ -98,16 +154,7 @@ const Sidebar: React.FC = () => {
                 </ul>
             </div>
 
-            {/* Placeholder — global rank footer (pending leaderboard data) */}
-            <div className={styles.rank}>
-                <span className={styles.rankIcon} aria-hidden>
-                    🏆
-                </span>
-                <div className={styles.rankCopy}>
-                    <div className={styles.rankTitle}>RANK #3 GLOBAL</div>
-                    <div className={styles.rankSub}>649 Total Wins</div>
-                </div>
-            </div>
+            <RankFooter />
         </nav>
     );
 };

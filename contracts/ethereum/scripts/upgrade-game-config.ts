@@ -27,7 +27,7 @@ import { join } from 'path';
 import { createPublicClient, createWalletClient, http, type Chain } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia, baseSepolia } from 'viem/chains';
-import { getNetwork, resolveRpcUrl } from './networks.js';
+import { getNetwork, resolveDeploymentDir, resolveRpcUrl } from './networks.js';
 
 function loadArtifact(name: string): { abi: unknown[]; bytecode: `0x${string}` } {
     return JSON.parse(
@@ -69,8 +69,9 @@ if (!pk) {
 }
 const account = privateKeyToAccount((pk.startsWith('0x') ? pk : `0x${pk}`) as `0x${string}`);
 
+const deploymentDir = resolveDeploymentDir(network);
 const deployedAddressesPath = join(
-    process.cwd(), 'ignition', 'deployments', `chain-${network.chainId}`, 'deployed_addresses.json',
+    process.cwd(), 'ignition', 'deployments', deploymentDir, 'deployed_addresses.json',
 );
 const deployedAddresses = JSON.parse(readFileSync(deployedAddressesPath, 'utf8')) as Record<string, string>;
 const oldConfigAddress  = deployedAddresses['CryptoPetsV2Live#GameConfig'] as `0x${string}` | undefined;
@@ -159,7 +160,7 @@ async function main() {
 
     console.log(
         `\nDone. GameLogicProxy (${gameLogicProxy}) and PetCoreProxy (${petCoreProxy}) both now ` +
-        `point at GameConfig ${newConfigAddress}. Update ignition/deployments/chain-${network!.chainId}` +
+        `point at GameConfig ${newConfigAddress}. Update ignition/deployments/${deploymentDir}` +
         `/deployed_addresses.json's "CryptoPetsV2Live#GameConfig" entry to match (informational only — ` +
         `nothing reads it at runtime, but scripts here do).`,
     );

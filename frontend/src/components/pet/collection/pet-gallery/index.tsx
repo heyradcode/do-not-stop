@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import clsx from 'clsx';
+import { useChainCapabilities, usePetEquipmentForPets } from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { CloseIcon, PawIcon } from '@components/ui/icon';
 import NeonButton from '@components/ui/neon-button';
@@ -36,6 +37,17 @@ const PetGallery: React.FC = () => {
         onOpenCreateModal,
         onCloseCreateModal,
     } = usePetGallery();
+
+    /**
+     * Gear for the whole grid in one request.
+     *
+     * Batched rather than per card: a roster of twenty pets would otherwise be twenty
+     * queries fired the moment the gallery mounts.
+     */
+    const { activeKind: chain } = useChainCapabilities();
+    const petIds = useMemo(() => pets.map((pet) => String(pet.id)), [pets]);
+    const { byPet: equippedByPet } = usePetEquipmentForPets({ chain, petIds });
+
 
     if (!isConnected) {
         return (
@@ -122,6 +134,7 @@ const PetGallery: React.FC = () => {
                             key={`${pet.chain}-${pet.id}`}
                             pet={pet}
                             cooldown={statusFor(pet)}
+                            equipped={equippedByPet.get(String(pet.id))}
                             onBattle={() => onBattle(pet)}
                             onSendClick={() => onSendClick(pet)}
                         />

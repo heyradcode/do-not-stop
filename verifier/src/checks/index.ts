@@ -13,6 +13,7 @@
 export { checkBeaconSignature } from './beaconSignature';
 export { checkChainContinuity } from './chainContinuity';
 export { checkCombatReplay } from './combatReplay';
+export { checkEquipment, equipmentBonus } from './equipment';
 export { checkOperatorSignature } from './operatorSignature';
 export { checkProgression } from './progression';
 export { checkSeedDerivation } from './seedDerivation';

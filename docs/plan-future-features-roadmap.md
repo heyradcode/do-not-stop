@@ -7,19 +7,41 @@ NFTs, agentic AI pets, and ERC20 tokenomics — listed here in the recommended d
 (see below), which is also the order the sections appear in below. Each section sketches where
 the feature lands in the existing architecture, what new data model it needs, and the open
 decisions a human should make before implementation starts. Nothing here is committed to; treat
-it as a starting point for per-feature implementation plans in the style of
-`plan-realtime-battle-impl.md`.
+it as a starting point for per-feature implementation plans.
 
 Grounded against the repo as of this writing: `backend/prisma/schema.prisma` (existing
 `PetRoster`, `BattleHistory`, `BattleRoom`, `BattleDialogue`, `BattleConversation` models),
 `shared/src/hooks/adapters/types.ts` (the `ChainAdapter` interface), `contracts/ethereum/src/`
 (`PetCore.sol`, `GameLogic.sol`, `GameConfig.sol`, `CombatSim.sol`, `DnaLib.sol`),
 `backend/src/ws/liveBattleSocket.ts` (the one existing WebSocket channel), and
-`indexer-go/internal/`. No inventory, marketplace, token, quest, or chat surface exists yet on
+`services/indexer-go/internal/`. No inventory, marketplace, token, quest, or chat surface exists yet on
 either chain or in the backend — all eleven features are net-new, not extensions of something
 half-built. Two doc comments in `schema.prisma` reference `PVP_BATTLE.md` and
 `AI_BATTLE_DIALOGUE.md` as design docs; neither file exists in the repo today, so treat those
 names as historical pointers, not sources to read.
+
+> **The paragraph above has aged out in five specific ways.** It is kept as written, since
+> the sections below were reasoned from it, but check each of these before building on it:
+>
+> - **`CombatSim.sol` is deleted.** It had no on-chain caller left once battles moved to the
+>   backend. `contracts/ethereum/src/` now holds `PetCore`, `GameLogic`, `GameConfig`,
+>   `DnaLib`, `TestDeployer`, plus `BattleBatchRegistry`, `SeasonRewardDistributor`,
+>   `CryptoPetsToken` and `MockERC20`.
+> - **`liveBattleSocket.ts` is gone, and it is no longer "the one channel".** There are two:
+>   `battleRoomSocket.ts` (§J battle notifications) and `chatSocket.ts` (§2 chat), both
+>   behind one upgrade listener (`ws/channel.ts`) — a `WebSocketServer` per channel on the
+>   same HTTP server handles every connection twice. The battle room is unauthenticated,
+>   which is safe only because its frames carry nothing readable; chat is authenticated.
+>   §2's assumption that an authenticated socket already existed to reuse was wrong, so one
+>   had to be built.
+> - **A chat surface now exists** (§2 v1, built). So does a **token**: `CryptoPetsToken.sol`
+>   is a deployed-ready fixed-supply ERC20 (CPET) that funds `SeasonRewardDistributor` under
+>   the battle protocol's §I. That materially narrows §11 — see the note there.
+> - **The Node `RosterIndexer` is deleted.** `indexer-go` is the only writer of `pet_roster`,
+>   so the "mirror path in the backend's Node `RosterIndexer`" in the indexer-extension
+>   pattern below no longer exists and a new asset type needs one adapter, not two.
+> - **Two of the eleven features are built** (§1 leaderboard, §2 chat) and a third is partly
+>   built (§3), on top of §9 which was always out of order. Each carries its own banner.
 
 ## Cross-cutting architecture, established once so each feature section doesn't repeat it
 
@@ -29,7 +51,7 @@ names as historical pointers, not sources to read.
 new files must carry the license header matching whichever package they land in.
 
 **The chain-parity discipline extends past combat.** `CombatSim.sol` / `combat.rs` /
-`indexer-go/internal/combat` / `protocol/src/combat` are kept in sync today via golden
+`services/indexer-go/internal/combat` / `protocol/src/combat` are kept in sync today via golden
 vectors (`contracts/test-vectors/{battle,xp}.json`). Any new feature that (a) computes a
 deterministic on-chain outcome and (b) needs a client-side TypeScript port for animation or
 preview inherits the same obligation: if team battles or story-chapter unlocks get a TS replay
@@ -38,10 +60,10 @@ stay server/backend-computed (leaderboard ranking, quest progress) don't need th
 give something a TS port if the client actually needs to simulate it before the chain confirms.
 
 **Combat authority is moving off-chain, and that reshapes several features below.**
-`docs/plan-backend-battle-architecture.md` is the accepted architecture for battle execution: the
+`docs/battle-protocol.md` is the accepted architecture for battle execution: the
 backend resolves fights from a frozen snapshot against a versioned ruleset, seeds them from a
-pre-committed drand round, and publishes signed receipts anyone can replay
-(`docs/plan-backend-battle-steps.md` sequences the work). Two consequences for this doc. First, a
+pre-committed drand round, and publishes signed receipts anyone can replay. Two consequences
+for this doc. First, a
 *new* combat mechanic is built once, in the canonical TypeScript engine (`protocol/src/combat/`,
 moved out of `shared/src/utils/combat/` into the MIT `protocol` package), with the Go port
 acting as an independent pre-signing verifier rather than a fourth hand-maintained implementation.
@@ -61,10 +83,19 @@ template a new battle mode should copy.
 **Indexer extension pattern.** Every existing on-chain asset type (`PetRoster`, `BattleHistory`)
 follows the same shape: a `(chain, id)` composite primary key, a monotonic `lastVersion` /
 `version` column the upsert guards on (`WHERE last_version <= EXCLUDED.last_version`), and a
-`ChainIndexer`-conforming adapter in `indexer-go/internal/{evm,solana}` plus a mirror path in the
+`ChainIndexer`-conforming adapter in `services/indexer-go/internal/{evm,solana}` plus a mirror path in the
 backend's Node `RosterIndexer`. Items, marketplace listings, and token transfers are all new asset
 types — each needs a new Prisma table shaped this way and a new case in both indexers, not a
 bolt-on to `PetRoster`.
+
+> Correction: **there is no second indexer to mirror into.** The Node `RosterIndexer` was
+> deleted and `indexer-go` is the sole writer of `pet_roster`, so a new asset type needs one
+> adapter, not two. `BattleHistory` is also no longer an indexed type — the backend writes it
+> from its own signed receipts — so `PetRoster` is the only live example of this pattern.
+> Two things about it are worth copying deliberately rather than by habit: the version guard
+> discards a *lower*-versioned write, which is what makes a chain rollback leave a stale row
+> in place (see §3), and on Solana the source version is a slot read at the configured
+> commitment, which is why that setting is `finalized` rather than `confirmed`.
 
 **`ChainAdapter` stays pet-action-only.** Per `AGENTS.md`, `shared/src/hooks/adapters/types.ts`
 is a real, narrow interface (`createPet`, `levelUpPet`, `trainPet`, `renamePet`, `transferPet`,
@@ -79,9 +110,11 @@ what to build first, section 11 is what to build last.
 
 *Tier 1 — ship immediately.* Near-zero new infrastructure, no contract work on either chain,
 nothing else in this doc needs to exist first.
-1. **Leaderboard** — `PetRoster.winCount`/`lossCount` already exist.
-2. **Social chat** — reuses the existing WebSocket channel and JWT auth; v1 scope is gated by the
-   marriage feature that's already shipped.
+1. **Leaderboard** — **Built; see §1.** Ranked on the merged battle record, not on
+   `PetRoster.winCount`/`lossCount` as this line originally assumed: those froze when
+   battles left the chain.
+2. **Social chat** — **Built (v1); see §2.** It did not reuse an authenticated socket, because
+   there was none to reuse; the channel it added is notification-only for that reason.
 
 *Tier 2 — foundation.* Harden what's shipped and build the systems everything else leans on.
 3. **Indexing hardening** — everything downstream trusts the indexer more once this lands.
@@ -191,7 +224,7 @@ Reading the graph:
   is itself part of the ruleset hash, and a receipt shape that survives replay. Authorization,
   snapshots, seed derivation, signer scope, and reward aggregation are all security-sensitive here.
   Treat this as a feature that inherits the full backend battle threat model
-  (`docs/threat-model-backend-battles.md`), not as a loop around a proven function.
+  (`docs/battle-protocol.md` Appendix A), not as a loop around a proven function.
 - **Inventory is the pivot feature.** It's a parallel asset type to pets (same ownership/indexing
   pattern), the second thing the marketplace can list besides pets, and the default reward
   payload for quests. Everything downstream of it moves faster once it exists — see feature 4
@@ -228,6 +261,35 @@ Reading the graph:
 ---
 
 ## 1. Leaderboard feature
+
+> **Built.** This section is kept as the original proposal; `backend/API.md`
+> (Leaderboards) is authoritative for the shipped surface. What shipped diverges
+> from the sketch below in three ways, recorded here so they are not mistaken for
+> drift:
+>
+> - **`PetRoster.winCount`/`lossCount` were the wrong source.** The sketch's whole
+>   claim to cheapness was that those columns already exist. They do, and they have
+>   been frozen since §L Phase 6 — the live record accumulates in
+>   `pet_battle_progress`. This was not a theoretical concern: run the roster-only
+>   ranking against the live Base Sepolia data and it returns **zero rows**, while
+>   the merged ranking returns four pets and two players. Every leaderboard query
+>   merges the two the way `findReadyOpponents` does, in the query that orders the
+>   rows, because the ordering *is* the merge and a post-sort cannot fix it.
+> - **No ELO, and no `PetRating` table.** Ranking is wins DESC then losses ASC. That
+>   second key is the win-rate tiebreak without the division: on equal wins, fewer
+>   losses is a strictly higher rate, so nothing is ranked on a ratio drawn from a
+>   handful of fights. The `PetRating` model below was not created — see the
+>   paragraph after it, which is still the standing decision: if rating ever lands it
+>   belongs in the versioned ruleset computed from receipts, not at this layer.
+> - **A player board and a self-rank came with it.** Owners are ranked by their pets'
+>   combined record, grouped case-folded on EVM and unfolded on Solana (folding base58
+>   would merge two distinct pubkeys into one player). `playerRank` answers "where am
+>   I" in one query rather than having a client page the board looking for itself, and
+>   returns null for an unranked player rather than a zeroed row.
+>
+> Surfaces: `/leaderboard` in the web app, plus the sidebar rank footer, which until
+> now hardcoded "RANK #3 GLOBAL / 649 Total Wins" for every visitor. Mobile was
+> deliberately left out; the hooks live in `@shared/core` so it can pick them up.
 
 **Goal.** Ranked pets and/or players by battle performance.
 
@@ -267,6 +329,38 @@ rank. The ranking computation itself is unaffected.
 ---
 
 ## 2. Social features: player-to-player chat
+
+> **Built (v1).** The married-pet private thread shipped: `chat_thread` / `chat_message`,
+> `/api/chat/threads` and its message routes, `/ws/chat`, and a `/messages` screen. See
+> `backend/API.md` (Private chat) for the authoritative surface. Three divergences from the
+> sketch below, recorded so they are not mistaken for drift:
+>
+> - **There was no authenticated WebSocket to reuse.** This section's cost argument rested
+>   on one. `liveBattleSocket.ts` is gone, and its replacement joins whoever presents a room
+>   id — safe there only because battle notifications carry nothing a client could not
+>   re-fetch. `/ws/chat` still carries **no message text**: it says a thread changed, and
+>   the authenticated read returns the content. Chat still cost less than anything else
+>   here, just not for the stated reason.
+> - **Presence shipped, and it is what made the socket authenticated.** The open decision
+>   below asked whether v1 should have online presence. It does: a green dot for the
+>   counterpart. That forced the auth this section assumed existed — presence is a claim
+>   about identities, and an anonymous socket has none, so counting connections would
+>   report one person with two tabs open as two people. The JWT travels as a subprotocol
+>   rather than a query parameter, and the upgrade applies the same participation and
+>   live-marriage gate as the HTTP routes. Read receipts are still absent.
+> - **Access is checked per request, not stored.** As sketched, `ChatThread` does not record
+>   the marriage — but the check runs on every read and send, not only at open time, so a
+>   divorce closes the conversation with nothing to revoke. The thread row survives, since
+>   deleting it would destroy the history; it just stops answering.
+> - **Threads are created on listing, not by an explicit open call.** A married pair always
+>   ends up with exactly one thread, so a separate open step would add a round trip and a
+>   null state that only ever resolves one way.
+>
+> The open decisions below are **unresolved and now carry a shipped surface**: there is no
+> block, report, filter, read receipt, edit, delete, or retention policy. (Presence is the
+> one that got answered — see above.) The only abuse controls are a length cap and a send
+> rate limit. v1's lack of any discovery surface is what contains the risk today, and that
+> containment ends with v2's open DMs.
 
 **Goal.** Real player-to-player messaging, not another AI-generated conversation. The natural
 starting point is the marriage feature: two owners whose pets are married already have an
@@ -337,6 +431,43 @@ bare as possible for a first version.
 
 ## 3. "Perfect" indexing with realtime blockchain sync
 
+> **Partly built, and partly obsolete.** Two of this section's four items no longer
+> describe the repo, and one has shipped:
+>
+> - **There is no dual-indexer setup left.** The backend's Node `RosterIndexer` was
+>   deleted; `indexer-go` is the only thing that writes `pet_roster`. So "shadow mode",
+>   "the Node indexers stay the source of truth until promotion", and the proposed
+>   reconciliation job that *diffs Node-indexer state against indexer-go state* have
+>   nothing left to compare against. What survives of that item shipped as a plain
+>   freshness signal rather than a cross-indexer diff: `indexer_last_poll_unixtime{chain}`
+>   is stamped on every error-free round trip, and `/readyz` (separate from `/healthz`,
+>   which stays pure liveness) refuses until every chain has been reached once. `ROSTER_CACHE_ENABLED`'s "only coherent while
+>   indexer-go is the sole writer" caveat is likewise satisfied by default now.
+> - **Reorg handling shipped for Solana.** Every read and the program subscription ran
+>   at `confirmed`, which is exactly the phantom-row exposure this section names.
+>   `SOLANA_COMMITMENT` now defaults to `finalized`, with reads and the subscription
+>   pinned to the same value; see `services/indexer-go/README.md`. This mattered more
+>   than "display freshness" suggests, because the roster is what battle snapshots are
+>   frozen from (threat T10).
+> - **A periodic EVM reconcile scan shipped.** `RECONCILE_INTERVAL` was documented as a
+>   full-scan safety net but only the Solana adapter used it, so an EVM row the
+>   incremental path missed stayed wrong indefinitely: that query asks for
+>   `updatedAt_gt: watermark`, which cannot see anything the watermark has passed.
+> - **EVM confirmation depth is still open**, and is subtler than the Solana case, in a
+>   way worth stating precisely because it defeats the obvious fix. The subgraph rolls
+>   back reorged blocks itself, but a rollback *lowers* a pet's `updatedAt`, and two
+>   independent things then block recovery: the incremental query never re-fetches the
+>   row (it is below the watermark), and the writer discards a lower version anyway
+>   (`WHERE last_version <= EXCLUDED.last_version`). So the reconcile sweep above fixes
+>   the first and not the second — it re-reads the row and the correction is rejected.
+>   Closing it needs either a confirmation depth on the read or a `Version` that never
+>   moves backwards. Written up with a recommendation in
+>   `services/indexer-go/plan-evm-reorg-recovery.md`, which also records the trap in the
+>   obvious fix: EVM versions are block *timestamps* (~1.79e9 in the live table) while
+>   block numbers are ~3e7, so switching to a block number rejects every subsequent write
+>   while the service still looks healthy.
+> - **The log-subscription path is still open** and unchanged in motivation.
+
 **Goal.** Tighten the existing dual-indexer setup (Node `RosterIndexer` + optional `indexer-go`)
 so both chains reflect on-chain state with minimal lag and no missed events.
 
@@ -350,7 +481,7 @@ updates to the frontend.
 
 **What "perfect" realistically means here:**
 - Replace EVM subgraph polling with a direct log-subscription indexer path in
-  `indexer-go/internal/evm` (WS/HTTP log filter on `BattleResolved`/`Transfer`/etc.), keeping
+  `services/indexer-go/internal/evm` (WS/HTTP log filter on `BattleResolved`/`Transfer`/etc.), keeping
   subgraph pull as a backfill/reconciliation fallback rather than the primary path — same
   relationship Solana already has between WS push and backfill.
 - A reconciliation job that periodically diffs Node-indexer state against `indexer-go` state and
@@ -365,7 +496,7 @@ Both indexers are still live: the Node `RosterIndexer` is the source of truth in
 `indexer-go` is the promotable path, so "dual-indexer" describes the current state, not a leftover.
 What changes is that `indexer-go` picks up a second, unrelated job under backend-resolved combat: it
 becomes the independent pre-signing verifier that recomputes every battle result before a receipt is
-signed (`docs/plan-backend-battle-steps.md` Step 25). That is a release-safety role, not an indexing
+signed (`docs/battle-protocol.md` §F). That is a release-safety role, not an indexing
 role, and it does not depend on which indexer owns roster writes. Worth knowing before promotion,
 because an `indexer-go` outage then blocks receipt signing as well as roster freshness, so the two
 concerns need separate health signals.
@@ -373,7 +504,7 @@ concerns need separate health signals.
 Snapshot inputs are the other connection. Backend battles freeze pet state at acceptance from
 indexed chain state at a recorded source version, so indexer lag and reorg handling stop being
 purely cosmetic: a snapshot taken from an unfinalized write is threat T10 in
-`docs/threat-model-backend-battles.md`. The confirmation-depth work above is a prerequisite for
+`docs/battle-protocol.md` Appendix A. The confirmation-depth work above is a prerequisite for
 that, not an optional polish item.
 
 This feature has little product-design risk — it's operational hardening of a path that already
@@ -382,6 +513,32 @@ exists end-to-end — but it now sits upstream of battle correctness, not just o
 ---
 
 ## 4. Inventory functionality with an NFT system
+
+> **Built.** This section is kept as the original proposal; `backend/API.md` (Inventory) is
+> authoritative for the shipped surface and `docs/plan-inventory-items.md` records the
+> execution order. Five divergences, recorded so they are not mistaken for drift:
+>
+> - **Cosmetics are not in the v1 catalog, and equipment-affects-combat *is*.** The sketch
+>   below recommends the reverse. The call was made deliberately: gear shipped with the
+>   verifiability work §4 asks for, and cosmetics were dropped because an equipment item
+>   with no modifier is indistinguishable from a bug in a geared snapshot.
+> - **No `itemCatalogHash` field.** The combat-affecting catalog is encoded *into* the
+>   ruleset instead, so `rulesetHash` covers it natively. A separate digest would have been
+>   a second thing to keep in step for no gain, since the published bundle already carries
+>   the rows.
+> - **`item_roster` is keyed `(chain, owner, item_type)`**, not the sketch's per-instance
+>   `(chain, itemId, owner)`. An ERC-1155 balance is a count of a fungible type; there is no
+>   individual item to name.
+> - **`PetEquipment` carries no `equippedAt` and equipping escrows the token.** Escrow makes
+>   the equip mapping itself the ownership proof, which is what §4's snapshot-verifiability
+>   requirement needs, and it structurally prevents one sword buffing five pets.
+> - **`clear_breed_cooldown` was dropped.** Breed cooldown is on-chain state, and clearing it
+>   needs an authorized `PetCore` call the inventory feature does not have. Better absent
+>   than shipped erroring.
+>
+> Gacha crates were **not** built: they need their own VRF settle flow, and the roadmap
+> sequences them after inventory rather than inside it. Acquisition in v1 is battle drops
+> plus an owner-gated admin grant.
 
 **Goal.** A large item catalog — the user's reference points are OwoBot (breadth: hundreds of
 collectible/currency items, gacha crates, a constant drip of new items) and Dota 2 (depth: gear
@@ -423,7 +580,7 @@ checkable. So:
 - Equipment ownership must be verifiable at snapshot time from chain state at a recorded source
   version, exactly like pet ownership. Backend-only equip state that no third party can confirm
   turns every geared receipt into an assertion (threat T13 in
-  `docs/threat-model-backend-battles.md`).
+  `docs/battle-protocol.md` Appendix A).
 - The snapshot carries the resolved modifiers, not a reference to a mutable item row. Unequipping
   after acceptance must not change a committed fight, the same reason pet stats are frozen.
 - `ItemDefinition.effect` becomes part of the ruleset hash if it feeds combat. A rebalance is then a
@@ -750,7 +907,7 @@ generate-once-vs-freshness tradeoff `BattleDialogue` already made in favor of "g
 
 ## 9. Image generator system for pet NFTs
 
-> **Built.** This section is kept as the original proposal; `image-generator/` is the
+> **Built.** This section is kept as the original proposal; `services/image-generator/` is the
 > implementation and its README is authoritative. What shipped diverges from the
 > recommendation below in several deliberate ways, recorded here so they are not
 > mistaken for drift:
@@ -766,7 +923,7 @@ generate-once-vs-freshness tradeoff `BattleDialogue` already made in favor of "g
 > - **R2, not IPFS/Arweave.** Same Cloudflare account as the model, no egress fees.
 >   The store is a two-method interface, so an IPFS pin can be added without
 >   touching the pipeline.
-> - **A standalone service, not a library.** `image-generator/` is deliberately not
+> - **A standalone service, not a library.** `services/image-generator/` is deliberately not
 >   a pnpm workspace member; see CLAUDE.md.
 > - **Cosmetic digits alone were not enough.** Pair 6 is already spent on species at
 >   mint time and pair 7 gives only 100 looks, so the HP and INT genes also nudge
@@ -824,7 +981,7 @@ a separate explicit decision if ever pursued.
 
 **Memory: build it on the per-pet receipt chain, don't invent a second one.** An agentic pet is
 only interesting if it has continuity, and continuity needs a bounded, ordered view of one pet's
-past. [plan-backend-battle-architecture.md](./plan-backend-battle-architecture.md) §G already
+past. [battle-protocol.md](./battle-protocol.md) §G already
 produces exactly that: every battle receipt links to the previous receipt involving that same pet
 (`attackerProgressPrevReceiptHash` / `defenderProgressPrevReceiptHash`), with `PetBattleProgress`
 holding the head pointer. Walking that link is the retrieval query this feature needs, already
@@ -917,6 +1074,24 @@ decision.
 ---
 
 ## 11. ERC20 tokenomics
+
+> **An EVM token already exists, and its design constrains this section.**
+> `contracts/ethereum/src/CryptoPetsToken.sol` is CPET: a standard OpenZeppelin ERC20 with
+> **fixed supply, no mint function, and no owner**, minted once at deployment to fund
+> `SeasonRewardDistributor` under the battle protocol's §I. That is this section's
+> "independently minted token per chain" recommendation, already taken for EVM.
+>
+> What it rules out is the part worth noticing before designing anything here: **there is no
+> emission schedule to design.** A token that cannot be minted cannot emit. Rewards come out
+> of a supply that already exists, so "running out means running out" — which is deliberate,
+> because §I's safety argument is that a bad Merkle root is bounded by real supply rather
+> than by whoever holds a minting key. Any tokenomics plan that assumes new issuance is
+> either proposing a second token or proposing to give that argument up, and should say
+> which.
+>
+> Still genuinely open, and still a human call: sinks, fee denomination, whether Solana gets
+> its own SPL mint, and how much of the fixed supply is committed to seasons versus held
+> back. The note below about not planning a sink around the retired battle fee still stands.
 
 **Goal.** A utility/governance token usable for battle fees, training fees, marketplace fees,
 quest rewards, and breeding stud fees.

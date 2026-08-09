@@ -1,5 +1,5 @@
 import type { PetProgression } from '../progression/progression';
-import type { BattleSnapshot, PetSnapshot } from '../snapshot/types';
+import type { BattleSnapshot, EquipEntry, PetSnapshot } from '../snapshot/types';
 
 import type { BattleReceipt } from './types';
 
@@ -26,11 +26,16 @@ export type WireBattleSnapshot = Omit<BattleSnapshot, 'attacker' | 'defender'> &
     defender: WirePetSnapshot;
 };
 
-export type WirePetSnapshot = Omit<PetSnapshot, 'petId' | 'dna' | 'lastOpponentId' | 'sourceVersion'> & {
+export type WirePetSnapshot = Omit<
+    PetSnapshot,
+    'petId' | 'dna' | 'lastOpponentId' | 'sourceVersion' | 'equipment'
+> & {
     petId: string;
     dna: string;
     lastOpponentId: string;
     sourceVersion: string;
+    /** Item types are uint256 too, so they cross the wire as decimal strings. */
+    equipment?: (Omit<EquipEntry, 'itemType'> & { itemType: string })[];
 };
 
 export interface WireProgressionDelta {
@@ -60,12 +65,22 @@ export function receiptFromWire(wire: WireBattleReceipt): BattleReceipt {
 }
 
 function petSnapshotFromWire(pet: WirePetSnapshot): PetSnapshot {
+    // `equipment` is pulled out of the spread rather than overridden after it: its wire
+    // shape carries a string item type, and spreading it first would leave that type in
+    // the result even though the value is replaced.
+    const { equipment, ...rest } = pet;
     return {
-        ...pet,
+        ...rest,
         petId: BigInt(pet.petId),
         dna: BigInt(pet.dna),
         lastOpponentId: BigInt(pet.lastOpponentId),
         sourceVersion: BigInt(pet.sourceVersion),
+        // Widened like every other uint256 here. Left as a string it reaches
+        // `assertPetSnapshot` as the wrong type and rejects the whole receipt, which is how
+        // this was found: a geared receipt failed seed derivation rather than decoding.
+        ...(equipment && {
+            equipment: equipment.map((entry) => ({ ...entry, itemType: BigInt(entry.itemType) })),
+        }),
     };
 }
 

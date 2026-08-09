@@ -1,7 +1,8 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
+import PetPicker from '@components/ui/pet-picker';
 import {
     getPetClass,
     getReadyPetsUnified,
@@ -109,6 +110,37 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                     </>
                 )}
 
+                {/* The slot is always rendered, with a placeholder standing in before a
+                    pet is chosen, so picking one swaps content into a box that is
+                    already the right size and nothing on the panel shifts. */}
+                <div className="interaction-visual">
+                {!selectedPetObj && (
+                    // Built from the same classes as the filled state rather than from
+                    // its own skeleton layout, so the two are the same height by
+                    // construction instead of by hand-matched numbers that drift.
+                    <PetShowcase avatar={<span className="pet-slot-glyph">?</span>} accent="violet">
+                        <div className={styles.name}>
+                            <span className="skeleton-bar wide" />
+                        </div>
+                        <div className={styles.petClass}>
+                            <span className="skeleton-bar narrow" />
+                        </div>
+                        <div className={styles.transition}>
+                            <span className={clsx(styles.badge, styles.badgeCur)}>Lv.?</span>
+                            <span className={styles.arrow} aria-hidden>
+                                →
+                            </span>
+                            <span className={clsx(styles.badge, styles.badgeNext)}>Lv.?</span>
+                        </div>
+                        <div className={styles.xp}>
+                            <div className={styles.xpRow}>
+                                <span>XP</span>
+                                <span>—</span>
+                            </div>
+                            <div className={styles.xpTrack} />
+                        </div>
+                    </PetShowcase>
+                )}
                 {selectedPetObj && (
                     <PetShowcase avatar={<PetArt pet={selectedPetObj} />} accent="violet">
                         <div className={styles.name}>{selectedPetObj.name}</div>
@@ -140,22 +172,18 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                         </div>
                     </PetShowcase>
                 )}
+                </div>
 
                 <div className="picker">
                     <div className="field">
-                        <label htmlFor="levelup-pet">Select Pet</label>
-                        <select
-                            id="levelup-pet"
+                        <span className="field-label">Select Pet</span>
+                        <PetPicker
+                            pets={readyPets}
                             value={selectedPet}
-                            onChange={(e) => setSelectedPet(e.target.value)}
-                        >
-                            <option value="">Select pet...</option>
-                            {readyPets.map(({ id, pet }) => (
-                                <option key={id} value={id}>
-                                    {pet.name} (Level {pet.level})
-                                </option>
-                            ))}
-                        </select>
+                            onChange={setSelectedPet}
+                            label="Pet to level up"
+                            emptyHint="No pets are ready right now."
+                        />
                     </div>
                     {levelUpCost && <p className="level-up-cost">Cost: {levelUpCost}</p>}
                 </div>

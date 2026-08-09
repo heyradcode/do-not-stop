@@ -53,6 +53,8 @@ const capabilities = { randomness: { provider: 'vrf' }, kind: 'solana' };
 vi.mock('@shared/core', () => ({
     // DNA-derived helpers stubbed so the parent/DNA cards render without real DNA.
     getPetAvatar: () => '🐉',
+    // No art service in these tests: PetArt renders the emoji alone.
+    petArtUrl: () => null,
     getPetClass: () => 'Warrior',
     getPetProperties: () => ({ life: 70, attack: 50, defense: 40, intelligence: 60 }),
     getRarityColor: () => '#8aa0ff',

@@ -11,6 +11,7 @@ const SINGLE_RECEIPT_CHECKS = [
     'operator-signature',
     'beacon-signature',
     'combat-replay',
+    'equipment',
     'progression',
     'chain-continuity',
 ];

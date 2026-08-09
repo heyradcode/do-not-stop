@@ -1,6 +1,30 @@
 import { DEFAULT_SKILL_CONFIG, type SkillConfig } from '../combat/skills';
 import { MAX_ROUNDS } from '../combat/sim';
 import { DEFAULT_MAX_LEVEL } from '../combat/xp';
+import { assertSupportedSchemaVersion, currentSchemaVersion } from '../domain/schemaVersions';
+
+/**
+ * What one item type does to a pet's attributes (roadmap §4).
+ *
+ * Part of the ruleset rather than a separate artifact, so a rebalance changes
+ * `rulesetHash` on its own. That is the mechanism §4 asks for: outstanding defence
+ * authorizations are bound to the hash, so re-pricing a sword invalidates consent given
+ * under the old numbers instead of silently re-interpreting it.
+ *
+ * Only equipment appears here. A potion or a badge cannot change a fight, and listing
+ * one would make adding a collectible invalidate every player's consent for nothing.
+ */
+export interface ItemModifier {
+    /** ERC-1155 token id. */
+    itemType: bigint;
+    /** Equip slot 0-2, matching ItemCore.SLOT_*. */
+    slot: number;
+    hp: number;
+    atk: number;
+    def: number;
+    int: number;
+    mdef: number;
+}
 
 /**
  * A versioned, content-addressed statement of the rules a battle was fought under.
@@ -11,7 +35,7 @@ import { DEFAULT_MAX_LEVEL } from '../combat/xp';
  * receipt, and the named bundle is published so anyone can replay against exactly
  * those numbers years later (§F, §H).
  *
- * Two kinds of thing live here, and the distinction matters:
+ * Three kinds of thing live here, and the distinctions matter:
  *
  * - **Parameters the engine reads at runtime**: the skill/balance config and the
  *   level cap. These come from `GameConfig` on chain and are owner-tunable, so they
@@ -20,6 +44,9 @@ import { DEFAULT_MAX_LEVEL } from '../combat/xp';
  *   declared constant. The engine's own code cannot hash itself, so a fight-math
  *   change is recorded by bumping `engineVersion`. That bump is a manual step, and
  *   skipping it is how two different implementations end up claiming one ruleset.
+ * - **Content that changes outcomes**: the item catalog (§4). Off-chain and
+ *   owner-editable like the balance knobs, and in here for the same reason: a fight it
+ *   could have changed has to name the version it ran under.
  */
 export interface Ruleset {
     /** Monotonic ruleset version. The number a receipt reports. */
@@ -34,10 +61,32 @@ export interface Ruleset {
     skillConfig: SkillConfig;
     /** Level cap, sourced from `GameConfig.maxLevel`. */
     maxLevel: number;
+    /**
+     * Every combat-affecting item, ordered by `itemType` (schema v2+).
+     *
+     * Absent or empty on a deployment with no equipment, which is what every version 1
+     * ruleset is. The values here are the *declared* effects; a snapshot carries the
+     * modifiers actually applied, and a verifier compares the two.
+     */
+    itemCatalog?: ItemModifier[];
+    /**
+     * Which layout this ruleset was written under. Absent means 1.
+     *
+     * Same rule as the snapshot's, for the same reason: published bundles predate this
+     * field, and re-encoding one at the current version would change the `rulesetHash`
+     * every receipt naming it was signed against.
+     */
+    schemaVersion?: number;
 }
 
 /** The engine this package implements. */
 export const ENGINE_ID = 'cryptopets-combat-ts';
+
+/**
+ * The layout a new ruleset should declare. Absent means 1, for published bundles that
+ * predate the field.
+ */
+export const RULESET_SCHEMA_VERSION = currentSchemaVersion('ruleset');
 
 /**
  * Bumped when `src/combat/` changes what a fight or a progression delta produces.
@@ -46,8 +95,12 @@ export const ENGINE_ID = 'cryptopets-combat-ts';
  * call that makes this dangerous: when in doubt, bump. A missed bump means two
  * implementations disagree while both claim the same `rulesetHash`, and the golden
  * vectors are the only thing that would notice.
+ *
+ * 2: the engine reads equipment modifiers (roadmap §4). An ungeared fight resolves
+ * identically, which the unchanged golden vectors prove, but the engine is no longer the
+ * same function of its inputs, so the version moves.
  */
-export const ENGINE_VERSION = 1;
+export const ENGINE_VERSION = 2;
 
 /**
  * The ruleset this build implements with source defaults.
@@ -64,6 +117,12 @@ export const SOURCE_DEFAULT_RULESET: Ruleset = {
     maxRounds: MAX_ROUNDS,
     skillConfig: DEFAULT_SKILL_CONFIG,
     maxLevel: DEFAULT_MAX_LEVEL,
+    // Empty, and it has to be: the item catalog is content owned by a PolyForm package,
+    // and this one is MIT and cannot import it. A deployment builds its ruleset by reading
+    // its own catalog, exactly as it already reads skillConfig from GameConfig rather than
+    // trusting the constant beside it.
+    itemCatalog: [],
+    schemaVersion: RULESET_SCHEMA_VERSION,
 };
 
 /** Field order for `skillConfig`, which is also its canonical encoding order. */
@@ -100,6 +159,10 @@ const SAFE_ENGINE_ID_PATTERN = /^[a-z0-9][a-z0-9.-]{0,63}$/;
 
 /** Validates an untrusted ruleset, returning a normalized copy. */
 export function assertRuleset(ruleset: Ruleset): Ruleset {
+    // Absent means 1, matching the snapshot's rule and for the same reason: bundles
+    // published before the item catalog existed are named by receipts already signed.
+    const schemaVersion = ruleset.schemaVersion ?? 1;
+    assertSupportedSchemaVersion('ruleset', schemaVersion);
     assertPositiveInt(ruleset.version, 'version');
     assertPositiveInt(ruleset.engineVersion, 'engineVersion');
     assertPositiveInt(ruleset.maxRounds, 'maxRounds');
@@ -127,6 +190,13 @@ export function assertRuleset(ruleset: Ruleset): Ruleset {
         skillConfig[field] = value;
     }
 
+    const itemCatalog = assertItemCatalog(ruleset.itemCatalog);
+    if (schemaVersion < 2 && itemCatalog.length > 0) {
+        // Refused rather than dropped: version 1 has nowhere to put the catalog, so
+        // encoding this would publish rules that omit the gear they were meant to price.
+        throw new Error('ruleset schema version 1 cannot carry an item catalog; use version 2');
+    }
+
     return {
         version: ruleset.version,
         engineId: ruleset.engineId,
@@ -134,7 +204,57 @@ export function assertRuleset(ruleset: Ruleset): Ruleset {
         maxRounds: ruleset.maxRounds,
         skillConfig,
         maxLevel: ruleset.maxLevel,
+        itemCatalog,
+        schemaVersion,
     };
+}
+
+/** Highest slot index the protocol accepts, matching ItemCore's three gear slots. */
+const MAX_SLOT = 2;
+/** Sanity bound on a declared bonus, mirroring the snapshot's. */
+const MAX_BONUS = 0xffff;
+
+/**
+ * Validates the item catalog.
+ *
+ * Ordered strictly by `itemType`, which makes the encoding canonical without an implicit
+ * sort and rejects one item type declared twice — two prices for one sword is not a
+ * ruleset anyone can be held to.
+ */
+function assertItemCatalog(items: ItemModifier[] | undefined): ItemModifier[] {
+    if (items === undefined) {
+        return [];
+    }
+    if (!Array.isArray(items)) {
+        throw new Error('itemCatalog must be an array');
+    }
+
+    let previous = -1n;
+    return items.map((item, index) => {
+        const where = `itemCatalog[${index}]`;
+        if (typeof item.itemType !== 'bigint' || item.itemType <= 0n || item.itemType >= 1n << 256n) {
+            throw new Error(`${where}.itemType is not a valid item type: ${item.itemType}`);
+        }
+        if (item.itemType <= previous) {
+            throw new Error(`${where}.itemType must be strictly ascending; got ${item.itemType} after ${previous}`);
+        }
+        previous = item.itemType;
+
+        if (!Number.isSafeInteger(item.slot) || item.slot < 0 || item.slot > MAX_SLOT) {
+            throw new Error(`${where}.slot must be 0-${MAX_SLOT}, got ${item.slot}`);
+        }
+
+        const bonuses = {} as Record<'hp' | 'atk' | 'def' | 'int' | 'mdef', number>;
+        for (const field of ['hp', 'atk', 'def', 'int', 'mdef'] as const) {
+            const value = item[field];
+            if (!Number.isSafeInteger(value) || value < 0 || value > MAX_BONUS) {
+                throw new Error(`${where}.${field} must be 0-${MAX_BONUS}, got ${value}`);
+            }
+            bonuses[field] = value;
+        }
+
+        return { itemType: item.itemType, slot: item.slot, ...bonuses };
+    });
 }
 
 function assertPositiveInt(value: number, field: string): void {

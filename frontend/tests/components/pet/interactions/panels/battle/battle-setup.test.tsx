@@ -20,6 +20,17 @@ vi.mock('@components/common', () => ({
         </button>
     ),
 }));
+/**
+ * A partial mock, not a full one: this file deliberately uses the real cosmetic helpers so
+ * the CombatantCard renders its true output. Only the two hooks that need React context are
+ * replaced, since providing an API client and an auth session here would be a lot of setup
+ * for a card that is not about either.
+ */
+vi.mock('@shared/core', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@shared/core')>()),
+    useChainCapabilities: () => ({ activeKind: 'evm', isConnected: true }),
+    usePetEquipmentForPets: () => ({ byPet: new Map(), isLoading: false, error: null, refetch: () => {} }),
+}));
 // Siblings that reach into PetsConfig/wagmi/Anchor — stub them out.
 vi.mock('@components/pet/interactions/panels/battle/parts/pending-battle-notice', () => ({
     default: () => null,
@@ -92,18 +103,23 @@ describe('BattleSetup (fighter-vs-rival showdown)', () => {
             />,
         );
 
-        const select = screen.getByRole('combobox', { name: 'Choose your fighter' });
-        expect(screen.getByRole('option', { name: 'Alpha (Lv 3)' })).toBeInTheDocument();
-        expect(screen.getByRole('option', { name: 'Beta (Lv 3)' })).toBeInTheDocument();
+        // PetSelect is a button plus a portalled listbox, not a native <select>: the
+        // options exist only once it is open, so `selectOptions` does not apply.
+        await userEvent.click(screen.getByRole('combobox', { name: 'Choose your fighter' }));
+        expect(await screen.findByRole('option', { name: /Alpha/ })).toBeInTheDocument();
+        expect(screen.getByRole('option', { name: /Beta/ })).toBeInTheDocument();
+        // The level rides beside the name rather than being folded into one string.
+        expect(screen.getAllByText('Lv 3')).toHaveLength(2);
 
-        await userEvent.selectOptions(select, '2');
+        await userEvent.click(screen.getByRole('option', { name: /Beta/ }));
         expect(onSelectFighter).toHaveBeenCalledWith('2');
     });
 
     it('prompts for a fighter when none are ready', () => {
         render(<BattleSetup {...baseProps({ readyPets: [] })} />);
-        // Appears both as the select's placeholder option and the empty card label.
+        // Appears both as the control's placeholder and the empty card label.
         expect(screen.getAllByText('No ready fighters').length).toBeGreaterThan(0);
+        expect(screen.getByRole('combobox', { name: 'Choose your fighter' })).toBeDisabled();
     });
 
     it('renders the selected fighter and opponent cards', () => {
@@ -140,12 +156,14 @@ describe('BattleSetup (fighter-vs-rival showdown)', () => {
         const onSelectOpponent = vi.fn();
         render(<BattleSetup {...baseProps({ onSelectOpponent })} />);
 
-        const select = screen.getByRole('combobox', { name: 'Select an opponent' });
-        await userEvent.selectOptions(
-            select,
-            screen.getByRole('option', { name: 'Foe o1 (Lv 5)' }),
-        );
+        await userEvent.click(screen.getByRole('combobox', { name: 'Select an opponent' }));
+        await userEvent.click(await screen.findByRole('option', { name: /Foe o1/ }));
         expect(onSelectOpponent).toHaveBeenCalledWith(opponentKey('0xF00d', 'o1'));
+    });
+
+    it('disables the opponent control when the roster is empty', () => {
+        render(<BattleSetup {...baseProps({ sortedOpponents: [] })} />);
+        expect(screen.getByRole('combobox', { name: 'Select an opponent' })).toBeDisabled();
     });
 
     it('shows finding / empty states for the opponent roster', () => {

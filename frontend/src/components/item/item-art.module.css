@@ -1,0 +1,49 @@
+/* CSS Module — class names are local; reference via `import styles from './item-art.module.css'`.
+   The frame reserves its box before the image lands, so a bag does not reflow item by item as
+   art arrives. `--rarity` is inherited from the card, not set here: the tint belongs to the
+   item, and duplicating the lookup would let the two drift. */
+.frame,
+.frameFeature {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: 2px;
+    /* The art is painted on its own near-black ground, so the frame matches it and the
+       image reads as part of the card rather than a photo pasted onto one. */
+    background: rgb(5 13 30 / 92%);
+    border: 1px solid rgb(125 214 255 / 14%);
+}
+
+.frameFeature {
+    max-width: 168px;
+    margin-inline: auto;
+}
+
+.img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    /* contain, not cover: these are objects photographed centred with deliberate margin,
+       and cropping to fill would cut the ends off a warhammer. */
+    object-fit: contain;
+    transition: opacity 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .img {
+        transition: none;
+    }
+}
+
+/* A faint rarity-tinted wash while the image is in flight. Not a spinner: an item's art is
+   usually a cache hit and arrives in one frame, and a spinner that flashes for 40ms reads
+   as jank rather than as progress. */
+.placeholder {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 42%, var(--rarity, rgb(125 214 255 / 30%)) 0%, transparent 70%);
+    opacity: 0.16;
+}

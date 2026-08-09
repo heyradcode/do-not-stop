@@ -6,7 +6,7 @@ const activeChain: { kind: 'evm' | 'solana' | 'none'; address: string | null } =
     kind: 'none',
     address: null,
 };
-vi.mock('../../src/hooks/useActiveChain', () => ({ useActiveChain: () => activeChain }));
+vi.mock('../../src/hooks/session/useActiveChain', () => ({ useActiveChain: () => activeChain }));
 vi.mock('../../src/hooks/adapters/useEvmAdapter', () => ({
     EVM_CAPABILITIES: { chainLabel: 'Ethereum', tag: 'evm-caps' },
 }));
@@ -24,9 +24,9 @@ const fees: {
     symbol: null,
     formatAmountOnly: (v) => String(v),
 };
-vi.mock('../../src/hooks/useFees', () => ({ useFees: () => fees }));
+vi.mock('../../src/hooks/session/useFees', () => ({ useFees: () => fees }));
 
-import { useChainCapabilities } from '../../src/hooks/useChainCapabilities';
+import { useChainCapabilities } from '../../src/hooks/session/useChainCapabilities';
 
 beforeEach(() => {
     activeChain.kind = 'none';

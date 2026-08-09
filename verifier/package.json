@@ -1,7 +1,7 @@
 {
     "name": "@cryptopets/verifier",
     "version": "0.0.1",
-    "description": "Standalone MIT verifier for CryptoPets backend-authoritative battle receipts (docs/plan-backend-battle-architecture.md §H). No backend access, no database: every check runs against a receipt's own published contents plus public inputs (drand, a signing-key list) the caller supplies.",
+    "description": "Standalone MIT verifier for CryptoPets backend-authoritative battle receipts (docs/battle-protocol.md §H). No backend access, no database: every check runs against a receipt's own published contents plus public inputs (drand, a signing-key list) the caller supplies.",
     "license": "MIT",
     "type": "module",
     "main": "src/index.ts",

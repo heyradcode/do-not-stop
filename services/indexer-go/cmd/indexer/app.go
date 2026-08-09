@@ -1,0 +1,174 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"sync"
+	"syscall"
+	"time"
+
+	"github.com/radcrew/do-not-stop/services/indexer-go/internal/config"
+	"github.com/radcrew/do-not-stop/services/indexer-go/internal/grpcsrv"
+	"github.com/radcrew/do-not-stop/services/indexer-go/internal/indexer"
+	"github.com/radcrew/do-not-stop/services/indexer-go/internal/metrics"
+)
+
+const shutdownGrace = 5 * time.Second
+
+// run wires up the long-running pipeline: chain adapters → battle bus/storage,
+// gRPC server, health endpoint, and graceful shutdown on signal.
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	slog.SetDefault(newLogger(cfg.LogFormat))
+
+	if *scanOnce {
+		return runScanOnce(cfg)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	adapters, err := buildAdapters(cfg)
+	if err != nil {
+		return err
+	}
+
+	roster := make(chan indexer.RosterUpdate, 256)
+	items := make(chan indexer.ItemUpdate, 256)
+	equipment := make(chan indexer.EquipmentUpdate, 256)
+
+	st, err := startStorage(ctx, cfg, roster, items, equipment)
+	if err != nil {
+		return err
+	}
+	defer st.close()
+
+	grpcErr := make(chan error, 1)
+	go func() {
+		if err := grpcsrv.New(st.rosterCache).Serve(ctx, cfg.GRPCAddr); err != nil {
+			grpcErr <- err
+		}
+	}()
+
+	var wg sync.WaitGroup
+	for _, adapter := range adapters {
+		wg.Add(1)
+		go func(a indexer.ChainIndexer) {
+			defer wg.Done()
+			if err := a.Run(ctx, roster); err != nil {
+				slog.Error("adapter exited", "chain", a.Chain(), "err", err)
+			}
+		}(adapter)
+
+		// Inventory is optional per chain (roadmap §4 is EVM-first), so an adapter
+		// opts in by implementing InventoryIndexer. Its own goroutine, so a stalled
+		// inventory poll cannot hold up the roster loop everything else reads.
+		if inv, ok := adapter.(indexer.InventoryIndexer); ok {
+			wg.Add(1)
+			go func(a indexer.ChainIndexer, in indexer.InventoryIndexer) {
+				defer wg.Done()
+				if err := in.RunInventory(ctx, items, equipment); err != nil {
+					slog.Error("inventory adapter exited", "chain", a.Chain(), "err", err)
+				}
+			}(adapter, inv)
+		}
+	}
+
+	chains := make([]string, len(adapters))
+	for i, a := range adapters {
+		chains[i] = a.Chain()
+	}
+
+	health := &http.Server{Addr: cfg.HealthAddr, Handler: healthMux(chains)}
+	serveErr := make(chan error, 1)
+	go func() {
+		if err := health.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			serveErr <- err
+		}
+	}()
+
+	slog.Info("indexer-go started",
+		"chains", chains,
+		"health_addr", cfg.HealthAddr,
+		"grpc_addr", cfg.GRPCAddr,
+		"evm_poll_interval", cfg.EVMPollInterval,
+		"reconcile_interval", cfg.ReconcileInterval,
+	)
+
+	select {
+	case <-ctx.Done():
+		slog.Info("shutdown signal received")
+	case err := <-serveErr:
+		stop()
+		wg.Wait()
+		return err
+	case err := <-grpcErr:
+		stop()
+		wg.Wait()
+		return err
+	}
+
+	wg.Wait()
+	if st.writerDone != nil {
+		<-st.writerDone // wait for the writer's final drain before the pool closes
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+	defer cancel()
+	if err := health.Shutdown(shutdownCtx); err != nil {
+		slog.Warn("health server shutdown", "err", err)
+	}
+	slog.Info("indexer-go stopped")
+	return nil
+}
+
+// healthMux serves liveness and readiness as two different questions, because they have
+// two different consequences.
+//
+// `/healthz` stays a bare liveness probe: it is what the platform restarts the process
+// on, and restarting cannot fix an unreachable subgraph or RPC. Tying it to indexing
+// freshness would turn a provider outage into a restart loop that guarantees the outage
+// outlasts it.
+//
+// `/readyz` is the freshness question, and it is the one that matters to callers rather
+// than to the supervisor: this service is the only writer of `pet_roster`, and under
+// backend-authoritative battles it is also the independent pre-signing verifier, so
+// "the process is up" and "its view of the chain is current" stopped being the same
+// claim. Continuous staleness lives in `indexer_last_poll_unixtime`; this endpoint
+// answers the coarser question a caller can act on.
+func healthMux(chains []string) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, _ *http.Request) {
+		var pending []string
+		for _, chain := range chains {
+			if !metrics.HasPolled(chain) {
+				pending = append(pending, chain)
+			}
+		}
+		if len(pending) > 0 {
+			// 503 until every configured chain has been reached once. Before that the
+			// roster is not merely stale, it is absent, and a caller that treats an
+			// empty answer as "no such pet" would be wrong rather than late.
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = fmt.Fprintf(w, "awaiting first successful poll: %s\n", strings.Join(pending, ", "))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ready"))
+	})
+	mux.HandleFunc("GET /metrics", metrics.Handler())
+	return mux
+}

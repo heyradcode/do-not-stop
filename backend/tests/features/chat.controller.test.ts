@@ -1,0 +1,300 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { Request, Response } from 'express';
+
+vi.mock('../../src/features/chat/chat.service', () => ({
+    listThreads: vi.fn(),
+    authorizeThread: vi.fn(),
+    readMessages: vi.fn(),
+    sendMessage: vi.fn(),
+    markRead: vi.fn(),
+    reactToMessage: vi.fn(),
+}));
+vi.mock('@ws/chatSocket', () => ({ notifyChatThread: vi.fn() }));
+
+import {
+    getMessages,
+    getThreads,
+    postMessage,
+    postReaction,
+    postRead,
+} from '../../src/features/chat/chat.controller';
+import {
+    authorizeThread,
+    listThreads,
+    markRead,
+    reactToMessage,
+    readMessages,
+    sendMessage,
+} from '../../src/features/chat/chat.service';
+import { notifyChatThread } from '@ws/chatSocket';
+
+function makeRes() {
+    const res = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
+    return res as unknown as Response;
+}
+
+const ME = '0x1111111111111111111111111111111111111111';
+
+/** An authenticated request for thread `t1`. */
+function req(over: Record<string, unknown> = {}): Request {
+    return {
+        params: { id: 't1' },
+        query: {},
+        body: {},
+        user: { address: ME, userId: 'u1' },
+        ...over,
+    } as unknown as Request;
+}
+
+beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(authorizeThread).mockResolvedValue(null);
+});
+
+describe('getThreads', () => {
+    it('lists threads for the session wallet', async () => {
+        vi.mocked(listThreads).mockResolvedValue([]);
+        const res = makeRes();
+
+        await getThreads(req(), res);
+
+        expect(listThreads).toHaveBeenCalledWith(ME);
+        expect(res.json).toHaveBeenCalledWith({ threads: [] });
+    });
+
+    it('returns 401 without an authenticated user', async () => {
+        const res = makeRes();
+        await getThreads(req({ user: undefined }), res);
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(listThreads).not.toHaveBeenCalled();
+    });
+});
+
+describe('thread authorization', () => {
+    // A non-participant must not be able to tell an existing thread id from a made-up
+    // one; 403 here would confirm the id for anyone probing.
+    it('answers 404, not 403, for a wallet that is not a participant', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue('not-a-participant');
+        const res = makeRes();
+
+        await getMessages(req(), res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(readMessages).not.toHaveBeenCalled();
+    });
+
+    it('answers 404 for a thread that does not exist', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue('not-found');
+        const res = makeRes();
+
+        await getMessages(req(), res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    // A participant already knows the thread exists, so an ended marriage can say so.
+    it('answers 403 with a reason when the marriage has ended', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue('not-married');
+        const res = makeRes();
+
+        await postMessage(req({ body: { text: 'hi' } }), res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(sendMessage).not.toHaveBeenCalled();
+    });
+});
+
+describe('getMessages', () => {
+    it('passes the page through after authorizing', async () => {
+        vi.mocked(readMessages).mockResolvedValue({ messages: [], readUpTo: 3 });
+        const res = makeRes();
+
+        await getMessages(req({ query: { limit: '10', before: '99' } }), res);
+
+        expect(readMessages).toHaveBeenCalledWith('t1', ME, 10, 99);
+        // The watermark rides with the page, so one read answers both questions.
+        expect(res.json).toHaveBeenCalledWith({ messages: [], readUpTo: 3 });
+    });
+
+    it('rejects a bad page size before touching the database', async () => {
+        const res = makeRes();
+
+        await getMessages(req({ query: { limit: '5000' } }), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(readMessages).not.toHaveBeenCalled();
+    });
+});
+
+describe('postMessage', () => {
+    it('stores the trimmed text under the session wallet', async () => {
+        vi.mocked(sendMessage).mockResolvedValue({
+            id: 1,
+            sender: ME,
+            text: 'hello',
+            createdAt: new Date(0),
+        });
+        const res = makeRes();
+
+        await postMessage(req({ body: { text: '  hello  ' } }), res);
+
+        expect(sendMessage).toHaveBeenCalledWith('t1', ME, 'hello');
+        expect(res.status).toHaveBeenCalledWith(201);
+    });
+
+    it('rejects a message that is only whitespace', async () => {
+        const res = makeRes();
+
+        await postMessage(req({ body: { text: '   ' } }), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('rejects a message past the length cap', async () => {
+        const res = makeRes();
+
+        await postMessage(req({ body: { text: 'x'.repeat(2001) } }), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('notifies the thread after the write, carrying the id and no text', async () => {
+        vi.mocked(sendMessage).mockResolvedValue({
+            id: 42,
+            sender: ME,
+            text: 'hello',
+            createdAt: new Date(0),
+        });
+
+        await postMessage(req({ body: { text: 'hello' } }), makeRes());
+
+        expect(notifyChatThread).toHaveBeenCalledWith('t1', {
+            type: 'thread-updated',
+            threadId: 't1',
+            messageId: 42,
+        });
+    });
+
+    it('does not notify when the write was refused', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue('not-married');
+
+        await postMessage(req({ body: { text: 'hello' } }), makeRes());
+
+        expect(notifyChatThread).not.toHaveBeenCalled();
+    });
+
+    it('cannot send as another wallet by putting one in the body', async () => {
+        vi.mocked(sendMessage).mockResolvedValue({
+            id: 1,
+            sender: ME,
+            text: 'hi',
+            createdAt: new Date(0),
+        });
+        const res = makeRes();
+
+        await postMessage(req({ body: { text: 'hi', sender: '0xsomeone-else' } }), res);
+
+        expect(sendMessage).toHaveBeenCalledWith('t1', ME, 'hi');
+    });
+});
+
+describe('postRead', () => {
+    it('moves the watermark and tells the thread so the sender ticks', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        vi.mocked(markRead).mockResolvedValue(undefined);
+        const res = makeRes();
+        Object.assign(res, { end: vi.fn().mockReturnThis() });
+
+        await postRead(req({ body: { messageId: 12 } }), res);
+
+        expect(markRead).toHaveBeenCalledWith('t1', ME, 12);
+        // Its own frame type: a receipt names a message the sender already holds, and a
+        // client that skips those as echoes of its own send would never fill the tick in.
+        expect(notifyChatThread).toHaveBeenCalledWith('t1', {
+            type: 'thread-read',
+            threadId: 't1',
+            messageId: 12,
+        });
+        expect(res.status).toHaveBeenCalledWith(204);
+    });
+
+    it('rejects a bad message id before touching the database', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        const res = makeRes();
+
+        await postRead(req({ body: { messageId: 'nope' } }), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(markRead).not.toHaveBeenCalled();
+    });
+
+    // The same gate as every other route here: a non-participant learns nothing.
+    it('refuses a thread the caller is not in', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue('not-a-participant');
+        const res = makeRes();
+
+        await postRead(req({ body: { messageId: 1 } }), res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(markRead).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('postReaction', () => {
+    const reactReq = (body: unknown, messageId = '7') =>
+        req({ params: { id: 't1', messageId }, body });
+
+    it('applies the tap and announces it as its own frame type', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        vi.mocked(reactToMessage).mockResolvedValue({ emoji: '👍' });
+        const res = makeRes();
+
+        await postReaction(reactReq({ emoji: '👍' }), res);
+
+        expect(reactToMessage).toHaveBeenCalledWith('t1', ME, 7, '👍');
+        // Not `thread-updated`: the message id is one every client already holds, and the
+        // echo check would drop the frame as its own send.
+        expect(notifyChatThread).toHaveBeenCalledWith('t1', {
+            type: 'thread-reacted',
+            threadId: 't1',
+            messageId: 7,
+        });
+        expect(res.json).toHaveBeenCalledWith({ emoji: '👍' });
+    });
+
+    // The whitelist is shared with the client, so this is the API refusing anything the
+    // picker could not have offered — including arbitrary user-authored text.
+    it('refuses an emoji outside the shared set', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        const res = makeRes();
+
+        await postReaction(reactReq({ emoji: 'not an emoji' }), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(reactToMessage).not.toHaveBeenCalled();
+    });
+
+    it('refuses a message id that is not a positive integer', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        const res = makeRes();
+
+        await postReaction(reactReq({ emoji: '👍' }, 'abc'), res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(reactToMessage).not.toHaveBeenCalled();
+    });
+
+    it('404s a message that belongs to another thread', async () => {
+        vi.mocked(authorizeThread).mockResolvedValue(null);
+        vi.mocked(reactToMessage).mockResolvedValue('not-found');
+        const res = makeRes();
+
+        await postReaction(reactReq({ emoji: '👍' }), res);
+
+        expect(res.status).toHaveBeenCalledWith(404);
+        expect(notifyChatThread).not.toHaveBeenCalled();
+    });
+});

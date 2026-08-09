@@ -1,7 +1,7 @@
 import { chainFamily, type ChainId } from '@cryptopets/protocol';
 
 import { prisma } from '@config/prisma';
-import { servedChainIds, servedDeploymentId } from '@features/battle-ledger/domain';
+import { servedChainIds, servedDeploymentId } from '@features/battle/ledger/domain';
 import type { RosterPet } from './roster.repository';
 import type { Chain } from '@typings/chain';
 

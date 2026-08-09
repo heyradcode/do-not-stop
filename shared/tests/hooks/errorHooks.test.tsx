@@ -3,12 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
 const parseError = vi.fn();
-vi.mock('../../src/hooks/useChainCapabilities', () => ({
+vi.mock('../../src/hooks/session/useChainCapabilities', () => ({
     useChainCapabilities: () => ({ parseError }),
 }));
 
-import { usePetError } from '../../src/hooks/usePetError';
-import { useTxError } from '../../src/hooks/useTxError';
+import { usePetError } from '../../src/hooks/tx/usePetError';
+import { useTxError } from '../../src/hooks/tx/useTxError';
 
 beforeEach(() => {
     parseError.mockReset();

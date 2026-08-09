@@ -401,3 +401,63 @@
         animation: none;
     }
 }
+
+/* ── Pet art in cards and proposal rows ────────────────────────────────────────
+   Square frames; PetArt draws at 1em inside them, so font-size is what sizes the
+   image (see PetArt). The emoji fallback rides the same box.
+
+   Art is conditional in both places — a counterpart the chain roster has not
+   resolved has no dna, and so neither art nor an emoji — which is why the frames
+   are siblings of the text rather than wrappers around it. */
+
+.partnerSide {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.partnerArt,
+.proposalArt {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    overflow: hidden;
+    line-height: 1;
+    background: radial-gradient(circle at 50% 45%, rgb(255 123 203 / 16%), transparent 68%);
+}
+
+.partnerArt {
+    width: 40px;
+    height: 40px;
+    font-size: 2rem;
+}
+
+.partnerArt img,
+.proposalArt img {
+    border-radius: 8px;
+}
+
+/* One side of a proposal: art beside the name, the pair kept on one line so the
+   arrow between them still reads as pointing from one pet to the other. */
+.proposalPet {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.proposalArt {
+    width: 28px;
+    height: 28px;
+    font-size: 1.5rem;
+}
+
+.proposalPetText {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

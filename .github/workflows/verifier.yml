@@ -39,6 +39,14 @@ jobs:
         if: always()
         run: pnpm --filter @cryptopets/verifier lint
 
+      # Separate from the tests: vitest strips types rather than checking them, so a
+      # type error in a path the suite does not execute reaches a third party's
+      # checkout instead of CI. `protocol` is typechecked in the parity workflow for
+      # the same reason; this package is consumed as raw TS too.
+      - name: Verifier typecheck
+        if: always()
+        run: pnpm --filter @cryptopets/verifier typecheck
+
       # The committed corpus, run through the actual CLI rather than the library, so the
       # thing a third party would run is the thing CI proves still works. No network
       # access: the ruleset these battles were fought under is pinned in the checkout.

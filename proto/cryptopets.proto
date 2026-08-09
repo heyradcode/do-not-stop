@@ -1,11 +1,11 @@
-// Shared contract between indexer-go (server) and the Node backend (client).
-// Node loads this file at runtime via @grpc/proto-loader; Go stubs are
-// generated into indexer-go/pb with `buf generate` (see indexer-go/buf.gen.yaml).
+// Shared contract between services/indexer-go (server) and the Node backend (client).
+// Node loads this file at runtime via @grpc/proto-loader; Go stubs are generated into
+// services/indexer-go/pb with `buf generate` (see services/indexer-go/buf.gen.yaml).
 syntax = "proto3";
 
 package cryptopets;
 
-option go_package = "github.com/radcrew/do-not-stop/indexer-go/pb";
+option go_package = "github.com/radcrew/do-not-stop/services/indexer-go/pb";
 
 service GameDataService {
   // RAM read from the write-through roster cache (coherent because
@@ -20,7 +20,7 @@ service GameDataService {
   rpc EstimateWin(WinRequest) returns (WinResponse);
 
   // Independent recomputation of a backend-authoritative battle
-  // (docs/plan-backend-battle-architecture.md §F). Takes everything needed to
+  // (docs/battle-protocol.md §F). Takes everything needed to
   // rerun the fight and the progression composition — no database, no cache,
   // no chain state — so a mismatch against the TypeScript engine's own result
   // means the two implementations disagree, not that either read something
@@ -87,6 +87,19 @@ message VerifyPetInputs {
   uint32 xp = 6;
   string last_opponent_id = 7; // decimal string; "0" = no prior opponent
   uint32 streak = 8;
+
+  // Equipment total, already resolved from the frozen snapshot (roadmap §4).
+  //
+  // The resolved modifiers rather than the item ids, because that is what the fight
+  // actually consumes and what the receipt publishes; the verifier has no item catalog
+  // and needs none. Sent as five scalars rather than a nested message so an older server
+  // sees proto3 defaults of zero, which is exactly "ungeared" — a geared battle then
+  // fails §F loudly instead of being verified against the wrong inputs.
+  uint32 bonus_hp = 9;
+  uint32 bonus_atk = 10;
+  uint32 bonus_def = 11;
+  uint32 bonus_int = 12;
+  uint32 bonus_mdef = 13;
 }
 
 // Mirrors protocol's SkillConfig field for field.

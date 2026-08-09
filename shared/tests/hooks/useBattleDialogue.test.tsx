@@ -10,7 +10,7 @@ const auth = { isAuthenticated: true };
 vi.mock('../../src/contexts/ApiClientContext', () => ({ useApiClient: () => apiClient }));
 vi.mock('../../src/contexts/AuthContext', () => ({ useAuth: () => auth }));
 
-import { useBattleDialogue, type UseBattleDialogueOptions } from '../../src/hooks/useBattleDialogue';
+import { useBattleDialogue, type UseBattleDialogueOptions } from '../../src/hooks/battle/useBattleDialogue';
 
 const pet = (name: string) =>
     ({ petId: name, name, level: 1, rarity: 1, dna: '1', winCount: 0, lossCount: 0 });

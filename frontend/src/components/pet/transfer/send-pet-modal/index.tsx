@@ -1,11 +1,24 @@
-﻿import React, { useState } from 'react';
-import { useChainCapabilities, usePetList, useTransferPet } from '@shared/core';
+import React, { useState } from 'react';
+import {
+    getRarityColor,
+    SLOT,
+    useChainCapabilities,
+    usePetEquipment,
+    usePetList,
+    useTransferPet,
+} from '@shared/core';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import NeonModal from '@components/ui/neon-modal';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import styles from './index.module.css';
+
+const SLOT_LABEL: Record<number, string> = {
+    [SLOT.weapon]: 'Weapon',
+    [SLOT.armor]: 'Armor',
+    [SLOT.trinket]: 'Trinket',
+};
 
 interface SendPetModalProps {
     isOpen: boolean;
@@ -20,9 +33,18 @@ interface SendPetModalProps {
 }
 
 const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId }) => {
-    const { address: addrCaps, chainLabel, walletAddress } = useChainCapabilities();
+    const { activeKind: chain, address: addrCaps, chainLabel, walletAddress } = useChainCapabilities();
     const { refetch } = usePetList();
     const notifyError = useNotifyError();
+
+    // Pets and items are separate assets, and PetCore enforces it: a transfer reverts with
+    // "Unequip items before transferring" while any slot is filled. So this is not advice,
+    // it is the reason the send would fail, and it is worth saying before the wallet opens
+    // rather than after a rejected transaction.
+    const { equipped, isSuccess: gearKnown } = usePetEquipment({ chain, petId: petId.toString() });
+    // Only when we actually know. An unanswered read must not disable the button, or a
+    // backend outage would make every pet look untransferable; the chain decides then.
+    const blockedByGear = gearKnown && equipped.length > 0;
 
     const [recipientAddress, setRecipientAddress] = useState('');
     const [inputInvalid, setInputInvalid] = useState(false);
@@ -108,6 +130,38 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
                 </div>
             </div>
 
+            {/* Three states, not two. An unanswered read returns an empty list exactly like a
+                bare pet does, and the query is disabled until the caller is authenticated, so
+                falling through to silence would drop the warning in precisely the cases where
+                nobody can see what is about to leave. */}
+            {blockedByGear && (
+                <div className={styles.gearNotice} role="status">
+                    <strong>Unequip before sending</strong>
+                    <p>
+                        Pets and items are separate assets, so this send will be rejected while
+                        the pet is wearing gear. Unequip these in the Equipment panel first —
+                        they stay in your bag.
+                    </p>
+                    <ul>
+                        {equipped.map(({ slot, item }) => (
+                            <li
+                                key={slot}
+                                style={{ '--rarity': getRarityColor(item.rarity) } as React.CSSProperties}
+                            >
+                                <span className={styles.gearSlot}>{SLOT_LABEL[slot] ?? `Slot ${slot}`}</span>
+                                <span className={styles.gearName}>{item.name}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+            {!gearKnown && (
+                <p className={styles.gearUnknown} role="status">
+                    Could not check this pet’s equipment. If it is wearing any, the send will be
+                    rejected until you unequip it.
+                </p>
+            )}
+
             <div className={styles.recipient}>
                 <label htmlFor="recipient">{addressLabel}</label>
                 <input
@@ -131,7 +185,7 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
                 <NeonButton
                     tone="cyan"
                     onClick={handleSend}
-                    disabled={!recipientAddress || isPending}
+                    disabled={!recipientAddress || isPending || blockedByGear}
                 >
                     {isPending ? 'Sending...' : 'Send Pet'}
                 </NeonButton>

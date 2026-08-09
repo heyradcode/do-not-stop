@@ -191,7 +191,12 @@
     min-height: 0;
     overflow-y: auto;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    /* `min(230px, 100%)`, not a bare 230px: a minmax floor is a hard floor, so
+       a track stays 230px wide even when the grid itself is narrower, and the
+       cards overflow their container instead of shrinking. That is why the
+       Battle and Send buttons spilled once the side panel expanded and squeezed
+       this column. The min() caps the floor at the available width. */
+    grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr));
     gap: 14px;
     align-content: start;
     padding-bottom: 4px;
@@ -211,7 +216,11 @@
 .petCard {
     display: flex;
     flex-direction: column;
-    min-height: 280px;
+
+    /* Height follows content. No min-height and no overflow clip: the art panel
+       below scales with the card's width, so the total height depends on how
+       wide the column ended up, and pinning either end of that just cut the
+       actions off the bottom. */
     border-radius: 12px;
     border: 1px solid rgb(101 131 255 / 22%);
     background: var(--cp-surface);
@@ -237,7 +246,12 @@
 
 .visual {
     position: relative;
-    height: 130px;
+
+    /* Scales with the card instead of a fixed height, so the art keeps its
+       proportion at any column width. 4:3 against square art crops a little off
+       the top and bottom, which is shallow enough to keep the pet intact while
+       still leaving the stats above the fold. */
+    aspect-ratio: 4 / 3;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -247,11 +261,25 @@
     border-bottom: 1px solid rgb(101 131 255 / 12%);
 }
 
+/* The emoji fallback itself, not a wrapper around the art.
+   `filter` and the transform `cp-float` animates both make an element a
+   containing block for absolutely positioned descendants, so while this sat
+   around PetArt it captured the filling image and held it at emoji size — the
+   art never reached the frame. Keep this on the glyph only. */
 .avatar {
+    display: inline-block;
     font-size: 3.4rem;
     line-height: 1;
     animation: cp-float 3.8s ease-in-out infinite;
     filter: drop-shadow(0 0 16px rgb(181 140 255 / 50%));
+}
+
+/* Above the full-bleed art: the badges are positioned but come earlier in the
+   DOM, so without this the image paints over them. */
+.rarity,
+.level,
+.skill {
+    z-index: 1;
 }
 
 .rarity {
@@ -312,18 +340,30 @@
     gap: 8px;
 }
 
+/* The name block yields to the fixed-width HP pill instead of pushing it out:
+   a flex item will not shrink past its own content unless told to. */
+.head > div:first-child {
+    min-width: 0;
+}
+
 .name {
     font-family: var(--cp-title-font);
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.4px;
     color: #f6f3ff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .petClass {
     font-size: 10px;
     color: rgb(195 210 255 / 50%);
     margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .hp {
@@ -422,6 +462,10 @@
     border-radius: 4px;
     padding: 5px 4px;
     text-align: center;
+
+    /* Four equal tracks only stay equal if each may shrink past its content. */
+    min-width: 0;
+    overflow: hidden;
 }
 
 .tileLabel {
@@ -466,11 +510,17 @@
 
 .battleBtn {
     flex: 1;
+
+    /* Without this the button refuses to shrink below its own label, so in a
+       narrow card it pushes Send past the card's edge. */
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 8px;
+    padding: 8px 6px;
     border-radius: 5px;
     font-size: 11px;
     font-weight: 700;
