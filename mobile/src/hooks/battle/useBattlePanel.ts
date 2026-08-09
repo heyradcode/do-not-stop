@@ -37,6 +37,8 @@ export interface UseBattlePanel {
     isConnected: boolean;
     /** Own pets off cooldown; a pet on cooldown cannot legally battle. */
     readyPets: { id: string; pet: Pet }[];
+    /** Whether the wallet holds any pets at all, before the cooldown filter. */
+    hasAnyPets: boolean;
     selectedPetId: string;
     onSelectPet: (id: string) => void;
     fighter: Pet | null;
@@ -209,6 +211,7 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
     return {
         isConnected: capabilities.isConnected,
         readyPets,
+        hasAnyPets: pets.length > 0,
         selectedPetId,
         onSelectPet: setSelectedPetId,
         fighter,

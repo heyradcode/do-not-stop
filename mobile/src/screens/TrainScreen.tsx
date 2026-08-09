@@ -68,6 +68,7 @@ export default function TrainScreen() {
                 selectedId={picker.selectedId}
                 onSelect={picker.select}
                 disabled={isPending}
+                hasAnyPets={picker.hasAnyPets}
                 emptyHint="No pets are off cooldown right now."
             />
             {picker.selectedPet ? (

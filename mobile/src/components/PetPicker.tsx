@@ -10,18 +10,37 @@ type Props = {
     onSelect: (id: string) => void;
     /** Shown when nothing is selectable, e.g. every pet is on cooldown. */
     emptyHint: string;
+    /**
+     * Whether the wallet holds any pets at all, before this screen's filter.
+     * Only the cooldown-filtered screens pass it: there an empty roster and a
+     * fully filtered one look identical, so `emptyHint` would tell a player
+     * with no pets that theirs are busy. Screens whose `emptyHint` already
+     * states a fact of their own ("No pets on this chain yet") omit it.
+     */
+    hasAnyPets?: boolean;
     disabled?: boolean;
 };
+
+const NO_PETS_HINT = 'No pets in this wallet yet. Mint one from the Gallery tab.';
 
 /**
  * Horizontal chips in place of frontend's `<select>`. RN has no native picker
  * without a dependency, and the lists here are short: only pets off cooldown.
  */
-export default function PetPicker({ pets, selectedId, onSelect, emptyHint, disabled }: Props) {
+export default function PetPicker({
+    pets,
+    selectedId,
+    onSelect,
+    emptyHint,
+    hasAnyPets,
+    disabled,
+}: Props) {
     if (pets.length === 0) {
         return (
             <View style={styles.empty}>
-                <Text style={styles.emptyText}>{emptyHint}</Text>
+                <Text style={styles.emptyText}>
+                    {hasAnyPets === false ? NO_PETS_HINT : emptyHint}
+                </Text>
             </View>
         );
     }

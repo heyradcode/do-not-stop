@@ -50,6 +50,7 @@ export default function BattleScreen() {
                 selectedId={panel.selectedPetId}
                 onSelect={panel.onSelectPet}
                 disabled={panel.isBusy}
+                hasAnyPets={panel.hasAnyPets}
                 emptyHint="No pets are off cooldown. A pet that just fought has to wait."
             />
 

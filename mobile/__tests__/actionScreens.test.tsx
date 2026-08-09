@@ -214,3 +214,33 @@ describe('RenameScreen', () => {
         expect(textOf(tree)).toContain('level 10 or above');
     });
 });
+
+describe('PetPicker empty states', () => {
+    /**
+     * A wallet with no pets and a wallet whose pets are all busy look identical
+     * to the picker. On device an empty roster read "No pets are off cooldown
+     * right now", which tells a player with nothing to their name that their
+     * pets are resting.
+     */
+    it('sends a player with no pets to the Gallery rather than blaming cooldown', async () => {
+        mockState.pets = [];
+        const tree = await render(LevelUpScreen);
+        expect(textOf(tree)).toContain('Mint one from the Gallery');
+        expect(textOf(tree)).not.toContain('off cooldown');
+    });
+
+    it('still blames the filter when the wallet does hold pets', async () => {
+        mockState.renameMinLevel = 10;
+        mockState.pets = [pet({ level: 5 })];
+        const tree = await render(RenameScreen);
+        expect(textOf(tree)).toContain('level 10 or above');
+        expect(textOf(tree)).not.toContain('Mint one from the Gallery');
+    });
+
+    it('applies to Train too, not just Level Up', async () => {
+        mockState.pets = [];
+        const tree = await render(TrainScreen);
+        expect(textOf(tree)).toContain('Mint one from the Gallery');
+        expect(textOf(tree)).not.toContain('off cooldown');
+    });
+});

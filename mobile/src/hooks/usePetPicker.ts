@@ -4,6 +4,8 @@ import { getReadyPetsUnified, usePetList, type Pet, type ReadyPet } from '@share
 export interface PetPicker {
     /** Pets off cooldown, after the caller's own filter. */
     selectable: ReadyPet[];
+    /** Whether the wallet holds any pets at all, before cooldown or filter. */
+    hasAnyPets: boolean;
     selectedId: string;
     selectedPet: Pet | null;
     select: (id: string) => void;
@@ -32,6 +34,7 @@ export const usePetPicker = (filter?: (pet: Pet) => boolean): PetPicker => {
 
     return {
         selectable,
+        hasAnyPets: pets.length > 0,
         selectedId,
         selectedPet,
         select: setSelectedId,

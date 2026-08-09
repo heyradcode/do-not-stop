@@ -93,6 +93,7 @@ export default function RenameScreen() {
                 selectedId={picker.selectedId}
                 onSelect={picker.select}
                 disabled={isPending}
+                hasAnyPets={picker.hasAnyPets}
                 emptyHint={
                     renameMinLevel > 1
                         ? `No pets are off cooldown and at level ${renameMinLevel} or above.`
