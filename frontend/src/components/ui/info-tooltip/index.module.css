@@ -1,0 +1,84 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+   The panel is portalled to document.body, so nothing here may rely on inheriting from the
+   tile it was opened from: colours and type are stated outright rather than taken from an
+   ancestor that is no longer above it in the tree. */
+
+.trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    padding: 0;
+    border: 1px solid rgb(125 214 255 / 45%);
+    /* Round, unlike the square action button in the opposite corner. The difference is the
+       point: that one does something to the item, this only explains it. */
+    border-radius: 50%;
+    background: rgb(5 13 30 / 88%);
+    color: var(--cp-cyan, #7dd6ff);
+    cursor: pointer;
+    box-shadow: inset 0 0 8px rgb(125 214 255 / 16%), 0 0 8px rgb(125 214 255 / 22%);
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.trigger:hover,
+.trigger[aria-expanded='true'] {
+    border-color: rgb(125 214 255 / 85%);
+    box-shadow: inset 0 0 12px rgb(125 214 255 / 26%), 0 0 14px rgb(125 214 255 / 40%);
+}
+
+.trigger:focus-visible {
+    outline: 2px solid var(--cp-cyan, #7dd6ff);
+    outline-offset: 2px;
+}
+
+/* The glyph, centred properly rather than approximately.
+   Flexbox centres a line box, not the ink inside it, and a line box carries the font's full
+   ascender and descender — so a "?", which has no descender, is left sitting visibly low in
+   a circle. `line-height: 1` collapses the box to the font size and `display: block` keeps
+   the flex centring acting on the glyph itself. */
+.glyph {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1;
+    /* Optical, not geometric: a question mark's ink sits above the baseline, so the visual
+       centre is slightly below the box centre. */
+    transform: translateY(1px);
+}
+
+.panel {
+    position: fixed;
+    /* Above the dashboard chrome and any modal backdrop the page might raise. */
+    z-index: 60;
+    padding: 12px 14px;
+    border: 1px solid rgb(125 214 255 / 28%);
+    border-radius: 4px;
+    background: rgb(8 17 36 / 98%);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 55%);
+    color: rgb(195 210 255 / 88%);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.subject {
+    margin: 0 0 6px;
+    color: #f2f6ff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.body {
+    margin: 0;
+}
+
+.body p {
+    margin: 0 0 8px;
+}
+
+.body p:last-child {
+    margin-bottom: 0;
+}

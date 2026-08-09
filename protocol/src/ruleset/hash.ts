@@ -1,4 +1,3 @@
-import { currentSchemaVersion } from '../domain/schemaVersions';
 import type { Hex } from '../encoding/bytes';
 import { DOMAIN_TAGS } from '../encoding/domain';
 import { keccak256Hex } from '../encoding/hash';
@@ -16,12 +15,15 @@ import { assertRuleset, type Ruleset, SKILL_CONFIG_FIELDS } from './types';
  * deployment matters, the object referencing the ruleset already carries it.
  *
  * The schema version is written directly for the same reason: `writeHeader` bundles
- * version with domain, and there is no domain here.
+ * version with domain, and there is no domain here. It comes from the ruleset rather than
+ * from this build, so re-encoding a bundle published before the item catalog existed
+ * reproduces the bytes it was hashed under.
  */
 export function encodeRuleset(ruleset: Ruleset): Uint8Array {
     const checked = assertRuleset(ruleset);
+    const version = checked.schemaVersion ?? 1;
     const writer = CanonicalWriter.withDomain(DOMAIN_TAGS.RULESET)
-        .u16(currentSchemaVersion('ruleset'))
+        .u16(version)
         .u32(checked.version)
         .text(checked.engineId)
         .u32(checked.engineVersion)
@@ -30,6 +32,24 @@ export function encodeRuleset(ruleset: Ruleset): Uint8Array {
     for (const field of SKILL_CONFIG_FIELDS) {
         writer.u32(checked.skillConfig[field]);
     }
+
+    if (version < 2) {
+        return writer.build();
+    }
+
+    // The catalog is inside the hash rather than beside it as a digest of its own. A
+    // separate `itemCatalogHash` field would be a second thing to keep in step for no
+    // gain: the bundle already publishes these rows, so hashing them directly is both the
+    // identity and the content.
+    writer.array(checked.itemCatalog ?? [], (w, item) => {
+        w.u256(item.itemType)
+            .u8(item.slot)
+            .u16(item.hp)
+            .u16(item.atk)
+            .u16(item.def)
+            .u16(item.int)
+            .u16(item.mdef);
+    });
     return writer.build();
 }
 

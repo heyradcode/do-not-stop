@@ -21,11 +21,20 @@ function fieldsOf(typeName: string): Record<string, { type: string }> {
 describe('GraphQL schema — Query surface', () => {
     const query = fieldsOf('Query');
 
-    it('exposes the pet reads, both leaderboards, battleProgress, and winEstimate', () => {
+    it('exposes the pet reads, both leaderboards, battleProgress, winEstimate, and the inventory reads', () => {
         expect(Object.keys(query).sort()).toEqual([
-            'allPets', 'battleProgress', 'leaderboard', 'opponents', 'pet', 'playerLeaderboard',
-            'playerRank', 'searchPets', 'winEstimate',
+            'allPets', 'battleProgress', 'inventory', 'itemCatalog', 'leaderboard', 'opponents',
+            'pendingItems', 'pet', 'petEquipment', 'petEquipmentForPets', 'playerLeaderboard',
+            'playerRank', 'searchPets',
+            'winEstimate',
         ]);
+    });
+
+    // The owner is the session, never an argument. A chain-only signature is what makes
+    // "read someone else's bag" unspellable rather than merely unauthorized.
+    it('takes no owner argument on inventory', () => {
+        const inventory = (schema.getType('Query') as GraphQLObjectType).getFields().inventory;
+        expect(inventory!.args.map((a) => a.name)).toEqual(['chain']);
     });
 
     it('returns a non-null list of PetBattleProgress from battleProgress', () => {

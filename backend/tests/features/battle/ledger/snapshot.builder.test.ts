@@ -4,6 +4,12 @@ vi.mock('@config/env', () => ({
     env: { battle: { deploymentId: 'base-sepolia-live', chainIds: ['eip155:84532'] } },
 }));
 
+// Equipment resolution has its own coverage; stubbed to ungeared so these stay about
+// merging the roster with progression.
+vi.mock('@features/inventory', () => ({
+    getPetEquipment: vi.fn(async () => []),
+}));
+
 vi.mock('@config/prisma', () => ({
     prisma: {
         petRoster: { findUnique: vi.fn() },
@@ -13,6 +19,7 @@ vi.mock('@config/prisma', () => ({
 
 import { prisma } from '@config/prisma';
 import { buildPetSnapshot } from '@features/battle/ledger';
+import { getPetEquipment } from '@features/inventory';
 
 const ROSTER_ROW = {
     chain: 'evm',
@@ -219,5 +226,71 @@ describe('first backend battle for a pet', () => {
         vi.mocked(prisma.petBattleProgress.create).mockRejectedValue(new Error('connection reset'));
 
         await expect(buildPetSnapshot('eip155:84532', '1')).rejects.toThrow(/connection reset/);
+    });
+});
+
+describe('freezing equipment (roadmap §4)', () => {
+    // Its own setup: vi.clearAllMocks resets call records but not implementations, so an
+    // earlier case's rejecting create would otherwise carry into these.
+    beforeEach(() => {
+        vi.mocked(prisma.petRoster.findUnique).mockResolvedValue(ROSTER_ROW as never);
+        vi.mocked(prisma.petBattleProgress.findUnique).mockResolvedValue({
+            level: 40, xp: 0, lastOpponentId: '0', streak: 0, readyAt: 0n,
+        } as never);
+    });
+
+    const BLADE = {
+        slot: 0,
+        item: {
+            itemType: '1', key: 'iron_fang', category: 'equipment', slot: 0, rarity: 1,
+            effect: { kind: 'stat_bonus' as const, hp: 0, atk: 4, def: 0, int: 0, mdef: 0 },
+            name: 'Iron Fang', description: '',
+        },
+    };
+    const PLATE = {
+        slot: 1,
+        item: {
+            ...BLADE.item, itemType: '11', key: 'scale_mail', slot: 1,
+            effect: { kind: 'stat_bonus' as const, hp: 30, atk: 0, def: 10, int: 0, mdef: 0 },
+        },
+    };
+
+    // Resolved, not referenced: unequipping after acceptance must not change a committed
+    // fight, exactly as a level-up between acceptance and settlement must not.
+    it('freezes the resolved modifiers alongside the item type', async () => {
+        vi.mocked(getPetEquipment).mockResolvedValue([BLADE] as never);
+
+        const snapshot = await buildPetSnapshot('eip155:84532', '1');
+
+        expect(snapshot!.equipment).toEqual([
+            { slot: 0, itemType: 1n, hp: 0, atk: 4, def: 0, int: 0, mdef: 0 },
+        ]);
+    });
+
+    // Slot order is part of the snapshot digest, and assertPetSnapshot refuses to sort
+    // silently, so the builder has to hand it over already ordered.
+    it('orders slots ascending whatever order the rows arrive in', async () => {
+        vi.mocked(getPetEquipment).mockResolvedValue([PLATE, BLADE] as never);
+
+        const snapshot = await buildPetSnapshot('eip155:84532', '1');
+
+        expect(snapshot!.equipment?.map((e) => e.slot)).toEqual([0, 1]);
+    });
+
+    // An entry claiming an item was worn and did nothing reads as a bug rather than a fact.
+    it('leaves out an equipped item with no combat effect', async () => {
+        vi.mocked(getPetEquipment).mockResolvedValue([
+            { slot: 0, item: { ...BLADE.item, effect: null } },
+        ] as never);
+
+        expect((await buildPetSnapshot('eip155:84532', '1'))!.equipment).toBeUndefined();
+    });
+
+    // Omitted rather than empty, so an ungeared snapshot's stored JSON is identical to what
+    // it was before equipment existed.
+    it('omits the field entirely for an ungeared pet', async () => {
+        vi.mocked(getPetEquipment).mockResolvedValue([] as never);
+
+        expect((await buildPetSnapshot('eip155:84532', '1'))!.equipment).toBeUndefined();
     });
 });

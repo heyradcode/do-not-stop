@@ -1,5 +1,6 @@
 import { type BattleReceipt, hashCombatLog, type Ruleset, simulate } from '@cryptopets/protocol';
 
+import { equipmentBonus } from './equipment';
 import type { CheckResult } from './types';
 
 /**
@@ -37,6 +38,12 @@ export function checkCombatReplay(receipt: BattleReceipt, ruleset: Ruleset): Che
             defender.skill,
             BigInt(receipt.seed),
             ruleset.skillConfig,
+            // The bonuses the snapshot froze, not the catalog's: this reproduces the fight
+            // that happened. Whether those bonuses were the right ones is `checkEquipment`,
+            // reported separately so a mispriced item reads as a mispriced item rather
+            // than as an unexplained replay mismatch.
+            equipmentBonus(attacker.equipment),
+            equipmentBonus(defender.equipment),
         );
     } catch (error) {
         return { check, ok: false, detail: `replay could not run: ${(error as Error).message}` };

@@ -261,6 +261,125 @@ Neither board has a gRPC fast path, for the same reason `opponents` lost its own
 indexer-go's cache holds chain state and has no view of `pet_battle_progress`, a
 backend-owned table, so it cannot answer these correctly. Both read Postgres directly.
 
+### Inventory (roadmap §4)
+
+```graphql
+query($chain: String!, $petId: String!) {
+  itemCatalog { itemType key category slot rarity effect name description }
+  inventory(chain: $chain) {
+    item { itemType key category slot rarity effect name description }
+    quantity
+  }
+  petEquipment(chain: $chain, petId: $petId) {
+    slot
+    item { itemType key category slot rarity effect name description }
+  }
+}
+```
+
+Three read-only joins of an indexer-written projection onto the backend-owned catalog.
+`item_roster` and `pet_equipment` are written **only** by indexer-go from the `ItemCore`
+subgraph, under the same monotonic `last_version` guard `pet_roster` uses;
+`item_definition` is content the catalog seeder writes.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `itemType` | String | ERC-1155 token id as a decimal string. The join key everywhere, including the battle snapshot |
+| `key` | String | Stable content key (`xp_potion_i`). Survives a redeploy that renumbers token ids |
+| `category` | String | `consumable` \| `equipment` \| `collectible` \| `material`. No cosmetics in v1 |
+| `slot` | Int | 0 = weapon, 1 = armor, 2 = trinket; `null` unless equipment |
+| `rarity` | Int | 1-5, the same five tiers as pet rarity, not a second scale |
+| `effect` | String | Effect payload as a JSON string, `null` for an inert item. A string rather than a typed union: the shape differs per category and gains a variant per effect kind, for a value the client only renders |
+| `quantity` | String | Decimal string — a uint256 balance does not fit a JS number |
+
+`inventory` takes **no owner argument**: whose bag it is comes from the session, so there
+is no spelling of the query that reads another wallet's items. An unauthenticated caller
+gets an empty list rather than an error, matching `playerRank`'s treatment of no standing.
+Stacks spent to nothing are omitted — the projection has to keep a zero row, because a
+deletion would be invisible to the watermark read that produced it, but a player has no
+reason to see one.
+
+`petEquipment` is public, unlike `inventory`. Gear changes a pet's stats in a battle
+anyone can be matched into, so hiding it from an opponent would make the fight less
+checkable without making it more private. Empty slots (item type `"0"` in the table) are
+omitted.
+
+An item held but absent from the catalog is **hidden and logged**, not returned unnamed.
+That state means a mint of an undefined type or a catalog seeded behind the contract, and
+a blank tile in a player's bag is the worst way to discover either. `itemCatalog` reads
+the database rather than the shipped source file, so a rebalance is a row edit rather than
+a redeploy; an unseeded deployment therefore returns an empty catalog, which is the honest
+answer.
+
+Like the leaderboards, none of these have a gRPC fast path: indexer-go's cache holds pet
+state only and has no view of these tables.
+
+#### Inventory writes
+
+| Method | Path | Auth | Notes |
+| --- | --- | --- | --- |
+| POST | `/api/inventory/use` | JWT | Body `{ chain, petId, itemType }`. Spends one consumable on one of the caller's pets |
+| POST | `/api/inventory/entitlements/:id/claim` | JWT | Mints an item the caller has earned |
+| POST | `/api/inventory/admin/grant` | JWT + allowlist | Body `{ chain, owner, itemType, quantity }`. Creates an entitlement for any wallet |
+
+All three send a transaction from the backend's item wallet and are rate-limited per
+wallet at 15/min, because each one spends gas from that key whether or not it settles.
+They return **503** when `ITEM_CORE_ENABLED` is unset: writes refuse individually rather
+than the feature going dark, so a missing key never hides a player's items.
+
+**Equipping is not here, and will not be.** `ItemCore.equip` requires `msg.sender` to be
+the pet's owner, so the player's own wallet sends it from the client. That is the property
+that makes gear in a battle snapshot checkable against chain state by someone who does not
+trust this server, rather than an assertion by it.
+
+`use` burns on chain **first**, then applies the effect. The ordering is deliberate: a
+burn that lands with a failed apply costs the player an item and gains them nothing, while
+applying first and failing to burn would leave them the item *and* the effect, which
+repeats. The failed-apply case is logged with everything needed to fix it by hand;
+automating that means an outbox, worth building when volume justifies it.
+
+XP grants go through the combat engine's own `applyXp`, so a potion moves a pet on exactly
+the curve a battle does, and a pet with no progression row is seeded from its on-chain
+level the way its first battle would seed it.
+
+`claim` marks the row claimed **before** minting, conditioned on it still being unclaimed,
+so two concurrent claims mint at most once — the loser's update matches no row and it
+stops before sending. A failed mint releases the claim so it stays retryable, which is safe
+because the client waits for a receipt and treats a reverted one as a failure.
+
+`grant` creates an entitlement rather than minting directly, so an admin grant and a battle
+drop reach a bag by the same path. Its allowlist (`ITEM_ADMIN_WALLETS`) is empty by
+default: the route is closed until someone is named, not open until someone is excluded.
+
+#### Battle drops
+
+A settled battle can pay an item to each side, written as unclaimed entitlements **in the
+same transaction as the receipt** — the rule `battle_history` already follows, because two
+writes that can disagree eventually will. Off unless `ITEM_DROPS_ENABLED=true`, separately
+from `ITEM_CORE_ENABLED`: recording a drop needs no transaction, only claiming one does.
+
+The roll derives from the battle's own drand seed rather than a new randomness source.
+That seed is committed to a future round *before* the fight resolves, so nobody, this
+server included, can grind a drop by re-rolling, and anyone holding the receipt can
+recompute what should have dropped. Each side draws from its own labelled stream, so one
+side's outcome reveals nothing about the other's.
+
+What that does **not** give you: the drop is not part of the signed receipt in v1. An
+outsider can recompute what was owed and notice if something else was paid, but cannot
+prove it from the receipt alone. Putting drops inside the signed payload means a receipt
+schema version and a place in the ruleset hash, which is §4 phase 4 work.
+
+Equipment never drops — that tier is gated behind its own design review, and having gear
+fall out of ordinary battles would settle that question by accident. Rarity is the weight,
+inverted, so a Common lands five times as often as a Legendary. The pool comes from the
+shipped catalog constant rather than `item_definition`, because a replay has to reproduce
+what a battle dropped, and a table that content edits underneath would answer differently
+next month for the same seed.
+
+Idempotent under a retried receipt transaction: the entitlement's unique key is
+`(source_ref, owner, item_type)` with `source_ref` the battle id, so a replay collides with
+its own earlier row rather than paying twice.
+
 ### Battle data
 
 `battle_history` carries `loserPetId, seed (0x-hex), rounds, winnerHpRemaining,

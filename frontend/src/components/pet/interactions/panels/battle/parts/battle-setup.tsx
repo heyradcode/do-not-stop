@@ -10,6 +10,9 @@ import {
     type Pet,
     type ReadyPet,
     type WinEstimateResult,
+    type EquippedItem,
+    useChainCapabilities,
+    usePetEquipmentForPets,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
 import { AuthActionButton } from '@components/common';
@@ -18,6 +21,7 @@ import { opponentKey } from '../battle-utils';
 import { shortAddress } from '@utils/address';
 import styles from '../index.module.css';
 import PetArt from '@components/pet/pet-art';
+import EquippedBadges from '@components/pet/equipped-badges';
 import PetSelect from '@components/ui/pet-select';
 
 export type BattleSetupProps = {
@@ -57,7 +61,9 @@ const CombatantCard: React.FC<{
     side: 'fighter' | 'rival';
     emptyLabel: string;
     owner?: string;
-}> = ({ pet, side, emptyLabel, owner }) => {
+    /** Gear this combatant is wearing. It changes the fight, so it is worth seeing first. */
+    equipped?: readonly EquippedItem[];
+}> = ({ pet, side, emptyLabel, owner, equipped }) => {
     if (!pet) {
         return (
             <div
@@ -83,6 +89,7 @@ const CombatantCard: React.FC<{
                 pin it to the emoji's size instead of the card's. */}
             <div className={styles.combatantCardArt}>
                 <PetArt pet={pet} fill emojiClassName={styles.combatantCardAvatar} />
+                <EquippedBadges equipped={equipped} rarity={pet.rarity} size="md" />
             </div>
             {/* Nothing here is legible over arbitrary generated art without it. */}
             <div className={styles.combatantCardScrim} aria-hidden />
@@ -148,6 +155,20 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
     onCancel,
     winEstimate,
 }) => {
+    /**
+     * Gear for both combatants in one request.
+     *
+     * The rival's gear matters as much as your own here — it is what makes an opponent
+     * stronger than their level suggests — and it is a claim about chain state anyone is
+     * entitled to check, which is why the read is public.
+     */
+    const { activeKind: chain } = useChainCapabilities();
+    const petIds = useMemo(
+        () => [selectedFighter?.id, opponent?.id].filter(Boolean).map(String),
+        [selectedFighter?.id, opponent?.id],
+    );
+    const { byPet: equippedByPet } = usePetEquipmentForPets({ chain, petIds });
+
     const winRate = winEstimate.isLoading
         ? '…'
         : winEstimate.winProbability != null
@@ -203,6 +224,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                         pet={selectedFighter}
                         side="fighter"
                         emptyLabel={readyPets.length === 0 ? 'No ready fighters' : 'Choose your fighter'}
+                        equipped={selectedFighter ? equippedByPet.get(String(selectedFighter.id)) : undefined}
                     />
                 </div>
 
@@ -259,6 +281,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                         side="rival"
                         emptyLabel={opponentEmpty}
                         owner={opponent ? shortAddress(opponent.owner) : undefined}
+                        equipped={opponent ? equippedByPet.get(String(opponent.id)) : undefined}
                     />
                 </div>
             </div>

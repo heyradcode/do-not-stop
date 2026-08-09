@@ -1,0 +1,122 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+   Body content only; the dialog chrome comes from <NeonModal>. */
+
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Art beside facts on a normal window, stacked on a narrow one. A fixed two-column grid
+   would squeeze the text to a ribbon on a phone. */
+.layout {
+    display: grid;
+    grid-template-columns: 168px 1fr;
+    gap: 18px;
+    align-items: start;
+}
+
+@media (max-width: 560px) {
+    .layout {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+}
+
+.facts {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+}
+
+.meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.rarity {
+    color: var(--rarity, inherit);
+}
+
+.category,
+.held {
+    padding-left: 8px;
+    border-left: 1px solid rgb(255 255 255 / 14%);
+    opacity: 0.6;
+}
+
+.held {
+    font-variant-numeric: tabular-nums;
+}
+
+.stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 3px 9px;
+    border: 1px solid rgb(110 231 183 / 30%);
+    border-radius: 3px;
+    background: rgb(110 231 183 / 8%);
+    font-size: 0.76rem;
+}
+
+.statLabel {
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.72;
+}
+
+.statValue {
+    color: rgb(110 231 183);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Flavour is quieter than the mechanics: it is the reason to want the thing, not the reason
+   it works. */
+.flavour {
+    margin: 0;
+    font-size: 0.86rem;
+    font-style: italic;
+    line-height: 1.5;
+    opacity: 0.6;
+}
+
+.explain {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    color: rgb(195 210 255 / 88%);
+}
+
+.error {
+    margin: 0;
+    padding: 9px 12px;
+    border: 1px solid rgb(255 110 196 / 40%);
+    border-radius: 2px;
+    background: rgb(255 110 196 / 10%);
+    color: #ff9bd6;
+    font-size: 0.84rem;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}

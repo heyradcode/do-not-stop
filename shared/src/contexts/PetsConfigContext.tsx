@@ -19,6 +19,12 @@ export interface PetsEvmConfig {
     petCore: EvmContractRef;
     gameLogic: EvmContractRef;
     gameConfig?: EvmContractRef;
+    /**
+     * ItemCore (roadmap §4). Optional, like GameConfig: a deployment without it still
+     * runs, and only equipping goes unavailable. Reads and consumables go through the
+     * backend, so the app degrades to "gear is read-only" rather than to a blank screen.
+     */
+    itemCore?: EvmContractRef;
     enabled?: boolean;
     /** EVM chain ID the contracts are deployed on. Passed to read hooks so they
      *  use the right RPC regardless of which chain the wallet is connected to. */

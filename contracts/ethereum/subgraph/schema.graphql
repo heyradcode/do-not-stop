@@ -57,3 +57,46 @@ type BreedRequest @entity(immutable: false) {
   petId1: BigInt!
   petId2: BigInt!
 }
+
+# ─── Inventory (roadmap §4) ───────────────────────────────────────────────────
+# Same contract as Pet above: field names mirror what indexer-go selects, and both
+# entities carry `updatedAt` because that block timestamp is the per-row version the
+# indexer resumes from and the version guard compares.
+#
+# Neither entity is ever removed. A wallet that spends its last potion, or a slot that is
+# emptied, has to produce a row the indexer can *see*, and a deleted entity is invisible to
+# a watermark query: the indexer would keep serving the stale balance forever. So zero is
+# written as a value rather than as an absence.
+
+type ItemBalance @entity(immutable: false) {
+  "`{owner}-{itemType}`, lowercase owner."
+  id: ID!
+
+  "Holder address. The ItemCore contract itself appears here holding escrowed equipment."
+  owner: Bytes!
+
+  "ERC-1155 token id, which is the item *type*, not one instance of it."
+  itemType: BigInt!
+
+  "How many the holder has. Re-read from balanceOf rather than accumulated from deltas."
+  quantity: BigInt!
+
+  "Block timestamp of the last update."
+  updatedAt: BigInt!
+}
+
+type PetEquipment @entity(immutable: false) {
+  "`{petId}-{slot}`."
+  id: ID!
+
+  petId: BigInt!
+
+  "0 = weapon, 1 = armor, 2 = trinket (ItemCore.SLOT_*)."
+  slot: Int!
+
+  "Equipped item type, or 0 for an empty slot."
+  itemType: BigInt!
+
+  "Block timestamp of the last update."
+  updatedAt: BigInt!
+}

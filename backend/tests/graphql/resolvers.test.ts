@@ -18,6 +18,13 @@ vi.mock('@repositories/battleProgress.overlay', () => ({
     withBattleProgress: vi.fn(async (_chain: unknown, pets: unknown[]) => pets),
     findBattleProgress: vi.fn(async () => []),
 }));
+// The service's own join rule is covered in features/inventory/inventory.service.test.ts;
+// stubbed here so these tests stay about resolver shaping and the session-owner rule.
+vi.mock('@features/inventory', () => ({
+    getCatalog: vi.fn(),
+    getInventory: vi.fn(),
+    getPetEquipment: vi.fn(),
+}));
 
 import { rootValue } from '../../src/graphql/resolvers';
 import { findReadyOpponents, getPetById } from '@repositories/roster.repository';
@@ -27,6 +34,7 @@ import {
     findPlayerRank,
 } from '@repositories/leaderboard.repository';
 import { tryGrpcEstimateWin } from '../../src/grpc/estimateWin';
+import { getCatalog, getInventory, getPetEquipment } from '@features/inventory';
 
 const ctx = { caller: '0xcaller' };
 
@@ -186,5 +194,73 @@ describe('winEstimate resolver', () => {
 
     it('throws for unsupported chain', async () => {
         await expect(rootValue.winEstimate({ chain: 'tron', petId1: 'p1', petId2: 'p2' })).rejects.toThrow('chain must be one of');
+    });
+});
+
+// ─── inventory (roadmap §4) ──────────────────────────────────────────────────
+
+const POTION = {
+    itemType: '100',
+    key: 'xp_potion_i',
+    category: 'consumable',
+    slot: null,
+    rarity: 1,
+    effect: { kind: 'grant_xp' as const, amount: 50 },
+    name: 'Lesser Tonic',
+    description: 'Tastes of copper.',
+};
+
+const INERT = { ...POTION, itemType: '200', key: 'crate_key', category: 'collectible', effect: null };
+
+describe('itemCatalog', () => {
+    it('serializes the effect payload to a JSON string', async () => {
+        vi.mocked(getCatalog).mockResolvedValue([POTION]);
+
+        const [entry] = await rootValue.itemCatalog();
+
+        expect(entry).toMatchObject({ itemType: '100', key: 'xp_potion_i' });
+        expect(JSON.parse(entry!.effect!)).toEqual({ kind: 'grant_xp', amount: 50 });
+    });
+
+    it('leaves an inert item’s effect null rather than the string "null"', async () => {
+        vi.mocked(getCatalog).mockResolvedValue([INERT]);
+        expect((await rootValue.itemCatalog())[0]!.effect).toBeNull();
+    });
+});
+
+describe('inventory', () => {
+    it('reads the owner from the session, not from an argument', async () => {
+        vi.mocked(getInventory).mockResolvedValue([{ item: POTION, quantity: '3' }]);
+
+        const entries = await rootValue.inventory({ chain: 'evm' }, ctx);
+
+        expect(getInventory).toHaveBeenCalledWith('evm', '0xcaller');
+        expect(entries).toEqual([{ item: expect.objectContaining({ key: 'xp_potion_i' }), quantity: '3' }]);
+    });
+
+    // "Owns nothing" rather than an error, matching how playerRank treats no standing.
+    it('returns an empty bag for an unauthenticated caller without querying', async () => {
+        expect(await rootValue.inventory({ chain: 'evm' }, { caller: '' })).toEqual([]);
+        expect(getInventory).not.toHaveBeenCalled();
+    });
+
+    it('rejects an unsupported chain', async () => {
+        await expect(rootValue.inventory({ chain: 'dogecoin' }, ctx)).rejects.toThrow(/chain must be one of/);
+    });
+});
+
+describe('petEquipment', () => {
+    it('returns filled slots with their definitions', async () => {
+        vi.mocked(getPetEquipment).mockResolvedValue([{ slot: 0, item: POTION }]);
+
+        expect(await rootValue.petEquipment({ chain: 'evm', petId: '7' }, ctx)).toEqual([
+            { slot: 0, item: expect.objectContaining({ key: 'xp_potion_i' }) },
+        ]);
+    });
+
+    it('rejects an unsupported chain', async () => {
+        await expect(rootValue.petEquipment({ chain: 'dogecoin', petId: '7' }, ctx)).rejects.toThrow(
+            /chain must be one of/,
+        );
     });
 });

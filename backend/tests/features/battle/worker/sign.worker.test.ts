@@ -13,9 +13,14 @@ import {
     SOURCE_DEFAULT_RULESET,
 } from '@cryptopets/protocol';
 
-vi.mock('@config/env', () => ({
-    env: { battle: { cooldownSeconds: 900 } },
+// Drops off by default here, matching the shipped default, so these tests keep asserting
+// what the receipt transaction does on its own. Mutable so the one test that cares can
+// switch them on; hoisted because vi.mock factories run before the imports below.
+const envMock = vi.hoisted(() => ({
+    battle: { cooldownSeconds: 900 },
+    inventory: { dropsEnabled: false },
 }));
+vi.mock('@config/env', () => ({ env: envMock }));
 
 vi.mock('@config/prisma', () => ({
     prisma: {
@@ -45,8 +50,16 @@ vi.mock('@ws/battleRoomSocket', () => ({
     notifyBattleRoomIfPresent: vi.fn(),
 }));
 
+// Stubbed so the drop tests below assert the wiring — which seed, which owners, which
+// transaction — rather than whether this fixture's seed happens to roll a payout. What a
+// given seed produces is drops.test.ts's subject.
+vi.mock('@features/inventory', () => ({
+    recordBattleDrops: vi.fn().mockResolvedValue([]),
+}));
+
 import { prisma } from '@config/prisma';
 import { applyTransition, completeOutbox } from '@features/battle/ledger';
+import { recordBattleDrops } from '@features/inventory';
 import { activeSigningKey, sign, SignerRefusedError } from '@features/battle/signer';
 import { processSignMessage } from '@features/battle/worker';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
@@ -163,11 +176,14 @@ function fakeTx() {
         petBattleProgress: { update: vi.fn().mockResolvedValue({}) },
         // The rivalry record for the dialogue service, written on the same transaction.
         battleHistory: { upsert: vi.fn().mockResolvedValue({}) },
+        // Item drops (roadmap §4), written on the same transaction for the same reason.
+        itemEntitlement: { createMany: vi.fn().mockResolvedValue({ count: 1 }) },
     };
 }
 
 beforeEach(() => {
     vi.clearAllMocks();
+    envMock.inventory.dropsEnabled = false;
     vi.mocked(prisma.battleLedger.findUnique).mockResolvedValue(BATTLE as never);
     vi.mocked(prisma.battleReceipt.findFirst).mockResolvedValue(null);
     vi.mocked(prisma.petBattleProgress.findUnique).mockResolvedValue(null);
@@ -401,5 +417,47 @@ describe('idempotence', () => {
     it('throws if the commitment row is missing', async () => {
         vi.mocked(prisma.battleCommitment.findUnique).mockResolvedValue(null);
         await expect(processSignMessage(MESSAGE, NOW)).rejects.toThrow(/no commitment row/);
+    });
+});
+
+describe('item drops (roadmap §4)', () => {
+    /** Runs the worker and hands back the transaction its onApplied saw. */
+    async function runCapturingTx() {
+        const tx = fakeTx();
+        vi.mocked(applyTransition).mockImplementationOnce((async (req: { onApplied?: (tx: unknown) => Promise<void> }) => {
+            if (req.onApplied) await req.onApplied(tx);
+            return { applied: true, state: 'signed' };
+        }) as never);
+        await processSignMessage(MESSAGE, NOW);
+        return tx;
+    }
+
+    // Asserted on the call rather than on rows written, because whether this fixture's
+    // seed actually pays is a property of keccak, not of the wiring. It does not, as it
+    // happens — so a test that checked for rows would have passed while asserting nothing.
+    // What matters here is that the worker hands over the right inputs inside the right
+    // transaction; what those inputs produce is drops.test.ts's job.
+    it('records drops on the same transaction as the receipt', async () => {
+        envMock.inventory.dropsEnabled = true;
+
+        const tx = await runCapturingTx();
+
+        expect(tx.battleReceipt.create).toHaveBeenCalled();
+        expect(recordBattleDrops).toHaveBeenCalledWith(tx, {
+            chain: 'evm',
+            battleId: BATTLE.battleId,
+            seed: BATTLE.seed,
+            // Owners by outcome, not by role: paying the winner's drop to the loser is
+            // exactly the mistake this pins.
+            winnerOwner: BATTLE.attackerWon ? ATTACKER.owner : DEFENDER.owner,
+            loserOwner: BATTLE.attackerWon ? DEFENDER.owner : ATTACKER.owner,
+        });
+    });
+
+    it('records no drops while the feature is off', async () => {
+        const tx = await runCapturingTx();
+
+        expect(tx.battleReceipt.create).toHaveBeenCalled();
+        expect(recordBattleDrops).not.toHaveBeenCalled();
     });
 });

@@ -57,6 +57,10 @@ vi.mock('@shared/core', () => ({
     getRarityName: () => 'Rare',
     useChainCapabilities: () => capabilities,
     usePetList: () => petList,
+    // No gear in these cases: an empty map is what a bare roster looks like, and the badges
+    // have their own suite.
+    usePetEquipmentForPets: () => ({ byPet: new Map(), isLoading: false, error: null, refetch: () => {} }),
+    itemArtUrl: () => null,
 }));
 
 import PetGallery from '@components/pet/collection/pet-gallery';

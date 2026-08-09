@@ -1,4 +1,6 @@
-import { hashRuleset, SOURCE_DEFAULT_RULESET, type Hex } from '@cryptopets/protocol';
+import { hashRuleset, type Hex } from '@cryptopets/protocol';
+
+import { servedRuleset } from './ruleset.builder';
 import { ethers } from 'ethers';
 
 import { prisma } from '@config/prisma';
@@ -55,8 +57,10 @@ export interface BattleConfig {
  * is secret, and needing a login to find out which rules are in force would make
  * a third-party client harder to write than it has any reason to be.
  */
-export function getBattleConfig(): BattleConfig {
-    const ruleset = SOURCE_DEFAULT_RULESET;
+export async function getBattleConfig(): Promise<BattleConfig> {
+    // The same ruleset accept would use, item catalog included, so a client signing
+    // defence consent binds to the hash its battles will actually name (roadmap §4).
+    const ruleset = await servedRuleset();
     return {
         enabled: backendBattleModeEnabled(),
         deploymentId: servedDeploymentId(),

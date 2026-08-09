@@ -14,6 +14,7 @@
         "lint:fix": "pnpm exec eslint . --fix",
         "typecheck": "pnpm exec tsc --noEmit",
         "vectors": "pnpm exec tsx scripts/gen-vectors.ts",
+        "vectors:equipment": "pnpm exec tsx scripts/gen-equipment-vectors.ts",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage"

@@ -24,6 +24,8 @@ import { fileURLToPath } from 'node:url';
 
 import { publishRuleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
 
+import { GEARED_RULESET } from '../tests/fixtures/signedReceipt';
+
 import { buildCorpus, buildTamperedCorpus, corpusSigningKeys } from '../tests/fixtures/corpus';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -38,12 +40,18 @@ function writeJson(path: string, value: unknown): void {
 mkdirSync(RULESETS_DIR, { recursive: true });
 mkdirSync(FIXTURES_DIR, { recursive: true });
 
-// The ruleset this build implements, pinned so a battle fought under it stays replayable
+// The rulesets this corpus's battles were fought under, pinned so they stay replayable
 // after ENGINE_VERSION moves on. `serializeRuleset` already emits a trailing newline.
-const { hash, json } = publishRuleset(SOURCE_DEFAULT_RULESET);
-const rulesetPath = join(RULESETS_DIR, `${hash.toLowerCase()}.json`);
-writeFileSync(rulesetPath, json, 'utf8');
-console.log(`wrote ${rulesetPath}`);
+//
+// Two of them: the source default that the ungeared receipts name, and the geared one the
+// last receipt names. A pinned bundle per ruleset is the rule, not an exception — a
+// receipt whose bundle is missing is a receipt nobody can replay.
+for (const ruleset of [SOURCE_DEFAULT_RULESET, GEARED_RULESET]) {
+    const { hash, json } = publishRuleset(ruleset);
+    const rulesetPath = join(RULESETS_DIR, `${hash.toLowerCase()}.json`);
+    writeFileSync(rulesetPath, json, 'utf8');
+    console.log(`wrote ${rulesetPath}`);
+}
 
 writeJson(join(FIXTURES_DIR, 'corpus.json'), buildCorpus());
 writeJson(join(FIXTURES_DIR, 'corpus-tampered.json'), buildTamperedCorpus());

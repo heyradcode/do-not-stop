@@ -82,3 +82,18 @@ export const battleRoomRateLimit = rateLimit({
     keyGenerator: walletKey,
     message: { error: 'Too many battle room requests, try again shortly' },
 });
+
+/**
+ * Inventory writes each send a transaction and wait for its receipt, so the real limit is
+ * block time rather than server cost. A tight budget here is about the wallet: every call
+ * spends gas from the backend's own key, and a loop of failed uses would drain it whether
+ * or not anything settled.
+ */
+export const inventoryWriteRateLimit = rateLimit({
+    windowMs: 60_000,
+    limit: 15,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    keyGenerator: walletKey,
+    message: { error: 'Too many item actions, try again shortly' },
+});

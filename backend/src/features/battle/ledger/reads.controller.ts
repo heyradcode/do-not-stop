@@ -13,8 +13,16 @@ import {
 } from './reads.service';
 
 /** The deployment, chains, and active ruleset a client needs before it can sign an intent. */
-export function getBattleConfigHandler(_req: Request, res: Response): void {
-    res.status(200).json(getBattleConfig());
+export async function getBattleConfigHandler(_req: Request, res: Response): Promise<void> {
+    try {
+        res.status(200).json(await getBattleConfig());
+    } catch (err) {
+        // Async since the ruleset now joins the item catalog (roadmap §4), so this can
+        // fail on a database that is down. A 500 is right: a client that signed against a
+        // guessed ruleset hash would have every battle rejected.
+        console.error('[battle] failed to read battle config:', err);
+        res.status(500).json({ error: 'config-unavailable' });
+    }
 }
 
 export async function getBattleStateHandler(req: Request, res: Response): Promise<void> {

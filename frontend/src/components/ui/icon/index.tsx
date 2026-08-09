@@ -14,6 +14,7 @@ import {
     GiSandsOfTime,
     GiShield,
     GiSparkles,
+    GiMuscleUp,
     GiSpellBook,
     GiTrophy,
     GiUpgrade,
@@ -25,6 +26,7 @@ import {
     IoPauseSharp,
     IoPin,
     IoPinOutline,
+    IoRefresh,
     IoWarning,
 } from 'react-icons/io5';
 import clsx from 'clsx';
@@ -104,6 +106,7 @@ export {
     GiSandsOfTime as HourglassIcon,
     GiShield as ShieldIcon,
     GiSparkles as SparklesIcon,
+    GiMuscleUp as MuscleIcon,
     GiSpellBook as SpellbookIcon,
     GiTrophy as TrophyIcon,
     GiUpgrade as LevelUpIcon,
@@ -113,5 +116,6 @@ export {
     IoPauseSharp as PauseIcon,
     IoPin as PinFilledIcon,
     IoPinOutline as PinIcon,
+    IoRefresh as RefreshIcon,
     IoWarning as WarningIcon,
 };

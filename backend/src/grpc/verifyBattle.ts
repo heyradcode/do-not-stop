@@ -35,6 +35,19 @@ export interface VerifyPetInputsWire {
     xp: number;
     lastOpponentId: string;
     streak: number;
+    /**
+     * The pet's resolved equipment total (roadmap §4), frozen at acceptance.
+     *
+     * Five scalars rather than a nested message, so a server that predates equipment reads
+     * proto3 defaults of zero. That is exactly "ungeared", which means a geared battle sent
+     * to an old verifier fails §F loudly rather than being checked against the wrong
+     * inputs and passing.
+     */
+    bonusHp: number;
+    bonusAtk: number;
+    bonusDef: number;
+    bonusInt: number;
+    bonusMdef: number;
 }
 
 export interface VerifySkillConfigWire {

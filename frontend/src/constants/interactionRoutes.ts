@@ -17,7 +17,8 @@ export type InteractionAction =
     | 'train'
     | 'marriage'
     | 'changename'
-    | 'defense';
+    | 'defense'
+    | 'equip';
 
 export type StandaloneInteractionHeader = {
     Icon: ComponentType<{ size?: number | string }>;
@@ -50,6 +51,11 @@ export const STANDALONE_INTERACTION_HEADERS: Record<
         label: 'Allow Challenges',
         sub: 'Let others battle your pets while you are away',
     },
+    equip: {
+        Icon: ShieldIcon,
+        label: 'Equipment',
+        sub: 'Fit your pet with gear it carries into battle',
+    },
 };
 
 /** Dashboard home (idle gallery). */
@@ -62,10 +68,12 @@ export const LEVELUP_PATH = '/levelup';
 export const TRAIN_PATH = '/train';
 export const MARRIAGE_PATH = '/marriage';
 export const RENAME_PATH = '/rename';
-export const DEFENSE_PATH = '/defense';
 
 /** Read-only view, not an interaction — no pet selection, nothing to sign. */
 export const LEADERBOARD_PATH = '/leaderboard';
+
+/** Standalone inventory screen (roadmap §4). */
+export const INVENTORY_PATH = '/inventory';
 
 /** Private chat with married-pet counterparts. Also not an interaction. */
 export const MESSAGES_PATH = '/messages';

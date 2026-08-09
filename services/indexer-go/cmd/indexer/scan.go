@@ -39,11 +39,13 @@ func runScanOnce(cfg *config.Config) error {
 	defer pg.Close()
 
 	roster := make(chan indexer.RosterUpdate, 256)
+	items := make(chan indexer.ItemUpdate, 256)
+	equipment := make(chan indexer.EquipmentUpdate, 256)
 	writerCtx, stopWriter := context.WithCancel(ctx)
 	writerDone := make(chan struct{})
 	go func() {
 		defer close(writerDone)
-		if err := store.NewWriter(pg).Run(writerCtx, roster); err != nil {
+		if err := store.NewWriter(pg).Run(writerCtx, roster, items, equipment); err != nil {
 			slog.Error("writer exited", "err", err)
 		}
 	}()
@@ -59,6 +61,22 @@ func runScanOnce(cfg *config.Config) error {
 			continue
 		}
 		slog.Info("scan complete", "chain", a.Chain(), "scanned", scanned)
+
+		// A backfill run has to cover inventory too, or -scan-once leaves
+		// item_roster and pet_equipment behind whatever the live loop last wrote.
+		inv, ok := a.(indexer.InventoryIndexer)
+		if !ok {
+			continue
+		}
+		scanned, err = inv.ScanInventory(ctx, items, equipment)
+		if err != nil {
+			slog.Error("inventory scan failed", "chain", a.Chain(), "err", err)
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		slog.Info("inventory scan complete", "chain", a.Chain(), "scanned", scanned)
 	}
 
 	stopWriter() // triggers the writer's final drain

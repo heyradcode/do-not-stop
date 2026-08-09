@@ -1,4 +1,5 @@
 export type { Attrs } from './dna';
+export { applyBonus, type AttrBonus, bonusFromEquipment, NO_BONUS, sumBonuses } from './equipment';
 export { digitPair, elementMod, extract, toUint16 } from './dna';
 export { roundSeed, strikeRoll } from './rng';
 export {

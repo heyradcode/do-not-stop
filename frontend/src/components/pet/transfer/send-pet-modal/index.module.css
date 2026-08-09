@@ -36,6 +36,76 @@
         }
     }
 
+    /* Amber rather than magenta: this is something to notice before sending, not an error
+       and not a blocked action. Sending a geared pet is a legitimate thing to want. */
+    .gearNotice {
+        background: rgb(40 26 5 / 62%);
+        border: 1px solid rgb(255 186 84 / 34%);
+        border-left-width: 3px;
+        border-radius: 2px;
+        padding: 12px 14px;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+
+        & strong {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--cp-amber, #ffba54);
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        & p {
+            margin: 0 0 10px 0;
+            color: rgb(195 210 255 / 78%);
+            font-size: 0.875rem;
+            line-height: 1.45;
+        }
+
+        & ul {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        & li {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            border-left: 2px solid var(--rarity, var(--cp-border-soft));
+            padding-left: 8px;
+        }
+    }
+
+    .gearSlot {
+        flex: 0 0 4.5rem;
+        color: rgb(195 210 255 / 58%);
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .gearName {
+        color: #f6f3ff;
+        font-size: 0.9rem;
+        font-weight: 600;
+        word-break: break-word;
+    }
+
+    /* The read failed or never ran. Quieter than the notice above, because it describes an
+       uncertainty rather than a known cost. */
+    .gearUnknown {
+        margin: 0 0 20px 0;
+        color: rgb(195 210 255 / 62%);
+        font-size: 0.85rem;
+        line-height: 1.45;
+    }
+
     .recipient {
         margin-bottom: 20px;
         width: 100%;

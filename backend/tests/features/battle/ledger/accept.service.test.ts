@@ -14,6 +14,15 @@ vi.mock('@config/prisma', () => ({
     },
 }));
 
+// The catalog join is covered in ruleset.builder's own test; stubbed to the source
+// default here so these stay about what accept does, not about how a ruleset is assembled.
+vi.mock('../../../../src/features/battle/ledger/ruleset.builder', async () => {
+    const { SOURCE_DEFAULT_RULESET } = await vi.importActual<typeof import('@cryptopets/protocol')>(
+        '@cryptopets/protocol',
+    );
+    return { servedRuleset: vi.fn(async () => SOURCE_DEFAULT_RULESET) };
+});
+
 vi.mock('../../../../src/features/battle/ledger/snapshot.builder', () => ({
     buildPetSnapshot: vi.fn(),
 }));

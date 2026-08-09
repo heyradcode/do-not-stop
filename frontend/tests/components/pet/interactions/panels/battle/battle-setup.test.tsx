@@ -20,6 +20,17 @@ vi.mock('@components/common', () => ({
         </button>
     ),
 }));
+/**
+ * A partial mock, not a full one: this file deliberately uses the real cosmetic helpers so
+ * the CombatantCard renders its true output. Only the two hooks that need React context are
+ * replaced, since providing an API client and an auth session here would be a lot of setup
+ * for a card that is not about either.
+ */
+vi.mock('@shared/core', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@shared/core')>()),
+    useChainCapabilities: () => ({ activeKind: 'evm', isConnected: true }),
+    usePetEquipmentForPets: () => ({ byPet: new Map(), isLoading: false, error: null, refetch: () => {} }),
+}));
 // Siblings that reach into PetsConfig/wagmi/Anchor — stub them out.
 vi.mock('@components/pet/interactions/panels/battle/parts/pending-battle-notice', () => ({
     default: () => null,

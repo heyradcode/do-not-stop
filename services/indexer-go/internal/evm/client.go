@@ -34,6 +34,46 @@ const (
 `
 )
 
+// Inventory queries (roadmap §4). Same cursor-plus-watermark shape as the pet
+// queries above, and the same rule applies: these selection sets must match the
+// subgraph's ItemBalance / PetEquipment entities exactly or the adapter silently
+// reads zero values.
+const (
+	itemBalanceFields = `id owner itemType quantity updatedAt`
+
+	itemBalanceFullQuery = `
+  query ItemBalances($first: Int!, $lastId: ID!) {
+    itemBalances(first: $first, orderBy: id, orderDirection: asc, where: { id_gt: $lastId }) {
+      ` + itemBalanceFields + `
+    }
+  }
+`
+	itemBalanceIncrementalQuery = `
+  query ItemBalancesSince($first: Int!, $lastId: ID!, $since: BigInt!) {
+    itemBalances(first: $first, orderBy: id, orderDirection: asc, where: { id_gt: $lastId, updatedAt_gt: $since }) {
+      ` + itemBalanceFields + `
+    }
+  }
+`
+
+	petEquipmentFields = `id petId slot itemType updatedAt`
+
+	petEquipmentFullQuery = `
+  query PetEquipments($first: Int!, $lastId: ID!) {
+    petEquipments(first: $first, orderBy: id, orderDirection: asc, where: { id_gt: $lastId }) {
+      ` + petEquipmentFields + `
+    }
+  }
+`
+	petEquipmentIncrementalQuery = `
+  query PetEquipmentsSince($first: Int!, $lastId: ID!, $since: BigInt!) {
+    petEquipments(first: $first, orderBy: id, orderDirection: asc, where: { id_gt: $lastId, updatedAt_gt: $since }) {
+      ` + petEquipmentFields + `
+    }
+  }
+`
+)
+
 // subgraphPet mirrors the subgraph's Pet entity. The Graph encodes Int as a
 // JSON number and BigInt as a string.
 type subgraphPet struct {
@@ -76,6 +116,26 @@ type subgraphBattle struct {
 	WinnerHpRemaining uint32 `json:"winnerHpRemaining"`
 	XPWin             uint32 `json:"xpWin"`
 	XPLoss            uint32 `json:"xpLoss"`
+}
+
+// subgraphItemBalance mirrors the subgraph's ItemBalance entity. `quantity` is a
+// BigInt, so The Graph encodes it as a string.
+type subgraphItemBalance struct {
+	ID        string `json:"id"` // "{owner}-{itemType}"
+	Owner     string `json:"owner"`
+	ItemType  string `json:"itemType"`
+	Quantity  string `json:"quantity"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
+// subgraphPetEquipment mirrors the subgraph's PetEquipment entity. `slot` is an
+// Int (a JSON number); the rest are BigInt strings.
+type subgraphPetEquipment struct {
+	ID        string `json:"id"` // "{petId}-{slot}"
+	PetID     string `json:"petId"`
+	Slot      uint32 `json:"slot"`
+	ItemType  string `json:"itemType"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 type client struct {
@@ -140,18 +200,45 @@ func (c *client) fetchPetsPage(ctx context.Context, query string, variables map[
 	return data.Pets, nil
 }
 
-// paginate cursor-pages through all matching pets using the given query and
-// variable builder, same contract as the TS implementation.
-func (c *client) paginate(
+func (c *client) fetchItemBalancesPage(ctx context.Context, query string, variables map[string]any) ([]subgraphItemBalance, error) {
+	var data struct {
+		ItemBalances []subgraphItemBalance `json:"itemBalances"`
+	}
+	if err := c.query(ctx, query, variables, &data); err != nil {
+		return nil, err
+	}
+	return data.ItemBalances, nil
+}
+
+func (c *client) fetchPetEquipmentPage(ctx context.Context, query string, variables map[string]any) ([]subgraphPetEquipment, error) {
+	var data struct {
+		PetEquipments []subgraphPetEquipment `json:"petEquipments"`
+	}
+	if err := c.query(ctx, query, variables, &data); err != nil {
+		return nil, err
+	}
+	return data.PetEquipments, nil
+}
+
+// paginate cursor-pages through all matching rows of one entity, same contract
+// as the TS implementation.
+//
+// Generic over the row type, and therefore a function rather than a method: Go
+// does not allow type parameters on methods. The alternative was a near-identical
+// copy of this loop per entity, where a fix to the cursor or the short-page
+// termination would have to be made in three places to hold.
+func paginate[T any](
 	ctx context.Context,
-	query string,
+	pageSize int,
 	buildVars func(lastID string) map[string]any,
-) ([]subgraphPet, error) {
+	idOf func(T) string,
+	fetch func(ctx context.Context, variables map[string]any) ([]T, error),
+) ([]T, error) {
 	lastID := ""
-	var all []subgraphPet
+	var all []T
 
 	for {
-		page, err := c.fetchPetsPage(ctx, query, buildVars(lastID))
+		page, err := fetch(ctx, buildVars(lastID))
 		if err != nil {
 			return nil, err
 		}
@@ -159,8 +246,8 @@ func (c *client) paginate(
 			break
 		}
 		all = append(all, page...)
-		lastID = page[len(page)-1].ID
-		if len(page) < c.pageSize {
+		lastID = idOf(page[len(page)-1])
+		if len(page) < pageSize {
 			break
 		}
 	}

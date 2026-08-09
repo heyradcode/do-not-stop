@@ -2,11 +2,13 @@ import React from 'react';
 
 import styles from './pet-showcase.module.css';
 
-export type ShowcaseAccent = 'violet' | 'cyan';
+export type ShowcaseAccent = 'violet' | 'cyan' | 'amber';
 
+/** Matches the `Tones` palette, so a panel's hero agrees with its sidebar entry. */
 const ACCENT_RGB: Record<ShowcaseAccent, string> = {
     violet: '181 140 255',
     cyan: '125 214 255',
+    amber: '251 191 36',
 };
 
 export type PetShowcaseProps = {
@@ -18,7 +20,7 @@ export type PetShowcaseProps = {
 };
 
 /**
- * Avatar hero shared by the level-up and rename panels: a floating avatar
+ * Avatar hero shared by the level-up, rename and equip panels: a floating avatar
  * tinted by `accent`. Panel-specific details (level transition, live name
  * preview, requirements) are passed as children and rendered beneath the hero.
  */

@@ -1,4 +1,5 @@
 import { secp256k1 } from '@noble/curves/secp256k1';
+import { equipmentBonus } from '../../src/checks/equipment';
 import { keccak_256 } from '@noble/hashes/sha3';
 
 import {
@@ -10,6 +11,7 @@ import {
     hashBattleSnapshot,
     hashCombatLog,
     hashRuleset,
+    type Ruleset,
     type Hex,
     QUICKNET,
     roundTime,
@@ -56,6 +58,44 @@ export const FORGED_BEACON = {
 const PUBLISHED_AT = roundTime(QUICKNET, BEACON.round);
 const DOMAIN = { chainId: 'eip155:84532' as const, deploymentId: 'base-sepolia-live' };
 export const RULESET_HASH = hashRuleset(SOURCE_DEFAULT_RULESET);
+
+/**
+ * A ruleset that prices two items, and a snapshot wearing them (roadmap §4).
+ *
+ * Kept beside the ungeared fixtures rather than replacing them: the corpus has to keep
+ * proving that a receipt signed before equipment existed still verifies, so the geared
+ * receipt is an addition to that chain, not a migration of it.
+ */
+export const GEARED_RULESET: Ruleset = {
+    ...SOURCE_DEFAULT_RULESET,
+    itemCatalog: [
+        { itemType: 1n, slot: 0, hp: 0, atk: 4, def: 0, int: 0, mdef: 0 },
+        { itemType: 11n, slot: 1, hp: 30, atk: 0, def: 10, int: 0, mdef: 0 },
+    ],
+};
+
+export const GEARED_RULESET_HASH = hashRuleset(GEARED_RULESET);
+
+/**
+ * The same pets, with the attacker wearing both catalogued items.
+ *
+ * schemaVersion is stated rather than left to default. An absent one means 1, which cannot
+ * carry equipment at all, so omitting it here would not produce an ungeared snapshot but a
+ * rejected one.
+ */
+export function gearedSnapshot(): BattleSnapshot {
+    return {
+        ...SNAPSHOT,
+        schemaVersion: 2,
+        attacker: {
+            ...SNAPSHOT.attacker,
+            equipment: [
+                { slot: 0, itemType: 1n, hp: 0, atk: 4, def: 0, int: 0, mdef: 0 },
+                { slot: 1, itemType: 11n, hp: 30, atk: 0, def: 10, int: 0, mdef: 0 },
+            ],
+        },
+    };
+}
 
 export const SNAPSHOT: BattleSnapshot = {
     domain: DOMAIN,
@@ -125,6 +165,13 @@ export function signWithTestKey(digest: Hex): Hex {
 
 export interface ReceiptOverrides {
     battleId?: string;
+    /**
+     * Fights a different snapshot. The seed binds `snapshotHash`, so this re-derives it
+     * rather than patching afterwards, for the same reason `rulesetHash` does.
+     */
+    snapshot?: BattleSnapshot;
+    /** The ruleset the fight runs under. Defaults to the source-default one. */
+    ruleset?: Ruleset;
     sequence?: number;
     previousReceiptHash?: Hex | null;
     attackerPreviousReceiptHash?: Hex | null;
@@ -154,25 +201,29 @@ export interface ReceiptOverrides {
 export function buildReceipt(overrides: ReceiptOverrides = {}): BattleReceipt {
     const battleId = overrides.battleId ?? 'btl_0001';
     const beacon = overrides.beacon ?? BEACON;
-    const rulesetHash = overrides.rulesetHash ?? RULESET_HASH;
+    const snapshot = overrides.snapshot ?? SNAPSHOT;
+    const ruleset = overrides.ruleset ?? SOURCE_DEFAULT_RULESET;
+    const rulesetHash = overrides.rulesetHash ?? hashRuleset(ruleset);
     const seed = deriveBattleSeed({
         domain: DOMAIN,
         drandRandomness: beacon.randomness,
         battleId,
-        snapshotHash: hashBattleSnapshot(SNAPSHOT),
+        snapshotHash: hashBattleSnapshot(snapshot),
         rulesetHash,
     });
     const outcome = simulate(
-        SNAPSHOT.attacker.dna,
-        SNAPSHOT.attacker.rarity,
-        SNAPSHOT.attacker.level,
-        SNAPSHOT.attacker.skill,
-        SNAPSHOT.defender.dna,
-        SNAPSHOT.defender.rarity,
-        SNAPSHOT.defender.level,
-        SNAPSHOT.defender.skill,
+        snapshot.attacker.dna,
+        snapshot.attacker.rarity,
+        snapshot.attacker.level,
+        snapshot.attacker.skill,
+        snapshot.defender.dna,
+        snapshot.defender.rarity,
+        snapshot.defender.level,
+        snapshot.defender.skill,
         seed.value,
-        SOURCE_DEFAULT_RULESET.skillConfig,
+        ruleset.skillConfig,
+        equipmentBonus(snapshot.attacker.equipment),
+        equipmentBonus(snapshot.defender.equipment),
     );
     return {
         domain: DOMAIN,
@@ -180,10 +231,10 @@ export function buildReceipt(overrides: ReceiptOverrides = {}): BattleReceipt {
         intentHash: `0x${'11'.repeat(32)}`,
         commitmentHash: `0x${'22'.repeat(32)}`,
         defenseAuthorizationHash: `0x${'33'.repeat(32)}`,
-        snapshot: SNAPSHOT,
+        snapshot,
         beacon,
         seed: seed.hex,
-        rulesetVersion: SOURCE_DEFAULT_RULESET.version,
+        rulesetVersion: ruleset.version,
         rulesetHash,
         result: {
             attackerWon: outcome.result.firstWins,
@@ -191,7 +242,7 @@ export function buildReceipt(overrides: ReceiptOverrides = {}): BattleReceipt {
             winnerHpRemaining: outcome.result.winnerHpRemaining,
         },
         combatLogHash: hashCombatLog(outcome),
-        progression: computeProgression(SNAPSHOT, outcome.result.firstWins),
+        progression: computeProgression(snapshot, outcome.result.firstWins),
         sequence: overrides.sequence ?? 1,
         previousReceiptHash: overrides.previousReceiptHash ?? null,
         attackerPreviousReceiptHash: overrides.attackerPreviousReceiptHash ?? null,

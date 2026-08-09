@@ -61,6 +61,21 @@ export const petImageKey = (input: PetArtInput): string => `art/v${ART_VERSION}/
 export const petManifestKey = (input: PetArtInput): string =>
     `art/v${ART_VERSION}/${petArtDigest(input)}.json`;
 
+/**
+ * Item art keys.
+ *
+ * Keyed on the token id alone, not a digest of appearance inputs. A pet's key is a digest
+ * because its art is a function of DNA and two pets with identical DNA should share one
+ * image; an item's token id *is* its type, so the id already is the identity and a digest
+ * would only obscure which object a key belongs to when reading a bucket listing.
+ *
+ * Under the same `art/v<ART_VERSION>/` prefix, so bumping the epoch regenerates items and
+ * pets together — a prompt overhaul that changes one usually changes both.
+ */
+export const itemImageKey = (itemType: string): string => `art/v${ART_VERSION}/item-${itemType}.png`;
+
+export const itemManifestKey = (itemType: string): string => `art/v${ART_VERSION}/item-${itemType}.json`;
+
 export interface ArtManifest {
     artVersion: number;
     dna: string;

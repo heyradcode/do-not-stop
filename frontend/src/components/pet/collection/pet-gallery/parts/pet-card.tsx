@@ -11,10 +11,12 @@ import {
     getXpNumbers,
     getXpPercent,
     type Pet,
+    type EquippedItem,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { BattleIcon, SendIcon } from '@components/ui/icon';
 import PetArt from '@components/pet/pet-art';
+import EquippedBadges from '@components/pet/equipped-badges';
 import type { PetCooldownStatus } from '@hooks/usePetCooldowns';
 import styles from '../index.module.css';
 
@@ -38,13 +40,15 @@ const winRatio = (pet: Pet): number => {
 type PetCardProps = {
     pet: Pet;
     cooldown: PetCooldownStatus;
+    /** Gear worn by this pet. Undefined until the batched read lands, empty for a bare pet. */
+    equipped?: readonly EquippedItem[];
     onBattle: () => void;
     onSendClick: () => void;
 };
 
 /** One pet's card in the gallery grid: rarity/level/skill, avatar, XP, record,
  *  DNA stat tiles, cooldown status, and the Battle/Send actions. */
-const PetCard: React.FC<PetCardProps> = ({ pet, cooldown, onBattle, onSendClick }) => {
+const PetCard: React.FC<PetCardProps> = ({ pet, cooldown, equipped, onBattle, onSendClick }) => {
     const rarityColor = getRarityColor(pet.rarity);
     const xp = getXpNumbers(pet);
     const skill = getPetSkill(pet.speciesId);
@@ -70,6 +74,8 @@ const PetCard: React.FC<PetCardProps> = ({ pet, cooldown, onBattle, onSendClick 
                     containing block for the filling image and pin it to the
                     emoji's size. It goes on the emoji itself instead. */}
                 <PetArt pet={pet} fill emojiClassName={styles.avatar} />
+                {/* Inside the art wrapper, which is the positioned ancestor the badges pin to. */}
+                <EquippedBadges equipped={equipped} rarity={pet.rarity} />
             </div>
 
             <div className={styles.info}>

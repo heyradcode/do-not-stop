@@ -84,6 +84,13 @@ func petInputsFromProto(p *pb.VerifyPetInputs) (combat.PetInputs, error) {
 	if p.GetSkill() > 255 {
 		return combat.PetInputs{}, fmt.Errorf("skill out of range: %d", p.GetSkill())
 	}
+	// Equipment bonuses (roadmap §4). Range-checked rather than truncated: a value past
+	// 16 bits means the caller resolved something this port cannot represent, and silently
+	// wrapping it would make the two engines disagree on a battle instead of refusing it.
+	bonus, err := bonusFromProto(p)
+	if err != nil {
+		return combat.PetInputs{}, err
+	}
 	return combat.PetInputs{
 		PetID:          petID,
 		DNA:            dna,
@@ -93,6 +100,36 @@ func petInputsFromProto(p *pb.VerifyPetInputs) (combat.PetInputs, error) {
 		XP:             p.GetXp(),
 		LastOpponentID: lastOpponentID,
 		Streak:         p.GetStreak(),
+		Bonus:          bonus,
+	}, nil
+}
+
+// bonusFromProto narrows the wire's uint32 bonus fields to the uint16 the engine uses.
+//
+// An unset field is 0, which is exactly "ungeared", so a client that predates equipment
+// verifies as it always did.
+func bonusFromProto(p *pb.VerifyPetInputs) (combat.AttrBonus, error) {
+	fields := []struct {
+		name  string
+		value uint32
+	}{
+		{"bonus_hp", p.GetBonusHp()},
+		{"bonus_atk", p.GetBonusAtk()},
+		{"bonus_def", p.GetBonusDef()},
+		{"bonus_int", p.GetBonusInt()},
+		{"bonus_mdef", p.GetBonusMdef()},
+	}
+	for _, f := range fields {
+		if f.value > 0xFFFF {
+			return combat.AttrBonus{}, fmt.Errorf("%s out of range: %d", f.name, f.value)
+		}
+	}
+	return combat.AttrBonus{
+		HP:   uint16(p.GetBonusHp()),
+		ATK:  uint16(p.GetBonusAtk()),
+		DEF:  uint16(p.GetBonusDef()),
+		INT:  uint16(p.GetBonusInt()),
+		MDEF: uint16(p.GetBonusMdef()),
 	}, nil
 }
 

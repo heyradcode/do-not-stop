@@ -1,6 +1,7 @@
 import {
     type BattleSnapshot,
     computeProgression,
+    bonusFromEquipment,
     hashCombatLog,
     type Hex,
     loadRulesetBundle,
@@ -52,6 +53,9 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
     const attacker = deserializePet(snapshot.attacker);
     const defender = deserializePet(snapshot.defender);
 
+    // Equipment totals come from the frozen snapshot, not from the catalog: the fight has
+    // to use the modifiers that were written down at acceptance, so unequipping since then
+    // changes nothing (roadmap §4).
     const outcome = simulate(
         attacker.dna,
         attacker.rarity,
@@ -63,6 +67,8 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
         defender.skill,
         BigInt(battle.seed),
         ruleset.skillConfig,
+        bonusFromEquipment(attacker.equipment),
+        bonusFromEquipment(defender.equipment),
     );
 
     const progression = computeProgression(
@@ -92,6 +98,17 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
     await completeOutbox(message.id, new Date(nowSeconds * 1000));
 }
 
+/** As stored: JSON, so the item type arrives as a decimal string. */
+export type SnapshotEquipment = {
+    slot: number;
+    itemType: string | bigint;
+    hp: number;
+    atk: number;
+    def: number;
+    int: number;
+    mdef: number;
+}[];
+
 /** The snapshot is stored as JSON, where bigint fields round-trip as decimal strings. */
 function deserializePet(pet: {
     petId: string | bigint;
@@ -105,6 +122,7 @@ function deserializePet(pet: {
     streak: number;
     readyAt: number;
     sourceVersion: string | bigint;
+    equipment?: SnapshotEquipment;
 }) {
     return {
         petId: BigInt(pet.petId),
@@ -118,6 +136,11 @@ function deserializePet(pet: {
         streak: pet.streak,
         readyAt: pet.readyAt,
         sourceVersion: BigInt(pet.sourceVersion),
+        // Widened back to bigint: JSON storage round-trips the item type as a decimal
+        // string, and the protocol's validator wants the number it was written as.
+        ...(pet.equipment && {
+            equipment: pet.equipment.map((entry) => ({ ...entry, itemType: BigInt(entry.itemType) })),
+        }),
     };
 }
 

@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 
-import { getNetwork } from './networks.js';
+import { getNetwork, resolveDeploymentDir } from './networks.js';
 
 function getActiveNetworkNames(): string[] {
     const flag = process.argv.find((a) => a.startsWith('--network='))?.split('=')[1];
@@ -35,8 +35,14 @@ for (const networkName of networkNames) {
         process.exit(1);
     }
 
-    const cmd = `pnpm hh ignition verify chain-${network.chainId} --network ${network.name}`;
-    console.log(`\n🔎 Verifying ${networkName}: ${cmd}`);
+    // The deployment id, not `chain-<id>`: on a chain redeployed under an explicit id the
+    // default directory holds the superseded stack, so this would verify dead contracts and
+    // leave the live ones unverified. Note this covers only what Ignition deployed — an
+    // implementation swapped in by one of the upgrade-* scripts has to be verified by
+    // address, since Ignition has no record of it.
+    const deployment = resolveDeploymentDir(network);
+    const cmd = `pnpm hh ignition verify ${deployment} --network ${network.name}`;
+    console.log(`\n🔎 Verifying ${networkName} (deployment "${deployment}"): ${cmd}`);
     try {
         execSync(cmd, { stdio: 'inherit' });
     } catch (error) {

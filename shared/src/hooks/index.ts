@@ -136,3 +136,62 @@ export {
 } from './battle/useVerifiedBattleReceipt';
 export { usePetError, type PetError } from './tx/usePetError';
 export { useTxError, type TxError } from './tx/useTxError';
+
+// Inventory (roadmap §4). Reads are GraphQL; useUseItem is REST, because spending a
+// consumable is settled by the backend's wallet rather than signed by the player.
+// Equipping is not here: it is a chain write and lives on the inventory adapter.
+export {
+    useInventory,
+    inventoryQueryKey,
+    type UseInventoryOptions,
+    type UseInventoryResult,
+} from './inventory/useInventory';
+export {
+    usePetEquipment,
+    petEquipmentQueryKey,
+    type UsePetEquipmentOptions,
+    type UsePetEquipmentResult,
+} from './inventory/usePetEquipment';
+export {
+    useSpendItem,
+    type SpendItemArgs,
+    type SpendItemResult,
+    type UseSpendItemResult,
+} from './inventory/useSpendItem';
+// Equipping is a chain write the player signs, so it goes through its own adapter rather
+// than ChainAdapter: AGENTS.md forbids growing that interface, and §4 names this case.
+export { useEquipItem, type UseEquipItemOptions, type UseEquipItemResult } from './inventory/useEquipItem';
+// Earned but unminted items, plus the claim that mints them. Separate from the bag: an
+// entitlement is a promise of an item, and nothing on chain reflects it until it is claimed.
+export {
+    usePendingItems,
+    pendingItemsQueryKey,
+    type PendingItem,
+    type UsePendingItemsResult,
+} from './inventory/usePendingItems';
+export {
+    usePetEquipmentForPets,
+    petEquipmentForPetsQueryKey,
+    petEquipmentForPetsQueryPrefix,
+    type UsePetEquipmentForPetsOptions,
+    type UsePetEquipmentForPetsResult,
+} from './inventory/usePetEquipmentForPets';
+export { useInventoryAdapter } from './adapters/useInventoryAdapter';
+export type { EquipArgs, InventoryAdapter, UnequipArgs } from './adapters/inventoryTypes';
+export {
+    describeItemEffect,
+    explainItem,
+    itemStats,
+    ITEM_CATEGORIES,
+    parseItemEffect,
+    SLOT,
+    SLOT_NAMES,
+    type EquippedItem,
+    type InventoryEntry,
+    type ItemCategory,
+    type ItemDefinition,
+    type ItemEffect,
+    type ItemStat,
+    type SlotName,
+    type StatBonus,
+} from '../types/item';
