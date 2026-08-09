@@ -48,9 +48,25 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
         return;
       }
 
-      list.style.setProperty('--indicator-x', `${link.offsetLeft}px`);
-      list.style.setProperty('--indicator-w', `${link.offsetWidth}px`);
+      // Measured against the list's own box rather than via offsetLeft, which
+      // resolves against the nearest positioned ancestor. The <li> is relatively
+      // positioned to sit above the pill, so offsetLeft reported ~0 for every
+      // link and the indicator stayed pinned under the first one, resizing in
+      // place instead of sliding.
+      const listBox = list.getBoundingClientRect();
+      const linkBox = link.getBoundingClientRect();
+
+      list.style.setProperty('--indicator-x', `${linkBox.left - listBox.left}px`);
+      list.style.setProperty('--indicator-w', `${linkBox.width}px`);
       list.style.setProperty('--indicator-opacity', '1');
+
+      // Slide only once it has a real position to slide from; the first
+      // placement fades in where it belongs rather than travelling there.
+      if (!list.dataset.indicatorReady) {
+        requestAnimationFrame(() => {
+          list.dataset.indicatorReady = 'true';
+        });
+      }
     };
 
     position();

@@ -161,11 +161,17 @@
         0 0 14px rgb(var(--border-rgb) / 22%);
       opacity: var(--indicator-opacity, 0);
       translate: var(--indicator-x, 0);
+      /* Before the first measurement there is nowhere meaningful to travel from,
+         so only the fade is animated. Movement is enabled once positioned. */
+      transition: opacity var(--dur-base) var(--ease-out);
+      pointer-events: none;
+    }
+
+    &[data-indicator-ready]::before {
       transition:
         translate var(--dur-slow) var(--ease-spring),
         width var(--dur-slow) var(--ease-spring),
         opacity var(--dur-base) var(--ease-out);
-      pointer-events: none;
     }
   }
 
