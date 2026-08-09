@@ -7,9 +7,10 @@
     grid-template-columns: repeat(4, minmax(180px, 1fr));
     gap: 0;
     position: relative;
-    min-height: 360px;
+    min-height: 380px;
     align-items: center;
 
+    /* Unlit rail: the whole journey, dimmed. */
     &::before {
       content: '';
       position: absolute;
@@ -17,11 +18,29 @@
       left: 0;
       right: 0;
       height: 3px;
-      transform: translateY(-50%);
-      background: linear-gradient(90deg, #6cf6c5 0%, #6cf6c5 50%, #ffd76b 50%, #ffd76b 75%, #b878ff 75%, #b878ff 100%);
-      box-shadow: 0 0 14px rgb(170 140 255 / 35%);
-      z-index: 0;
+      translate: 0 -50%;
       border-radius: 4px;
+      background: rgb(var(--border-rgb) / 22%);
+      z-index: var(--z-base);
+    }
+
+    /* Progress: fills to the last stop that is not planned. Width comes from the
+       data via --rail-fill; the scale is the draw-in. */
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: var(--rail-fill, 0%);
+      height: 3px;
+      translate: 0 -50%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--status-shipped), var(--status-active));
+      box-shadow: 0 0 14px rgb(var(--status-active-rgb) / 55%);
+      z-index: var(--z-base);
+      scale: 0 1;
+      transform-origin: left center;
+      transition: scale 1250ms var(--ease-out) 220ms;
     }
   }
 
@@ -32,14 +51,25 @@
     align-items: center;
     height: 100%;
     justify-content: center;
-    z-index: 1;
+    z-index: var(--z-raised);
 
     &.above .card { margin-bottom: auto; margin-top: 0; }
     &.below .card { margin-top: auto; margin-bottom: 0; }
 
-    &.status-shipped { color: #6cf6c5; }
-    &.status-in-progress { color: #ffd76b; }
-    &.status-planned { color: #b878ff; }
+    &.status-shipped {
+      color: var(--status-shipped);
+      --status-rgb: var(--status-shipped-rgb);
+    }
+
+    &.status-in-progress {
+      color: var(--status-active);
+      --status-rgb: var(--status-active-rgb);
+    }
+
+    &.status-planned {
+      color: var(--status-planned);
+      --status-rgb: var(--status-planned-rgb);
+    }
   }
 
   & .pin {
@@ -51,36 +81,68 @@
     border-radius: 50%;
     background: radial-gradient(circle at 30% 25%, #2a335a 0%, #0a0f25 70%);
     border: 2px solid currentColor;
-    transform: translate(-50%, -50%);
+    translate: -50% -50%;
     z-index: 2;
+    box-shadow:
+      0 0 12px rgb(var(--status-rgb) / 65%),
+      inset 0 0 10px rgb(var(--status-rgb) / 35%);
   }
 
-  & .stop.status-shipped .pin {
-    box-shadow: 0 0 12px rgb(108 246 197 / 70%), inset 0 0 10px rgb(108 246 197 / 35%);
-  }
+  /* Only the live milestone pulses. A pulse on every pin says nothing about
+     which one is current. */
   & .stop.status-in-progress .pin {
-    box-shadow: 0 0 12px rgb(255 215 107 / 70%), inset 0 0 10px rgb(255 215 107 / 35%);
-    animation: roadmap-pulse 1.6s ease-in-out infinite;
+    animation: roadmap-pulse 1.8s ease-in-out infinite;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 1px solid rgb(var(--status-rgb) / 45%);
+      animation: roadmap-ring 2.4s ease-out infinite;
+    }
   }
+
   & .stop.status-planned .pin {
-    box-shadow: 0 0 12px rgb(184 120 255 / 60%), inset 0 0 10px rgb(184 120 255 / 30%);
+    box-shadow:
+      0 0 10px rgb(var(--status-rgb) / 42%),
+      inset 0 0 10px rgb(var(--status-rgb) / 26%);
   }
 
   & .card {
     width: 92%;
-    padding: 18px 18px 16px;
-    background: linear-gradient(180deg, rgb(10 14 28 / 95%), rgb(7 11 24 / 96%));
-    border: 1px solid currentColor;
-    border-radius: 10px;
-    box-shadow: 0 0 18px color-mix(in srgb, currentColor 18%, transparent),
-                inset 0 0 22px rgb(55 68 148 / 12%);
+    padding: 20px 20px 18px;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--surface-void-rgb) / 78%),
+      rgb(var(--surface-void-rgb) / 62%)
+    );
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgb(var(--status-rgb) / 45%);
+    border-radius: var(--radius-lg);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 7%),
+      0 0 20px rgb(var(--status-rgb) / 16%),
+      var(--elev-2);
+    transition:
+      border-color var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out);
+
+    &:hover {
+      border-color: rgb(var(--status-rgb) / 78%);
+      box-shadow:
+        inset 0 1px 0 rgb(255 255 255 / 10%),
+        0 0 30px rgb(var(--status-rgb) / 30%),
+        var(--elev-3);
+    }
 
     & .head {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 8px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
 
     & .quarter {
@@ -88,22 +150,23 @@
       font-size: 1.2rem;
       font-weight: 800;
       letter-spacing: 1px;
-      color: #f6f3ff;
-      text-shadow: 0 0 12px rgb(174 150 255 / 35%);
+      color: var(--text-title);
+      text-shadow: var(--glow-text-sm);
     }
 
     & .status {
       font-family: var(--content-font);
-      font-size: 0.68rem;
+      font-size: 0.66rem;
       font-weight: 700;
       letter-spacing: 1.4px;
       text-transform: uppercase;
-      padding: 3px 8px;
-      border-radius: 999px;
+      padding: 3px 9px;
+      border-radius: var(--radius-pill);
       color: currentColor;
-      background: color-mix(in srgb, currentColor 12%, transparent);
-      border: 1px solid currentColor;
-      box-shadow: 0 0 10px color-mix(in srgb, currentColor 30%, transparent);
+      background: rgb(var(--status-rgb) / 12%);
+      border: 1px solid rgb(var(--status-rgb) / 55%);
+      box-shadow: 0 0 10px rgb(var(--status-rgb) / 28%);
+      white-space: nowrap;
     }
 
     & h3 {
@@ -112,7 +175,7 @@
       font-size: 1.05rem;
       letter-spacing: 0.5px;
       text-transform: uppercase;
-      color: #f6f3ff;
+      color: var(--text-title);
     }
 
     & ul {
@@ -121,49 +184,92 @@
       padding: 0;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 6px;
     }
 
     & ul li {
       font-family: var(--content-font);
       font-size: 0.9rem;
-      color: rgb(195 210 255 / 78%);
-      padding-left: 14px;
+      color: var(--text-body);
+      padding-left: 15px;
       position: relative;
 
       &::before {
         content: '';
         position: absolute;
         left: 0;
-        top: 9px;
+        top: 8px;
         width: 5px;
         height: 5px;
         border-radius: 50%;
         background: currentColor;
-        opacity: 0.55;
+        opacity: 0.6;
       }
     }
   }
 }
 
-@keyframes roadmap-pulse {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, -50%) scale(1.25); }
+.js-reveal .roadmap .track[data-reveal-visible]::after {
+  scale: 1 1;
 }
 
+@keyframes roadmap-pulse {
+  0%, 100% { scale: 1; }
+  50% { scale: 1.22; }
+}
+
+@keyframes roadmap-ring {
+  0% { opacity: 0.85; scale: 0.8; }
+  100% { opacity: 0; scale: 1.7; }
+}
+
+/* Stacked: the rail rotates and simply draws its full length. It does not carry
+   a partial fill here, because card heights vary and a percentage along the
+   track would not land on the live pin. */
 @media (max-width: 1024px) {
   .roadmap .track {
     grid-template-columns: 1fr;
     min-height: 0;
     gap: 18px;
+    padding-inline-start: 30px;
 
-    &::before { display: none; }
+    &::before {
+      top: 26px;
+      bottom: 26px;
+      left: 9px;
+      right: auto;
+      width: 3px;
+      height: auto;
+      translate: 0;
+      background: linear-gradient(
+        180deg,
+        var(--status-shipped),
+        var(--status-active) 55%,
+        var(--status-planned)
+      );
+      box-shadow: 0 0 12px rgb(var(--glow-text-rgb) / 40%);
+      scale: 1 0;
+      transform-origin: center top;
+      transition: scale 1250ms var(--ease-out) 220ms;
+    }
+
+    &::after { display: none; }
   }
+
+  .js-reveal .roadmap .track[data-reveal-visible]::before {
+    scale: 1 1;
+  }
+
   .roadmap .stop {
     height: auto;
 
     &.above .card,
     &.below .card { margin: 0; width: 100%; }
   }
-  .roadmap .pin { display: none; }
+
+  .roadmap .pin {
+    top: 26px;
+    left: -21px;
+    translate: -50% 0;
+  }
 }
