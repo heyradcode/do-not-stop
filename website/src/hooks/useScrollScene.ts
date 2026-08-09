@@ -50,16 +50,26 @@ export default function useScrollScene<
     let frame = 0;
     let attached = false;
 
+    /**
+     * The hook owns the custom property, not its callers. Leaving that to each
+     * onFrame meant a scene could silently render frozen if its callback forgot
+     * to publish the value it was handed.
+     */
+    const write = (progress: number) => {
+      section.style.setProperty('--track-progress', progress.toFixed(4));
+      callback.current(progress, section);
+    };
+
     const update = () => {
       frame = 0;
       const scrollable = section.offsetHeight - pin.offsetHeight;
       if (scrollable <= 0) {
-        callback.current(1, section);
+        write(1);
         return;
       }
       const stickyTop = parseFloat(getComputedStyle(pin).top) || 0;
       const travelled = stickyTop - section.getBoundingClientRect().top;
-      callback.current(clamp(travelled / scrollable), section);
+      write(clamp(travelled / scrollable));
     };
 
     const onScroll = () => {
@@ -86,7 +96,7 @@ export default function useScrollScene<
     const sync = () => {
       if (narrow.matches || reduced.matches) {
         detach();
-        callback.current(fallbackValue, section);
+        write(fallbackValue);
       } else {
         attach();
       }

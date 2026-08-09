@@ -30,7 +30,7 @@ const Roadmap = () => {
   const stages = useRef<(HTMLElement | null)[]>([]);
 
   const onFrame = useCallback((progress: number, section: HTMLElement) => {
-    section.style.setProperty('--track-progress', progress.toFixed(4));
+    // `--track-progress` is published by useScrollScene itself.
 
     // The active phase drives the scene hue, the HUD readout and the stage
     // swap through one attribute. Written only on change — every selector
