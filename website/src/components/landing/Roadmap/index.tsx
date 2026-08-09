@@ -1,24 +1,27 @@
 'use client';
 
-import type { CSSProperties } from 'react';
+import { useCallback, useRef, type CSSProperties } from 'react';
 
 import { ROADMAP, ROADMAP_STATUS_LABEL, SECTION_COPY } from '@/content/landing';
-import useTrackProgress from '@/hooks/useTrackProgress';
+import useScrollScene from '@/hooks/useScrollScene';
 import './Roadmap.css';
 
 const { title: sectionTitle, subtitle } = SECTION_COPY.roadmap;
 
 /** Road canvas. Stretched to fit, so these are proportions, not pixels. */
 const VIEW_W = 1000;
-const VIEW_H = 260;
-const CREST = 68;
-const TROUGH = 192;
+const VIEW_H = 200;
+const CREST = 56;
+const TROUGH = 144;
 const MID = (CREST + TROUGH) / 2;
+
+const COUNT = ROADMAP.length;
+const SLICE = 1 / COUNT;
 
 /**
  * Builds the road as a smooth curve through one point per phase, alternating
  * crest and trough. Generated rather than hand-drawn so adding or removing a
- * phase reshapes the road instead of leaving markers off the tarmac.
+ * phase reshapes the road instead of leaving a marker off the tarmac.
  */
 const buildRoad = (count: number) => {
   const points: [number, number][] = [
@@ -30,16 +33,14 @@ const buildRoad = (count: number) => {
     [VIEW_W, MID],
   ];
 
-  return points
-    .slice(1)
-    .reduce((d, [x, y], index) => {
-      const [px, py] = points[index]!;
-      const handle = (x - px) / 2;
-      return `${d} C ${px + handle} ${py}, ${x - handle} ${y}, ${x} ${y}`;
-    }, `M ${points[0]![0]} ${points[0]![1]}`);
+  return points.slice(1).reduce((d, [x, y], index) => {
+    const [px, py] = points[index]!;
+    const handle = (x - px) / 2;
+    return `${d} C ${px + handle} ${py}, ${x - handle} ${y}, ${x} ${y}`;
+  }, `M ${points[0]![0]} ${points[0]![1]}`);
 };
 
-const ROAD_PATH = buildRoad(ROADMAP.length);
+const ROAD_PATH = buildRoad(COUNT);
 
 const Check = () => (
   <svg className="glyph" viewBox="0 0 24 24" aria-hidden="true">
@@ -48,52 +49,116 @@ const Check = () => (
 );
 
 const Roadmap = () => {
-  const roadRef = useTrackProgress<HTMLDivElement>();
+  const laneRef = useRef<SVGPathElement>(null);
+  const headRef = useRef<SVGGElement>(null);
+  const laneLength = useRef(0);
+  const markers = useRef<(HTMLElement | null)[]>([]);
+  const cards = useRef<(HTMLElement | null)[]>([]);
+
+  const onFrame = useCallback((progress: number, section: HTMLElement) => {
+    section.style.setProperty('--track-progress', progress.toFixed(4));
+
+    // Park the travelling head on the curve itself. getTotalLength is measured
+    // once — it cannot change without the path changing, and it is the costly
+    // half of this pair.
+    const lane = laneRef.current;
+    const head = headRef.current;
+    if (lane && head) {
+      if (!laneLength.current) laneLength.current = lane.getTotalLength();
+      const point = lane.getPointAtLength(progress * laneLength.current);
+      head.setAttribute('transform', `translate(${point.x} ${point.y})`);
+    }
+
+    const active = Math.min(Math.floor(progress / SLICE), COUNT - 1);
+
+    markers.current.forEach((el, index) => {
+      el?.toggleAttribute('data-reached', progress >= (index + 0.5) * SLICE);
+    });
+
+    cards.current.forEach((el, index) => {
+      if (!el) return;
+      el.dataset.state = index < active ? 'behind' : index > active ? 'ahead' : 'active';
+    });
+  }, []);
+
+  const { sectionRef, pinRef } = useScrollScene(onFrame);
 
   return (
-    <section className="landing-section roadmap" id="roadmap" data-wash="cyan">
-      <h2 className="section-title" data-reveal="up">{sectionTitle}</h2>
-      <p className="section-subtitle" data-reveal="up">{subtitle}</p>
+    <section
+      ref={sectionRef}
+      className="landing-section roadmap"
+      id="roadmap"
+      style={{ '--phase-count': COUNT } as CSSProperties}
+    >
+      <div className="pin" ref={pinRef}>
+        <h2 className="section-title" data-reveal="up">{sectionTitle}</h2>
+        <p className="section-subtitle" data-reveal="up">{subtitle}</p>
 
-      <div className="road" ref={roadRef}>
-        <svg
-          className="tarmac"
-          viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          {/* pathLength normalises both strokes to 1, so the dash maths is the
-              progress value itself and does not depend on the curve's length. */}
-          <path className="lane lane-base" d={ROAD_PATH} pathLength={1} />
-          <path className="lane lane-fill" d={ROAD_PATH} pathLength={1} />
-        </svg>
+        <div className="road">
+          <svg
+            className="tarmac"
+            viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {/* pathLength normalises both lanes to 1, so the dash offset is the
+                progress value itself, whatever the curve's real length. */}
+            <path className="lane lane-base" d={ROAD_PATH} pathLength={1} />
+            <path
+              ref={laneRef}
+              className="lane lane-fill"
+              d={ROAD_PATH}
+              pathLength={1}
+            />
+            <g ref={headRef} className="head">
+              <circle className="head-glow" r="14" />
+              <circle className="head-core" r="5" />
+            </g>
+          </svg>
 
-        <ol className="stops">
+          <ol className="markers">
+            {ROADMAP.map(({ phase, status }, index) => (
+              <li
+                key={phase}
+                className={`marker status-${status}`}
+                data-side={index % 2 === 0 ? 'crest' : 'trough'}
+                ref={(el) => {
+                  markers.current[index] = el;
+                }}
+              >
+                <span className="dot" aria-hidden="true">
+                  {status === 'shipped' && <Check />}
+                  {status === 'in-progress' && <span className="pip" />}
+                </span>
+                <span className="tag">{phase}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* Every phase stays in the document; only its visual state changes, so
+            the whole roadmap is available to a screen reader at any scroll
+            position rather than one card at a time. */}
+        <ol className="phases">
           {ROADMAP.map(({ phase, title, status, bullets }, index) => (
             <li
               key={phase}
-              className={`stop status-${status}`}
-              data-side={index % 2 === 0 ? 'crest' : 'trough'}
-              data-at={((index + 0.5) / ROADMAP.length).toFixed(4)}
-              style={{ '--stop': index } as CSSProperties}
+              className={`phase-card status-${status}`}
+              data-state={index === 0 ? 'active' : 'ahead'}
+              ref={(el) => {
+                cards.current[index] = el;
+              }}
             >
-              <span className="marker" aria-hidden="true">
-                {status === 'shipped' && <Check />}
-                {status === 'in-progress' && <span className="pip" />}
-              </span>
-
-              <div className="card">
-                <div className="head">
-                  <span className="phase">{phase}</span>
-                  <span className="status">{ROADMAP_STATUS_LABEL[status]}</span>
-                </div>
-                <h3>{title}</h3>
-                <ul>
-                  {bullets.map((bullet) => (
-                    <li key={bullet}>{bullet}</li>
-                  ))}
-                </ul>
+              <div className="head">
+                <span className="phase">{phase}</span>
+                <span className="status">{ROADMAP_STATUS_LABEL[status]}</span>
               </div>
+              <h3>{title}</h3>
+              <ul>
+                {bullets.map((bullet) => (
+                  <li key={bullet}>{bullet}</li>
+                ))}
+              </ul>
             </li>
           ))}
         </ol>
