@@ -9,6 +9,11 @@
     bottom: 6px;
     z-index: 2;
     display: flex;
+    /* Stacked, not in a row. A column costs one icon's width along the bottom edge instead
+       of three, which leaves more of the pet visible on a card whose art is the point — and
+       with `bottom` pinned the stack grows upward, away from the name and stats that sit
+       under the art. Slot order still runs weapon, armor, trinket, top to bottom. */
+    flex-direction: column;
     gap: 3px;
     /* Decoration over a click target: the card underneath owns the interaction, and an icon
        swallowing that click would make part of the card mysteriously dead. The `title`
