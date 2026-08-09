@@ -6,7 +6,7 @@
   & .tone-gold { --tone-rgb: var(--rarity-legendary-rgb); }
 
   & .rarity {
-    margin-bottom: 34px;
+    margin-top: clamp(28px, 5vh, 56px);
   }
 
   & .rarity-track {
@@ -102,16 +102,72 @@
    ring simply tracks where it is, so the roster adds no page height. The
    roadmap owns the page's one pinned set-piece.
    ============================================================================= */
+/* The pinned track. Its height is the scroll budget: one span per pet, plus a
+   screen for the pin itself. */
+.pets .showcase {
+  --pet-span: 58vh;
+
+  position: relative;
+  height: calc(100dvh + (var(--pet-count) * var(--pet-span)));
+}
+
+.pets .pin {
+  position: sticky;
+  inset-block-start: var(--main-header-offset);
+  height: calc(100dvh - var(--main-header-offset));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(8px, 1.6vh, 18px);
+  padding-block: clamp(12px, 2vh, 28px);
+  box-sizing: border-box;
+}
+
+.pets .intro {
+  flex: 0 0 auto;
+
+  & .section-subtitle {
+    margin-block: 14px 0;
+  }
+}
+
 .pets .carousel {
   --track-progress: 0;
   --radius: clamp(250px, 30vw, 380px);
 
   position: relative;
-  /* Taller than the cards need: the element's own height is part of the scroll
-     distance the ring is paced over, so a taller stage is a slower turn. */
-  height: clamp(420px, 58vh, 560px);
+  flex: 1 1 auto;
+  min-height: 300px;
   perspective: 1250px;
-  perspective-origin: 50% 44%;
+  perspective-origin: 50% 46%;
+}
+
+/* Position readout for the ring. */
+.pets .dots {
+  flex: 0 0 auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  gap: 9px;
+
+  & li {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgb(var(--border-rgb) / 30%);
+    transition:
+      background var(--dur-base) var(--ease-out),
+      scale var(--dur-base) var(--ease-spring),
+      box-shadow var(--dur-base) var(--ease-out);
+  }
+
+  & li[data-on] {
+    background: var(--neon-cyan);
+    scale: 1.45;
+    box-shadow: 0 0 12px rgb(var(--neon-cyan-rgb) / 80%);
+  }
 }
 
 /* Pool of light the ring stands on. A real horizontal plane, so it
@@ -312,8 +368,27 @@ html:not(.js-reveal) .pets .rarity-segment {
    every card upright, full opacity, no perspective.
    ============================================================================= */
 @media (max-width: 900px), (prefers-reduced-motion: reduce) {
-  .pets .carousel {
+  .pets .showcase {
     height: auto;
+  }
+
+  .pets .pin {
+    position: static;
+    height: auto;
+    padding-block: 0;
+    gap: 0;
+  }
+
+  .pets .intro .section-subtitle {
+    margin-block: 22px 28px;
+  }
+
+  .pets .dots {
+    display: none;
+  }
+
+  .pets .carousel {
+    min-height: 0;
     perspective: none;
   }
 

@@ -19,12 +19,23 @@ const clamp = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
  * and under reduced motion, the listener is never attached and the scene is
  * handed straight to its finished state.
  */
-export default function useScrollScene(
-  onFrame: (progress: number, section: HTMLElement) => void,
-  fallbackQuery = '(max-width: 1024px)',
+export default function useScrollScene<
+  S extends HTMLElement = HTMLElement,
+  P extends HTMLElement = HTMLDivElement,
+>(
+  onFrame: (progress: number, section: S) => void,
+  {
+    fallbackQuery = '(max-width: 1024px)',
+    /**
+     * Value handed to the scene when pinning is off. A road wants its finished
+     * state; a carousel wants its first frame, since rewinding one to the end
+     * parks it on the last card.
+     */
+    fallbackValue = 1,
+  }: { fallbackQuery?: string; fallbackValue?: number } = {},
 ) {
-  const sectionRef = useRef<HTMLElement>(null);
-  const pinRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<S>(null);
+  const pinRef = useRef<P>(null);
   const callback = useRef(onFrame);
   callback.current = onFrame;
 
@@ -75,7 +86,7 @@ export default function useScrollScene(
     const sync = () => {
       if (narrow.matches || reduced.matches) {
         detach();
-        callback.current(1, section);
+        callback.current(fallbackValue, section);
       } else {
         attach();
       }
@@ -90,7 +101,7 @@ export default function useScrollScene(
       narrow.removeEventListener('change', sync);
       reduced.removeEventListener('change', sync);
     };
-  }, [fallbackQuery]);
+  }, [fallbackQuery, fallbackValue]);
 
   return { sectionRef, pinRef };
 }
