@@ -16,7 +16,7 @@ import {
 import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
 import ItemArt from '@components/item/item-art';
-import Icon, { MuscleIcon } from '@components/ui/icon';
+import Icon, { MuscleIcon, RefreshIcon } from '@components/ui/icon';
 import InfoTooltip from '@components/ui/info-tooltip';
 import NeonButton from '@components/ui/neon-button';
 import ItemDetailModal from './item-detail-modal';
@@ -250,8 +250,19 @@ const Inventory: React.FC = () => {
                 back={back}
                 className={styles.page}
                 actions={
-                    <button type="button" className={styles.refresh} onClick={refetch}>
-                        Refresh
+                    // The panel's own `.refresh` class, the same one the gallery uses, rather
+                    // than a local copy: it is a global rule on `.dashboard-panel` and it
+                    // already spins the icon while the button is disabled, so wiring
+                    // `isLoading` gets the loading state for free.
+                    <button
+                        type="button"
+                        className="refresh"
+                        onClick={refetch}
+                        disabled={isLoading}
+                        aria-label={isLoading ? 'Refreshing items' : 'Refresh items'}
+                        title="Refresh"
+                    >
+                        <Icon as={RefreshIcon} size="1em" noGap />
                     </button>
                 }
             >

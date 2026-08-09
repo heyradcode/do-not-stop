@@ -26,6 +26,7 @@ import {
     IoPauseSharp,
     IoPin,
     IoPinOutline,
+    IoRefresh,
     IoWarning,
 } from 'react-icons/io5';
 import clsx from 'clsx';
@@ -115,5 +116,6 @@ export {
     IoPauseSharp as PauseIcon,
     IoPin as PinFilledIcon,
     IoPinOutline as PinIcon,
+    IoRefresh as RefreshIcon,
     IoWarning as WarningIcon,
 };

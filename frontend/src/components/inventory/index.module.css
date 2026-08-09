@@ -300,16 +300,6 @@
     font: inherit;
 }
 
-.refresh {
-    padding: 4px 12px;
-    border-radius: 999px;
-    border: 1px solid rgb(255 255 255 / 15%);
-    background: transparent;
-    color: inherit;
-    font-size: 0.78rem;
-    cursor: pointer;
-}
-
 .muted {
     margin-top: 24px;
     opacity: 0.6;
