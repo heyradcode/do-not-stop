@@ -99,3 +99,25 @@ export function findEquipment(chain: string, petId: string): Promise<EquipmentSl
         orderBy: { slot: 'asc' },
     });
 }
+
+/**
+ * Filled slots for many pets at once.
+ *
+ * A gallery draws every pet the player owns, and asking per pet turns one screen into one
+ * query per card. Batched the way `findBattleProgress` is, and for the same reason.
+ *
+ * Ordered by pet then slot so a caller can group without re-sorting, and pets with nothing
+ * equipped simply do not appear — the caller is building a map and an absent key already
+ * means "no gear".
+ */
+export function findEquipmentForPets(
+    chain: string,
+    petIds: string[],
+): Promise<(EquipmentSlotRow & { petId: string })[]> {
+    if (petIds.length === 0) return Promise.resolve([]);
+    return prisma.petEquipment.findMany({
+        where: { chain, petId: { in: petIds }, itemType: { not: '0' } },
+        select: { petId: true, slot: true, itemType: true },
+        orderBy: [{ petId: 'asc' }, { slot: 'asc' }],
+    });
+}

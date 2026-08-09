@@ -6,7 +6,14 @@ import {
     findPlayerRank,
 } from '@repositories/leaderboard.repository';
 import { tryGrpcEstimateWin } from '@grpc-client/estimateWin';
-import { getCatalog, getInventory, getPendingItems, getPetEquipment, type ItemView } from '@features/inventory';
+import {
+    getCatalog,
+    getInventory,
+    getPendingItems,
+    getPetEquipment,
+    getPetEquipmentForPets,
+    type ItemView,
+} from '@features/inventory';
 import { isSupportedChain, SUPPORTED_CHAINS } from '@typings/chain';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -62,6 +69,11 @@ interface AllPetsArgs {
 interface PetEquipmentArgs {
     chain: string;
     petId: string;
+}
+
+interface PetEquipmentForPetsArgs {
+    chain: string;
+    petIds: string[];
 }
 
 export interface GraphQLContext {
@@ -285,6 +297,25 @@ export const rootValue = {
         return (await getPetEquipment(args.chain, args.petId)).map((equipped) => ({
             slot: equipped.slot,
             item: toItemDefinition(equipped.item),
+        }));
+    },
+
+    petEquipmentForPets: async (args: PetEquipmentForPetsArgs) => {
+        if (!isSupportedChain(args.chain)) {
+            throw new Error(`chain must be one of: ${SUPPORTED_CHAINS.join(', ')}`);
+        }
+
+        // Bounded like battleProgress, and against the same thing: one call must not be
+        // able to ask for every pet in the table.
+        const petIds = args.petIds.slice(0, MAX_PROGRESS_PET_IDS);
+        const groups = await getPetEquipmentForPets(args.chain, petIds);
+
+        return groups.map((group) => ({
+            petId: group.petId,
+            equipped: group.equipped.map((equipped) => ({
+                slot: equipped.slot,
+                item: toItemDefinition(equipped.item),
+            })),
         }));
     },
 };

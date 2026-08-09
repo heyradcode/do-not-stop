@@ -5,6 +5,7 @@ import {
     findBalances,
     findDefinitions,
     findEquipment,
+    findEquipmentForPets,
     findUnclaimedEntitlements,
     type ItemDefinitionRow,
 } from '@repositories/inventory.repository';
@@ -145,6 +146,48 @@ export async function getPetEquipment(chain: string, petId: string): Promise<Equ
         equipped.push({ slot: slot.slot, item: definition });
     }
     return equipped;
+}
+
+/** One pet's gear, as the batched read returns it. */
+export interface PetEquipmentGroup {
+    petId: string;
+    equipped: EquippedItem[];
+}
+
+/**
+ * What several pets have equipped, in one round trip.
+ *
+ * The gallery and the battle arena both draw a whole roster at once, so the per-pet read
+ * would cost a query per card. One catalog fetch covers all of them too, which is the other
+ * half of the saving — the same sword on four pets is looked up once.
+ *
+ * Pets with nothing equipped are omitted rather than returned empty. The caller is building a
+ * lookup, and an absent key already means "no gear"; sending rows to say nothing would grow
+ * the response with the size of the roster instead of the amount of gear on it.
+ */
+export async function getPetEquipmentForPets(
+    chain: string,
+    petIds: string[],
+): Promise<PetEquipmentGroup[]> {
+    const rows = await findEquipmentForPets(chain, petIds);
+    if (rows.length === 0) {
+        return [];
+    }
+
+    const catalog = await definitionsByType(rows.map((row) => row.itemType));
+    const byPet = new Map<string, EquippedItem[]>();
+    for (const row of rows) {
+        const definition = catalog.get(row.itemType);
+        if (!definition) {
+            console.warn(`[inventory] pet ${row.petId} has uncatalogued item type ${row.itemType} in slot ${row.slot}`);
+            continue;
+        }
+        const bucket = byPet.get(row.petId);
+        if (bucket) bucket.push({ slot: row.slot, item: definition });
+        else byPet.set(row.petId, [{ slot: row.slot, item: definition }]);
+    }
+
+    return [...byPet].map(([petId, equipped]) => ({ petId, equipped }));
 }
 
 async function definitionsByType(itemTypes: string[]): Promise<Map<string, ItemView>> {

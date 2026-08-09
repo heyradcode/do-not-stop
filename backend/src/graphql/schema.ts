@@ -182,6 +182,12 @@ export const schema = buildSchema(`
         createdAt: String!
     }
 
+    """One pet's filled slots, for the batched read."""
+    type PetEquipment {
+        petId: String!
+        equipped: [EquippedItem!]!
+    }
+
     type Query {
         opponents(
             chain: String!
@@ -305,6 +311,15 @@ export const schema = buildSchema(`
         checkable without making it more private.
         """
         petEquipment(chain: String!, petId: String!): [EquippedItem!]!
+
+        """
+        What several pets have equipped, in one call.
+
+        For a gallery or a matchmaking list, which draw a whole roster at once — asking
+        per pet would cost a query per card. Pets with nothing equipped are omitted, so
+        an absent entry means no gear rather than an empty list.
+        """
+        petEquipmentForPets(chain: String!, petIds: [String!]!): [PetEquipment!]!
 
         """
         The caller's unclaimed items, newest first.

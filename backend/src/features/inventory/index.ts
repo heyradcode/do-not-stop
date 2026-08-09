@@ -7,9 +7,11 @@ export {
     getInventory,
     getPendingItems,
     getPetEquipment,
+    getPetEquipmentForPets,
     type EquippedItem,
     type InventoryEntry,
     type PendingItem,
+    type PetEquipmentGroup,
     type ItemView,
 } from './inventory.service';
 export {

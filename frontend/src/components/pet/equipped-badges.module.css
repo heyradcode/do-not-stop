@@ -1,0 +1,52 @@
+/* CSS Module — class names are local; reference via `import styles from './equipped-badges.module.css'`.
+   Pinned to the bottom-right of the pet's art. Absolute, so the caller's art container has to
+   be a positioned ancestor — the same requirement `<PetArt fill>` already imposes. */
+
+.strip,
+.stripMd {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    z-index: 2;
+    display: flex;
+    gap: 3px;
+    /* Decoration over a click target: the card underneath owns the interaction, and an icon
+       swallowing that click would make part of the card mysteriously dead. The `title`
+       tooltip still works, since browsers show it regardless. */
+    pointer-events: none;
+}
+
+.badge {
+    display: block;
+    width: 22px;
+    height: 22px;
+    border: 1px solid color-mix(in srgb, var(--rarity, #ffffff) 60%, transparent);
+    border-radius: 2px;
+    /* Opaque, not tinted: these sit on generated art that can be any colour, and a
+       translucent chip over a bright painting is unreadable. */
+    background: rgb(5 13 30 / 92%);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--rarity, #ffffff) 30%, transparent);
+    overflow: hidden;
+}
+
+.stripMd .badge {
+    width: 30px;
+    height: 30px;
+}
+
+.img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Shown when no image service is configured. The rarity-tinted square still carries "this
+   slot is filled, and with something this rare", which is most of what the icon says. */
+.blank {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 45%, var(--rarity, #ffffff) 0%, transparent 72%);
+    opacity: 0.5;
+}

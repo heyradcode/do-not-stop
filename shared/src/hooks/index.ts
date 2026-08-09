@@ -170,6 +170,12 @@ export {
     type PendingItem,
     type UsePendingItemsResult,
 } from './inventory/usePendingItems';
+export {
+    usePetEquipmentForPets,
+    petEquipmentForPetsQueryKey,
+    type UsePetEquipmentForPetsOptions,
+    type UsePetEquipmentForPetsResult,
+} from './inventory/usePetEquipmentForPets';
 export { useInventoryAdapter } from './adapters/useInventoryAdapter';
 export type { EquipArgs, InventoryAdapter, UnequipArgs } from './adapters/inventoryTypes';
 export {
