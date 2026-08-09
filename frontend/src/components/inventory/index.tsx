@@ -16,6 +16,7 @@ import {
 
 import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
+import ItemArt from '@components/item/item-art';
 import { DASHBOARD_HOME, EQUIP_PATH } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import styles from './index.module.css';
@@ -64,6 +65,9 @@ const ItemCard: React.FC<{
             className={styles.card}
             style={{ '--rarity': getRarityColor(item.rarity) } as React.CSSProperties}
         >
+            {/* Renders nothing when no image service is configured, which leaves the card
+                exactly as it was before art existed rather than holding an empty box. */}
+            <ItemArt item={item} />
             <header className={styles.cardHead}>
                 <h3 className={styles.cardName}>{item.name}</h3>
                 {/* Rendered even at one, so a stack of one and a stack of nine read the

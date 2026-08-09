@@ -29,6 +29,10 @@ vi.mock('@shared/core', () => ({
     getRarityName: (r: number) =>
         ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'][r - 1] ?? 'Unknown',
     SLOT_NAMES: { 0: 'weapon', 1: 'armor', 2: 'trinket' },
+    // Null: no image service configured, so ItemArt renders nothing and these cases stay
+    // about grouping and labelling. The art has its own suite in components/item.
+    itemArtUrl: () => null,
+    itemFallbackArtUrl: () => null,
     describeItemEffect: (effect: { kind: string; amount?: number; atk?: number } | null) => {
         if (!effect) return null;
         if (effect.kind === 'grant_xp') return `Grants ${effect.amount} XP`;
