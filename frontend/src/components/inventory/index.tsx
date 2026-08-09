@@ -16,7 +16,7 @@ import {
 import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
 import ItemArt from '@components/item/item-art';
-import Icon, { BottleIcon, MuscleIcon } from '@components/ui/icon';
+import Icon, { MuscleIcon } from '@components/ui/icon';
 import InfoTooltip from '@components/ui/info-tooltip';
 import NeonButton from '@components/ui/neon-button';
 import ItemDetailModal from './item-detail-modal';
@@ -173,7 +173,7 @@ const Inventory: React.FC = () => {
                         void spend({ chain, petId: selectedPet!, itemType: entry.item.itemType });
                     }}
                 >
-                    <Icon as={BottleIcon} size="0.95em" noGap />
+                    <Icon as={MuscleIcon} size="0.95em" noGap />
                 </button>
             );
         }
@@ -213,7 +213,7 @@ const Inventory: React.FC = () => {
                             .catch(() => undefined);
                     }}
                 >
-                    <Icon as={BottleIcon} size="1.05em" noGap />
+                    <Icon as={MuscleIcon} size="1.05em" noGap />
                     {isSpending
                         ? ' Using…'
                         : selectedPet

@@ -16,7 +16,6 @@ import {
     GiSparkles,
     GiMuscleUp,
     GiSpellBook,
-    GiStandingPotion,
     GiTrophy,
     GiUpgrade,
 } from 'react-icons/gi';
@@ -108,7 +107,6 @@ export {
     GiSparkles as SparklesIcon,
     GiMuscleUp as MuscleIcon,
     GiSpellBook as SpellbookIcon,
-    GiStandingPotion as BottleIcon,
     GiTrophy as TrophyIcon,
     GiUpgrade as LevelUpIcon,
     IoCheckmarkSharp as CheckIcon,
