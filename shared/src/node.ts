@@ -14,6 +14,8 @@ export { CHAT_REACTIONS, isChatReaction, type ChatReaction } from './hooks/chat/
 // types a client renders, so an added effect kind cannot land on one side only.
 export {
     describeItemEffect,
+    explainItem,
+    itemStats,
     ITEM_CATEGORIES,
     parseItemEffect,
     SLOT,
@@ -23,6 +25,7 @@ export {
     type ItemCategory,
     type ItemDefinition,
     type ItemEffect,
+    type ItemStat,
     type SlotName,
     type StatBonus,
 } from './types/item';

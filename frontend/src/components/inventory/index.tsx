@@ -2,9 +2,10 @@ import React, { useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import {
-    describeItemEffect,
+    explainItem,
     getRarityColor,
     getRarityName,
+    itemStats,
     SLOT_NAMES,
     useChainCapabilities,
     useInventory,
@@ -17,6 +18,8 @@ import {
 import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
 import ItemArt from '@components/item/item-art';
+import Icon, { ShieldIcon, SparklesIcon } from '@components/ui/icon';
+import InfoTooltip from '@components/ui/info-tooltip';
 import { DASHBOARD_HOME, EQUIP_PATH } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import styles from './index.module.css';
@@ -34,6 +37,12 @@ import styles from './index.module.css';
  * five tiers mean one thing across the app rather than two.
  */
 
+/** The selected pet's name, for the action button's accessible label. Falls back to the id
+ *  rather than going silent, since the label's whole job is saying which pet. */
+function petName(pets: { id: unknown; name: string }[], petId: string): string {
+    return pets.find((pet) => String(pet.id) === petId)?.name ?? `pet ${petId}`;
+}
+
 /** Display order: what you can act on first, what merely accumulates last. */
 const CATEGORY_ORDER = ['consumable', 'equipment', 'collectible', 'material'] as const;
 
@@ -44,22 +53,14 @@ const CATEGORY_LABELS: Record<string, string> = {
     material: 'Materials',
 };
 
-/** A short line saying what an item does, or where it goes. */
-function itemSubtitle(item: ItemDefinition): string | null {
-    if (item.category === 'equipment' && item.slot != null) {
-        const slot = SLOT_NAMES[item.slot];
-        const bonus = describeItemEffect(item.effect);
-        return bonus ? `${slot ?? 'gear'} · ${bonus}` : (slot ?? null);
-    }
-    return describeItemEffect(item.effect);
-}
-
 const ItemCard: React.FC<{
     item: ItemDefinition;
     quantity: string;
     action?: React.ReactNode;
 }> = ({ item, quantity, action }) => {
-    const subtitle = itemSubtitle(item);
+    const stats = itemStats(item.effect);
+    const slot = item.category === 'equipment' && item.slot != null ? SLOT_NAMES[item.slot] : null;
+
     return (
         <article
             className={styles.card}
@@ -74,10 +75,33 @@ const ItemCard: React.FC<{
                     same shape rather than the badge appearing to mean something. */}
                 <span className={styles.quantity}>×{quantity}</span>
             </header>
-            <p className={styles.rarity}>{getRarityName(item.rarity)}</p>
-            {subtitle ? <p className={styles.effect}>{subtitle}</p> : null}
+
+            <p className={styles.meta}>
+                <span className={styles.rarity}>{getRarityName(item.rarity)}</span>
+                {slot ? <span className={styles.slot}>{slot}</span> : null}
+            </p>
+
+            {/* Abbreviated so a bonus reads at a glance and several fit one row. The long
+                form lives behind the "?" rather than being cut from the card entirely. */}
+            {stats.length > 0 ? (
+                <ul className={styles.stats}>
+                    {stats.map((stat) => (
+                        <li key={stat.label} className={styles.stat}>
+                            <span className={styles.statLabel}>{stat.label}</span>
+                            <span className={styles.statValue}>+{stat.value}</span>
+                        </li>
+                    ))}
+                </ul>
+            ) : null}
+
             <p className={styles.description}>{item.description}</p>
-            {action ? <div className={styles.cardAction}>{action}</div> : null}
+
+            <div className={styles.cardFoot}>
+                <InfoTooltip subject={item.name}>
+                    <p>{explainItem(item)}</p>
+                </InfoTooltip>
+                {action ? <div className={styles.cardAction}>{action}</div> : null}
+            </div>
         </article>
     );
 };
@@ -224,10 +248,21 @@ const Inventory: React.FC = () => {
                                                 quantity={entry.quantity}
                                                 action={
                                                     entry.item.category === 'consumable' && chain ? (
+                                                        // Icon-only, but never label-only: the
+                                                        // accessible name says which item and
+                                                        // which pet, because "Use" alone is the
+                                                        // one thing a screen reader user cannot
+                                                        // recover from the surrounding card.
                                                         <button
                                                             type="button"
-                                                            className={clsx(styles.use, !selectedPet && styles.disabled)}
+                                                            className={clsx(styles.iconAction, !selectedPet && styles.disabled)}
                                                             disabled={isSpending || !selectedPet}
+                                                            aria-label={
+                                                                selectedPet
+                                                                    ? `Use ${entry.item.name} on ${petName(pets, selectedPet)}`
+                                                                    : `Use ${entry.item.name} — pick a pet first`
+                                                            }
+                                                            title={isSpending ? 'Using…' : 'Use'}
                                                             onClick={() =>
                                                                 void spend({
                                                                     chain,
@@ -236,7 +271,7 @@ const Inventory: React.FC = () => {
                                                                 })
                                                             }
                                                         >
-                                                            {isSpending ? 'Using…' : 'Use'}
+                                                            <Icon as={SparklesIcon} size="1.05em" aria-hidden />
                                                         </button>
                                                     ) : entry.item.category === 'equipment' ? (
                                                         // Equipping is a wallet signature against
@@ -247,10 +282,12 @@ const Inventory: React.FC = () => {
                                                         // taking them there is a dead end.
                                                         <button
                                                             type="button"
-                                                            className={styles.hintLink}
+                                                            className={styles.iconAction}
+                                                            aria-label={`Equip ${entry.item.name} on a pet`}
+                                                            title="Equip on a pet"
                                                             onClick={() => navigate(EQUIP_PATH)}
                                                         >
-                                                            Equip on a pet →
+                                                            <Icon as={ShieldIcon} size="1.05em" aria-hidden />
                                                         </button>
                                                     ) : null
                                                 }

@@ -33,12 +33,15 @@ vi.mock('@shared/core', () => ({
     // about grouping and labelling. The art has its own suite in components/item.
     itemArtUrl: () => null,
     itemFallbackArtUrl: () => null,
-    describeItemEffect: (effect: { kind: string; amount?: number; atk?: number } | null) => {
-        if (!effect) return null;
-        if (effect.kind === 'grant_xp') return `Grants ${effect.amount} XP`;
-        if (effect.kind === 'stat_bonus') return `+${effect.atk} ATK`;
-        return 'Clears the battle cooldown';
+    // The real shapes: the abbreviations on the chips and the wording behind the "?" are
+    // shared with mobile on purpose, so stubbing them would stop checking that.
+    itemStats: (effect: { kind: string; amount?: number; atk?: number } | null) => {
+        if (!effect) return [];
+        if (effect.kind === 'grant_xp') return [{ label: 'XP', value: effect.amount }];
+        if (effect.kind === 'stat_bonus') return [{ label: 'ATK', value: effect.atk }];
+        return [];
     },
+    explainItem: (item: { name: string }) => `What ${item.name} does, at length.`,
 }));
 
 import Inventory from '@components/inventory';
@@ -154,7 +157,9 @@ describe('the bag', () => {
 
         renderBag();
 
-        expect(screen.getAllByRole('button', { name: 'Use' })).toHaveLength(1);
+        // Icon-only now, so the accessible name is the only handle on it — which is exactly
+        // why it names the item and the pet rather than just saying "Use".
+        expect(screen.getAllByRole('button', { name: /^Use / })).toHaveLength(1);
     });
 
     it('spends the consumable on the selected pet', async () => {
@@ -166,7 +171,7 @@ describe('the bag', () => {
         });
 
         renderBag();
-        await userEvent.click(screen.getByRole('button', { name: 'Use' }));
+        await userEvent.click(screen.getByRole('button', { name: /^Use / }));
 
         expect(spend).toHaveBeenCalledWith({ chain: 'evm', petId: '7', itemType: '100' });
     });
@@ -182,7 +187,7 @@ describe('the bag', () => {
         });
 
         renderBag();
-        await userEvent.click(screen.getByRole('button', { name: /Equip on a pet/ }));
+        await userEvent.click(screen.getByRole('button', { name: /^Equip .* on a pet$/ }));
 
         expect(navigate).toHaveBeenCalledWith('/equip');
         expect(spend).not.toHaveBeenCalled();

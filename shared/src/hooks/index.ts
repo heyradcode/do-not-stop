@@ -174,6 +174,8 @@ export { useInventoryAdapter } from './adapters/useInventoryAdapter';
 export type { EquipArgs, InventoryAdapter, UnequipArgs } from './adapters/inventoryTypes';
 export {
     describeItemEffect,
+    explainItem,
+    itemStats,
     ITEM_CATEGORIES,
     parseItemEffect,
     SLOT,
@@ -183,6 +185,7 @@ export {
     type ItemCategory,
     type ItemDefinition,
     type ItemEffect,
+    type ItemStat,
     type SlotName,
     type StatBonus,
 } from '../types/item';

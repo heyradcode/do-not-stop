@@ -1,0 +1,68 @@
+/* CSS Module — class names are local; reference via `import styles from './index.module.css'`.
+   The panel is portalled to document.body, so nothing here may rely on inheriting from the
+   card it was opened from: colours and type are stated outright rather than taken from an
+   ancestor that is no longer above it in the tree. */
+
+.trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    border: 1px solid rgb(125 214 255 / 26%);
+    border-radius: 50%;
+    background: rgb(5 13 30 / 70%);
+    color: rgb(195 210 255 / 70%);
+    font-size: 0.72rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.trigger:hover,
+.trigger[aria-expanded='true'] {
+    color: var(--cp-cyan, #7dd6ff);
+    border-color: rgb(125 214 255 / 55%);
+    background: rgb(125 214 255 / 12%);
+}
+
+.trigger:focus-visible {
+    outline: 2px solid var(--cp-cyan, #7dd6ff);
+    outline-offset: 2px;
+}
+
+.panel {
+    position: fixed;
+    /* Above the dashboard chrome and any modal backdrop the page might raise. */
+    z-index: 60;
+    padding: 12px 14px;
+    border: 1px solid rgb(125 214 255 / 28%);
+    border-radius: 4px;
+    background: rgb(8 17 36 / 98%);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 55%);
+    color: rgb(195 210 255 / 88%);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.subject {
+    margin: 0 0 6px;
+    color: #f2f6ff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.body {
+    margin: 0;
+}
+
+.body p {
+    margin: 0 0 8px;
+}
+
+.body p:last-child {
+    margin-bottom: 0;
+}

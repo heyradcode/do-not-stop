@@ -125,6 +125,86 @@ export function parseItemEffect(value: string | null | undefined): ItemEffect | 
     }
 }
 
+/** One stat an item changes, ready to render as a chip. */
+export interface ItemStat {
+    /** Short label, e.g. 'ATK'. */
+    label: string;
+    value: number;
+}
+
+/**
+ * An item's effect as separate values rather than a sentence.
+ *
+ * `describeItemEffect` already produces "+12 HP, +4 DEF", and a card wanting one chip per
+ * stat could split that string — which is how a UI ends up depending on a comma. Wording and
+ * structure are different questions, so they get different functions, and a new effect kind
+ * has to answer both here rather than in whichever component noticed first.
+ *
+ * `clear_battle_cooldown` returns nothing: it is a real effect with no number to put in a
+ * chip, and inventing "1 CD" to fill the row would be worse than the empty row. The full
+ * sentence from `explainItem` is where it gets described.
+ */
+export function itemStats(effect: ItemEffect | null): ItemStat[] {
+    if (!effect) return [];
+    switch (effect.kind) {
+        case 'grant_xp':
+            return [{ label: 'XP', value: effect.amount }];
+        case 'clear_battle_cooldown':
+            return [];
+        case 'stat_bonus':
+            return (['hp', 'atk', 'def', 'int', 'mdef'] as const)
+                .filter((field) => effect[field] > 0)
+                .map((field) => ({ label: field.toUpperCase(), value: effect[field] }));
+    }
+}
+
+/**
+ * A full sentence saying what an item does and what using it costs.
+ *
+ * Longer than `describeItemEffect` on purpose: that one labels, this one explains. A card
+ * shows "+4 ATK" because it has a row to fill; someone who opens the "?" is asking a
+ * question the chip did not answer — whether the bonus lasts, whether the item survives
+ * being used, whether a collectible does anything at all.
+ *
+ * Takes the whole item rather than the effect, because the honest answer for a material is
+ * "nothing yet, it is for crafting", and an effect of `null` alone cannot tell a material
+ * from a collectible.
+ */
+export function explainItem(item: ItemDefinition): string {
+    const effect = item.effect;
+
+    if (effect?.kind === 'stat_bonus') {
+        const parts = itemStats(effect).map((stat) => `+${stat.value} ${stat.label}`);
+        const slot = item.slot === null ? 'a pet' : `a pet's ${SLOT_NAMES[item.slot] ?? 'gear'} slot`;
+        return `Equipped to ${slot}. Adds ${joinWithAnd(parts)} for the whole battle, and keeps working `
+            + 'until you unequip it. The bonus is frozen into a battle when it is accepted, so unequipping '
+            + 'afterwards cannot change a fight that already happened.';
+    }
+
+    if (effect?.kind === 'grant_xp') {
+        return `Used on one of your pets to grant ${effect.amount} XP straight away. Consumed on use: `
+            + 'the item is burned, and the XP goes to the pet you picked.';
+    }
+
+    if (effect?.kind === 'clear_battle_cooldown') {
+        return 'Used on one of your pets to clear its battle cooldown, so it can fight again immediately '
+            + 'instead of waiting. Consumed on use.';
+    }
+
+    if (item.category === 'material') {
+        return 'A crafting material. It does nothing on its own yet — crafting is a later feature, and '
+            + 'these accumulate until then.';
+    }
+
+    return 'A collectible. It has no effect in battle and nothing to spend it on, which is the point of '
+        + 'it: proof you were there.';
+}
+
+const joinWithAnd = (parts: string[]): string =>
+    parts.length <= 1
+        ? (parts[0] ?? '')
+        : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]!}`;
+
 /**
  * A short human label for an effect, for a tooltip or a card line.
  *

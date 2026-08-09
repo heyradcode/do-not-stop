@@ -100,67 +100,121 @@
     flex-shrink: 0;
 }
 
-.rarity {
+/* Rarity and slot on one line: both answer "what kind of thing is this", and stacking them
+   spent two rows on one idea. */
+.meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0;
     font-size: 0.7rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+}
+
+.rarity {
     color: var(--rarity, inherit);
 }
 
-.effect {
-    margin: 2px 0 0;
-    font-size: 0.82rem;
-    color: rgb(110 231 183 / 90%);
+.slot {
+    padding-left: 8px;
+    border-left: 1px solid rgb(255 255 255 / 14%);
+    opacity: 0.55;
+}
+
+/* Abbreviated stat chips. Several bonuses fit one row at a glance, which a sentence like
+   "+30 HP, +10 DEF" does not once a card is 210px wide and the name already wrapped. The
+   long wording is not lost, it moved behind the "?". */
+.stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 6px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 2px 7px;
+    border: 1px solid rgb(110 231 183 / 28%);
+    border-radius: 3px;
+    background: rgb(110 231 183 / 8%);
+    font-size: 0.72rem;
+    line-height: 1.35;
+}
+
+.statLabel {
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.72;
+}
+
+.statValue {
+    color: rgb(110 231 183);
+    font-weight: 600;
+    /* Digits line up between chips and between cards. */
+    font-variant-numeric: tabular-nums;
 }
 
 .description {
-    margin: 4px 0 0;
+    margin: 6px 0 0;
     font-size: 0.8rem;
     line-height: 1.4;
     opacity: 0.6;
 }
 
+/* Pushed to the bottom so the "?" and the action sit on one baseline across a row of cards
+   whose descriptions are different lengths. */
+.cardFoot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 10px;
+}
+
 .cardAction {
-    margin-top: 10px;
+    display: flex;
 }
 
-.use {
-    padding: 5px 14px;
-    border-radius: 999px;
-    border: 1px solid rgb(251 191 36 / 40%);
+/* Square icon buttons, sized to match the "?" opposite them so the footer reads as a pair
+   of controls rather than two unrelated widgets. */
+.iconAction {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border: 1px solid rgb(251 191 36 / 42%);
+    border-radius: 4px;
     background: rgb(251 191 36 / 10%);
-    color: inherit;
-    font-size: 0.8rem;
+    color: rgb(251 191 36);
     cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
 }
 
-.use:hover:not(:disabled) {
-    background: rgb(251 191 36 / 20%);
+.iconAction:hover:not(:disabled) {
+    background: rgb(251 191 36 / 22%);
+    border-color: rgb(251 191 36 / 70%);
 }
 
-.use:disabled {
+.iconAction:focus-visible {
+    outline: 2px solid rgb(251 191 36);
+    outline-offset: 2px;
+}
+
+.iconAction:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
 
 .disabled {
     cursor: not-allowed;
-}
-
-.hintLink {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: rgb(251 191 36 / 80%);
-    font: inherit;
-    font-size: 0.78rem;
-    cursor: pointer;
-}
-
-.hintLink:hover {
-    color: rgb(251 191 36);
-    text-decoration: underline;
 }
 
 /* ─── pending claims ──────────────────────────────────────────────────────────
