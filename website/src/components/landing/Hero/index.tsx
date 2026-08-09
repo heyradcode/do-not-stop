@@ -1,11 +1,23 @@
 'use client';
 
+import Image from 'next/image';
+
 import { openApp } from '@/lib/openApp';
 import { NeonButton } from '../../common';
+import heroBackground from '../../../../public/images/background.png';
 import './Hero.css';
 
 const Hero = () => (
   <section className="hero" id="top">
+    <Image
+      className="hero-bg"
+      src={heroBackground}
+      alt=""
+      fill
+      priority
+      placeholder="blur"
+      sizes="100vw"
+    />
     <div className="copy" data-reveal-stagger="90">
       <span className="eyebrow" data-reveal="down">On-Chain Pet Adventure</span>
       <h2 data-reveal="up">

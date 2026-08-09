@@ -8,21 +8,39 @@
   padding-inline: var(--landing-gutter);
   min-height: calc(100vh - var(--main-header-offset));
   min-height: calc(100dvh - var(--main-header-offset));
-  background-color: #070a14;
-  background-image:
-    linear-gradient(105deg, rgb(6 9 20 / 90%) 0%, rgb(6 9 20 / 48%) 40%, rgb(10 12 24 / 22%) 62%, transparent 82%),
-    linear-gradient(180deg, rgb(87 57 230 / 14%) 0%, rgb(10 12 24 / 76%) 100%),
-    url('/images/background.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: var(--surface-base);
   position: relative;
+  /* Self-contained stack: art, scrim, glow, copy. Without this the layers below
+     resolve against an ancestor's stacking context. */
+  isolation: isolate;
   border-bottom: 1px solid rgb(94 117 255 / 25%);
+
+  /* Hero art. Served through next/image rather than as a CSS background-image,
+     which the optimizer never sees — every visitor was downloading the full
+     3.2 MB PNG, and it is the LCP element. */
+  & .hero-bg {
+    object-fit: cover;
+    object-position: center;
+    z-index: 0;
+  }
+
+  /* Scrim. Holds the headline legible over the art. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      linear-gradient(105deg, rgb(6 9 20 / 90%) 0%, rgb(6 9 20 / 48%) 40%, rgb(10 12 24 / 22%) 62%, transparent 82%),
+      linear-gradient(180deg, rgb(87 57 230 / 14%) 0%, rgb(10 12 24 / 76%) 100%);
+  }
 
   &::after {
     content: '';
     position: absolute;
     inset: 0;
+    z-index: 2;
     background:
       radial-gradient(circle at 20% 20%, rgb(114 67 255 / 20%), transparent 40%),
       radial-gradient(circle at 75% 75%, rgb(10 217 255 / 10%), transparent 35%);
@@ -31,7 +49,7 @@
 
   & .copy {
     position: relative;
-    z-index: 1;
+    z-index: 3;
     text-align: left;
     max-width: 760px;
   }
@@ -112,7 +130,7 @@
     left: 50%;
     bottom: 24px;
     transform: translateX(-50%);
-    z-index: 1;
+    z-index: 3;
     width: 26px;
     height: 42px;
     border: 1px solid rgb(174 200 255 / 55%);
