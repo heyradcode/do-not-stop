@@ -4,10 +4,9 @@
   --title-font: var(--font-display), 'Orbitron', 'Eurostile', 'Bank Gothic', system-ui, sans-serif;
   --content-font: var(--font-body), 'Inter', 'Segoe UI', system-ui, sans-serif;
   width: 100%;
-  height: 100vh;
+  min-height: 100dvh;
   font-family: var(--content-font);
   position: relative;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   background:
@@ -92,14 +91,14 @@
   flex-wrap: wrap;
 }
 
+/* The document scrolls, not this element — a nested scroll container would break
+   `position: sticky`, scroll-linked animation, and mobile URL-bar collapse. */
 .main-content {
   flex: 1;
   margin-block-start: var(--main-header-offset);
   width: 100%;
   box-sizing: border-box;
   margin-inline: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 /* Landing: gap under fixed header can be painted by hero section. */

@@ -6,11 +6,6 @@
   backdrop-filter: blur(10px);
 }
 
-html,
-.landing-layout .main-content {
-  scroll-behavior: smooth;
-}
-
 .landing {
   --landing-gutter: clamp(44px, 7vw, 108px);
   --section-pad-block: clamp(80px, 9vh, 120px);
@@ -22,14 +17,12 @@ html,
     repeating-linear-gradient(0deg, rgb(255 255 255 / 0.03) 0 1px, transparent 1px 48px),
     repeating-linear-gradient(90deg, rgb(255 255 255 / 0.03) 0 1px, transparent 1px 48px),
     linear-gradient(180deg, #060912 0%, #070a16 100%);
-  scroll-behavior: smooth;
 }
 
 .landing-section {
   position: relative;
   padding: var(--section-pad-block) var(--landing-gutter);
   background: transparent;
-  scroll-margin-top: var(--main-header-offset);
 }
 
 /* Alternating mood washes — every .landing-section cycles cyan / violet / magenta */

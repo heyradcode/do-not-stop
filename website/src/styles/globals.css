@@ -2,6 +2,13 @@
 @import './layout.css';
 @import './landing-page.css';
 
+html {
+  /* Anchor targets clear the fixed `.main-header`. Do not also set
+     `scroll-margin-top` on the targets — the two offsets add up. */
+  scroll-padding-top: var(--main-header-offset);
+  scroll-behavior: smooth;
+}
+
 :root {
   font-family: var(--font-body), 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -30,7 +37,10 @@ a:hover {
 body {
   margin: 0;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100dvh;
+  /* `clip`, not `hidden`: `hidden` would make this a scroll container and
+     re-break `position: sticky` for everything inside it. */
+  overflow-x: clip;
   background: inherit;
   color: inherit;
 }
