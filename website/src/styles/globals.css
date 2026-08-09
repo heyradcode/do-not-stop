@@ -5,15 +5,20 @@
 
 html {
   /* Breathing room between the header and whatever an anchor lands on. */
-  --anchor-gap: 22px;
+  --anchor-gap: 16px;
 
-  /* Anchor targets clear the fixed `.site-header`. `--header-h` is measured and
-     published by useHeaderScroll, so this tracks the real chrome instead of a
-     hardcoded guess that drifts every time the header is redesigned; the
-     layout constant is only the fallback for before that lands.
+  /* Where an anchored section's content should come to rest. `--header-h` is
+     measured and published by useHeaderScroll, so this tracks the real chrome
+     rather than a hardcoded guess that drifts every time the header is
+     redesigned; the layout constant is only the fallback for before that lands.
+
+     Pinned sections stick at this same offset, so following a nav link leaves
+     a scene exactly filling the space under the header.
 
      Do not also set `scroll-margin-top` on the targets — the two offsets add. */
-  scroll-padding-top: calc(var(--header-h, var(--main-header-offset)) + var(--anchor-gap));
+  --anchor-offset: calc(var(--header-h, var(--main-header-offset)) + var(--anchor-gap));
+
+  scroll-padding-top: var(--anchor-offset);
   scroll-behavior: smooth;
 }
 

@@ -133,10 +133,12 @@
   height: calc(100dvh + (var(--pet-count) * var(--pet-span)));
 }
 
+/* Sticks at the same offset anchors land on, so following the nav link leaves
+   the scene exactly filling the space under the header. */
 .pets .pin {
   position: sticky;
-  inset-block-start: var(--main-header-offset);
-  height: calc(100dvh - var(--main-header-offset));
+  inset-block-start: var(--anchor-offset);
+  height: calc(100dvh - var(--anchor-offset));
   display: flex;
   flex-direction: column;
   justify-content: center;

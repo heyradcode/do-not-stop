@@ -17,7 +17,7 @@ const NAV_IDS = NAV_LINKS.map(({ href }) => href.replace('#', ''));
 const DRAWER_QUERY = '(max-width: 900px)';
 
 /** Breathing room below the header at an anchor. Matches --anchor-gap. */
-const ANCHOR_GAP = 22;
+const ANCHOR_GAP = 16;
 
 type SiteHeaderProps = {
   title: string;
@@ -66,7 +66,13 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
         ? published
         : (ref.current?.getBoundingClientRect().height ?? 0);
 
-      const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - ANCHOR_GAP;
+      // Aim at the section's content, not its border box. Sections carry up to
+      // 120px of top padding for scroll rhythm, and landing on the border box
+      // leaves all of it stacked under the header as dead space.
+      const padding = parseFloat(getComputedStyle(target).paddingTop) || 0;
+
+      const top =
+        target.getBoundingClientRect().top + window.scrollY + padding - headerHeight - ANCHOR_GAP;
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       window.scrollTo({ top: Math.max(top, 0), behavior: reduced ? 'auto' : 'smooth' });

@@ -31,10 +31,12 @@
 /* Full-bleed: the pin escapes the section gutter so the scene reaches the
    screen edges, then restores the gutter as its own padding so content still
    aligns with the rest of the page. */
+/* Sticks at the same offset anchors land on, so following the nav link leaves
+   the scene exactly filling the space under the header. */
 .roadmap .pin {
   position: sticky;
-  inset-block-start: var(--main-header-offset);
-  height: calc(100dvh - var(--main-header-offset));
+  inset-block-start: var(--anchor-offset);
+  height: calc(100dvh - var(--anchor-offset));
   margin-inline: calc(var(--landing-gutter) * -1);
   padding: clamp(18px, 3.5vh, 40px) var(--landing-gutter) clamp(18px, 3vh, 34px);
   box-sizing: border-box;
