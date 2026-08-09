@@ -16,6 +16,7 @@ import {
 import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
 import ItemArt from '@components/item/item-art';
+import PetSelect from '@components/ui/pet-select';
 import Icon, { MuscleIcon, RefreshIcon } from '@components/ui/icon';
 import InfoTooltip from '@components/ui/info-tooltip';
 import NeonButton from '@components/ui/neon-button';
@@ -320,19 +321,21 @@ const Inventory: React.FC = () => {
                     ) : (
                         <>
                             {pets.length > 0 ? (
-                                <label className={styles.petPicker}>
-                                    <span className={styles.petPickerLabel}>Use items on</span>
-                                    <select
+                                <div className={styles.petPicker}>
+                                    {/* A label element, not a wrapping <label>: PetSelect is a
+                                        portalled listbox rather than a native <select>, so
+                                        there is no form control for a wrapper to label. */}
+                                    <label className={styles.petPickerLabel} htmlFor="inventory-pet">
+                                        Use items on
+                                    </label>
+                                    <PetSelect
+                                        id="inventory-pet"
+                                        pets={pets.map((pet) => ({ id: String(pet.id), pet }))}
                                         value={selectedPet ?? ''}
-                                        onChange={(event) => setPetId(event.target.value)}
-                                    >
-                                        {pets.map((pet) => (
-                                            <option key={String(pet.id)} value={String(pet.id)}>
-                                                {pet.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
+                                        onChange={setPetId}
+                                        placeholder="Select pet..."
+                                    />
+                                </div>
                             ) : null}
 
                             {grouped.map((group) => (

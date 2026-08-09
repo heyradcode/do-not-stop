@@ -279,10 +279,14 @@
 
 /* ─── chrome ─────────────────────────────────────────────────────────────────── */
 
+/* The control is <PetSelect>, which brings its own look — the rules that used to style a
+   native <select> here are gone with it. This only lays the row out and bounds the width, so
+   a long pet name does not stretch the picker across the whole panel. */
 .petPicker {
     display: flex;
     align-items: center;
-    gap: 8px;
+    flex-wrap: wrap;
+    gap: 10px;
     margin-top: 16px;
     font-size: 0.82rem;
 }
@@ -291,13 +295,9 @@
     opacity: 0.6;
 }
 
-.petPicker select {
-    padding: 4px 10px;
-    border-radius: 8px;
-    border: 1px solid rgb(255 255 255 / 15%);
-    background: rgb(0 0 0 / 30%);
-    color: inherit;
-    font: inherit;
+.petPicker > *:last-child {
+    flex: 0 1 220px;
+    min-width: 0;
 }
 
 .muted {

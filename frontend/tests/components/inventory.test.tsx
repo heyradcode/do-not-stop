@@ -34,6 +34,10 @@ vi.mock('@shared/core', () => ({
     // about grouping and labelling. The art has its own suite in components/item.
     itemArtUrl: (itemType: string) => itemArtUrl(itemType),
     itemFallbackArtUrl: () => null,
+    // Reached through <PetSelect>, which renders a <PetArt> per option. Null and an emoji
+    // keep the picker rendering without pulling the pet-art pipeline into these cases.
+    petArtUrl: () => null,
+    getPetAvatar: () => '🐾',
     // The real shapes: the abbreviations on the chips and the wording behind the "?" are
     // shared with mobile on purpose, so stubbing them would stop checking that.
     itemStats: (effect: { kind: string; amount?: number; atk?: number } | null) => {
