@@ -1,16 +1,18 @@
-/* Base palette = azure (default tone; no .tone-azure rule needed) */
+/* Base palette = azure (default tone; no .tone-azure rule needed).
+   Per-tone alphas differ on purpose — the more saturated hues need less of
+   themselves to read at the same weight — so each tone restates all three. */
 .neon-btn {
-  --btn-text: #8ed1ff;
-  --btn-border: rgb(30 157 255 / 50%);
-  --btn-glow: rgb(30 157 255 / 24%);
-  --btn-inner: rgb(30 157 255 / 14%);
-  --btn-highlight: rgb(255 255 255 / 3%);
+  --btn-text: var(--tone-azure-text);
+  --btn-border: rgb(var(--tone-azure-rgb) / 50%);
+  --btn-glow: rgb(var(--tone-azure-rgb) / 24%);
+  --btn-inner: rgb(var(--tone-azure-rgb) / 14%);
+  --btn-highlight: var(--surface-veil-1);
 
   position: relative;
   isolation: isolate;
   border: 1px solid var(--btn-border);
-  border-radius: 2px;
-  background: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
+  border-radius: var(--radius-xs);
+  background: var(--surface-control);
   color: var(--btn-text);
   font-weight: 700;
   letter-spacing: 0.95px;
@@ -20,7 +22,10 @@
     inset 0 0 12px var(--btn-inner),
     inset 0 0 24px var(--btn-highlight),
     0 0 12px var(--btn-glow);
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
 
   &::before {
     content: '';
@@ -78,24 +83,24 @@
   }
 
   &.tone-emerald {
-    --btn-text: #9effd4;
-    --btn-border: rgb(0 255 157 / 48%);
-    --btn-glow: rgb(0 255 157 / 24%);
-    --btn-inner: rgb(0 255 157 / 14%);
+    --btn-text: var(--tone-emerald-text);
+    --btn-border: rgb(var(--tone-emerald-rgb) / 48%);
+    --btn-glow: rgb(var(--tone-emerald-rgb) / 24%);
+    --btn-inner: rgb(var(--tone-emerald-rgb) / 14%);
   }
 
   &.tone-amber {
-    --btn-text: #ffd07b;
-    --btn-border: rgb(255 181 67 / 44%);
-    --btn-glow: rgb(255 181 67 / 22%);
-    --btn-inner: rgb(255 181 67 / 12%);
+    --btn-text: var(--tone-amber-text);
+    --btn-border: rgb(var(--tone-amber-rgb) / 44%);
+    --btn-glow: rgb(var(--tone-amber-rgb) / 22%);
+    --btn-inner: rgb(var(--tone-amber-rgb) / 12%);
   }
 
   &.tone-cyan {
-    --btn-text: #86ebff;
-    --btn-border: rgb(0 247 255 / 36%);
-    --btn-glow: rgb(0 247 255 / 18%);
-    --btn-inner: rgb(0 247 255 / 10%);
+    --btn-text: var(--tone-cyan-text);
+    --btn-border: rgb(var(--tone-cyan-rgb) / 36%);
+    --btn-glow: rgb(var(--tone-cyan-rgb) / 18%);
+    --btn-inner: rgb(var(--tone-cyan-rgb) / 10%);
   }
 
   @media (prefers-reduced-motion: reduce) {

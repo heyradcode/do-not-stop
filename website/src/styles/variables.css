@@ -1,55 +1,257 @@
 /* =============================================================================
-   Palette primitives — landing-only subset of frontend tokens.
+   Design tokens.
+
+   Every value here was extracted from colours that were previously hardcoded and
+   repeated across the landing section stylesheets. Near-identical variants were
+   collapsed to one canonical value — the four border blues (96/100/101/102 x
+   123-132 x 255) became `--border-rgb`, and the two emeralds (108 246 197 and
+   108 244 197) became `--neon-emerald`.
+
+   The `-rgb` triplets exist so alpha is composed at the use site with
+   `rgb(var(--x-rgb) / <alpha>)` rather than hand-written rgba literals. That is
+   what makes a glow scale possible at all: one hue, many strengths.
+
+   Section stylesheets still carry their own literals. They adopt these tokens as
+   each section is rewritten, rather than in one churn-heavy pass that would
+   rewrite the same lines twice.
+   ============================================================================= */
+
+/* =============================================================================
+   1. Palette primitives
    ============================================================================= */
 :root {
-  --cp-white: #ffffff;
-  --cp-text-body-dark: #f3f4f6;
-  --cp-text-muted-dark: #c7ccd4;
-  --cp-text-light-dark: #9ca3af;
-  --cp-border-dark: #2b3240;
-  --cp-bg-dark: #141923;
-  --cp-bg-muted-dark: #1d2430;
-  --cp-bg-hover-dark: #273244;
+  /* Display accents — headings, rails, gradient text, section washes. */
+  --neon-cyan: #7dd6ff;
+  --neon-cyan-rgb: 125 214 255;
 
-  --cp-brand-primary: #667eea;
-  --cp-brand-secondary: #764ba2;
+  --neon-azure: #1e9dff;
+  --neon-azure-rgb: 30 157 255;
 
-  --cp-body-text-dark: #e5e7eb;
-  --cp-body-bg-dark: #0f1117;
-  --cp-link: #646cff;
-  --cp-link-hover: #535bf2;
+  --neon-violet: #b58cff;
+  --neon-violet-rgb: 181 140 255;
+
+  --neon-magenta: #ff7bcb;
+  --neon-magenta-rgb: 255 123 203;
+
+  --neon-emerald: #6cf6c5;
+  --neon-emerald-rgb: 108 246 197;
+
+  --neon-gold: #ffd76b;
+  --neon-gold-rgb: 255 215 107;
+
+  /* Rarity tones — Pets rarity track, legend dots, card edges, tags. */
+  --rarity-common: #b2c8eb;
+  --rarity-common-rgb: 178 200 235;
+  --rarity-rare: #50b8ff;
+  --rarity-rare-rgb: 80 184 255;
+  --rarity-epic: #b878ff;
+  --rarity-epic-rgb: 184 120 255;
+  --rarity-legendary: #ffcf5c;
+  --rarity-legendary-rgb: 255 207 92;
+
+  /* Status tones — roadmap pins, rail segments, badges. */
+  --status-shipped: var(--neon-emerald);
+  --status-shipped-rgb: var(--neon-emerald-rgb);
+  --status-active: var(--neon-gold);
+  --status-active-rgb: var(--neon-gold-rgb);
+  --status-planned: var(--rarity-epic);
+  --status-planned-rgb: var(--rarity-epic-rgb);
+
+  /* Control tones — NeonButton. Deliberately more saturated than the display
+     accents: buttons are small and have to hold their colour against dark glass.
+     Kept separate rather than unified so the two roles can diverge on purpose. */
+  --tone-azure-rgb: 30 157 255;
+  --tone-azure-text: #8ed1ff;
+  --tone-emerald-rgb: 0 255 157;
+  --tone-emerald-text: #9effd4;
+  --tone-amber-rgb: 255 181 67;
+  --tone-amber-text: #ffd07b;
+  --tone-cyan-rgb: 0 247 255;
+  --tone-cyan-text: #86ebff;
 }
 
 /* =============================================================================
-   Semantic tokens
+   2. Surfaces
    ============================================================================= */
 :root {
-  --color-primary: var(--cp-brand-primary);
-  --color-secondary: var(--cp-brand-secondary);
-  --color-text: var(--cp-text-body-dark);
-  --color-text-muted: var(--cp-text-muted-dark);
-  --color-text-light: var(--cp-text-light-dark);
-  --color-border: var(--cp-border-dark);
-  --color-background: var(--cp-bg-dark);
-  --color-background-light: var(--cp-bg-muted-dark);
-  --color-background-hover: var(--cp-bg-hover-dark);
+  --surface-void: #050812;
+  --surface-void-rgb: 5 8 18;
+  --surface-base: #070a14;
+  --surface-deep-top: #060912;
+  --surface-deep-bottom: #070a16;
+
+  /* Shell aura behind the app chrome. */
+  --surface-shell:
+    radial-gradient(circle at 20% 0%, rgb(87 57 230 / 30%) 0%, transparent 38%),
+    radial-gradient(circle at 80% 20%, rgb(32 163 255 / 14%) 0%, transparent 44%),
+    var(--surface-void);
+
+  /* Card body — the two-stop vertical gradient repeated on nearly every card. */
+  --surface-card-top: rgb(10 14 28 / 95%);
+  --surface-card-bottom: rgb(7 11 24 / 95%);
+  --surface-card: linear-gradient(180deg, var(--surface-card-top) 0%, var(--surface-card-bottom) 100%);
+
+  /* Control body — NeonButton. */
+  --surface-control: linear-gradient(180deg, rgb(5 13 30 / 92%), rgb(4 8 22 / 95%));
+
+  /* Translucent fills that sit over any surface. */
+  --surface-veil-1: rgb(255 255 255 / 3%);
+  --surface-veil-2: rgb(255 255 255 / 5%);
+
+  /* Interior wash that gives cards depth without a visible edge. */
+  --surface-inset-rgb: 55 68 148;
 }
 
 /* =============================================================================
-   Layout scale used by landing sections and the fixed header.
+   3. Text
    ============================================================================= */
 :root {
-  --border-radius: 16px;
-  --border-radius-sm: 8px;
+  --text-title: #f6f3ff;
+  --text-bright: #eaf0ff;
+  --text-body: rgb(195 210 255 / 80%);
+  --text-muted: rgb(195 210 255 / 70%);
+  --text-dim: rgb(170 188 230 / 65%);
+  --text-accent: #b6e2ff;
+  --text-on-accent: #ffffff;
+}
 
-  --z-header: 50;
+/* =============================================================================
+   4. Borders
+   ============================================================================= */
+:root {
+  --border-rgb: 100 130 255;
+  --border-hairline: 1px solid rgb(var(--border-rgb) / 16%);
+  --border-subtle: 1px solid rgb(var(--border-rgb) / 22%);
+  --border-strong: 1px solid rgb(var(--border-rgb) / 38%);
+}
 
-  /* Space reserved for fixed `.main-header` */
+/* =============================================================================
+   5. Glow scale
+
+   `--glow-rgb` is the hue; components override it and the steps below compose
+   against whatever it currently is. This is the piece the old stylesheets were
+   missing — every glow was a bespoke box-shadow, so nothing shared a ramp and
+   depth never read as consistent.
+   ============================================================================= */
+:root {
+  --glow-rgb: var(--border-rgb);
+
+  --glow-xs: 0 0 8px rgb(var(--glow-rgb) / 22%);
+  --glow-sm: 0 0 12px rgb(var(--glow-rgb) / 26%);
+  --glow-md: 0 0 18px rgb(var(--glow-rgb) / 30%);
+  --glow-lg: 0 0 30px rgb(var(--glow-rgb) / 34%);
+  --glow-xl: 0 0 48px rgb(var(--glow-rgb) / 38%);
+
+  --glow-inset-sm: inset 0 0 12px rgb(var(--glow-rgb) / 14%);
+  --glow-inset-md: inset 0 0 22px rgb(var(--glow-rgb) / 18%);
+  --glow-inset-lg: inset 0 0 32px rgb(var(--glow-rgb) / 22%);
+
+  /* Text glow — the violet cast carried by every uppercase display heading. */
+  --glow-text-rgb: 174 150 255;
+  --glow-text-sm: 0 0 10px rgb(var(--glow-text-rgb) / 35%);
+  --glow-text-md: 0 0 14px rgb(var(--glow-text-rgb) / 40%);
+  --glow-text-lg: 0 0 18px rgb(var(--glow-text-rgb) / 28%), 0 0 38px rgb(108 72 255 / 18%);
+}
+
+/* =============================================================================
+   6. Elevation — plain drop shadows, no hue. Pairs with the glow scale above.
+   ============================================================================= */
+:root {
+  --elev-1: 0 3px 8px rgb(0 0 0 / 22%);
+  --elev-2: 0 8px 22px rgb(0 0 0 / 32%);
+  --elev-3: 0 14px 34px rgb(0 0 0 / 38%);
+  --elev-4: 0 24px 60px rgb(0 0 0 / 46%);
+}
+
+/* =============================================================================
+   7. Signature gradients
+
+   `--spectrum-angle` is read at the use site, so one token serves both the
+   92deg text fills and the 90deg horizontal rails.
+   ============================================================================= */
+:root {
+  --gradient-spectrum: linear-gradient(
+    var(--spectrum-angle, 92deg),
+    var(--neon-cyan) 0%,
+    var(--neon-violet) 60%,
+    var(--neon-magenta) 100%
+  );
+
+  --gradient-rail: linear-gradient(
+    90deg,
+    transparent,
+    var(--neon-cyan) 12%,
+    var(--neon-violet) 50%,
+    var(--neon-magenta) 88%,
+    transparent
+  );
+}
+
+/* =============================================================================
+   8. Motion
+   ============================================================================= */
+:root {
+  --dur-fast: 140ms;
+  --dur-base: 180ms;
+  --dur-slow: 320ms;
+  --dur-reveal: 640ms;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* =============================================================================
+   9. Space and layout scale
+   ============================================================================= */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 36px;
+  --space-7: 56px;
+  --space-8: 80px;
+
+  /* Section rhythm. Lives at :root rather than on `.landing` so the fixed
+     header can align its own padding to the same gutter. */
+  --landing-gutter: clamp(44px, 7vw, 108px);
+  --section-pad-block: clamp(80px, 9vh, 120px);
+  --section-pad-block-band: clamp(56px, 6vh, 80px);
+
+  /* Space reserved for fixed `.main-header`. */
   --main-header-offset: 100px;
+}
+
+/* =============================================================================
+   10. Radii
+   ============================================================================= */
+:root {
+  --radius-xs: 2px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 18px;
+  --radius-pill: 999px;
+}
+
+/* =============================================================================
+   11. Stacking order
+   ============================================================================= */
+:root {
+  --z-base: 0;
+  --z-raised: 1;
+  --z-sticky: 20;
+  --z-header: 50;
+  --z-overlay: 80;
+  --z-modal: 100;
 }
 
 @media (max-width: 768px) {
   :root {
     --main-header-offset: 128px;
+    --section-pad-block: 64px;
+    --section-pad-block-band: 44px;
   }
 }

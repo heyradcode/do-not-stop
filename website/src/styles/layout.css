@@ -9,11 +9,8 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(circle at 20% 0%, rgb(87 57 230 / 30%) 0%, transparent 38%),
-    radial-gradient(circle at 80% 20%, rgb(32 163 255 / 14%) 0%, transparent 44%),
-    #050812;
-  color: var(--color-text);
+  background: var(--surface-shell);
+  color: var(--text-bright);
 }
 
 .main-header {
@@ -21,10 +18,10 @@
   inset-block-start: 0;
   inset-inline: 0;
   width: 100%;
-  background: rgb(5 8 18 / 68%);
-  border-block-end: 1px solid rgb(101 131 255 / 22%);
+  background: rgb(var(--surface-void-rgb) / 68%);
+  border-block-end: var(--border-subtle);
   z-index: var(--z-header);
-  box-shadow: 0 10px 26px rgb(0 0 0 / 32%);
+  box-shadow: var(--elev-2);
   box-sizing: border-box;
   min-height: var(--main-header-offset);
   padding-inline: clamp(20px, 5vw, 42px);
@@ -41,11 +38,11 @@
     font-size: clamp(1.8rem, 3vw, 2.5rem);
     line-height: 1.2;
     margin: 0;
-    color: #f4f2ff;
+    color: var(--text-title);
     letter-spacing: 1.2px;
     font-weight: 700;
     text-transform: uppercase;
-    text-shadow: 0 0 12px rgb(181 152 255 / 40%);
+    text-shadow: var(--glow-text-md);
   }
 }
 
@@ -104,7 +101,7 @@
 /* Landing: gap under fixed header can be painted by hero section. */
 .main-content:has(.landing) {
   margin-block-start: 0;
-  background-color: #070a14;
+  background-color: var(--surface-base);
 }
 
 @media (max-width: 768px) {
