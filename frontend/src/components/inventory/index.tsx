@@ -17,7 +17,7 @@ import {
 
 import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
-import ItemArt from '@components/item/item-art';
+import ItemArt, { hasItemArt } from '@components/item/item-art';
 import Icon, { ShieldIcon, SparklesIcon } from '@components/ui/icon';
 import InfoTooltip from '@components/ui/info-tooltip';
 import { DASHBOARD_HOME, EQUIP_PATH } from '@constants/interactionRoutes';
@@ -60,15 +60,23 @@ const ItemCard: React.FC<{
 }> = ({ item, quantity, action }) => {
     const stats = itemStats(item.effect);
     const slot = item.category === 'equipment' && item.slot != null ? SLOT_NAMES[item.slot] : null;
+    const withArt = hasItemArt(item.itemType);
+
+    const help = (
+        <InfoTooltip subject={item.name}>
+            <p>{explainItem(item)}</p>
+        </InfoTooltip>
+    );
 
     return (
         <article
             className={styles.card}
             style={{ '--rarity': getRarityColor(item.rarity) } as React.CSSProperties}
         >
-            {/* Renders nothing when no image service is configured, which leaves the card
-                exactly as it was before art existed rather than holding an empty box. */}
-            <ItemArt item={item} />
+            {/* The "?" sits in the tile's top-right corner, which only exists when there is a
+                tile — with no image service the whole component renders nothing, so it moves
+                to the footer instead of being positioned against a box that is not there. */}
+            {withArt ? <ItemArt item={item} overlay={<span className={styles.artHelp}>{help}</span>} /> : null}
             <header className={styles.cardHead}>
                 <h3 className={styles.cardName}>{item.name}</h3>
                 {/* Rendered even at one, so a stack of one and a stack of nine read the
@@ -96,12 +104,15 @@ const ItemCard: React.FC<{
 
             <p className={styles.description}>{item.description}</p>
 
-            <div className={styles.cardFoot}>
-                <InfoTooltip subject={item.name}>
-                    <p>{explainItem(item)}</p>
-                </InfoTooltip>
-                {action ? <div className={styles.cardAction}>{action}</div> : null}
-            </div>
+            {/* Omitted entirely when it would be empty: with the "?" on the artwork, a
+                collectible has nothing to put here and an empty row would still cost its
+                padding. */}
+            {action || !withArt ? (
+                <div className={styles.cardFoot}>
+                    {withArt ? null : <span className={styles.footHelp}>{help}</span>}
+                    {action ? <div className={styles.cardAction}>{action}</div> : null}
+                </div>
+            ) : null}
         </article>
     );
 };

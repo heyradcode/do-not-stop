@@ -10,6 +10,7 @@ const usePetList = vi.fn();
 const useSpendItem = vi.fn();
 const useAuth = vi.fn();
 const navigate = vi.fn();
+const itemArtUrl = vi.fn<(itemType: string) => string | null>(() => null);
 
 vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
@@ -29,9 +30,9 @@ vi.mock('@shared/core', () => ({
     getRarityName: (r: number) =>
         ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'][r - 1] ?? 'Unknown',
     SLOT_NAMES: { 0: 'weapon', 1: 'armor', 2: 'trinket' },
-    // Null: no image service configured, so ItemArt renders nothing and these cases stay
+    // Null by default: no image service, so ItemArt renders nothing and most cases stay
     // about grouping and labelling. The art has its own suite in components/item.
-    itemArtUrl: () => null,
+    itemArtUrl: (itemType: string) => itemArtUrl(itemType),
     itemFallbackArtUrl: () => null,
     // The real shapes: the abbreviations on the chips and the wording behind the "?" are
     // shared with mobile on purpose, so stubbing them would stop checking that.
@@ -89,6 +90,10 @@ function renderBag() {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    // Both leak across tests otherwise: stubEnv persists until unstubbed, and clearAllMocks
+    // clears call history but not an implementation set with mockReturnValue.
+    vi.unstubAllEnvs();
+    itemArtUrl.mockReturnValue(null);
     useAuth.mockReturnValue({ isAuthenticated: true, isConnected: true });
     useChainCapabilities.mockReturnValue({ activeKind: 'evm', isConnected: true, chainLabel: 'EVM' });
     useInventory.mockReturnValue({ entries: [], isLoading: false, error: null, refetch: vi.fn() });
@@ -191,6 +196,44 @@ describe('the bag', () => {
 
         expect(navigate).toHaveBeenCalledWith('/equip');
         expect(spend).not.toHaveBeenCalled();
+    });
+
+    /**
+     * The "?" belongs in the artwork's corner, and a corner only exists when there is a tile.
+     * Both halves are asserted because they are decided in different places: ItemArt reads
+     * the URL builder, the card reads the environment through isItemArtAvailable, and a card
+     * that disagreed with its own tile would position the button against nothing.
+     */
+    it('puts the help button on the artwork when there is artwork', () => {
+        vi.stubEnv('VITE_IMAGE_SERVICE_URL', 'https://art.example.com');
+        itemArtUrl.mockReturnValue('https://art.example.com/items/1.png');
+        useInventory.mockReturnValue({
+            entries: [{ item: BLADE, quantity: '1' }],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+
+        renderBag();
+
+        const art = screen.getByAltText('Iron Fang');
+        const help = screen.getByRole('button', { name: /^What does Iron Fang do/ });
+        expect(art.parentElement).toContainElement(help);
+    });
+
+    it('falls back to the card footer when there is no artwork to hang it on', () => {
+        useInventory.mockReturnValue({
+            entries: [{ item: BLADE, quantity: '1' }],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+
+        renderBag();
+
+        expect(screen.queryByAltText('Iron Fang')).not.toBeInTheDocument();
+        // Still reachable — the explanation must not disappear with the picture.
+        expect(screen.getByRole('button', { name: /^What does Iron Fang do/ })).toBeInTheDocument();
     });
 
     it('surfaces a read failure rather than rendering an empty bag', () => {

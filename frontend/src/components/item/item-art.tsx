@@ -31,42 +31,65 @@ const artUrl = (itemType: string): string | null =>
 const fallbackUrl = (itemType: string): string | null =>
     itemFallbackArtUrl(itemType, import.meta.env.VITE_IMAGE_SERVICE_URL);
 
+/**
+ * Whether this component will render a tile for `itemType`.
+ *
+ * Exported so a caller can lay itself out accordingly: the bag puts its "?" in the tile's
+ * corner, and a corner only exists when there is a tile.
+ *
+ * Derived from the same URL builder the component uses, deliberately. An earlier version
+ * asked the environment directly and the two could disagree — the card believed there was a
+ * tile, the component rendered nothing, and the button inside it disappeared along with the
+ * artwork. Sharing one expression makes that unrepresentable.
+ */
+export const hasItemArt = (itemType: string): boolean => artUrl(itemType) !== null;
+
 type ItemArtProps = {
     item: Pick<ItemDefinition, 'itemType' | 'name'>;
     /** Rendered at tile size in the bag; larger where an item is the subject. */
     size?: 'tile' | 'feature';
+    /** Controls drawn over the art, e.g. a stack count or a help button. */
+    overlay?: React.ReactNode;
 };
 
-const ItemArt: React.FC<ItemArtProps> = ({ item, size = 'tile' }) => {
+const ItemArt: React.FC<ItemArtProps> = ({ item, size = 'tile', overlay }) => {
     const [stage, setStage] = useState<'painted' | 'drawn' | 'none'>('painted');
     const [loaded, setLoaded] = useState(false);
 
+    // No service configured: there is no tile to draw and nothing is coming, so the card is
+    // left exactly as it was before art existed. This is the one case that renders nothing,
+    // and it is the case `hasItemArt` reports.
+    if (!hasItemArt(item.itemType)) return null;
+
     const src = stage === 'painted' ? artUrl(item.itemType) : stage === 'drawn' ? fallbackUrl(item.itemType) : null;
-    if (!src) return null;
 
     return (
         <div className={size === 'feature' ? styles.frameFeature : styles.frame}>
             {/* Holds the box before the image lands, so a bag of items does not reflow as
-                each one arrives. */}
+                each one arrives — and stays as the tile's face if both sources fail, which
+                keeps the frame (and anything overlaid on it) rather than collapsing. */}
             {loaded ? null : <span className={styles.placeholder} aria-hidden />}
-            <img
-                // Remounts on the fallback: reusing the element with a new src is fine, but
-                // the load/error state has to reset with it.
-                key={stage}
-                src={src}
-                alt={item.name}
-                // A bag mounts every card at once and a cold item's first request triggers a
-                // generation, so only items actually on screen ask for art.
-                loading="lazy"
-                decoding="async"
-                className={styles.img}
-                style={{ opacity: loaded ? 1 : 0 }}
-                onLoad={() => setLoaded(true)}
-                onError={() => {
-                    setLoaded(false);
-                    setStage((current) => (current === 'painted' ? 'drawn' : 'none'));
-                }}
-            />
+            {src ? (
+                <img
+                    // Remounts on the fallback: reusing the element with a new src is fine,
+                    // but the load/error state has to reset with it.
+                    key={stage}
+                    src={src}
+                    alt={item.name}
+                    // A bag mounts every card at once and a cold item's first request
+                    // triggers a generation, so only items on screen ask for art.
+                    loading="lazy"
+                    decoding="async"
+                    className={styles.img}
+                    style={{ opacity: loaded ? 1 : 0 }}
+                    onLoad={() => setLoaded(true)}
+                    onError={() => {
+                        setLoaded(false);
+                        setStage((current) => (current === 'painted' ? 'drawn' : 'none'));
+                    }}
+                />
+            ) : null}
+            {overlay}
         </div>
     );
 };

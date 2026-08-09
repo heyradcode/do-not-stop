@@ -35,11 +35,26 @@ describe('ItemArt', () => {
         expect(screen.getByAltText('Sunder Maul')).toHaveAttribute('src', 'https://art.example.com/items/3.svg');
     });
 
-    it('renders nothing once even the fallback fails', () => {
-        const { container } = render(<ItemArt item={ITEM} />);
+    /**
+     * The tile stays even when both sources fail, showing its placeholder. Collapsing it
+     * would take anything overlaid on it down too — the bag hangs its "?" in this corner,
+     * and losing the explanation because a picture 404'd is a worse outcome than a plain
+     * tinted square.
+     */
+    it('drops the image but keeps the tile once even the fallback fails', () => {
+        const { container } = render(<ItemArt item={ITEM} overlay={<button type="button">Help</button>} />);
         fireEvent.error(screen.getByAltText('Sunder Maul'));
         fireEvent.error(screen.getByAltText('Sunder Maul'));
-        expect(container).toBeEmptyDOMElement();
+
+        expect(screen.queryByAltText('Sunder Maul')).not.toBeInTheDocument();
+        expect(container).not.toBeEmptyDOMElement();
+        expect(screen.getByRole('button', { name: 'Help' })).toBeInTheDocument();
+    });
+
+    it('renders an overlay inside the tile', () => {
+        render(<ItemArt item={ITEM} overlay={<button type="button">Help</button>} />);
+        expect(screen.getByAltText('Sunder Maul').parentElement)
+            .toContainElement(screen.getByRole('button', { name: 'Help' }));
     });
 
     // Art is optional by construction: the app works without an image service, minus pictures.
