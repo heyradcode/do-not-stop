@@ -25,12 +25,12 @@ export default function useHeaderScroll<T extends HTMLElement>() {
 
     /**
      * Publishes the header's real height so anchor offsets cannot drift from
-     * the chrome they exist to clear. Only the expanded height is published:
-     * the condensed state is shorter, and an anchor must clear the header at
-     * its tallest, not at the size it happens to be mid-scroll.
+     * the chrome they exist to clear. The header keeps one height in both its
+     * states, so there is a single value to publish and no need to guess which
+     * state a reader will arrive in.
      */
     const publishHeight = () => {
-      if (!header || header.classList.contains('is-condensed')) return;
+      if (!header) return;
       document.documentElement.style.setProperty(
         '--header-h',
         `${Math.round(header.getBoundingClientRect().height)}px`,

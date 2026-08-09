@@ -5,10 +5,15 @@
    is transparent to pointer events, so the gutter either side of the pill does
    not swallow clicks on the hero beneath it.
    ============================================================================= */
+/* The header's height is constant. Condensing changes only how the glass reads
+   — opacity, blur, border, elevation — and never its size. A header that
+   changes height changes where every anchor should land, and since a nav target
+   is always far enough down to arrive condensed, no single offset could be
+   right for both states. */
 .site-header {
-  --header-inset: 18px;
+  --header-inset: 14px;
   --header-gutter: var(--landing-gutter);
-  --shell-pad-block: 10px;
+  --shell-pad-block: 9px;
 
   position: fixed;
   inset-block-start: 0;
@@ -62,12 +67,7 @@
   }
 }
 
-/* Condensed: tighter, brighter, more opaque once the page has moved. */
-.site-header.is-condensed {
-  --header-inset: 10px;
-  --shell-pad-block: 7px;
-}
-
+/* Condensed: brighter and more opaque once the page has moved. Size unchanged. */
 .site-header.is-condensed .shell {
   border-color: rgb(var(--border-rgb) / 42%);
   background: linear-gradient(

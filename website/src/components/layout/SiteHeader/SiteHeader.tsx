@@ -16,8 +16,17 @@ const NAV_IDS = NAV_LINKS.map(({ href }) => href.replace('#', ''));
 /** Width at which the inline nav gives way to the drawer. Matches SiteHeader.css. */
 const DRAWER_QUERY = '(max-width: 900px)';
 
-/** Breathing room below the header at an anchor. Matches --anchor-gap. */
-const ANCHOR_GAP = 16;
+/**
+ * Where an anchored section's content should come to rest, in px.
+ *
+ * Read back from the resolved `scroll-padding-top` rather than recomputed from
+ * the header height and a gap constant. `--anchor-offset` is a calc() and
+ * custom properties do not resolve calc() through getComputedStyle, but a real
+ * property does — so this is the one place the number exists, and JS and CSS
+ * cannot drift apart.
+ */
+const anchorOffset = () =>
+  parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
 
 type SiteHeaderProps = {
   title: string;
@@ -59,26 +68,19 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
       close();
       if (fromDrawer) toggleRef.current?.focus();
 
-      const published = parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue('--header-h'),
-      );
-      const headerHeight = Number.isFinite(published)
-        ? published
-        : (ref.current?.getBoundingClientRect().height ?? 0);
-
       // Aim at the section's content, not its border box. Sections carry up to
       // 120px of top padding for scroll rhythm, and landing on the border box
       // leaves all of it stacked under the header as dead space.
       const padding = parseFloat(getComputedStyle(target).paddingTop) || 0;
 
       const top =
-        target.getBoundingClientRect().top + window.scrollY + padding - headerHeight - ANCHOR_GAP;
+        target.getBoundingClientRect().top + window.scrollY + padding - anchorOffset();
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
       window.scrollTo({ top: Math.max(top, 0), behavior: reduced ? 'auto' : 'smooth' });
       window.history.pushState(null, '', href);
     },
-    [close, ref],
+    [close],
   );
 
   // Slide the indicator behind the active link. Measured rather than expressed
