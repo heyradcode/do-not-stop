@@ -75,21 +75,11 @@
     will-change: translate, scale;
   }
 
-  & .inner {
+  & .copy {
     position: relative;
     z-index: 3;
-    width: 100%;
-    max-width: 1180px;
-    margin-inline: auto;
-    display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    align-items: center;
-    gap: clamp(24px, 5vw, 64px);
-  }
-
-  & .copy {
     text-align: left;
-    max-width: 640px;
+    max-width: 760px;
   }
 
   & .eyebrow {
@@ -196,106 +186,6 @@
     text-decoration: none;
   }
 
-  /* =========================================================================
-     Featured companion
-     ========================================================================= */
-  & .showcase {
-    position: relative;
-    display: grid;
-    place-items: center;
-    min-height: clamp(240px, 34vw, 400px);
-  }
-
-  & .stage {
-    position: relative;
-    display: grid;
-    place-items: center;
-    /* Capped at the source art's 500px so the mascot is never upscaled. */
-    width: clamp(200px, 24vw, 290px);
-    aspect-ratio: 1;
-    translate: calc(var(--px, 0) * 12px) calc(var(--py, 0) * 12px);
-    transition: translate 280ms var(--ease-out);
-  }
-
-  & .halo {
-    position: absolute;
-    inset: -7%;
-    border-radius: 50%;
-    background: conic-gradient(
-      from 0deg,
-      transparent 0deg,
-      rgb(var(--neon-cyan-rgb) / 55%) 60deg,
-      rgb(var(--neon-violet-rgb) / 62%) 150deg,
-      transparent 240deg,
-      transparent 360deg
-    );
-    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
-            mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
-    filter: drop-shadow(0 0 12px rgb(var(--neon-violet-rgb) / 45%));
-    animation: hero-halo-spin 16s linear infinite;
-  }
-
-  & .pedestal {
-    position: absolute;
-    inset-block-end: 1%;
-    inset-inline-start: 50%;
-    translate: -50% 0;
-    width: 74%;
-    height: 13%;
-    border-radius: 50%;
-    background: radial-gradient(ellipse at center, rgb(var(--neon-violet-rgb) / 42%), transparent 70%);
-    filter: blur(5px);
-  }
-
-  & .pet {
-    position: relative;
-    z-index: var(--z-raised);
-    width: 78%;
-    height: auto;
-    object-fit: contain;
-    filter:
-      drop-shadow(0 16px 28px rgb(0 0 0 / 55%))
-      drop-shadow(0 0 22px rgb(var(--neon-gold-rgb) / 28%));
-    animation: hero-float 6.5s ease-in-out infinite;
-  }
-
-  & .badge {
-    position: absolute;
-    inset-block-end: -2%;
-    inset-inline-start: 50%;
-    translate: -50% 0;
-    z-index: var(--z-raised);
-    padding: 5px 14px;
-    border-radius: var(--radius-pill);
-    font-family: var(--content-font);
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 1.6px;
-    text-transform: uppercase;
-    white-space: nowrap;
-    color: var(--badge-color, var(--text-accent));
-    border: 1px solid rgb(var(--badge-rgb, var(--border-rgb)) / 55%);
-    background: rgb(var(--surface-void-rgb) / 72%);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 0 14px rgb(var(--badge-rgb, var(--border-rgb)) / 32%);
-
-    &[data-rarity='legendary'] {
-      --badge-rgb: var(--rarity-legendary-rgb);
-      --badge-color: var(--rarity-legendary);
-    }
-
-    &[data-rarity='epic'] {
-      --badge-rgb: var(--rarity-epic-rgb);
-      --badge-color: var(--rarity-epic);
-    }
-
-    &[data-rarity='rare'] {
-      --badge-rgb: var(--rarity-rare-rgb);
-      --badge-color: var(--rarity-rare);
-    }
-  }
-
   & .scroll-hint {
     position: absolute;
     left: 50%;
@@ -351,34 +241,19 @@
   to { --cta-angle: 360deg; }
 }
 
-@keyframes hero-halo-spin {
-  to { rotate: 360deg; }
-}
-
-@keyframes hero-float {
-  0%, 100% { translate: 0 -2.5%; }
-  50% { translate: 0 3%; }
-}
-
 @keyframes hero-aurora {
   0% { translate: -2% -1%; scale: 1; }
   50% { translate: 3% 2%; scale: 1.06; }
   100% { translate: -1% 3%; scale: 1.02; }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1024px) {
   .hero {
     text-align: center;
-
-    & .inner {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 32px;
-    }
 
     & .copy {
       text-align: center;
       margin: 0 auto;
-      max-width: 620px;
     }
 
     & p {
@@ -387,15 +262,6 @@
 
     & .actions {
       justify-content: center;
-    }
-
-    & .showcase {
-      min-height: 0;
-      order: 2;
-    }
-
-    & .stage {
-      width: clamp(180px, 46vw, 240px);
     }
   }
 }
