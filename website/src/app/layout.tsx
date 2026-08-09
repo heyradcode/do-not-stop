@@ -18,7 +18,7 @@ const inter = Inter({
   display: 'swap',
 });
 
-const TITLE = 'Crypto Pets — Collect, Battle & Breed On-Chain Pets';
+const TITLE = 'Crypto Pets';
 const DESCRIPTION =
   'Collect, breed and battle NFT pets on Ethereum and Solana. Every battle settles from a committed seed and ships with a receipt anyone can replay.';
 

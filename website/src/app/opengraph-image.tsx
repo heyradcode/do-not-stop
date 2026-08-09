@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'Crypto Pets — collect, battle and breed on-chain pets';
+export const alt = 'Crypto Pets - collect, battle and breed on-chain pets';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 

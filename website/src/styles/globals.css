@@ -4,9 +4,16 @@
 @import './landing-page.css';
 
 html {
-  /* Anchor targets clear the fixed `.site-header`. Do not also set
-     `scroll-margin-top` on the targets — the two offsets add up. */
-  scroll-padding-top: var(--main-header-offset);
+  /* Breathing room between the header and whatever an anchor lands on. */
+  --anchor-gap: 22px;
+
+  /* Anchor targets clear the fixed `.site-header`. `--header-h` is measured and
+     published by useHeaderScroll, so this tracks the real chrome instead of a
+     hardcoded guess that drifts every time the header is redesigned; the
+     layout constant is only the fallback for before that lands.
+
+     Do not also set `scroll-margin-top` on the targets — the two offsets add. */
+  scroll-padding-top: calc(var(--header-h, var(--main-header-offset)) + var(--anchor-gap));
   scroll-behavior: smooth;
 }
 

@@ -20,7 +20,26 @@ export default function useHeaderScroll<T extends HTMLElement>() {
   const [condensed, setCondensed] = useState(false);
 
   useEffect(() => {
+    const header = ref.current;
     let frame = 0;
+
+    /**
+     * Publishes the header's real height so anchor offsets cannot drift from
+     * the chrome they exist to clear. Only the expanded height is published:
+     * the condensed state is shorter, and an anchor must clear the header at
+     * its tallest, not at the size it happens to be mid-scroll.
+     */
+    const publishHeight = () => {
+      if (!header || header.classList.contains('is-condensed')) return;
+      document.documentElement.style.setProperty(
+        '--header-h',
+        `${Math.round(header.getBoundingClientRect().height)}px`,
+      );
+    };
+
+    const sizeObserver = header ? new ResizeObserver(publishHeight) : null;
+    if (header && sizeObserver) sizeObserver.observe(header);
+    publishHeight();
 
     const update = () => {
       frame = 0;
@@ -47,6 +66,7 @@ export default function useHeaderScroll<T extends HTMLElement>() {
     return () => {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
+      sizeObserver?.disconnect();
       if (frame) cancelAnimationFrame(frame);
     };
   }, []);

@@ -1,4 +1,9 @@
 .pets {
+  /* The pin supplies its own spacing. Section padding here would drop the pin
+     below its sticky threshold at the anchor, so following the nav link would
+     land on empty space above the scene rather than on the scene. */
+  padding-block: 0;
+
   /* Tier tones map onto the shared rarity tokens rather than restating hexes. */
   & .tone-silver { --tone-rgb: var(--rarity-common-rgb); }
   & .tone-cyan { --tone-rgb: var(--rarity-rare-rgb); }
@@ -384,6 +389,10 @@ html:not(.js-reveal) .pets .rarity-segment {
    every card upright, full opacity, no perspective.
    ============================================================================= */
 @media (max-width: 900px), (prefers-reduced-motion: reduce) {
+  .pets {
+    padding-block: var(--section-pad-block);
+  }
+
   .pets .showcase {
     height: auto;
   }
