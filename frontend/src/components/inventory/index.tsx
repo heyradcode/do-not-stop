@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+    explainItem,
     getRarityColor,
+    getRarityName,
     useChainCapabilities,
     useInventory,
     usePendingItems,
@@ -13,8 +15,9 @@ import {
 
 import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
-import ItemArt, { hasItemArt } from '@components/item/item-art';
+import ItemArt from '@components/item/item-art';
 import Icon, { BottleIcon, MuscleIcon } from '@components/ui/icon';
+import InfoTooltip from '@components/ui/info-tooltip';
 import NeonButton from '@components/ui/neon-button';
 import ItemDetailModal from './item-detail-modal';
 import { DASHBOARD_HOME, EQUIP_PATH } from '@constants/interactionRoutes';
@@ -51,38 +54,53 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 /**
- * One tile: the picture, the name, the stack count, and nothing else.
+ * One inventory slot: art, with the four things worth knowing in its corners.
  *
- * A button rather than an article with a click handler, so it is reachable by keyboard and
- * announced as something that opens — the whole card is the target, which is a much easier
- * thing to hit on a phone than a control tucked in its corner.
+ *   top-left      rarity           bottom-left   how many
+ *   top-right     what it does     bottom-right  what you can do with it
  *
- * The stack count stays on the tile despite everything else moving to the modal. "How many
- * do I have" is the one question a bag is scanned for, and answering it per item behind a
- * click would make the grid useless for the thing it is for.
+ * The whole slot opens the detail modal, but it is deliberately NOT a button. Two of those
+ * corners are themselves controls, and a button inside a button is invalid and loses keyboard
+ * behaviour. Instead a transparent button is stretched across the slot and the corner
+ * controls are layered above it — siblings, not descendants, so each is reachable on its own
+ * and the large easy target survives for everything else.
  */
 const ItemTile: React.FC<{
     item: ItemDefinition;
     quantity: string;
+    action?: React.ReactNode;
     onOpen: () => void;
-}> = ({ item, quantity, onOpen }) => (
-    <button
-        type="button"
+}> = ({ item, quantity, action, onOpen }) => (
+    <div
         className={styles.tile}
         style={{ '--rarity': getRarityColor(item.rarity) } as React.CSSProperties}
-        onClick={onOpen}
-        aria-label={`${item.name}, ${quantity} held — open details`}
     >
-        <ItemArt
-            item={item}
-            overlay={<span className={styles.count}>×{quantity}</span>}
-        />
-        {/* Without artwork the count has no corner to sit in, so it joins the name row. */}
-        <span className={styles.tileName}>
-            <span className={styles.tileTitle}>{item.name}</span>
-            {hasItemArt(item.itemType) ? null : <span className={styles.countInline}>×{quantity}</span>}
-        </span>
-    </button>
+        <div className={styles.slot}>
+            <ItemArt item={item} />
+
+            {/* Beneath the corner controls, above everything else: a click anywhere on the
+                art opens the detail modal, and the two real buttons sit on top of it. */}
+            <button
+                type="button"
+                className={styles.open}
+                onClick={onOpen}
+                aria-label={`${item.name}, ${quantity} held — open details`}
+            />
+
+            <span className={styles.badge}>{getRarityName(item.rarity)}</span>
+            <span className={styles.count}>×{quantity}</span>
+
+            <span className={styles.help}>
+                <InfoTooltip subject={item.name}>
+                    <p>{explainItem(item)}</p>
+                </InfoTooltip>
+            </span>
+
+            {action ? <span className={styles.slotAction}>{action}</span> : null}
+        </div>
+
+        <span className={styles.tileTitle}>{item.name}</span>
+    </div>
 );
 
 const Inventory: React.FC = () => {
@@ -129,6 +147,51 @@ const Inventory: React.FC = () => {
     }, [entries]);
 
     const failure = (error ?? spendError ?? claimError) as Error | null;
+
+    /**
+     * The compact action in a slot's bottom-right corner.
+     *
+     * Icon-only because the corner is ~26px, so the accessible name carries what the glyph
+     * cannot — including *why* it is disabled, which is the one thing a greyed button with no
+     * words can never explain. Same operation as the modal's button, just without the room
+     * for a label.
+     */
+    const slotActionFor = (entry: InventoryEntry): React.ReactNode => {
+        if (entry.item.category === 'consumable' && chain) {
+            return (
+                <button
+                    type="button"
+                    className={styles.slotButton}
+                    disabled={isSpending || !selectedPet}
+                    aria-label={
+                        selectedPet
+                            ? `Use ${entry.item.name} on ${petName(pets, selectedPet)}`
+                            : `Use ${entry.item.name} — pick a pet first`
+                    }
+                    title={selectedPet ? `Use on ${petName(pets, selectedPet)}` : 'Pick a pet first'}
+                    onClick={() => {
+                        void spend({ chain, petId: selectedPet!, itemType: entry.item.itemType });
+                    }}
+                >
+                    <Icon as={BottleIcon} size="0.95em" noGap />
+                </button>
+            );
+        }
+        if (entry.item.category === 'equipment') {
+            return (
+                <button
+                    type="button"
+                    className={styles.slotButton}
+                    aria-label={`Equip ${entry.item.name} on a pet`}
+                    title="Equip on a pet"
+                    onClick={() => navigate(EQUIP_PATH)}
+                >
+                    <Icon as={MuscleIcon} size="0.95em" noGap />
+                </button>
+            );
+        }
+        return null;
+    };
 
     /**
      * What the modal offers for one item. Built here rather than in the modal because only
@@ -272,6 +335,7 @@ const Inventory: React.FC = () => {
                                                 key={entry.item.itemType}
                                                 item={entry.item}
                                                 quantity={entry.quantity}
+                                                action={slotActionFor(entry)}
                                                 onOpen={() => setSelected(entry)}
                                             />
                                         ))}

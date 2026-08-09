@@ -146,10 +146,36 @@ describe('the bag', () => {
         renderBag();
 
         expect(screen.getByRole('button', { name: /^Iron Fang, 2 held/ })).toBeInTheDocument();
+        expect(screen.getByText('Iron Fang')).toBeInTheDocument();
+        // The four corners: rarity, count, an explanation and an action.
+        expect(screen.getByText('Rare')).toBeInTheDocument();
         expect(screen.getByText('×2')).toBeInTheDocument();
-        // Detail belongs to the modal, so it is not on the tile.
-        expect(screen.queryByText('Rare')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /^What does Iron Fang do/ })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Equip Iron Fang on a pet' })).toBeInTheDocument();
+        // Everything else still belongs to the modal.
         expect(screen.queryByText('A blunt starter blade.')).not.toBeInTheDocument();
+    });
+
+    /**
+     * The corner controls are siblings of the transparent "open" button, not children of it:
+     * a button inside a button is invalid and loses keyboard behaviour. This is the assertion
+     * that would fail if they were ever nested back together.
+     */
+    it('keeps the corner controls out of the open-details button', () => {
+        useInventory.mockReturnValue({
+            entries: [{ item: BLADE, quantity: '1' }],
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+
+        renderBag();
+
+        const open = screen.getByRole('button', { name: /^Iron Fang, 1 held/ });
+        expect(open).toBeEmptyDOMElement();
+        for (const name of [/^What does Iron Fang do/, /^Equip Iron Fang/]) {
+            expect(open).not.toContainElement(screen.getByRole('button', { name }));
+        }
     });
 
     // Rarity still comes from the same helper the pet cards use, so the five tiers mean one
@@ -165,10 +191,13 @@ describe('the bag', () => {
         renderBag();
         await userEvent.click(screen.getByRole('button', { name: /^Iron Fang, 2 held/ }));
 
-        expect(screen.getByText('Rare')).toBeInTheDocument();
-        expect(screen.getByText('×2 held')).toBeInTheDocument();
-        expect(screen.getByText('A blunt starter blade.')).toBeInTheDocument();
-        expect(screen.getByText('What Iron Fang does, at length.')).toBeInTheDocument();
+        // Scoped to the dialog: rarity now reads on the tile badge as well, so an unscoped
+        // query matches both and proves nothing about the modal.
+        const dialog = within(screen.getByRole('dialog'));
+        expect(dialog.getByText('Rare')).toBeInTheDocument();
+        expect(dialog.getByText('×2 held')).toBeInTheDocument();
+        expect(dialog.getByText('A blunt starter blade.')).toBeInTheDocument();
+        expect(dialog.getByText('What Iron Fang does, at length.')).toBeInTheDocument();
     });
 
     it('only offers Use on a consumable', async () => {
