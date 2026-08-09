@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { rafThrottle } from '@/lib/rafThrottle';
+
 /** Distance scrolled before the header condenses, in px. */
 const CONDENSE_AT = 24;
 
@@ -21,7 +23,6 @@ export default function useHeaderScroll<T extends HTMLElement>() {
 
   useEffect(() => {
     const header = ref.current;
-    let frame = 0;
 
     /**
      * Publishes the header's real height so anchor offsets cannot drift from
@@ -48,7 +49,6 @@ export default function useHeaderScroll<T extends HTMLElement>() {
     };
 
     const update = () => {
-      frame = 0;
       const y = window.scrollY;
 
       header?.style.setProperty(
@@ -58,10 +58,7 @@ export default function useHeaderScroll<T extends HTMLElement>() {
       setCondensed(y > CONDENSE_AT);
     };
 
-    const onScroll = () => {
-      if (frame) return;
-      frame = requestAnimationFrame(update);
-    };
+    const onScroll = rafThrottle(update);
 
     /* Watching the body catches the document growing as images decode and
        sections reveal, which is what actually changes the scrollable extent. */
@@ -81,7 +78,7 @@ export default function useHeaderScroll<T extends HTMLElement>() {
     return () => {
       window.removeEventListener('scroll', onScroll);
       sizeObserver.disconnect();
-      if (frame) cancelAnimationFrame(frame);
+      onScroll.cancel();
     };
   }, []);
 

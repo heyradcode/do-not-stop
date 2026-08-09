@@ -5,6 +5,7 @@ import Image from 'next/image';
 
 import { ROADMAP, ROADMAP_STATUS_LABEL, SECTION_COPY } from '@/content/landing';
 import useScrollScene from '@/hooks/useScrollScene';
+import { clamp01 } from '@/lib/math';
 import './Roadmap.css';
 
 const { title: sectionTitle, subtitle } = SECTION_COPY.roadmap;
@@ -22,8 +23,6 @@ const PASS_FADE = 0.28;
 /** How far past the camera a gate keeps growing before it is fully faded.
     Kept shallow so the overshoot never balloons over the header strip. */
 const PASS_OVERSHOOT = 0.18;
-
-const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 
 const Roadmap = () => {
   const gates = useRef<(HTMLElement | null)[]>([]);

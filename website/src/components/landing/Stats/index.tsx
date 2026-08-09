@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 import { STATS, type Stat } from '@/content/landing';
+import { prefersReducedMotion } from '@/lib/media';
 import './Stats.css';
 
 const COUNT_MS = 1500;
@@ -28,7 +29,7 @@ const Stats = () => {
       });
     };
 
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (prefersReducedMotion()) return;
 
     let frame = 0;
     let startedAt = 0;

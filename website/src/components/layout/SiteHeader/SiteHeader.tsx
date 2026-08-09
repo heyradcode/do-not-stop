@@ -8,6 +8,7 @@ import { NAV_LINKS, SITE } from '@/content/landing';
 import useActiveSection from '@/hooks/useActiveSection';
 import useHashLanding from '@/hooks/useHashLanding';
 import useHeaderScroll from '@/hooks/useHeaderScroll';
+import { prefersReducedMotion } from '@/lib/media';
 import { openApp } from '@/lib/openApp';
 import { findSection, scrollToSection } from '@/lib/scrollToSection';
 import './SiteHeader.css';
@@ -51,8 +52,7 @@ export default function SiteHeader({ title }: SiteHeaderProps) {
       close();
       if (fromDrawer) toggleRef.current?.focus();
 
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      scrollToSection(target, { smooth: !reduced });
+      scrollToSection(target, { smooth: !prefersReducedMotion() });
       window.history.pushState(null, '', href);
     },
     [close],

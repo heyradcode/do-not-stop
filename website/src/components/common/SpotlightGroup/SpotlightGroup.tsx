@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, type HTMLAttributes } from 'react';
 
+import { hasFinePointer } from '@/lib/media';
+import { rafThrottle } from '@/lib/rafThrottle';
+
 /**
  * Publishes the pointer's position over the hovered `[data-spotlight]` descendant
  * as `--mx` / `--my`, in px relative to that element's own box.
@@ -25,9 +28,8 @@ export default function SpotlightGroup({
     if (!root) return;
 
     // A spotlight is a hover affordance; a coarse pointer has nothing to track.
-    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (!hasFinePointer()) return;
 
-    let frame = 0;
     let target: HTMLElement | null = null;
     let clientX = 0;
     let clientY = 0;
@@ -37,13 +39,12 @@ export default function SpotlightGroup({
       el?.style.removeProperty('--my');
     };
 
-    const apply = () => {
-      frame = 0;
+    const apply = rafThrottle(() => {
       if (!target) return;
       const rect = target.getBoundingClientRect();
       target.style.setProperty('--mx', `${clientX - rect.left}px`);
       target.style.setProperty('--my', `${clientY - rect.top}px`);
-    };
+    });
 
     const onMove = (event: PointerEvent) => {
       const next = (event.target as Element | null)?.closest<HTMLElement>('[data-spotlight]') ?? null;
@@ -56,7 +57,7 @@ export default function SpotlightGroup({
 
       clientX = event.clientX;
       clientY = event.clientY;
-      if (!frame) frame = requestAnimationFrame(apply);
+      apply();
     };
 
     const onLeave = () => {
@@ -70,7 +71,7 @@ export default function SpotlightGroup({
     return () => {
       root.removeEventListener('pointermove', onMove);
       root.removeEventListener('pointerleave', onLeave);
-      if (frame) cancelAnimationFrame(frame);
+      apply.cancel();
     };
   }, []);
 

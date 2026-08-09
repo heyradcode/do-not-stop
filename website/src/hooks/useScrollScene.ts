@@ -2,7 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 
-const clamp = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
+import { clamp01 } from '@/lib/math';
+import { REDUCED_MOTION } from '@/lib/media';
+import { rafThrottle } from '@/lib/rafThrottle';
 
 /**
  * Drives a 0-1 progress value from how far a tall section has been scrolled
@@ -45,9 +47,8 @@ export default function useScrollScene<
     if (!section || !pin) return;
 
     const narrow = window.matchMedia(fallbackQuery);
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const reduced = window.matchMedia(REDUCED_MOTION);
 
-    let frame = 0;
     let attached = false;
 
     /* Cached between frames. These change when the viewport does, not when the
@@ -73,18 +74,15 @@ export default function useScrollScene<
     };
 
     const update = () => {
-      frame = 0;
       if (scrollable <= 0) {
         write(1);
         return;
       }
       const travelled = stickyTop - section.getBoundingClientRect().top;
-      write(clamp(travelled / scrollable));
+      write(clamp01(travelled / scrollable));
     };
 
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
+    const onScroll = rafThrottle(update);
 
     /* Both elements are sized in viewport units, so this fires on viewport
        resize as well as any layout change that moves them. */
@@ -107,8 +105,7 @@ export default function useScrollScene<
       if (!attached) return;
       attached = false;
       window.removeEventListener('scroll', onScroll);
-      if (frame) cancelAnimationFrame(frame);
-      frame = 0;
+      onScroll.cancel();
     };
 
     const sync = () => {

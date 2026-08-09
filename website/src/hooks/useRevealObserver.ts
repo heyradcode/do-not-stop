@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+import { prefersReducedMotion } from '@/lib/media';
+
 const VISIBLE_ATTR = 'data-reveal-visible';
 const DEFAULT_STAGGER_MS = 70;
 
@@ -23,7 +25,7 @@ export default function useRevealObserver() {
 
     // The CSS also honours the preference, but bailing here avoids installing an
     // observer that would only ever toggle attributes nothing reads.
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (prefersReducedMotion()) {
       targets.forEach((el) => el.setAttribute(VISIBLE_ATTR, ''));
       return;
     }
