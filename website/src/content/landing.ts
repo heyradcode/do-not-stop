@@ -74,13 +74,23 @@ export const FEATURES: FeatureCard[] = [
   { title: 'Own and Trade', text: 'Pets are NFTs in your own wallet on Ethereum or Solana. Transfer them, trade them, or walk away with them.', iconImage: '/images/icons/interaction/trading.png' },
 ];
 
+/**
+ * Real output from `services/image-generator`, not stock art: each render was
+ * produced by the same pipeline that draws a player's pet from its DNA. The
+ * showcase therefore shows the actual house style rather than approximating it.
+ *
+ * Species and element come from each render's manifest (body archetype and
+ * element wheel in `image-generator/src/traits.ts`). The rarity labels are
+ * ordered so the badge matches the aura tier baked into the art — the generator
+ * draws rarity 3 with a glowing aura, 2 with a rim light and 1 matte.
+ */
 export const PETS: Pet[] = [
-  { name: 'Golden Lion', level: 99, rarity: 'Legendary', image: '/images/pets/lion.png' },
-  { name: 'Frost Dragon', level: 37, rarity: 'Epic', image: '/images/pets/dinosaur.png' },
-  { name: 'Thunder Pup', level: 96, rarity: 'Rare', image: '/images/pets/dog.png' },
-  { name: 'Crystal Trunk', level: 62, rarity: 'Epic', image: '/images/pets/elephant.png' },
-  { name: 'Shadow Cat', level: 83, rarity: 'Rare', image: '/images/pets/cat.png' },
-  { name: 'Mystic Owl', level: 71, rarity: 'Legendary', image: '/images/pets/owl.png' },
+  { name: 'Nova Brute', level: 94, rarity: 'Legendary', image: '/images/pets/nova-brute.png' },
+  { name: 'Starlit Prowler', level: 88, rarity: 'Legendary', image: '/images/pets/starlit-prowler.png' },
+  { name: 'Ember Oracle', level: 71, rarity: 'Epic', image: '/images/pets/ember-oracle.png' },
+  { name: 'Tidefang', level: 66, rarity: 'Epic', image: '/images/pets/tidefang.png' },
+  { name: 'Cinder Streak', level: 42, rarity: 'Rare', image: '/images/pets/cinder-streak.png' },
+  { name: 'Umbral Bulwark', level: 37, rarity: 'Rare', image: '/images/pets/umbral-bulwark.png' },
 ];
 
 /* Channel URLs are intentionally absent rather than guessed — see README. */

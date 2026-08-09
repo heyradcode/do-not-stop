@@ -43,8 +43,14 @@ const Pets = () => (
       {PETS.map(({ name, level, rarity, image }) => (
         <NeonCard key={name} className={`card r-${rarityMod(rarity)}`} data-reveal="rise">
           <span className="sheen" aria-hidden="true" />
-          <div className="avatar">
-            <Image src={image} alt={name} width={220} height={220} />
+          <div className="art">
+            <Image
+              src={image}
+              alt={name}
+              width={512}
+              height={512}
+              sizes="(max-width: 600px) 44vw, (max-width: 1024px) 44vw, 30vw"
+            />
           </div>
           <h3>{name}</h3>
           <div className="meta">

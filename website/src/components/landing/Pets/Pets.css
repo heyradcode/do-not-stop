@@ -111,7 +111,7 @@
     overflow: hidden;
     background: var(--surface-card);
     border: 1px solid rgb(var(--tone-rgb) / 34%);
-    padding: 30px 24px 26px;
+    padding: 14px 14px 18px;
     text-align: center;
     color: var(--text-bright);
     box-shadow: var(--glow-inset-md);
@@ -173,54 +173,53 @@
     opacity: 1;
   }
 
-  & .avatar {
+  /* Full-bleed square frame, not a circular avatar. The generator renders opaque
+     1:1 art with its own vignette and no alpha, so a circle would crop a composed
+     square and a `contain` fit would show its corners inside the ring. */
+  & .art {
     position: relative;
-    width: 132px;
-    height: 132px;
-    margin: 0 auto 16px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    background: radial-gradient(circle at 30% 20%, #171d38, #0f1430);
-    border: 2px solid rgb(var(--tone-rgb) / 55%);
+    width: 100%;
+    aspect-ratio: 1;
+    margin: 0 0 14px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid rgb(var(--tone-rgb) / 42%);
     box-shadow:
-      inset 0 0 18px rgb(var(--tone-rgb) / 20%),
-      0 0 18px rgb(var(--tone-rgb) / 26%);
+      inset 0 0 0 1px rgb(0 0 0 / 35%),
+      0 0 16px rgb(var(--tone-rgb) / 18%);
     transition:
       border-color var(--dur-base) var(--ease-out),
       box-shadow var(--dur-base) var(--ease-out);
 
-    /* Aura bloom, held behind the art and lifted on hover. */
-    &::before {
+    /* Rarity tint over the art, so the tier reads before the badge does. */
+    &::after {
       content: '';
       position: absolute;
-      inset: -18%;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgb(var(--tone-rgb) / 26%), transparent 68%);
-      opacity: 0;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(180deg, transparent 55%, rgb(var(--tone-rgb) / 22%));
+      opacity: 0.75;
       transition: opacity var(--dur-slow) var(--ease-out);
     }
 
     & img {
-      position: relative;
-      width: 108px;
-      height: 108px;
-      object-fit: contain;
       display: block;
-      filter: drop-shadow(0 8px 16px rgb(0 0 0 / 50%));
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
       transition: scale var(--dur-slow) var(--ease-out);
     }
   }
 
-  & .card:hover .avatar {
-    border-color: rgb(var(--tone-rgb) / 85%);
+  & .card:hover .art {
+    border-color: rgb(var(--tone-rgb) / 80%);
     box-shadow:
-      inset 0 0 20px rgb(var(--tone-rgb) / 28%),
-      0 0 26px rgb(var(--tone-rgb) / 42%);
+      inset 0 0 0 1px rgb(0 0 0 / 35%),
+      0 0 26px rgb(var(--tone-rgb) / 34%);
 
-    &::before { opacity: 1; }
+    &::after { opacity: 1; }
 
-    & img { scale: 1.06; }
+    & img { scale: 1.05; }
   }
 
   & .card h3 {
@@ -282,8 +281,7 @@ html:not(.js-reveal) .pets .rarity-segment {
 @media (max-width: 600px) {
   .pets {
     & .rarity-legend { grid-template-columns: 1fr; }
-    & .card { padding: 24px 16px 20px; }
-    & .avatar { width: 108px; height: 108px; }
-    & .avatar img { width: 88px; height: 88px; }
+    & .card { padding: 10px 10px 14px; }
+    & .card h3 { font-size: 1rem; }
   }
 }
