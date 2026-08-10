@@ -1,4 +1,5 @@
 export { loadRulesetBundle, parseRulesetBundle, publishRuleset, serializeRuleset } from './bundle';
+export { type EquipmentBearer, findEquipmentMismatches } from './equipmentCheck';
 export { assertRulesetHash, encodeRuleset, hashRuleset } from './hash';
 export {
     type ItemModifier,

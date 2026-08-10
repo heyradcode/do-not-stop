@@ -35,6 +35,7 @@ const STATUS_BY_REASON: Record<AcceptRejection, number> = {
     'drand-unavailable': 503,
     'signer-unavailable': 503,
     'item-catalog-stale': 503,
+    'equipment-catalog-mismatch': 503,
 };
 
 interface AcceptBody {

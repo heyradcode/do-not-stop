@@ -4,6 +4,7 @@ import {
     type BattleCommitment,
     type BattleSnapshot,
     type ChainId,
+    findEquipmentMismatches,
     hashBattleSnapshot,
     hashRuleset,
     isBattleReady,
@@ -87,7 +88,16 @@ export type AcceptRejection =
      * end: the alternative is a fight under rules this deployment cannot state, recorded in
      * a signed receipt that contradicts chain state.
      */
-    | 'item-catalog-stale';
+    | 'item-catalog-stale'
+    /**
+     * The frozen gear disagrees with what the ruleset this battle names prices it at
+     * (roadmap §4, threat T13). Reachable when the catalog changes between resolving the
+     * snapshot and building the ruleset, and otherwise a bug.
+     *
+     * Refused rather than fought, because the verifier makes the same comparison on the
+     * finished receipt: accepting would produce a battle guaranteed to fail verification.
+     */
+    | 'equipment-catalog-mismatch';
 
 export interface AcceptedBattle {
     battleId: string;
@@ -149,6 +159,27 @@ export async function acceptBattle(request: AcceptBattleRequest): Promise<Accept
     } catch (error) {
         return catalogRejection(error);
     }
+    // The gear the snapshots froze has to be the gear this ruleset prices (roadmap §4,
+    // threat T13). The verifier makes the same comparison on the finished receipt, using
+    // the same function; making it here as well turns "this battle will fail to verify"
+    // into "this battle was never accepted".
+    //
+    // Not merely redundant. The two inputs are read from the item catalog at different
+    // points above — `buildPetSnapshot` resolves the modifiers, `servedRuleset` publishes
+    // them — so a seeder run landing between the two would price the fight from one
+    // catalog and the rules from another. Narrow, but it produces a receipt that cannot be
+    // verified and no other check would notice.
+    const mismatches = findEquipmentMismatches(
+        [
+            { role: 'attacker', equipment: attacker.equipment },
+            { role: 'defender', equipment: defender.equipment },
+        ],
+        ruleset,
+    );
+    if (mismatches.length > 0) {
+        return reject('equipment-catalog-mismatch', mismatches.join('; '));
+    }
+
     const rulesetHash = hashRuleset(ruleset);
     await ensureRulesetPublished(rulesetHash);
 

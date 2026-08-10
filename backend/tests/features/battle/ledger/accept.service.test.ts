@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { hashBattleSnapshot, QUICKNET, roundTime } from '@cryptopets/protocol';
+import { hashBattleSnapshot, QUICKNET, roundTime, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
 
 vi.mock('@config/env', () => ({
     env: { battle: { deploymentId: 'base-sepolia-live', chainIds: ['eip155:84532'] } },
@@ -355,6 +355,74 @@ describe('a catalog that cannot price the battle', () => {
     });
 });
 
+describe('gear the ruleset does not price', () => {
+    /**
+     * The same comparison the verifier runs on the finished receipt, made at acceptance so
+     * a battle guaranteed to fail verification is never accepted (roadmap §4, threat T13).
+     *
+     * The reachable cause is narrow: `buildPetSnapshot` resolves the modifiers and
+     * `servedRuleset` publishes them, and those are two reads of the item catalog at
+     * different points, so a seeder run landing between them prices the fight from one
+     * catalog and the rules from another.
+     */
+    const WORN = { slot: 0, itemType: 3n, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 };
+
+    function wearing(entry: typeof WORN) {
+        vi.mocked(buildPetSnapshot).mockImplementation((async (_chainId: string, petId: string) =>
+            petId === '1' ? { ...ATTACKER, equipment: [entry] } : DEFENDER) as never);
+    }
+
+    function pricing(item: { itemType: bigint; slot: number; hp: number; atk: number; def: number; int: number; mdef: number }) {
+        vi.mocked(servedRuleset).mockResolvedValueOnce({
+            ...SOURCE_DEFAULT_RULESET,
+            itemCatalog: [item],
+        } as never);
+    }
+
+    it('accepts when the worn modifiers are what the catalog declares', async () => {
+        wearing(WORN);
+        pricing({ itemType: 3n, slot: 0, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 });
+
+        expect(await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW })).toMatchObject({ ok: true });
+    });
+
+    it('rejects an inflated modifier', async () => {
+        // The attack the check exists for: a fight given +50 ATK from a 22-ATK sword
+        // replays perfectly, because the inflated number is the thing being replayed.
+        wearing({ ...WORN, atk: 50 });
+        pricing({ itemType: 3n, slot: 0, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 });
+
+        expect(await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW })).toMatchObject({
+            ok: false,
+            reason: 'equipment-catalog-mismatch',
+            detail: expect.stringContaining('atk applied 50, catalog declares 22'),
+        });
+        expect(openBattle).not.toHaveBeenCalled();
+    });
+
+    it('rejects an item the ruleset never priced', async () => {
+        wearing(WORN);
+        pricing({ itemType: 999n, slot: 0, hp: 0, atk: 1, def: 0, int: 0, mdef: 0 });
+
+        expect(await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW })).toMatchObject({
+            ok: false,
+            reason: 'equipment-catalog-mismatch',
+        });
+    });
+
+    it('refuses before consuming the defender daily budget', async () => {
+        // Ordering matters as much as the refusal: a rejected battle must not spend a use
+        // of someone's cap, and this check sits ahead of every write for that reason.
+        wearing({ ...WORN, atk: 50 });
+        pricing({ itemType: 3n, slot: 0, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 });
+
+        await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW });
+
+        expect(consumeDailyBudget).not.toHaveBeenCalled();
+        expect(sign).not.toHaveBeenCalled();
+    });
+});
+
 describe('the stored snapshot survives a storage round trip', () => {
     /**
      * The property every worker downstream depends on: what acceptance persisted, read back
@@ -385,6 +453,13 @@ describe('the stored snapshot survives a storage round trip', () => {
             petId === '1'
                 ? { ...ATTACKER, equipment: [{ slot: 0, itemType: 3n, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 }] }
                 : DEFENDER) as never);
+        // The ruleset has to price the sword, or acceptance now refuses the battle before
+        // it ever reaches `openBattle` — which is the catalog cross-check above doing its
+        // job, not a problem with this case.
+        vi.mocked(servedRuleset).mockResolvedValueOnce({
+            ...SOURCE_DEFAULT_RULESET,
+            itemCatalog: [{ itemType: 3n, slot: 0, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 }],
+        } as never);
 
         const ledger = await storedLedger();
         expect(hashBattleSnapshot(decodeStoredSnapshot(ledger.snapshot))).toBe(ledger.snapshotHash);

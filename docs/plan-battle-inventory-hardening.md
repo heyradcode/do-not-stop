@@ -168,29 +168,53 @@ the shipped catalog's largest single bonus is 45 HP. This is a guardrail, not a 
 
 ---
 
-## D1 (decision, not a fix): consent bounds level, gear is unbounded
+## D1: consent already bounds gear. The gap was smaller than stated
 
-`DefenseAuthorization` covers pet, attacker level band, ruleset hash, validity window and daily
-cap. Phase 4 made equipment a combat input without adding it to that list. A defender who
-authorizes a level 10 to 14 attacker gets whatever that attacker equips afterwards, and the
-snapshot is taken at accept, after consent.
+**The framing above this line was wrong, and the correction is the useful part.** Written out
+because it was believed long enough to nearly justify a permanent ruleset schema version.
 
-Sized honestly: the shipped catalog tops out near +22 ATK against attributes in the low
-hundreds, so today this is a tuning matter rather than an exploit. But `MAX_STAT_BONUS` permits
-500 a stat, and the level band is the only power bound the defender was given.
+The original claim was that `DefenseAuthorization` bounds the attacker's level but not their
+gear, leaving a defender exposed to whatever the attacker equips after consenting. Two things
+already in the code say otherwise:
 
-Options, in the order I would take them:
+- **`itemCatalog` is inside `rulesetHash`** (ruleset schema v2), and consent is bound to that
+  hash. So a defender has consented to the exact set of items and their exact effects,
+  including the strongest loadout that set can express. Shipping a stronger sword moves the
+  hash and re-consents everyone. That is the mechanism §4 designed, working.
+- **`verifier/src/checks/equipment.ts` already enforces it**, comparing every resolved
+  modifier in the snapshot against what the ruleset declares, per item and per slot.
 
-1. **Bound it in the ruleset.** Add a per-fight modifier cap to `Ruleset`, so the band the
-   defender consents to implies a power ceiling. Costs a ruleset schema bump and a re-consent
-   event, which item D3 below already requires once.
-2. **Put a gear digest in the authorization.** Strictly correct and much worse to use: the
-   defender re-consents every time an attacker changes a sword.
-3. **Accept it and write it down.** Defensible while the catalog stays modest. Needs a stated
-   ceiling in `catalog.ts` that a content edit cannot quietly raise.
+So gear is bounded, the bound is signed, and the modifiers are checked against it. What
+actually remained was narrower:
 
-- [ ] **D1.1** Pick one. This is a game-design call, not an engineering one, and per CLAUDE.md
-      it does not get decided in a loop.
+1. The ceiling is *derivable* (compute best-in-slot across the catalog) rather than legible as
+   a single number a defender could read.
+2. The catalog comparison happened only at verification, so a disagreeing snapshot became a
+   failed receipt rather than a refused battle.
+
+A `Ruleset.maxEquipmentBonus` field would have bought mostly (1), at the price of a permanent
+entry in `SUPPORTED_VERSIONS` and a second re-consent event. Not proportionate.
+
+- [x] **D1.1 Make the comparison at acceptance, with no schema change.** `findEquipmentMismatches`
+      moved into `@cryptopets/protocol` (`ruleset/equipmentCheck.ts`) and now has two callers:
+      the verifier, reporting on a finished receipt, and `accept.service.ts`, refusing a battle
+      that would be guaranteed to fail that report. One implementation, because two would drift
+      into a battle that accepts and then fails to verify, with the comparison itself the last
+      thing anyone would suspect. New rejection: `equipment-catalog-mismatch` (503).
+
+      This is not merely redundant with the verifier. `buildPetSnapshot` resolves the modifiers
+      and `servedRuleset` publishes them, and those are two reads of the item catalog at
+      different points in one accept, so a seeder run landing between them prices the fight
+      from one catalog and the rules from another. Narrow, unreachable by an attacker, and
+      invisible to every other check.
+
+      Verify: `pnpm --filter @cryptopets/protocol test && pnpm --filter @cryptopets/verifier test
+      && pnpm --filter backend test`.
+
+Left open deliberately: `MAX_STAT_BONUS` is still 500 a stat against attributes in the low
+hundreds, where the largest shipped bonus is 45. Lowering it is a balance call, and raising it
+later widens the ceiling every outstanding authorization implies. Worth a line in `catalog.ts`
+saying so.
 
 ## D2: drops are outside the signed payload
 
@@ -223,10 +247,30 @@ Small, none of them urgent.
 - [x] **Q3 `verify.worker.ts:60-62` casts to `Record<string, unknown>`** to read a shape the
       codec from B1.1 will type properly. Folded into B1.1 rather than done twice.
 
+### Flagged, not fixed: `backend/scripts/` is not typechecked
+
+`backend/tsconfig.json` includes `src/**/*` only, so nothing typechecks the operator scripts,
+and three of them do not compile today. `grant-defense-authorization.ts` has a `ChainId` cast
+and a readonly-vs-mutable `TypedDataField[]` mismatch; `seed-item-catalog.ts` cannot assign a
+nullable `effect` to Prisma's `InputJsonValue`. All pre-existing and unrelated to this branch
+(none of these files, nor anything they import, is in its diff). They still *run*, since `tsx`
+strips types rather than checking them.
+
+Left alone deliberately, per CLAUDE.md's surgical-changes rule, but worth its own branch: these
+are exactly the files an operator runs against production, and they are the only TypeScript in
+the repo with no compiler watching them.
+
 ## Operational, unblocked by code
 
 Carried over from `plan-inventory-items.md`'s "still outstanding", still outstanding. All three
 are operator calls.
+
+Prepared ahead of them: the migration SQL was reviewed (RLS on all four tables, no `FORCE`,
+matching the posture every other table has), and `verify-inventory-setup.ts` gained a
+`catalog can price a fight` check. That one exists because C1 turned an unreadable equipment
+row into a hard refusal, so a bad `effect` column now stops every accept with
+`item-catalog-stale`. The seeder cannot produce that state, which is why nothing else in the
+preflight would have caught it.
 
 - [ ] **O1 Apply the migration.** `20260807160000_add_inventory` has never run. RLS is correctly
       present on all four new tables (`migration.sql:78-81`). `pnpm --filter backend prisma:migrate`,
@@ -245,9 +289,13 @@ are operator calls.
 ## Order
 
 B1 first and alone: nothing settles until it lands, so every other check runs against a stalled
-pipeline. Then C1 and C2 together (one theme, adjacent code). C3 with its vector case. D1 needs
-an answer before D3 is scheduled, since they should ship as one re-consent. O1 to O3 last,
-because they are the only steps that touch production.
+pipeline. Then C1 and C2 together (one theme, adjacent code), then C3. D1 turned out to need no
+schema change, so it no longer has to be sequenced against D3's re-consent; D3 is still a
+one-time cost that Phase 4 forces on its own. O1 to O3 last, because they are the only steps
+that touch production.
+
+Everything above D2 is done. What remains is D2 (a tracked v1 limit, not a defect), D3 (ship
+the re-consent deliberately), and the three operator steps.
 
 ## Do not touch
 
