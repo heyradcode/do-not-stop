@@ -248,6 +248,52 @@ wrong in the player's disfavour.
 side; reconciling two owed drops with one storage key is the writer's job, not the
 derivation's.
 
+## C5: an unconfirmed mint could pay an entitlement twice
+
+`claimEntitlement` marks the row claimed, mints, and on failure releases the claim so the
+player can retry. Its comment justified the release as "safe because the mint did not land:
+the client waits for a receipt and treats a reverted one as a throw."
+
+That covers two of the three ways the mint can fail and misses the third. A revert is a
+definite no, and so is a send that never left. But `waitForTransactionReceipt` throwing means
+the outcome is *unknown*, not failed: the transaction is broadcast and very likely mined. The
+release then hands the player a retry that mints a second time, and `txHash` was never
+written, so the `txHash: null` guard on the release did not stop it either.
+
+Narrow (it needs the RPC to drop between broadcast and receipt) but it pays out real items,
+and RPC flakiness on this deployment is documented: `plan-inventory-items.md` records drpc
+returning intermittent 500s on `eth_getTransactionCount` during the Base Sepolia deploy, which
+is why the backend points at `sepolia.base.org` instead.
+
+- [x] **C5.1** Sort the failures by what is actually known. `send` now raises
+      `UnconfirmedTxError` carrying the hash when the broadcast succeeded but the receipt
+      could not be read; everything else keeps throwing plainly. `claimEntitlement` records
+      the hash and leaves the row claimed for that case only, so the worst outcome is one
+      entitlement stuck pending until someone reconciles it, rather than one item minted
+      twice.
+      Verify: `pnpm --filter backend exec vitest run tests/features/inventory/inventory.write.test.ts`.
+
+`useItem`'s burn takes the same client and is deliberately left as it was. Its ordering is
+already the conservative one its doc comment describes: an unconfirmed burn costs the player
+an item and gives nothing, which is a bad afternoon, where the reverse is a repeatable
+exploit.
+
+## Reviewed and found clean
+
+Recorded so a later pass does not repeat the work. Neither of these produced a change:
+
+- **`indexer-go`'s inventory ingest.** Two watermarks, genuinely separate, so a busy balance
+  stream cannot drag the equipment cursor past unread rows. Coalescing keeps the highest
+  version per key across all three streams identically, which is required rather than merely
+  efficient: two rows sharing a key in one `ON CONFLICT` statement is a Postgres error, not a
+  silent overwrite. Watermarks are in-memory and reprimed by a full scan on restart, and the
+  periodic reconcile scan covers the one real gap in `updatedAt_gt` polling, which is two
+  blocks sharing a timestamp.
+- **The subgraph half.** Balances are re-read through `balanceOf` rather than accumulated
+  from deltas, so a missed event stales a row instead of corrupting it. Escrow-on-equip
+  writes an `ItemBalance` row owned by the `ItemCore` contract itself; that is storage noise
+  no player read touches, since `findBalances` filters by owner and by `quantity > 0`.
+
 ## D2 (decision): drops are not verifiable, and the reason is not a missing field
 
 The description this section carried was wrong, in the same way D1's was, and inherited from
