@@ -204,6 +204,39 @@ describe('the happy path', () => {
         await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW });
         expect(prisma.battleRuleset.create).not.toHaveBeenCalled();
     });
+
+    /**
+     * The bundle is published under the hash the battle actually names.
+     *
+     * These were computed from two separate reads of `servedRuleset()` with nothing
+     * checking they agreed, so any drift published a bundle nobody would look up and left
+     * the battle naming one that did not exist. It surfaced as far downstream as possible:
+     * accept succeeded, the player signed, and the battle died nine retries later in
+     * `compute` with "no published ruleset bundle for 0x…".
+     */
+    it('publishes under the same hash the ledger row records', async () => {
+        vi.mocked(prisma.battleRuleset.findUnique).mockResolvedValue(null);
+
+        await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW });
+
+        const published = vi.mocked(prisma.battleRuleset.create).mock.calls[0]![0].data as {
+            rulesetHash: string;
+        };
+        const ledger = vi.mocked(openBattle).mock.calls[0]![0].ledger as unknown as { rulesetHash: string };
+        expect(published.rulesetHash).toBe(ledger.rulesetHash);
+    });
+
+    it('looks the bundle up under the hash it is about to record', async () => {
+        vi.mocked(prisma.battleRuleset.findUnique).mockResolvedValue(null);
+
+        await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW });
+
+        const looked = vi.mocked(prisma.battleRuleset.findUnique).mock.calls[0]![0] as {
+            where: { rulesetHash: string };
+        };
+        const ledger = vi.mocked(openBattle).mock.calls[0]![0].ledger as unknown as { rulesetHash: string };
+        expect(looked.where.rulesetHash).toBe(ledger.rulesetHash);
+    });
 });
 
 describe('intent checks', () => {

@@ -11,6 +11,7 @@ import {
     type Hex,
     publishRuleset,
     QUICKNET,
+    type Ruleset,
     SNAPSHOT_SCHEMA_VERSION,
 } from '@cryptopets/protocol';
 import type { Prisma } from '@generated/prisma/client';
@@ -181,7 +182,7 @@ export async function acceptBattle(request: AcceptBattleRequest): Promise<Accept
     }
 
     const rulesetHash = hashRuleset(ruleset);
-    await ensureRulesetPublished(rulesetHash);
+    await ensureRulesetPublished(ruleset, rulesetHash);
 
     const coverage = await findCoveringAuthorization({
         chainId,
@@ -401,13 +402,33 @@ async function unwindToRejected(battleId: string, reason: string): Promise<void>
  * replayed by anyone (§H), so this runs before the hash is ever referenced rather than as a
  * background job that might lag behind it.
  */
-async function ensureRulesetPublished(expectedHash: Hex): Promise<void> {
+async function ensureRulesetPublished(ruleset: Ruleset, expectedHash: Hex): Promise<void> {
     const existing = await prisma.battleRuleset.findUnique({ where: { rulesetHash: expectedHash } });
     if (existing) {
         return;
     }
-    const ruleset = await servedRuleset();
+
+    // The *same* ruleset object the caller hashed, passed in rather than re-read.
+    //
+    // This used to call `servedRuleset()` again and publish under whatever hash that
+    // produced, while the battle went on referencing the caller's. Nothing checked the
+    // two agreed, so any drift between the two reads published a bundle nobody would ever
+    // look up and left the battle naming one that did not exist. It surfaced as far away
+    // as it possibly could: the battle accepted cleanly, the player signed, and it died
+    // nine retries later in `compute` with "no published ruleset bundle for 0x…".
+    //
+    // Taking the object removes the window rather than narrowing it: there is now only one
+    // read, so there is nothing to drift.
     const { hash, json } = publishRuleset(ruleset);
+    if (hash.toLowerCase() !== expectedHash.toLowerCase()) {
+        // Unreachable while the caller hashes what it passes, which is the point of
+        // asserting it: if that ever stops being true, it fails here, before a battle
+        // exists, instead of stranding one that has already been signed for.
+        throw new Error(
+            `ruleset bundle hashes to ${hash} but this battle names ${expectedHash}; refusing to publish a bundle no battle references`,
+        );
+    }
+
     try {
         await prisma.battleRuleset.create({
             data: {
