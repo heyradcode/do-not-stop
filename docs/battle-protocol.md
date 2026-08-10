@@ -998,6 +998,11 @@ Each row: what the attacker does, what stops or bounds it, how we notice, what i
 - **Detection.** Receipts referencing an unknown or revoked authorization hash fail public replay.
 - **Residual.** Consent is to a ruleset version, so a rules change invalidates outstanding
   authorizations by design. Expect a re-consent prompt after every balance patch.
+  The prompt has to be *sought*, which is easy to miss when writing this down: being challenged
+  is passive, so a defender whose consent went stale sees no error and no failed action. Their
+  pets simply stop being challengeable. `GET /api/battle/authorizations` returns each grant with
+  `isStale` against the served `rulesetHash` for exactly this reason, and the defence panel
+  states it, or the only party who can repair the situation is the only one never told.
 
 ### T10: stale ownership after an NFT transfer
 
@@ -1033,10 +1038,23 @@ Each row: what the attacker does, what stops or bounds it, how we notice, what i
 - **Control.** Snapshot fields derive from indexed chain state at a recorded source version.
   Progression fields (`xp`, `streak`, `lastOpponentId`) are off-chain, so they are only checkable by
   replaying that pet's prior receipts, which the per-pet hash chain makes tractable (§G).
+  For equipment specifically (roadmap §4, snapshot schema v2) the snapshot freezes each item's
+  **resolved modifier alongside its `itemType`**, and the ruleset publishes what every
+  combat-affecting item does, so the applied effect can be compared against the declared one.
 - **Detection.** Public replay walking a pet's chain catches a snapshot that does not follow from the
-  previous receipt's `progressionDelta`.
-- **Residual.** Equipment ownership must be verifiable from chain or from a signed inventory record
-  before equipment affects combat. Until then, keep equipment out of combat inputs.
+  previous receipt's `progressionDelta`. Replay alone cannot catch an inflated *modifier*, because
+  the inflated number is the thing being replayed against; `findEquipmentMismatches` is what
+  compares it to the catalog, run by the verifier on a finished receipt and by `accept` before a
+  battle starts.
+- **Residual.** Item **ownership** is still not provable from the receipt. The modifiers are
+  checkable and the item type is named, but whether the pet actually held that item at
+  `sourceVersion` is a claim about chain state, which the verifier deliberately cannot read (it
+  has no network access). A party wanting that checks `ItemCore.equipmentOf` at the recorded
+  version themselves; the controls above narrow the remaining trust to exactly that question.
+
+  This entry previously read "keep equipment out of combat inputs", which was the correct advice
+  until roadmap §4 phase 4 put them in. Kept visible rather than silently rewritten, because a
+  threat model that quietly changes its own advice is not one anybody can audit.
 
 ### T14: combat log leaks outcomes to spectators
 
@@ -1185,6 +1203,7 @@ takes. That is what the procedures here are for.
 | --- | --- |
 | `POST /api/battle/intents`, `/accept`, `/authorizations` return **503** | accepted |
 | `DELETE /api/battle/authorizations` still works | works |
+| `GET /api/battle/authorizations` still works | works |
 | every read route and `/api/receipts/*` still works | works |
 | the outbox worker does not start | runs |
 | no signing key required | required |
@@ -1196,7 +1215,9 @@ every issued receipt into an assertion. Turning the mode off stops new battles o
 
 Revocation is ungated for the same class of reason — refusing battles is never the
 dangerous direction, so a defender must be able to withdraw consent even after the mode is
-off.
+off. Reading consent is ungated on a related one: a defender needs to see the state of their
+own grants precisely when something is wrong, and a mode flag is the last thing that should
+decide whether they can.
 
 ### Kill switch
 

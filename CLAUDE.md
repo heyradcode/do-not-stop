@@ -211,7 +211,7 @@ indexer-go writes**, under the same monotonic `last_version` guard `pet_roster` 
 `item_entitlement` is backend-owned and holds earned-but-unminted drops. Reads join a
 projection to the catalog in TypeScript rather than SQL, so the two owners stay visible.
 
-Three things are easy to get wrong here:
+Four things are easy to get wrong here:
 
 - **Equipping escrows the token into `ItemCore`, and only the player can send it.**
   `equip` requires `msg.sender` to be the pet's owner, so the backend physically cannot do
@@ -235,14 +235,29 @@ Three things are easy to get wrong here:
   would then re-consent every defender. Tracked as D2 in
   `docs/plan-battle-inventory-hardening.md`.
 
+- **The catalog has a lenient read and a strict one, and combat must use the strict one.**
+  `getCatalog`/`getPetEquipment` hide a row they cannot read, which is right for a bag: one
+  unnamed tile beats a bag that will not open. `getCombatCatalog`/`getPetEquipmentForCombat`
+  throw instead, and `servedRuleset` and `snapshot.builder` use those. The difference is not
+  fussiness: an unreadable equipment row dropped from `itemCatalog` moves `rulesetHash` and
+  invalidates every outstanding defence authorization, and an uncatalogued equipped item
+  dropped from a snapshot produces a receipt saying the pet fought bare while
+  `ItemCore.equipmentOf` at `sourceVersion` says otherwise. Acceptance turns either into an
+  `item-catalog-stale` rejection rather than fighting under rules it cannot state.
+
 Equipment reaching combat is what made this expensive, and it is why `snapshot` and
 `ruleset` both went to schema v2 (see the combat-simulator section above). The snapshot
 freezes **resolved modifiers plus the item type**: the modifiers so unequipping after
-acceptance cannot change a committed fight, the item type so `@cryptopets/verifier`'s
-`equipment` check can confirm those modifiers were the ones the catalog declares. Replay
-alone cannot do that — a receipt granting +50 ATK from a 4-ATK dagger replays perfectly.
-What remains unproven is *ownership* of the item, which is a claim about chain state at
-`sourceVersion` that the verifier deliberately cannot read.
+acceptance cannot change a committed fight, the item type so the `equipment` check can
+confirm those modifiers were the ones the catalog declares. Replay alone cannot do that — a
+receipt granting +50 ATK from a 4-ATK dagger replays perfectly. That check is
+`findEquipmentMismatches` in `@cryptopets/protocol`, and it has **two** callers on purpose:
+`@cryptopets/verifier` runs it on a finished receipt, and `accept.service` runs it before a
+battle starts, so a fight guaranteed to fail verification is refused rather than held. One
+implementation because two would drift into a battle that accepts and then cannot be
+verified, with the comparison itself the last thing anyone would suspect. What remains
+unproven is *ownership* of the item, which is a claim about chain state at `sourceVersion`
+that the verifier deliberately cannot read.
 
 `servedRuleset()` joins the live catalog onto `SOURCE_DEFAULT_RULESET` and caches for the
 process's life, so a catalog edit needs a restart. That is deliberate: it moves
