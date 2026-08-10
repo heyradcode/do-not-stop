@@ -547,7 +547,13 @@ model BattleBatch {
 /// can replay.
 model BattleRuleset {
   rulesetHash   String    @id @map("ruleset_hash")
-  version       Int       @unique
+  /// Descriptive, not an identity: `rulesetHash` is what a receipt names and what makes a
+  /// bundle findable. This was `@unique`, which held only while the ruleset was a pure
+  /// constant. Roadmap §4 made the item catalog part of it, so content now varies while
+  /// `version` stays 1, and the unique meant the second bundle could never be written.
+  /// It failed as a `version` conflict that read like a concurrent publish, so accept
+  /// reported success, published nothing, and the battle died in `compute`.
+  version       Int
   engineId      String    @map("engine_id")
   engineVersion Int       @map("engine_version")
   /// The full bundle exactly as published.

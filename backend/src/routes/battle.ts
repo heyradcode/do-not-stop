@@ -17,6 +17,7 @@ import {
     postVerifyReceipt,
     requireBackendBattleMode,
 } from '@features/battle/ledger';
+import { asyncRoute } from '@middleware/asyncRoute';
 import { verifyToken } from '@middleware/auth';
 import { battleRoomRateLimit } from '@middleware/rateLimit';
 
@@ -28,25 +29,25 @@ const router: Router = express.Router();
 // Every write below is gated on backend battle mode (§L Phase 3). The reads further down
 // deliberately are not: receipts already issued stay checkable after the mode is switched
 // off, or turning the feature off would retract evidence §H promises stays public.
-router.post('/intents', requireBackendBattleMode, verifyToken, battleRoomRateLimit, postBattleIntent);
+router.post('/intents', requireBackendBattleMode, verifyToken, battleRoomRateLimit, asyncRoute(postBattleIntent));
 
 // The commit-before-reveal moment (§E): the round is chosen and the commitment signed here,
 // synchronously, and handed back in this same response.
-router.post('/intents/:intentHash/accept', requireBackendBattleMode, verifyToken, battleRoomRateLimit, (req, res) => {
+router.post('/intents/:intentHash/accept', requireBackendBattleMode, verifyToken, battleRoomRateLimit, asyncRoute(async (req, res) => {
     req.body = { ...req.body, intentHash: req.params.intentHash };
     return postAcceptBattle(req, res);
-});
+}));
 
 // Standing defence consent. Submission is signed by the defender's wallet; revocation needs
 // only the JWT, because refusing battles is never the dangerous direction.
-router.post('/authorizations', requireBackendBattleMode, verifyToken, battleRoomRateLimit, postDefenseAuthorization);
+router.post('/authorizations', requireBackendBattleMode, verifyToken, battleRoomRateLimit, asyncRoute(postDefenseAuthorization));
 // Revocation is not gated: withdrawing consent must keep working even after the mode is
 // switched off, since refusing battles is never the dangerous direction.
-router.delete('/authorizations', verifyToken, deleteDefenseAuthorizations);
+router.delete('/authorizations', verifyToken, asyncRoute(deleteDefenseAuthorizations));
 // Reading is ungated for the same reason. A defender needs to see that their consent went
 // stale precisely when something is off, and a mode flag should not be what hides it.
 // Scoped to the authenticated wallet in the controller, never to a queried address.
-router.get('/authorizations', verifyToken, getDefenseAuthorizations);
+router.get('/authorizations', verifyToken, asyncRoute(getDefenseAuthorizations));
 
 // Authoritative, re-fetchable reads (§J). No auth: every value here is either already
 // public on chain or is itself a signed artifact anyone is meant to check, so gating

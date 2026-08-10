@@ -1,0 +1,15 @@
+-- Drop the unique constraint on battle_ruleset.version.
+--
+-- `ruleset_hash` is the primary key and the identity: it is what a receipt names and the
+-- only thing a bundle is ever looked up by. `version` is descriptive.
+--
+-- The unique held only while the ruleset was a pure constant. Roadmap §4 folded the item
+-- catalog into it, so its *content* now varies while `version` stays 1, and the constraint
+-- meant a second bundle could never be inserted. The failure was worse than a hard error:
+-- it surfaced as a P2002 that `ensureRulesetPublished` read as "a concurrent accept already
+-- published this", so accept reported success having written nothing, and every battle
+-- naming the new hash dead-lettered in `compute` with "no published ruleset bundle".
+--
+-- No RLS statement here: this alters an existing table rather than creating one, and
+-- battle_ruleset already has row level security enabled.
+DROP INDEX IF EXISTS "battle_ruleset_version_key";

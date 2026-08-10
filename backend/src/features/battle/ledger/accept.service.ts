@@ -443,7 +443,20 @@ async function ensureRulesetPublished(ruleset: Ruleset, expectedHash: Hex): Prom
         if ((error as { code?: string }).code !== 'P2002') {
             throw error;
         }
-        // Another concurrent accept call published it first; that is fine, the row exists now.
+        // A unique violation is only benign when it means *this* bundle is already there,
+        // which is the concurrent-accept race. Any other unique conflict leaves no row for
+        // this hash, and swallowing it publishes nothing while reporting success.
+        //
+        // That is not hypothetical: `version` is unique and every served ruleset carries
+        // version 1, so the first catalog change made this collide on `version` rather
+        // than on the hash. The battle went on naming a bundle that had never been
+        // written, and died in `compute` nine retries later.
+        const published = await prisma.battleRuleset.findUnique({ where: { rulesetHash: expectedHash } });
+        if (!published) {
+            throw new Error(
+                `could not publish the ruleset bundle for ${expectedHash}: ${(error as Error).message}`,
+            );
+        }
     }
 }
 

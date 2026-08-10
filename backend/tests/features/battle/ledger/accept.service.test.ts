@@ -113,6 +113,9 @@ const SIGNING_KEY = {
 function baseline() {
     vi.mocked(prisma.battleIntent.findUnique).mockResolvedValue(INTENT as never);
     vi.mocked(prisma.battleRuleset.findUnique).mockResolvedValue({} as never);
+    // Re-established per test: `clearAllMocks` drops recorded calls but not implementations,
+    // so a case that makes this reject would otherwise poison every case after it.
+    vi.mocked(prisma.battleRuleset.create).mockResolvedValue({} as never);
     vi.mocked(prisma.battleCommitment.findFirst).mockResolvedValue(null);
     vi.mocked(buildPetSnapshot).mockImplementation((async (_chainId: string, petId: string) =>
         petId === '1' ? ATTACKER : DEFENDER) as never);
@@ -224,6 +227,39 @@ describe('the happy path', () => {
         };
         const ledger = vi.mocked(openBattle).mock.calls[0]![0].ledger as unknown as { rulesetHash: string };
         expect(published.rulesetHash).toBe(ledger.rulesetHash);
+    });
+
+    /**
+     * A unique violation is benign only when it means *this* bundle already exists.
+     *
+     * The catch treated every P2002 as the concurrent-accept race. `version` was also
+     * unique and every served ruleset carries version 1, so the first catalog change
+     * collided there instead: accept reported success having written nothing, and the
+     * battle died in `compute` naming a bundle that had never existed.
+     */
+    it('accepts a duplicate-hash conflict, because the bundle is there either way', async () => {
+        vi.mocked(prisma.battleRuleset.findUnique)
+            .mockResolvedValueOnce(null) // not published when we looked
+            .mockResolvedValueOnce({} as never); // but present after the conflict
+        vi.mocked(prisma.battleRuleset.create).mockRejectedValue(
+            Object.assign(new Error('unique'), { code: 'P2002' }),
+        );
+
+        expect(await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW })).toMatchObject({ ok: true });
+    });
+
+    it('refuses when a conflict left no bundle for this hash', async () => {
+        vi.mocked(prisma.battleRuleset.findUnique).mockResolvedValue(null);
+        vi.mocked(prisma.battleRuleset.create).mockRejectedValue(
+            Object.assign(new Error('Unique constraint failed on the fields: (`version`)'), { code: 'P2002' }),
+        );
+
+        // Loudly, and before a battle exists. Swallowing this is what produced a signed-for
+        // battle that could never be computed.
+        await expect(acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW })).rejects.toThrow(
+            /could not publish the ruleset bundle/,
+        );
+        expect(openBattle).not.toHaveBeenCalled();
     });
 
     it('looks the bundle up under the hash it is about to record', async () => {
