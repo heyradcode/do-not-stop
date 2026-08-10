@@ -247,18 +247,28 @@ Small, none of them urgent.
 - [x] **Q3 `verify.worker.ts:60-62` casts to `Record<string, unknown>`** to read a shape the
       codec from B1.1 will type properly. Folded into B1.1 rather than done twice.
 
-### Flagged, not fixed: `backend/scripts/` is not typechecked
+- [x] **Q4 `backend/scripts/` had no compiler watching it.** `backend/tsconfig.json` includes
+      `src/**/*` only, and `tsx` strips types rather than checking them, so nothing checked the
+      operator scripts and four type errors had accumulated. All pre-existing and unrelated to
+      this branch, but these are the files an operator points at the production database, so
+      they were worth fixing before O1 rather than after.
 
-`backend/tsconfig.json` includes `src/**/*` only, so nothing typechecks the operator scripts,
-and three of them do not compile today. `grant-defense-authorization.ts` has a `ChainId` cast
-and a readonly-vs-mutable `TypedDataField[]` mismatch; `seed-item-catalog.ts` cannot assign a
-nullable `effect` to Prisma's `InputJsonValue`. All pre-existing and unrelated to this branch
-(none of these files, nor anything they import, is in its diff). They still *run*, since `tsx`
-strips types rather than checking them.
+      Fixed rather than suppressed, and each was hiding something:
+      - `grant-defense-authorization.ts` narrowed a served `chainId` with `startsWith('eip155:')`,
+        which narrows nothing to the compiler. Now `assertChainId`, so a malformed value is
+        rejected at the boundary instead of inside the signature.
+      - The same file handed ethers the protocol's own readonly EIP-712 type list. Copied now,
+        rather than cast: the list is readonly because reordering it changes the digest.
+      - `seed-item-catalog.ts` wrote a bare `null` to a nullable Json column. Prisma rejects
+        that precisely because it cannot tell SQL NULL from JSON `null`; it wants `Prisma.DbNull`,
+        which is what the reader expects.
 
-Left alone deliberately, per CLAUDE.md's surgical-changes rule, but worth its own branch: these
-are exactly the files an operator runs against production, and they are the only TypeScript in
-the repo with no compiler watching them.
+      Kept out of the main config on purpose: `pnpm build` runs `tsc` with it, so including the
+      scripts there would emit them into `dist/` and ship one-shot tools as server code. They get
+      `tsconfig.scripts.json` and a `typecheck:scripts` script instead, wired into `backend`'s
+      `lint`, which root `pnpm lint` already runs and `static-checks.yml` already enforces. No
+      workflow change needed.
+      Verify: `pnpm --filter backend lint`.
 
 ## Operational, unblocked by code
 

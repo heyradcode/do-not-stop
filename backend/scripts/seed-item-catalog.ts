@@ -26,6 +26,7 @@
  */
 import 'dotenv/config';
 
+import { Prisma } from '../src/generated/prisma/client';
 import { prisma } from '../src/config/prisma';
 import { assertCatalog, SLOT } from '../src/features/inventory/catalog';
 import { ITEM_CATALOG } from '../src/features/inventory/catalog.data';
@@ -71,7 +72,12 @@ async function seedDatabase(dryRun: boolean): Promise<void> {
                 category: item.category,
                 slot: item.slot === undefined ? null : SLOT[item.slot],
                 rarity: item.rarity,
-                effect: item.effect ?? null,
+                // `Prisma.DbNull`, not `null`. For a nullable Json column Prisma makes the
+                // distinction explicit: `DbNull` writes SQL NULL, `JsonNull` writes the JSON
+                // value `null`, and a bare `null` is rejected because it cannot say which was
+                // meant. SQL NULL is what the reader expects — `asItemEffect` treats it as
+                // "no effect", and the column is what an inert collectible leaves empty.
+                effect: item.effect === undefined ? Prisma.DbNull : (item.effect as unknown as Prisma.InputJsonValue),
                 name: item.name,
                 description: item.description,
             };

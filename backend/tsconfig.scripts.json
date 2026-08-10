@@ -1,0 +1,28 @@
+{
+    // Typechecks the operator scripts, which `tsconfig.json` deliberately does not.
+    //
+    // They cannot simply be added to the main config's `include`: `pnpm build` runs `tsc`
+    // with it, so they would be emitted into `dist/` and shipped as part of the server.
+    // These are one-shot tools run with `tsx`, not server code.
+    //
+    // But `tsx` strips types rather than checking them, so with no config naming these
+    // files nothing checked them at all, and four type errors had accumulated across
+    // `grant-defense-authorization.ts` and `seed-item-catalog.ts`. That matters more here
+    // than almost anywhere else in the repo: these are the files an operator points at the
+    // production database.
+    //
+    // Run with `pnpm --filter backend typecheck:scripts`.
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true
+    },
+    "include": [
+        "src/**/*",
+        "scripts/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "src/**/*.test.ts"
+    ]
+}

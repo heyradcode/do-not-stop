@@ -23,7 +23,8 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
-        "lint": "eslint .",
+        "typecheck:scripts": "tsc --noEmit -p tsconfig.scripts.json",
+        "lint": "eslint . && pnpm typecheck:scripts",
         "lint:fix": "eslint . --fix"
     },
     "dependencies": {
