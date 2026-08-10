@@ -107,6 +107,15 @@ export {
     type DialoguePhase,
 } from './battle/useBattleDialogue';
 export { useBattleTaunts, type GenerateTauntsVars } from './battle/useBattleTaunts';
+// Holds the verdict a resolved receipt reports, for whatever renders the result screen.
+export { useBattleOutcome, type UseBattleOutcome } from './battle/useBattleOutcome';
+// Strike-by-strike playback of a verified receipt's replay log. Returns percentages and
+// strings rather than anything drawable, so the web and mobile battle scenes share it.
+export {
+    useLiveBattleAnimation,
+    describeMechanicalLogEntry,
+    type LiveBattleAnimationState,
+} from './battle/useLiveBattleAnimation';
 export { useCreateBattleRoom, type CreateRoomVars } from './battle/useCreateBattleRoom';
 // Backend-authoritative battles (docs/battle-protocol.md §D, §E, §J).
 export { BATTLE_CONFIG_QUERY_KEY, useBattleConfig, type BattleConfig } from './battle/useBattleConfig';

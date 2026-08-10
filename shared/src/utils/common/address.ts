@@ -1,4 +1,4 @@
-import { normalizeAccount } from '@shared/core';
+import { normalizeAccount } from '@cryptopets/protocol';
 
 /**
  * `0x1234…abcd` — a full address does not fit the columns it is displayed in.

@@ -3,6 +3,8 @@ import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import {
     getRarityColor,
+    sameAccount,
+    shortAddress,
     useChainCapabilities,
     useLeaderboard,
     usePlayerLeaderboard,
@@ -14,7 +16,6 @@ import PetArt from '@components/pet/pet-art';
 import Icon, { TrophyIcon } from '@components/ui/icon';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
-import { sameAccount, shortAddress } from '@utils/address';
 import styles from './index.module.css';
 
 /** Which ranking is showing. Pets is the default: it is the one with a pet in it. */

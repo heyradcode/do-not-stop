@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
+    describeMechanicalLogEntry,
     getReadyPetsUnified,
     isBattleRejection,
     isConsentFailure,
     useChainCapabilities,
+    useBattleOutcome,
     useBattlePets,
     useBattleTaunts,
     useCreateBattleRoom,
+    useLiveBattleAnimation,
     useOpponents,
     usePetList,
     useWinEstimate,
@@ -23,9 +26,7 @@ import {
     pickRandomOpponent,
     sortOpponentsByMatch,
 } from '@components/pet/interactions/panels/battle/battle-matchmaking';
-import { useBattleOutcome } from './useBattleOutcome';
 import { useResultDialogue } from './useResultDialogue';
-import { useLiveBattleAnimation, describeMechanicalLogEntry } from './useLiveBattleAnimation';
 import {
     BATTLE_FAIL_MESSAGE,
     MISMATCH_NOTICE_MESSAGE,

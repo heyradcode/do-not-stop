@@ -3,6 +3,8 @@ import clsx from 'clsx';
 import { useNavigate } from 'react-router-dom';
 import {
     CHAT_REACTIONS,
+    sameAccount,
+    shortAddress,
     useChainCapabilities,
     useChatMessages,
     useChatThreads,
@@ -17,7 +19,6 @@ import PetArt from '@components/pet/pet-art';
 import SessionGate from '@components/common/session-gate';
 import Icon, { MarriageIcon } from '@components/ui/icon';
 import { CHAT_WS_URL } from '../../config';
-import { sameAccount, shortAddress } from '@utils/address';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import styles from './index.module.css';

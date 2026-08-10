@@ -9,21 +9,25 @@ const usePlayerLeaderboard = vi.fn();
 
 const useAuth = vi.fn();
 
-vi.mock('@shared/core', () => ({
-    useAuth: () => useAuth(),
-    // `@utils/address` normalizes through the protocol helper; the real one, since the
-    // EVM-folds/base58-doesn't rule is what several of these assertions are about.
-    normalizeAccount: (value: string) => (/^0x[0-9a-fA-F]{40}$/.test(value) ? value.toLowerCase() : value),
-    useChainCapabilities: () => useChainCapabilities(),
-    useLeaderboard: (opts: unknown) => useLeaderboard(opts),
-    usePlayerLeaderboard: (opts: unknown) => usePlayerLeaderboard(opts),
-    // PetArt reads these; the leaderboard only ever renders the emoji fallback here,
-    // since VITE_IMAGE_SERVICE_URL is unset in tests.
-    getPetAvatar: () => '🐾',
-    petArtUrl: () => null,
-    // Tints the podium card behind the pet; any colour will do here.
-    getRarityColor: () => '#b58cff',
-}));
+vi.mock('@shared/core', async () => {
+    // sameAccount/shortAddress stay real: the EVM-folds/base58-doesn't rule is what several
+    // of these assertions are about. Imported from their own module rather than the barrel,
+    // which would pull in wagmi and the rest of what this factory exists to replace.
+    const address = await import('../../../shared/src/utils/common/address');
+    return {
+        ...address,
+        useAuth: () => useAuth(),
+        useChainCapabilities: () => useChainCapabilities(),
+        useLeaderboard: (opts: unknown) => useLeaderboard(opts),
+        usePlayerLeaderboard: (opts: unknown) => usePlayerLeaderboard(opts),
+        // PetArt reads these; the leaderboard only ever renders the emoji fallback here,
+        // since VITE_IMAGE_SERVICE_URL is unset in tests.
+        getPetAvatar: () => '🐾',
+        petArtUrl: () => null,
+        // Tints the podium card behind the pet; any colour will do here.
+        getRarityColor: () => '#b58cff',
+    };
+});
 
 import Leaderboard from '@components/leaderboard';
 

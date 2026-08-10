@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { sameAccount, shortAddress } from '@utils/address';
+import { sameAccount, shortAddress } from '../../../src/utils/common/address';
 
 describe('shortAddress', () => {
     it('truncates long addresses to head…tail', () => {

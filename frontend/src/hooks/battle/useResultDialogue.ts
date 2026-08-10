@@ -2,12 +2,12 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     useBattleDialogue,
+    type BattleOutcome,
     type DialogueTurn,
     type OpponentPet,
     type Pet,
     type PetChain,
 } from '@shared/core';
-import type { BattleOutcome } from '@components/pet/interactions/panels/battle/types';
 import {
     toDialoguePet,
     type BattlePersonas,
