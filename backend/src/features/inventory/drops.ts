@@ -153,9 +153,18 @@ function readUint32(bytes: Uint8Array, offset: number): number {
  *
  * Idempotent under the retry that transaction can take. The entitlement's unique key is
  * (sourceRef, owner, itemType), and sourceRef is the battle id, so a replay of the same
- * battle collides with its own earlier row instead of paying twice. Two drops of the same
- * item to the same wallet from one battle would collide too, which is why each side rolls
- * at most one item.
+ * battle collides with its own earlier row instead of paying twice.
+ *
+ * That same key is why the two sides are merged before writing rather than inserted as
+ * they come. Nothing stops a player fighting two pets they both own, and then the winner
+ * and the loser are one wallet; when both rolls land on the same item the two drops share
+ * a key, and `skipDuplicates` silently keeps one. Measured on the shipped pool that is
+ * about one in six of the self-battles that pay twice, each one quietly costing the player
+ * an item they earned. Merging turns that into a single row of quantity 2, which is what
+ * was owed.
+ *
+ * Returns what was written, not what was rolled, so a caller sees the same thing the table
+ * does.
  */
 export async function recordBattleDrops(
     tx: Prisma.TransactionClient,
@@ -168,15 +177,16 @@ export async function recordBattleDrops(
         rates?: DropRates;
     },
 ): Promise<Drop[]> {
-    const drops = rollDrops(args.seed, args.battleId, args.winnerOwner, args.loserOwner, args.rates);
-    if (drops.length === 0) {
-        return drops;
+    const rolled = rollDrops(args.seed, args.battleId, args.winnerOwner, args.loserOwner, args.rates);
+    if (rolled.length === 0) {
+        return rolled;
     }
 
+    const drops = mergeDrops(rolled);
     await tx.itemEntitlement.createMany({
         data: drops.map((drop) => ({
             chain: args.chain,
-            owner: normalizeAccount(drop.owner),
+            owner: drop.owner,
             itemType: drop.itemType,
             quantity: drop.quantity,
             source: 'battle_drop',
@@ -186,4 +196,26 @@ export async function recordBattleDrops(
     });
 
     return drops;
+}
+
+/**
+ * Totals drops that would share an entitlement key, normalizing the owner first.
+ *
+ * The normalize has to happen here rather than at the insert, because it is part of the
+ * key: two spellings of one address are one wallet to the unique index and would be two
+ * groups to anything grouping on the raw value.
+ */
+function mergeDrops(drops: readonly Drop[]): Drop[] {
+    const byKey = new Map<string, Drop>();
+    for (const drop of drops) {
+        const owner = normalizeAccount(drop.owner);
+        const key = `${owner}:${drop.itemType}`;
+        const existing = byKey.get(key);
+        if (existing) {
+            existing.quantity += drop.quantity;
+        } else {
+            byKey.set(key, { owner, itemType: drop.itemType, quantity: drop.quantity });
+        }
+    }
+    return [...byKey.values()];
 }

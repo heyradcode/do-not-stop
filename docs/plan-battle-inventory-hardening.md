@@ -216,6 +216,38 @@ hundreds, where the largest shipped bonus is 45. Lowering it is a balance call, 
 later widens the ceiling every outstanding authorization implies. Worth a line in `catalog.ts`
 saying so.
 
+## C4: a self-battle silently swallowed one of its own drops
+
+Found after the C1 to C3 work, reviewing the drop path rather than the snapshot path.
+
+`item_entitlement`'s unique key is `(sourceRef, owner, itemType)` and `sourceRef` is the
+battle id, which is what makes a retried receipt transaction idempotent. `recordBattleDrops`
+inserted the winner's and the loser's drop as separate rows under `skipDuplicates: true`, and
+its comment argued the two could never collide because "each side rolls at most one item".
+
+That holds only while the two sides are different wallets. Nothing forbids a player fighting
+two pets they both own: `assertBattleSnapshot` refuses a pet fighting *itself*, and the
+defender's own wallet can sign the authorization. Then winner and loser are one wallet, and
+when both rolls land on the same item the two entitlements share a key, so `skipDuplicates`
+keeps one and the player loses an item they earned.
+
+Measured on the shipped pool, scanning 500 battle ids with both rates forced to certainty:
+**82 collided**, about one in six. At the real rates (25% winner, 5% loser) both sides pay in
+roughly 1.25% of battles, so this reaches about one self-battle in 500. Small, silent, and
+wrong in the player's disfavour.
+
+- [x] **C4.1** Merge drops by `(normalized owner, itemType)` before writing, so the case
+      becomes one row of quantity 2 rather than two rows one of which vanishes. Normalizing
+      inside the merge rather than at the insert, because the owner is part of the key: two
+      spellings of one address are one wallet to the index and would be two groups to anything
+      grouping on the raw value. `recordBattleDrops` now returns what it wrote rather than what
+      it rolled.
+      Verify: `pnpm --filter backend exec vitest run tests/features/inventory/drops.test.ts`.
+
+`rollDrops` is unchanged, deliberately. It is the pure derivation of what a battle owed each
+side, and that is what an outsider recomputes from the receipt; reconciling two owed drops with
+one storage key is the writer's job, not the derivation's.
+
 ## D2: drops are outside the signed payload
 
 Recorded in `drops.ts:14-19` as a known v1 limit and correct as written: derived from the
