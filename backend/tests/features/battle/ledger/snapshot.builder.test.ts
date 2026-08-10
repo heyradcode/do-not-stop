@@ -7,7 +7,10 @@ vi.mock('@config/env', () => ({
 // Equipment resolution has its own coverage; stubbed to ungeared so these stay about
 // merging the roster with progression.
 vi.mock('@features/inventory', () => ({
-    getPetEquipment: vi.fn(async () => []),
+    getPetEquipmentForCombat: vi.fn(async () => []),
+    // Real, because the builder is expected to let it through untouched and a stub class
+    // would make `rejects.toThrow(ItemCatalogError)` pass against any error at all.
+    ItemCatalogError: class ItemCatalogError extends Error {},
 }));
 
 vi.mock('@config/prisma', () => ({
@@ -19,7 +22,7 @@ vi.mock('@config/prisma', () => ({
 
 import { prisma } from '@config/prisma';
 import { buildPetSnapshot } from '@features/battle/ledger';
-import { getPetEquipment } from '@features/inventory';
+import { getPetEquipmentForCombat, ItemCatalogError } from '@features/inventory';
 
 const ROSTER_ROW = {
     chain: 'evm',
@@ -239,26 +242,26 @@ describe('freezing equipment (roadmap §4)', () => {
         } as never);
     });
 
+    // Already narrowed to the modifier by `getPetEquipmentForCombat`, which is also where
+    // an uncatalogued or unreadable item is refused outright. That refusal is covered in
+    // `inventory.service.test.ts`; by the time the builder sees a row it is priceable.
     const BLADE = {
         slot: 0,
-        item: {
-            itemType: '1', key: 'iron_fang', category: 'equipment', slot: 0, rarity: 1,
-            effect: { kind: 'stat_bonus' as const, hp: 0, atk: 4, def: 0, int: 0, mdef: 0 },
-            name: 'Iron Fang', description: '',
-        },
+        itemType: '1',
+        key: 'iron_fang',
+        bonus: { kind: 'stat_bonus' as const, hp: 0, atk: 4, def: 0, int: 0, mdef: 0 },
     };
     const PLATE = {
         slot: 1,
-        item: {
-            ...BLADE.item, itemType: '11', key: 'scale_mail', slot: 1,
-            effect: { kind: 'stat_bonus' as const, hp: 30, atk: 0, def: 10, int: 0, mdef: 0 },
-        },
+        itemType: '11',
+        key: 'scale_mail',
+        bonus: { kind: 'stat_bonus' as const, hp: 30, atk: 0, def: 10, int: 0, mdef: 0 },
     };
 
     // Resolved, not referenced: unequipping after acceptance must not change a committed
     // fight, exactly as a level-up between acceptance and settlement must not.
     it('freezes the resolved modifiers alongside the item type', async () => {
-        vi.mocked(getPetEquipment).mockResolvedValue([BLADE] as never);
+        vi.mocked(getPetEquipmentForCombat).mockResolvedValue([BLADE] as never);
 
         const snapshot = await buildPetSnapshot('eip155:84532', '1');
 
@@ -270,26 +273,26 @@ describe('freezing equipment (roadmap §4)', () => {
     // Slot order is part of the snapshot digest, and assertPetSnapshot refuses to sort
     // silently, so the builder has to hand it over already ordered.
     it('orders slots ascending whatever order the rows arrive in', async () => {
-        vi.mocked(getPetEquipment).mockResolvedValue([PLATE, BLADE] as never);
+        vi.mocked(getPetEquipmentForCombat).mockResolvedValue([PLATE, BLADE] as never);
 
         const snapshot = await buildPetSnapshot('eip155:84532', '1');
 
         expect(snapshot!.equipment?.map((e) => e.slot)).toEqual([0, 1]);
     });
 
-    // An entry claiming an item was worn and did nothing reads as a bug rather than a fact.
-    it('leaves out an equipped item with no combat effect', async () => {
-        vi.mocked(getPetEquipment).mockResolvedValue([
-            { slot: 0, item: { ...BLADE.item, effect: null } },
-        ] as never);
+    // Propagated, not caught: acceptance turns this into an `item-catalog-stale` rejection,
+    // and a snapshot builder that swallowed it would hand back a pet fighting bare while
+    // chain state says otherwise.
+    it('lets a catalog failure reach the caller', async () => {
+        vi.mocked(getPetEquipmentForCombat).mockRejectedValue(new ItemCatalogError('uncatalogued item type 99'));
 
-        expect((await buildPetSnapshot('eip155:84532', '1'))!.equipment).toBeUndefined();
+        await expect(buildPetSnapshot('eip155:84532', '1')).rejects.toThrow(ItemCatalogError);
     });
 
     // Omitted rather than empty, so an ungeared snapshot's stored JSON is identical to what
     // it was before equipment existed.
     it('omits the field entirely for an ungeared pet', async () => {
-        vi.mocked(getPetEquipment).mockResolvedValue([] as never);
+        vi.mocked(getPetEquipmentForCombat).mockResolvedValue([] as never);
 
         expect((await buildPetSnapshot('eip155:84532', '1'))!.equipment).toBeUndefined();
     });

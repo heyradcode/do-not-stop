@@ -16,6 +16,7 @@ import type { Prisma } from '@generated/prisma/client';
 import { BattleState } from '@generated/prisma/enums';
 
 import { prisma } from '@config/prisma';
+import { ItemCatalogError } from '@features/inventory';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 import { activeSigningKey, sign, SignerRefusedError } from '../signer';
@@ -76,7 +77,17 @@ export type AcceptRejection =
     | ConsentFailure
     | 'pet-locked'
     | 'drand-unavailable'
-    | 'signer-unavailable';
+    | 'signer-unavailable'
+    /**
+     * The item catalog cannot price something this battle needs priced: a pet wears an
+     * item with no catalog row, or an equipment row's modifier will not parse (roadmap §4).
+     *
+     * Its own reason rather than a 500, because it is an operational fault with an obvious
+     * remedy (run the seeder) and no fault of the player's. Refusing is the conservative
+     * end: the alternative is a fight under rules this deployment cannot state, recorded in
+     * a signed receipt that contradicts chain state.
+     */
+    | 'item-catalog-stale';
 
 export interface AcceptedBattle {
     battleId: string;
@@ -105,10 +116,16 @@ export async function acceptBattle(request: AcceptBattleRequest): Promise<Accept
     }
 
     const chainId = intent.chainId as ChainId;
-    const [attacker, defender] = await Promise.all([
-        buildPetSnapshot(chainId, intent.attackerPetId),
-        buildPetSnapshot(chainId, intent.defenderPetId),
-    ]);
+    let attacker: Awaited<ReturnType<typeof buildPetSnapshot>>;
+    let defender: Awaited<ReturnType<typeof buildPetSnapshot>>;
+    try {
+        [attacker, defender] = await Promise.all([
+            buildPetSnapshot(chainId, intent.attackerPetId),
+            buildPetSnapshot(chainId, intent.defenderPetId),
+        ]);
+    } catch (error) {
+        return catalogRejection(error);
+    }
     if (!attacker) {
         return reject('attacker-pet-missing', `pet ${intent.attackerPetId} is not in the roster`);
     }
@@ -126,7 +143,12 @@ export async function acceptBattle(request: AcceptBattleRequest): Promise<Accept
 
     // Built from the live item catalog rather than taken from the constant: gear changes
     // fights, so the rules a battle names have to include what gear does (roadmap §4).
-    const ruleset = await servedRuleset();
+    let ruleset: Awaited<ReturnType<typeof servedRuleset>>;
+    try {
+        ruleset = await servedRuleset();
+    } catch (error) {
+        return catalogRejection(error);
+    }
     const rulesetHash = hashRuleset(ruleset);
     await ensureRulesetPublished(rulesetHash);
 
@@ -380,4 +402,22 @@ function serializeBigints<T>(value: T): Prisma.InputJsonValue {
 
 function reject(reason: AcceptRejection, detail: string): AcceptBattleResult {
     return { ok: false, reason, detail };
+}
+
+/**
+ * Turns a stale item catalog into a named rejection, and rethrows anything else.
+ *
+ * Both catalog-dependent reads on this path (what the pets are wearing, and the ruleset
+ * the fight is priced under) run before the first write, so refusing here strands nothing:
+ * no ledger row, no consumed intent, no spent daily budget.
+ *
+ * Rethrows rather than swallowing, because "the catalog is behind the contract" is a
+ * recoverable operational state with a clear remedy, while any other failure here is a bug
+ * and should keep reaching the error handler as one.
+ */
+function catalogRejection(error: unknown): AcceptBattleResult {
+    if (error instanceof ItemCatalogError) {
+        return reject('item-catalog-stale', error.message);
+    }
+    throw error;
 }

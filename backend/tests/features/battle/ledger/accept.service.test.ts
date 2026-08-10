@@ -60,6 +60,8 @@ import { acceptBattle, decodeStoredSnapshot } from '@features/battle/ledger';
 import { chooseCommitmentRound, roundPublishTime } from '@features/battle/randomness';
 import { activeSigningKey, sign, SignerRefusedError } from '@features/battle/signer';
 import { consumeDailyBudget, findCoveringAuthorization } from '../../../../src/features/battle/ledger/consent.service';
+import { ItemCatalogError } from '@features/inventory';
+import { servedRuleset } from '../../../../src/features/battle/ledger/ruleset.builder';
 import { buildPetSnapshot } from '../../../../src/features/battle/ledger/snapshot.builder';
 import { applyTransition, openBattle } from '../../../../src/features/battle/ledger/transitions';
 
@@ -309,6 +311,47 @@ describe('opening the ledger', () => {
         const ledger = vi.mocked(openBattle).mock.calls[0]![0].ledger as { snapshotHash: string; drandRound: bigint };
         expect(typeof ledger.snapshotHash).toBe('string');
         expect(ledger.drandRound).toBe(0n);
+    });
+});
+
+describe('a catalog that cannot price the battle', () => {
+    /**
+     * Refused, not fought (roadmap §4). Both reads that consult the catalog run before the
+     * first write, so this rejects with nothing stranded: no ledger row, no consumed
+     * intent, no spent daily budget.
+     */
+    it('rejects when a pet wears something the catalog cannot price', async () => {
+        vi.mocked(buildPetSnapshot).mockRejectedValue(
+            new ItemCatalogError('pet 1 has uncatalogued item type 999 equipped in slot 0'),
+        );
+
+        expect(await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW })).toMatchObject({
+            ok: false,
+            reason: 'item-catalog-stale',
+        });
+        expect(openBattle).not.toHaveBeenCalled();
+        expect(sign).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the ruleset itself cannot be built', async () => {
+        vi.mocked(servedRuleset).mockRejectedValueOnce(
+            new ItemCatalogError('item 2 (bent_fang) is equipment with no readable stat_bonus'),
+        );
+
+        expect(await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW })).toMatchObject({
+            ok: false,
+            reason: 'item-catalog-stale',
+        });
+        expect(openBattle).not.toHaveBeenCalled();
+    });
+
+    it('lets any other failure through as a real error', async () => {
+        // A stale catalog is a recoverable operational state with an obvious remedy. A bug
+        // is not, and collapsing the two would turn every defect on this path into a
+        // routine 503 nobody investigates.
+        vi.mocked(servedRuleset).mockRejectedValueOnce(new Error('connection reset'));
+
+        await expect(acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW })).rejects.toThrow('connection reset');
     });
 });
 

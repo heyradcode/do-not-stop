@@ -4,11 +4,16 @@
  */
 export {
     getCatalog,
+    getCombatCatalog,
     getInventory,
     getPendingItems,
     getPetEquipment,
+    getPetEquipmentForCombat,
     getPetEquipmentForPets,
+    ItemCatalogError,
+    itemCatalogGeneration,
     resetItemCatalog,
+    type CombatEquippedItem,
     type EquippedItem,
     type InventoryEntry,
     type PendingItem,

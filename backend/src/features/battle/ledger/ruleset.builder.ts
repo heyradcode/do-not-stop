@@ -1,6 +1,6 @@
 import { type ItemModifier, type Ruleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
 
-import { getCatalog } from '@features/inventory';
+import { getCombatCatalog, itemCatalogGeneration } from '@features/inventory';
 
 /**
  * Builds the ruleset this deployment fights under (roadmap §4).
@@ -26,15 +26,26 @@ import { getCatalog } from '@features/inventory';
  * path to answer the same question. A catalog edit therefore needs a restart to take
  * effect, which is the right shape for something that invalidates outstanding consent:
  * it should be a deliberate rollout, not a row edit that quietly re-prices live battles.
+ *
+ * Stamped with the catalog generation it was built from, so dropping the catalog drops
+ * this too. Two independent process-life caches over the same rows was a trap: whichever
+ * one a caller knew to reset, the other kept answering from data that no longer existed.
  */
-let cached: Ruleset | null = null;
+let cached: { ruleset: Ruleset; generation: number } | null = null;
 
 export async function servedRuleset(): Promise<Ruleset> {
-    if (cached) {
-        return cached;
+    // Read before the await, not after: a reset landing mid-build then stamps this result
+    // with the older generation, so the next call rebuilds. The other order would stamp a
+    // half-stale ruleset as current.
+    const generation = itemCatalogGeneration();
+    if (cached && cached.generation === generation) {
+        return cached.ruleset;
     }
 
-    const catalog = await getCatalog();
+    // The strict read: an equipment row whose modifier will not parse throws here rather
+    // than dropping out of the list. Dropping it would move `rulesetHash` and invalidate
+    // every outstanding defence authorization on the strength of one bad column.
+    const catalog = await getCombatCatalog();
     const itemCatalog: ItemModifier[] = [];
     for (const item of catalog) {
         if (item.effect?.kind !== 'stat_bonus' || item.slot === null) {
@@ -56,11 +67,17 @@ export async function servedRuleset(): Promise<Ruleset> {
     // type surfaces rather than being tidied away.
     itemCatalog.sort((a, b) => (a.itemType < b.itemType ? -1 : a.itemType > b.itemType ? 1 : 0));
 
-    cached = { ...SOURCE_DEFAULT_RULESET, itemCatalog };
-    return cached;
+    cached = { ruleset: { ...SOURCE_DEFAULT_RULESET, itemCatalog }, generation };
+    return cached.ruleset;
 }
 
-/** Test seam: drops the memoized ruleset so a changed catalog is picked up. */
+/**
+ * Test seam: drops the memoized ruleset directly.
+ *
+ * Rarely the one to reach for now. `resetItemCatalog()` invalidates this as well, which is
+ * what a caller changing catalog rows actually wants; this is for a test that stubs the
+ * catalog module itself and so never bumps a generation.
+ */
 export function resetServedRuleset(): void {
     cached = null;
 }

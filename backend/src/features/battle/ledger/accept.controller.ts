@@ -6,9 +6,13 @@ import { acceptBattle, type AcceptRejection } from './accept.service';
 
 /**
  * 409 for "someone already acted on this", 404/403/422 for the client's own fault, and 503 for
- * the two dependencies this flow cannot proceed without (drand, the signer). A 503 is the
- * honest answer for those: retrying shortly is the correct client behaviour, and nothing about
- * the request itself was wrong.
+ * the dependencies this flow cannot proceed without (drand, the signer, a catalog that can
+ * price the gear in play). A 503 is the honest answer for those: retrying shortly is the
+ * correct client behaviour, and nothing about the request itself was wrong.
+ *
+ * A stale catalog is the odd one of the three, since retrying will not help until someone runs
+ * the seeder. It is still a 503 rather than a 500: the deployment is misconfigured, not broken,
+ * and a client that backs off and retries is behaving correctly either way.
  */
 const STATUS_BY_REASON: Record<AcceptRejection, number> = {
     'intent-not-found': 404,
@@ -30,6 +34,7 @@ const STATUS_BY_REASON: Record<AcceptRejection, number> = {
     'pet-locked': 409,
     'drand-unavailable': 503,
     'signer-unavailable': 503,
+    'item-catalog-stale': 503,
 };
 
 interface AcceptBody {

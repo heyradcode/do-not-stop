@@ -139,12 +139,6 @@ export const env = {
         chainId: process.env.ITEM_CORE_CHAIN_ID ? Number(process.env.ITEM_CORE_CHAIN_ID) : undefined,
         address: process.env.ITEM_CORE_ADDRESS?.trim() as `0x${string}` | undefined,
         /**
-         * Wallets allowed to grant items, comma-separated. Empty by default, so the admin
-         * route is closed until someone is named rather than open until someone is
-         * excluded. Normalized here so a checksummed address in the env still matches the
-         * lowercased one the JWT carries.
-         */
-        /**
          * Whether a settled battle pays item drops.
          *
          * Separate from ITEM_CORE_ENABLED and off by default. Recording a drop needs no
@@ -153,6 +147,12 @@ export const env = {
          * added for something else.
          */
         dropsEnabled: process.env.ITEM_DROPS_ENABLED?.trim().toLowerCase() === 'true',
+        /**
+         * Wallets allowed to grant items, comma-separated. Empty by default, so the admin
+         * route is closed until someone is named rather than open until someone is
+         * excluded. Normalized here so a checksummed address in the env still matches the
+         * lowercased one the JWT carries.
+         */
         adminWallets: new Set(
             (process.env.ITEM_ADMIN_WALLETS ?? '')
                 .split(',')

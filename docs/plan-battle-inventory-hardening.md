@@ -112,7 +112,7 @@ as authoritative:
 
 Both happen from one malformed JSON column, with a `console.warn` as the only signal.
 
-- [ ] **C1.1** Split the read. Keep `asItemEffect`'s leniency on the display path (a bag with one
+- [x] **C1.1** Split the read. Keep `asItemEffect`'s leniency on the display path (a bag with one
       unnamed tile beats a bag that will not open) and make the combat path strict: a
       `stat_bonus` row that fails to parse throws from `servedRuleset()` and from
       `resolveEquipment`. A deployment that cannot state its own rules should refuse to accept
@@ -130,7 +130,7 @@ The receipt then says ungeared while `ItemCore.equipmentOf(petId)` at the record
 snapshot to enable, reporting a discrepancy an outsider cannot distinguish from operator
 misbehaviour.
 
-- [ ] **C2.1** Reject the acceptance instead. An uncatalogued equipped item means the seeder is
+- [x] **C2.1** Reject the acceptance instead. An uncatalogued equipped item means the seeder is
       behind the contract, which is an operational fault; failing the accept with a named reason
       surfaces it in seconds, where a silent ungeared fight surfaces as an unexplained verifier
       failure weeks later. Reuse the existing reject path in `accept.service.ts`.
@@ -151,11 +151,20 @@ not check" rather than "disagreed", so the battle retries and dead-letters.
 Unreachable with shipped content: `MAX_STAT_BONUS` is 500, three slots cap a pet at 1500, and
 the shipped catalog's largest single bonus is 45 HP. This is a guardrail, not a bug.
 
-- [ ] **C3.1** Clamp in `sumBonuses` to match the Go port, and add the case to
+- [x] **C3.1** Clamp in `sumBonuses` to match the Go port, and add the case to
       `contracts/test-vectors/equipment.json` so the two stay pinned. Both live ports change in
       the same commit, per `AGENTS.md`.
       Verify: `pnpm --filter @cryptopets/protocol test && go test ./internal/combat` from
       `services/indexer-go`.
+
+      **Done without the vector case, deliberately.** The vector format hands `simulate` one
+      already-summed `bonus1`/`bonus2` per pet, so no case in `equipment.json` reaches
+      `sumBonuses` at all; pinning it there would have meant extending the vector schema to
+      carry item lists. Both ports already pin this function with a unit test beside their
+      golden tests (order-independence), so the clamp went there too:
+      `equipmentVectors.test.ts`'s `saturates at 65535` and `equipment_golden_test.go`'s
+      `TestSumBonusesSaturates` assert the same thing on both sides. `equipment.json` is
+      untouched.
 
 ---
 
@@ -205,11 +214,11 @@ deliberately. If D1 lands as option 1, fold it into the same rollout and pay thi
 
 Small, none of them urgent.
 
-- [ ] **Q1 Two caches, one reset each.** `inventory.service.ts:205` caches the catalog for the
+- [x] **Q1 Two caches, one reset each.** `inventory.service.ts:205` caches the catalog for the
       process's life and `ruleset.builder.ts:30` caches a ruleset derived from it. Their reset
       seams are separate (`resetItemCatalog`, `resetServedRuleset`), so clearing one leaves the
       other holding data built from what was just dropped. Have `resetItemCatalog` clear both.
-- [ ] **Q2 Orphaned doc comment.** `env.ts:141-146` documents `adminWallets` directly above the
+- [x] **Q2 Orphaned doc comment.** `env.ts:141-146` documents `adminWallets` directly above the
       comment for `dropsEnabled`; the field itself is at line 156. Move the comment to its field.
 - [x] **Q3 `verify.worker.ts:60-62` casts to `Record<string, unknown>`** to read a shape the
       codec from B1.1 will type properly. Folded into B1.1 rather than done twice.

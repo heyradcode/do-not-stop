@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const catalog = vi.fn();
-vi.mock('@features/inventory', () => ({ getCatalog: () => catalog() }));
+// The catalog module is stubbed wholesale here, so no generation is ever bumped and
+// `resetServedRuleset` is the seam these cases use. A fixed generation keeps the memo
+// behaving as it does in production between seeder runs.
+vi.mock('@features/inventory', () => ({ getCombatCatalog: () => catalog(), itemCatalogGeneration: () => 0 }));
 
 import { hashRuleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
 
