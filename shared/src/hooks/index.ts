@@ -135,6 +135,12 @@ export {
     type GrantDefenseVars,
 } from './battle/useDefenseAuthorization';
 export {
+    type ConsentStatus,
+    defenseAuthorizationsQueryKey,
+    type DefenseAuthorizationSummary,
+    useDefenseAuthorizations,
+} from './battle/useDefenseAuthorizations';
+export {
     battleStateQueryKey,
     useBackendBattle,
     useStoredBattleEvidence,

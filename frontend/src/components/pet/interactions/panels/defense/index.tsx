@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import NeonButton from '@components/ui/neon-button';
-import { useChainCapabilities, useDefenseAuthorization, usePetList } from '@shared/core';
+import {
+    useChainCapabilities,
+    useDefenseAuthorization,
+    useDefenseAuthorizations,
+    usePetList,
+} from '@shared/core';
 import { useNotifyError } from '@hooks/useNotifyError';
 import Icon, { CheckIcon } from '@components/ui/icon';
 import { Tones } from '@constants/tones';
@@ -23,6 +28,10 @@ const DefensePanel: React.FC<DefensePanelProps> = ({ isStandaloneView = true }) 
     const { pets } = usePetList();
     const notifyError = useNotifyError();
     const { grant, revoke, isPending, error } = useDefenseAuthorization();
+    // What the panel could not say before: whether consent exists, and whether it still
+    // applies. A rules change invalidates every grant by design, and being challenged is
+    // passive, so without this a defender's pets go quiet and nothing here admits it.
+    const { status, refresh } = useDefenseAuthorizations();
 
     const [allPets, setAllPets] = useState(true);
     const [selected, setSelected] = useState<string[]>([]);
@@ -39,6 +48,10 @@ const DefensePanel: React.FC<DefensePanelProps> = ({ isStandaloneView = true }) 
         setSuccess(null);
         const hash = await grant(allPets ? { allPets: true } : { petIds: selected });
         if (hash) {
+            // Both writes re-read: the status banner is the only thing that says whether the
+            // grant took, so leaving it on a cached answer would contradict the success line
+            // directly underneath it.
+            refresh();
             setSuccess(
                 allPets
                     ? 'Every pet you own can now be challenged.'
@@ -50,6 +63,7 @@ const DefensePanel: React.FC<DefensePanelProps> = ({ isStandaloneView = true }) 
     const handleRevoke = async () => {
         setSuccess(null);
         if (await revoke()) {
+            refresh();
             setSuccess('Consent withdrawn. Your pets can no longer be challenged.');
         }
     };
@@ -64,6 +78,27 @@ const DefensePanel: React.FC<DefensePanelProps> = ({ isStandaloneView = true }) 
                         <h4>🛡️ Allow Challenges</h4>
                         <p>Let other players battle your pets while you are away.</p>
                     </>
+                )}
+
+                {/* Above the controls, because it changes what the buttons mean. Signing
+                    again when a grant went stale is a repair, not a duplicate, and a player
+                    who cannot see the difference reads the same button two ways. */}
+                {status.kind === 'stale' && (
+                    <p className={styles.stale} role="status">
+                        The battle rules changed since you allowed challenges, so your consent
+                        no longer covers anything and your pets cannot be challenged. Allow
+                        challenges again to restore it.
+                    </p>
+                )}
+                {status.kind === 'active' && (
+                    <p className={styles.active} role="status">
+                        Your pets can be challenged under the current rules.
+                    </p>
+                )}
+                {status.kind === 'none' && (
+                    <p className={styles.inactive} role="status">
+                        You have not allowed challenges, so nobody can battle your pets.
+                    </p>
                 )}
 
                 <div className="picker">

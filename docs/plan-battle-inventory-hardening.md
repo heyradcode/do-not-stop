@@ -21,8 +21,8 @@ Every code item is done. What remains needs a decision or production access, not
 | C6 | Spending a consumable left the pet's own numbers stale | done |
 | D1 | Consent and gear. Smaller gap than first stated | done, no schema change |
 | D2 | Drops are not verifiable | claim corrected, v1 position taken and disclosed; **revisit at phase 04** |
-| C7 | No way to tell a defender their consent had gone stale | read surface done; **UI outstanding** |
-| D3 | Phase 4 ships a re-consent event | **needs a deliberate rollout**, and C7.2 first |
+| C7 | No way to tell a defender their consent had gone stale | done |
+| D3 | Phase 4 ships a re-consent event | **needs a deliberate rollout** |
 | Q1-Q4 | Cache reset, stranded comment, worker cast, untypechecked scripts | done |
 | O1-O3 | Migration, seeder, end-to-end | **operator calls** |
 
@@ -42,11 +42,11 @@ Every suite was green **as found**, which is the point worth keeping:
 
 | Suite | As found | After |
 |---|---|---|
-| `pnpm --filter backend test` | 914 passed / 89 files | 939 |
+| `pnpm --filter backend test` | 914 passed / 89 files | 943 |
 | `pnpm --filter @cryptopets/protocol test` | 595 passed / 34 files | 604 |
 | `pnpm --filter @cryptopets/verifier test` | 86 passed / 13 files | 86 |
 | `pnpm --filter frontend test` | 370 passed / 48 files | 370 |
-| `pnpm --filter @shared/core test` | 567 passed / 80 files | 568 |
+| `pnpm --filter @shared/core test` | 567 passed / 80 files | 574 |
 | `go test ./internal/{combat,evm,store}` | ok | ok |
 
 A green suite is not the same as working software, and B1 is the clean demonstration: no
@@ -448,11 +448,28 @@ nothing about it. The one person who can fix it is the one person not told.
       defender needs to see this precisely when something is off, so a mode flag should not
       be what hides it. Always scoped to the authenticated wallet, never a queried address.
       Verify: `pnpm --filter backend exec vitest run tests/features/battle/ledger/consent.service.test.ts`.
-- [ ] **C7.2 Surface it.** The endpoint makes the state knowable; a screen has to make it
-      visible. The natural home is wherever `useDefenseAuthorization` is already offered,
-      showing a stale grant with a re-sign prompt rather than a silent absence. Not built
-      here, because where it belongs is a UI decision and this had already reached the edge
-      of what the review could settle on its own.
+- [x] **C7.2 Surface it.** `useDefenseAuthorizations` in `@shared/core` reads the endpoint
+      and collapses it to one `ConsentStatus`, and `DefensePanel` states it above the
+      controls, because it changes what they mean: signing again after a rules change is a
+      repair, not a duplicate, and a player who cannot see the difference reads the same
+      button two ways.
+
+      Three states, not two. `stale` is deliberately distinct from `none`: they ask the same
+      action of the player but are not the same message, and "you have not allowed
+      challenges" shown to someone who did reads as the app having forgotten. `unknown`
+      covers not-yet-loaded and no-wallet, so a disconnected visitor is never told nobody can
+      battle their pets, which would be a false statement about their account. `active` wins
+      whenever any grant is current, since a defender holding one usable authorization and
+      three superseded ones is covered and should not be told to re-sign.
+
+      Both writes call `refresh()`, or the banner would contradict the success line directly
+      beneath it.
+      Verify: `pnpm --filter @shared/core exec vitest run tests/hooks/useDefenseAuthorizations.test.tsx`.
+
+Extracted while doing it: `chainIdFor` was written out identically in
+`useDefenseAuthorization` and `useSubmitBattleIntent`, and this needed a third copy. It now
+lives in `hooks/battle/chainIdFor.ts`. Harmless duplication right up until a deployment
+serves two chains of one family and only one caller learns how to choose.
 
 ## D3: shipping Phase 4 is a re-consent event
 
