@@ -113,10 +113,11 @@ export const schema = buildSchema(`
         """
         Why the list is empty, or null when it is not.
 
-        Four situations render as the same blank picker and only some are the player's to
-        fix: 'roster-empty' (nothing indexed yet — an operator problem), 'all-yours',
-        'all-on-cooldown', 'below-min-level', and 'no-consent' (nobody has allowed
-        challenges under the current ruleset).
+        Several situations render as the same blank picker and only some are the player's
+        to fix: 'roster-empty' (nothing indexed yet — an operator problem), 'all-yours',
+        'all-on-cooldown', 'below-min-level', 'no-consent' (nobody has allowed challenges),
+        and 'consent-stale' (someone did, but under rules that have since moved, so it
+        needs granting again).
         """
         emptyReason: String
     }

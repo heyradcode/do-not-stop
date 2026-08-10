@@ -8,6 +8,7 @@ vi.mock('@config/prisma', () => ({
             findUnique: vi.fn(),
         },
         $queryRaw: vi.fn(),
+        defenseAuthorization: { count: vi.fn() },
     },
 }));
 vi.mock('../../src/grpc/rosterReads', () => ({
@@ -276,11 +277,25 @@ describe('findReadyOpponents', () => {
             expect((await call()).emptyReason).toBe('below-min-level');
         });
 
-        // Deduced rather than counted: consent is the only predicate left, so surviving
-        // every other filter and still not appearing means nobody granted it.
-        it('falls through to consent once every other filter is survived', async () => {
+        // Consent is the only predicate left once the others are survived, and the two
+        // ways it fails send the player somewhere different.
+        it('reports no consent when nobody has granted any', async () => {
             mockEmptyWithCounts({ indexed: 5, notMine: 3, offCooldown: 3, inBand: 3 });
+            vi.mocked(prisma.defenseAuthorization.count).mockResolvedValueOnce(0);
+
             expect((await call()).emptyReason).toBe('no-consent');
+        });
+
+        it('reports stale consent when grants exist but none match the served ruleset', async () => {
+            // The distinction that matters: "turn it on" and "turn it on again" are
+            // different instructions, and only one of them is right for someone who
+            // already did.
+            mockEmptyWithCounts({ indexed: 5, notMine: 3, offCooldown: 3, inBand: 3 });
+            vi.mocked(prisma.defenseAuthorization.count)
+                .mockResolvedValueOnce(2)
+                .mockResolvedValueOnce(0);
+
+            expect((await call()).emptyReason).toBe('consent-stale');
         });
 
         it('costs nothing when the list is not empty', async () => {

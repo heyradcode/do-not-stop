@@ -48,7 +48,8 @@ export type OpponentsEmptyReason =
     | 'all-yours'
     | 'all-on-cooldown'
     | 'below-min-level'
-    | 'no-consent';
+    | 'no-consent'
+    | 'consent-stale';
 
 interface GraphQLResponse {
     data?: { opponents: OpponentsPage };
@@ -150,7 +151,9 @@ export function describeNoOpponents(reason: OpponentsEmptyReason | null): string
         case 'below-min-level':
             return 'No pet meets the level you asked for. Lower the minimum level to widen the search.';
         case 'no-consent':
-            return 'Nobody has allowed challenges under the current rules yet. Opponents appear once another player turns on Allow Challenges.';
+            return 'Nobody has allowed challenges yet. Opponents appear once another player turns on Allow Challenges.';
+        case 'consent-stale':
+            return 'Players have allowed challenges, but under an older set of battle rules, so those permissions no longer apply. They need to turn on Allow Challenges again.';
         default:
             return 'No opponents available';
     }

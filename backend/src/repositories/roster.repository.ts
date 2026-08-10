@@ -188,7 +188,11 @@ export async function findReadyOpponents(
     }
 
     // Only on the empty path, so the normal case pays nothing for this.
-    return { rows: [], total, emptyReason: await diagnoseEmpty(params, nowSeconds, chainId, deploymentId) };
+    return {
+        rows: [],
+        total,
+        emptyReason: await diagnoseEmpty(params, nowSeconds, chainId, deploymentId, rulesetHash),
+    };
 }
 
 /**
@@ -210,13 +214,15 @@ export type OpponentsEmptyReason =
     | 'all-yours'
     | 'all-on-cooldown'
     | 'below-min-level'
-    | 'no-consent';
+    | 'no-consent'
+    | 'consent-stale';
 
 async function diagnoseEmpty(
     params: FindOpponentsParams,
     nowSeconds: bigint,
     chainId: string,
     deploymentId: string,
+    servedRulesetHash: string,
 ): Promise<OpponentsEmptyReason> {
     const ready = Prisma.sql`GREATEST(r.ready_at, COALESCE(p.ready_at, 0::bigint)) <= ${nowSeconds}`;
     const level = Prisma.sql`GREATEST(r.level, COALESCE(p.level, 0)) >= ${params.minLevel}`;
@@ -241,7 +247,36 @@ async function diagnoseEmpty(
     if (Number(counts?.notMine ?? 0) === 0) return 'all-yours';
     if (Number(counts?.offCooldown ?? 0) === 0) return 'all-on-cooldown';
     if (Number(counts?.inBand ?? 0) === 0) return 'below-min-level';
-    return 'no-consent';
+
+    // Consent is the only predicate left, but "never granted" and "granted under rules
+    // that have since moved" send the player somewhere different: the first needs someone
+    // to turn it on, the second needs someone who already did to do it again. Worth one
+    // more count to tell them apart, since this only runs on an already-empty list.
+    const live = await prisma.defenseAuthorization.count({
+        where: {
+            chainId,
+            deploymentId,
+            revokedAt: null,
+            notBefore: { lte: nowSeconds },
+            expiresAt: { gt: nowSeconds },
+        },
+    });
+    if (live === 0) return 'no-consent';
+
+    const current = await prisma.defenseAuthorization.count({
+        where: {
+            chainId,
+            deploymentId,
+            revokedAt: null,
+            notBefore: { lte: nowSeconds },
+            expiresAt: { gt: nowSeconds },
+            rulesetHash: servedRulesetHash,
+        },
+    });
+    // Grants exist and none match: either the rules moved under them, or they cover only
+    // pets that some earlier filter already removed. Both read as "ask them to re-grant",
+    // which is the useful instruction either way.
+    return current === 0 ? 'consent-stale' : 'no-consent';
 }
 
 /** The same query without progression, for a chain family this deployment does not serve. */
