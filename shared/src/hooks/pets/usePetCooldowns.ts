@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getTimeUntilReady, isPetReady, type Pet } from '@shared/core';
+import { getTimeUntilReady, isPetReady } from '../../utils/ethereum/petReadyTime';
+import type { Pet } from '../../types/pet';
 
 export interface PetCooldownStatus {
     /** True when any of the three cooldowns is still active. */

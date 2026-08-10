@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useChainCapabilities, usePetList, type Pet } from '@shared/core';
+import {
+    useChainCapabilities,
+    usePetCooldowns,
+    usePetList,
+    type Pet,
+    type PetCooldownStatus,
+} from '@shared/core';
 import { BATTLE_PATH } from '@constants/interactionRoutes';
 import { useNotifyError } from '@hooks/useNotifyError';
-import { usePetCooldowns, type PetCooldownStatus } from '@hooks/usePetCooldowns';
 
 export interface UsePetGallery {
     isConnected: boolean;

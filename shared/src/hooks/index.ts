@@ -24,6 +24,9 @@ export { useActiveChain, type ActiveChain } from './session/useActiveChain';
 export { useChainCapabilities, type ChainContext } from './session/useChainCapabilities';
 export type { TxLifecycle, TxPhase, ChainCapabilities } from './adapters/types';
 export { usePetList, type PetListResult } from './pets/usePetList';
+// Per-pet cooldown readiness + live countdown labels. Platform-neutral: React state and
+// the shared readiness helpers only, so the mobile pet list can use it unchanged.
+export { usePetCooldowns, type PetCooldowns, type PetCooldownStatus } from './pets/usePetCooldowns';
 // Backend battle progression. usePetList already applies it to a player's own pets;
 // exported for anything reading pets from the chain by another route.
 export { useBattleProgress, mergeBattleProgress } from './battle/useBattleProgress';
