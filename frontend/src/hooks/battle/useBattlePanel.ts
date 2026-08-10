@@ -7,6 +7,7 @@ import {
     isConsentFailure,
     opponentKey,
     pickRandomOpponent,
+    describeBattleStage,
     sortOpponentsByMatch,
     toDialoguePet,
     useChainCapabilities,
@@ -440,14 +441,19 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // (animation.done OR the mismatch notice has run its course).
     const preResultStatus = mismatchNotice
         ? MISMATCH_NOTICE_MESSAGE
+        // A battle that ended badly said nothing at all: the overlay simply stopped
+        // changing. The server records why it stopped, so show that rather than leave
+        // the player watching a screen that will never move again.
+        : battle.failureReason
+        ? `${describeBattleStage(battle.state)} (${battle.failureReason})`
         : hasResolvedEvent && !animation.done
         ? 'Result in — playing out the fight…'
         : !hasResolvedEvent && animation.done && battle.liveReplay
         ? 'Finalizing…'
-        : battle.phase === 'awaiting-vrf'
-        ? 'Awaiting randomness…'
-        : battle.phase === 'resolving'
-        ? 'Resolving the outcome…'
+        : battle.phase === 'awaiting-vrf' || battle.phase === 'resolving'
+        // The battle's own state rather than one word for six of them. A battle stalled
+        // waiting on the independent verifier looked identical to one about to finish.
+        ? describeBattleStage(battle.state)
         : battle.isConfirming
         ? 'Verifying the receipt…'
         : battle.isPending

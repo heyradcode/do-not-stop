@@ -45,6 +45,7 @@ export { useLevelUpPet, type LevelUpPetArgs } from './pets/useLevelUpPet';
 export { useTrainPet, type TrainPetArgs } from './pets/useTrainPet';
 export { useRenamePet, type RenamePetArgs } from './pets/useRenamePet';
 export {
+    describeBattleStage,
     useBattlePets,
     type BattlePetsArgs,
     type UseBattlePetsOptions,

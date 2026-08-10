@@ -138,8 +138,54 @@ export const useBattlePets = (options?: UseBattlePetsOptions) => {
         },
         /** Every local check and its verdict, so a UI can show *why* a result is trusted. */
         checks: verified.data?.checks ?? [],
+        /**
+         * The battle's server-side state and, if it failed, why.
+         *
+         * Exposed because a backend battle passes through six states after the signature
+         * and the UI rendered one word for all of them. A battle stalled at `computed`
+         * (waiting on the independent Go verifier) looked exactly like one about to
+         * finish, so "it is stuck" and "it is working" were the same screen.
+         */
+        state: battle.data?.state ?? null,
+        failureReason: battle.data?.failureReason ?? null,
     };
 };
+
+/**
+ * What a battle is actually waiting on, in words a player can act on.
+ *
+ * Deliberately names the dependency where there is one. A battle sitting in `computed` is
+ * waiting for an independent recomputation by indexer-go before anything can be signed
+ * (§F), and if that service is unreachable it waits forever — which is an operator problem
+ * the player should not be left guessing about behind a spinner.
+ */
+export function describeBattleStage(state: string | null): string {
+    switch (state) {
+        case 'accepted':
+        case 'committed':
+            return 'Waiting for the committed randomness round…';
+        case 'seeded':
+            return 'Randomness verified. Running the fight…';
+        case 'computed':
+            return 'Fight computed. Waiting for the independent verifier to agree…';
+        case 'verified':
+            return 'Both engines agree. Signing the receipt…';
+        case 'signed':
+        case 'published':
+        case 'batched':
+            return 'Receipt signed. Checking it…';
+        case 'verification_failed':
+            return 'The two engines disagreed on this fight, so it was not signed.';
+        case 'signing_failed':
+            return 'The receipt could not be signed.';
+        case 'rejected':
+            return 'This battle was rejected.';
+        case 'forfeited':
+            return 'This battle was abandoned.';
+        default:
+            return 'Starting the battle…';
+    }
+}
 
 function derivePhase(
     isSubmitting: boolean,
