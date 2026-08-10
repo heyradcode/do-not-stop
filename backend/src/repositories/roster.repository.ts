@@ -92,7 +92,7 @@ export interface FindOpponentsParams {
  */
 export async function findReadyOpponents(
     params: FindOpponentsParams
-): Promise<{ rows: RosterPet[]; total: number }> {
+): Promise<{ rows: RosterPet[]; total: number; emptyReason?: OpponentsEmptyReason }> {
     const nowSeconds = BigInt(Math.floor(Date.now() / 1000));
     const chainId = servedChainIdForFamily(params.chain);
     if (!chainId) {
@@ -182,10 +182,66 @@ export async function findReadyOpponents(
         `,
     ]);
 
-    return {
-        rows: rows.map(mapRosterRowToRosterPet),
-        total: Number(counted[0]?.total ?? 0),
-    };
+    const total = Number(counted[0]?.total ?? 0);
+    if (total > 0) {
+        return { rows: rows.map(mapRosterRowToRosterPet), total };
+    }
+
+    // Only on the empty path, so the normal case pays nothing for this.
+    return { rows: [], total, emptyReason: await diagnoseEmpty(params, nowSeconds, chainId, deploymentId) };
+}
+
+/**
+ * Which filter emptied the list.
+ *
+ * Four very different situations render as the same blank picker: nothing indexed yet,
+ * every pet is the caller's own, everyone is mid-cooldown, and nobody has consented to
+ * being challenged. Only the last is the player's problem to solve, and only the first is
+ * ours, so collapsing them into "No opponents available" tells the one person who could
+ * act the one thing that does not help.
+ *
+ * Counted in a single pass with conditional aggregates, peeling the filters off in the
+ * order the main query applies them. Consent is deduced rather than counted: it is the
+ * only predicate left, so surviving every other filter and still not appearing means the
+ * owner never granted it (or granted it under older rules).
+ */
+export type OpponentsEmptyReason =
+    | 'roster-empty'
+    | 'all-yours'
+    | 'all-on-cooldown'
+    | 'below-min-level'
+    | 'no-consent';
+
+async function diagnoseEmpty(
+    params: FindOpponentsParams,
+    nowSeconds: bigint,
+    chainId: string,
+    deploymentId: string,
+): Promise<OpponentsEmptyReason> {
+    const ready = Prisma.sql`GREATEST(r.ready_at, COALESCE(p.ready_at, 0::bigint)) <= ${nowSeconds}`;
+    const level = Prisma.sql`GREATEST(r.level, COALESCE(p.level, 0)) >= ${params.minLevel}`;
+    const notMine = Prisma.sql`r.owner <> ${params.excludeOwner}`;
+
+    const [counts] = await prisma.$queryRaw<
+        { indexed: bigint; notMine: bigint; offCooldown: bigint; inBand: bigint }[]
+    >`
+        SELECT COUNT(*) AS indexed,
+               COUNT(*) FILTER (WHERE ${notMine}) AS "notMine",
+               COUNT(*) FILTER (WHERE ${notMine} AND ${ready}) AS "offCooldown",
+               COUNT(*) FILTER (WHERE ${notMine} AND ${ready} AND ${level}) AS "inBand"
+        FROM pet_roster r
+        LEFT JOIN pet_battle_progress p
+            ON p.pet_id = r.pet_id
+           AND p.chain_id = ${chainId}
+           AND p.deployment_id = ${deploymentId}
+        WHERE r.chain = ${params.chain}
+    `;
+
+    if (Number(counts?.indexed ?? 0) === 0) return 'roster-empty';
+    if (Number(counts?.notMine ?? 0) === 0) return 'all-yours';
+    if (Number(counts?.offCooldown ?? 0) === 0) return 'all-on-cooldown';
+    if (Number(counts?.inBand ?? 0) === 0) return 'below-min-level';
+    return 'no-consent';
 }
 
 /** The same query without progression, for a chain family this deployment does not serve. */

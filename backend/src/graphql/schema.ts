@@ -110,6 +110,15 @@ export const schema = buildSchema(`
         total: Int!
         page: Int!
         pageSize: Int!
+        """
+        Why the list is empty, or null when it is not.
+
+        Four situations render as the same blank picker and only some are the player's to
+        fix: 'roster-empty' (nothing indexed yet — an operator problem), 'all-yours',
+        'all-on-cooldown', 'below-min-level', and 'no-consent' (nobody has allowed
+        challenges under the current ruleset).
+        """
+        emptyReason: String
     }
 
     "Pre-fight win odds from indexer-go's combat sim over the warm roster cache."

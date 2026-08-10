@@ -55,7 +55,12 @@ export {
     type UseBreedPetsOptions,
 } from './pets/useBreedPets';
 export { useTransferPet, type TransferPetArgs } from './pets/useTransferPet';
-export { useOpponents, type UseOpponentsOptions } from './battle/useOpponents';
+export {
+    describeNoOpponents,
+    type OpponentsEmptyReason,
+    useOpponents,
+    type UseOpponentsOptions,
+} from './battle/useOpponents';
 export { useSearchPets, type UseSearchPetsOptions, type SearchPetsResult } from './pets/useSearchPets';
 export { useAllPets, type UseAllPetsOptions } from './pets/useAllPets';
 export {

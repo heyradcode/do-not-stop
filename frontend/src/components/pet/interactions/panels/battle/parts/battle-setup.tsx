@@ -13,6 +13,8 @@ import {
     type ReadyPet,
     type WinEstimateResult,
     type EquippedItem,
+    type OpponentsEmptyReason,
+    describeNoOpponents,
     useChainCapabilities,
     usePetEquipmentForPets,
 } from '@shared/core';
@@ -38,6 +40,8 @@ export type BattleSetupProps = {
     selectedOpponentKey: string;
     onSelectOpponent: (key: string) => void;
     opponentsLoading: boolean;
+    /** Why the picker is empty, when it is. Null whenever there is anything to show. */
+    opponentsEmptyReason: OpponentsEmptyReason | null;
     onRefreshOpponents: () => void;
     onBattle: () => void;
     battleDisabled: boolean;
@@ -148,6 +152,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
     selectedOpponentKey,
     onSelectOpponent,
     opponentsLoading,
+    opponentsEmptyReason,
     onRefreshOpponents,
     onBattle,
     battleDisabled,
@@ -182,10 +187,13 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
         [sortedOpponents],
     );
 
+    // Names which of four situations produced the blank picker. They are identical to a
+    // player and only some are theirs to act on, so "none" alone sends people looking for
+    // a mistake that may not be theirs.
     const opponentEmpty = opponentsLoading
         ? 'Finding challengers…'
         : sortedOpponents.length === 0
-        ? 'No opponents available'
+        ? describeNoOpponents(opponentsEmptyReason)
         : 'Select an opponent';
 
     return (

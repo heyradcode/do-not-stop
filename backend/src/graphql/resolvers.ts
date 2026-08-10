@@ -120,7 +120,7 @@ export const rootValue = {
         const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, args.pageSize ?? DEFAULT_PAGE_SIZE));
         const minLevel = Math.max(0, args.minLevel ?? 0);
 
-        const { rows, total } = await findReadyOpponents({
+        const { rows, total, emptyReason } = await findReadyOpponents({
             chain: args.chain,
             excludeOwner: context.caller,
             minLevel,
@@ -135,6 +135,10 @@ export const rootValue = {
             total,
             page,
             pageSize,
+            // Null whenever there is anything to show. Present only to let the client say
+            // which of four very different situations produced an empty picker, since they
+            // are indistinguishable to a player and only some are theirs to fix.
+            emptyReason: emptyReason ?? null,
         };
     },
 

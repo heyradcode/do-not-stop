@@ -67,11 +67,19 @@ const rosterRow = {
     asset: '',
 };
 
-/** `$queryRaw` is called twice per lookup: the page, then its count. */
+/**
+ * `$queryRaw` is called twice per lookup — the page, then its count — and a third time
+ * only when the count is zero, to work out which filter emptied it.
+ *
+ * The third response is queued unconditionally because an unused `mockResolvedValueOnce`
+ * is harmless, while a missing one throws inside the diagnostic rather than in the case
+ * under test, which reads as an unrelated failure.
+ */
 function mockJoinQuery(rows: unknown[], total: number) {
     vi.mocked(prisma.$queryRaw)
         .mockResolvedValueOnce(rows as never)
-        .mockResolvedValueOnce([{ total: BigInt(total) }] as never);
+        .mockResolvedValueOnce([{ total: BigInt(total) }] as never)
+        .mockResolvedValueOnce([{ indexed: 0n, notMine: 0n, offCooldown: 0n, inBand: 0n }] as never);
 }
 
 /** The SQL text of the nth `$queryRaw` call, whitespace-collapsed for matching. */
@@ -117,6 +125,11 @@ function valuesOfCall(index: number): unknown[] {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    // `clearAllMocks` drops recorded calls but not queued `mockResolvedValueOnce`
+    // implementations. A case that queues three responses and consumes two leaves one
+    // behind, which the next case then consumes as its *first* answer — so a test fails
+    // reporting the previous test's data and nothing in either one looks wrong.
+    vi.mocked(prisma.$queryRaw).mockReset();
     servedChainIdForFamily.mockReturnValue('eip155:31337');
 });
 
@@ -215,6 +228,70 @@ describe('findReadyOpponents', () => {
         const values = valuesOfCall(0);
         expect(values).toContain(hashRuleset(served));
         expect(values).not.toContain(hashRuleset(SOURCE_DEFAULT_RULESET));
+    });
+
+    /**
+     * Which filter emptied the list.
+     *
+     * Four situations render as the same blank picker and only some are the player's to
+     * act on. Working out which one cost several rounds of guessing by hand, which is the
+     * argument for the server answering it.
+     */
+    describe('when the list comes back empty', () => {
+        /** page, count, then the diagnostic pass. */
+        function mockEmptyWithCounts(counts: Record<string, number>) {
+            vi.mocked(prisma.$queryRaw)
+                .mockResolvedValueOnce([] as never)
+                .mockResolvedValueOnce([{ total: 0n }] as never)
+                .mockResolvedValueOnce([
+                    {
+                        indexed: BigInt(counts.indexed ?? 0),
+                        notMine: BigInt(counts.notMine ?? 0),
+                        offCooldown: BigInt(counts.offCooldown ?? 0),
+                        inBand: BigInt(counts.inBand ?? 0),
+                    },
+                ] as never);
+        }
+
+        const call = () =>
+            findReadyOpponents({ chain: 'evm', excludeOwner: '0xme', minLevel: 0, page: 0, pageSize: 10 });
+
+        it('blames an unindexed roster, which is a server problem and not the player’s', async () => {
+            mockEmptyWithCounts({ indexed: 0 });
+            expect((await call()).emptyReason).toBe('roster-empty');
+        });
+
+        it('reports that every pet is the caller’s own', async () => {
+            mockEmptyWithCounts({ indexed: 5, notMine: 0 });
+            expect((await call()).emptyReason).toBe('all-yours');
+        });
+
+        it('reports cooldown when others exist but none are ready', async () => {
+            mockEmptyWithCounts({ indexed: 5, notMine: 3, offCooldown: 0 });
+            expect((await call()).emptyReason).toBe('all-on-cooldown');
+        });
+
+        it('reports the level band when it is what excluded everyone', async () => {
+            mockEmptyWithCounts({ indexed: 5, notMine: 3, offCooldown: 3, inBand: 0 });
+            expect((await call()).emptyReason).toBe('below-min-level');
+        });
+
+        // Deduced rather than counted: consent is the only predicate left, so surviving
+        // every other filter and still not appearing means nobody granted it.
+        it('falls through to consent once every other filter is survived', async () => {
+            mockEmptyWithCounts({ indexed: 5, notMine: 3, offCooldown: 3, inBand: 3 });
+            expect((await call()).emptyReason).toBe('no-consent');
+        });
+
+        it('costs nothing when the list is not empty', async () => {
+            mockJoinQuery([rosterRow], 1);
+
+            const result = await call();
+
+            expect(result.emptyReason).toBeUndefined();
+            // Two queries, not three: the diagnostic pass never runs on the happy path.
+            expect(vi.mocked(prisma.$queryRaw)).toHaveBeenCalledTimes(2);
+        });
     });
 
     it('uses the same ruleset hash for the count as for the page', async () => {

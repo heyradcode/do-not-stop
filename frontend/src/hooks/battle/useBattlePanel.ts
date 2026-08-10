@@ -122,6 +122,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const {
         opponents,
         isLoading: opponentsLoading,
+        emptyReason: opponentsEmptyReason,
         refetch: refetchOpponents,
     } = useOpponents({ chain: activeChainKind });
 
@@ -537,6 +538,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         selectedOpponentKey: selectedOpponent,
         onSelectOpponent: handleSelectOpponent,
         opponentsLoading,
+        opponentsEmptyReason,
         onRefreshOpponents: handleRefreshOpponents,
         onBattle: handleBattle,
         battleDisabled,
