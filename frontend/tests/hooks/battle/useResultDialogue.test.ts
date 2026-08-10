@@ -1,15 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import type React from 'react';
-import type { OpponentPet, Pet } from '@shared/core';
+import type { BattlePersonas, OpponentPet, Pet } from '@shared/core';
 
 const useBattleDialogue = vi.fn();
-vi.mock('@shared/core', () => ({
-    useBattleDialogue: (...args: unknown[]) => useBattleDialogue(...args),
-}));
+vi.mock('@shared/core', async () => {
+    // toDialoguePet stays real: several cases assert on the persona the hook builds.
+    // Imported from its own module rather than the barrel, which would pull in wagmi and
+    // the rest of what this factory exists to replace.
+    const persona = await import('../../../../shared/src/utils/battleDialoguePet');
+    return {
+        ...persona,
+        useBattleDialogue: (...args: unknown[]) => useBattleDialogue(...args),
+    };
+});
 
 import { useResultDialogue } from '@hooks/battle/useResultDialogue';
-import type { BattlePersonas } from '@components/pet/interactions/panels/battle/battle-utils';
 
 const pet = (name: string, over: Partial<Pet> = {}): Pet =>
     ({ id: name, name, level: 1, rarity: 'common', dna: 1, winCount: 0, lossCount: 0, ...over }) as Pet;

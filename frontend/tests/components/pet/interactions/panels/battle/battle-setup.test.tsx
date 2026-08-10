@@ -42,7 +42,7 @@ vi.mock('@components/pet/interactions/panels/battle/parts/open-to-challenges-tog
 import BattleSetup, {
     type BattleSetupProps,
 } from '@components/pet/interactions/panels/battle/parts/battle-setup';
-import { opponentKey } from '@components/pet/interactions/panels/battle/battle-utils';
+import { opponentKey } from '@shared/core';
 
 // Pets carry a real DNA + rarity so the shared DNA-derived helpers (stats, avatar,
 // class, rarity) render the CombatantCard without stubbing @shared/core.

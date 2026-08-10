@@ -15,16 +15,10 @@ vi.mock('react-router-dom', () => ({
 vi.mock('@constants/interactionRoutes', () => ({ DASHBOARD_HOME: '/dashboard', BATTLE_PATH: '/battle' }));
 vi.mock('@hooks/usePetError', () => ({ formatTxHashHint: vi.fn(() => null) }));
 vi.mock('@hooks/usePetErrorToast', () => ({ usePetErrorToast: vi.fn() }));
-vi.mock('@components/pet/interactions/panels/battle/battle-matchmaking', () => ({
-    pickRandomOpponent: vi.fn(() => null),
-    sortOpponentsByMatch: vi.fn((ops: unknown[]) => ops),
-}));
 vi.mock('@components/pet/interactions/panels/battle/battle-utils', () => ({
     BATTLE_FAIL_MESSAGE: 'Battle failed',
     MISMATCH_NOTICE_MESSAGE: 'Mismatch notice',
     VALIDATION_MESSAGE: 'Select a fighter and opponent',
-    opponentKey: (owner: string, id: string) => `${owner}:${id}`,
-    toDialoguePet: (p: { id: string; name: string }) => ({ petId: p.id, name: p.name }),
 }));
 
 const battleOutcome = { battleOutcome: null as null | object, applyResolvedOutcome: vi.fn(), resetOutcome: vi.fn() };
@@ -63,6 +57,12 @@ vi.mock('@shared/core', async () => {
             return code === 'no-authorization' || code === 'pet-not-covered' || code === 'revoked';
         },
         getReadyPetsUnified: (p: { id: string }[]) => p.map((x) => ({ id: x.id, pet: x })),
+        // Matchmaking is not what these cases are about: selection is driven by explicit ids,
+        // so the ordering passes through and the random pick is inert.
+        pickRandomOpponent: vi.fn(() => null),
+        sortOpponentsByMatch: vi.fn((ops: unknown[]) => ops),
+        opponentKey: (owner: string, id: string) => `${owner}:${id}`,
+        toDialoguePet: (p: { id: string; name: string }) => ({ petId: p.id, name: p.name }),
         useChainCapabilities: () => ({ activeKind: 'evm', randomness: { provider: 'vrf' } }),
         usePetList: () => ({ pets, refetch: vi.fn(), isLoading: false }),
         useBattlePets: (opts: { onSuccess?: (r: unknown) => void; roomId?: string | null; roomSocketUrl?: string }) => {
