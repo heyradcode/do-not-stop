@@ -109,6 +109,7 @@ export {
 } from './state';
 export {
     abandonBattle,
+    expireOrphanedAccepts,
     applyTransition,
     type BattleLedgerPatch,
     failBattle,
