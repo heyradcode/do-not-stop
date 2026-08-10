@@ -7,13 +7,14 @@ import {
     getRarityColor,
     getRarityName,
     type Attrs,
+    type BattleOutcome,
     type DialogueTurn,
     type OpponentPet,
     type Pet,
 } from '@shared/core';
 import BattleResultArt from '../battle-result-art';
 import BattleDialogue from '../battle-dialogue';
-import type { BattleOutcome, MechanicalLogLine } from '../types';
+import type { MechanicalLogLine } from '../types';
 import styles from '../index.module.css';
 import vsClashImage from '@assets/images/background/vs.png';
 import PetArt from '@components/pet/pet-art';

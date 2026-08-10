@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { BattleOutcome } from '@components/pet/interactions/panels/battle/types';
+import type { BattleOutcome } from '../../types/battle';
 
 export interface UseBattleOutcome {
     /** Resolved victory/defeat, or null until the receipt has verified. */

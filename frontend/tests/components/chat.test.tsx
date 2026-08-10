@@ -9,20 +9,24 @@ const useChatMessages = vi.fn();
 
 const useAuth = vi.fn();
 
-vi.mock('@shared/core', () => ({
-    useAuth: () => useAuth(),
-    // `@utils/address` normalizes through the protocol helper; the real one, since the
-    // EVM-folds/base58-doesn't rule is what several of these assertions are about.
-    normalizeAccount: (value: string) => (/^0x[0-9a-fA-F]{40}$/.test(value) ? value.toLowerCase() : value),
-    useChainCapabilities: () => useChainCapabilities(),
-    useChatThreads: () => useChatThreads(),
-    useChatMessages: (opts: unknown) => useChatMessages(opts),
-    // A short stand-in for the real list; the picker only maps over whatever it is given.
-    CHAT_REACTIONS: ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '🐾'],
-    getPetAvatar: () => '🐉',
-    // No art service in these tests: PetArt renders the emoji alone.
-    petArtUrl: () => null,
-}));
+vi.mock('@shared/core', async () => {
+    // sameAccount/shortAddress stay real: the EVM-folds/base58-doesn't rule is what several
+    // of these assertions are about. Imported from their own module rather than the barrel,
+    // which would pull in wagmi and the rest of what this factory exists to replace.
+    const address = await import('../../../shared/src/utils/common/address');
+    return {
+        ...address,
+        useAuth: () => useAuth(),
+        useChainCapabilities: () => useChainCapabilities(),
+        useChatThreads: () => useChatThreads(),
+        useChatMessages: (opts: unknown) => useChatMessages(opts),
+        // A short stand-in for the real list; the picker only maps over whatever it is given.
+        CHAT_REACTIONS: ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '🐾'],
+        getPetAvatar: () => '🐉',
+        // No art service in these tests: PetArt renders the emoji alone.
+        petArtUrl: () => null,
+    };
+});
 
 // `config.ts` registers the storage adapter with @shared/core at module scope, which the
 // mock above does not provide. Only the socket URL is needed here, so stub the module

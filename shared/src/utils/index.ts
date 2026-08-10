@@ -1,5 +1,7 @@
+export * from './battleDialoguePet';
 export * from './battleEvidence';
 export * from './battleFailureMessage';
+export * from './battleMatchmaking';
 export * from './common';
 export * from './ethereum';
 export * from './solana';

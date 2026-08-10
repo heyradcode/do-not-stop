@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { StrikeLogEntry } from '@shared/core';
+import type { StrikeLogEntry } from '@cryptopets/protocol';
 
 /** Time each strike stays on screen before the next one plays. */
 const STRIKE_INTERVAL_MS = 700;
@@ -24,8 +24,9 @@ export interface LiveBattleAnimationState {
 /**
  * Plays a combat-sim log (@cryptopets/protocol's combat engine, via the verified receipt's
  * `liveReplay`) one strike at a time, exposing HP percentages and a flavor
- * line for the fighting scene. Presentation only — see useBattlePanel.ts for
- * the gate that keeps the result card off this animation and the
+ * line for the fighting scene. Presentation only, and renderer-agnostic: it returns
+ * numbers and strings, so the web and mobile battle scenes share it. See the frontend's
+ * useBattlePanel.ts for the gate that keeps the result card off this animation and the
  * reconciliation check against the authoritative on-chain result.
  */
 export function useLiveBattleAnimation(

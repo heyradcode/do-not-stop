@@ -27,8 +27,7 @@
       "@router":        ["./src/router/index.ts"],
       "@router/*":      ["./src/router/*"],
       "@shared/core":   ["../shared/src/index.ts"],
-      "@styles/*":      ["./src/styles/*"],
-      "@utils/*":       ["./src/utils/*"]
+      "@styles/*":      ["./src/styles/*"]
     },
 
     /* Linting */

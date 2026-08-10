@@ -1,16 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
+    describeMechanicalLogEntry,
     getReadyPetsUnified,
     isBattleRejection,
     isConsentFailure,
+    opponentKey,
+    pickRandomOpponent,
+    sortOpponentsByMatch,
+    toDialoguePet,
     useChainCapabilities,
+    useBattleOutcome,
     useBattlePets,
     useBattleTaunts,
     useCreateBattleRoom,
+    useLiveBattleAnimation,
     useOpponents,
     usePetList,
     useWinEstimate,
+    type BattlePersonas,
     type TxLifecycle,
     type BattleResolvedResult,
     type SimOutcome,
@@ -19,20 +27,11 @@ import { BATTLE_ROOM_WS_URL } from '../../config';
 import { BATTLE_PATH, DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { formatTxHashHint } from '@hooks/usePetError';
 import { usePetErrorToast } from '@hooks/usePetErrorToast';
-import {
-    pickRandomOpponent,
-    sortOpponentsByMatch,
-} from '@components/pet/interactions/panels/battle/battle-matchmaking';
-import { useBattleOutcome } from './useBattleOutcome';
 import { useResultDialogue } from './useResultDialogue';
-import { useLiveBattleAnimation, describeMechanicalLogEntry } from './useLiveBattleAnimation';
 import {
     BATTLE_FAIL_MESSAGE,
     MISMATCH_NOTICE_MESSAGE,
     VALIDATION_MESSAGE,
-    opponentKey,
-    toDialoguePet,
-    type BattlePersonas,
 } from '@components/pet/interactions/panels/battle/battle-utils';
 import type { BattleOverlayProps } from '@components/pet/interactions/panels/battle/parts/battle-overlay';
 import type { BattleSetupProps } from '@components/pet/interactions/panels/battle/parts/battle-setup';

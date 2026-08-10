@@ -1,7 +1,11 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import type { StrikeLogEntry } from '@shared/core';
-import { useLiveBattleAnimation, describeMechanicalLogEntry } from '@hooks/battle/useLiveBattleAnimation';
+import type { StrikeLogEntry } from '@cryptopets/protocol';
+import {
+    useLiveBattleAnimation,
+    describeMechanicalLogEntry,
+} from '../../src/hooks/battle/useLiveBattleAnimation';
 
 function entry(overrides: Partial<StrikeLogEntry>): StrikeLogEntry {
     return {

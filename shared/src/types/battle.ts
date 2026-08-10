@@ -1,4 +1,12 @@
 /**
+ * A battle's result once it has resolved, or null before then.
+ *
+ * Deliberately not `BattleResolvedResult`: that is the whole receipt, while this is the
+ * verdict a result screen renders. Both clients show the same two things.
+ */
+export type BattleOutcome = { result: 'victory' | 'defeat'; leveledUp: boolean } | null;
+
+/**
  * A resolved battle, as the UI renders it.
  *
  * Previously the decoded `BattleResolved` event from GameLogic; battles are now resolved by

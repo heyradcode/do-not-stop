@@ -30,10 +30,6 @@ const cooldownStatus = {
     trainOnCooldown: false,
     trainLabel: '',
 };
-vi.mock('@hooks/usePetCooldowns', () => ({
-    usePetCooldowns: () => ({ statusFor: () => cooldownStatus }),
-}));
-
 const petList = {
     pets: [] as Array<Record<string, unknown>>,
     isLoading: false,
@@ -56,6 +52,7 @@ vi.mock('@shared/core', () => ({
     getRarityColor: () => 'rgb(1, 2, 3)',
     getRarityName: () => 'Rare',
     useChainCapabilities: () => capabilities,
+    usePetCooldowns: () => ({ statusFor: () => cooldownStatus }),
     usePetList: () => petList,
     // No gear in these cases: an empty map is what a bare roster looks like, and the badges
     // have their own suite.

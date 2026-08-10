@@ -1,7 +1,8 @@
+// @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { useBattleOutcome } from '@hooks/battle/useBattleOutcome';
+import { useBattleOutcome } from '../../src/hooks/battle/useBattleOutcome';
 
 /**
  * The outcome now comes entirely from the verified receipt's progression delta. The old
