@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { useAppKit } from '@reown/appkit-react-native';
 import { useAccount } from 'wagmi';
-import { useAuth } from '@shared/core';
+import { shortAddress, useAuth } from '@shared/core';
 import { neon, neonGlow } from '../theme/neon';
 
 interface ConnectButtonProps {
@@ -36,7 +36,7 @@ export default function ConnectButton({ compact = false }: ConnectButtonProps = 
         return (
             <TouchableOpacity style={styles.compactButton} onPress={() => open()}>
                 <Text style={styles.compactButtonText} numberOfLines={1} ellipsizeMode="middle">
-                    {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Connected'}
+                    {address ? shortAddress(address) : 'Connected'}
                 </Text>
             </TouchableOpacity>
         );
