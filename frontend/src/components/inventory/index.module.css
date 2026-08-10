@@ -288,6 +288,17 @@
     margin-top: 0;
 }
 
+/* Inline with the heading rather than absolutely placed like `.help`, which anchors to a
+   tile corner. The heading is uppercase and letter-spaced, so the glyph needs its own
+   line-height to sit on the text baseline instead of riding above it. */
+.headingHelp {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    line-height: 0;
+    vertical-align: middle;
+}
+
 .pendingList {
     display: flex;
     flex-direction: column;

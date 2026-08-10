@@ -21,10 +21,16 @@ import type { ItemDefinitionSeed } from './catalog';
  * id are signed. Someone reading this source can reproduce a drop; someone holding only a
  * receipt and the published bundle cannot.
  *
- * Nor is the payout pinned by the receipt. `rates` is an argument, so the same seed and
- * battle id yield different answers under different rates, and nothing records which were
- * used. The operator cannot re-roll a drop, but can change the odds it was drawn against
- * without leaving a trace.
+ * Nor is the payout pinned by the receipt: `rates` is an argument, so the same seed and
+ * battle id yield different answers under different odds, and no row records which applied.
+ *
+ * Be equally precise about that, because it is easy to overstate in turn. The only
+ * production caller (`sign.worker`) passes no rates at all, so the odds in force are
+ * `DEFAULT_DROP_RATES` below, a constant that changes only by code change and deploy. Git
+ * history and the deployment record are a real audit trail, just not one a receipt holder
+ * can check. The parameter is a test seam today; it becomes the gap this paragraph
+ * describes only if something ever starts passing per-battle rates, which is worth a second
+ * look if anyone proposes it.
  *
  * Closing that means publishing the rates and the drop pool, which puts non-equipment
  * items into the ruleset. §4 deliberately keeps them out: a `rulesetHash` that moved every

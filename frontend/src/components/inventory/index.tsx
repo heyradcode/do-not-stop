@@ -367,6 +367,25 @@ const Inventory: React.FC = () => {
                         <section className={styles.pending} aria-labelledby="pending-heading">
                             <h2 id="pending-heading" className={styles.sectionTitle}>
                                 Waiting to be claimed
+                                {/* Where a player actually meets a drop, so it is where the
+                                    honest version of how one is decided belongs. Both halves
+                                    matter: nobody can re-roll a drop, and the odds are not
+                                    checkable against a single battle. Saying only the first
+                                    would be the marketing version. */}
+                                <span className={styles.headingHelp}>
+                                    <InfoTooltip subject="Battle drops">
+                                        <p>
+                                            A battle drop is decided by the same public randomness that
+                                            decided the fight, fixed before the battle resolved. Nobody,
+                                            including us, can re-roll one.
+                                        </p>
+                                        <p>
+                                            The drop odds live in our open-source code rather than being
+                                            published with each battle, so you can read them, but you
+                                            cannot check them against one receipt on your own.
+                                        </p>
+                                    </InfoTooltip>
+                                </span>
                             </h2>
                             {/* Its own strip above the bag, because these are not items yet:
                                 claiming is what mints them, and until then there is nothing on

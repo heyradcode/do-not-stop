@@ -20,7 +20,7 @@ Every code item is done. What remains needs a decision or production access, not
 | C5 | Unconfirmed mint could pay an entitlement twice | done |
 | C6 | Spending a consumable left the pet's own numbers stale | done |
 | D1 | Consent and gear. Smaller gap than first stated | done, no schema change |
-| D2 | Drops are not verifiable | claim corrected; **the tension is undecided** |
+| D2 | Drops are not verifiable | claim corrected, v1 position taken and disclosed; **revisit at phase 04** |
 | D3 | Phase 4 ships a re-consent event | **needs a deliberate rollout** |
 | Q1-Q4 | Cache reset, stranded comment, worker cast, untypechecked scripts | done |
 | O1-O3 | Migration, seeder, end-to-end | **operator calls** |
@@ -361,10 +361,19 @@ so neither is covered by `rulesetHash` or by anything else the receipt names. **
 holding a receipt and the published bundle cannot recompute the drop at all.** Someone
 reading this source can; that is not the same property.
 
-The payout is not pinned either. `rates` is a parameter, so the same seed and battle id
-produce different answers under different odds, and nothing records which were used. The
-anti-grinding property survives all of this and is worth keeping: the operator cannot
-re-roll a committed seed. But it can change the odds that seed was drawn against.
+The payout is not pinned by the receipt either. `rates` is a parameter, so the same seed and
+battle id produce different answers under different odds, and no row records which applied.
+
+That is worth stating precisely, because the first version of this paragraph overstated it.
+The only production caller passes no rates, so the odds in force are `DEFAULT_DROP_RATES`, a
+constant that moves by code change and deploy. Git history is a real audit trail, just not
+one a receipt holder can check. The anti-grinding property survives everything here and is
+worth keeping: the operator cannot re-roll a committed seed.
+
+**That materially changes which option below is right.** "Operator-attested" is a much
+stronger position when the attestation is a versioned constant in a public repository than
+when it is a runtime value nobody records, and it is the former. The case for spending a
+protocol schema version on this is correspondingly weaker than it looked.
 
 What makes this a decision rather than a fix: closing it means publishing the rates and the
 drop pool, which puts non-equipment items into the ruleset. §4 rules that out on purpose, and
@@ -377,12 +386,43 @@ product call.
       `plan-inventory-items.md` §5, all three of which asserted recomputability. A false
       verifiability claim is worse than a documented gap: it is the kind of thing a later
       decision gets built on, and it nearly was here.
-- [ ] **D2.2 Decide the tension, or decide to keep it.** Options, none of them free:
-      publish rates and pool in a *separate* digest the receipt names, so drop rules version
-      independently of consent; or accept that drops are operator-attested in v1 and say so
-      in the player-facing docs; or fold drops into the receipt and pay the consent cost.
-      Not scheduled. Nothing is broken today, and the honest comment is the prerequisite for
-      choosing well.
+- [ ] **D2.2 Decide the tension, or decide to keep it.** Three options, with what each
+      actually costs now that the inputs are pinned down:
+
+      1. **Keep it, and say so.** Drops are operator-attested in v1: derived from a committed
+         seed the operator cannot re-roll, under odds that live in a versioned constant in a
+         public repository. Cost: a line in the player-facing docs. Buys no cryptographic
+         property, and forecloses nothing.
+      2. **A separate drop-rules digest the receipt names.** Resolves the tension properly:
+         drop rules get their own hash and version independently of consent, so publishing
+         them never touches `rulesetHash`. Cost: a receipt schema version, permanently, plus
+         a second published artifact to serve forever (§H).
+      3. **Fold drops into the receipt.** Strongest property, highest price: a receipt schema
+         version *and* the non-equipment catalog inside `rulesetHash`, which is the
+         re-consent-on-every-collectible outcome §4 explicitly rejected.
+
+      **Taken: (1).** The gap is real but narrow, and what makes it narrow is that nobody can
+      grind a drop, which already holds. A permanent schema version is a poor trade for
+      making a constant checkable when the constant is already public.
+
+      Chosen rather than recommended because the decision was repeatedly deferred back, and
+      (1) is the option that forecloses nothing: it adds disclosure and no protocol surface,
+      so (2) or (3) remain open at their original cost. Reverse it by deleting one tooltip.
+
+- [x] **D2.2a Disclose it where a player meets a drop.** A tooltip on the inventory's
+      "Waiting to be claimed" heading, saying both halves: the drop was fixed by public
+      randomness before the battle resolved and nobody can re-roll it, *and* the odds are
+      not checkable against a single receipt. Saying only the first would be the marketing
+      version of the same fact.
+      Verify: `pnpm --filter frontend lint:check && pnpm --filter frontend test`.
+- [ ] **D2.2b Revisit at roadmap phase 04, not "eventually".** The condition that changes
+      this answer is a drop being worth money to someone other than the player who earned
+      it, and that is already scheduled: `landing.ts` lists a "Pet and item marketplace" in
+      phase 04, and the FAQ already tells players their items are tradable assets. Once an
+      item has a market price, "trust the constant in our repo" stops being proportionate
+      and option (2) is worth its schema version. Worth deciding *before* the marketplace
+      ships rather than after, since receipts signed in between are the ones that cannot be
+      upgraded.
 
 ## D3: shipping Phase 4 is a re-consent event
 
