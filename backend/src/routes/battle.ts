@@ -2,6 +2,7 @@ import express, { Router } from 'express';
 
 import {
     deleteDefenseAuthorizations,
+    getDefenseAuthorizations,
     getBattleCombatLog,
     getBattleCommitment,
     getBattleConfigHandler,
@@ -42,6 +43,10 @@ router.post('/authorizations', requireBackendBattleMode, verifyToken, battleRoom
 // Revocation is not gated: withdrawing consent must keep working even after the mode is
 // switched off, since refusing battles is never the dangerous direction.
 router.delete('/authorizations', verifyToken, deleteDefenseAuthorizations);
+// Reading is ungated for the same reason. A defender needs to see that their consent went
+// stale precisely when something is off, and a mode flag should not be what hides it.
+// Scoped to the authenticated wallet in the controller, never to a queried address.
+router.get('/authorizations', verifyToken, getDefenseAuthorizations);
 
 // Authoritative, re-fetchable reads (§J). No auth: every value here is either already
 // public on chain or is itself a signed artifact anyone is meant to check, so gating

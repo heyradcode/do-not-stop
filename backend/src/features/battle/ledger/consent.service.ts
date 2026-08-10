@@ -187,6 +187,73 @@ export async function revokeDefenseAuthorizations(
     return { revoked: count };
 }
 
+/** One of the caller's own authorizations, as the read surface presents it. */
+export interface DefenseAuthorizationSummary {
+    authorizationHash: string;
+    allPets: boolean;
+    petIds: string[];
+    minLevel: number;
+    maxLevel: number;
+    maxBattlesPerDay: number;
+    /** Unix seconds. */
+    notBefore: number;
+    expiresAt: number;
+    rulesetHash: string;
+    /**
+     * Whether this authorization still covers battles under the rules now being served.
+     *
+     * Computed rather than stored, because it is a comparison against a value that moves:
+     * a grant is signed over one `rulesetHash`, and a rules change makes it cover nothing
+     * without touching the row.
+     */
+    isStale: boolean;
+    createdAt: string;
+}
+
+/**
+ * Every live authorization the caller has granted, and whether each still applies.
+ *
+ * The missing third of the consent API. Granting and revoking both existed; reading did
+ * not, so a defender had no way to learn they had consented, let alone that their consent
+ * had gone stale. That matters because a rules change invalidates every outstanding grant
+ * by design, and being challenged is *passive*: the defender never finds out by trying
+ * something and failing. Their pets simply stop being challengeable, silently, and the
+ * only person who sees an error is the attacker, who cannot fix it.
+ *
+ * Revoked rows are excluded rather than returned with a flag. A revocation is the owner
+ * deciding this grant no longer exists, and the row survives only so a verifier can still
+ * read what a historical receipt was authorized under, which is not this caller's question.
+ */
+export async function listDefenseAuthorizations(
+    chainId: string,
+    defenderOwner: string,
+    servedRulesetHash: string,
+): Promise<DefenseAuthorizationSummary[]> {
+    const rows = await prisma.defenseAuthorization.findMany({
+        where: {
+            chainId,
+            deploymentId: servedDeploymentId(),
+            defenderOwner: normalizeAccount(defenderOwner),
+            revokedAt: null,
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    return rows.map((row) => ({
+        authorizationHash: row.authorizationHash,
+        allPets: row.allPets,
+        petIds: Array.isArray(row.petIds) ? (row.petIds as string[]) : [],
+        minLevel: row.minLevel,
+        maxLevel: row.maxLevel,
+        maxBattlesPerDay: row.maxBattlesPerDay,
+        notBefore: Number(row.notBefore),
+        expiresAt: Number(row.expiresAt),
+        rulesetHash: row.rulesetHash,
+        isStale: row.rulesetHash.toLowerCase() !== servedRulesetHash.toLowerCase(),
+        createdAt: row.createdAt.toISOString(),
+    }));
+}
+
 /** What a battle needs an authorization to permit. */
 export interface CoverageRequest {
     chainId: string;

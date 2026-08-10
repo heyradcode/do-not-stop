@@ -21,7 +21,8 @@ Every code item is done. What remains needs a decision or production access, not
 | C6 | Spending a consumable left the pet's own numbers stale | done |
 | D1 | Consent and gear. Smaller gap than first stated | done, no schema change |
 | D2 | Drops are not verifiable | claim corrected, v1 position taken and disclosed; **revisit at phase 04** |
-| D3 | Phase 4 ships a re-consent event | **needs a deliberate rollout** |
+| C7 | No way to tell a defender their consent had gone stale | read surface done; **UI outstanding** |
+| D3 | Phase 4 ships a re-consent event | **needs a deliberate rollout**, and C7.2 first |
 | Q1-Q4 | Cache reset, stranded comment, worker cast, untypechecked scripts | done |
 | O1-O3 | Migration, seeder, end-to-end | **operator calls** |
 
@@ -423,6 +424,35 @@ product call.
       and option (2) is worth its schema version. Worth deciding *before* the marketplace
       ships rather than after, since receipts signed in between are the ones that cannot be
       upgraded.
+
+## C7: nobody could tell a defender their consent had gone stale
+
+Found while working out what D3 needs to ship well, which is the point of doing that before
+the rollout rather than during it.
+
+The consent API had `POST /authorizations` and `DELETE /authorizations` and no `GET`. A
+defender could grant consent and revoke it, and could not read it. So there was no way to
+answer "have I consented?", and more importantly no way to answer "does my consent still
+apply?"
+
+D3 invalidates every outstanding authorization at once. Without a read, here is what a
+defender experiences: nothing. Being challenged is *passive*, so their pets simply stop
+being challengeable and no screen they visit says otherwise. The only person who sees an
+error is the attacker, who gets a clear message (`battleFailureMessage.ts` renders
+`ruleset-mismatch` as "This opponent's consent was signed under older rules") and can do
+nothing about it. The one person who can fix it is the one person not told.
+
+- [x] **C7.1** Add `GET /api/battle/authorizations?chainId=`, returning the caller's live
+      grants plus the `rulesetHash` now being served, each flagged `isStale` when it was
+      signed under a different one. Ungated like `DELETE`, and for the same reason: a
+      defender needs to see this precisely when something is off, so a mode flag should not
+      be what hides it. Always scoped to the authenticated wallet, never a queried address.
+      Verify: `pnpm --filter backend exec vitest run tests/features/battle/ledger/consent.service.test.ts`.
+- [ ] **C7.2 Surface it.** The endpoint makes the state knowable; a screen has to make it
+      visible. The natural home is wherever `useDefenseAuthorization` is already offered,
+      showing a stale grant with a re-sign prompt rather than a silent absence. Not built
+      here, because where it belongs is a UI decision and this had already reached the edge
+      of what the review could settle on its own.
 
 ## D3: shipping Phase 4 is a re-consent event
 

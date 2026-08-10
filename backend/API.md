@@ -419,12 +419,15 @@ to check independently.
 The four write routes are gated on `BATTLE_BACKEND_MODE_ENABLED` and return **503
 `backend-battle-mode-disabled`** when it is off. Every read below stays served regardless:
 switching the mode off stops new battles, it does not retract receipts already issued.
-`DELETE /authorizations` is ungated too, since withdrawing consent must keep working.
+`DELETE /authorizations` is ungated too, since withdrawing consent must keep working, and
+`GET /authorizations` for the same reason: a defender needs to see that their consent went
+stale precisely when something is off, and a mode flag should not be what hides it.
 
 | POST | `/api/battle/intents` | JWT | Submit a signed battle intent (§D). |
 | POST | `/api/battle/intents/:intentHash/accept` | JWT | Freeze the snapshot, commit to a future drand round, sign the commitment, and return it synchronously (§E). |
 | POST | `/api/battle/authorizations` | JWT | Submit a signed standing defence authorization (§D). |
 | DELETE | `/api/battle/authorizations?chainId=` | JWT | Revoke every live authorization for the caller on one chain. No wallet signature required — refusing battles is never the dangerous direction. |
+| GET | `/api/battle/authorizations?chainId=` | JWT | The caller's own live authorizations, plus the `rulesetHash` now being served. Each carries `isStale`, true when it was signed under a different ruleset and therefore covers no battle. Always scoped to the authenticated wallet, never to a queried address: one wallet's consent state says which of their pets can be challenged and until when. |
 | GET | `/api/battle/config` | none | The `deploymentId`, served `chainIds`, and active ruleset a client needs *before* it can build a signable intent. None of it is derivable client-side, and guessing it fails only after the wallet prompt: a wrong deployment is refused as `wrong-deployment`, a wrong ruleset produces an authorization no battle matches. |
 | GET | `/api/battle/:battleId` | none | Battle state summary: state, failure reason, both pets, ruleset hash. |
 | GET | `/api/battle/:battleId/commitment` | none | The signed commitment, exactly as delivered at accept time — the re-fetch path if a client's local copy was lost. |

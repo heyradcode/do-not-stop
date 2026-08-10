@@ -15,7 +15,11 @@ export {
     type SequencePage,
 } from './corpus.service';
 export { getReceiptsByPet, getReceiptsBySequence, getReceiptsByWallet } from './corpus.controller';
-export { deleteDefenseAuthorizations, postDefenseAuthorization } from './consent.controller';
+export {
+    deleteDefenseAuthorizations,
+    getDefenseAuthorizations,
+    postDefenseAuthorization,
+} from './consent.controller';
 export {
     getBattleCombatLog,
     getBattleCommitment,
@@ -51,9 +55,11 @@ export {
     type ConsentResult,
     consumeDailyBudget,
     type CoverageRequest,
+    type DefenseAuthorizationSummary,
     type DefenseAuthorizationWire,
     epochDay,
     findCoveringAuthorization,
+    listDefenseAuthorizations,
     revokeDefenseAuthorizations,
     type SubmitAuthorizationRequest,
     type SubmitAuthorizationResult,
