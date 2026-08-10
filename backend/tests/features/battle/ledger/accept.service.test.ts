@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { QUICKNET, roundTime } from '@cryptopets/protocol';
+import { hashBattleSnapshot, QUICKNET, roundTime } from '@cryptopets/protocol';
 
 vi.mock('@config/env', () => ({
     env: { battle: { deploymentId: 'base-sepolia-live', chainIds: ['eip155:84532'] } },
@@ -56,7 +56,7 @@ vi.mock('../../../../src/features/battle/ledger/transitions', () => ({
 }));
 
 import { prisma } from '@config/prisma';
-import { acceptBattle } from '@features/battle/ledger';
+import { acceptBattle, decodeStoredSnapshot } from '@features/battle/ledger';
 import { chooseCommitmentRound, roundPublishTime } from '@features/battle/randomness';
 import { activeSigningKey, sign, SignerRefusedError } from '@features/battle/signer';
 import { consumeDailyBudget, findCoveringAuthorization } from '../../../../src/features/battle/ledger/consent.service';
@@ -309,6 +309,42 @@ describe('opening the ledger', () => {
         const ledger = vi.mocked(openBattle).mock.calls[0]![0].ledger as { snapshotHash: string; drandRound: bigint };
         expect(typeof ledger.snapshotHash).toBe('string');
         expect(ledger.drandRound).toBe(0n);
+    });
+});
+
+describe('the stored snapshot survives a storage round trip', () => {
+    /**
+     * The property every worker downstream depends on: what acceptance persisted, read back
+     * through `decodeStoredSnapshot`, still hashes to the `snapshotHash` acceptance
+     * committed. The seed is derived from that hash and `assertBattleReceipt` re-derives it
+     * from the receipt's own snapshot, so a decoder that loses any field stops every battle
+     * at signing.
+     *
+     * Written as a property rather than as an assertion about `schemaVersion` and
+     * `equipment` specifically, because those are only the two fields that have been lost
+     * so far. Any field added to `PetSnapshot` is covered here on the day it is added.
+     */
+    async function storedLedger() {
+        await acceptBattle({ intentHash: INTENT.intentHash, nowSeconds: NOW });
+        return vi.mocked(openBattle).mock.calls[0]![0].ledger as unknown as {
+            snapshot: unknown;
+            snapshotHash: string;
+        };
+    }
+
+    it('rehashes to the committed snapshotHash', async () => {
+        const ledger = await storedLedger();
+        expect(hashBattleSnapshot(decodeStoredSnapshot(ledger.snapshot))).toBe(ledger.snapshotHash);
+    });
+
+    it('rehashes to the committed snapshotHash with equipment', async () => {
+        vi.mocked(buildPetSnapshot).mockImplementation((async (_chainId: string, petId: string) =>
+            petId === '1'
+                ? { ...ATTACKER, equipment: [{ slot: 0, itemType: 3n, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 }] }
+                : DEFENDER) as never);
+
+        const ledger = await storedLedger();
+        expect(hashBattleSnapshot(decodeStoredSnapshot(ledger.snapshot))).toBe(ledger.snapshotHash);
     });
 });
 

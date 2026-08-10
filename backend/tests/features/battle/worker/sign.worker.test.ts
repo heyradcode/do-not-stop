@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+    bonusFromEquipment,
     computeProgression,
     deriveBattleSeed,
     hashBattleReceipt,
@@ -10,6 +11,7 @@ import {
     QUICKNET,
     roundTime,
     simulate,
+    SNAPSHOT_SCHEMA_VERSION,
     SOURCE_DEFAULT_RULESET,
 } from '@cryptopets/protocol';
 
@@ -31,10 +33,16 @@ vi.mock('@config/prisma', () => ({
     },
 }));
 
-vi.mock('@features/battle/ledger', () => ({
+// The snapshot codec is pure and stays real. Stubbing it would let these tests pass
+// against a decoder production does not use, which is exactly how the schemaVersion bug
+// this file now covers survived a green suite.
+vi.mock('@features/battle/ledger', async () => ({
     applyTransition: vi.fn(),
     completeOutbox: vi.fn(),
     OUTBOX_TOPICS: { publish: 'publish' },
+    ...(await vi.importActual<typeof import('@features/battle/ledger/snapshot.codec')>(
+        '@features/battle/ledger/snapshot.codec',
+    )),
 }));
 
 vi.mock('@features/battle/signer', async () => {
@@ -92,79 +100,117 @@ const DEFENDER = {
     lastOpponentId: '1',
     streak: 2,
 };
-const SNAPSHOT = { domain: DOMAIN, attacker: ATTACKER, defender: DEFENDER, takenAt: NOW - 10 };
-
-// The real hash of the snapshot as production code will deserialize and hash it
-// (real bigints, not the decimal strings JSON storage carries) — the seed check
-// inside assertBattleReceipt recomputes this independently, so the fixture has to
-// agree with it or every "happy path" case fails on the seed check alone.
-const snapshotHash = hashBattleSnapshot({
-    domain: DOMAIN as never,
-    attacker: { ...ATTACKER, petId: 1n, dna: BigInt(ATTACKER.dna), lastOpponentId: 0n, sourceVersion: 1000n } as never,
-    defender: { ...DEFENDER, petId: 2n, dna: BigInt(DEFENDER.dna), lastOpponentId: 1n, sourceVersion: 1000n } as never,
-    takenAt: SNAPSHOT.takenAt,
-});
+/** One equipped item, in the decimal-string form JSON storage carries. */
+type StoredGear = { slot: number; itemType: string; hp: number; atk: number; def: number; int: number; mdef: number };
 
 const beaconRandomness = '0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd';
-const seed = deriveBattleSeed({
-    domain: DOMAIN as never,
-    drandRandomness: beaconRandomness,
-    battleId: 'btl_1',
-    snapshotHash,
-    rulesetHash: RULESET_HASH,
-});
-const outcome = simulate(
-    BigInt(ATTACKER.dna),
-    ATTACKER.rarity,
-    ATTACKER.level,
-    ATTACKER.skill,
-    BigInt(DEFENDER.dna),
-    DEFENDER.rarity,
-    DEFENDER.level,
-    DEFENDER.skill,
-    seed.value,
-    SOURCE_DEFAULT_RULESET.skillConfig,
-);
-const combatLogHash = hashCombatLog(outcome);
-const progression = computeProgression(
-    {
-        domain: DOMAIN as never,
-        attacker: { ...ATTACKER, petId: 1n, dna: BigInt(ATTACKER.dna), lastOpponentId: 0n, sourceVersion: 1000n } as never,
-        defender: { ...DEFENDER, petId: 2n, dna: BigInt(DEFENDER.dna), lastOpponentId: 1n, sourceVersion: 1000n } as never,
-        takenAt: SNAPSHOT.takenAt,
-    },
-    outcome.result.firstWins,
-);
-const serializedProgression = JSON.parse(
-    JSON.stringify(progression, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)),
-);
 
-const BATTLE = {
-    battleId: 'btl_1',
-    chainId: 'eip155:84532',
-    deploymentId: 'base-sepolia-live',
-    state: 'verified',
-    intentHash: `0x${'aa'.repeat(32)}`,
-    authorizationHash: `0x${'bb'.repeat(32)}`,
-    attackerPetId: '1',
-    defenderPetId: '2',
-    snapshot: SNAPSHOT,
-    seed: seed.hex,
-    rulesetHash: RULESET_HASH,
-    rulesetVersion: SOURCE_DEFAULT_RULESET.version,
-    drandChainHash: QUICKNET.chainHash,
-    drandRound: BigInt(1000),
-    beaconSignature:
-        '0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39',
-    beaconRandomness,
-    attackerWon: outcome.result.firstWins,
-    rounds: outcome.result.rounds,
-    winnerHpRemaining: outcome.result.winnerHpRemaining,
-    combatLogHash,
-    progression: serializedProgression,
-    verificationDetail: { mismatches: [] },
-    roomId: 'room_1',
-};
+/**
+ * A verified battle row, exactly as acceptance and the compute worker would have left it.
+ *
+ * Everything downstream is derived rather than pinned: the snapshot hash feeds the seed,
+ * the seed feeds the fight, and the fight feeds the progression, so a fixture that
+ * disagrees with production anywhere in that chain fails the seed check inside
+ * `assertBattleReceipt` rather than passing quietly.
+ *
+ * `schemaVersion` is declared, because acceptance declares it. Leaving it off made every
+ * fixture here a version 1 snapshot on both sides of the comparison, which is what let the
+ * signing worker hash real battles at a layout acceptance never used and still pass.
+ *
+ * The decoded form is spelled out rather than obtained from `decodeStoredSnapshot`, also
+ * deliberately: this is the value the codec is checked against, so deriving it from the
+ * codec would let a decoder that drops a field agree with itself.
+ */
+function buildFixture(gear?: { attacker?: StoredGear[]; defender?: StoredGear[] }) {
+    const attackerStored = { ...ATTACKER, ...(gear?.attacker && { equipment: gear.attacker }) };
+    const defenderStored = { ...DEFENDER, ...(gear?.defender && { equipment: gear.defender }) };
+    const stored = {
+        domain: DOMAIN,
+        attacker: attackerStored,
+        defender: defenderStored,
+        takenAt: NOW - 10,
+        schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+    };
+
+    const decodeGear = (equipment?: StoredGear[]) =>
+        equipment?.map((entry) => ({ ...entry, itemType: BigInt(entry.itemType) }));
+    const decoded = {
+        domain: DOMAIN as never,
+        attacker: {
+            ...attackerStored,
+            petId: BigInt(ATTACKER.petId),
+            dna: BigInt(ATTACKER.dna),
+            lastOpponentId: BigInt(ATTACKER.lastOpponentId),
+            sourceVersion: BigInt(ATTACKER.sourceVersion),
+            ...(gear?.attacker && { equipment: decodeGear(gear.attacker) }),
+        } as never,
+        defender: {
+            ...defenderStored,
+            petId: BigInt(DEFENDER.petId),
+            dna: BigInt(DEFENDER.dna),
+            lastOpponentId: BigInt(DEFENDER.lastOpponentId),
+            sourceVersion: BigInt(DEFENDER.sourceVersion),
+            ...(gear?.defender && { equipment: decodeGear(gear.defender) }),
+        } as never,
+        takenAt: stored.takenAt,
+        schemaVersion: SNAPSHOT_SCHEMA_VERSION,
+    };
+
+    const snapshotHash = hashBattleSnapshot(decoded);
+    const seed = deriveBattleSeed({
+        domain: DOMAIN as never,
+        drandRandomness: beaconRandomness,
+        battleId: 'btl_1',
+        snapshotHash,
+        rulesetHash: RULESET_HASH,
+    });
+    const outcome = simulate(
+        BigInt(ATTACKER.dna),
+        ATTACKER.rarity,
+        ATTACKER.level,
+        ATTACKER.skill,
+        BigInt(DEFENDER.dna),
+        DEFENDER.rarity,
+        DEFENDER.level,
+        DEFENDER.skill,
+        seed.value,
+        SOURCE_DEFAULT_RULESET.skillConfig,
+        bonusFromEquipment(decodeGear(gear?.attacker)),
+        bonusFromEquipment(decodeGear(gear?.defender)),
+    );
+    const progression = computeProgression(decoded, outcome.result.firstWins);
+
+    return {
+        battleId: 'btl_1',
+        chainId: 'eip155:84532',
+        deploymentId: 'base-sepolia-live',
+        state: 'verified',
+        intentHash: `0x${'aa'.repeat(32)}`,
+        authorizationHash: `0x${'bb'.repeat(32)}`,
+        attackerPetId: '1',
+        defenderPetId: '2',
+        snapshot: stored,
+        seed: seed.hex,
+        rulesetHash: RULESET_HASH,
+        rulesetVersion: SOURCE_DEFAULT_RULESET.version,
+        drandChainHash: QUICKNET.chainHash,
+        drandRound: BigInt(1000),
+        beaconSignature:
+            '0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39',
+        beaconRandomness,
+        attackerWon: outcome.result.firstWins,
+        rounds: outcome.result.rounds,
+        winnerHpRemaining: outcome.result.winnerHpRemaining,
+        combatLogHash: hashCombatLog(outcome),
+        progression: JSON.parse(JSON.stringify(progression, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))),
+        verificationDetail: { mismatches: [] },
+        roomId: 'room_1',
+    };
+}
+
+const BATTLE = buildFixture();
+/** Who won, which several assertions branch on. Read off the fixture rather than recomputed. */
+const outcome = { result: { firstWins: BATTLE.attackerWon } };
 
 const MESSAGE = { id: 'msg_1', battleId: 'btl_1', topic: 'sign', payload: {}, attempts: 1 };
 
@@ -332,6 +378,57 @@ describe('the happy path', () => {
             expect(attackerUpdate.data.lossCount).toEqual({ increment: 1 });
             expect(defenderUpdate.data.winCount).toEqual({ increment: 1 });
         }
+    });
+});
+
+describe('equipment survives into the receipt (roadmap §4)', () => {
+    // A steel sword and reinforced plate from the shipped catalog, on the attacker only, so
+    // an assertion about the defender's absent list is meaningful rather than symmetric.
+    const GEAR = [
+        { slot: 0, itemType: '3', hp: 0, atk: 22, def: 0, int: 0, mdef: 0 },
+        { slot: 1, itemType: '12', hp: 45, atk: 0, def: 16, int: 0, mdef: 6 },
+    ];
+    const GEARED = buildFixture({ attacker: GEAR });
+
+    beforeEach(() => {
+        vi.mocked(prisma.battleLedger.findUnique).mockResolvedValue(GEARED as never);
+    });
+
+    it('signs a geared battle, whose seed only derives from a version 2 snapshot', async () => {
+        // The whole failure mode in one assertion: `hashBattleReceipt` re-derives the seed
+        // from the snapshot the receipt carries, so a worker that dropped the gear or the
+        // layout version would throw here rather than sign.
+        await processSignMessage(MESSAGE, NOW);
+        expect(sign).toHaveBeenCalledTimes(1);
+    });
+
+    it('carries the resolved modifiers and the item type into the persisted receipt', async () => {
+        const tx = fakeTx();
+        vi.mocked(applyTransition).mockImplementationOnce((async (req: { onApplied?: (tx: unknown) => Promise<void> }) => {
+            if (req.onApplied) await req.onApplied(tx);
+            return { applied: true, state: 'signed' };
+        }) as never);
+
+        await processSignMessage(MESSAGE, NOW);
+
+        const { payload } = tx.battleReceipt.create.mock.calls[0]![0].data;
+        // Item type as a decimal string, since the payload is stored as JSON. The modifiers
+        // ride along with it: they are what a replay uses, and the type is what lets a
+        // third party check them against the published catalog.
+        expect(payload.snapshot.attacker.equipment).toEqual([
+            { slot: 0, itemType: '3', hp: 0, atk: 22, def: 0, int: 0, mdef: 0 },
+            { slot: 1, itemType: '12', hp: 45, atk: 0, def: 16, int: 0, mdef: 6 },
+        ]);
+        // Absent, not empty: an ungeared pet encodes a zero-length list either way, and
+        // omitting it keeps the stored row identical to what it was before gear existed.
+        expect(payload.snapshot.defender.equipment).toBeUndefined();
+        expect(payload.snapshot.schemaVersion).toBe(SNAPSHOT_SCHEMA_VERSION);
+    });
+
+    it('fights the geared battle differently from the ungeared one', async () => {
+        // Guards the fixture itself. If this gear made no difference to the outcome, the
+        // two tests above would pass against an engine that ignored equipment entirely.
+        expect(GEARED.seed).not.toBe(BATTLE.seed);
     });
 });
 

@@ -115,3 +115,10 @@ export {
     type TransitionResult,
 } from './transitions';
 export { buildPetSnapshot } from './snapshot.builder';
+export {
+    decodeStoredPet,
+    decodeStoredSnapshot,
+    type StoredBattleSnapshot,
+    type StoredEquipEntry,
+    type StoredPetSnapshot,
+} from './snapshot.codec';

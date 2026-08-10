@@ -11,7 +11,13 @@ import type { Prisma } from '@generated/prisma/client';
 
 import { env } from '@config/env';
 import { prisma } from '@config/prisma';
-import { applyTransition, type ClaimedMessage, completeOutbox, OUTBOX_TOPICS } from '@features/battle/ledger';
+import {
+    applyTransition,
+    type ClaimedMessage,
+    completeOutbox,
+    decodeStoredSnapshot,
+    OUTBOX_TOPICS,
+} from '@features/battle/ledger';
 import { activeSigningKey, type EngineAttestation, sign, SignerRefusedError } from '@features/battle/signer';
 import { recordBattleDrops } from '@features/inventory';
 import { recordBattleFromReceipt } from '@repositories/history.repository';
@@ -57,21 +63,12 @@ export async function processSignMessage(message: ClaimedMessage, nowSeconds: nu
         throw new Error(`battle ${battle.battleId} is verified but is missing a field sign needs`);
     }
 
-    // Stored as JSON, where bigint fields (petId, dna, lastOpponentId, sourceVersion)
-    // round-trip as decimal strings — the protocol types require real bigints, so
-    // this must be deserialized before anything here hashes or validates it.
-    const storedSnapshot = battle.snapshot as unknown as {
-        domain: BattleSnapshot['domain'];
-        attacker: StoredPet;
-        defender: StoredPet;
-        takenAt: number;
-    };
-    const snapshot: BattleSnapshot = {
-        domain: storedSnapshot.domain,
-        attacker: deserializePet(storedSnapshot.attacker),
-        defender: deserializePet(storedSnapshot.defender),
-        takenAt: storedSnapshot.takenAt,
-    };
+    // Decoded through the shared codec, which is what carries `schemaVersion` and the
+    // equipment list back out of storage. Rebuilding the snapshot field by field here is
+    // what previously dropped both: the receipt then encoded at layout version 1, its
+    // snapshot hash stopped matching the one acceptance committed, and the seed check
+    // inside `assertBattleReceipt` refused the receipt for every battle, geared or not.
+    const snapshot: BattleSnapshot = decodeStoredSnapshot(battle.snapshot);
     // Same deserialization need: PetProgression.petId/lastOpponentId are bigint in
     // the protocol type but decimal strings in storage.
     const storedProgression = battle.progression as unknown as {
@@ -356,37 +353,6 @@ async function failSigning(battleId: string, roomId: string | null, reason: stri
 
 function serializeBigints<T>(value: T): Prisma.InputJsonValue {
     return JSON.parse(JSON.stringify(value, (_key, v) => (typeof v === 'bigint' ? v.toString() : v)));
-}
-
-interface StoredPet {
-    petId: string | bigint;
-    owner: string;
-    dna: string | bigint;
-    rarity: number;
-    level: number;
-    skill: number;
-    xp: number;
-    lastOpponentId: string | bigint;
-    streak: number;
-    readyAt: number;
-    sourceVersion: string | bigint;
-}
-
-/** Reverses `serializeBigints` for one pet's snapshot fields. */
-function deserializePet(pet: StoredPet): BattleSnapshot['attacker'] {
-    return {
-        petId: BigInt(pet.petId),
-        owner: pet.owner,
-        dna: BigInt(pet.dna),
-        rarity: pet.rarity,
-        level: pet.level,
-        skill: pet.skill,
-        xp: pet.xp,
-        lastOpponentId: BigInt(pet.lastOpponentId),
-        streak: pet.streak,
-        readyAt: pet.readyAt,
-        sourceVersion: BigInt(pet.sourceVersion),
-    };
 }
 
 interface StoredProgression {

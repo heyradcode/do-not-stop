@@ -19,10 +19,16 @@ vi.mock('@config/prisma', () => ({
     },
 }));
 
-vi.mock('@features/battle/ledger', () => ({
+// The snapshot codec is pure and stays real. Stubbing it would let these tests pass
+// against a decoder production does not use, which is exactly how the signing worker's
+// schemaVersion bug survived a green suite.
+vi.mock('@features/battle/ledger', async () => ({
     applyTransition: vi.fn(),
     completeOutbox: vi.fn(),
     OUTBOX_TOPICS: { sign: 'sign' },
+    ...(await vi.importActual<typeof import('@features/battle/ledger/snapshot.codec')>(
+        '@features/battle/ledger/snapshot.codec',
+    )),
 }));
 
 vi.mock('@grpc-client/verifyBattle', () => ({
