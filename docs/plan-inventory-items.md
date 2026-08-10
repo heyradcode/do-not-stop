@@ -39,7 +39,10 @@ protocol objects, and it is sequenced last for that reason.
    skill modifiers, with the sum clamped to 65535 rather than wrapped. Excluding negative
    modifiers removes any underflow question against `toUint16`'s wrap semantics.
 5. **Drops derive from the battle's existing drand seed** (`keccak(seed, battleId, "DROP")`),
-   so a drop replays from the receipt like every other outcome. No second randomness system.
+   so no second randomness system and no drop the operator can grind. Note the second half
+   of this as written was wrong: a drop does **not** replay from the receipt like other
+   outcomes, because the rates and the drop pool are unpublished backend constants. See
+   D2 in [`plan-battle-inventory-hardening.md`](./plan-battle-inventory-hardening.md).
 
 ## Environment notes
 

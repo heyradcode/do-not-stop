@@ -8,15 +8,30 @@ import type { ItemDefinitionSeed } from './catalog';
  * Battle-reward drops (roadmap §4).
  *
  * Seeded from the battle's own drand seed rather than from a new randomness source. That
- * seed is committed to a future drand round before the fight resolves, so nobody —
- * including this server — can grind a drop by re-rolling: changing the outcome would mean
- * changing a value that was published in advance. It also means a third party holding the
- * receipt can recompute exactly what should have dropped.
+ * seed is committed to a future drand round before the fight resolves, so nobody including
+ * this server can grind a drop by re-rolling: changing the outcome would mean changing a
+ * value that was published in advance. That property is real and it is the reason this
+ * derives from the seed at all.
  *
- * Be precise about how far that goes. The drop is **not** part of the signed receipt in
- * v1, so an outsider can recompute what we owed and notice if we paid something else, but
- * cannot prove it from the receipt alone. Putting drops inside the signed payload means a
- * receipt schema version and a place in the ruleset hash, which is §4 phase 4 work.
+ * Be precise about how far it goes, because it is easy to overstate and this comment used
+ * to. A third party holding the receipt **cannot** recompute what should have dropped.
+ * Two of the three inputs are unpublished: `DropRates` and `DROP_POOL` are constants in
+ * this file and in `catalog.data.ts`, and neither reaches the ruleset, so neither is
+ * covered by `rulesetHash` or by anything the receipt names. Only the seed and the battle
+ * id are signed. Someone reading this source can reproduce a drop; someone holding only a
+ * receipt and the published bundle cannot.
+ *
+ * Nor is the payout pinned by the receipt. `rates` is an argument, so the same seed and
+ * battle id yield different answers under different rates, and nothing records which were
+ * used. The operator cannot re-roll a drop, but can change the odds it was drawn against
+ * without leaving a trace.
+ *
+ * Closing that means publishing the rates and the drop pool, which puts non-equipment
+ * items into the ruleset. §4 deliberately keeps them out: a `rulesetHash` that moved every
+ * time a collectible was added would re-prompt every defender for consent and train
+ * players to click through the one prompt that matters. So this is a standing design
+ * tension, not a missing field, and it is tracked as D2 in
+ * `docs/plan-battle-inventory-hardening.md` rather than quietly fixed here.
  *
  * The pool is read from the shipped catalog constant rather than from `item_definition`,
  * deliberately. A replay has to reproduce what a battle dropped, and a table that content

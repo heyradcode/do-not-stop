@@ -225,11 +225,15 @@ Three things are easy to get wrong here:
   emptied slot writes `item_type "0"`, because indexer-go resumes from an `updatedAt`
   watermark and a deleted row is one it never learns about. Zero is a value, not an absence.
 - **Battle drops derive from the battle's own drand seed**, committed before the fight
-  resolves, so nobody including the operator can grind one and anyone holding the receipt
-  can recompute it. They are written in the *same transaction* as the receipt, the rule
-  `battle_history` already follows. The honest limit: the drop is not inside the signed
-  payload in v1, so an outsider can recompute what was owed and notice a discrepancy but
-  cannot prove one from the receipt alone.
+  resolves, so nobody including the operator can grind one. They are written in the *same
+  transaction* as the receipt, the rule `battle_history` already follows. The honest limit
+  is larger than it used to say here: an outsider holding the receipt **cannot** recompute
+  the drop at all. The rates and the drop pool are backend constants (`drops.ts`,
+  `catalog.data.ts`), neither reaches the ruleset, and only the seed and battle id are
+  signed, so the payout is not pinned by the receipt either. Publishing them would put
+  non-equipment items into `rulesetHash`, which §4 rules out because adding a collectible
+  would then re-consent every defender. Tracked as D2 in
+  `docs/plan-battle-inventory-hardening.md`.
 
 Equipment reaching combat is what made this expensive, and it is why `snapshot` and
 `ruleset` both went to schema v2 (see the combat-simulator section above). The snapshot

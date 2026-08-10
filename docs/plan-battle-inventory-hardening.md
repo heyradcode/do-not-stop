@@ -245,17 +245,44 @@ wrong in the player's disfavour.
       Verify: `pnpm --filter backend exec vitest run tests/features/inventory/drops.test.ts`.
 
 `rollDrops` is unchanged, deliberately. It is the pure derivation of what a battle owed each
-side, and that is what an outsider recomputes from the receipt; reconciling two owed drops with
-one storage key is the writer's job, not the derivation's.
+side; reconciling two owed drops with one storage key is the writer's job, not the
+derivation's.
 
-## D2: drops are outside the signed payload
+## D2 (decision): drops are not verifiable, and the reason is not a missing field
 
-Recorded in `drops.ts:14-19` as a known v1 limit and correct as written: derived from the
-battle's own drand seed, written in the receipt's transaction, recomputable by anyone holding
-the receipt. What an outsider cannot do is *prove* a discrepancy from the receipt alone.
+The description this section carried was wrong, in the same way D1's was, and inherited from
+`drops.ts`'s own doc comment. Both said a receipt holder could recompute a drop and merely
+lacked the means to *prove* a discrepancy. Neither is accurate.
 
-Listed here so it is a tracked decision rather than a comment. It needs a receipt schema
-version, so it belongs with any other bump rather than on its own.
+`rollDrops` reads three inputs. The seed and the battle id are in the signed receipt. The
+third, `DropRates`, is a constant in `drops.ts`, and the pool it draws from is
+`ITEM_CATALOG` filtered to non-equipment in `catalog.data.ts`. Neither reaches the ruleset,
+so neither is covered by `rulesetHash` or by anything else the receipt names. **An outsider
+holding a receipt and the published bundle cannot recompute the drop at all.** Someone
+reading this source can; that is not the same property.
+
+The payout is not pinned either. `rates` is a parameter, so the same seed and battle id
+produce different answers under different odds, and nothing records which were used. The
+anti-grinding property survives all of this and is worth keeping: the operator cannot
+re-roll a committed seed. But it can change the odds that seed was drawn against.
+
+What makes this a decision rather than a fix: closing it means publishing the rates and the
+drop pool, which puts non-equipment items into the ruleset. §4 rules that out on purpose, and
+CLAUDE.md states why, that a `rulesetHash` moving every time a collectible is added would
+re-consent every defender and train players to click through the one prompt that matters. So
+verifiable drops and stable consent are in direct tension, and picking between them is a
+product call.
+
+- [x] **D2.1 Make the claim honest.** Corrected in `drops.ts`, `CLAUDE.md`, and
+      `plan-inventory-items.md` §5, all three of which asserted recomputability. A false
+      verifiability claim is worse than a documented gap: it is the kind of thing a later
+      decision gets built on, and it nearly was here.
+- [ ] **D2.2 Decide the tension, or decide to keep it.** Options, none of them free:
+      publish rates and pool in a *separate* digest the receipt names, so drop rules version
+      independently of consent; or accept that drops are operator-attested in v1 and say so
+      in the player-facing docs; or fold drops into the receipt and pay the consent cost.
+      Not scheduled. Nothing is broken today, and the honest comment is the prerequisite for
+      choosing well.
 
 ## D3: shipping Phase 4 is a re-consent event
 
