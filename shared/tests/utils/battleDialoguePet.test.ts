@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { OpponentPet, Pet } from '@shared/core';
+import type { OpponentPet, Pet } from '../../src/types/pet';
 
-import {
-    opponentKey,
-    toDialoguePet,
-} from '@components/pet/interactions/panels/battle/battle-utils';
+import { toDialoguePet } from '../../src/utils/battleDialoguePet';
 
 describe('toDialoguePet', () => {
     it('maps a pet to the dialogue persona shape and stringifies dna', () => {
@@ -44,10 +41,3 @@ describe('toDialoguePet', () => {
         expect(toDialoguePet(opp).dna).toBe('7');
     });
 });
-
-describe('opponentKey', () => {
-    it('joins owner and id with a stable separator', () => {
-        expect(opponentKey('0xowner', 'id5')).toBe('0xowner::id5');
-    });
-});
-

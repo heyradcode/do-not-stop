@@ -1,3 +1,12 @@
+/* Registered so the CTA's conic border angle can be animated. Without @property
+   the angle is an unanimatable token and the ring simply sits still, which is
+   the intended degradation. */
+@property --cta-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
 .hero {
   display: flex;
   flex-direction: column;
@@ -8,30 +17,67 @@
   padding-inline: var(--landing-gutter);
   min-height: calc(100vh - var(--main-header-offset));
   min-height: calc(100dvh - var(--main-header-offset));
-  background-color: #070a14;
-  background-image:
-    linear-gradient(105deg, rgb(6 9 20 / 90%) 0%, rgb(6 9 20 / 48%) 40%, rgb(10 12 24 / 22%) 62%, transparent 82%),
-    linear-gradient(180deg, rgb(87 57 230 / 14%) 0%, rgb(10 12 24 / 76%) 100%),
-    url('/images/background.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-color: var(--surface-base);
   position: relative;
+  /* Self-contained stack: art, scrim, aurora, glow, content. Without this the
+     layers below resolve against an ancestor's stacking context. */
+  isolation: isolate;
   border-bottom: 1px solid rgb(94 117 255 / 25%);
+
+  /* Hero art. Served through next/image rather than as a CSS background-image,
+     which the optimizer never sees — every visitor was downloading the full
+     3.2 MB PNG, and it is the LCP element. */
+  & .hero-bg {
+    object-fit: cover;
+    object-position: center;
+    z-index: 0;
+  }
+
+  /* Scrim. Holds the headline legible over the art. */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      linear-gradient(105deg, rgb(6 9 20 / 90%) 0%, rgb(6 9 20 / 48%) 40%, rgb(10 12 24 / 22%) 62%, transparent 82%),
+      linear-gradient(180deg, rgb(87 57 230 / 14%) 0%, rgb(10 12 24 / 76%) 100%);
+  }
 
   &::after {
     content: '';
     position: absolute;
     inset: 0;
+    z-index: 2;
     background:
       radial-gradient(circle at 20% 20%, rgb(114 67 255 / 20%), transparent 40%),
       radial-gradient(circle at 75% 75%, rgb(10 217 255 / 10%), transparent 35%);
     pointer-events: none;
   }
 
+  /* Drifting mesh, built from soft radial stops rather than a blur filter — the
+     gradients already fall off smoothly, and blurring a viewport-sized layer
+     every frame is the expensive way to get the same picture. Only translate and
+     scale animate, so it stays on the compositor. */
+  & .aurora {
+    position: absolute;
+    inset: -18%;
+    z-index: 2;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.8;
+    background:
+      radial-gradient(38% 42% at 22% 28%, rgb(var(--neon-violet-rgb) / 26%), transparent 70%),
+      radial-gradient(34% 38% at 76% 34%, rgb(var(--neon-cyan-rgb) / 18%), transparent 72%),
+      radial-gradient(40% 36% at 58% 78%, rgb(var(--neon-magenta-rgb) / 14%), transparent 74%);
+    animation: hero-aurora 24s ease-in-out infinite alternate;
+    will-change: translate, scale;
+  }
+
   & .copy {
     position: relative;
-    z-index: 1;
+    z-index: 3;
     text-align: left;
     max-width: 760px;
   }
@@ -47,24 +93,24 @@
     font-weight: 600;
     letter-spacing: 2px;
     text-transform: uppercase;
-    color: #b6e2ff;
+    color: var(--text-accent);
     background: linear-gradient(90deg, rgb(40 110 255 / 18%), rgb(154 100 255 / 14%));
-    border: 1px solid rgb(118 154 255 / 38%);
-    border-radius: 999px;
-    box-shadow: inset 0 0 12px rgb(118 154 255 / 18%), 0 0 18px rgb(118 154 255 / 22%);
+    border: 1px solid rgb(var(--border-rgb) / 38%);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--glow-inset-sm), var(--glow-sm);
 
     &::before {
       content: '';
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #6cf6c5;
-      box-shadow: 0 0 8px #6cf6c5, 0 0 14px rgb(108 246 197 / 60%);
+      background: var(--neon-emerald);
+      box-shadow: 0 0 8px var(--neon-emerald), 0 0 14px rgb(var(--neon-emerald-rgb) / 60%);
       animation: hero-pulse 1.8s ease-in-out infinite;
     }
   }
 
-  & h2 {
+  & h1 {
     font-family: var(--title-font);
     margin: 0 0 18px;
     color: #f3f7ff;
@@ -72,16 +118,26 @@
     line-height: 1.12;
     font-weight: 700;
     letter-spacing: 0.4px;
-    text-shadow: 0 0 18px rgb(174 150 255 / 28%), 0 0 38px rgb(108 72 255 / 18%);
+    text-shadow: var(--glow-text-lg);
   }
 
+  /* Seamless because the ramp ends on the hue it starts with, so the looping
+     background-position never shows a seam. */
   & .title-accent {
-    background: linear-gradient(92deg, #7dd6ff 0%, #b58cff 48%, #ff7bcb 100%);
+    background: linear-gradient(
+      92deg,
+      var(--neon-cyan) 0%,
+      var(--neon-violet) 30%,
+      var(--neon-magenta) 62%,
+      var(--neon-cyan) 100%
+    );
+    background-size: 200% 100%;
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
     -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 0 14px rgb(181 140 255 / 45%));
+    filter: drop-shadow(0 0 14px rgb(var(--neon-violet-rgb) / 45%));
+    animation: hero-accent-sweep 9s linear infinite;
   }
 
   & p {
@@ -89,7 +145,7 @@
     margin: 0 0 32px;
     color: rgb(195 209 255 / 84%);
     font-size: 1.18rem;
-    max-width: 620px;
+    max-width: 560px;
     line-height: 1.55;
   }
 
@@ -98,6 +154,29 @@
     gap: 16px;
     flex-wrap: wrap;
     align-items: center;
+  }
+
+  /* Orbiting ring, masked to the border so it reads as a lit edge rather than a
+     wash over the button face. */
+  & .primary-cta::after {
+    content: '';
+    position: absolute;
+    inset: -1.5px;
+    border-radius: inherit;
+    padding: 1.5px;
+    pointer-events: none;
+    background: conic-gradient(
+      from var(--cta-angle),
+      transparent 0deg,
+      rgb(var(--tone-emerald-rgb) / 90%) 45deg,
+      var(--neon-cyan) 95deg,
+      transparent 160deg,
+      transparent 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    animation: hero-cta-orbit 4.5s linear infinite;
   }
 
   & .secondary-cta {
@@ -112,12 +191,12 @@
     left: 50%;
     bottom: 24px;
     transform: translateX(-50%);
-    z-index: 1;
+    z-index: 3;
     width: 26px;
     height: 42px;
     border: 1px solid rgb(174 200 255 / 55%);
     border-radius: 14px;
-    box-shadow: 0 0 14px rgb(118 154 255 / 28%);
+    box-shadow: var(--glow-sm);
     display: flex;
     justify-content: center;
     padding-top: 8px;
@@ -128,21 +207,44 @@
       height: 8px;
       border-radius: 2px;
       background: linear-gradient(180deg, #9ec8ff, #5e7dff);
-      box-shadow: 0 0 8px rgb(118 154 255 / 80%);
+      box-shadow: 0 0 8px rgb(var(--border-rgb) / 80%);
       animation: hero-scroll-dot 1.8s ease-in-out infinite;
     }
   }
 }
 
+@supports not ((background-clip: text) or (-webkit-background-clip: text)) {
+  .hero .title-accent {
+    color: var(--neon-cyan);
+    -webkit-text-fill-color: var(--neon-cyan);
+    background: none;
+    animation: none;
+  }
+}
+
 @keyframes hero-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.55; transform: scale(0.85); }
+  0%, 100% { opacity: 1; scale: 1; }
+  50% { opacity: 0.55; scale: 0.85; }
 }
 
 @keyframes hero-scroll-dot {
-  0% { transform: translateY(0); opacity: 0; }
+  0% { translate: 0 0; opacity: 0; }
   35% { opacity: 1; }
-  100% { transform: translateY(14px); opacity: 0; }
+  100% { translate: 0 14px; opacity: 0; }
+}
+
+@keyframes hero-accent-sweep {
+  to { background-position: 200% 0; }
+}
+
+@keyframes hero-cta-orbit {
+  to { --cta-angle: 360deg; }
+}
+
+@keyframes hero-aurora {
+  0% { translate: -2% -1%; scale: 1; }
+  50% { translate: 3% 2%; scale: 1.06; }
+  100% { translate: -1% 3%; scale: 1.02; }
 }
 
 @media (max-width: 1024px) {
@@ -152,6 +254,14 @@
     & .copy {
       text-align: center;
       margin: 0 auto;
+    }
+
+    & p {
+      margin-inline: auto;
+    }
+
+    & .actions {
+      justify-content: center;
     }
   }
 }

@@ -4,13 +4,33 @@
   gap: 16px;
   align-items: center;
   padding: var(--section-pad-block-band) var(--landing-gutter);
-  background: linear-gradient(90deg, rgb(88 35 188 / 40%) 0%, rgb(45 84 225 / 35%) 50%, rgb(15 149 180 / 34%) 100%);
-  border-top: 1px solid rgb(102 132 255 / 20%);
-  border-bottom: 1px solid rgb(102 132 255 / 20%);
+  background: linear-gradient(
+    90deg,
+    rgb(var(--wash-violet-rgb) / 34%) 0%,
+    rgb(var(--border-rgb) / 26%) 50%,
+    rgb(var(--wash-cyan-rgb) / 26%) 100%
+  );
+  border-block: 1px solid rgb(var(--border-rgb) / 22%);
 
   & .item {
+    position: relative;
     text-align: center;
-    color: #ebf0ff;
+    color: var(--text-bright);
+
+    /* Hairline separators between figures, not after the last one. */
+    &:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      inset-block: 12%;
+      inset-inline-end: calc(var(--space-2) * -1);
+      width: 1px;
+      background: linear-gradient(
+        180deg,
+        transparent,
+        rgb(var(--border-rgb) / 38%) 50%,
+        transparent
+      );
+    }
 
     & strong {
       display: block;
@@ -19,18 +39,21 @@
       font-weight: 800;
       line-height: 1.1;
       letter-spacing: 0.5px;
-      color: #b6e2ff;
-      background: linear-gradient(92deg, #7dd6ff 0%, #b58cff 60%, #ff7bcb 100%);
+      /* Fixed-width digits: without this the figure jitters as it counts, since
+         proportional glyphs change the string's width on nearly every frame. */
+      font-variant-numeric: tabular-nums;
+      color: var(--text-accent);
+      background: var(--gradient-spectrum);
       background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 18px rgb(170 140 255 / 35%);
+      text-shadow: var(--glow-text-sm);
     }
 
     & span {
       font-family: var(--content-font);
       font-size: 0.98rem;
-      color: rgb(188 205 255 / 82%);
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.7px;
     }
@@ -39,16 +62,29 @@
 
 @supports not ((background-clip: text) or (-webkit-background-clip: text)) {
   .stats .item strong {
-    color: #b6e2ff;
-    -webkit-text-fill-color: #b6e2ff;
+    color: var(--text-accent);
+    -webkit-text-fill-color: var(--text-accent);
     background: none;
   }
 }
 
 @media (max-width: 1024px) {
-  .stats { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+  .stats {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+    gap: 28px 16px;
+  }
+
+  .stats .item:nth-child(2)::after {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
-  .stats { grid-template-columns: 1fr; }
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .stats .item::after {
+    display: none;
+  }
 }

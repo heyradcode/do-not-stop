@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { OpponentPet } from '@shared/core';
+import type { OpponentPet } from '../../src/types/pet';
 
 import {
     getLevelDelta,
     getMatchLabel,
     getMatchTier,
+    opponentKey,
     pickRandomOpponent,
     sortOpponentsByMatch,
-} from '@components/pet/interactions/panels/battle/battle-matchmaking';
+} from '../../src/utils/battleMatchmaking';
 
 const opp = (id: string, level: number): OpponentPet =>
     ({ id, level }) as unknown as OpponentPet;
@@ -54,6 +55,12 @@ describe('getMatchLabel', () => {
         expect(getMatchLabel('even', 1)).toBe('+1 lv');
         expect(getMatchLabel('danger', 4)).toBe('+4 lv');
         expect(getMatchLabel('easy', -3)).toBe('-3 lv');
+    });
+});
+
+describe('opponentKey', () => {
+    it('joins owner and id with a stable separator', () => {
+        expect(opponentKey('0xowner', 'id5')).toBe('0xowner::id5');
     });
 });
 

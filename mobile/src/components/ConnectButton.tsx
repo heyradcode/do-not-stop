@@ -35,6 +35,16 @@ export default function ConnectButton() {
 
     const isLoading = isSigning || isVerifying || isNonceLoading;
 
+    // if (compact) {
+    //     return (
+    //         <TouchableOpacity style={styles.compactButton} onPress={() => open()}>
+    //             <Text style={styles.compactButtonText} numberOfLines={1} ellipsizeMode="middle">
+    //                 {address ? shortAddress(address) : 'Connected'}
+    //             </Text>
+    //         </TouchableOpacity>
+    //     );
+    // }
+
     return (
         <View style={styles.container}>
             <Text style={styles.text}>Connected to Chain: {chainId}</Text>

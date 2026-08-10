@@ -1,8 +1,7 @@
 .backers {
   padding: var(--section-pad-block-band) 0;
-  background: rgb(5 8 18 / 86%);
-  border-top: 1px solid rgb(96 123 255 / 18%);
-  border-bottom: 1px solid rgb(96 123 255 / 18%);
+  background: rgb(var(--surface-void-rgb) / 86%);
+  border-block: 1px solid rgb(var(--border-rgb) / 18%);
   text-align: center;
   overflow: hidden;
 
@@ -12,8 +11,8 @@
     font-weight: 700;
     letter-spacing: 2.4px;
     text-transform: uppercase;
-    color: rgb(180 200 255 / 55%);
-    margin: 0 0 14px;
+    color: var(--text-dim);
+    margin: 0 0 18px;
     padding-inline: var(--landing-gutter);
   }
 
@@ -21,45 +20,55 @@
     position: relative;
     width: 100%;
     overflow: hidden;
-    mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
     -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
 
-    &:hover .row { animation-play-state: paused; }
+    &:hover .row {
+      animation-play-state: paused;
+    }
   }
 
+  /* Two identical lists side by side; translating the pair by exactly half its
+     width lands the second copy where the first began, so the loop has no seam. */
   & .row {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 56px;
-    animation: backers-scroll 28s linear infinite;
-    white-space: nowrap;
+    display: flex;
     width: max-content;
+    animation: backers-scroll 32s linear infinite;
+
+    & ul {
+      display: flex;
+      align-items: center;
+      gap: 56px;
+      list-style: none;
+      margin: 0;
+      padding-inline: 28px;
+    }
 
     & li {
       font-family: var(--title-font);
       font-size: 1.05rem;
       letter-spacing: 1.2px;
       text-transform: uppercase;
+      white-space: nowrap;
       color: rgb(220 230 255 / 80%);
-      text-shadow: 0 0 10px rgb(118 154 255 / 35%), 0 0 22px rgb(118 154 255 / 18%);
-      transition: color 180ms ease, text-shadow 180ms ease;
+      text-shadow:
+        0 0 10px rgb(var(--border-rgb) / 35%),
+        0 0 22px rgb(var(--border-rgb) / 18%);
+      transition:
+        color var(--dur-base) var(--ease-out),
+        text-shadow var(--dur-base) var(--ease-out);
 
       &:hover {
-        color: #ffffff;
-        text-shadow: 0 0 12px rgb(168 198 255 / 70%), 0 0 28px rgb(118 154 255 / 45%);
+        color: var(--text-on-accent);
+        text-shadow:
+          0 0 12px rgb(var(--neon-cyan-rgb) / 70%),
+          0 0 28px rgb(var(--border-rgb) / 45%);
       }
     }
   }
 }
 
 @keyframes backers-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .backers .row { animation: none; }
+  from { translate: 0; }
+  to { translate: -50%; }
 }

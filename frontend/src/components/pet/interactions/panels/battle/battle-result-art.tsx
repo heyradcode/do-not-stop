@@ -1,5 +1,5 @@
 import React from 'react';
-import type { BattleOutcome } from './types';
+import type { BattleOutcome } from '@shared/core';
 
 type Props = { outcome: BattleOutcome };
 

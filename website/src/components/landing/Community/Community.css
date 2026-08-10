@@ -1,25 +1,53 @@
 .community {
   & .block {
+    position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
     gap: 48px;
     align-items: center;
-    padding: 36px;
-    border-radius: 18px;
+    padding: 40px;
+    border-radius: var(--radius-xl);
     background:
-      radial-gradient(circle at 8% 10%, rgb(155 100 255 / 22%), transparent 38%),
-      radial-gradient(circle at 92% 90%, rgb(80 184 255 / 18%), transparent 40%),
-      linear-gradient(180deg, rgb(10 14 28 / 92%), rgb(7 11 24 / 96%));
-    border: 1px solid rgb(118 154 255 / 24%);
-    box-shadow: 0 0 28px rgb(118 154 255 / 12%), inset 0 0 32px rgb(55 68 148 / 10%);
+      radial-gradient(circle at 8% 10%, rgb(var(--wash-violet-rgb) / 22%), transparent 38%),
+      radial-gradient(circle at 92% 90%, rgb(var(--rarity-rare-rgb) / 18%), transparent 40%),
+      linear-gradient(180deg, var(--surface-card-top), var(--surface-card-bottom));
+    border: 1px solid rgb(var(--border-rgb) / 24%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 7%),
+      var(--glow-inset-lg),
+      var(--elev-3);
+
+    /* Static gradient edge. The one orbiting border on the page belongs to the
+       CTA panel; repeating it here would flatten that emphasis. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      pointer-events: none;
+      background: linear-gradient(
+        135deg,
+        rgb(var(--neon-violet-rgb) / 55%) 0%,
+        transparent 40%,
+        transparent 62%,
+        rgb(var(--neon-cyan-rgb) / 45%) 100%
+      );
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+    }
   }
 
   & .copy {
+    position: relative;
+
     & .section-title { margin-bottom: 14px; }
     & .section-subtitle { margin: 22px 0 0; }
   }
 
   & .chips {
+    position: relative;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -29,52 +57,77 @@
   }
 
   & .chip {
+    --brand-rgb: var(--border-rgb);
+
+    position: relative;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 14px 16px;
-    border-radius: 10px;
-    background: rgb(255 255 255 / 3%);
-    border: 1px solid rgb(118 154 255 / 22%);
+    padding: 15px 16px;
+    border-radius: var(--radius-md);
+    background: var(--surface-veil-1);
+    border: 1px solid rgb(var(--brand-rgb) / 24%);
     text-decoration: none;
-    color: #eaf0ff;
-    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+    color: var(--text-bright);
+    overflow: hidden;
+    transition:
+      translate var(--dur-base) var(--ease-out),
+      border-color var(--dur-base) var(--ease-out),
+      box-shadow var(--dur-base) var(--ease-out),
+      background var(--dur-base) var(--ease-out);
+
+    /* Brand wash that rises from the bottom edge on hover. */
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(0deg, rgb(var(--brand-rgb) / 20%), transparent 62%);
+      opacity: 0;
+      transition: opacity var(--dur-slow) var(--ease-out);
+    }
 
     &:hover {
-      transform: translateY(-2px);
-      background: rgb(255 255 255 / 5%);
+      translate: 0 -3px;
+      background: var(--surface-veil-2);
+      border-color: rgb(var(--brand-rgb) / 62%);
+      box-shadow: 0 0 20px rgb(var(--brand-rgb) / 34%), var(--elev-2);
+
+      &::before { opacity: 1; }
     }
 
-    &.discord {
-      &:hover { border-color: rgb(88 101 242 / 55%); box-shadow: 0 0 18px rgb(88 101 242 / 35%); }
-      & .chip-icon { color: #5865f2; filter: drop-shadow(0 0 8px rgb(88 101 242 / 55%)); }
+    &:focus-visible {
+      outline: 2px solid rgb(var(--brand-rgb) / 65%);
+      outline-offset: 2px;
     }
-    &.twitter {
-      &:hover { border-color: rgb(255 255 255 / 45%); box-shadow: 0 0 18px rgb(255 255 255 / 18%); }
-      & .chip-icon { color: #ffffff; filter: drop-shadow(0 0 8px rgb(255 255 255 / 35%)); }
-    }
-    &.telegram {
-      &:hover { border-color: rgb(41 182 246 / 55%); box-shadow: 0 0 18px rgb(41 182 246 / 38%); }
-      & .chip-icon { color: #29b6f6; filter: drop-shadow(0 0 8px rgb(41 182 246 / 55%)); }
-    }
-    &.youtube {
-      &:hover { border-color: rgb(255 0 51 / 55%); box-shadow: 0 0 18px rgb(255 0 51 / 38%); }
-      & .chip-icon { color: #ff0033; filter: drop-shadow(0 0 8px rgb(255 0 51 / 55%)); }
-    }
+
+    &.discord { --brand-rgb: 88 101 242; }
+    &.twitter { --brand-rgb: 255 255 255; }
+    &.telegram { --brand-rgb: 41 182 246; }
+    &.youtube { --brand-rgb: 255 0 51; }
   }
 
   & .chip-icon {
+    position: relative;
     flex: 0 0 auto;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-md);
+    background: rgb(var(--brand-rgb) / 12%);
+    color: rgb(var(--brand-rgb));
+    filter: drop-shadow(0 0 8px rgb(var(--brand-rgb) / 55%));
 
-    & svg { width: 100%; height: 100%; }
+    & svg {
+      width: 62%;
+      height: 62%;
+    }
   }
 
   & .chip-text {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -85,13 +138,13 @@
       font-size: 0.92rem;
       letter-spacing: 0.6px;
       text-transform: uppercase;
-      color: #f6f3ff;
+      color: var(--text-title);
     }
 
     & span {
       font-family: var(--content-font);
       font-size: 0.82rem;
-      color: rgb(195 210 255 / 70%);
+      color: var(--text-muted);
     }
   }
 }
@@ -105,5 +158,7 @@
 }
 
 @media (max-width: 480px) {
-  .community .chips { grid-template-columns: 1fr; }
+  .community .chips {
+    grid-template-columns: 1fr;
+  }
 }

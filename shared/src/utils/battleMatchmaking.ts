@@ -1,4 +1,4 @@
-import type { OpponentPet } from '@shared/core';
+import type { OpponentPet } from '../types/pet';
 
 export type MatchTier = 'even' | 'easy' | 'risky' | 'danger' | 'unknown';
 
@@ -25,6 +25,9 @@ export const getMatchLabel = (tier: MatchTier, delta: number | null): string | n
     if (delta > 0) return `+${delta} lv`;
     return `${delta} lv`;
 };
+
+/** Stable select value for an opponent (pet ids are not globally unique on Solana). */
+export const opponentKey = (owner: string, id: string) => `${owner}::${id}`;
 
 /** Pick a random opponent whose level is closest to the fighter's. */
 export const pickRandomOpponent = (

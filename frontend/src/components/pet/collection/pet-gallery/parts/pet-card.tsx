@@ -12,12 +12,12 @@ import {
     getXpPercent,
     type Pet,
     type EquippedItem,
+    type PetCooldownStatus,
 } from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { BattleIcon, SendIcon } from '@components/ui/icon';
 import PetArt from '@components/pet/pet-art';
 import EquippedBadges from '@components/pet/equipped-badges';
-import type { PetCooldownStatus } from '@hooks/usePetCooldowns';
 import styles from '../index.module.css';
 
 /** Four stat tiles derived from the pet's DNA properties. AGI has no backing in

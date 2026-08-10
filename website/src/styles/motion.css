@@ -1,0 +1,93 @@
+/* =============================================================================
+   Motion primitives.
+
+   Reveal targets are hidden only under `.js-reveal`, a class the inline script in
+   app/layout.tsx sets before first paint. Without that gate, a JS failure or a
+   blocked bundle would leave everything below the fold permanently invisible.
+
+   Elements opt in with `data-reveal`; `useRevealObserver` adds
+   `data-reveal-visible` once they cross into view. Reveal is one-way — the
+   observer stops watching an element after it fires, so scrolling back up does
+   not replay it and nothing re-hides under the reader.
+   ============================================================================= */
+
+/* Uses the independent `translate` / `scale` properties rather than `transform`.
+   They compose with `transform` instead of replacing it, so revealing an element
+   cannot clobber a transform it already owns — NeonCard's hover lift survives
+   being a reveal target, and no reveal target needs a wrapper div. */
+.js-reveal [data-reveal] {
+  opacity: 0;
+  translate: var(--reveal-x, 0) var(--reveal-y, 18px);
+  scale: var(--reveal-scale, 1);
+  transition:
+    opacity var(--dur-reveal) var(--ease-out),
+    translate var(--dur-reveal) var(--ease-out),
+    scale var(--dur-reveal) var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, translate, scale;
+}
+
+.js-reveal [data-reveal][data-reveal-visible] {
+  opacity: 1;
+  translate: none;
+  scale: none;
+  will-change: auto;
+}
+
+/* Direction and character variants. `data-reveal` with no value = "up". */
+.js-reveal [data-reveal='up'] {
+  --reveal-y: 18px;
+}
+
+.js-reveal [data-reveal='down'] {
+  --reveal-y: -18px;
+}
+
+.js-reveal [data-reveal='left'] {
+  --reveal-x: 24px;
+  --reveal-y: 0;
+}
+
+.js-reveal [data-reveal='right'] {
+  --reveal-x: -24px;
+  --reveal-y: 0;
+}
+
+.js-reveal [data-reveal='fade'] {
+  --reveal-y: 0;
+}
+
+.js-reveal [data-reveal='scale'] {
+  --reveal-y: 0;
+  --reveal-scale: 0.96;
+}
+
+.js-reveal [data-reveal='rise'] {
+  --reveal-y: 36px;
+  --reveal-scale: 0.985;
+}
+
+/* =============================================================================
+   Reduced motion.
+
+   One global switch rather than per-component opt-in. Only NeonButton, NeonCard
+   and the Backers marquee honoured the preference before this; every other
+   animation on the page ignored it outright.
+   ============================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .js-reveal [data-reveal] {
+    opacity: 1;
+    translate: none;
+    scale: none;
+  }
+}

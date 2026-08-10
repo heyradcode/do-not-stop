@@ -15,20 +15,13 @@ vi.mock('react-router-dom', () => ({
 vi.mock('@constants/interactionRoutes', () => ({ DASHBOARD_HOME: '/dashboard', BATTLE_PATH: '/battle' }));
 vi.mock('@hooks/usePetError', () => ({ formatTxHashHint: vi.fn(() => null) }));
 vi.mock('@hooks/usePetErrorToast', () => ({ usePetErrorToast: vi.fn() }));
-vi.mock('@components/pet/interactions/panels/battle/battle-matchmaking', () => ({
-    pickRandomOpponent: vi.fn(() => null),
-    sortOpponentsByMatch: vi.fn((ops: unknown[]) => ops),
-}));
 vi.mock('@components/pet/interactions/panels/battle/battle-utils', () => ({
     BATTLE_FAIL_MESSAGE: 'Battle failed',
     MISMATCH_NOTICE_MESSAGE: 'Mismatch notice',
     VALIDATION_MESSAGE: 'Select a fighter and opponent',
-    opponentKey: (owner: string, id: string) => `${owner}:${id}`,
-    toDialoguePet: (p: { id: string; name: string }) => ({ petId: p.id, name: p.name }),
 }));
 
 const battleOutcome = { battleOutcome: null as null | object, applyResolvedOutcome: vi.fn(), resetOutcome: vi.fn() };
-vi.mock('@hooks/battle/useBattleOutcome', () => ({ useBattleOutcome: () => battleOutcome }));
 
 const resultDialogue = { resultTurns: [], dialogueLoading: false, attackerName: '', defenderName: '', markResultDialogueDone: vi.fn(), resultDialogueDone: false, resetResultDialogue: vi.fn() };
 vi.mock('@hooks/battle/useResultDialogue', () => ({ useResultDialogue: () => resultDialogue }));
@@ -44,34 +37,48 @@ let capturedBattleOptions: { roomId?: string | null; roomSocketUrl?: string } | 
 const pets = [{ id: 'p1', name: 'Rex', level: 3, winCount: 1, lossCount: 0, chain: 'evm', readyAt: 0n }];
 const opponents = [{ id: 'opp1', name: 'Blaze', owner: '0xopp', level: 2 }];
 
-vi.mock('@shared/core', () => ({
-    // `src/config.ts` calls both of these at import time, and the hook now imports it
-    // for BATTLE_ROOM_WS_URL. Stubs, not behaviour under test.
-    setStorageAdapter: vi.fn(),
-    setTokenSuccessCallback: vi.fn(),
-    isBattleRejection: (e: unknown) =>
-        typeof e === 'object' && e !== null && (e as { isBattleRejection?: unknown }).isBattleRejection === true,
-    // Mirrors the real predicate: the three refusals that mean the defender's owner
-    // is not willing, as opposed to a band/cap refusal about this attacker or today.
-    isConsentFailure: (e: unknown) => {
-        const code = (e as { code?: string } | null)?.code;
-        return code === 'no-authorization' || code === 'pet-not-covered' || code === 'revoked';
-    },
-    getReadyPetsUnified: (p: { id: string }[]) => p.map((x) => ({ id: x.id, pet: x })),
-    useChainCapabilities: () => ({ activeKind: 'evm', randomness: { provider: 'vrf' } }),
-    usePetList: () => ({ pets, refetch: vi.fn(), isLoading: false }),
-    useBattlePets: (opts: { onSuccess?: (r: unknown) => void; roomId?: string | null; roomSocketUrl?: string }) => {
-        capturedOnSuccess = opts?.onSuccess;
-        capturedBattleOptions = opts;
-        return battle;
-    },
-    useBattleTaunts: () => taunts,
-    useCreateBattleRoom: () => ({ createRoom, isLoading: false }),
-    // Stable identity, matching react-query's own refetch — and so the consent-failure
-    // effect below can be asserted on across renders.
-    useOpponents: () => ({ opponents, isLoading: false, isFetching: false, refetch: refetchOpponents }),
-    useWinEstimate: () => ({ winProbability: null, isLoading: false, samples: null }),
-}));
+vi.mock('@shared/core', async () => {
+    // The strike playback is real, not stubbed: the result-card gating cases below assert on
+    // its timing. Imported from its own module rather than the barrel, which would pull in
+    // wagmi and the rest of what this factory exists to replace.
+    const animation = await import('../../../../shared/src/hooks/battle/useLiveBattleAnimation');
+    return {
+        ...animation,
+        // `src/config.ts` calls both of these at import time, and the hook now imports it
+        // for BATTLE_ROOM_WS_URL. Stubs, not behaviour under test.
+        setStorageAdapter: vi.fn(),
+        setTokenSuccessCallback: vi.fn(),
+        isBattleRejection: (e: unknown) =>
+            typeof e === 'object' && e !== null && (e as { isBattleRejection?: unknown }).isBattleRejection === true,
+        // Mirrors the real predicate: the three refusals that mean the defender's owner
+        // is not willing, as opposed to a band/cap refusal about this attacker or today.
+        isConsentFailure: (e: unknown) => {
+            const code = (e as { code?: string } | null)?.code;
+            return code === 'no-authorization' || code === 'pet-not-covered' || code === 'revoked';
+        },
+        getReadyPetsUnified: (p: { id: string }[]) => p.map((x) => ({ id: x.id, pet: x })),
+        // Matchmaking is not what these cases are about: selection is driven by explicit ids,
+        // so the ordering passes through and the random pick is inert.
+        pickRandomOpponent: vi.fn(() => null),
+        sortOpponentsByMatch: vi.fn((ops: unknown[]) => ops),
+        opponentKey: (owner: string, id: string) => `${owner}:${id}`,
+        toDialoguePet: (p: { id: string; name: string }) => ({ petId: p.id, name: p.name }),
+        useChainCapabilities: () => ({ activeKind: 'evm', randomness: { provider: 'vrf' } }),
+        usePetList: () => ({ pets, refetch: vi.fn(), isLoading: false }),
+        useBattlePets: (opts: { onSuccess?: (r: unknown) => void; roomId?: string | null; roomSocketUrl?: string }) => {
+            capturedOnSuccess = opts?.onSuccess;
+            capturedBattleOptions = opts;
+            return battle;
+        },
+        useBattleOutcome: () => battleOutcome,
+        useBattleTaunts: () => taunts,
+        useCreateBattleRoom: () => ({ createRoom, isLoading: false }),
+        // Stable identity, matching react-query's own refetch — and so the consent-failure
+        // effect below can be asserted on across renders.
+        useOpponents: () => ({ opponents, isLoading: false, isFetching: false, refetch: refetchOpponents }),
+        useWinEstimate: () => ({ winProbability: null, isLoading: false, samples: null }),
+    };
+});
 
 import { useBattlePanel } from '@hooks/battle/useBattlePanel';
 
