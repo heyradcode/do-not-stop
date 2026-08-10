@@ -29,7 +29,12 @@ export { usePetList, type PetListResult } from './pets/usePetList';
 export { usePetCooldowns, type PetCooldowns, type PetCooldownStatus } from './pets/usePetCooldowns';
 // Backend battle progression. usePetList already applies it to a player's own pets;
 // exported for anything reading pets from the chain by another route.
-export { useBattleProgress, mergeBattleProgress } from './battle/useBattleProgress';
+export {
+    battleProgressQueryKey,
+    battleProgressQueryPrefix,
+    useBattleProgress,
+    mergeBattleProgress,
+} from './battle/useBattleProgress';
 export {
     useCreatePet,
     type CreatePetArgs,

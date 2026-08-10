@@ -278,6 +278,29 @@ already the conservative one its doc comment describes: an unconfirmed burn cost
 an item and gives nothing, which is a bad afternoon, where the reverse is a repeatable
 exploit.
 
+## C6: using a consumable left the pet's own numbers stale
+
+`useSpendItem` invalidated the bag and documented the rest as someone else's job: "the pet's
+battle progression moved too, so the caller refreshes that itself." Neither call site in
+`components/inventory/index.tsx` did.
+
+Every effect the route accepts writes `pet_battle_progress`. `grant_xp` moves level and xp;
+`clear_battle_cooldown` moves `readyAt`. So the item vanished from the bag and the pet went on
+showing its old level, or, for the cooldown tonic, went on showing as resting. That last one is
+the worst reading available: the player spends an item specifically to battle again, and the
+UI says they still cannot.
+
+- [x] **C6.1** Invalidate progression in the hook rather than asking callers to remember.
+      `useBattleProgress` gained `battleProgressQueryKey` / `battleProgressQueryPrefix`, and
+      `useSpendItem` invalidates the prefix, following `petEquipmentForPetsQueryPrefix`
+      exactly and for the same reason: progression is cached per *list* of pets a screen
+      asked about, and a mutation cannot know which lists exist.
+      Verify: `pnpm --filter @shared/core exec vitest run tests/hooks/useInventory.test.tsx`.
+
+The general point is worth keeping. A comment asking every future caller to pair a mutation
+with an invalidation is a bug waiting for its second caller, and this one did not survive its
+first. A mutation that knows what it changed should invalidate it.
+
 ## Reviewed and found clean
 
 Recorded so a later pass does not repeat the work. Neither of these produced a change:

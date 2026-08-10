@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '../../contexts/ApiClientContext';
 import type { PetChain } from '../../types/pet';
+import { battleProgressQueryPrefix } from '../battle/useBattleProgress';
 import { inventoryQueryKey } from './useInventory';
 
 /**
@@ -54,10 +55,18 @@ export const useSpendItem = (): UseSpendItemResult => {
         // Invalidated rather than patched, and never optimistically. The burn is a
         // transaction: until the server says it landed, the item is still the player's, and
         // a bag that already showed it gone would be lying about a spend that could fail.
-        // The pet's battle progression moved too, so the caller refreshes that itself —
-        // this hook does not know which pet query the screen is using.
+        //
+        // Both things a consumable moves are refreshed here, not just the bag. Every effect
+        // this route accepts writes `pet_battle_progress`: `grant_xp` changes level and xp,
+        // `clear_battle_cooldown` changes readyAt. Leaving that to the caller was the
+        // arrangement before, and neither call site did it, so a cooldown tonic consumed the
+        // item and left the pet still showing as resting, the item reading as broken rather
+        // than as applied. A mutation that knows what it changed should invalidate it; a
+        // hook the caller has to remember to pair with is a bug waiting for its second
+        // caller.
         onSuccess: (_result, args) => {
             void queryClient.invalidateQueries({ queryKey: inventoryQueryKey(baseURL, args.chain) });
+            void queryClient.invalidateQueries({ queryKey: battleProgressQueryPrefix(baseURL, args.chain) });
         },
     });
 
