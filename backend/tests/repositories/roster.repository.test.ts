@@ -19,7 +19,29 @@ vi.mock('../../src/repositories/battleProgress.overlay', () => ({
     servedChainIdForFamily: (chain: string) => servedChainIdForFamily(chain),
 }));
 
+/**
+ * A ruleset with a **non-empty** item catalog, which is the whole point of the stub.
+ *
+ * `servedRuleset()` joins the live catalog onto `SOURCE_DEFAULT_RULESET`, so the two are
+ * equal only while no item is seeded. Stubbing it to the bare constant here would make the
+ * consent filter's hash match by accident and hide the exact bug these cases now pin.
+ */
+vi.mock('../../src/features/battle/ledger/ruleset.builder', async () => {
+    const { SOURCE_DEFAULT_RULESET } = await vi.importActual<typeof import('@cryptopets/protocol')>(
+        '@cryptopets/protocol',
+    );
+    return {
+        servedRuleset: vi.fn(async () => ({
+            ...SOURCE_DEFAULT_RULESET,
+            itemCatalog: [{ itemType: 3n, slot: 0, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 }],
+        })),
+    };
+});
+
+import { hashRuleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
+
 import { findReadyOpponents, getPetById } from '../../src/repositories/roster.repository';
+import { servedRuleset } from '../../src/features/battle/ledger/ruleset.builder';
 import { prisma } from '@config/prisma';
 
 const rosterRow = {
@@ -72,6 +94,25 @@ function fragmentsOfCall(index: number): string {
         .map((fragment) => fragment.sql)
         .join(' ')
         .replace(/\s+/g, ' ');
+}
+
+/**
+ * Every bound value in the nth call, flattened through nested `Prisma.Sql` fragments.
+ *
+ * The consent clause is a fragment interpolated into the outer query, and the ruleset hash
+ * is bound *inside* it, so it never appears among the outer call's own values. Flattening
+ * is what makes it assertable at all.
+ */
+function valuesOfCall(index: number): unknown[] {
+    const [, ...values] = vi.mocked(prisma.$queryRaw).mock.calls[index] as unknown as [string[], ...unknown[]];
+    const flatten = (input: unknown[]): unknown[] =>
+        input.flatMap((value) => {
+            const fragment = value as { sql?: unknown; values?: unknown[] };
+            return typeof fragment?.sql === 'string' && Array.isArray(fragment.values)
+                ? flatten(fragment.values)
+                : [value];
+        });
+    return flatten(values);
 }
 
 beforeEach(() => {
@@ -152,6 +193,40 @@ describe('findReadyOpponents', () => {
         expect(consent).toContain('defense_authorization');
         expect(consent).toContain('a.revoked_at IS NULL');
         expect(consent).toContain('a.all_pets OR a.pet_ids @>');
+    });
+
+    /**
+     * Matches on the hash defenders actually signed, which is the *served* ruleset.
+     *
+     * This filtered on `hashRuleset(SOURCE_DEFAULT_RULESET)` while clients sign what
+     * `GET /api/battle/config` serves, which is `servedRuleset()`. Equal only while the item
+     * catalog is empty; seed one equipment item and the predicate matches no authorization
+     * ever written, so matchmaking returns nothing on a deployment full of consenting pets.
+     *
+     * The stubbed ruleset carries an item, so the two hashes genuinely differ here and the
+     * assertion fails against the old code instead of passing by coincidence.
+     */
+    it('matches consent on the served ruleset hash, not the source default', async () => {
+        mockJoinQuery([], 0);
+
+        await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 0, page: 0, pageSize: 10 });
+
+        const served = await vi.mocked(servedRuleset)();
+        const values = valuesOfCall(0);
+        expect(values).toContain(hashRuleset(served));
+        expect(values).not.toContain(hashRuleset(SOURCE_DEFAULT_RULESET));
+    });
+
+    it('uses the same ruleset hash for the count as for the page', async () => {
+        // The count runs its own copy of the predicate, so a hash fixed in one and not the
+        // other would page correctly and total wrongly.
+        mockJoinQuery([], 0);
+
+        await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 0, page: 0, pageSize: 10 });
+
+        const served = hashRuleset(await vi.mocked(servedRuleset)());
+        expect(valuesOfCall(0)).toContain(served);
+        expect(valuesOfCall(1)).toContain(served);
     });
 
     it('leaves the level band and daily cap to accept time', async () => {
