@@ -446,6 +446,10 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         // the player watching a screen that will never move again.
         : battle.failureReason
         ? `${describeBattleStage(battle.state)} (${battle.failureReason})`
+        // A failed poll or a receipt that would not verify used to leave the overlay
+        // spinning with the reason sitting unread in `error`.
+        : battle.error
+        ? `Could not follow this battle: ${battle.error.message}`
         : hasResolvedEvent && !animation.done
         ? 'Result in — playing out the fight…'
         : !hasResolvedEvent && animation.done && battle.liveReplay

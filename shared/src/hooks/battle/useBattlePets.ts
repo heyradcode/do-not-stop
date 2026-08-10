@@ -108,8 +108,12 @@ export const useBattlePets = (options?: UseBattlePetsOptions) => {
         firedForRef.current = null;
     }, []);
 
-    const phase = derivePhase(isSubmitting, battle.data?.state, Boolean(result), Boolean(submitError));
+    // Every error, not just the submit one. Reading the battle's state or verifying its
+    // receipt can both fail, and while those were excluded the UI had no way to notice:
+    // `phase` stayed non-error, `isPending` stayed true, and the overlay spun on a
+    // "confirming" toast forever with the actual failure sitting unread in `error`.
     const error = submitError ?? (battle.error as Error | null) ?? (verified.error as Error | null) ?? null;
+    const phase = derivePhase(isSubmitting, battle.data?.state, Boolean(result), Boolean(error));
 
     return {
         mutate,
@@ -191,9 +195,10 @@ function derivePhase(
     isSubmitting: boolean,
     state: string | undefined,
     hasResult: boolean,
-    hasSubmitError: boolean,
+    /** Any failure: submitting, reading the battle's state, or verifying its receipt. */
+    hasError: boolean,
 ): BackendBattlePhase {
-    if (hasSubmitError) return 'error';
+    if (hasError) return 'error';
     if (isSubmitting) return 'requesting';
     if (hasResult) return 'resolved';
     if (!state) return 'idle';
