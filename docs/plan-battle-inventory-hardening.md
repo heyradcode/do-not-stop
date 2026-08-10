@@ -6,27 +6,58 @@ is the execution order for what that review found. Each step ends at a command t
 
 Branch: `fix/battle-inventory-seam`.
 
+## Status
+
+Every code item is done. What remains needs a decision or production access, not more code.
+
+| | Item | State |
+|---|---|---|
+| B1 | Sign worker rebuilt every snapshot at schema v1, so nothing settled | done |
+| C1 | Unreadable catalog effect silently re-priced the ruleset | done |
+| C2 | Uncatalogued equipped item fought as nothing | done |
+| C3 | TS bonus sum unclamped where Go range-checks | done |
+| C4 | Self-battle silently swallowed one of its own drops | done |
+| C5 | Unconfirmed mint could pay an entitlement twice | done |
+| C6 | Spending a consumable left the pet's own numbers stale | done |
+| D1 | Consent and gear. Smaller gap than first stated | done, no schema change |
+| D2 | Drops are not verifiable | claim corrected; **the tension is undecided** |
+| D3 | Phase 4 ships a re-consent event | **needs a deliberate rollout** |
+| Q1-Q4 | Cache reset, stranded comment, worker cast, untypechecked scripts | done |
+| O1-O3 | Migration, seeder, end-to-end | **operator calls** |
+
+Two of these were corrections to this document rather than to the code. D1 and D2 were both
+written up as bigger than they are, and in D1's case that nearly bought a permanent protocol
+schema version. Where that happened it is recorded in place, because the correction is the
+more useful artifact.
+
 ## Verdict
 
 The feature is well built. Ownership boundaries are stated and held (indexer writes the
 projections, the seeder writes the catalog, the player signs the equip), the two live combat
 ports move together, the golden vectors cover the modifier ordering at a one-point margin, and
-the doc comments record reasoning rather than restating code. Every suite is green:
+the doc comments record reasoning rather than restating code.
 
-| Suite | Result |
-|---|---|
-| `pnpm --filter backend test` | 914 passed / 89 files |
-| `pnpm --filter @cryptopets/protocol test` | 595 passed / 34 files |
-| `pnpm --filter @cryptopets/verifier test` | 86 passed / 13 files |
-| `pnpm --filter frontend test` | 370 passed / 48 files |
-| `pnpm --filter @shared/core test` | 567 passed / 80 files |
-| `go test ./internal/{combat,evm,store}` | ok |
+Every suite was green **as found**, which is the point worth keeping:
 
-The defects are concentrated at one seam: the point where a stored snapshot is read back out
-of the ledger. Phase 4 gave the snapshot a schema version and an equipment list, and one of the
-three readers was never updated. That reader is the signing worker, so nothing settles.
+| Suite | As found | After |
+|---|---|---|
+| `pnpm --filter backend test` | 914 passed / 89 files | 939 |
+| `pnpm --filter @cryptopets/protocol test` | 595 passed / 34 files | 604 |
+| `pnpm --filter @cryptopets/verifier test` | 86 passed / 13 files | 86 |
+| `pnpm --filter frontend test` | 370 passed / 48 files | 370 |
+| `pnpm --filter @shared/core test` | 567 passed / 80 files | 568 |
+| `go test ./internal/{combat,evm,store}` | ok | ok |
 
-Severity ordering below is by consequence, not by size of fix.
+A green suite is not the same as working software, and B1 is the clean demonstration: no
+battle on any deployment running that code could produce a receipt, and 914 tests passed
+anyway, because the fixture and the bug shared an assumption. Every fix below is paired with a
+test verified to fail without it, which is the only way that assertion means anything.
+
+`contracts/test-vectors/` is unchanged throughout, confirmed by diff against `main`.
+
+Severity ordering below is by consequence, not by size of fix. The C-numbers are in the order
+found, not in severity order: C4 through C6 came out of reviewing the drop and claim paths
+after the snapshot work was finished.
 
 ---
 
@@ -432,8 +463,14 @@ schema change, so it no longer has to be sequenced against D3's re-consent; D3 i
 one-time cost that Phase 4 forces on its own. O1 to O3 last, because they are the only steps
 that touch production.
 
-Everything above D2 is done. What remains is D2 (a tracked v1 limit, not a defect), D3 (ship
-the re-consent deliberately), and the three operator steps.
+All of that has landed. What remains is D2.2 (decide the verifiable-drops tension, or decide
+to keep it), D3 (ship the re-consent deliberately), and the three operator steps, which want
+running in that order: apply the migration, seed, then exercise it end to end.
+
+One note for whoever runs O3. It is the first time either web screen will be opened against
+real data, and the review that produced C1 to C6 could not substitute for that: it read the
+code, not the rendered page. Expect the remaining defects to be presentational, and expect
+them to be found by looking rather than by reading.
 
 ## Do not touch
 
