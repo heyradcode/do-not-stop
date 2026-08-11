@@ -5,12 +5,12 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
 
 import PetPicker from '../components/PetPicker';
+import PetSearchField from '../components/PetSearchField';
 import { useMarriagePanel } from '../hooks/marriage/useMarriagePanel';
 import MarriageCard from './parts/MarriageCard';
 import { neon, neonGlow } from '../theme/neon';
@@ -18,10 +18,10 @@ import { neon, neonGlow } from '../theme/neon';
 /**
  * Marriage, as a pure view over `useMarriagePanel`.
  *
- * Frontend picks the partner's pet with a `PetSearchDropdown` backed by the
- * `searchPets` query. Mobile takes the id directly: the dropdown is a component
- * and a query of its own, and a proposal needs an exact pet either way. Worth
- * revisiting if players turn out not to know each other's ids.
+ * The partner is chosen with `PetSearchField`, mobile's answer to frontend's
+ * `PetSearchDropdown` over the same `searchPets` query. This screen used to ask for
+ * the partner's numeric id outright, which only works between two players already
+ * talking somewhere else.
  */
 export default function MarriageScreen() {
     const panel = useMarriagePanel();
@@ -79,15 +79,13 @@ export default function MarriageScreen() {
                         disabled={panel.busy}
                         emptyHint="No pets on this chain yet."
                     />
-                    <Text style={styles.label}>Partner&apos;s pet id</Text>
-                    <TextInput
-                        style={styles.input}
+                    <Text style={styles.label}>Partner&apos;s pet</Text>
+                    <PetSearchField
+                        chain={panel.chain}
                         value={partnerId}
-                        onChangeText={setPartnerId}
-                        placeholder="e.g. 42"
-                        placeholderTextColor={neon.textDim}
-                        keyboardType="number-pad"
-                        editable={!panel.busy}
+                        onChange={setPartnerId}
+                        excludeIds={myPet ? [myPet] : []}
+                        disabled={panel.busy}
                     />
                     <TouchableOpacity
                         style={[styles.action, !canPropose && styles.actionDisabled]}

@@ -42,6 +42,8 @@ const mockState = {
     roster: [{ id: '9', name: 'Luna' }] as { id: string; name: string }[],
     /** What a direct spouse lookup returns when the roster map has no answer. */
     fetchedSpouse: {} as { name?: string; level?: number },
+    /** What `searchPets` returns for the partner field; someone else's pets. */
+    searchResults: [] as { id: string; name: string; level: number; dna: bigint }[],
 };
 
 /** Every `useSpousePet` call the card made, to check it skips when it can. */
@@ -65,6 +67,14 @@ jest.mock('@shared/core', () => ({
         walletAddress: '0xme',
     }),
     useAllPets: () => ({ pets: mockState.roster }),
+    useSearchPets: (query: string) => ({
+        results: query.trim() ? mockState.searchResults : [],
+        isLoading: false,
+        error: null,
+        refetch: jest.fn(),
+    }),
+    getPetAvatar: () => '🐾',
+    petArtUrl: () => null,
     useIncomingProposals: (...args: unknown[]) => {
         mockIncomingArgs(...args);
         return { proposals: mockState.proposals, isLoading: mockState.proposalsLoading };
@@ -149,6 +159,21 @@ const type = async (tree: ReactTestRenderer.ReactTestRenderer, value: string) =>
     });
 };
 
+/**
+ * Pick the partner the way a player does now: search, then tap a result.
+ *
+ * This screen used to take the partner's numeric id typed straight in, so these tests
+ * typed one. A proposal still names an exact pet; what changed is that finding it no
+ * longer requires already knowing its id.
+ */
+const choosePartner = async (tree: ReactTestRenderer.ReactTestRenderer, name: string) => {
+    await type(tree, name);
+    const row = tree.root
+        .findAllByType(TouchableOpacity)
+        .find((node) => node.props.accessibilityLabel === `Choose ${name}`);
+    await ReactTestRenderer.act(async () => row!.props.onPress());
+};
+
 beforeEach(() => {
     mockState.pets = [pet()];
     mockState.kind = 'evm';
@@ -157,6 +182,7 @@ beforeEach(() => {
     mockState.isMarried = false;
     mockState.roster = [{ id: '9', name: 'Luna' }];
     mockState.fetchedSpouse = {};
+    mockState.searchResults = [{ id: '42', name: 'Nia', level: 3, dna: 1n }];
     mockSpouseLookups.length = 0;
     jest.clearAllMocks();
 });
@@ -182,18 +208,36 @@ describe('MarriageScreen', () => {
         expect(mockIncomingArgs).toHaveBeenCalledWith('evm', ['1', '2']);
     });
 
-    it('sends a proposal for the chosen pet and typed partner id', async () => {
+    it('sends a proposal for the chosen pet and the partner found by search', async () => {
         const tree = await render();
         await pressWith(tree, 'Rex');
-        await type(tree, ' 42 ');
+        await choosePartner(tree, 'Nia');
         await pressWith(tree, 'Send Proposal');
         expect(mockMutations.propose).toHaveBeenCalledWith({ petIdA: '1', petIdB: '42' });
+    });
+
+    it('keeps the player’s own pick out of the partner results', async () => {
+        // Marrying a pet to itself is not a proposal anyone means to send, and the
+        // search covers the whole roster, own pets included.
+        mockState.searchResults = [
+            { id: '1', name: 'Rex', level: 2, dna: 1n },
+            { id: '42', name: 'Nia', level: 3, dna: 1n },
+        ];
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await type(tree, 'e');
+
+        const labels = tree.root
+            .findAllByType(TouchableOpacity)
+            .map((node) => node.props.accessibilityLabel);
+        expect(labels).toContain('Choose Nia');
+        expect(labels).not.toContain('Choose Rex');
     });
 
     it('refreshes contract reads after a write, or every row shows stale state', async () => {
         const tree = await render();
         await pressWith(tree, 'Rex');
-        await type(tree, '42');
+        await choosePartner(tree, 'Nia');
         await pressWith(tree, 'Send Proposal');
         expect(mockRefetch).toHaveBeenCalled();
         const keys = mockInvalidate.mock.calls.map((c) => c[0].queryKey[0]);
@@ -206,7 +250,7 @@ describe('MarriageScreen', () => {
         mockMutations.propose.mockRejectedValueOnce(new Error('reverted'));
         const tree = await render();
         await pressWith(tree, 'Rex');
-        await type(tree, '42');
+        await choosePartner(tree, 'Nia');
         await pressWith(tree, 'Send Proposal');
         expect(mockNotify).toHaveBeenCalledWith(
             'Marriage action failed',
