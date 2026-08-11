@@ -580,7 +580,7 @@ route reachable by anything holding a token.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/rewards/seasons/:seasonId` | Season metadata: the receipt `sequence` range it covers, the distributor and token its leaves bind to, the root, the total, and the rates it was computed from. The range and rates are the reproducibility contract — they say exactly which slice of the corpus to replay to arrive at this root. |
+| GET | `/api/rewards/seasons/:seasonId` | Season metadata: the receipt `sequence` range it covers, the distributor and token its leaves bind to, the chain identity they bind (`evmChainId` or `chainRef`, exactly one non-null), the root, the total, and the rates it was computed from. The range and rates are the reproducibility contract — they say exactly which slice of the corpus to replay to arrive at this root, and the chain identity is what lets anyone rebuild the leaves to check it. |
 | GET | `/api/rewards/seasons/:seasonId/claim/:wallet` | The wallet's `amount`, its Merkle `proof`, and the `breakdown` behind the number. **404 `no-entitlement`** covers both an unknown season and a wallet that earned nothing — the answer to "what can I claim" is the same either way, and distinguishing them would leak which wallets participated to anyone enumerating. |
 
 Only **anchored** receipts count toward a season. An unanchored receipt is signed and public,
@@ -600,8 +600,9 @@ that could still be reorganised.
 | `KEEPER_MOCK_REVEAL` | Local dev only: keeper also acts as the Entropy provider (`MockEntropy.mockReveal`). Only takes effect when `KEEPER_CHAIN_ID=31337`. |
 | `BATTLE_BACKEND_MODE_ENABLED` | Backend-authoritative battle mode (§L Phase 3). Off by default; gates the write routes, the outbox worker, and the signer requirement. Reads stay served either way. |
 | `BATTLE_BATCH_MIN_SIZE` / `BATTLE_BATCH_MAX_SIZE` | Smallest run worth anchoring, and the cap on one batch (§I). |
-| `BATTLE_ANCHOR_RPC_URL` / `BATTLE_ANCHOR_PRIVATE_KEY` / `BATTLE_ANCHOR_REGISTRY_ADDRESS` / `BATTLE_ANCHOR_CHAIN_ID` | Anchoring batch roots in `BattleBatchRegistry`. Required together; with any missing, batches are built but never anchored. The wallet needs the registry's publisher role. |
-| `BATTLE_ANCHOR_INTERVAL_MS` | How often to build and anchor (default 60000). Latency only — both halves are idempotent. |
+| `BATTLE_ANCHOR_RPC_URL` / `BATTLE_ANCHOR_PRIVATE_KEY` / `BATTLE_ANCHOR_REGISTRY_ADDRESS` / `BATTLE_ANCHOR_CHAIN_ID` | Anchoring batch roots in `BattleBatchRegistry`. Required together; with any missing, batches are built but never anchored. The wallet needs the registry's publisher role. Applies to the **first** id in `BATTLE_CHAIN_IDS`. |
+| `BATTLE_ANCHOR_<CHAIN>_*` | The same four, per chain id, where `<CHAIN>` is the protocol chain id uppercased with non-alphanumerics replaced by `_` (`eip155:84532` → `EIP155_84532`). A registry records one chain's batches, so each chain needs its own. Solana anchors against `cryptopets_registry` and takes no `CHAIN_ID`: `REGISTRY_ADDRESS` is the program id and `PRIVATE_KEY` is the publisher keypair's secret, base58 or a JSON byte array. |
+| `BATTLE_ANCHOR_INTERVAL_MS` | How often to build and anchor (default 60000). Latency only — both halves are idempotent. Shared by every chain's timer. |
 
 > **Migration prerequisite:** the v2 `pet_roster` / `battle_history` columns ship
 > in `prisma/schema.prisma`; run `pnpm prisma:migrate` then `pnpm prisma:generate`

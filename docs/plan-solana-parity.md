@@ -518,13 +518,24 @@ EVM proof gets nothing rather than a proof that cannot be claimed.
 
 *Verify:* `pnpm --filter backend exec vitest run tests/battle/rewards`.
 
-### 5.4 Frontend claim path
+### 5.4 Serve the chain identity; the claim UI is a separate feature
 
-The rewards screen builds a Solana `claim` transaction when the active chain is Solana. This is
-a new write, so it goes through the chain adapter the way pet actions do rather than reaching
-into `frontend/src/chains/solana/` from a component.
+**Partly built, and the step was mis-scoped.** It assumed a rewards screen exists that needs a
+Solana branch. **There is no rewards screen at all**: `/api/rewards/seasons/:id` and
+`/claim/:wallet` are served and nothing in `frontend/` or `shared/` consumes them. Adding one
+is a feature in its own right (route, screen, hooks, empty and pending states, styling), not a
+Solana adaptation, so it is not folded in here.
 
-*Verify:* `pnpm --filter frontend exec vitest run src/hooks/rewards`.
+**Done:** `getSeason` now serves `chainRef` alongside `evmChainId`. It selected only the latter,
+so a Solana season's leaves could not be rebuilt by anyone outside, which made its arithmetic
+uncheckable and its claims unbuildable. That is the actual Solana gap in this step, and it also
+supplies what `checkRewardRoot` needs. The endpoint had no tests; it has them now.
+
+**Left:** the rewards screen itself, for both chains. When it is built, the claim write goes
+through the chain adapter the way pet actions do rather than reaching into
+`frontend/src/chains/solana/` from a component.
+
+*Verify:* `pnpm --filter backend exec vitest run tests/features/battle/rewards`.
 
 ### 5.5 Verifier
 

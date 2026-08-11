@@ -43,7 +43,12 @@ export async function getSeason(req: Request, res: Response): Promise<void> {
             firstSequence: true,
             lastSequence: true,
             distributor: true,
+            // Both chain-identity columns, exactly one of which is set. Whichever it is has
+            // to be served: a leaf binds the chain, so without it nobody can rebuild this
+            // season's tree and check the root against the list. Serving only `evmChainId`
+            // made a Solana season's arithmetic uncheckable by anyone.
             evmChainId: true,
+            chainRef: true,
             token: true,
             merkleRoot: true,
             totalAmount: true,
