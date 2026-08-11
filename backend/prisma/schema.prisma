@@ -673,10 +673,18 @@ model RewardSeason {
   firstSequence BigInt @map("first_sequence")
   lastSequence  BigInt @map("last_sequence")
 
-  /// Distributor address and chain the leaves are bound to. A season built for one
-  /// deployment produces leaves that are not in any other deployment's tree.
+  /// Distributor and chain the leaves are bound to. A season built for one deployment
+  /// produces leaves that are not in any other deployment's tree.
+  ///
+  /// `distributor` is a contract address on EVM and a program id on Solana; `token` is an
+  /// ERC-20 address or an SPL mint. Exactly one of the two chain-identity columns below is
+  /// set, decided by the family of `chainId`.
   distributor String
-  evmChainId  Int    @map("evm_chain_id")
+  /// EVM seasons only: the numeric chain id the leaf binds, from `block.chainid`.
+  evmChainId  Int?   @map("evm_chain_id")
+  /// Solana seasons only: the cluster's 32-byte genesis hash, base58 or 0x-hex. Solana has
+  /// no `block.chainid`, so this is what stops a devnet proof being in a mainnet tree.
+  chainRef    String? @map("chain_ref")
   token       String
 
   merkleRoot String @map("merkle_root")
@@ -703,7 +711,9 @@ model RewardSeason {
 model RewardEntitlement {
   seasonId Int          @map("season_id")
   season   RewardSeason @relation(fields: [seasonId], references: [seasonId], onDelete: Cascade)
-  /// Lowercased, matching how the protocol normalizes accounts before hashing.
+  /// Normalized exactly as the protocol normalizes an account before hashing: an EVM
+  /// address lowercased, a Solana base58 pubkey left alone. Lowercasing base58 would
+  /// change the key, not its spelling.
   wallet   String
   /// Decimal string: amounts are uint256 on chain and exceed Int range.
   amount   String

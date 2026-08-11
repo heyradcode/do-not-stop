@@ -1,4 +1,12 @@
-import { buildMerkleTree, merkleProof, rewardMerkleLeaf, type Hex } from '@cryptopets/protocol';
+import {
+    buildMerkleTree,
+    chainFamily,
+    merkleProof,
+    normalizeAccount,
+    rewardMerkleLeafFor,
+    type ChainId,
+    type Hex,
+} from '@cryptopets/protocol';
 
 import { prisma } from '@config/prisma';
 
@@ -26,6 +34,32 @@ import {
  *   would be the assertion this design exists to avoid.
  */
 
+/**
+ * What a leaf binds a claim to, which differs by family and not by much.
+ *
+ * Both name a distributor and an asset. They differ only in how the chain itself is
+ * identified: EVM has `block.chainid`, and Solana has nothing a program can read, so its
+ * leaves carry the cluster's genesis hash instead (see `cryptopets_rewards`' `chain_ref`).
+ */
+export type SeasonTarget =
+    | {
+          family: 'evm';
+          /** The `SeasonRewardDistributor` contract. */
+          distributor: string;
+          evmChainId: number;
+          /** ERC-20 the season pays in. */
+          token: string;
+      }
+    | {
+          family: 'solana';
+          /** The `cryptopets_rewards` program id. */
+          distributor: string;
+          /** Cluster genesis hash, base58 or 0x-hex. */
+          chainRef: string;
+          /** SPL mint the season pays in. */
+          token: string;
+      };
+
 export interface SeasonInputs {
     seasonId: number;
     chainId: string;
@@ -33,10 +67,14 @@ export interface SeasonInputs {
     /** Inclusive receipt sequence range. */
     firstSequence: bigint;
     lastSequence: bigint;
-    /** Distributor the leaves bind to, and the EVM chain it lives on. */
-    distributor: string;
-    evmChainId: number;
-    token: string;
+    /**
+     * Where the claim will be honoured.
+     *
+     * Its family must match `chainId`'s. A season's battles and its payout are on the same
+     * chain by construction: the owners in those receipts are that chain's accounts, so
+     * there is nobody in an EVM season a Solana distributor could pay.
+     */
+    target: SeasonTarget;
     rates: RewardRates;
 }
 
@@ -61,6 +99,8 @@ export async function buildSeason(inputs: SeasonInputs): Promise<BuiltSeason> {
         throw new Error(`season ${inputs.seasonId} already exists; supersede it with a new season rather than editing it`);
     }
 
+    assertTargetMatchesChain(inputs.chainId, inputs.target);
+
     const contributions = await loadAnchoredContributions(inputs);
     if (contributions.length === 0) {
         throw new Error(
@@ -71,14 +111,7 @@ export async function buildSeason(inputs: SeasonInputs): Promise<BuiltSeason> {
 
     const entitlements = computeEntitlements(contributions, inputs.rates);
     const leaves = entitlements.map((entitlement) =>
-        rewardMerkleLeaf({
-            chainId: inputs.evmChainId,
-            distributor: inputs.distributor,
-            seasonId: inputs.seasonId,
-            wallet: entitlement.wallet,
-            token: inputs.token,
-            amount: entitlement.amount,
-        }),
+        seasonLeaf(inputs.target, inputs.seasonId, entitlement.wallet, entitlement.amount),
     );
     const tree = buildMerkleTree(leaves);
     const totalAmount = totalEntitled(entitlements);
@@ -91,9 +124,14 @@ export async function buildSeason(inputs: SeasonInputs): Promise<BuiltSeason> {
                 deploymentId: inputs.deploymentId,
                 firstSequence: inputs.firstSequence,
                 lastSequence: inputs.lastSequence,
-                distributor: inputs.distributor.toLowerCase(),
-                evmChainId: inputs.evmChainId,
-                token: inputs.token.toLowerCase(),
+                // `normalizeAccount`, not `toLowerCase`: base58 is case-sensitive, so
+                // lowercasing a Solana program id or mint produces a different key rather
+                // than a different spelling of the same one, and every leaf built from it
+                // would be unclaimable.
+                distributor: normalizeAccount(inputs.target.distributor),
+                evmChainId: inputs.target.family === 'evm' ? inputs.target.evmChainId : null,
+                chainRef: inputs.target.family === 'solana' ? inputs.target.chainRef : null,
+                token: normalizeAccount(inputs.target.token),
                 merkleRoot: tree.root,
                 totalAmount: totalAmount.toString(),
                 // Stored so the season is reproducible rather than merely asserted.
@@ -116,6 +154,53 @@ export async function buildSeason(inputs: SeasonInputs): Promise<BuiltSeason> {
     });
 
     return { seasonId: inputs.seasonId, merkleRoot: tree.root, totalAmount, entitlements };
+}
+
+/**
+ * One entitlement's leaf, under the layout its chain's verifier implements.
+ *
+ * The single place either layout is chosen, so `buildSeason` and `getClaimProof` cannot
+ * disagree. They would have to produce identical bytes anyway, and a proof served under a
+ * layout the tree was not built with fails on chain with nothing to point at.
+ */
+function seasonLeaf(target: SeasonTarget, seasonId: number, wallet: string, amount: bigint): Hex {
+    return target.family === 'solana'
+        ? rewardMerkleLeafFor({
+              family: 'solana',
+              chainRef: target.chainRef,
+              distributor: target.distributor,
+              seasonId,
+              wallet,
+              token: target.token,
+              amount,
+          })
+        : rewardMerkleLeafFor({
+              family: 'evm',
+              chainId: target.evmChainId,
+              distributor: target.distributor,
+              seasonId,
+              wallet,
+              token: target.token,
+              amount,
+          });
+}
+
+/**
+ * Refuses a season whose payout chain is not the chain its battles were fought on.
+ *
+ * Not a formality. The owners in those receipts are that chain's accounts, so an EVM
+ * distributor has nobody in a Solana season to pay: every leaf would name a 32-byte pubkey
+ * as a 20-byte address, and the mismatch would surface as an unclaimable root rather than
+ * an error anyone could read.
+ */
+function assertTargetMatchesChain(chainId: string, target: SeasonTarget): void {
+    const family = chainFamily(chainId as ChainId);
+    if (family !== target.family) {
+        throw new Error(
+            `season on ${chainId} is a ${family} chain but its distributor is ${target.family}; ` +
+                'a season pays out on the chain its battles were fought on',
+        );
+    }
 }
 
 /** Every anchored battle in the range, in the shape the entitlement maths needs. */
@@ -147,6 +232,43 @@ async function loadAnchoredContributions(inputs: SeasonInputs): Promise<BattleCo
     });
 }
 
+/**
+ * Rebuilds a stored season's target.
+ *
+ * The two chain-identity columns are nullable and exactly one is set, which the type system
+ * cannot express through Prisma. Throwing on a row with the wrong one populated is the
+ * point: silently defaulting would rebuild the tree under the other family's layout and
+ * serve proofs that fail on chain, and the root check below would blame the entitlements.
+ */
+function storedTarget(season: {
+    chainId: string;
+    distributor: string;
+    token: string;
+    evmChainId: number | null;
+    chainRef: string | null;
+}): SeasonTarget {
+    if (chainFamily(season.chainId as ChainId) === 'solana') {
+        if (!season.chainRef) {
+            throw new Error(`solana season on ${season.chainId} has no chain_ref recorded`);
+        }
+        return {
+            family: 'solana',
+            distributor: season.distributor,
+            chainRef: season.chainRef,
+            token: season.token,
+        };
+    }
+    if (season.evmChainId === null) {
+        throw new Error(`evm season on ${season.chainId} has no evm_chain_id recorded`);
+    }
+    return {
+        family: 'evm',
+        distributor: season.distributor,
+        evmChainId: season.evmChainId,
+        token: season.token,
+    };
+}
+
 export interface ClaimProof {
     seasonId: number;
     wallet: string;
@@ -171,19 +293,16 @@ export async function getClaimProof(seasonId: number, wallet: string): Promise<C
     });
     if (!season) return null;
 
-    const target = wallet.toLowerCase();
+    // `normalizeAccount`, matching how the wallet was stored. Lowercasing here would make
+    // every Solana lookup miss, which reads as "you have no entitlement" rather than as a
+    // bug.
+    const target = normalizeAccount(wallet);
     const index = season.entitlements.findIndex((entitlement) => entitlement.wallet === target);
     if (index < 0) return null;
 
+    const seasonTarget = storedTarget(season);
     const leaves = season.entitlements.map((entitlement) =>
-        rewardMerkleLeaf({
-            chainId: season.evmChainId,
-            distributor: season.distributor,
-            seasonId: season.seasonId,
-            wallet: entitlement.wallet,
-            token: season.token,
-            amount: BigInt(entitlement.amount),
-        }),
+        seasonLeaf(seasonTarget, season.seasonId, entitlement.wallet, BigInt(entitlement.amount)),
     );
     const tree = buildMerkleTree(leaves);
     if (tree.root.toLowerCase() !== season.merkleRoot.toLowerCase()) {

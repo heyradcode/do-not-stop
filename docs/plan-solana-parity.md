@@ -483,26 +483,33 @@ Pause blocks `claim` only.
 
 # Phase 5: backend seasons and the claim UI
 
-### 5.1 Season scope spans chain ids
+### 5.1 / 5.2 A season stays per chain, tagged by family
 
-Let a season's contribution query cover several chain ids so a player's Solana and EVM battles
-count toward one season. `entitlements.ts` already works on `BattleContribution` rows; the
-scoping is in the query above it.
+**Built, and not as 5.1 and 5.2 described.** Those steps proposed one season spanning both
+chains with two trees inside it. That is wrong: a season row holds one distributor, one token,
+and one root, and two families need two of each. "One season, two trees" *is* two seasons.
 
-*Verify:* `pnpm --filter backend exec vitest run tests/battle/rewards` with a fixture mixing
-`eip155:` and `solana:` receipts.
+Nothing is lost by keeping them separate, because the wallets partition by family already: a
+`solana:` battle's owners are Solana pubkeys and an `eip155:` battle's are EVM addresses, so
+no wallet could appear in both trees anyway. `SeasonInputs` therefore grows a `target`
+discriminated union rather than a spanning query, and `buildSeason` refuses a target whose
+family is not the chain's.
 
-### 5.2 Per-family entitlement grouping
+Season ids stay **globally unique** rather than becoming per-chain. Nothing on chain requires
+a program's seasons to start at 1, so allocating from one sequence across both chains avoids
+changing `reward_season`'s primary key and the entitlement foreign key that depends on it.
 
-One season, two trees: an EVM tree with v1 leaves and a Solana tree with v2 leaves, because
-each binds to its own distributor. `SeasonInputs` grows from `distributor`/`evmChainId` to a
-per-family distributor descriptor.
+Migration `20260811120000_reward_season_solana` makes `evm_chain_id` nullable and adds
+`chain_ref`; exactly one is set per season. No new table, so no new RLS statement.
 
-A wallet appears in whichever tree matches the chain it battled on. No address linking is
-needed, which is the main thing decision 2 bought over the claim-on-EVM alternative.
+**The bug this uncovered.** `season.service.ts` called `.toLowerCase()` on the wallet, the
+distributor, and the token. Base58 is case-sensitive, so that turns a Solana pubkey into a
+different key rather than a different spelling of the same one: every leaf would be
+unclaimable and every proof lookup would miss, reading to a player as "you have no
+entitlement". `entitlements.ts` already used `normalizeAccount`, which is correct; the season
+service did not.
 
-*Verify:* new test asserting a season with both families produces two roots and that a Solana
-wallet's leaf is absent from the EVM tree.
+*Verify:* `pnpm --filter backend exec vitest run tests/features/battle/rewards`.
 
 ### 5.3 Serve proofs by family
 
