@@ -614,7 +614,14 @@ Sign only the digest:
   each, and the signer refuses to start rather than let them collapse onto one. Both keys
   are published together, and a verifier matches on `signingKeyId` without needing to know
   how they are partitioned.
-- Publish public keys and validity periods; retain rotated-out keys.
+- Publish public keys and validity periods; retain rotated-out keys. `notAfter` is stamped
+  automatically at the first boot that no longer configures a key, and is dated from
+  evidence rather than the clock: the `createdAt` of the last receipt that key actually
+  signed. That is the strongest claim the data supports and it is safe in the direction that
+  matters, since every receipt the key legitimately produced is at or before it — stamping
+  can never retroactively invalidate one. A key that signed nothing gets a zero-length
+  window, which is the honest description of one configured and never used. An end recorded
+  deliberately, such as during a compromise, is never overwritten by a later boot's guess.
 - Log every KMS request, digest, result, and key version.
 - Signer accepts only the exact commitment and receipt schemas. Never expose a generic
   state-mutation signing endpoint.

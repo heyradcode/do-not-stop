@@ -13,7 +13,7 @@ import { env } from '@config/env';
 
 import { createKmsSigner } from './signer.kms';
 import { createLocalSigner } from './signer.local';
-import { loadSigningKeys, persistSigningKey } from './signer.registry';
+import { loadSigningKeys, persistSigningKey, retireInactiveKeys } from './signer.registry';
 import {
     type EngineAttestation,
     type SignerAuditEntry,
@@ -198,6 +198,13 @@ export async function loadPersistedSigningKeys(): Promise<void> {
     }
 
     const activeIds = new Set(active.map((key) => key.keyId));
+    // Before reading them back, close the window on anything that has stopped signing (§G).
+    // A rotation is only observable here — the process that stops using a key is the one
+    // that never mentions it again — so a boot with a new key configured is exactly when
+    // the old one's validity should end. Left to itself it would stay published as "valid
+    // indefinitely" and keep vouching for receipts dated long after it was retired.
+    await retireInactiveKeys(activeIds);
+
     const stored = await loadSigningKeys(activeIds);
     rotatedKeys.length = 0;
     for (const key of stored) {

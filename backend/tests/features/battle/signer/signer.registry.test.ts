@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@config/prisma', () => ({
-    prisma: { battleSigningKey: { upsert: vi.fn(), findMany: vi.fn() } },
+    prisma: {
+        battleSigningKey: { upsert: vi.fn(), findMany: vi.fn(), updateMany: vi.fn() },
+        battleReceipt: { findFirst: vi.fn() },
+    },
 }));
 
 import { prisma } from '@config/prisma';
-import { loadSigningKeys, persistSigningKey } from '@features/battle/signer';
+import { loadSigningKeys, persistSigningKey, retireInactiveKeys } from '@features/battle/signer';
 import type { SigningKeyDescriptor } from '@features/battle/signer';
 
 function key(overrides: Partial<SigningKeyDescriptor> = {}): SigningKeyDescriptor {
@@ -151,5 +154,84 @@ describe('loading the registry', () => {
         await loadSigningKeys(new Set());
         const call = vi.mocked(prisma.battleSigningKey.findMany).mock.calls[0]![0] as { orderBy: unknown };
         expect(call.orderBy).toEqual({ notBefore: 'asc' });
+    });
+});
+
+
+/**
+ * Publishing a validity period for a key that has stopped signing (§G).
+ *
+ * §G asks for published validity periods and the verifier already enforces them, refusing a
+ * receipt created outside `[notBefore, notAfter]`. Nothing ever set `notAfter`, so a rotated
+ * key stayed published as "valid indefinitely" and would happily vouch for a receipt dated
+ * long after it was retired — the exact window that check exists to close.
+ */
+describe('retireInactiveKeys', () => {
+    beforeEach(() => {
+        vi.mocked(prisma.battleSigningKey.updateMany).mockResolvedValue({ count: 1 } as never);
+    });
+
+    /**
+     * Dated from evidence, not from the clock. The last receipt the key signed is the
+     * strongest claim the data supports, and it is safe in the direction that matters:
+     * every receipt the key legitimately produced is at or before it, so stamping can never
+     * retroactively invalidate one.
+     */
+    it('ends the window at the last receipt the key signed', async () => {
+        vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([
+            { keyId: 'old', notBefore: 1000n },
+        ] as never);
+        vi.mocked(prisma.battleReceipt.findFirst).mockResolvedValue({ createdAt: 4242n } as never);
+
+        expect(await retireInactiveKeys(new Set(['current']))).toEqual({ retired: 1 });
+        expect(vi.mocked(prisma.battleSigningKey.updateMany).mock.calls[0]![0]).toMatchObject({
+            where: { keyId: 'old', notAfter: null },
+            data: { notAfter: 4242n },
+        });
+    });
+
+    // A zero-length window is the honest description of a key that was configured and never
+    // used, and it is what stops such a key vouching for anything at all.
+    it('gives a key that never signed a zero-length window', async () => {
+        vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([
+            { keyId: 'never-used', notBefore: 1000n },
+        ] as never);
+        vi.mocked(prisma.battleReceipt.findFirst).mockResolvedValue(null as never);
+
+        await retireInactiveKeys(new Set(['current']));
+
+        expect(vi.mocked(prisma.battleSigningKey.updateMany).mock.calls[0]![0]).toMatchObject({
+            data: { notAfter: 1000n },
+        });
+    });
+
+    it('never considers a key that is still signing', async () => {
+        vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([] as never);
+
+        await retireInactiveKeys(new Set(['current', 'current-solana']));
+
+        const { where } = vi.mocked(prisma.battleSigningKey.findMany).mock.calls.at(-1)![0]!;
+        expect(where).toMatchObject({ notAfter: null });
+        expect((where as { keyId: { notIn: string[] } }).keyId.notIn.sort()).toEqual([
+            'current',
+            'current-solana',
+        ]);
+    });
+
+    /**
+     * Guarded on the window still being open, so two processes booting together produce one
+     * stamp. It also protects a window an operator set deliberately during a compromise,
+     * where the recorded time is a decision rather than an observation and must not be
+     * overwritten by a later boot's guess.
+     */
+    it('only writes where no end has been recorded yet', async () => {
+        vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([
+            { keyId: 'old', notBefore: 1000n },
+        ] as never);
+        vi.mocked(prisma.battleReceipt.findFirst).mockResolvedValue({ createdAt: 4242n } as never);
+        vi.mocked(prisma.battleSigningKey.updateMany).mockResolvedValue({ count: 0 } as never);
+
+        // Lost the race, so it is not counted as retired by this process.
+        expect(await retireInactiveKeys(new Set(['current']))).toEqual({ retired: 0 });
     });
 });

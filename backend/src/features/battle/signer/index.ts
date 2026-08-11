@@ -10,7 +10,7 @@ export {
     sign,
     signerAuditLog,
 } from './signer.service';
-export { loadSigningKeys, persistSigningKey } from './signer.registry';
+export { loadSigningKeys, persistSigningKey, retireInactiveKeys } from './signer.registry';
 export {
     type EngineAttestation,
     type SignableKind,

@@ -22,7 +22,11 @@ const envMock = vi.hoisted(() => ({
 
 vi.mock('@config/env', () => ({ env: envMock }));
 vi.mock('@config/prisma', () => ({
-    prisma: { battleSigningKey: { upsert: vi.fn(), findMany: vi.fn() } },
+    prisma: {
+        battleSigningKey: { upsert: vi.fn(), findMany: vi.fn(), updateMany: vi.fn() },
+        // Read by `retireInactiveKeys`, which dates a rotated key from its last receipt.
+        battleReceipt: { findFirst: vi.fn() },
+    },
 }));
 
 import { prisma } from '@config/prisma';
@@ -51,10 +55,27 @@ function storedRow(overrides: Record<string, unknown> = {}) {
     };
 }
 
+/**
+ * `battleSigningKey.findMany` now serves two different queries.
+ *
+ * `retireInactiveKeys` asks for keys that have stopped signing; `loadSigningKeys` asks for
+ * all of them. An argument-blind mock would answer both with the same rows and hand the
+ * retirement pass the *active* key, which it would then close the window on — a failure
+ * invented entirely by the mock. Dispatching on the query keeps each answer honest.
+ */
+function mockStoredKeys(rows: unknown[]): void {
+    vi.mocked(prisma.battleSigningKey.findMany).mockImplementation((async (args: {
+        where?: { notAfter?: unknown };
+    }) => (args?.where?.notAfter === null ? [] : rows)) as never);
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
     resetSigner();
     vi.mocked(prisma.battleSigningKey.upsert).mockResolvedValue({} as never);
+    vi.mocked(prisma.battleSigningKey.updateMany).mockResolvedValue({ count: 0 } as never);
+    vi.mocked(prisma.battleReceipt.findFirst).mockResolvedValue(null as never);
+    mockStoredKeys([]);
 });
 
 describe('a restart must not move the active key validity window forward', () => {
@@ -64,7 +85,7 @@ describe('a restart must not move the active key validity window forward', () =>
         await configureSigner(MUCH_LATER);
         expect(activeSigningKey('eip155:84532')?.notBefore).toBe(MUCH_LATER);
 
-        vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([storedRow()] as never);
+        mockStoredKeys([storedRow()]);
         await loadPersistedSigningKeys();
 
         expect(activeSigningKey('eip155:84532')?.notBefore).toBe(FIRST_BOOT);
@@ -74,7 +95,7 @@ describe('a restart must not move the active key validity window forward', () =>
         const signedAt = FIRST_BOOT + 500; // long before this boot
 
         await configureSigner(MUCH_LATER);
-        vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([storedRow()] as never);
+        mockStoredKeys([storedRow()]);
         await loadPersistedSigningKeys();
 
         const published = listSigningKeys().find((k) => k.keyId === 'battle-signer-test')!;
@@ -85,7 +106,7 @@ describe('a restart must not move the active key validity window forward', () =>
     it('leaves a genuinely new key at its own start time', async () => {
         // Nothing stored yet, so "now" is the truth rather than an artefact of restarting.
         await configureSigner(MUCH_LATER);
-        vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([] as never);
+        mockStoredKeys([]);
         await loadPersistedSigningKeys();
 
         expect(activeSigningKey('eip155:84532')?.notBefore).toBe(MUCH_LATER);
@@ -95,9 +116,7 @@ describe('a restart must not move the active key validity window forward', () =>
         // A stored row from *after* this boot would be nonsense; prefer the earlier value
         // rather than trusting whichever number happens to be larger.
         await configureSigner(FIRST_BOOT);
-        vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue(
-            [storedRow({ notBefore: BigInt(MUCH_LATER) })] as never,
-        );
+        mockStoredKeys([storedRow({ notBefore: BigInt(MUCH_LATER) })]);
         await loadPersistedSigningKeys();
 
         expect(activeSigningKey('eip155:84532')?.notBefore).toBe(FIRST_BOOT);
@@ -105,7 +124,7 @@ describe('a restart must not move the active key validity window forward', () =>
 
     it('still records the active key on boot, so it is never missing from the registry', async () => {
         await configureSigner(MUCH_LATER);
-        vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([storedRow()] as never);
+        mockStoredKeys([storedRow()]);
         await loadPersistedSigningKeys();
 
         expect(vi.mocked(prisma.battleSigningKey.upsert)).toHaveBeenCalledTimes(1);
