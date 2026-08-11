@@ -337,6 +337,38 @@ describe('useBattlePanel', () => {
         }
     });
 
+    // The guard the two error effects used to hold between them by declaration order.
+    // A refusal that lands after the verdict is on screen is about a battle already
+    // decided, and tearing the card away mid-read loses the one thing the player was
+    // waiting for.
+    it('leaves the result card up when a failure arrives after the result is showing', async () => {
+        vi.useFakeTimers();
+        try {
+            battle.liveReplay = {
+                result: { firstWins: true },
+                log: [{ attacker: 1, hp1After: 100n, hp2After: 80n }],
+                startHp1: 100n,
+                startHp2: 100n,
+            };
+            const { result, rerender } = renderHook(() => useBattlePanel({ isStandaloneView: false }));
+            act(() => { result.current.setup.onSelectFighter('p1'); });
+            act(() => { result.current.setup.onSelectOpponent('0xopp:opp1'); });
+            await act(async () => { result.current.setup.onBattle(); });
+
+            act(() => { capturedOnSuccess?.({ firstWins: true }); });
+            act(() => { vi.advanceTimersByTime(700); });
+            expect(result.current.overlay.showResult).toBe(true);
+
+            battle.error = new Error('battle rejected: daily-cap');
+            act(() => { rerender(); });
+
+            expect(result.current.overlay.open).toBe(true);
+            expect(result.current.overlay.showResult).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('logs and shows a mismatch notice when the live replay disagrees with the on-chain result, then reveals the corrected result', () => {
         vi.useFakeTimers();
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

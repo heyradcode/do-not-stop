@@ -22,6 +22,7 @@ import {
     consumeDailyBudget,
     epochDay,
     findCoveringAuthorization,
+    listDefenseAuthorizations,
     revokeDefenseAuthorizations,
     submitDefenseAuthorization,
     toProtocolAuthorization,
@@ -348,5 +349,72 @@ describe('consumeDailyBudget', () => {
         vi.mocked(prisma.defenseUsage.updateMany).mockResolvedValue({ count: 0 } as never);
         vi.mocked(prisma.defenseUsage.create).mockRejectedValue(new Error('connection reset'));
         await expect(consumeDailyBudget('0xabc', 20, NOW)).rejects.toThrow(/connection reset/);
+    });
+});
+
+/**
+ * The read half of the consent API (§D). Granting and revoking both existed; reading did
+ * not, so a defender could not see that they had consented, nor that a rules change had
+ * quietly made their consent cover nothing.
+ */
+describe('listDefenseAuthorizations', () => {
+    const SERVED = `0x${'11'.repeat(32)}`;
+    const OLD = `0x${'22'.repeat(32)}`;
+
+    const row = (overrides: Record<string, unknown> = {}) => ({
+        authorizationHash: `0x${'ab'.repeat(32)}`,
+        allPets: true,
+        petIds: [],
+        minLevel: 1,
+        maxLevel: 100,
+        maxBattlesPerDay: 50,
+        notBefore: 1000n,
+        expiresAt: 2000n,
+        rulesetHash: SERVED,
+        createdAt: new Date('2026-08-01T00:00:00.000Z'),
+        ...overrides,
+    });
+
+    it('flags an authorization signed under the rules now being served as current', async () => {
+        vi.mocked(prisma.defenseAuthorization.findMany).mockResolvedValue([row()] as never);
+
+        const [entry] = await listDefenseAuthorizations('eip155:84532', '0xABC', SERVED);
+
+        expect(entry!.isStale).toBe(false);
+        expect(entry!.notBefore).toBe(1000);
+        expect(entry!.expiresAt).toBe(2000);
+    });
+
+    // The field this read exists for. A rules change invalidates every outstanding grant by
+    // design, and the defender is the one who has to re-sign but the last to notice: being
+    // challenged is passive, so their pets just stop being challengeable.
+    it('flags an authorization signed under older rules as stale', async () => {
+        vi.mocked(prisma.defenseAuthorization.findMany).mockResolvedValue([row({ rulesetHash: OLD })] as never);
+
+        const [entry] = await listDefenseAuthorizations('eip155:84532', '0xABC', SERVED);
+
+        expect(entry!.isStale).toBe(true);
+    });
+
+    it('compares the ruleset hash case-insensitively', async () => {
+        vi.mocked(prisma.defenseAuthorization.findMany).mockResolvedValue([
+            row({ rulesetHash: SERVED.toUpperCase().replace('0X', '0x') }),
+        ] as never);
+
+        expect((await listDefenseAuthorizations('eip155:84532', '0xABC', SERVED))[0]!.isStale).toBe(false);
+    });
+
+    it('normalizes the caller and excludes revoked grants', async () => {
+        vi.mocked(prisma.defenseAuthorization.findMany).mockResolvedValue([] as never);
+
+        await listDefenseAuthorizations('eip155:84532', '0xABCDEF0123456789ABCDEF0123456789ABCDEF01', SERVED);
+
+        const { where } = vi.mocked(prisma.defenseAuthorization.findMany).mock.calls.at(-1)![0]!;
+        expect(where).toMatchObject({
+            defenderOwner: '0xabcdef0123456789abcdef0123456789abcdef01',
+            // Revoked rows survive so a verifier can read what a historical receipt was
+            // authorized under, which is not this caller's question.
+            revokedAt: null,
+        });
     });
 });

@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const client = { mintTo: vi.fn(), burnFrom: vi.fn() };
 const chain = { getItemCoreClient: vi.fn(() => client as { mintTo: unknown; burnFrom: unknown } | null) };
 
-vi.mock('@features/inventory/inventory.chain', () => ({
+// The error class stays real: `claimEntitlement` branches on `instanceof`, and a stub
+// class would let the release path be exercised by an error the production code would
+// have treated as unconfirmed.
+vi.mock('@features/inventory/inventory.chain', async () => ({
+    ...(await vi.importActual<typeof import('@features/inventory/inventory.chain')>(
+        '@features/inventory/inventory.chain',
+    )),
     getItemCoreClient: () => chain.getItemCoreClient(),
 }));
 
@@ -33,6 +39,7 @@ vi.mock('@config/prisma', () => ({
     },
 }));
 
+import { UnconfirmedTxError } from '@features/inventory/inventory.chain';
 import { claimEntitlement, grantItem, isAdmin, useItem } from '@features/inventory/inventory.write';
 import { prisma } from '@config/prisma';
 
@@ -180,9 +187,10 @@ describe('claimEntitlement', () => {
         expect(client.mintTo).not.toHaveBeenCalled();
     });
 
-    // Released rather than left claimed, so a failed mint is retryable. Safe because the
-    // client waits for a receipt and treats a reverted one as a throw.
-    it('releases the claim when the mint fails', async () => {
+    // Released rather than left claimed, so a failed mint is retryable. Safe only because
+    // this failure moved nothing: a simulate revert, a send that never left, or a receipt
+    // that came back reverted.
+    it('releases the claim when the mint definitely did not land', async () => {
         vi.mocked(prisma.itemEntitlement.findUnique).mockResolvedValue(ROW as never);
         vi.mocked(prisma.itemEntitlement.updateMany).mockResolvedValue({ count: 1 } as never);
         client.mintTo.mockRejectedValue(new Error('rpc down'));
@@ -190,6 +198,35 @@ describe('claimEntitlement', () => {
         await expect(claimEntitlement(OWNER, 'e1')).rejects.toThrow('rpc down');
         expect(vi.mocked(prisma.itemEntitlement.updateMany).mock.calls.at(-1)![0]).toMatchObject({
             where: { id: 'e1', txHash: null }, data: { claimedAt: null },
+        });
+    });
+
+    /**
+     * The failure the release must not treat like the others: broadcast, outcome unknown.
+     *
+     * A receipt read that times out does not mean the mint failed, it means nobody knows.
+     * The transaction is very likely mined, so releasing the claim would let a retry send a
+     * second mint and pay the entitlement twice.
+     */
+    it('keeps the claim when the mint was broadcast but could not be confirmed', async () => {
+        const hash = `0x${'ab'.repeat(32)}` as const;
+        vi.mocked(prisma.itemEntitlement.findUnique).mockResolvedValue(ROW as never);
+        vi.mocked(prisma.itemEntitlement.updateMany).mockResolvedValue({ count: 1 } as never);
+        client.mintTo.mockRejectedValue(new UnconfirmedTxError(hash, 'receipt unreadable'));
+
+        await expect(claimEntitlement(OWNER, 'e1')).rejects.toThrow(UnconfirmedTxError);
+
+        // Never released: the only updateMany is the claim itself, taken before the mint.
+        const released = vi
+            .mocked(prisma.itemEntitlement.updateMany)
+            .mock.calls.filter((call) => (call[0] as { data?: { claimedAt?: unknown } }).data?.claimedAt === null);
+        expect(released).toHaveLength(0);
+
+        // The hash is recorded, so the row names the transaction to reconcile against and
+        // the `txHash: null` guard on the release path keeps meaning what it says.
+        expect(prisma.itemEntitlement.update).toHaveBeenCalledWith({
+            where: { id: 'e1' },
+            data: { txHash: hash },
         });
     });
 

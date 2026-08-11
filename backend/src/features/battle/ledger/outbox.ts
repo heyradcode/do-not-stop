@@ -26,9 +26,17 @@ export const OUTBOX_TOPICS = {
     sign: 'sign',
     /** Publish the receipt to the public corpus. */
     publish: 'publish',
-    /** Include the receipt in the next Merkle batch. */
-    batch: 'batch',
 } as const;
+
+/**
+ * Publishing is the last per-battle step. Batching and anchoring (§I) deliberately have no
+ * topic here: they aggregate across every publishable receipt on their own timer
+ * (`startBatchAnchor`), so there is no per-battle message to send. A `batch` topic was
+ * declared here for a while and never enqueued or handled, which was worse than absent —
+ * `claimOutbox` only claims topics `HANDLERS` lists, so anyone who took the declaration at
+ * face value would have enqueued a message no worker could ever claim, stranding the battle
+ * in a non-terminal state with both pets locked and nothing to dead-letter it.
+ */
 
 export type OutboxTopic = (typeof OUTBOX_TOPICS)[keyof typeof OUTBOX_TOPICS];
 

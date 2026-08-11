@@ -32,6 +32,22 @@ vi.mock('../../src/auth/solanaAuthStore', () => ({ getSolanaAuthSigner: () => so
 vi.mock('../../src/contexts/ApiClientContext', () => ({ useApiClient: () => ({ post, get: vi.fn() }) }));
 vi.mock('../../src/hooks/battle/useBattleConfig', () => ({ useBattleConfig: () => ({ data: configQuery.current }) }));
 
+const session = vi.hoisted(() => ({
+    current: {
+        key: null as null | { privateKey: string; address: string; owner: string; chainId: string; expiresAt: number },
+        supported: true,
+        isPending: false,
+        error: null,
+        approve: vi.fn(),
+        revoke: vi.fn(),
+        discardLocalKey: vi.fn(),
+    },
+}));
+vi.mock('../../src/hooks/battle/useBattleSession', () => ({
+    useBattleSession: () => session.current,
+    signIntentWithSession: vi.fn(async () => `0x${'55'.repeat(65)}`),
+}));
+
 import { setEvidenceStore, readBattleEvidence, type EvidenceStore } from '../../src/utils/battleEvidence';
 import { useSubmitBattleIntent } from '../../src/hooks/battle/useSubmitBattleIntent';
 
@@ -60,6 +76,8 @@ beforeEach(() => {
     chain.current = { kind: 'evm', address: '0xabcdef0123456789abcdef0123456789abcdef01' };
     configQuery.current = CONFIG;
     solanaSigner.current = null;
+    session.current.key = null;
+    session.current.discardLocalKey = vi.fn();
     signTypedDataAsync.mockResolvedValue(`0x${'33'.repeat(65)}`);
     post.mockImplementation((url: string) =>
         url.endsWith('/accept')
@@ -256,5 +274,81 @@ describe('refusing to sign against guesses', () => {
 
         expect(signTypedDataAsync).not.toHaveBeenCalled();
         expect(result.current.error?.message).toMatch(/serves no evm chain/);
+    });
+});
+
+
+/** Shaped like the Axios error the api client throws for the intent controller's 401. */
+const refusal = (code: string) => ({ response: { data: { error: code, detail: 'why' } } });
+
+const A_KEY = {
+    privateKey: `0x${'77'.repeat(32)}`,
+    address: '0x9999999999999999999999999999999999999999',
+    owner: '0xabcdef0123456789abcdef0123456789abcdef01',
+    chainId: 'eip155:84532',
+    expiresAt: Math.floor(Date.now() / 1000) + 3600,
+};
+
+/**
+ * A delegated key that the server no longer honours (§D). It lapsed, or another tab
+ * revoked it. The key cannot start working again, so leaving it in storage would fail
+ * every future battle identically, with the player given no way to tell why.
+ */
+describe('a session key the server has rejected', () => {
+    it('drops it, re-signs with the wallet, and the battle still starts', async () => {
+        session.current.key = A_KEY;
+        let intentPosts = 0;
+        post.mockImplementation((url: string) => {
+            if (url.endsWith('/accept')) return Promise.resolve({ data: ACCEPTED });
+            intentPosts += 1;
+            return intentPosts === 1
+                ? Promise.reject(refusal('session-not-authorized'))
+                : Promise.resolve({ data: { intentHash: `0x${'44'.repeat(32)}` } });
+        });
+
+        const { result } = renderHook(() => useSubmitBattleIntent());
+        let accepted: unknown;
+        await act(async () => { accepted = await result.current.submit(VARS); });
+
+        expect(session.current.discardLocalKey).toHaveBeenCalledTimes(1);
+        // The wallet signed the retry — the prompt the session was avoiding, paid once
+        // rather than losing the battle.
+        expect(signTypedDataAsync).toHaveBeenCalledTimes(1);
+        expect(accepted).toEqual(ACCEPTED);
+        expect(result.current.error).toBeNull();
+    });
+
+    it('retries once, not in a loop, when the wallet signature is refused too', async () => {
+        session.current.key = A_KEY;
+        post.mockImplementation((url: string) =>
+            url.endsWith('/accept')
+                ? Promise.resolve({ data: ACCEPTED })
+                : Promise.reject(refusal('session-not-authorized')),
+        );
+
+        const { result } = renderHook(() => useSubmitBattleIntent());
+        let accepted: unknown;
+        await act(async () => { accepted = await result.current.submit(VARS); });
+
+        expect(accepted).toBeNull();
+        expect(signTypedDataAsync).toHaveBeenCalledTimes(1);
+        expect(result.current.error?.message).toContain('session has expired');
+    });
+
+    // Only this one code. Any other refusal is about the battle, not the key, and
+    // discarding a working session over it would cost a wallet prompt on every retry.
+    it('keeps the key for a refusal that is not about the key', async () => {
+        session.current.key = A_KEY;
+        post.mockImplementation((url: string) =>
+            url.endsWith('/accept')
+                ? Promise.resolve({ data: ACCEPTED })
+                : Promise.reject(refusal('nonce-already-used')),
+        );
+
+        const { result } = renderHook(() => useSubmitBattleIntent());
+        await act(async () => { await result.current.submit(VARS); });
+
+        expect(session.current.discardLocalKey).not.toHaveBeenCalled();
+        expect(signTypedDataAsync).not.toHaveBeenCalled();
     });
 });

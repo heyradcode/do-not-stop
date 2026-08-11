@@ -13,7 +13,13 @@ vi.mock('../../../../src/features/battle/ledger/ruleset.builder', async () => {
     const { SOURCE_DEFAULT_RULESET } = await vi.importActual<typeof import('@cryptopets/protocol')>(
         '@cryptopets/protocol',
     );
-    return { servedRuleset: vi.fn(async () => SOURCE_DEFAULT_RULESET) };
+    const { hashRuleset } = await vi.importActual<typeof import('@cryptopets/protocol')>('@cryptopets/protocol');
+    return {
+        servedRuleset: vi.fn(async () => SOURCE_DEFAULT_RULESET),
+        // Derived from the same object, so config cannot serve a hash for a ruleset it is
+        // not also serving — which is what clients sign their consent against.
+        servedRulesetHash: vi.fn(async () => hashRuleset(SOURCE_DEFAULT_RULESET)),
+    };
 });
 
 vi.mock('@config/env', () => ({ env: { battle: battleEnv } }));

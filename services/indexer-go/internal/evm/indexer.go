@@ -162,14 +162,27 @@ func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) 
 	// Shared so the clean-shutdown discrimination lives in one place: a cancelled context
 	// surfaces as an error from the in-flight request, and treating that as a failure logs
 	// a spurious error on every shutdown that races a poll. Reports false to stop.
+	// Backs off after a failed poll rather than spending the next tick on the same refusal.
+	// See pacer: without this a rate-limited subgraph never recovers, because the traffic
+	// that tripped the limit carries on at full rate.
+	pace := newPacer(ix.poll, maxPollBackoff)
+
 	report := func(label string, count int, err error) bool {
 		switch {
 		case err != nil && ctx.Err() != nil:
 			return false
 		case err != nil:
-			slog.Error(label+" failed", "err", err)
-		case count > 0:
-			slog.Info(label, "count", count, "watermark", ix.watermark)
+			delay := pace.failed(time.Now(), err)
+			if rateLimited(err) {
+				slog.Warn(label+" rate limited; backing off", "err", err, "retryIn", delay)
+			} else {
+				slog.Error(label+" failed", "err", err, "retryIn", delay)
+			}
+		default:
+			pace.succeeded()
+			if count > 0 {
+				slog.Info(label, "count", count, "watermark", ix.watermark)
+			}
 		}
 		return true
 	}
@@ -179,6 +192,11 @@ func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) 
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
+			// Skipped rather than delayed, so the loop stays in its select and a shutdown
+			// during a backoff is still immediate.
+			if !pace.ready(time.Now()) {
+				continue
+			}
 			if synced, err := ix.sync(ctx, roster); !report("evm sync", synced, err) {
 				return nil
 			}

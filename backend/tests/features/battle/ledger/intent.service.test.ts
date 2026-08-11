@@ -5,7 +5,10 @@ import { ethers } from 'ethers';
 import { battleIntentSolanaMessage, battleIntentTypedData, hashBattleIntent } from '@cryptopets/protocol';
 
 vi.mock('@config/prisma', () => ({
-    prisma: { battleIntent: { create: vi.fn() } },
+    prisma: {
+        battleIntent: { create: vi.fn() },
+        sessionDelegation: { findMany: vi.fn() },
+    },
 }));
 
 vi.mock('@config/env', () => ({
@@ -57,6 +60,9 @@ async function submit(overrides: Partial<typeof wire> = {}, extras: Partial<Para
         intent,
         signature: extras.signature ?? (await signWire(overrides)),
         signatureFormat: extras.signatureFormat ?? 'eip712',
+        // Only when a case supplies one: an absent `sessionKey` is what selects the
+        // wallet-signed path, so passing `undefined` explicitly would not be the same test.
+        ...(extras.sessionKey ? { sessionKey: extras.sessionKey } : {}),
         authenticatedWallet: extras.authenticatedWallet ?? ATTACKER,
         nowSeconds: extras.nowSeconds ?? NOW,
     });
@@ -173,7 +179,7 @@ describe('domain binding', () => {
 describe('expiry', () => {
     it('rejects an expired intent', async () => {
         const result = await submit({}, { nowSeconds: wire.expiresAt });
-        expect(result).toMatchObject({ ok: false, reason: 'expired' });
+        expect(result).toMatchObject({ ok: false, reason: 'intent-expired' });
     });
 
     it('accepts one that expires a second from now', async () => {
@@ -258,5 +264,110 @@ describe('nonce consumption', () => {
     it('rethrows an unexpected database error rather than hiding it as a rejection', async () => {
         vi.mocked(prisma.battleIntent.create).mockRejectedValue(new Error('connection reset'));
         await expect(submit()).rejects.toThrow(/connection reset/);
+    });
+});
+
+
+/**
+ * Delegated battle-intent signing (§D).
+ *
+ * The wallet approves a client-held key once; that key then signs intents, so the prompt
+ * stops being per battle. The property §D exists to protect is unchanged, and these cases
+ * are what hold it: the key is only ever accepted for the owner who delegated to it, and
+ * only while that delegation is live. A JWT still authorizes nothing.
+ */
+describe('delegated session signing', () => {
+    const session = new ethers.Wallet('0x' + '11'.repeat(32));
+    const SESSION_KEY = session.address.toLowerCase();
+
+    async function signAsSession(overrides: Partial<typeof wire> = {}): Promise<string> {
+        const typed = battleIntentTypedData(toProtocolIntent({ ...wire, ...overrides }));
+        return session.signTypedData(typed.domain, typed.types as never, typed.message);
+    }
+
+    /** A stored delegation row, as `findSessionDelegation` reads it. */
+    function delegationRow(overrides: Record<string, unknown> = {}) {
+        return {
+            delegationHash: `0x${'cd'.repeat(32)}`,
+            chainId: 'eip155:84532',
+            deploymentId: 'base-sepolia-live',
+            owner: ATTACKER,
+            sessionKey: SESSION_KEY,
+            scope: 'battle-intent',
+            notBefore: BigInt(NOW - 10),
+            expiresAt: BigInt(NOW + 3600),
+            revocationNonce: 0,
+            ...overrides,
+        };
+    }
+
+    it('accepts an intent signed by a delegated key', async () => {
+        vi.mocked(prisma.sessionDelegation.findMany).mockResolvedValue([delegationRow()] as never);
+
+        const result = await submit({}, { signature: await signAsSession(), sessionKey: SESSION_KEY } as never);
+
+        expect(result).toEqual({ ok: true, intentHash: hashBattleIntent(toProtocolIntent(wire)) });
+    });
+
+    it('refuses a key with no delegation at all', async () => {
+        vi.mocked(prisma.sessionDelegation.findMany).mockResolvedValue([] as never);
+
+        expect(await submit({}, { signature: await signAsSession(), sessionKey: SESSION_KEY } as never)).toMatchObject({
+            ok: false,
+            reason: 'session-not-authorized',
+        });
+    });
+
+    // The check that stops one player's session key acting for another wallet: the
+    // delegation names its owner, and it is compared against the intent's attacker.
+    it('refuses a delegation belonging to a different owner', async () => {
+        vi.mocked(prisma.sessionDelegation.findMany).mockResolvedValue([
+            delegationRow({ owner: DEFENDER }),
+        ] as never);
+
+        expect(await submit({}, { signature: await signAsSession(), sessionKey: SESSION_KEY } as never)).toMatchObject({
+            ok: false,
+            reason: 'session-not-authorized',
+        });
+    });
+
+    it('refuses an expired delegation', async () => {
+        vi.mocked(prisma.sessionDelegation.findMany).mockResolvedValue([
+            delegationRow({ expiresAt: BigInt(NOW - 1) }),
+        ] as never);
+
+        expect(await submit({}, { signature: await signAsSession(), sessionKey: SESSION_KEY } as never)).toMatchObject({
+            ok: false,
+            reason: 'session-not-authorized',
+        });
+    });
+
+    // Naming a key you did not sign with buys nothing: the signature is verified against
+    // the named key before the delegation is even looked up.
+    it('refuses a real delegation when the wallet signed instead of the key', async () => {
+        vi.mocked(prisma.sessionDelegation.findMany).mockResolvedValue([delegationRow()] as never);
+
+        expect(await submit({}, { sessionKey: SESSION_KEY } as never)).toMatchObject({
+            ok: false,
+            reason: 'bad-signature',
+        });
+    });
+
+    // Revoked rows are excluded in the query, so revocation takes effect immediately.
+    it('only considers unrevoked delegations', async () => {
+        vi.mocked(prisma.sessionDelegation.findMany).mockResolvedValue([] as never);
+
+        await submit({}, { signature: await signAsSession(), sessionKey: SESSION_KEY } as never);
+
+        expect(vi.mocked(prisma.sessionDelegation.findMany).mock.calls[0]![0]!.where).toMatchObject({
+            owner: ATTACKER,
+            sessionKey: SESSION_KEY,
+            revokedAt: null,
+        });
+    });
+
+    it('still accepts a wallet-signed intent, so a client with no session just prompts', async () => {
+        expect(await submit()).toMatchObject({ ok: true });
+        expect(prisma.sessionDelegation.findMany).not.toHaveBeenCalled();
     });
 });

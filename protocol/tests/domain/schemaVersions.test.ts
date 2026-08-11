@@ -23,6 +23,11 @@ describe('schema versions', () => {
         expect(KINDS).toEqual([
             'intent',
             'defenseAuthorization',
+            // Hashed and versioned like the rest, though uniquely among these it reaches no
+            // receipt: it authorizes who may sign an intent, which public replay never
+            // checks. Registered anyway, because "hashed" is the bar here — an object with
+            // no version is one that can never be migrated.
+            'sessionDelegation',
             'snapshot',
             'ruleset',
             'commitment',

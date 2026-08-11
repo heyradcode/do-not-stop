@@ -88,8 +88,16 @@ export function useBackendBattle(battleId: string | null | undefined, options: U
         roomId: options.roomId ?? null,
         // A notification and a reconnect mean the same thing here: go ask the authoritative
         // endpoint. Neither carries battle content to trust.
-        onNotification: () => void refetch(),
-        onReconnect: () => void refetch(),
+        //
+        // Guarded on `battleId`, because `refetch` ignores `enabled` — a spectator sitting
+        // in a room before any battle exists would otherwise fetch `/api/battle/null` on
+        // every notification and every reconnect, and get a 404 each time.
+        onNotification: () => {
+            if (battleId) void refetch();
+        },
+        onReconnect: () => {
+            if (battleId) void refetch();
+        },
     });
 
     return {

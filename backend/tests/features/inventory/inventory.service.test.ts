@@ -14,7 +14,17 @@ vi.mock('@repositories/inventory.repository', () => ({
     findUnclaimedEntitlements: (chain: string, owner: string) => repo.findUnclaimedEntitlements(chain, owner),
 }));
 
-import { getInventory, getPendingItems, getPetEquipment, resetItemCatalog } from '@features/inventory';
+import {
+    getCatalog,
+    getCombatCatalog,
+    getInventory,
+    getPendingItems,
+    getPetEquipment,
+    getPetEquipmentForCombat,
+    ItemCatalogError,
+    itemCatalogGeneration,
+    resetItemCatalog,
+} from '@features/inventory';
 
 const POTION = {
     itemType: '100',
@@ -131,6 +141,110 @@ describe('getPetEquipment', () => {
         repo.findEquipment.mockResolvedValue([]);
         expect(await getPetEquipment('evm', '7')).toEqual([]);
         expect(repo.findAllDefinitions).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * The strict counterparts (roadmap §4).
+ *
+ * `getPetEquipment` and `getCatalog` hide a row they cannot read, which is right for a bag
+ * and wrong for a fight: dropping an item silently changes a battle rather than a label,
+ * and the resulting receipt claims a pet fought bare while `ItemCore.equipmentOf` at the
+ * recorded `sourceVersion` says it was wearing something.
+ *
+ * An unreadable effect and an absent one are the same `null` on `ItemView`, so each case
+ * below is checked against a lenient read as well, to show the two paths genuinely differ
+ * rather than the fixture simply being malformed everywhere.
+ */
+describe('the combat reads refuse what the display reads hide', () => {
+    /** Equipment whose stored effect will not parse: `atk` is a string, not an integer. */
+    const CORRUPT_BLADE = { ...BLADE, itemType: '2', key: 'bent_fang', effect: { kind: 'stat_bonus', hp: 0, atk: '4', def: 0, int: 0, mdef: 0 } };
+
+    describe('getCombatCatalog', () => {
+        it('returns the catalog when every equipment row is readable', async () => {
+            repo.findAllDefinitions.mockResolvedValue([BLADE, POTION]);
+
+            expect((await getCombatCatalog()).map((item) => item.key)).toEqual(['iron_fang', 'xp_potion_i']);
+        });
+
+        it('refuses an equipment row whose modifier will not parse', async () => {
+            repo.findAllDefinitions.mockResolvedValue([BLADE, CORRUPT_BLADE]);
+
+            await expect(getCombatCatalog()).rejects.toThrow(ItemCatalogError);
+            // The lenient read still serves it, effect dropped. That difference is the
+            // point: a bad row costs a tooltip on the bag screen and costs a battle here.
+            expect((await getCatalog()).find((item) => item.key === 'bent_fang')?.effect).toBeNull();
+        });
+
+        it('ignores an unreadable effect on something that cannot reach a fight', async () => {
+            // A consumable's effect is applied by `useItem`, never by the engine, so it has
+            // no business invalidating the ruleset every battle is priced under.
+            repo.findAllDefinitions.mockResolvedValue([BLADE, { ...POTION, effect: { kind: 'grant_xp', amount: 'fifty' } }]);
+
+            await expect(getCombatCatalog()).resolves.toHaveLength(2);
+        });
+    });
+
+    describe('getPetEquipmentForCombat', () => {
+        it('narrows a readable item to its modifier', async () => {
+            repo.findEquipment.mockResolvedValue([{ slot: 0, itemType: '1' }]);
+            repo.findAllDefinitions.mockResolvedValue([BLADE]);
+
+            expect(await getPetEquipmentForCombat('evm', '7')).toEqual([
+                { slot: 0, itemType: '1', key: 'iron_fang', bonus: { kind: 'stat_bonus', hp: 0, atk: 4, def: 0, int: 0, mdef: 0 } },
+            ]);
+        });
+
+        it('refuses an equipped item with no catalog row', async () => {
+            // The seeder running behind the contract. Refusing surfaces it in seconds; the
+            // lenient read hides it behind a console warning and an ungeared fight.
+            repo.findEquipment.mockResolvedValue([{ slot: 0, itemType: '999' }]);
+            repo.findAllDefinitions.mockResolvedValue([BLADE]);
+
+            await expect(getPetEquipmentForCombat('evm', '7')).rejects.toThrow(/uncatalogued item type 999/);
+            expect(await getPetEquipment('evm', '7')).toEqual([]);
+        });
+
+        it('refuses an equipped item whose modifier will not parse', async () => {
+            repo.findEquipment.mockResolvedValue([{ slot: 0, itemType: '2' }]);
+            repo.findAllDefinitions.mockResolvedValue([CORRUPT_BLADE]);
+
+            await expect(getPetEquipmentForCombat('evm', '7')).rejects.toThrow(/no readable stat_bonus/);
+        });
+
+        it('costs nothing for a pet with no gear', async () => {
+            repo.findEquipment.mockResolvedValue([]);
+
+            expect(await getPetEquipmentForCombat('evm', '7')).toEqual([]);
+            expect(repo.findAllDefinitions).not.toHaveBeenCalled();
+        });
+    });
+});
+
+describe('resetItemCatalog', () => {
+    // The contract `servedRuleset` memoizes against. It cannot call this module's reset
+    // directly (ruleset.builder imports this one, so the call would close a cycle), so it
+    // compares generations instead, and a reset that did not bump one would leave a ruleset
+    // built from rows that no longer exist.
+    it('bumps the generation so catalog-derived caches rebuild', async () => {
+        repo.findAllDefinitions.mockResolvedValue([BLADE]);
+        await getCatalog();
+
+        const before = itemCatalogGeneration();
+        resetItemCatalog();
+
+        expect(itemCatalogGeneration()).not.toBe(before);
+    });
+
+    it('re-reads the definitions after a reset', async () => {
+        repo.findAllDefinitions.mockResolvedValue([BLADE]);
+        await getCatalog();
+        await getCatalog();
+        expect(repo.findAllDefinitions).toHaveBeenCalledTimes(1);
+
+        resetItemCatalog();
+        await getCatalog();
+        expect(repo.findAllDefinitions).toHaveBeenCalledTimes(2);
     });
 });
 

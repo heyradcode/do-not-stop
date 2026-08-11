@@ -288,6 +288,53 @@ Requirements:
 - Require attacker ownership at the finalized source version.
 - Never let a JWT user submit a battle for another wallet.
 
+### Delegated signing (session keys)
+
+The rule above is right and expensive: it puts a wallet prompt on the most repeated action
+in the game. The resolution is *not* to accept a JWT after all, because the objection to a
+JWT is not that it is inconvenient to check but that we mint it ourselves.
+
+Instead the owner signs one `SessionDelegation` naming a key **the client generated and
+holds**, and that key signs intents:
+
+```text
+schemaVersion
+chainId
+deploymentId
+owner
+sessionKey
+scope               ('battle-intent')
+notBefore
+expiresAt
+revocationNonce
+```
+
+What survives: the operator never sees the private key, so it still cannot produce an
+intent. That is the entire property a JWT lacked. What changes is only how often a human is
+asked.
+
+Bounded on three axes, all enforced by the validator rather than trusted to the client:
+
+- **Scope.** Battle intents alone. Defence consent is deliberately excluded — it is the one
+  signature a defender relies on, and a stolen session key must not be able to produce it.
+  Anything on chain is excluded by construction rather than by rule, since `equip` and every
+  transfer check `msg.sender` and this key is not an account the chain knows.
+- **Time.** `MAX_SESSION_SECONDS` (24h), so a client asking for longer is refused.
+- **Revocation.** A nonce the owner bumps, plus `DELETE /api/battle/sessions`, which is
+  unsigned for the same reason consent revocation is: the failure mode of an unauthorized
+  revocation is more prompts, never fewer.
+
+Not carried by any receipt, and that is a scoping decision worth stating. Public replay
+never checks intent signatures, so delegation is an authorization gate rather than evidence.
+Keeping it out of the signed record means the mechanism can be revised — or withdrawn —
+without invalidating a single historical receipt.
+
+The client stores the key in `sessionStorage`, not `localStorage`: per-tab and cleared on
+close bounds a stolen copy to one browsing session, where persistent storage would turn one
+XSS into weeks of authority. EVM only for now; a Solana player keeps the per-battle prompt,
+because delegation needs the client to hold a key of the right family and the Solana signer
+is the wallet adapter rather than a keypair this code owns.
+
 ### Standing defender consent
 
 The current EVM contract lets anyone attack anyone's pet. Backend ranked mode should not apply
@@ -560,8 +607,21 @@ Sign only the digest:
 
 - Private key in a managed KMS/HSM, out of the API and worker environments.
 - No asset custody, no withdrawal authority.
-- Separate keys for EVM and Solana reward domains.
-- Publish public keys and validity periods; retain rotated-out keys.
+- Separate keys for EVM and Solana reward domains. Implemented as one signer backend per
+  chain family: the key is chosen by the *object's own* domain, never by a caller argument,
+  so nothing can sign an EVM receipt with the Solana key. A deployment serving one family
+  needs one key — there is nothing to separate — but one serving both must name a key for
+  each, and the signer refuses to start rather than let them collapse onto one. Both keys
+  are published together, and a verifier matches on `signingKeyId` without needing to know
+  how they are partitioned.
+- Publish public keys and validity periods; retain rotated-out keys. `notAfter` is stamped
+  automatically at the first boot that no longer configures a key, and is dated from
+  evidence rather than the clock: the `createdAt` of the last receipt that key actually
+  signed. That is the strongest claim the data supports and it is safe in the direction that
+  matters, since every receipt the key legitimately produced is at or before it — stamping
+  can never retroactively invalidate one. A key that signed nothing gets a zero-length
+  window, which is the honest description of one configured and never used. An end recorded
+  deliberately, such as during a compromise, is never overwritten by a later boot's guess.
 - Log every KMS request, digest, result, and key version.
 - Signer accepts only the exact commitment and receipt schemas. Never expose a generic
   state-mutation signing endpoint.
@@ -998,6 +1058,11 @@ Each row: what the attacker does, what stops or bounds it, how we notice, what i
 - **Detection.** Receipts referencing an unknown or revoked authorization hash fail public replay.
 - **Residual.** Consent is to a ruleset version, so a rules change invalidates outstanding
   authorizations by design. Expect a re-consent prompt after every balance patch.
+  The prompt has to be *sought*, which is easy to miss when writing this down: being challenged
+  is passive, so a defender whose consent went stale sees no error and no failed action. Their
+  pets simply stop being challengeable. `GET /api/battle/authorizations` returns each grant with
+  `isStale` against the served `rulesetHash` for exactly this reason, and the defence panel
+  states it, or the only party who can repair the situation is the only one never told.
 
 ### T10: stale ownership after an NFT transfer
 
@@ -1033,10 +1098,23 @@ Each row: what the attacker does, what stops or bounds it, how we notice, what i
 - **Control.** Snapshot fields derive from indexed chain state at a recorded source version.
   Progression fields (`xp`, `streak`, `lastOpponentId`) are off-chain, so they are only checkable by
   replaying that pet's prior receipts, which the per-pet hash chain makes tractable (§G).
+  For equipment specifically (roadmap §4, snapshot schema v2) the snapshot freezes each item's
+  **resolved modifier alongside its `itemType`**, and the ruleset publishes what every
+  combat-affecting item does, so the applied effect can be compared against the declared one.
 - **Detection.** Public replay walking a pet's chain catches a snapshot that does not follow from the
-  previous receipt's `progressionDelta`.
-- **Residual.** Equipment ownership must be verifiable from chain or from a signed inventory record
-  before equipment affects combat. Until then, keep equipment out of combat inputs.
+  previous receipt's `progressionDelta`. Replay alone cannot catch an inflated *modifier*, because
+  the inflated number is the thing being replayed against; `findEquipmentMismatches` is what
+  compares it to the catalog, run by the verifier on a finished receipt and by `accept` before a
+  battle starts.
+- **Residual.** Item **ownership** is still not provable from the receipt. The modifiers are
+  checkable and the item type is named, but whether the pet actually held that item at
+  `sourceVersion` is a claim about chain state, which the verifier deliberately cannot read (it
+  has no network access). A party wanting that checks `ItemCore.equipmentOf` at the recorded
+  version themselves; the controls above narrow the remaining trust to exactly that question.
+
+  This entry previously read "keep equipment out of combat inputs", which was the correct advice
+  until roadmap §4 phase 4 put them in. Kept visible rather than silently rewritten, because a
+  threat model that quietly changes its own advice is not one anybody can audit.
 
 ### T14: combat log leaks outcomes to spectators
 
@@ -1185,6 +1263,7 @@ takes. That is what the procedures here are for.
 | --- | --- |
 | `POST /api/battle/intents`, `/accept`, `/authorizations` return **503** | accepted |
 | `DELETE /api/battle/authorizations` still works | works |
+| `GET /api/battle/authorizations` still works | works |
 | every read route and `/api/receipts/*` still works | works |
 | the outbox worker does not start | runs |
 | no signing key required | required |
@@ -1196,7 +1275,9 @@ every issued receipt into an assertion. Turning the mode off stops new battles o
 
 Revocation is ungated for the same class of reason — refusing battles is never the
 dangerous direction, so a defender must be able to withdraw consent even after the mode is
-off.
+off. Reading consent is ungated on a related one: a defender needs to see the state of their
+own grants precisely when something is wrong, and a mode flag is the last thing that should
+decide whether they can.
 
 ### Kill switch
 

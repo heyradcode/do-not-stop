@@ -22,8 +22,8 @@
  *   --max-level 100     highest attacker level accepted, default 100
  *   --api http://...    backend base URL, default http://localhost:3001
  */
-import { defenseAuthorizationTypedData } from '@cryptopets/protocol';
-import { Wallet } from 'ethers';
+import { assertChainId, defenseAuthorizationTypedData } from '@cryptopets/protocol';
+import { type TypedDataField, Wallet } from 'ethers';
 
 interface Options {
     petIds: string[];
@@ -94,8 +94,13 @@ async function main(): Promise<void> {
         ruleset: { hash: string };
     }>(configRes, 'GET /api/battle/config');
 
-    const chainId = config.chainIds.find((id) => id.startsWith('eip155:'));
-    if (!chainId) throw new Error(`no EVM chain in served config: ${config.chainIds.join(', ')}`);
+    const evmChain = config.chainIds.find((id) => id.startsWith('eip155:'));
+    if (!evmChain) throw new Error(`no EVM chain in served config: ${config.chainIds.join(', ')}`);
+    // Validated rather than asserted. The prefix test above narrows nothing on its own, and
+    // the value came off the wire, so `assertChainId` is what turns a served string into a
+    // `ChainId` the protocol will accept — and rejects a malformed one here rather than
+    // inside the signature.
+    const chainId = assertChainId(evmChain);
 
     const now = Math.floor(Date.now() / 1000);
     const authorization = {
@@ -127,7 +132,14 @@ async function main(): Promise<void> {
         expiresAt: authorization.expiresAt,
         revocationNonce: 0,
     });
-    const signature = await wallet.signTypedData(typed.domain, typed.types, typed.message);
+    // `typed.types` is a readonly tuple, because the protocol builds the EIP-712 type list
+    // as a literal and a mutable one could be reordered by a caller — which would change
+    // the digest. ethers wants a mutable `TypedDataField[]`, so the array is copied rather
+    // than cast: a cast would hand ethers the protocol's own object to do as it likes with.
+    const types: Record<string, TypedDataField[]> = Object.fromEntries(
+        Object.entries(typed.types).map(([name, fields]) => [name, fields.map((field) => ({ ...field }))]),
+    );
+    const signature = await wallet.signTypedData(typed.domain, types, typed.message);
 
     const token = await authenticate(opts.api, wallet);
     const res = await fetch(`${opts.api}/api/battle/authorizations`, {

@@ -17,46 +17,81 @@
     min-height: 0;
 }
 
-/* ── Battle setup showdown (fighter vs on-chain rival) — laid out like the mock ── */
+/* ── Battle setup: a pre-fight tactical readout ───────────────────────────────
+   Two combatant bays flanking an odds spine. The design problem this solves is the
+   empty state, which is the state players land on: two tall dashed voids holding
+   12px of centred text, with a VS floating between them on hairlines that connected
+   nothing. Emptiness is now drawn as an empty *arena* — floor grid, lit plinth, and
+   the stat frame rendered as unfilled slots — so a waiting bay shows the shape of
+   what will fill it instead of reading as broken layout. Nothing here changes what
+   the panel reports; it is the same labels, controls and readouts, composed. */
+
 .showdown {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: stretch;
-    gap: 8px;
+    gap: 10px;
     margin-bottom: 8px;
+    min-width: 0;
 }
 
 .combatantCol {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 10px;
     min-width: 0;
-    padding: 0 8px;
+}
+
+/* Side identity. Cyan is yours, magenta is theirs, and every accent inside a column
+   reads this one variable, so a bay cannot end up half cyan and half magenta. */
+.combatantColFighter {
+    --bay: var(--cp-cyan);
+    --bay-soft: rgb(125 214 255 / 26%);
+    --bay-wash: rgb(125 214 255 / 8%);
+}
+
+.combatantColRival {
+    --bay: var(--cp-magenta);
+    --bay-soft: rgb(255 123 203 / 26%);
+    --bay-wash: rgb(255 123 203 / 8%);
 }
 
 .combatantColLabel {
-    font-size: 9px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
     font-weight: 700;
-    letter-spacing: 1.8px;
+    letter-spacing: 2px;
     text-transform: uppercase;
+    color: var(--bay);
+    opacity: 0.85;
 }
 
-.combatantColFighter .combatantColLabel {
-    color: rgb(125 214 255 / 55%);
+/* A rule running to the edge of the column, so the label sits on something rather
+   than floating. Reads as a HUD channel header. */
+.combatantColLabel::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--bay-soft), transparent);
 }
 
 .combatantColRival .combatantColLabel {
-    color: rgb(255 123 203 / 55%);
+    flex-direction: row-reverse;
 }
 
-/* Selection controls */
+.combatantColRival .combatantColLabel::after {
+    background: linear-gradient(270deg, var(--bay-soft), transparent);
+}
+
+/* Selection controls, sitting directly on the bay they fill so the control and its
+   subject read as one unit rather than a form stacked above a picture. */
 .combatantSelect {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
 
-    /* PetSelect draws its own chrome and is `width: 100%`; this is the flex slot it
-       fills, so the Random and Refresh buttons keep their place beside it. */
     .combatantSelectField {
         flex: 1;
         min-width: 0;
@@ -66,267 +101,364 @@
 .combatantSelectBtn {
     flex-shrink: 0;
     background: rgb(5 13 30 / 70%);
-    border: 1px solid rgb(255 123 203 / 28%);
-    border-radius: 6px;
-    padding: 8px 12px;
+    border: 1px solid var(--bay-soft);
+    border-radius: 7px;
+    padding: 8px 11px;
     font-size: 11px;
     font-weight: 600;
-    color: rgb(255 123 203 / 80%);
+    color: var(--bay);
     cursor: pointer;
-    transition: border-color 0.2s ease, color 0.2s ease;
+    opacity: 0.8;
+    transition: border-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 
     &:hover:not(:disabled) {
-        border-color: rgb(255 123 203 / 55%);
-        color: var(--cp-magenta);
+        opacity: 1;
+        border-color: var(--bay);
+        box-shadow: 0 0 12px var(--bay-wash);
     }
 
     &:disabled {
-        opacity: 0.5;
+        opacity: 0.4;
         cursor: not-allowed;
     }
 }
 
-/* Combatant card */
+/* ── The bay ──────────────────────────────────────────────────────────────────
+   Two layers on purpose: clip-path cuts the corner notch but also cuts any border
+   drawn on the same element, so the outer layer is the frame (1px of accent showing
+   past the inner one) and the inner layer is the surface. One extra node buys a
+   silhouette no other card in the app has. */
 .combatantCard {
     position: relative;
     flex: 1;
     min-width: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-
-    /* Taller than it was, because the art is now the card rather than a crop
-       inside it, and the overlaid readout only occupies the lower third. */
-    min-height: 360px;
-
-    /* The body owns the padding; the art has to reach the edges. */
-    padding: 0;
-
-    /* Clips the full-bleed art to the rounded corners. Safe here because the
-       overlay sits inside on a card whose floor is well above its content. */
-    overflow: hidden;
-    border-radius: 12px;
-    background: linear-gradient(180deg, rgb(10 16 32 / 97%), rgb(6 10 22 / 99%));
-    border: 1px solid rgb(125 214 255 / 28%);
-    box-shadow: 0 0 28px rgb(125 214 255 / 7%);
+    min-height: 340px;
+    padding: 1px;
+    /* Notched away from the centre line, so the pair opens toward the spine. */
+    clip-path: polygon(18px 0, 100% 0, 100% 100%, 0 100%, 0 18px);
+    background: linear-gradient(160deg, var(--bay-soft), rgb(101 131 255 / 10%) 55%, var(--bay-soft));
+    transition: filter 0.25s ease;
 }
 
 .combatantCardRival {
-    border-color: rgb(255 123 203 / 28%);
-    box-shadow: 0 0 28px rgb(255 123 203 / 7%);
+    clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
 }
 
-/* Restores the padding the filled card gives to its overlay instead, so the
-   "pick a pet" prompt is not flush against a dashed border. */
+/* An unfilled bay sits back so a filled one advances. Also the only rule that names
+   `.isEmpty` outright: a class appearing solely inside `:not()` is easy to lose in a
+   refactor, and losing it would light every empty bay instead of none. */
 .combatantCard.isEmpty {
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    border-style: dashed;
-    box-shadow: none;
+    opacity: 0.84;
 }
 
-.combatantCardPlaceholder {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.4px;
-    text-transform: uppercase;
-    color: rgb(195 210 255 / 40%);
+/* Lit once a combatant is standing in it. */
+.combatantCard:not(.isEmpty) {
+    filter: drop-shadow(0 0 22px var(--bay-wash));
 }
 
-/* The art layer. Positioned so PetArt's filling image resolves against it, and
-   a grid so the emoji fallback centres in the same space the art would cover. */
+.combatantCardFrame {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    clip-path: polygon(17px 0, 100% 0, 100% 100%, 0 100%, 0 17px);
+    background: linear-gradient(180deg, rgb(10 16 32 / 97%), rgb(5 9 20 / 99%));
+}
+
+.combatantCardRival .combatantCardFrame {
+    clip-path: polygon(0 0, calc(100% - 17px) 0, 100% 17px, 100% 100%, 0 100%);
+}
+
+/* ── Empty bay: an arena nobody is standing in ────────────────────────────────
+   The floor recedes to a horizon, a plinth marks where the fighter will stand, and
+   a sweep passes over it. Three empty divs and no images. */
+.combatantCardArena {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+
+.combatantCardArenaGrid {
+    position: absolute;
+    inset: 38% -60% -12%;
+    background-image:
+        repeating-linear-gradient(90deg, var(--bay-soft) 0 1px, transparent 1px 64px),
+        repeating-linear-gradient(0deg, var(--bay-soft) 0 1px, transparent 1px 42px);
+    /* Laid flat and pushed back, so the lines converge instead of tiling. */
+    transform: perspective(340px) rotateX(64deg);
+    transform-origin: 50% 100%;
+    opacity: 0.5;
+    mask-image: linear-gradient(180deg, transparent, #000 45%, #000);
+}
+
+/* Where the fighter will stand. */
+.combatantCardArenaPlinth {
+    position: absolute;
+    left: 50%;
+    bottom: 34%;
+    width: 132px;
+    height: 26px;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, var(--bay-wash), transparent 72%);
+    border-block-end: 1px solid var(--bay-soft);
+    opacity: 0.9;
+}
+
+.combatantCardArenaSweep {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 0%, var(--bay-wash) 48%, transparent 60%);
+    animation: cp-bay-sweep 5.5s ease-in-out infinite;
+}
+
+@keyframes cp-bay-sweep {
+    0% {
+        transform: translateY(-62%);
+        opacity: 0;
+    }
+    45% {
+        opacity: 1;
+    }
+    70% {
+        transform: translateY(62%);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(62%);
+        opacity: 0;
+    }
+}
+
+/* The art layer. Positioned so the filling image resolves against it, and a grid so
+   the emoji fallback centres in the same space the art would cover. */
 .combatantCardArt {
     position: absolute;
     inset: 0;
     display: grid;
     place-items: center;
-    background: radial-gradient(circle at 50% 40%, rgb(125 214 255 / 14%), transparent 62%), #070e1e;
+    overflow: hidden;
 }
 
-.combatantCardRival .combatantCardArt {
-    background: radial-gradient(circle at 50% 40%, rgb(255 123 203 / 14%), transparent 62%), #070e1e;
-}
-
-/* Reads up from opaque at the base to clear at the top, so the numbers have a
-   solid ground while the pet's head stays uncovered. */
 .combatantCardScrim {
     position: absolute;
     inset: 0;
     background: linear-gradient(
-        to top,
-        rgb(3 7 18 / 96%) 0%,
-        rgb(3 7 18 / 88%) 32%,
-        rgb(3 7 18 / 28%) 64%,
-        rgb(3 7 18 / 0%) 100%
+        180deg,
+        transparent 30%,
+        rgb(5 9 20 / 62%) 62%,
+        rgb(5 9 20 / 94%) 100%
     );
 }
 
+.combatantCardAvatar {
+    font-size: 92px;
+    filter: drop-shadow(0 0 24px var(--bay-wash));
+    animation: cp-vs-pulse 3.4s ease-in-out infinite;
+}
+
+/* ── Readout ──────────────────────────────────────────────────────────────────
+   Present whether or not a pet is, so choosing one fills the frame in place rather
+   than swapping one layout for another. */
 .combatantCardBody {
     position: relative;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 7px;
+    gap: 9px;
     padding: 14px;
-}
-
-/* The emoji fallback only — PetArt's image is taken out of flow by `fill` and
-   never inherits this, which is what keeps the float and glow off the art. */
-.combatantCardAvatar {
-    font-size: clamp(4rem, 11vw, 7rem);
-    line-height: 1;
-    animation: cp-float 3.5s ease-in-out infinite;
-    filter: drop-shadow(0 0 22px rgb(125 214 255 / 55%));
-}
-
-.combatantCardRival .combatantCardAvatar {
-    animation-duration: 4s;
-    animation-delay: -1.8s;
-    filter: drop-shadow(0 0 22px rgb(255 123 203 / 55%));
 }
 
 .combatantCardName {
     font-family: var(--cp-title-font);
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 700;
-    color: #f4f2ff;
-    text-align: center;
+    letter-spacing: 0.4px;
+    color: #eef3ff;
+    text-wrap: balance;
 }
 
 .combatantCardMeta {
     font-size: 11px;
-    color: rgb(195 210 255 / 50%);
-    text-align: center;
+    color: rgb(195 210 255 / 62%);
 }
 
 .combatantCardOwner {
     font-size: 10px;
-    color: rgb(195 210 255 / 35%);
-    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.6px;
+    color: rgb(195 210 255 / 38%);
 }
 
-/* One row of four rather than a 2x2 block: the same four numbers in half the
-   height, which is what buys the art the space it now occupies. */
+/* The empty bay's one line of copy, sized to be read at a glance rather than the
+   12px it replaced. */
+.combatantCardPlaceholder {
+    font-family: var(--cp-title-font);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--bay);
+    opacity: 0.72;
+    text-wrap: balance;
+}
+
 .combatantCardStats {
-    width: 100%;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 5px;
+    gap: 6px;
 }
 
 .combatantStat {
-    min-width: 0;
-    background: rgb(5 13 30 / 62%);
-    border: 1px solid rgb(125 214 255 / 15%);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    padding: 6px 2px;
     border-radius: 6px;
-    padding: 6px 3px;
-    text-align: center;
-
-    /* Translucent over the art rather than opaque: the tiles should read as
-       laid over the pet, not as holes punched through it. */
-    backdrop-filter: blur(6px);
-}
-
-.combatantCardRival .combatantStat {
-    border-color: rgb(255 123 203 / 15%);
+    background: rgb(5 13 30 / 58%);
+    border: 1px solid rgb(101 131 255 / 12%);
 }
 
 .combatantStatLabel {
     font-size: 8px;
-    text-transform: uppercase;
-    color: rgb(195 210 255 / 40%);
+    font-weight: 700;
+    letter-spacing: 1.1px;
+    color: rgb(195 210 255 / 45%);
 }
 
 .combatantStatVal {
     font-family: var(--cp-title-font);
     font-size: 15px;
-    font-weight: 800;
-    color: var(--cp-cyan);
-    margin-top: 1px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--bay);
+    font-variant-numeric: tabular-nums;
 }
 
-.combatantCardRival .combatantStatVal {
-    color: var(--cp-magenta);
+/* An unfilled slot, drawn rather than written: an em dash here would collide with
+   the one the odds spine shows for an unknown win rate. */
+.combatantStatVoid {
+    width: 14px;
+    height: 2px;
+    border-radius: 2px;
+    background: rgb(195 210 255 / 22%);
 }
 
 .combatantCardHp {
-    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
 }
 
 .combatantCardHpHead {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 5px;
+    align-items: baseline;
     font-size: 8px;
     font-weight: 700;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
-    color: rgb(125 214 255 / 50%);
-}
-
-.combatantCardRival .combatantCardHpHead {
-    color: rgb(255 123 203 / 50%);
+    color: rgb(195 210 255 / 45%);
 }
 
 .combatantCardHpVal {
-    color: var(--cp-emerald);
+    font-variant-numeric: tabular-nums;
+    color: rgb(195 210 255 / 72%);
 }
 
 .combatantCardHpTrack {
-    height: 7px;
-    background: rgb(5 13 30 / 80%);
-    border: 1px solid rgb(15 255 174 / 14%);
-    border-radius: 999px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgb(5 13 30 / 88%);
+    border: 1px solid rgb(101 131 255 / 14%);
     overflow: hidden;
 }
 
 .combatantCardHpFill {
     height: 100%;
-    border-radius: 999px;
+    border-radius: 3px;
+    transition: width 0.35s ease;
 }
 
 .combatantCardHpFillFighter {
-    background: linear-gradient(90deg, #0fffae, #7dd6ff);
-    box-shadow: 0 0 10px rgb(15 255 174 / 50%);
+    background: linear-gradient(90deg, #29a8ff, var(--cp-cyan));
+    box-shadow: 0 0 10px rgb(125 214 255 / 55%);
 }
 
 .combatantCardHpFillRival {
-    background: linear-gradient(90deg, #0fffae, #ff7bcb);
-    box-shadow: 0 0 10px rgb(15 255 174 / 40%);
+    background: linear-gradient(90deg, var(--cp-magenta), #ff6ec4);
+    box-shadow: 0 0 10px rgb(255 123 203 / 55%);
 }
 
-/* VS + win rate column */
+/* ── Odds spine ───────────────────────────────────────────────────────────────
+   Replaces a floating VS on two hairlines that joined nothing, plus a detached
+   win-rate box. One rail now spans the height of the bays and carries the number:
+   your share fills from the bottom in cyan, theirs sits above in magenta, and the
+   pin marks the split. */
 .vs {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 14px;
-    padding: 0 20px;
+    gap: 10px;
+    padding: 22px 4px 0;
     flex-shrink: 0;
+    width: 76px;
 }
 
 .vsMark {
     font-family: var(--cp-title-font);
-    font-size: 38px;
+    font-size: 30px;
     font-weight: 900;
     line-height: 1;
-    color: var(--cp-magenta);
-    text-shadow: 0 0 30px rgb(255 123 203 / 80%);
-    animation: cp-vs-pulse 2s ease-in-out infinite;
+    background: var(--cp-gradient-line);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 16px rgb(255 123 203 / 55%));
+    animation: cp-vs-pulse 2.6s ease-in-out infinite;
 }
 
-.vsDivider {
-    width: 1px;
-    height: 50px;
-    background: linear-gradient(180deg, transparent, rgb(255 123 203 / 45%), transparent);
+.vsRail {
+    position: relative;
+    flex: 1;
+    width: 8px;
+    min-height: 120px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgb(255 123 203 / 34%), rgb(255 123 203 / 12%));
+    border: 1px solid rgb(101 131 255 / 18%);
+}
+
+.vsRailFill {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, var(--cp-cyan), #29a8ff);
+    box-shadow: 0 0 14px rgb(125 214 255 / 55%);
+    transition: height 0.4s ease;
+}
+
+.vsRailPin {
+    position: absolute;
+    inset-inline: -4px;
+    height: 2px;
+    background: #eef3ff;
+    box-shadow: 0 0 8px rgb(238 243 255 / 80%);
+    transition: bottom 0.4s ease;
+}
+
+/* No estimate yet: an even split drawn as neutral hatching, so the rail reads as
+   "not known" rather than as a real 50%. */
+.vsRailUnknown {
+    background: repeating-linear-gradient(
+        135deg,
+        rgb(101 131 255 / 16%) 0 5px,
+        transparent 5px 10px
+    );
 }
 
 .vsWinrate {
-    background: rgb(10 16 32 / 95%);
-    border: 1px solid rgb(101 131 255 / 18%);
-    border-radius: 10px;
-    padding: 12px 18px;
     text-align: center;
 }
 
@@ -335,16 +467,18 @@
     font-weight: 700;
     letter-spacing: 1.2px;
     text-transform: uppercase;
-    color: rgb(125 214 255 / 45%);
-    margin-bottom: 4px;
+    color: rgb(195 210 255 / 42%);
+    margin-bottom: 3px;
 }
 
 .vsWinrateVal {
     font-family: var(--cp-title-font);
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 900;
+    line-height: 1;
     color: var(--cp-cyan);
-    text-shadow: 0 0 14px rgb(125 214 255 / 60%);
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 14px rgb(125 214 255 / 55%);
 }
 
 /* Action row */
@@ -360,21 +494,46 @@
     .showdown {
         grid-template-columns: 1fr;
     }
+
+    .combatantCard {
+        min-height: 260px;
+    }
+
+    /* The spine turns on its side and the rail fills left to right, so your share
+       still grows toward your own bay. */
     .vs {
         flex-direction: row;
-        padding: 8px 0;
+        width: auto;
+        padding: 6px 0;
+        gap: 14px;
     }
-    .vsDivider {
-        width: 50px;
-        height: 1px;
-    }
-    .combatantCard {
+
+    .vsRail {
+        flex: 1;
+        width: auto;
+        height: 8px;
         min-height: 0;
+        background: linear-gradient(90deg, rgb(255 123 203 / 12%), rgb(255 123 203 / 34%));
+    }
+
+    .vsRailFill {
+        inset-inline: auto 0;
+        inset-block: 0;
+        left: 0;
+        background: linear-gradient(90deg, #29a8ff, var(--cp-cyan));
+    }
+
+    .vsRailPin {
+        inset-inline: auto;
+        inset-block: -4px;
+        width: 2px;
+        height: auto;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .combatantCardAvatar,
+    .combatantCardArenaSweep,
     .vsMark {
         animation: none !important;
     }

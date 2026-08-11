@@ -1,6 +1,6 @@
-import { hashRuleset, type Hex } from '@cryptopets/protocol';
+import { type Hex } from '@cryptopets/protocol';
 
-import { servedRuleset } from './ruleset.builder';
+import { servedRuleset, servedRulesetHash } from './ruleset.builder';
 import { ethers } from 'ethers';
 
 import { prisma } from '@config/prisma';
@@ -65,7 +65,7 @@ export async function getBattleConfig(): Promise<BattleConfig> {
         enabled: backendBattleModeEnabled(),
         deploymentId: servedDeploymentId(),
         chainIds: servedChainIds(),
-        ruleset: { hash: hashRuleset(ruleset), version: ruleset.version },
+        ruleset: { hash: await servedRulesetHash(), version: ruleset.version },
     };
 }
 

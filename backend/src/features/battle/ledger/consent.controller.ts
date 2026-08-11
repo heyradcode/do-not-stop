@@ -5,10 +5,12 @@ import type { AuthenticatedRequest } from '@middleware/auth';
 import {
     type AuthorizationRejection,
     type DefenseAuthorizationWire,
+    listDefenseAuthorizations,
     revokeDefenseAuthorizations,
     submitDefenseAuthorization,
 } from './consent.service';
 import type { SignatureFormat } from './intent.service';
+import { servedRulesetHash } from './ruleset.builder';
 
 const STATUS_BY_REASON: Record<AuthorizationRejection, number> = {
     'malformed-authorization': 422,
@@ -75,4 +77,35 @@ export async function deleteDefenseAuthorizations(req: AuthenticatedRequest, res
 
     const { revoked } = await revokeDefenseAuthorizations(chainId, wallet, new Date());
     res.status(200).json({ revoked });
+}
+
+/**
+ * The caller's own live authorizations, each flagged with whether it still applies.
+ *
+ * Always the authenticated wallet, never an argument. One wallet's consent state says
+ * which of their pets can be challenged and until when, which is theirs to see and nobody
+ * else's to enumerate.
+ *
+ * `isStale` is the field this exists for. A rules change invalidates every outstanding
+ * grant by design, and a defender is the one who has to re-sign but the last to find out:
+ * being challenged is passive, so their pets just stop being challengeable and only the
+ * attacker sees an error.
+ */
+export async function getDefenseAuthorizations(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const wallet = req.user?.address;
+    if (!wallet) {
+        res.status(401).json({ error: 'authentication required' });
+        return;
+    }
+    const chainId = typeof req.query.chainId === 'string' ? req.query.chainId : undefined;
+    if (!chainId) {
+        res.status(422).json({ error: 'chainId is required' });
+        return;
+    }
+
+    // The hash battles are actually being accepted under, from the same builder `accept`
+    // uses, so "stale" here means exactly what it means there rather than approximately.
+    const rulesetHash = await servedRulesetHash();
+    const authorizations = await listDefenseAuthorizations(chainId, wallet, rulesetHash);
+    res.status(200).json({ rulesetHash, authorizations });
 }

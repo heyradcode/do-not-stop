@@ -4,11 +4,16 @@
  */
 export {
     getCatalog,
+    getCombatCatalog,
     getInventory,
     getPendingItems,
     getPetEquipment,
+    getPetEquipmentForCombat,
     getPetEquipmentForPets,
+    ItemCatalogError,
+    itemCatalogGeneration,
     resetItemCatalog,
+    type CombatEquippedItem,
     type EquippedItem,
     type InventoryEntry,
     type PendingItem,
@@ -38,7 +43,7 @@ export {
     type UseItemResult,
     type WriteFailure,
 } from './inventory.write';
-export { getItemCoreClient, type ItemCoreClient } from './inventory.chain';
+export { getItemCoreClient, type ItemCoreClient, UnconfirmedTxError } from './inventory.chain';
 export {
     DEFAULT_DROP_RATES,
     recordBattleDrops,

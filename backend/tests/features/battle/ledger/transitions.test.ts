@@ -17,7 +17,7 @@ const tx = {
 vi.mock('@config/prisma', () => ({
     prisma: {
         $transaction: vi.fn(),
-        battleLedger: { findUnique: vi.fn() },
+        battleLedger: { findUnique: vi.fn(), findMany: vi.fn() },
     },
 }));
 
@@ -26,9 +26,11 @@ import { prisma } from '@config/prisma';
 import {
     abandonBattle,
     applyTransition,
+    expireOrphanedAccepts,
     failBattle,
     IllegalTransitionError,
     openBattle,
+    shouldReleaseLocks,
     OUTBOX_TOPICS,
     sortPetIds,
 } from '@features/battle/ledger';
@@ -291,5 +293,55 @@ describe('abandonBattle', () => {
             abandoned: false,
             state: null,
         });
+    });
+});
+
+
+/**
+ * Pets held by a battle that never left `accepted` are released.
+ *
+ * Nothing else can release them. Locks are freed by reaching a terminal state, the
+ * dead-letter path calls `abandonBattle` which declines because `accepted` cannot forfeit,
+ * and until this existed nothing ever wrote `expired` at all. So a crash between accept and
+ * commit locked both pets permanently, and the only symptom was a unique-constraint error
+ * on `pet_battle_lock` the next time either tried to fight.
+ */
+describe('expireOrphanedAccepts', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('expires an accepted battle older than the cutoff, which frees its locks', async () => {
+        vi.mocked(prisma.battleLedger.findMany).mockResolvedValue([{ battleId: 'btl_old' }] as never);
+        vi.mocked(prisma.battleLedger.findUnique).mockResolvedValue({ state: 'accepted' } as never);
+        vi.mocked(prisma.$transaction).mockImplementation((async (fn: (tx: unknown) => Promise<unknown>) =>
+            fn({
+                battleLedger: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+                petBattleLock: { deleteMany: vi.fn().mockResolvedValue({ count: 2 }) },
+                battleOutbox: { createMany: vi.fn() },
+            })) as never);
+
+        expect(await expireOrphanedAccepts(10_000)).toEqual({ expired: 1 });
+
+        // `expired` is terminal, which is what makes `shouldReleaseLocks` drop the rows.
+        expect(shouldReleaseLocks('expired' as never)).toBe(true);
+    });
+
+    it('only looks at battles still in accepted', async () => {
+        vi.mocked(prisma.battleLedger.findMany).mockResolvedValue([] as never);
+
+        await expireOrphanedAccepts(10_000);
+
+        const { where } = vi.mocked(prisma.battleLedger.findMany).mock.calls[0]![0]!;
+        expect(where).toMatchObject({ state: 'accepted' });
+        // A cutoff in the past, never "everything": expiring a battle mid-accept would
+        // strand a player who has already signed.
+        expect((where as { createdAt: { lt: Date } }).createdAt.lt.getTime()).toBeLessThan(10_000 * 1000);
+    });
+
+    it('does nothing when there are no orphans', async () => {
+        vi.mocked(prisma.battleLedger.findMany).mockResolvedValue([] as never);
+        expect(await expireOrphanedAccepts(10_000)).toEqual({ expired: 0 });
+        expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 });

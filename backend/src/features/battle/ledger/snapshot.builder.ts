@@ -1,7 +1,7 @@
 import { chainFamily, type ChainId, type EquipEntry, type PetSnapshot } from '@cryptopets/protocol';
 
 import { prisma } from '@config/prisma';
-import { getPetEquipment } from '@features/inventory';
+import { getPetEquipmentForCombat } from '@features/inventory';
 
 import { servedDeploymentId } from './domain';
 
@@ -79,28 +79,23 @@ export async function buildPetSnapshot(chainId: ChainId, petId: string): Promise
  * so what is frozen is what the chain said at a version the snapshot records. An outsider
  * can therefore check the gear as well as the numbers.
  *
- * An equipped item with no catalog effect contributes nothing and is left out entirely.
- * Including it with zeroes would put an entry in the receipt claiming an item was worn and
- * did nothing, which reads as a bug rather than as a fact.
+ * `getPetEquipmentForCombat` throws rather than skipping an item this process cannot
+ * price, so there is no filtering left to do here. Skipping was the tempting version and
+ * the wrong one: it produced a receipt claiming the pet fought bare while chain state at
+ * `sourceVersion` said it was wearing something.
  */
 async function resolveEquipment(family: string, petId: string): Promise<EquipEntry[]> {
-    const equipped = await getPetEquipment(family, petId);
-    const entries: EquipEntry[] = [];
+    const equipped = await getPetEquipmentForCombat(family, petId);
 
-    for (const { slot, item } of equipped) {
-        if (item.effect?.kind !== 'stat_bonus') {
-            continue;
-        }
-        entries.push({
-            slot,
-            itemType: BigInt(item.itemType),
-            hp: item.effect.hp,
-            atk: item.effect.atk,
-            def: item.effect.def,
-            int: item.effect.int,
-            mdef: item.effect.mdef,
-        });
-    }
+    const entries = equipped.map(({ slot, itemType, bonus }) => ({
+        slot,
+        itemType: BigInt(itemType),
+        hp: bonus.hp,
+        atk: bonus.atk,
+        def: bonus.def,
+        int: bonus.int,
+        mdef: bonus.mdef,
+    }));
 
     // Ascending by slot, which the protocol requires: the order is part of the snapshot
     // digest, and `assertPetSnapshot` refuses to sort silently so an upstream bug that

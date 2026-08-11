@@ -4,28 +4,31 @@ import {
     type BattleCommitment,
     type BattleSnapshot,
     type ChainId,
+    findEquipmentMismatches,
     hashBattleSnapshot,
-    hashRuleset,
     isBattleReady,
     type Hex,
+    type PetSnapshot,
     publishRuleset,
     QUICKNET,
+    type Ruleset,
     SNAPSHOT_SCHEMA_VERSION,
 } from '@cryptopets/protocol';
 import type { Prisma } from '@generated/prisma/client';
 import { BattleState } from '@generated/prisma/enums';
 
 import { prisma } from '@config/prisma';
+import { ItemCatalogError } from '@features/inventory';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
-import { activeSigningKey, sign, SignerRefusedError } from '../signer';
+import { activeSigningKey, sign, signerBackendError, SignerRefusedError } from '../signer';
 import { chooseCommitmentRound, roundPublishTime } from '../randomness';
 
 import { type ConsentFailure, consumeDailyBudget, findCoveringAuthorization } from './consent.service';
 import { servedDeploymentId } from './domain';
 import { OUTBOX_TOPICS } from './outbox';
 import { buildPetSnapshot } from './snapshot.builder';
-import { servedRuleset } from './ruleset.builder';
+import { servedRuleset, servedRulesetHash } from './ruleset.builder';
 import { applyTransition, openBattle } from './transitions';
 
 /**
@@ -76,7 +79,26 @@ export type AcceptRejection =
     | ConsentFailure
     | 'pet-locked'
     | 'drand-unavailable'
-    | 'signer-unavailable';
+    | 'signer-unavailable'
+    /**
+     * The item catalog cannot price something this battle needs priced: a pet wears an
+     * item with no catalog row, or an equipment row's modifier will not parse (roadmap §4).
+     *
+     * Its own reason rather than a 500, because it is an operational fault with an obvious
+     * remedy (run the seeder) and no fault of the player's. Refusing is the conservative
+     * end: the alternative is a fight under rules this deployment cannot state, recorded in
+     * a signed receipt that contradicts chain state.
+     */
+    | 'item-catalog-stale'
+    /**
+     * The frozen gear disagrees with what the ruleset this battle names prices it at
+     * (roadmap §4, threat T13). Reachable when the catalog changes between resolving the
+     * snapshot and building the ruleset, and otherwise a bug.
+     *
+     * Refused rather than fought, because the verifier makes the same comparison on the
+     * finished receipt: accepting would produce a battle guaranteed to fail verification.
+     */
+    | 'equipment-catalog-mismatch';
 
 export interface AcceptedBattle {
     battleId: string;
@@ -93,42 +115,23 @@ export type AcceptBattleResult =
 const MAX_COMMITMENT_CHAIN_RETRIES = 5;
 
 export async function acceptBattle(request: AcceptBattleRequest): Promise<AcceptBattleResult> {
-    const intent = await prisma.battleIntent.findUnique({ where: { intentHash: request.intentHash } });
-    if (!intent) {
-        return reject('intent-not-found', `no intent ${request.intentHash}`);
+    const intent = await loadAcceptableIntent(request);
+    if (!intent.ok) {
+        return intent.refusal;
     }
-    if (intent.consumedAt) {
-        return reject('intent-already-consumed', 'this intent already produced a battle');
-    }
-    if (BigInt(request.nowSeconds) >= intent.expiresAt) {
-        return reject('intent-expired', `intent expired at ${intent.expiresAt}`);
-    }
+    const chainId = intent.value.chainId as ChainId;
 
-    const chainId = intent.chainId as ChainId;
-    const [attacker, defender] = await Promise.all([
-        buildPetSnapshot(chainId, intent.attackerPetId),
-        buildPetSnapshot(chainId, intent.defenderPetId),
-    ]);
-    if (!attacker) {
-        return reject('attacker-pet-missing', `pet ${intent.attackerPetId} is not in the roster`);
+    const fighters = await freezeFighters(chainId, intent.value, request.nowSeconds);
+    if (!fighters.ok) {
+        return fighters.refusal;
     }
-    if (!defender) {
-        return reject('defender-pet-missing', `pet ${intent.defenderPetId} is not in the roster`);
-    }
-    // Both pets must be off cooldown, mirroring GameLogic.sol's requirement that neither side
-    // of an on-chain battle is mid-recovery.
-    if (!isBattleReady(attacker, request.nowSeconds)) {
-        return reject('attacker-not-ready', `attacker ready at ${attacker.readyAt}`);
-    }
-    if (!isBattleReady(defender, request.nowSeconds)) {
-        return reject('defender-not-ready', `defender ready at ${defender.readyAt}`);
-    }
+    const { attacker, defender } = fighters.value;
 
-    // Built from the live item catalog rather than taken from the constant: gear changes
-    // fights, so the rules a battle names have to include what gear does (roadmap §4).
-    const ruleset = await servedRuleset();
-    const rulesetHash = hashRuleset(ruleset);
-    await ensureRulesetPublished(rulesetHash);
+    const priced = await priceUnderServedRuleset(attacker, defender);
+    if (!priced.ok) {
+        return priced.refusal;
+    }
+    const { ruleset, rulesetHash } = priced.value;
 
     const coverage = await findCoveringAuthorization({
         chainId,
@@ -171,39 +174,20 @@ export async function acceptBattle(request: AcceptBattleRequest): Promise<Accept
         takenAt: request.nowSeconds,
         schemaVersion: SNAPSHOT_SCHEMA_VERSION,
     };
-    const snapshotHash = hashBattleSnapshot(snapshot);
 
     // Stage A: everything that must be durable before any randomness exists.
-    const opened = await openBattle({
-        consumeIntentHash: intent.intentHash,
-        petIds: [attacker.petId.toString(), defender.petId.toString()],
-        ledger: {
-            battleId,
-            chainId,
-            deploymentId: domain.deploymentId,
-            state: BattleState.accepted,
-            intentHash: intent.intentHash,
-            authorizationHash: coverage.authorizationHash,
-            attackerPetId: attacker.petId.toString(),
-            attackerOwner: attacker.owner,
-            defenderPetId: defender.petId.toString(),
-            defenderOwner: defender.owner,
-            snapshot: serializeBigints(snapshot),
-            snapshotHash,
-            rulesetHash,
-            rulesetVersion: ruleset.version,
-            // Filled in Stage C once the round is committed and signed; zero is not a legal
-            // committed round, so a row stuck here is unambiguously still `accepted`.
-            drandChainHash: '',
-            drandRound: 0n,
-            acceptedAt: 0n,
-            roomId: request.roomId ?? null,
-        },
+    const opened = await openAcceptedBattle({
+        battleId,
+        domain,
+        intentHash: intent.value.intentHash,
+        authorizationHash: coverage.authorizationHash,
+        snapshot,
+        rulesetHash,
+        rulesetVersion: ruleset.version,
+        roomId: request.roomId ?? null,
     });
     if (!opened.ok) {
-        return opened.reason === 'pet-locked'
-            ? reject('pet-locked', `pet ${opened.petId} already has an open battle`)
-            : reject('intent-already-consumed', 'this intent already produced a battle');
+        return opened.refusal;
     }
 
     // Stage B + C: sign the commitment and record it, retrying if another accept call under the
@@ -212,7 +196,7 @@ export async function acceptBattle(request: AcceptBattleRequest): Promise<Accept
         const signed = await signAndRecordCommitment({
             battleId,
             domain,
-            intentHash: intent.intentHash as Hex,
+            intentHash: intent.value.intentHash as Hex,
             defenseAuthorizationHash: coverage.authorizationHash as Hex,
             snapshot,
             rulesetVersion: ruleset.version,
@@ -260,9 +244,18 @@ async function signAndRecordCommitment(
     seed: CommitmentSeed,
 ): Promise<{ commitment: BattleCommitment; commitmentHash: Hex; signature: Hex; signingKeyId: string }> {
     for (let attempt = 0; attempt < MAX_COMMITMENT_CHAIN_RETRIES; attempt++) {
-        const key = activeSigningKey();
+        // The commitment's own domain picks the key (§G separates them per reward domain),
+        // so a commitment can never be signed under another chain's key.
+        const key = activeSigningKey(seed.domain.chainId);
         if (!key) {
-            throw new SignerRefusedError('signer-not-configured', 'no active signing key');
+            // Carries the configuration failure rather than restating the symptom — see the
+            // same lookup in `sign.worker`. This one reaches the player as a refused battle,
+            // so the detail is what tells an operator it was their config and not the chain.
+            const why = signerBackendError();
+            throw new SignerRefusedError(
+                'signer-not-configured',
+                `no active signing key for the ${seed.domain.chainId} domain${why ? `: ${why}` : ''}`,
+            );
         }
 
         const previous = await prisma.battleCommitment.findFirst({
@@ -348,13 +341,33 @@ async function unwindToRejected(battleId: string, reason: string): Promise<void>
  * replayed by anyone (§H), so this runs before the hash is ever referenced rather than as a
  * background job that might lag behind it.
  */
-async function ensureRulesetPublished(expectedHash: Hex): Promise<void> {
+async function ensureRulesetPublished(ruleset: Ruleset, expectedHash: Hex): Promise<void> {
     const existing = await prisma.battleRuleset.findUnique({ where: { rulesetHash: expectedHash } });
     if (existing) {
         return;
     }
-    const ruleset = await servedRuleset();
+
+    // The *same* ruleset object the caller hashed, passed in rather than re-read.
+    //
+    // This used to call `servedRuleset()` again and publish under whatever hash that
+    // produced, while the battle went on referencing the caller's. Nothing checked the
+    // two agreed, so any drift between the two reads published a bundle nobody would ever
+    // look up and left the battle naming one that did not exist. It surfaced as far away
+    // as it possibly could: the battle accepted cleanly, the player signed, and it died
+    // nine retries later in `compute` with "no published ruleset bundle for 0x…".
+    //
+    // Taking the object removes the window rather than narrowing it: there is now only one
+    // read, so there is nothing to drift.
     const { hash, json } = publishRuleset(ruleset);
+    if (hash.toLowerCase() !== expectedHash.toLowerCase()) {
+        // Unreachable while the caller hashes what it passes, which is the point of
+        // asserting it: if that ever stops being true, it fails here, before a battle
+        // exists, instead of stranding one that has already been signed for.
+        throw new Error(
+            `ruleset bundle hashes to ${hash} but this battle names ${expectedHash}; refusing to publish a bundle no battle references`,
+        );
+    }
+
     try {
         await prisma.battleRuleset.create({
             data: {
@@ -369,7 +382,20 @@ async function ensureRulesetPublished(expectedHash: Hex): Promise<void> {
         if ((error as { code?: string }).code !== 'P2002') {
             throw error;
         }
-        // Another concurrent accept call published it first; that is fine, the row exists now.
+        // A unique violation is only benign when it means *this* bundle is already there,
+        // which is the concurrent-accept race. Any other unique conflict leaves no row for
+        // this hash, and swallowing it publishes nothing while reporting success.
+        //
+        // That is not hypothetical: `version` is unique and every served ruleset carries
+        // version 1, so the first catalog change made this collide on `version` rather
+        // than on the hash. The battle went on naming a bundle that had never been
+        // written, and died in `compute` nine retries later.
+        const published = await prisma.battleRuleset.findUnique({ where: { rulesetHash: expectedHash } });
+        if (!published) {
+            throw new Error(
+                `could not publish the ruleset bundle for ${expectedHash}: ${(error as Error).message}`,
+            );
+        }
     }
 }
 
@@ -380,4 +406,191 @@ function serializeBigints<T>(value: T): Prisma.InputJsonValue {
 
 function reject(reason: AcceptRejection, detail: string): AcceptBattleResult {
     return { ok: false, reason, detail };
+}
+
+/**
+ * Turns a stale item catalog into a named rejection, and rethrows anything else.
+ *
+ * Both catalog-dependent reads on this path (what the pets are wearing, and the ruleset
+ * the fight is priced under) run before the first write, so refusing here strands nothing:
+ * no ledger row, no consumed intent, no spent daily budget.
+ *
+ * Rethrows rather than swallowing, because "the catalog is behind the contract" is a
+ * recoverable operational state with a clear remedy, while any other failure here is a bug
+ * and should keep reaching the error handler as one.
+ */
+function catalogRejection(error: unknown): AcceptBattleResult {
+    if (error instanceof ItemCatalogError) {
+        return reject('item-catalog-stale', error.message);
+    }
+    throw error;
+}
+
+/**
+ * One step of accept that is allowed to refuse.
+ *
+ * `acceptBattle` is a sequence of checks that each end the request on failure, and inlining
+ * all of them made one function responsible for validating an intent, freezing two pets,
+ * pricing them under a ruleset, spending a budget, and unwinding a half-built battle. The
+ * steps below are the seams that were already documented in its own comments; this type is
+ * only what lets them hand a refusal back rather than each inventing a way to say no.
+ */
+type Step<T> = { ok: true; value: T } | { ok: false; refusal: AcceptBattleResult };
+
+const proceed = <T>(value: T): Step<T> => ({ ok: true, value });
+const refuse = (reason: AcceptRejection, detail: string): Step<never> => ({
+    ok: false,
+    refusal: reject(reason, detail),
+});
+
+type BattleIntentRow = NonNullable<Awaited<ReturnType<typeof prisma.battleIntent.findUnique>>>;
+
+/** The intent this battle claims to answer, if it is still answerable. */
+async function loadAcceptableIntent(request: AcceptBattleRequest): Promise<Step<BattleIntentRow>> {
+    const intent = await prisma.battleIntent.findUnique({ where: { intentHash: request.intentHash } });
+    if (!intent) {
+        return refuse('intent-not-found', `no intent ${request.intentHash}`);
+    }
+    if (intent.consumedAt) {
+        return refuse('intent-already-consumed', 'this intent already produced a battle');
+    }
+    if (BigInt(request.nowSeconds) >= intent.expiresAt) {
+        return refuse('intent-expired', `intent expired at ${intent.expiresAt}`);
+    }
+    return proceed(intent);
+}
+
+/**
+ * The frozen photo of both pets (§C), and the readiness checks that depend on it.
+ *
+ * Kept together because the second is meaningless without the first: `readyAt` is a
+ * snapshot field, so cooldown can only be judged once the snapshot exists.
+ */
+async function freezeFighters(
+    chainId: ChainId,
+    intent: BattleIntentRow,
+    nowSeconds: number,
+): Promise<Step<{ attacker: PetSnapshot; defender: PetSnapshot }>> {
+    let attacker: Awaited<ReturnType<typeof buildPetSnapshot>>;
+    let defender: Awaited<ReturnType<typeof buildPetSnapshot>>;
+    try {
+        [attacker, defender] = await Promise.all([
+            buildPetSnapshot(chainId, intent.attackerPetId),
+            buildPetSnapshot(chainId, intent.defenderPetId),
+        ]);
+    } catch (error) {
+        return { ok: false, refusal: catalogRejection(error) };
+    }
+
+    if (!attacker) {
+        return refuse('attacker-pet-missing', `pet ${intent.attackerPetId} is not in the roster`);
+    }
+    if (!defender) {
+        return refuse('defender-pet-missing', `pet ${intent.defenderPetId} is not in the roster`);
+    }
+    // Both pets must be off cooldown, mirroring GameLogic.sol's requirement that neither side
+    // of an on-chain battle is mid-recovery.
+    if (!isBattleReady(attacker, nowSeconds)) {
+        return refuse('attacker-not-ready', `attacker ready at ${attacker.readyAt}`);
+    }
+    if (!isBattleReady(defender, nowSeconds)) {
+        return refuse('defender-not-ready', `defender ready at ${defender.readyAt}`);
+    }
+    return proceed({ attacker, defender });
+}
+
+/**
+ * The rules this battle will be fought and judged under, published so it can be replayed.
+ *
+ * Built from the live item catalog rather than the constant: gear changes fights, so the
+ * rules a battle names have to include what gear does (roadmap §4).
+ */
+async function priceUnderServedRuleset(
+    attacker: PetSnapshot,
+    defender: PetSnapshot,
+): Promise<Step<{ ruleset: Ruleset; rulesetHash: Hex }>> {
+    let ruleset: Ruleset;
+    try {
+        ruleset = await servedRuleset();
+    } catch (error) {
+        return { ok: false, refusal: catalogRejection(error) };
+    }
+
+    // The gear the snapshots froze has to be the gear this ruleset prices (roadmap §4,
+    // threat T13). The verifier makes the same comparison on the finished receipt, using the
+    // same function; making it here as well turns "this battle will fail to verify" into
+    // "this battle was never accepted".
+    //
+    // Not merely redundant. The two inputs are read from the item catalog at different
+    // points — `buildPetSnapshot` resolves the modifiers, `servedRuleset` publishes them —
+    // so a seeder run landing between the two would price the fight from one catalog and the
+    // rules from another. Narrow, but it produces a receipt that cannot be verified and no
+    // other check would notice.
+    const mismatches = findEquipmentMismatches(
+        [
+            { role: 'attacker', equipment: attacker.equipment },
+            { role: 'defender', equipment: defender.equipment },
+        ],
+        ruleset,
+    );
+    if (mismatches.length > 0) {
+        return refuse('equipment-catalog-mismatch', mismatches.join('; '));
+    }
+
+    const rulesetHash = await servedRulesetHash();
+    await ensureRulesetPublished(ruleset, rulesetHash);
+    return proceed({ ruleset, rulesetHash });
+}
+
+/**
+ * Stage A: the durable record, written before any randomness for this battle exists.
+ *
+ * One transaction (inside `openBattle`) consumes the intent, locks both pets, and persists
+ * the frozen snapshot. Splitting it out keeps `acceptBattle` readable as the sequence it is,
+ * rather than a sequence with one twenty-line row literal in the middle of it.
+ */
+async function openAcceptedBattle(args: {
+    battleId: string;
+    domain: { chainId: ChainId; deploymentId: string };
+    intentHash: string;
+    authorizationHash: string;
+    snapshot: BattleSnapshot;
+    rulesetHash: Hex;
+    rulesetVersion: number;
+    roomId: string | null;
+}): Promise<Step<null>> {
+    const { attacker, defender } = args.snapshot;
+    const opened = await openBattle({
+        consumeIntentHash: args.intentHash,
+        petIds: [attacker.petId.toString(), defender.petId.toString()],
+        ledger: {
+            battleId: args.battleId,
+            chainId: args.domain.chainId,
+            deploymentId: args.domain.deploymentId,
+            state: BattleState.accepted,
+            intentHash: args.intentHash,
+            authorizationHash: args.authorizationHash,
+            attackerPetId: attacker.petId.toString(),
+            attackerOwner: attacker.owner,
+            defenderPetId: defender.petId.toString(),
+            defenderOwner: defender.owner,
+            snapshot: serializeBigints(args.snapshot),
+            snapshotHash: hashBattleSnapshot(args.snapshot),
+            rulesetHash: args.rulesetHash,
+            rulesetVersion: args.rulesetVersion,
+            // Filled in Stage C once the round is committed and signed; zero is not a legal
+            // committed round, so a row stuck here is unambiguously still `accepted`.
+            drandChainHash: '',
+            drandRound: 0n,
+            acceptedAt: 0n,
+            roomId: args.roomId,
+        },
+    });
+
+    if (opened.ok) {
+        return proceed(null);
+    }
+    return opened.reason === 'pet-locked'
+        ? refuse('pet-locked', `pet ${opened.petId} already has an open battle`)
+        : refuse('intent-already-consumed', 'this intent already produced a battle');
 }

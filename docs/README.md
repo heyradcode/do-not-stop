@@ -15,6 +15,8 @@ package-specific docs live next to their code and are linked below.
 | --- | --- |
 | [Battle protocol](./battle-protocol.md) | The shipped backend-authoritative battle system. Part 1 plain words, Part 2 spec (§A–§M), Appendix A threat model, B operations runbook, C key-compromise runbook. |
 | [Future features roadmap](./plan-future-features-roadmap.md) | Brainstorm for eleven unbuilt features. Not a build spec. |
+| [Inventory and item NFTs](./plan-inventory-items.md) | Execution order for roadmap §4, all four phases shipped. Records what was deployed to Base Sepolia and what the seeder still needs. |
+| [Battle + inventory hardening](./plan-battle-inventory-hardening.md) | Review of §4 against the battle protocol, and the record of what it found and fixed. Read it before touching the snapshot, ruleset, or drop paths: several of its entries are corrections to claims other docs made. |
 | [Testing](./testing.md) | Per-package suite table and conventions. |
 
 ## Package docs

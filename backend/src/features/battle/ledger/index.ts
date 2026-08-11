@@ -15,7 +15,11 @@ export {
     type SequencePage,
 } from './corpus.service';
 export { getReceiptsByPet, getReceiptsBySequence, getReceiptsByWallet } from './corpus.controller';
-export { deleteDefenseAuthorizations, postDefenseAuthorization } from './consent.controller';
+export {
+    deleteDefenseAuthorizations,
+    getDefenseAuthorizations,
+    postDefenseAuthorization,
+} from './consent.controller';
 export {
     getBattleCombatLog,
     getBattleCommitment,
@@ -51,9 +55,11 @@ export {
     type ConsentResult,
     consumeDailyBudget,
     type CoverageRequest,
+    type DefenseAuthorizationSummary,
     type DefenseAuthorizationWire,
     epochDay,
     findCoveringAuthorization,
+    listDefenseAuthorizations,
     revokeDefenseAuthorizations,
     type SubmitAuthorizationRequest,
     type SubmitAuthorizationResult,
@@ -62,6 +68,18 @@ export {
     verifyAuthorizationSignature,
 } from './consent.service';
 export { assertServedDomain, servedChainIds, servedDeploymentId, servedDomain } from './domain';
+export { deleteSessionDelegations, postSessionDelegation } from './session.controller';
+export {
+    findSessionDelegation,
+    revokeSessionDelegations,
+    type SessionDelegationWire,
+    type SessionRejection,
+    submitSessionDelegation,
+    type SubmitSessionRequest,
+    type SubmitSessionResult,
+    toProtocolDelegation,
+    verifyDelegationSignature,
+} from './session.service';
 export { backendBattleModeEnabled, requireBackendBattleMode } from './mode';
 export { postBattleIntent } from './intent.controller';
 export {
@@ -103,6 +121,7 @@ export {
 } from './state';
 export {
     abandonBattle,
+    expireOrphanedAccepts,
     applyTransition,
     type BattleLedgerPatch,
     failBattle,
@@ -115,3 +134,10 @@ export {
     type TransitionResult,
 } from './transitions';
 export { buildPetSnapshot } from './snapshot.builder';
+export {
+    decodeStoredPet,
+    decodeStoredSnapshot,
+    type StoredBattleSnapshot,
+    type StoredEquipEntry,
+    type StoredPetSnapshot,
+} from './snapshot.codec';

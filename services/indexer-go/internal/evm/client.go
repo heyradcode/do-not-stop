@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // GraphQL queries. The pet selection set adds the v2 lineage / marriage /
@@ -164,7 +166,7 @@ func (c *client) query(ctx context.Context, query string, variables map[string]a
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return fmt.Errorf("subgraph request failed: HTTP %d", res.StatusCode)
+		return &httpError{status: res.StatusCode, retryAfter: retryAfter(res)}
 	}
 
 	var envelope struct {
@@ -253,4 +255,54 @@ func paginate[T any](
 	}
 
 	return all, nil
+}
+
+// httpError is a non-200 from the subgraph, carrying enough for a caller to tell a rate
+// limit from a genuine failure.
+//
+// The distinction is not cosmetic. A 429 means the endpoint is asking to be left alone for
+// a moment, and a poller that treats it like any other error keeps its interval, spends the
+// next request on the same refusal, and renews the block. The status is what lets the loop
+// back off instead.
+type httpError struct {
+	status int
+	// From the Retry-After header when the endpoint sent one; zero otherwise. Preferred over
+	// any locally-chosen delay, since it is the only figure that reflects when the limiter
+	// will actually admit us.
+	retryAfter time.Duration
+}
+
+func (e *httpError) Error() string {
+	if e.retryAfter > 0 {
+		return fmt.Sprintf("subgraph request failed: HTTP %d (retry after %s)", e.status, e.retryAfter)
+	}
+	return fmt.Sprintf("subgraph request failed: HTTP %d", e.status)
+}
+
+// rateLimited reports whether the endpoint is asking for fewer requests rather than
+// reporting a fault. 503 counts: gateways use it for shedding, and the correct response is
+// the same either way.
+func (e *httpError) rateLimited() bool {
+	return e.status == http.StatusTooManyRequests || e.status == http.StatusServiceUnavailable
+}
+
+// retryAfter reads the header in both forms RFC 9110 allows: delay-seconds, or an HTTP date.
+// An unparseable or past value reports zero, leaving the caller to pick its own delay.
+func retryAfter(res *http.Response) time.Duration {
+	raw := strings.TrimSpace(res.Header.Get("Retry-After"))
+	if raw == "" {
+		return 0
+	}
+	if seconds, err := strconv.Atoi(raw); err == nil {
+		if seconds <= 0 {
+			return 0
+		}
+		return time.Duration(seconds) * time.Second
+	}
+	if at, err := http.ParseTime(raw); err == nil {
+		if delay := time.Until(at); delay > 0 {
+			return delay
+		}
+	}
+	return 0
 }

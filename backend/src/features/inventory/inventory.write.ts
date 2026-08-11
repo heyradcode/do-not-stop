@@ -7,7 +7,7 @@ import { findBalance, findDefinitionByType } from '@repositories/inventory.repos
 import { servedDeploymentId } from '@features/battle/ledger';
 
 import { asItemEffect } from './catalog';
-import { getItemCoreClient } from './inventory.chain';
+import { getItemCoreClient, UnconfirmedTxError } from './inventory.chain';
 
 /**
  * Inventory writes (roadmap §4): spend a consumable, claim an earned item, grant one.
@@ -208,9 +208,23 @@ export async function claimEntitlement(caller: string, entitlementId: string): P
         await prisma.itemEntitlement.update({ where: { id: entitlementId }, data: { txHash: mintTxHash } });
         return { mintTxHash, itemType: entitlement.itemType, quantity: entitlement.quantity };
     } catch (error) {
+        if (error instanceof UnconfirmedTxError) {
+            // Broadcast, outcome unknown, so the claim stays claimed. Releasing here would
+            // be the double-mint: the transaction is very likely mined, and a retry would
+            // send a second one. The hash is recorded so the row names the transaction to
+            // reconcile against, and so the `txHash: null` guard below keeps meaning what
+            // it says. Costs at most one item stuck pending until someone looks.
+            await prisma.itemEntitlement.update({ where: { id: entitlementId }, data: { txHash: error.hash } });
+            console.error(
+                `[inventory] entitlement ${entitlementId} broadcast mint ${error.hash} but could not confirm it; left claimed to avoid a double mint, reconcile by hand`,
+                error.cause,
+            );
+            throw error;
+        }
         // Released, so a failed mint is retryable rather than a permanently burned claim.
-        // Safe because the mint did not land: the client waits for a receipt and treats a
-        // reverted one as a throw.
+        // Safe only for the failures that definitely moved nothing: a simulate revert, a
+        // send that never left, or a receipt that came back reverted. `UnconfirmedTxError`
+        // is the one that does not qualify, and it returned above.
         await prisma.itemEntitlement.updateMany({
             where: { id: entitlementId, txHash: null },
             data: { claimedAt: null },

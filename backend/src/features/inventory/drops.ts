@@ -8,15 +8,36 @@ import type { ItemDefinitionSeed } from './catalog';
  * Battle-reward drops (roadmap §4).
  *
  * Seeded from the battle's own drand seed rather than from a new randomness source. That
- * seed is committed to a future drand round before the fight resolves, so nobody —
- * including this server — can grind a drop by re-rolling: changing the outcome would mean
- * changing a value that was published in advance. It also means a third party holding the
- * receipt can recompute exactly what should have dropped.
+ * seed is committed to a future drand round before the fight resolves, so nobody including
+ * this server can grind a drop by re-rolling: changing the outcome would mean changing a
+ * value that was published in advance. That property is real and it is the reason this
+ * derives from the seed at all.
  *
- * Be precise about how far that goes. The drop is **not** part of the signed receipt in
- * v1, so an outsider can recompute what we owed and notice if we paid something else, but
- * cannot prove it from the receipt alone. Putting drops inside the signed payload means a
- * receipt schema version and a place in the ruleset hash, which is §4 phase 4 work.
+ * Be precise about how far it goes, because it is easy to overstate and this comment used
+ * to. A third party holding the receipt **cannot** recompute what should have dropped.
+ * Two of the three inputs are unpublished: `DropRates` and `DROP_POOL` are constants in
+ * this file and in `catalog.data.ts`, and neither reaches the ruleset, so neither is
+ * covered by `rulesetHash` or by anything the receipt names. Only the seed and the battle
+ * id are signed. Someone reading this source can reproduce a drop; someone holding only a
+ * receipt and the published bundle cannot.
+ *
+ * Nor is the payout pinned by the receipt: `rates` is an argument, so the same seed and
+ * battle id yield different answers under different odds, and no row records which applied.
+ *
+ * Be equally precise about that, because it is easy to overstate in turn. The only
+ * production caller (`sign.worker`) passes no rates at all, so the odds in force are
+ * `DEFAULT_DROP_RATES` below, a constant that changes only by code change and deploy. Git
+ * history and the deployment record are a real audit trail, just not one a receipt holder
+ * can check. The parameter is a test seam today; it becomes the gap this paragraph
+ * describes only if something ever starts passing per-battle rates, which is worth a second
+ * look if anyone proposes it.
+ *
+ * Closing that means publishing the rates and the drop pool, which puts non-equipment
+ * items into the ruleset. §4 deliberately keeps them out: a `rulesetHash` that moved every
+ * time a collectible was added would re-prompt every defender for consent and train
+ * players to click through the one prompt that matters. So this is a standing design
+ * tension, not a missing field, and it is tracked as D2 in
+ * `docs/plan-battle-inventory-hardening.md` rather than quietly fixed here.
  *
  * The pool is read from the shipped catalog constant rather than from `item_definition`,
  * deliberately. A replay has to reproduce what a battle dropped, and a table that content
@@ -153,9 +174,18 @@ function readUint32(bytes: Uint8Array, offset: number): number {
  *
  * Idempotent under the retry that transaction can take. The entitlement's unique key is
  * (sourceRef, owner, itemType), and sourceRef is the battle id, so a replay of the same
- * battle collides with its own earlier row instead of paying twice. Two drops of the same
- * item to the same wallet from one battle would collide too, which is why each side rolls
- * at most one item.
+ * battle collides with its own earlier row instead of paying twice.
+ *
+ * That same key is why the two sides are merged before writing rather than inserted as
+ * they come. Nothing stops a player fighting two pets they both own, and then the winner
+ * and the loser are one wallet; when both rolls land on the same item the two drops share
+ * a key, and `skipDuplicates` silently keeps one. Measured on the shipped pool that is
+ * about one in six of the self-battles that pay twice, each one quietly costing the player
+ * an item they earned. Merging turns that into a single row of quantity 2, which is what
+ * was owed.
+ *
+ * Returns what was written, not what was rolled, so a caller sees the same thing the table
+ * does.
  */
 export async function recordBattleDrops(
     tx: Prisma.TransactionClient,
@@ -168,15 +198,16 @@ export async function recordBattleDrops(
         rates?: DropRates;
     },
 ): Promise<Drop[]> {
-    const drops = rollDrops(args.seed, args.battleId, args.winnerOwner, args.loserOwner, args.rates);
-    if (drops.length === 0) {
-        return drops;
+    const rolled = rollDrops(args.seed, args.battleId, args.winnerOwner, args.loserOwner, args.rates);
+    if (rolled.length === 0) {
+        return rolled;
     }
 
+    const drops = mergeDrops(rolled);
     await tx.itemEntitlement.createMany({
         data: drops.map((drop) => ({
             chain: args.chain,
-            owner: normalizeAccount(drop.owner),
+            owner: drop.owner,
             itemType: drop.itemType,
             quantity: drop.quantity,
             source: 'battle_drop',
@@ -186,4 +217,26 @@ export async function recordBattleDrops(
     });
 
     return drops;
+}
+
+/**
+ * Totals drops that would share an entitlement key, normalizing the owner first.
+ *
+ * The normalize has to happen here rather than at the insert, because it is part of the
+ * key: two spellings of one address are one wallet to the unique index and would be two
+ * groups to anything grouping on the raw value.
+ */
+function mergeDrops(drops: readonly Drop[]): Drop[] {
+    const byKey = new Map<string, Drop>();
+    for (const drop of drops) {
+        const owner = normalizeAccount(drop.owner);
+        const key = `${owner}:${drop.itemType}`;
+        const existing = byKey.get(key);
+        if (existing) {
+            existing.quantity += drop.quantity;
+        } else {
+            byKey.set(key, { owner, itemType: drop.itemType, quantity: drop.quantity });
+        }
+    }
+    return [...byKey.values()];
 }

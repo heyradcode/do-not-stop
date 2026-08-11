@@ -55,6 +55,19 @@ export interface ItemDefinitionSeed {
  *
  * A pet's extracted attributes land in the low hundreds, so a bonus in the thousands is
  * a typo rather than a tuning choice. Anything inside these is the designer's call.
+ *
+ * `MAX_STAT_BONUS` carries one consequence worth knowing before raising it. A defender's
+ * `DefenseAuthorization` is bound to `rulesetHash`, which covers the item catalog, so
+ * consenting to a ruleset is consenting to the strongest loadout that catalog can express.
+ * Nothing else bounds an attacker's gear: the authorization's level band does not. Raising
+ * this therefore widens what every *future* consent implies, silently, in a constant no
+ * defender ever sees. Existing authorizations are safe, since editing the catalog moves
+ * `rulesetHash` and invalidates them, which is the intended cost of a rules change.
+ *
+ * For scale: 500 a stat across three slots is 1500, against base attributes in the low
+ * hundreds. The shipped catalog's largest single bonus is 45. The gap between those two
+ * numbers is headroom nobody has argued for, so treat a change here as a balance decision
+ * rather than a limit being nudged.
  */
 const MAX_STAT_BONUS = 500;
 const MAX_XP_GRANT = 100_000;

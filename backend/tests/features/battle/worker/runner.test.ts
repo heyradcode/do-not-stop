@@ -16,7 +16,6 @@ vi.mock('@features/battle/ledger', () => ({
         verify: 'verify',
         sign: 'sign',
         publish: 'publish',
-        batch: 'batch',
     },
 }));
 
@@ -99,10 +98,12 @@ describe('dispatch', () => {
     });
 
     it('dead-letters a message whose topic has no handler, rather than leaving it claimed forever', async () => {
-        // `batch` is a declared topic with no handler: batching aggregates across many
-        // receipts on its own schedule rather than per battle, so nothing enqueues it.
+        // Unreachable while the claim list is derived from `HANDLERS` — the dispatcher can
+        // only be handed a topic it registered. This pins the fallback for the day those two
+        // stop being the same object (a worker claiming a topic set from config, say), since
+        // the alternative is a message claimed and then silently left claimed forever.
         vi.mocked(claimOutbox).mockResolvedValue([
-            { id: 'm1', battleId: 'btl_1', topic: 'batch', payload: {}, attempts: 1 },
+            { id: 'm1', battleId: 'btl_1', topic: 'reticulate-splines', payload: {}, attempts: 1 },
         ]);
 
         await runBattleWorkerOnce('worker-a', NOW);

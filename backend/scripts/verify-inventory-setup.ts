@@ -20,6 +20,7 @@ import 'dotenv/config';
 import { prisma } from '../src/config/prisma';
 import { assertCatalog, SLOT } from '../src/features/inventory/catalog';
 import { ITEM_CATALOG } from '../src/features/inventory/catalog.data';
+import { getCombatCatalog } from '../src/features/inventory/inventory.service';
 
 const ITEM_CORE_ABI = [
     {
@@ -120,6 +121,19 @@ async function checkCatalog(): Promise<void> {
         drifted.length === 0,
         drifted.length === 0 ? 'no drift' : `drifted: ${drifted.map((i) => i.key).join(', ')}`,
     );
+
+    // The stored rows have to be readable as *rules*, not merely present. Since roadmap §4
+    // an equipment row whose modifier will not parse is refused rather than skipped, so one
+    // bad `effect` column stops every battle this deployment accepts with
+    // `item-catalog-stale`. The seeder cannot produce that state (`assertCatalog` rejects it
+    // at authoring), which is exactly why it is worth checking here: it means someone edited
+    // the table by hand, and that is invisible to every other check above.
+    try {
+        const priced = await getCombatCatalog();
+        record('catalog can price a fight', true, `${priced.length} definitions readable`);
+    } catch (error) {
+        record('catalog can price a fight', false, `${(error as Error).message} — every accept will 503`);
+    }
 }
 
 async function checkChain(): Promise<void> {

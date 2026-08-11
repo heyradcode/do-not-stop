@@ -11,7 +11,7 @@ const OPPONENTS_QUERY = `
                 id chain owner name dna
                 level rarity winCount lossCount readyAt
             }
-            total page pageSize
+            total page pageSize emptyReason
         }
     }
 `;
@@ -34,7 +34,22 @@ interface OpponentsPage {
     total: number;
     page: number;
     pageSize: number;
+    emptyReason?: OpponentsEmptyReason | null;
 }
+
+/**
+ * Why the picker is empty, when it is.
+ *
+ * Four situations look identical to a player and only some are theirs to act on, so the
+ * server names which one rather than leaving the UI to say "none" and stop there.
+ */
+export type OpponentsEmptyReason =
+    | 'roster-empty'
+    | 'all-yours'
+    | 'all-on-cooldown'
+    | 'below-min-level'
+    | 'no-consent'
+    | 'consent-stale';
 
 interface GraphQLResponse {
     data?: { opponents: OpponentsPage };
@@ -55,6 +70,8 @@ export interface UseOpponentsOptions {
 export interface UseOpponentsResult {
     opponents: OpponentPet[];
     total: number;
+    /** Set only when the list is empty; see `OpponentsEmptyReason`. */
+    emptyReason: OpponentsEmptyReason | null;
     isLoading: boolean;
     error: Error | null;
     refetch: () => void;
@@ -108,8 +125,36 @@ export const useOpponents = ({ chain, minLevel, page = 0, enabled = true }: UseO
     return {
         opponents,
         total: query.data?.total ?? 0,
+        emptyReason: query.data?.emptyReason ?? null,
         isLoading: query.isLoading,
         error: query.error as Error | null,
         refetch: query.refetch,
     };
 };
+
+/**
+ * What to tell the player, per reason.
+ *
+ * Written for someone who wants to battle and cannot, so each one names the thing that
+ * would change the answer. `roster-empty` is deliberately blunt about being our problem
+ * rather than theirs: no amount of waiting or re-clicking fixes an indexer that is not
+ * running, and pretending otherwise sends people hunting for a mistake they did not make.
+ */
+export function describeNoOpponents(reason: OpponentsEmptyReason | null): string {
+    switch (reason) {
+        case 'roster-empty':
+            return 'No pets have been indexed yet, so there is nobody to match you against. This is a server-side gap rather than anything you have done.';
+        case 'all-yours':
+            return 'Every indexed pet belongs to you. You need another player before a battle is possible.';
+        case 'all-on-cooldown':
+            return 'Every eligible pet is still recovering from its last battle. Try again shortly.';
+        case 'below-min-level':
+            return 'No pet meets the level you asked for. Lower the minimum level to widen the search.';
+        case 'no-consent':
+            return 'Nobody has allowed challenges yet. Opponents appear once another player turns on Allow Challenges.';
+        case 'consent-stale':
+            return 'Players have allowed challenges, but under an older set of battle rules, so those permissions no longer apply. They need to turn on Allow Challenges again.';
+        default:
+            return 'No opponents available';
+    }
+}
