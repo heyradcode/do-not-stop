@@ -252,6 +252,18 @@ export function listSigningKeys(): SigningKeyDescriptor[] {
     return [...[...backends.values()].map((entry) => entry.key), ...rotatedKeys];
 }
 
+/**
+ * Why this deployment cannot sign, or null when it can.
+ *
+ * `configureSigner` records its failure and returns rather than throwing, so the process
+ * still boots and keeps serving reads. The cost is that the reason lived only in here: a
+ * caller that finds no active key could say "no active signing key" and nothing about why,
+ * which is a misconfiguration reported as a mystery.
+ */
+export function signerBackendError(): string | null {
+    return backendError;
+}
+
 /** The signer's own audit trail, newest last. Reconciled against the KMS log during an incident. */
 export function signerAuditLog(): SignerAuditEntry[] {
     return [...auditLog];

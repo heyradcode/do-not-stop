@@ -3,6 +3,7 @@ export { createLocalSigner } from './signer.local';
 export {
     activeSigningKey,
     configureSigner,
+    signerBackendError,
     listSigningKeys,
     loadPersistedSigningKeys,
     registerRotatedKey,

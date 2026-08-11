@@ -2,7 +2,12 @@ import './register-path-aliases';
 import { env } from '@config/env';
 import { prisma } from '@config/prisma';
 import app from './app';
-import { configureSigner, loadPersistedSigningKeys } from '@features/battle/signer';
+import {
+    configureSigner,
+    listSigningKeys,
+    loadPersistedSigningKeys,
+    signerBackendError,
+} from '@features/battle/signer';
 import { startSettleKeeper, stopSettleKeeper } from '@features/settle-keeper';
 import { type BattleWorkerHandle, startBattleWorker } from '@features/battle/worker';
 import { startBatchAnchor, stopBatchAnchor } from '@features/battle/anchor';
@@ -43,6 +48,25 @@ const server = app.listen(env.port, '0.0.0.0', async () => {
         // Awaited: a KMS backend has to fetch its public key before it can say which key it
         // signs with, so a misconfigured key fails at boot rather than on the first battle.
         await configureSigner(Math.floor(Date.now() / 1000));
+        // Said out loud, because `configureSigner` records its failure and returns rather
+        // than throwing: reads must keep being served either way. The cost of that choice is
+        // that a deployment which cannot sign anything used to boot completely silently, and
+        // only admit it once a player had fought a battle and lost the receipt at the last
+        // step. The reason was in memory the whole time and nothing ever printed it.
+        const signerFailure = signerBackendError();
+        if (signerFailure) {
+            console.error(
+                `[battle-signer] NOT CONFIGURED: ${signerFailure}
+` +
+                    '[battle-signer] battles will be accepted and then fail at signing. ' +
+                    'Run `pnpm --filter backend exec tsx scripts/diagnose-signer.ts` to see what resolved.',
+            );
+        } else {
+            const keys = listSigningKeys()
+                .map((key) => `${key.keyId} (${key.address})`)
+                .join(', ');
+            console.log(`[battle-signer] ready for ${env.battle.chainIds.join(', ')}: ${keys}`);
+        }
         // Republishes every key this deployment has ever signed under. Without it the
         // registry is only as old as the process, and a rotated key vanishes on the next
         // deploy — making its receipts unverifiable rather than invalid (§H item 4).

@@ -21,7 +21,7 @@ import { prisma } from '@config/prisma';
 import { ItemCatalogError } from '@features/inventory';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
-import { activeSigningKey, sign, SignerRefusedError } from '../signer';
+import { activeSigningKey, sign, signerBackendError, SignerRefusedError } from '../signer';
 import { chooseCommitmentRound, roundPublishTime } from '../randomness';
 
 import { type ConsentFailure, consumeDailyBudget, findCoveringAuthorization } from './consent.service';
@@ -248,9 +248,13 @@ async function signAndRecordCommitment(
         // so a commitment can never be signed under another chain's key.
         const key = activeSigningKey(seed.domain.chainId);
         if (!key) {
+            // Carries the configuration failure rather than restating the symptom — see the
+            // same lookup in `sign.worker`. This one reaches the player as a refused battle,
+            // so the detail is what tells an operator it was their config and not the chain.
+            const why = signerBackendError();
             throw new SignerRefusedError(
                 'signer-not-configured',
-                `no active signing key for the ${seed.domain.chainId} domain`,
+                `no active signing key for the ${seed.domain.chainId} domain${why ? `: ${why}` : ''}`,
             );
         }
 

@@ -18,7 +18,13 @@ import {
     decodeStoredSnapshot,
     OUTBOX_TOPICS,
 } from '@features/battle/ledger';
-import { activeSigningKey, type EngineAttestation, sign, SignerRefusedError } from '@features/battle/signer';
+import {
+    activeSigningKey,
+    type EngineAttestation,
+    sign,
+    signerBackendError,
+    SignerRefusedError,
+} from '@features/battle/signer';
 import { recordBattleDrops } from '@features/inventory';
 import { recordBattleFromReceipt } from '@repositories/history.repository';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
@@ -84,7 +90,17 @@ export async function processSignMessage(message: ClaimedMessage, nowSeconds: nu
         // Keyed by this battle's own chain, since §G gives each reward domain its own key.
         const key = activeSigningKey(battle.chainId);
         if (!key) {
-            await failSigning(battle.battleId, battle.roomId, `no active signing key for ${battle.chainId}`);
+            // `signerBackendError` holds why configuration was refused. Without it this said
+            // only that there was no key, which is the symptom — and the reason (a missing
+            // env var, a KMS that would not answer, a per-domain key id this deployment now
+            // needs) was sitting in memory unreported. It ends up in `failureReason`, so it
+            // survives to whoever reads the row afterwards.
+            const why = signerBackendError();
+            await failSigning(
+                battle.battleId,
+                battle.roomId,
+                `no active signing key for ${battle.chainId}${why ? `: ${why}` : ''}`,
+            );
             await completeOutbox(message.id, new Date(nowSeconds * 1000));
             return;
         }

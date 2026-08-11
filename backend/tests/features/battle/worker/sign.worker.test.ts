@@ -50,6 +50,7 @@ vi.mock('@features/battle/signer', async () => {
     return {
         activeSigningKey: vi.fn(),
         sign: vi.fn(),
+        signerBackendError: vi.fn(() => null),
         SignerRefusedError: actual.SignerRefusedError,
     };
 });
@@ -68,7 +69,12 @@ vi.mock('@features/inventory', () => ({
 import { prisma } from '@config/prisma';
 import { applyTransition, completeOutbox } from '@features/battle/ledger';
 import { recordBattleDrops } from '@features/inventory';
-import { activeSigningKey, sign, SignerRefusedError } from '@features/battle/signer';
+import {
+    activeSigningKey,
+    sign,
+    signerBackendError,
+    SignerRefusedError,
+} from '@features/battle/signer';
 import { processSignMessage } from '@features/battle/worker';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
@@ -483,6 +489,40 @@ describe('signing failure', () => {
             battleId: 'btl_1',
             state: 'signing_failed',
         });
+    });
+
+    /**
+     * The reason, not just the symptom. `configureSigner` records why it refused and returns,
+     * so the process boots and keeps serving reads — which means "no active signing key" is
+     * the *consequence* of a configuration failure whose cause is sitting in memory. Writing
+     * only the consequence into `failureReason` is what made this land as a mystery: the row
+     * said the key was missing and nothing anywhere said why.
+     */
+    it('records why the signer refused, not just that no key was found', async () => {
+        vi.mocked(activeSigningKey).mockReturnValue(null);
+        vi.mocked(signerBackendError).mockReturnValue(
+            'evm: this deployment serves more than one chain family, so evm needs its own signing key',
+        );
+
+        await processSignMessage(MESSAGE, NOW);
+
+        expect(applyTransition).toHaveBeenCalledWith(
+            expect.objectContaining({
+                to: 'signing_failed',
+                // Nested under `patch`, which is what actually reaches the row.
+                patch: expect.objectContaining({
+                    failureReason: expect.stringContaining('needs its own signing key'),
+                }),
+            }),
+        );
+        // Still names the chain, so a multi-chain deployment says which one stalled.
+        expect(applyTransition).toHaveBeenCalledWith(
+            expect.objectContaining({
+                patch: expect.objectContaining({
+                    failureReason: expect.stringContaining('eip155:'),
+                }),
+            }),
+        );
     });
 
     it('propagates an unexpected signer error rather than treating it as signing_failed', async () => {
