@@ -1,4 +1,4 @@
-import { type ItemModifier, type Ruleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
+import { hashRuleset, type Hex, type ItemModifier, type Ruleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
 
 import { getCombatCatalog, itemCatalogGeneration } from '@features/inventory';
 
@@ -31,7 +31,7 @@ import { getCombatCatalog, itemCatalogGeneration } from '@features/inventory';
  * this too. Two independent process-life caches over the same rows was a trap: whichever
  * one a caller knew to reset, the other kept answering from data that no longer existed.
  */
-let cached: { ruleset: Ruleset; generation: number } | null = null;
+let cached: { ruleset: Ruleset; hash: Hex; generation: number } | null = null;
 
 export async function servedRuleset(): Promise<Ruleset> {
     // Read before the await, not after: a reset landing mid-build then stamps this result
@@ -67,8 +67,32 @@ export async function servedRuleset(): Promise<Ruleset> {
     // type surfaces rather than being tidied away.
     itemCatalog.sort((a, b) => (a.itemType < b.itemType ? -1 : a.itemType > b.itemType ? 1 : 0));
 
-    cached = { ruleset: { ...SOURCE_DEFAULT_RULESET, itemCatalog }, generation };
+    const ruleset: Ruleset = { ...SOURCE_DEFAULT_RULESET, itemCatalog };
+    cached = { ruleset, hash: hashRuleset(ruleset), generation };
     return cached.ruleset;
+}
+
+/**
+ * The hash of the served ruleset, derived once per catalog generation.
+ *
+ * Every caller that needs it used to run `hashRuleset(await servedRuleset())` itself, and
+ * four sites doing that is four chances to hash something else. It was not hypothetical:
+ * matchmaking hashed `SOURCE_DEFAULT_RULESET` while defenders signed against the served
+ * one, so the consent filter matched no authorization ever written and the opponent list
+ * came back empty on a deployment full of consenting pets. Nothing detected it, because an
+ * empty list is also the correct answer when nobody has consented.
+ *
+ * Deriving it beside the ruleset it belongs to makes that class of divergence impossible
+ * rather than merely fixed: there is one place the value comes from, and a caller cannot
+ * reach the ruleset without the matching hash being right there.
+ *
+ * It also takes a keccak over the whole ruleset — item catalog included — off the
+ * matchmaking query path, which ran it per request.
+ */
+export async function servedRulesetHash(): Promise<Hex> {
+    await servedRuleset();
+    // Non-null: `servedRuleset` either returns from the cache or fills it.
+    return cached!.hash;
 }
 
 /**

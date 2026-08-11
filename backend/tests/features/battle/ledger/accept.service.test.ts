@@ -20,7 +20,12 @@ vi.mock('../../../../src/features/battle/ledger/ruleset.builder', async () => {
     const { SOURCE_DEFAULT_RULESET } = await vi.importActual<typeof import('@cryptopets/protocol')>(
         '@cryptopets/protocol',
     );
-    return { servedRuleset: vi.fn(async () => SOURCE_DEFAULT_RULESET) };
+    const { hashRuleset } = await vi.importActual<typeof import('@cryptopets/protocol')>('@cryptopets/protocol');
+    return {
+        servedRuleset: vi.fn(async () => SOURCE_DEFAULT_RULESET),
+        // Same object both times: accept must publish the bundle under the hash it records.
+        servedRulesetHash: vi.fn(async () => hashRuleset(SOURCE_DEFAULT_RULESET)),
+    };
 });
 
 vi.mock('../../../../src/features/battle/ledger/snapshot.builder', () => ({

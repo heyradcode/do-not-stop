@@ -6,7 +6,6 @@ import {
     type ChainId,
     findEquipmentMismatches,
     hashBattleSnapshot,
-    hashRuleset,
     isBattleReady,
     type Hex,
     type PetSnapshot,
@@ -29,7 +28,7 @@ import { type ConsentFailure, consumeDailyBudget, findCoveringAuthorization } fr
 import { servedDeploymentId } from './domain';
 import { OUTBOX_TOPICS } from './outbox';
 import { buildPetSnapshot } from './snapshot.builder';
-import { servedRuleset } from './ruleset.builder';
+import { servedRuleset, servedRulesetHash } from './ruleset.builder';
 import { applyTransition, openBattle } from './transitions';
 
 /**
@@ -534,7 +533,7 @@ async function priceUnderServedRuleset(
         return refuse('equipment-catalog-mismatch', mismatches.join('; '));
     }
 
-    const rulesetHash = hashRuleset(ruleset);
+    const rulesetHash = await servedRulesetHash();
     await ensureRulesetPublished(ruleset, rulesetHash);
     return proceed({ ruleset, rulesetHash });
 }

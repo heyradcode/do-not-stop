@@ -1,4 +1,3 @@
-import { hashRuleset } from '@cryptopets/protocol';
 import { Prisma } from '@generated/prisma/client';
 
 import { prisma } from '@config/prisma';
@@ -7,7 +6,7 @@ import { mapRosterRowToRosterPet, type PetRosterRow } from './roster.mapping';
 import { servedChainIdForFamily } from './battleProgress.overlay';
 import { ownerKey } from './owner.sql';
 import { servedDeploymentId } from '@features/battle/ledger/domain';
-import { servedRuleset } from '@features/battle/ledger/ruleset.builder';
+import { servedRulesetHash } from '@features/battle/ledger/ruleset.builder';
 import type { Chain } from '@typings/chain';
 
 /**
@@ -112,7 +111,7 @@ export async function findReadyOpponents(
     // when nobody has consented, so the failure looked exactly like the ordinary empty
     // case. Anything comparing a `ruleset_hash` has to obtain it the same way `accept`
     // does, or it is answering about rules no battle is fought under.
-    const rulesetHash = hashRuleset(await servedRuleset());
+    const rulesetHash = await servedRulesetHash();
     const skip = params.page * params.pageSize;
 
     // Folded for EVM, exact for base58 — see `ownerKey`, which states the rule once for

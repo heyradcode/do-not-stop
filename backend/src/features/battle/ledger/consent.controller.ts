@@ -1,4 +1,3 @@
-import { hashRuleset } from '@cryptopets/protocol';
 import type { Response } from 'express';
 
 import type { AuthenticatedRequest } from '@middleware/auth';
@@ -11,7 +10,7 @@ import {
     submitDefenseAuthorization,
 } from './consent.service';
 import type { SignatureFormat } from './intent.service';
-import { servedRuleset } from './ruleset.builder';
+import { servedRulesetHash } from './ruleset.builder';
 
 const STATUS_BY_REASON: Record<AuthorizationRejection, number> = {
     'malformed-authorization': 422,
@@ -106,7 +105,7 @@ export async function getDefenseAuthorizations(req: AuthenticatedRequest, res: R
 
     // The hash battles are actually being accepted under, from the same builder `accept`
     // uses, so "stale" here means exactly what it means there rather than approximately.
-    const rulesetHash = hashRuleset(await servedRuleset());
+    const rulesetHash = await servedRulesetHash();
     const authorizations = await listDefenseAuthorizations(chainId, wallet, rulesetHash);
     res.status(200).json({ rulesetHash, authorizations });
 }

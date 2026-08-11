@@ -31,18 +31,23 @@ vi.mock('../../src/features/battle/ledger/ruleset.builder', async () => {
     const { SOURCE_DEFAULT_RULESET } = await vi.importActual<typeof import('@cryptopets/protocol')>(
         '@cryptopets/protocol',
     );
+    const { hashRuleset } = await vi.importActual<typeof import('@cryptopets/protocol')>('@cryptopets/protocol');
+    const served = {
+        ...SOURCE_DEFAULT_RULESET,
+        itemCatalog: [{ itemType: 3n, slot: 0, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 }],
+    };
     return {
-        servedRuleset: vi.fn(async () => ({
-            ...SOURCE_DEFAULT_RULESET,
-            itemCatalog: [{ itemType: 3n, slot: 0, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 }],
-        })),
+        servedRuleset: vi.fn(async () => served),
+        // Derived from the same object the stub serves, so the test cannot pass by having
+        // the hash and the ruleset drift — which is the bug this whole seam exists to stop.
+        servedRulesetHash: vi.fn(async () => hashRuleset(served)),
     };
 });
 
 import { hashRuleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
 
 import { findReadyOpponents, getPetById } from '../../src/repositories/roster.repository';
-import { servedRuleset } from '../../src/features/battle/ledger/ruleset.builder';
+import { servedRulesetHash } from '../../src/features/battle/ledger/ruleset.builder';
 import { prisma } from '@config/prisma';
 
 const rosterRow = {
@@ -225,9 +230,9 @@ describe('findReadyOpponents', () => {
 
         await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 0, page: 0, pageSize: 10 });
 
-        const served = await vi.mocked(servedRuleset)();
+        const served = await vi.mocked(servedRulesetHash)();
         const values = valuesOfCall(0);
-        expect(values).toContain(hashRuleset(served));
+        expect(values).toContain(served);
         expect(values).not.toContain(hashRuleset(SOURCE_DEFAULT_RULESET));
     });
 
@@ -316,7 +321,7 @@ describe('findReadyOpponents', () => {
 
         await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 0, page: 0, pageSize: 10 });
 
-        const served = hashRuleset(await vi.mocked(servedRuleset)());
+        const served = await vi.mocked(servedRulesetHash)();
         expect(valuesOfCall(0)).toContain(served);
         expect(valuesOfCall(1)).toContain(served);
     });

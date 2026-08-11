@@ -32,7 +32,6 @@ vi.mock('@features/battle/ledger', () => ({
         verify: 'verify',
         sign: 'sign',
         publish: 'publish',
-        batch: 'batch',
     },
 }));
 vi.mock('@ws/battleRoomSocket', () => ({ notifyBattleRoomIfPresent: vi.fn() }));
