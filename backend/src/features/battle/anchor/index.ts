@@ -1,14 +1,16 @@
 import type { Address } from 'viem';
 
-import { env, type EvmAnchorConfig } from '@config/env';
+import { env, type AnchorConfig } from '@config/env';
 import { buildNextBatch, type BatchScope } from '@features/battle/batcher';
 
 import { anchorNextBatch, type AnchorContext } from './anchor.service';
 import { createEvmAnchorClient, evmClientsFor } from './evmClient';
+import { createSolanaAnchorClient } from './solanaClient';
 
 export { anchorNextBatch, type AnchorContext, type AnchorOutcome } from './anchor.service';
 export { ZERO_ROOT, type BatchAnchorClient, type BatchCommitment, type RegistryHead } from './client';
 export { createEvmAnchorClient, evmClientsFor } from './evmClient';
+export { createSolanaAnchorClient, keypairFrom } from './solanaClient';
 export { BATTLE_BATCH_REGISTRY_ABI, PUBLISH_BATCH_GAS_LIMIT } from './abi';
 
 /**
@@ -70,30 +72,22 @@ function startForChain(chainId: string): BatchAnchorHandle {
 /**
  * The anchoring client for one chain, or undefined when it has none.
  *
- * Non-EVM chain ids return undefined regardless of configuration: the only client wired up
- * so far is the EVM one, and pointing it at a Solana RPC would fail per tick rather than at
- * boot. Solana anchoring is a separate program and a separate `BatchAnchorClient` (see
- * `docs/plan-solana-parity.md` Phase 2.3); when it lands, it slots in here and nothing in
- * `anchor.service` changes.
+ * Which client to build comes from the config's `kind`, which `env` derives from the chain
+ * id's namespace. There is no way to reach the EVM client with a Solana chain id, so the
+ * earlier runtime guard against that is gone rather than merely satisfied.
  */
 function anchorContextFor(scope: BatchScope): AnchorContext | undefined {
-    const config: EvmAnchorConfig | undefined = env.battle.anchors[scope.chainId];
+    const config: AnchorConfig | undefined = env.battle.anchors[scope.chainId];
     if (!config) {
         return undefined;
     }
-    if (!scope.chainId.startsWith('eip155:')) {
-        console.warn(
-            `[battle-anchor] ${scope.chainId}: anchor settings present but only EVM chains can be anchored ` +
-                'today; batches will be built and left unanchored',
-        );
-        return undefined;
-    }
 
-    return {
-        client: createEvmAnchorClient(evmClientsFor(config), config.registryAddress as Address),
-        chainId: scope.chainId,
-        deploymentId: scope.deploymentId,
-    };
+    const client =
+        config.kind === 'evm'
+            ? createEvmAnchorClient(evmClientsFor(config), config.registryAddress as Address)
+            : createSolanaAnchorClient(config);
+
+    return { client, chainId: scope.chainId, deploymentId: scope.deploymentId };
 }
 
 export function stopBatchAnchor(): void {

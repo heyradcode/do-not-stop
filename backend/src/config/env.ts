@@ -31,14 +31,38 @@ const battleChainIds = (process.env.BATTLE_CHAIN_IDS?.trim() || 'eip155:31337,so
     .map((id) => id.trim())
     .filter((id) => id.length > 0);
 
-/** Everything needed to anchor one chain's batches. All four are required together. */
+/** Everything needed to anchor one EVM chain's batches. All four are required together. */
 export interface EvmAnchorConfig {
+    kind: 'evm';
     rpcUrl: string;
     privateKey: `0x${string}`;
     registryAddress: string;
     /** The numeric EVM chain id, which is not the protocol chain id keying this record. */
     evmChainId: number;
 }
+
+/** Everything needed to anchor one Solana cluster's batches. */
+export interface SolanaAnchorConfig {
+    kind: 'solana';
+    rpcUrl: string;
+    /**
+     * The publisher keypair's secret, base58 or as a JSON byte array (what
+     * `solana-keygen` writes). Left as a string here and decoded by the client, so this
+     * module stays free of key handling and keeps its single job of reading strings.
+     */
+    privateKey: string;
+    /** The `cryptopets_registry` program id, base58. */
+    registryAddress: string;
+}
+
+/**
+ * A chain's anchor settings, tagged by family.
+ *
+ * The tag comes from the chain id's namespace rather than from configuration, so a
+ * deployment cannot declare EVM settings for a Solana chain id. The mismatch is
+ * unrepresentable rather than something the caller has to remember to check.
+ */
+export type AnchorConfig = EvmAnchorConfig | SolanaAnchorConfig;
 
 /**
  * Reads `BATTLE_ANCHOR_<CHAIN>_<NAME>`, where `<CHAIN>` is the protocol chain id uppercased
@@ -58,16 +82,31 @@ function anchorEnv(chainId: string, index: number, name: string): string | undef
     return index === 0 ? process.env[`BATTLE_ANCHOR_${name}`]?.trim() || undefined : undefined;
 }
 
-/** One chain's anchor settings, or undefined when it is not fully configured. */
-function anchorConfigFor(chainId: string, index: number): EvmAnchorConfig | undefined {
+/**
+ * One chain's anchor settings, or undefined when it is not fully configured.
+ *
+ * The variable names are the same for both families (`RPC_URL`, `PRIVATE_KEY`,
+ * `REGISTRY_ADDRESS`), because they mean the same thing on each. Only `CHAIN_ID` is
+ * EVM-only, since a Solana cluster is already named by the protocol chain id.
+ */
+function anchorConfigFor(chainId: string, index: number): AnchorConfig | undefined {
     const rpcUrl = anchorEnv(chainId, index, 'RPC_URL');
     const rawKey = anchorEnv(chainId, index, 'PRIVATE_KEY');
     const registryAddress = anchorEnv(chainId, index, 'REGISTRY_ADDRESS');
+    if (!rpcUrl || !rawKey || !registryAddress) {
+        return undefined;
+    }
+
+    if (chainId.startsWith('solana:')) {
+        return { kind: 'solana', rpcUrl, privateKey: rawKey, registryAddress };
+    }
+
     const evmChainId = Number(anchorEnv(chainId, index, 'CHAIN_ID'));
-    if (!rpcUrl || !rawKey || !registryAddress || !Number.isFinite(evmChainId) || evmChainId <= 0) {
+    if (!Number.isFinite(evmChainId) || evmChainId <= 0) {
         return undefined;
     }
     return {
+        kind: 'evm',
         rpcUrl,
         privateKey: (rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`) as `0x${string}`,
         registryAddress,
@@ -314,8 +353,8 @@ export const env = {
         anchors: Object.fromEntries(
             battleChainIds
                 .map((chainId, index) => [chainId, anchorConfigFor(chainId, index)] as const)
-                .filter((entry): entry is readonly [string, EvmAnchorConfig] => entry[1] !== undefined),
-        ) as Record<string, EvmAnchorConfig>,
+                .filter((entry): entry is readonly [string, AnchorConfig] => entry[1] !== undefined),
+        ) as Record<string, AnchorConfig>,
         /** How often to build and anchor. Latency only — both halves are idempotent. */
         anchorIntervalMs: Number(process.env.BATTLE_ANCHOR_INTERVAL_MS?.trim() || '60000'),
     },

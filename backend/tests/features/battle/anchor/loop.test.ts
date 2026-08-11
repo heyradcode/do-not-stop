@@ -1,3 +1,4 @@
+import nacl from 'tweetnacl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -33,11 +34,26 @@ const EVM = 'eip155:84532';
 const SOLANA = 'solana:devnet';
 
 const evmAnchorConfig = {
+    kind: 'evm' as const,
     rpcUrl: 'http://127.0.0.1:8545',
     privateKey: `0x${'11'.repeat(32)}` as `0x${string}`,
     registryAddress: '0x2222222222222222222222222222222222222222',
     evmChainId: 84532,
 };
+
+const solanaAnchorConfig = {
+    kind: 'solana' as const,
+    rpcUrl: 'http://127.0.0.1:8899',
+    // 64-byte ed25519 secret as a JSON array, the shape solana-keygen writes.
+    privateKey: JSON.stringify(Array.from(anchorTestKeypair())),
+    registryAddress: '11111111111111111111111111111111',
+};
+
+/** A deterministic 64-byte secret key, so the fixture never depends on randomness. */
+function anchorTestKeypair(): Uint8Array {
+    const seed = new Uint8Array(32).fill(7);
+    return nacl.sign.keyPair.fromSeed(seed).secretKey;
+}
 
 function scope(chainId: string) {
     return { chainId, deploymentId: 'test-deployment' };
@@ -115,15 +131,26 @@ describe('scheduling', () => {
         expect(anchorNextBatch.mock.calls[0]?.[0]).toMatchObject({ chainId: EVM });
     });
 
-    // Anchor settings on a Solana chain id are a misconfiguration until that client exists.
-    // Batching it anyway is the point: those receipts must not strand a second time.
-    it('refuses to anchor a non-EVM chain id even when configured', async () => {
-        battle.anchors = { [SOLANA]: evmAnchorConfig };
+    // A Solana chain id gets the Solana client, not a viem one pointed at a Solana RPC. The
+    // config's `kind` decides, and env derives it from the chain id's namespace, so the
+    // mismatch this used to guard against is now unrepresentable.
+    it('anchors a Solana chain id through its own client', async () => {
+        battle.anchors = { [SOLANA]: solanaAnchorConfig };
         startBatchAnchor();
         await vi.advanceTimersByTimeAsync(battle.anchorIntervalMs);
 
-        expect(anchorNextBatch).not.toHaveBeenCalled();
         expect(buildNextBatch).toHaveBeenCalledTimes(2);
+        expect(anchorNextBatch).toHaveBeenCalledTimes(1);
+        expect(anchorNextBatch.mock.calls[0]?.[0]).toMatchObject({ chainId: SOLANA });
+    });
+
+    it('anchors both families at once when both are configured', async () => {
+        battle.anchors = { [EVM]: evmAnchorConfig, [SOLANA]: solanaAnchorConfig };
+        startBatchAnchor();
+        await vi.advanceTimersByTimeAsync(battle.anchorIntervalMs);
+
+        const anchored = anchorNextBatch.mock.calls.map(([c]) => (c as { chainId: string }).chainId);
+        expect(anchored).toEqual(expect.arrayContaining([EVM, SOLANA]));
     });
 
     it('keeps batching one chain when another chain throws', async () => {
