@@ -18,6 +18,62 @@ function requireEnv(name: string): string {
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const isProduction = nodeEnv === 'production';
 const parsedPort = Number(process.env.PORT);
+
+/**
+ * Protocol chain ids this deployment serves, e.g. `eip155:84532,solana:devnet`.
+ *
+ * Hoisted out of `env.battle` because the per-chain anchor settings below are derived from
+ * it: each chain id needs its own registry, and the first one doubles as the target of the
+ * unsuffixed `BATTLE_ANCHOR_*` names.
+ */
+const battleChainIds = (process.env.BATTLE_CHAIN_IDS?.trim() || 'eip155:31337,solana:localnet')
+    .split(',')
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+
+/** Everything needed to anchor one chain's batches. All four are required together. */
+export interface EvmAnchorConfig {
+    rpcUrl: string;
+    privateKey: `0x${string}`;
+    registryAddress: string;
+    /** The numeric EVM chain id, which is not the protocol chain id keying this record. */
+    evmChainId: number;
+}
+
+/**
+ * Reads `BATTLE_ANCHOR_<CHAIN>_<NAME>`, where `<CHAIN>` is the protocol chain id uppercased
+ * with every run of non-alphanumeric characters replaced by `_` (`eip155:84532` becomes
+ * `EIP155_84532`, since a colon cannot appear in an environment variable name).
+ *
+ * The unsuffixed `BATTLE_ANCHOR_<NAME>` spelling still works and applies to the **first**
+ * configured chain id, which is what every deployment predating per-chain anchoring sets.
+ * Without that fallback this change would silently stop anchoring on their next restart.
+ */
+function anchorEnv(chainId: string, index: number, name: string): string | undefined {
+    const key = chainId.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+    const scoped = process.env[`BATTLE_ANCHOR_${key}_${name}`]?.trim();
+    if (scoped) {
+        return scoped;
+    }
+    return index === 0 ? process.env[`BATTLE_ANCHOR_${name}`]?.trim() || undefined : undefined;
+}
+
+/** One chain's anchor settings, or undefined when it is not fully configured. */
+function anchorConfigFor(chainId: string, index: number): EvmAnchorConfig | undefined {
+    const rpcUrl = anchorEnv(chainId, index, 'RPC_URL');
+    const rawKey = anchorEnv(chainId, index, 'PRIVATE_KEY');
+    const registryAddress = anchorEnv(chainId, index, 'REGISTRY_ADDRESS');
+    const evmChainId = Number(anchorEnv(chainId, index, 'CHAIN_ID'));
+    if (!rpcUrl || !rawKey || !registryAddress || !Number.isFinite(evmChainId) || evmChainId <= 0) {
+        return undefined;
+    }
+    return {
+        rpcUrl,
+        privateKey: (rawKey.startsWith('0x') ? rawKey : `0x${rawKey}`) as `0x${string}`,
+        registryAddress,
+        evmChainId,
+    };
+}
 export const env = {
     nodeEnv,
     isProduction,
@@ -191,10 +247,7 @@ export const env = {
         enabled: process.env.BATTLE_BACKEND_MODE_ENABLED?.trim().toLowerCase() === 'true',
         deploymentId: process.env.BATTLE_DEPLOYMENT_ID?.trim() || 'local-dev',
         /** Comma-separated protocol chain ids, e.g. `eip155:84532,solana:devnet`. */
-        chainIds: (process.env.BATTLE_CHAIN_IDS?.trim() || 'eip155:31337,solana:localnet')
-            .split(',')
-            .map((id) => id.trim())
-            .filter((id) => id.length > 0),
+        chainIds: battleChainIds,
         /**
          * drand quicknet endpoints, tried in order.
          *
@@ -247,21 +300,22 @@ export const env = {
         /** Most receipts in one batch. Bounds proof length and the anchoring transaction. */
         batchMaxSize: Number(process.env.BATTLE_BATCH_MAX_SIZE?.trim() || '1000'),
         /**
-         * Anchoring batch roots in `BattleBatchRegistry` (§I).
+         * Anchoring batch roots in `BattleBatchRegistry` (§I), keyed by protocol chain id.
          *
-         * All four are required together; with any missing, batches are still built and
-         * their receipts are still signed and public, they are simply not anchored. That
+         * One entry per chain id that is fully configured; a chain id absent from this
+         * record still gets its batches **built**, they are simply never anchored. That
          * degradation is the right one: anchoring proves publication, not honesty, so
          * losing it costs immutability rather than correctness.
+         *
+         * A registry records one chain's batches, so each chain id needs its own. Sharing
+         * one would interleave two independent sequences into a single hash chain, and the
+         * contiguity check would reject every batch after the first from either.
          */
-        anchorRpcUrl: process.env.BATTLE_ANCHOR_RPC_URL?.trim() || undefined,
-        anchorPrivateKey: (process.env.BATTLE_ANCHOR_PRIVATE_KEY?.trim()
-            ? (process.env.BATTLE_ANCHOR_PRIVATE_KEY.trim().startsWith('0x')
-                ? process.env.BATTLE_ANCHOR_PRIVATE_KEY.trim()
-                : `0x${process.env.BATTLE_ANCHOR_PRIVATE_KEY.trim()}`)
-            : undefined) as `0x${string}` | undefined,
-        anchorRegistryAddress: process.env.BATTLE_ANCHOR_REGISTRY_ADDRESS?.trim() || undefined,
-        anchorChainId: process.env.BATTLE_ANCHOR_CHAIN_ID ? Number(process.env.BATTLE_ANCHOR_CHAIN_ID) : undefined,
+        anchors: Object.fromEntries(
+            battleChainIds
+                .map((chainId, index) => [chainId, anchorConfigFor(chainId, index)] as const)
+                .filter((entry): entry is readonly [string, EvmAnchorConfig] => entry[1] !== undefined),
+        ) as Record<string, EvmAnchorConfig>,
         /** How often to build and anchor. Latency only — both halves are idempotent. */
         anchorIntervalMs: Number(process.env.BATTLE_ANCHOR_INTERVAL_MS?.trim() || '60000'),
     },

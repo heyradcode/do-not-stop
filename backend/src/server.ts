@@ -89,7 +89,8 @@ const server = app.listen(env.port, '0.0.0.0', async () => {
         }
         battleWorker = startBattleWorker(`backend-${process.pid}`);
         // Aggregates published receipts into Merkle batches and anchors the roots (§I).
-        // No-ops unless BATTLE_ANCHOR_* is configured; batches are still built either way.
+        // One timer per configured chain id; a chain with no BATTLE_ANCHOR_* settings still
+        // has its batches built, it just never anchors them.
         startBatchAnchor();
     } else {
         console.log('[battle] BATTLE_BACKEND_MODE_ENABLED not set; backend battle writes disabled (reads stay served)');
