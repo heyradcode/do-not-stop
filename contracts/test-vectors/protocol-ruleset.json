@@ -328,8 +328,8 @@
           "bloodlustBps": 150
         },
         "maxLevel": 100,
-        "schemaVersion": 2,
-        "itemCatalog": []
+        "itemCatalog": [],
+        "schemaVersion": 2
       },
       "expectedRulesetHash": "0xe51caf2298cfd0afab7d4bb3e391bdc0e1187d014782dbbb72e10ca42a4ccbac"
     },
@@ -352,7 +352,6 @@
           "bloodlustBps": 150
         },
         "maxLevel": 100,
-        "schemaVersion": 2,
         "itemCatalog": [
           {
             "itemType": "1",
@@ -372,7 +371,8 @@
             "int": 0,
             "mdef": 0
           }
-        ]
+        ],
+        "schemaVersion": 2
       },
       "expectedRulesetHash": "0x9b4fe8ecacfecd7af6d6d39b82c62a38fb84f14a4228f94e95f2a3a97689ab38"
     }

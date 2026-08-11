@@ -1,0 +1,73 @@
+{
+  "description": "Wide (32-byte account) reward leaves. Reproduced on chain by cryptopets_rewards; transcribed by hand into its leaf.rs because that crate has no JSON dependency.",
+  "domain": "0xc342c4fa3c21cb06934218e7a5f8d51cd59f0b29b560d47da91b983c8396790b",
+  "nodeDomain": "0xfc3a24400652b1e1b0cbd8aa53656a5a5af5f5ab615d7faeb2c37dd511e09ca1",
+  "schemaVersion": 2,
+  "cases": [
+    {
+      "name": "baseline",
+      "note": "Distinct byte fills per field, so a swapped pair of fields cannot pass.",
+      "entitlement": {
+        "chainRef": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "distributor": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "seasonId": 1,
+        "wallet": "0x5555555555555555555555555555555555555555555555555555555555555555",
+        "token": "0x6666666666666666666666666666666666666666666666666666666666666666",
+        "amount": "1000000000000000000"
+      },
+      "expectedLeaf": "0x0d423a28d5eaddae26ea9578435a3df0b863fc6ee70d0e091d9779d12d298d49"
+    },
+    {
+      "name": "zero-amount",
+      "note": "A real entitlement of nothing, which must still hash rather than throw.",
+      "entitlement": {
+        "chainRef": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "distributor": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "seasonId": 1,
+        "wallet": "0x5555555555555555555555555555555555555555555555555555555555555555",
+        "token": "0x6666666666666666666666666666666666666666666666666666666666666666",
+        "amount": "0"
+      },
+      "expectedLeaf": "0xe31ffc8867dc04b5a352e7ee04b4de1253821bcc398f15944a8029716ae66211"
+    },
+    {
+      "name": "max-u64-amount",
+      "note": "Pins the left-padding of amount into its 32-byte field at the widest value Solana can hold.",
+      "entitlement": {
+        "chainRef": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "distributor": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "seasonId": 1,
+        "wallet": "0x5555555555555555555555555555555555555555555555555555555555555555",
+        "token": "0x6666666666666666666666666666666666666666666666666666666666666666",
+        "amount": "18446744073709551615"
+      },
+      "expectedLeaf": "0x3699025d4d459c0dcc781a89c918a001fd1b51ecebf838a16602f521946b679d"
+    },
+    {
+      "name": "max-u32-season",
+      "note": "Pins the left-padding of seasonId into its 32-byte field.",
+      "entitlement": {
+        "chainRef": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "distributor": "0x4444444444444444444444444444444444444444444444444444444444444444",
+        "seasonId": 4294967295,
+        "wallet": "0x5555555555555555555555555555555555555555555555555555555555555555",
+        "token": "0x6666666666666666666666666666666666666666666666666666666666666666",
+        "amount": "1"
+      },
+      "expectedLeaf": "0x786c9566fed0e205b606c0ed0e177de96e050612a8ee17ebb1c1d06b52a80cb7"
+    },
+    {
+      "name": "zero-accounts",
+      "note": "All-zero pubkeys, which base58 writes as leading ones and a naive decoder drops.",
+      "entitlement": {
+        "chainRef": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "distributor": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "seasonId": 0,
+        "wallet": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "token": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "amount": "0"
+      },
+      "expectedLeaf": "0x0daec6f548383da177d5ba599c4571d0a3e6b3a0b9e4a7ad94440a607ce7ac9d"
+    }
+  ]
+}

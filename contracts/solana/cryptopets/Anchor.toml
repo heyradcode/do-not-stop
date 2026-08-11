@@ -11,10 +11,12 @@ skip-lint = false
 [programs.localnet]
 cryptopets = "EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1"
 cryptopets_registry = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+cryptopets_rewards = "RewaRDsFhqhVBHrHFHKcnbXPPHUvNSVKWnxNBXjHkVh"
 
 [programs.devnet]
 cryptopets = "EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1"
 cryptopets_registry = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+cryptopets_rewards = "RewaRDsFhqhVBHrHFHKcnbXPPHUvNSVKWnxNBXjHkVh"
 
 [provider]
 cluster = "devnet"

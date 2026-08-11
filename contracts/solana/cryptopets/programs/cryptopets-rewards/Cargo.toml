@@ -1,0 +1,26 @@
+[package]
+name = "cryptopets-rewards"
+version = "0.1.0"
+description = "Capped, one-time SPL reward claims against a per-season Merkle root"
+edition = "2021"
+license-file = "../../../../LICENSE"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "cryptopets_rewards"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "0.32.1"
+anchor-spl = "0.32.1"
+# Legacy Keccak-256, the same primitive every hash in this protocol uses. anchor-lang
+# 0.32.1 no longer re-exports solana_program::keccak, so it comes from this crate, as it
+# does in the cryptopets program. A SHA3-vs-Keccak mix-up here would make every proof fail.
+solana-keccak-hasher = "2.2.1"

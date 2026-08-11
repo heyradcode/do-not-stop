@@ -12,7 +12,7 @@
  * Every case is chosen to pin a property, not to pad a count: cross-deployment
  * separation, address-casing equivalence, optional-field presence, field widths.
  */
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync as fsWriteFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -32,6 +32,10 @@ import {
     MERKLE_NODE_DOMAIN,
     merkleLeaf,
     merkleProof,
+    MERKLE_REWARD_LEAF_DOMAIN,
+    WIDE_REWARD_LEAF_SCHEMA_VERSION,
+    wideRewardMerkleLeaf,
+    type WideRewardEntitlement,
 } from '../src/merkle';
 import { computeProgression, type ProgressionDelta, type ProgressionParams } from '../src/progression';
 import { type BattleReceipt, hashBattleReceipt, hashCombatLog } from '../src/receipt';
@@ -40,6 +44,64 @@ import { hashRuleset, type Ruleset, SOURCE_DEFAULT_RULESET } from '../src/rulese
 import { type BattleSnapshot, hashBattleSnapshot, type PetSnapshot } from '../src/snapshot';
 
 const VECTORS_DIR = join(dirname(fileURLToPath(import.meta.url)), '../../contracts/test-vectors');
+
+/** Files this run would have changed, collected so every one is reported, not just the first. */
+const wouldChange: string[] = [];
+
+/**
+ * Drop-in replacement for `fs.writeFileSync`, refusing to silently change a vector file that
+ * already exists.
+ *
+ * Regenerating to make a test pass is forbidden (AGENTS.md), but nothing enforced it, and
+ * these files pin byte layouts that published receipts and signatures depend on. It really
+ * happened: when equipment moved the ruleset to schema version 2, a later run of this script
+ * silently replaced fourteen frozen version-1 cases and every receipt hash downstream of
+ * their `rulesetHash`, and the suite still passed, because the tests read the same rewritten
+ * file.
+ *
+ * Named to shadow the import so every writer below is covered without having to remember to
+ * opt in. New files are written, identical content is a no-op, anything else is reported and
+ * fails the run. Pass `--force` when a change is genuinely intended and reviewed.
+ */
+function writeFileSync(path: string, content: string): void {
+    const name = path.split(/[\\/]/).pop() ?? path;
+
+    if (existsSync(path)) {
+        // Compare parsed content, not bytes: a checkout under autocrlf differs by line
+        // ending alone, which is not a drift and must not read as one.
+        const current = readFileSync(path, 'utf8');
+        if (JSON.stringify(JSON.parse(current)) === JSON.stringify(JSON.parse(content))) {
+            return;
+        }
+        if (!process.argv.includes('--force')) {
+            wouldChange.push(name);
+            process.stdout.write(`  REFUSED ${name}: differs from what is committed\n`);
+            return;
+        }
+        process.stdout.write(`  rewrote ${name} (--force)\n`);
+    }
+
+    fsWriteFileSync(path, content);
+}
+
+/** Fails the run if anything was refused, so a guarded rewrite cannot pass unnoticed in CI. */
+function reportRefusals(): void {
+    if (wouldChange.length === 0) {
+        return;
+    }
+    const detail = [
+        '',
+        `Refused to rewrite ${wouldChange.length} existing vector file(s):`,
+        ...wouldChange.map((name) => `  - ${name}`),
+        '',
+        'These files pin layouts that published receipts depend on. A difference means the',
+        'implementation drifted from what was frozen, so fix the implementation. If the',
+        'change is intended and reviewed, rerun with --force.',
+        '',
+    ].join('\n');
+    process.stderr.write(detail);
+    process.exitCode = 1;
+}
 
 /** Serializable form of an intent, as it appears in the vector file. */
 interface IntentFixture {
@@ -167,7 +229,7 @@ function writeIntentVectors(): void {
     };
     const path = join(VECTORS_DIR, 'protocol-intent.json');
     writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
-    process.stdout.write(`wrote ${out.cases.length} intent cases to ${path}\n`);
+    process.stdout.write(`generated ${out.cases.length} intent cases to ${path}\n`);
 }
 
 /** Serializable form of an authorization, as it appears in the vector file. */
@@ -315,7 +377,7 @@ function writeConsentVectors(): void {
     };
     const path = join(VECTORS_DIR, 'protocol-consent.json');
     writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
-    process.stdout.write(`wrote ${out.cases.length} consent cases to ${path}\n`);
+    process.stdout.write(`generated ${out.cases.length} consent cases to ${path}\n`);
 }
 
 /** Serializable form of a pet snapshot. */
@@ -487,7 +549,7 @@ function writeSnapshotVectors(): void {
     };
     const path = join(VECTORS_DIR, 'protocol-snapshot.json');
     writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
-    process.stdout.write(`wrote ${out.cases.length} snapshot cases to ${path}\n`);
+    process.stdout.write(`generated ${out.cases.length} snapshot cases to ${path}\n`);
 }
 
 /** Serializable form of the seed inputs. */
@@ -592,7 +654,7 @@ function writeSeedVectors(): void {
     };
     const path = join(VECTORS_DIR, 'protocol-seed.json');
     writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
-    process.stdout.write(`wrote ${out.cases.length} seed cases to ${path}\n`);
+    process.stdout.write(`generated ${out.cases.length} seed cases to ${path}\n`);
 }
 
 /** Serializable form of a commitment. Its snapshot reuses the snapshot fixtures. */
@@ -733,7 +795,7 @@ function writeCommitmentVectors(): void {
     };
     const path = join(VECTORS_DIR, 'protocol-commitment.json');
     writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
-    process.stdout.write(`wrote ${out.cases.length} commitment cases to ${path}\n`);
+    process.stdout.write(`generated ${out.cases.length} commitment cases to ${path}\n`);
 }
 
 /**
@@ -868,7 +930,7 @@ function writeProgressionVectors(): void {
     };
     const path = join(VECTORS_DIR, 'protocol-progression.json');
     writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
-    process.stdout.write(`wrote ${out.cases.length} progression cases to ${path}\n`);
+    process.stdout.write(`generated ${out.cases.length} progression cases to ${path}\n`);
 }
 
 function serializeProgression(progression: {
@@ -902,36 +964,66 @@ function serializeProgression(progression: {
  * balance change that does not move the hash: consent bound to `rulesetHash` and
  * historical replay both depend on one number changing whenever any rule does.
  */
+/**
+ * The v1 source defaults, frozen as a literal rather than derived from
+ * `SOURCE_DEFAULT_RULESET`.
+ *
+ * Every case below predates equipment and has receipts signed against it, so these bytes
+ * must keep hashing identically forever. Spreading the live constant is what made that
+ * impossible: when equipment moved it to schema version 2, regenerating silently rewrote
+ * fourteen frozen cases and every receipt downstream of their `rulesetHash`. A literal
+ * cannot drift when the build does.
+ *
+ * Do not "update" this to match a newer default. Add a case instead.
+ */
+const V1_SOURCE_DEFAULT_RULESET: Ruleset = {
+    version: 1,
+    engineId: 'cryptopets-combat-ts',
+    engineVersion: 1,
+    maxRounds: 30,
+    skillConfig: {
+        tankHpMult: 120,
+        shellDefMult: 125,
+        swiftCritBonus: 50,
+        cunningCritCap: 4000,
+        furyDmgMult: 130,
+        furyHpThreshold: 3000,
+        sageMdefMult: 125,
+        bloodlustBps: 150,
+    },
+    maxLevel: 100,
+};
+
 const rulesetCases: { name: string; note: string; ruleset: Ruleset }[] = [
     {
         name: 'source-defaults',
-        note: 'The ruleset this build implements with GameConfig source defaults. Anchors every other case.',
-        ruleset: SOURCE_DEFAULT_RULESET,
+        note: 'Schema version 1 source defaults, under engine version 1. Kept exactly as recorded: version 1 rulesets have receipts signed against them and must keep hashing identically forever, so this pins the v1 encoder permanently.',
+        ruleset: V1_SOURCE_DEFAULT_RULESET,
     },
     {
         name: 'version-bump',
         note: 'Same rules, higher version number. Must differ: the version is part of the identity, so a republished bundle cannot claim an old hash.',
-        ruleset: { ...SOURCE_DEFAULT_RULESET, version: 2 },
+        ruleset: { ...V1_SOURCE_DEFAULT_RULESET, version: 2 },
     },
     {
         name: 'engine-version-bump',
         note: 'Same parameters, new engine version. Must differ: a fight-math change is recorded here, since code cannot hash itself.',
-        ruleset: { ...SOURCE_DEFAULT_RULESET, engineVersion: 2 },
+        ruleset: { ...V1_SOURCE_DEFAULT_RULESET, engineVersion: 2 },
     },
     {
         name: 'other-engine-id',
         note: 'Same parameters under a different engine. Must differ.',
-        ruleset: { ...SOURCE_DEFAULT_RULESET, engineId: 'cryptopets-combat-go' },
+        ruleset: { ...V1_SOURCE_DEFAULT_RULESET, engineId: 'cryptopets-combat-go' },
     },
     {
         name: 'lower-max-level',
         note: 'Level cap lowered. Must differ: the cap decides whether XP accrues at all.',
-        ruleset: { ...SOURCE_DEFAULT_RULESET, maxLevel: 20 },
+        ruleset: { ...V1_SOURCE_DEFAULT_RULESET, maxLevel: 20 },
     },
     {
         name: 'fewer-max-rounds',
         note: 'Round cap lowered. Must differ.',
-        ruleset: { ...SOURCE_DEFAULT_RULESET, maxRounds: 20 },
+        ruleset: { ...V1_SOURCE_DEFAULT_RULESET, maxRounds: 20 },
     },
     ...(
         [
@@ -948,29 +1040,70 @@ const rulesetCases: { name: string; note: string; ruleset: Ruleset }[] = [
         name: `skill-${field}`,
         note: `${field} raised by one. Must differ from source-defaults and from every other skill case: a tunable that does not move the hash is a balance change nobody consented to.`,
         ruleset: {
-            ...SOURCE_DEFAULT_RULESET,
+            ...V1_SOURCE_DEFAULT_RULESET,
             skillConfig: {
-                ...SOURCE_DEFAULT_RULESET.skillConfig,
-                [field]: SOURCE_DEFAULT_RULESET.skillConfig[field] + 1,
+                ...V1_SOURCE_DEFAULT_RULESET.skillConfig,
+                [field]: V1_SOURCE_DEFAULT_RULESET.skillConfig[field] + 1,
             },
         },
     })),
+];
+
+/**
+ * The schema-v2 cases, which the v1 literal above deliberately cannot express.
+ *
+ * These derive from the live `SOURCE_DEFAULT_RULESET` on purpose: they exist to pin what
+ * *this* build implements, so they should move when it does. The v1 cases above exist to
+ * pin what older receipts were signed against, so they must not.
+ */
+const rulesetV2Cases: { name: string; note: string; ruleset: Ruleset }[] = [
+    {
+        name: 'source-defaults-v2',
+        note: 'The ruleset this build implements: schema version 2 with an empty item catalog (roadmap §4). Differs from the v1 case by the schema version, the engine version, and a zero-length catalog.',
+        ruleset: SOURCE_DEFAULT_RULESET,
+    },
+    {
+        name: 'item-catalog',
+        note: 'A ruleset pricing two items. Must differ from source-defaults-v2: a rebalance has to move rulesetHash, which is what invalidates defence consent given under the old numbers (§D, §4).',
+        ruleset: {
+            ...SOURCE_DEFAULT_RULESET,
+            // `itemType` is a bigint in the in-memory ruleset and a decimal string once
+            // serialized, which is what the vector file records.
+            itemCatalog: [
+                { itemType: 1n, slot: 0, hp: 0, atk: 4, def: 0, int: 0, mdef: 0 },
+                { itemType: 11n, slot: 1, hp: 30, atk: 0, def: 10, int: 0, mdef: 0 },
+            ],
+        },
+    },
 ];
 
 function writeRulesetVectors(): void {
     const out = {
         description:
             'Ruleset canonical-hash vectors (docs/battle-protocol.md §F, §H). Generated by protocol/scripts/gen-vectors.ts from protocol/src/ruleset. A ruleset hash is chain-agnostic on purpose: the same rules can run on either chain. A failure means the implementation drifted. Never edit an expectation to match new output.',
-        cases: rulesetCases.map((c) => ({
+        cases: [...rulesetCases, ...rulesetV2Cases].map((c) => ({
             name: c.name,
             note: c.note,
-            ruleset: c.ruleset,
+            // `itemType` is a bigint in memory and a decimal string on the wire, the same
+            // form `serializeRuleset` writes into a published bundle. JSON cannot hold a
+            // bigint at all, so this is the shape the vector has always recorded.
+            ruleset: {
+                ...c.ruleset,
+                ...(c.ruleset.itemCatalog
+                    ? {
+                          itemCatalog: c.ruleset.itemCatalog.map((item) => ({
+                              ...item,
+                              itemType: item.itemType.toString(),
+                          })),
+                      }
+                    : {}),
+            },
             expectedRulesetHash: hashRuleset(c.ruleset),
         })),
     };
     const path = join(VECTORS_DIR, 'protocol-ruleset.json');
     writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
-    process.stdout.write(`wrote ${out.cases.length} ruleset cases to ${path}\n`);
+    process.stdout.write(`generated ${out.cases.length} ruleset cases to ${path}\n`);
 }
 
 /**
@@ -1127,7 +1260,7 @@ const receiptCases: { name: string; note: string; receipt: ReceiptFixture }[] = 
 export function receiptFromFixture(fixture: ReceiptFixture): BattleReceipt {
     const snapshot = snapshotFromFixture(fixture.snapshot);
     const domain = { chainId: fixture.chainId as ChainId, deploymentId: fixture.deploymentId };
-    const rulesetHash = hashRuleset(SOURCE_DEFAULT_RULESET);
+    const rulesetHash = hashRuleset(V1_SOURCE_DEFAULT_RULESET);
     const seed = deriveBattleSeed({
         domain,
         drandRandomness: fixture.beacon.randomness as Hex,
@@ -1145,7 +1278,7 @@ export function receiptFromFixture(fixture: ReceiptFixture): BattleReceipt {
         snapshot.defender.level,
         snapshot.defender.skill,
         seed.value,
-        SOURCE_DEFAULT_RULESET.skillConfig,
+        V1_SOURCE_DEFAULT_RULESET.skillConfig,
     );
     // The fixture chooses the winner so a case can cover both outcomes; the rounds and
     // remaining HP still come from the simulation the seed produced.
@@ -1167,7 +1300,7 @@ export function receiptFromFixture(fixture: ReceiptFixture): BattleReceipt {
             randomness: fixture.beacon.randomness as Hex,
         },
         seed: seed.hex,
-        rulesetVersion: SOURCE_DEFAULT_RULESET.version,
+        rulesetVersion: V1_SOURCE_DEFAULT_RULESET.version,
         rulesetHash,
         result: {
             attackerWon: fixture.attackerWon,
@@ -1207,7 +1340,7 @@ function writeReceiptVectors(): void {
     };
     const path = join(VECTORS_DIR, 'protocol-receipt.json');
     writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
-    process.stdout.write(`wrote ${out.cases.length} receipt cases to ${path}\n`);
+    process.stdout.write(`generated ${out.cases.length} receipt cases to ${path}\n`);
 }
 
 /**
@@ -1258,7 +1391,105 @@ function writeMerkleVectors(): void {
     };
     const path = join(VECTORS_DIR, 'protocol-merkle.json');
     writeFileSync(path, `${JSON.stringify(out, null, 2)}\n`);
-    process.stdout.write(`wrote ${out.cases.length} merkle cases to ${path}\n`);
+    process.stdout.write(`generated ${out.cases.length} merkle cases to ${path}\n`);
+}
+
+/**
+ * Reward-leaf vectors for the wide (32-byte account) layout.
+ *
+ * The on-chain consumer is `cryptopets_rewards`, which reproduces these bytes in Rust to
+ * verify a claim. That crate carries no JSON dependency, matching the Solana combat port, so
+ * the cases are transcribed into `programs/cryptopets-rewards/src/leaf.rs` by hand. This file
+ * is what the two are kept in sync against.
+ */
+function writeRewardLeafVectors(): void {
+    const cases: { name: string; note: string; entitlement: WideRewardEntitlement; expectedLeaf: Hex }[] = [
+        {
+            name: 'baseline',
+            note: 'Distinct byte fills per field, so a swapped pair of fields cannot pass.',
+            entitlement: {
+                chainRef: `0x${'33'.repeat(32)}`,
+                distributor: `0x${'44'.repeat(32)}`,
+                seasonId: 1,
+                wallet: `0x${'55'.repeat(32)}`,
+                token: `0x${'66'.repeat(32)}`,
+                amount: 1_000_000_000_000_000_000n,
+            },
+            expectedLeaf: '0x',
+        },
+        {
+            name: 'zero-amount',
+            note: 'A real entitlement of nothing, which must still hash rather than throw.',
+            entitlement: {
+                chainRef: `0x${'33'.repeat(32)}`,
+                distributor: `0x${'44'.repeat(32)}`,
+                seasonId: 1,
+                wallet: `0x${'55'.repeat(32)}`,
+                token: `0x${'66'.repeat(32)}`,
+                amount: 0n,
+            },
+            expectedLeaf: '0x',
+        },
+        {
+            name: 'max-u64-amount',
+            note: 'Pins the left-padding of amount into its 32-byte field at the widest value Solana can hold.',
+            entitlement: {
+                chainRef: `0x${'33'.repeat(32)}`,
+                distributor: `0x${'44'.repeat(32)}`,
+                seasonId: 1,
+                wallet: `0x${'55'.repeat(32)}`,
+                token: `0x${'66'.repeat(32)}`,
+                amount: (1n << 64n) - 1n,
+            },
+            expectedLeaf: '0x',
+        },
+        {
+            name: 'max-u32-season',
+            note: 'Pins the left-padding of seasonId into its 32-byte field.',
+            entitlement: {
+                chainRef: `0x${'33'.repeat(32)}`,
+                distributor: `0x${'44'.repeat(32)}`,
+                seasonId: 0xffff_ffff,
+                wallet: `0x${'55'.repeat(32)}`,
+                token: `0x${'66'.repeat(32)}`,
+                amount: 1n,
+            },
+            expectedLeaf: '0x',
+        },
+        {
+            name: 'zero-accounts',
+            note: 'All-zero pubkeys, which base58 writes as leading ones and a naive decoder drops.',
+            entitlement: {
+                chainRef: `0x${'00'.repeat(32)}`,
+                distributor: `0x${'00'.repeat(32)}`,
+                seasonId: 0,
+                wallet: `0x${'00'.repeat(32)}`,
+                token: `0x${'00'.repeat(32)}`,
+                amount: 0n,
+            },
+            expectedLeaf: '0x',
+        },
+    ];
+
+    const out = {
+        description:
+            'Wide (32-byte account) reward leaves. Reproduced on chain by cryptopets_rewards; ' +
+            'transcribed by hand into its leaf.rs because that crate has no JSON dependency.',
+        domain: MERKLE_REWARD_LEAF_DOMAIN,
+        nodeDomain: MERKLE_NODE_DOMAIN,
+        schemaVersion: WIDE_REWARD_LEAF_SCHEMA_VERSION,
+        cases: cases.map((entry) => ({
+            name: entry.name,
+            note: entry.note,
+            entitlement: { ...entry.entitlement, amount: entry.entitlement.amount.toString() },
+            expectedLeaf: wideRewardMerkleLeaf(entry.entitlement),
+        })),
+    };
+    const path = join(VECTORS_DIR, 'protocol-reward-leaf.json');
+    writeFileSync(path, `${JSON.stringify(out, null, 2)}
+`);
+    process.stdout.write(`generated ${out.cases.length} reward-leaf cases
+`);
 }
 
 writeIntentVectors();
@@ -1270,3 +1501,6 @@ writeProgressionVectors();
 writeRulesetVectors();
 writeReceiptVectors();
 writeMerkleVectors();
+writeRewardLeafVectors();
+
+reportRefusals();
