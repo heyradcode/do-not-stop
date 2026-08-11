@@ -1,4 +1,4 @@
-export { createKmsSigner } from './signer.kms';
+export { createKmsSigner, createKmsSignerFromPort, type KmsKeyPort } from './signer.kms';
 export { createLocalSigner } from './signer.local';
 export {
     activeSigningKey,
