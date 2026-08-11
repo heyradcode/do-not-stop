@@ -607,7 +607,13 @@ Sign only the digest:
 
 - Private key in a managed KMS/HSM, out of the API and worker environments.
 - No asset custody, no withdrawal authority.
-- Separate keys for EVM and Solana reward domains.
+- Separate keys for EVM and Solana reward domains. Implemented as one signer backend per
+  chain family: the key is chosen by the *object's own* domain, never by a caller argument,
+  so nothing can sign an EVM receipt with the Solana key. A deployment serving one family
+  needs one key — there is nothing to separate — but one serving both must name a key for
+  each, and the signer refuses to start rather than let them collapse onto one. Both keys
+  are published together, and a verifier matches on `signingKeyId` without needing to know
+  how they are partitioned.
 - Publish public keys and validity periods; retain rotated-out keys.
 - Log every KMS request, digest, result, and key version.
 - Signer accepts only the exact commitment and receipt schemas. Never expose a generic

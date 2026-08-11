@@ -81,9 +81,10 @@ export async function processSignMessage(message: ClaimedMessage, nowSeconds: nu
     };
 
     for (let attempt = 0; attempt < MAX_RECEIPT_CHAIN_RETRIES; attempt++) {
-        const key = activeSigningKey();
+        // Keyed by this battle's own chain, since §G gives each reward domain its own key.
+        const key = activeSigningKey(battle.chainId);
         if (!key) {
-            await failSigning(battle.battleId, battle.roomId, 'no active signing key');
+            await failSigning(battle.battleId, battle.roomId, `no active signing key for ${battle.chainId}`);
             await completeOutbox(message.id, new Date(nowSeconds * 1000));
             return;
         }

@@ -309,5 +309,28 @@ export const env = {
             .split(',')
             .map((name) => name.trim())
             .filter((name) => name.length > 0),
+        /**
+         * Per-domain key overrides (§G: "separate keys for EVM and Solana reward domains").
+         *
+         * One key signing both chains means compromising it compromises both (threat T4), so
+         * a deployment serving two families needs two keys. The signer refuses to start
+         * rather than share one, and these are how each is named.
+         *
+         * Left unset by a single-chain deployment, which is every deployment today: with only
+         * one domain there is nothing to separate, so the shared values above are used and
+         * the sharing is not a compromise of anything.
+         */
+        domains: {
+            evm: {
+                keyId: process.env.BATTLE_SIGNER_EVM_KEY_ID?.trim() || undefined,
+                privateKey: process.env.BATTLE_SIGNER_EVM_PRIVATE_KEY?.trim() || undefined,
+                kmsKeyId: process.env.BATTLE_SIGNER_EVM_KMS_KEY_ID?.trim() || undefined,
+            },
+            solana: {
+                keyId: process.env.BATTLE_SIGNER_SOLANA_KEY_ID?.trim() || undefined,
+                privateKey: process.env.BATTLE_SIGNER_SOLANA_PRIVATE_KEY?.trim() || undefined,
+                kmsKeyId: process.env.BATTLE_SIGNER_SOLANA_KMS_KEY_ID?.trim() || undefined,
+            },
+        },
     },
 } as const;

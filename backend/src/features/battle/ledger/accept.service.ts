@@ -314,9 +314,14 @@ async function signAndRecordCommitment(
     seed: CommitmentSeed,
 ): Promise<{ commitment: BattleCommitment; commitmentHash: Hex; signature: Hex; signingKeyId: string }> {
     for (let attempt = 0; attempt < MAX_COMMITMENT_CHAIN_RETRIES; attempt++) {
-        const key = activeSigningKey();
+        // The commitment's own domain picks the key (§G separates them per reward domain),
+        // so a commitment can never be signed under another chain's key.
+        const key = activeSigningKey(seed.domain.chainId);
         if (!key) {
-            throw new SignerRefusedError('signer-not-configured', 'no active signing key');
+            throw new SignerRefusedError(
+                'signer-not-configured',
+                `no active signing key for the ${seed.domain.chainId} domain`,
+            );
         }
 
         const previous = await prisma.battleCommitment.findFirst({

@@ -2,11 +2,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const envMock = vi.hoisted(() => ({
     isProduction: false,
+    // The signer builds one backend per served chain family (§G), so the chain list is now
+    // part of what configures it. One EVM chain here: a single-domain deployment, which is
+    // what every deployment is today.
+    battle: { chainIds: ['eip155:84532'] as string[] },
     battleSigner: {
         keyId: 'battle-signer-test',
         privateKey: '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as string | undefined,
         kmsProvider: undefined as string | undefined,
+        kmsKeyId: undefined as string | undefined,
+        kmsRegion: undefined as string | undefined,
         requiredAttesters: ['typescript-engine'] as string[],
+        domains: {
+            evm: {} as { keyId?: string; privateKey?: string; kmsKeyId?: string },
+            solana: {} as { keyId?: string; privateKey?: string; kmsKeyId?: string },
+        },
     },
 }));
 
@@ -52,12 +62,12 @@ describe('a restart must not move the active key validity window forward', () =>
         // Second boot: configureSigner stamps "now", but the key really became valid at
         // FIRST_BOOT and every receipt signed since then was signed under it.
         await configureSigner(MUCH_LATER);
-        expect(activeSigningKey()?.notBefore).toBe(MUCH_LATER);
+        expect(activeSigningKey('eip155:84532')?.notBefore).toBe(MUCH_LATER);
 
         vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([storedRow()] as never);
         await loadPersistedSigningKeys();
 
-        expect(activeSigningKey()?.notBefore).toBe(FIRST_BOOT);
+        expect(activeSigningKey('eip155:84532')?.notBefore).toBe(FIRST_BOOT);
     });
 
     it('keeps a receipt signed before the restart inside the published window', async () => {
@@ -78,7 +88,7 @@ describe('a restart must not move the active key validity window forward', () =>
         vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([] as never);
         await loadPersistedSigningKeys();
 
-        expect(activeSigningKey()?.notBefore).toBe(MUCH_LATER);
+        expect(activeSigningKey('eip155:84532')?.notBefore).toBe(MUCH_LATER);
     });
 
     it('never moves the window earlier than the stored row claims', async () => {
@@ -90,7 +100,7 @@ describe('a restart must not move the active key validity window forward', () =>
         );
         await loadPersistedSigningKeys();
 
-        expect(activeSigningKey()?.notBefore).toBe(FIRST_BOOT);
+        expect(activeSigningKey('eip155:84532')?.notBefore).toBe(FIRST_BOOT);
     });
 
     it('still records the active key on boot, so it is never missing from the registry', async () => {

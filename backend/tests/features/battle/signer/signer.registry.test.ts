@@ -100,7 +100,7 @@ describe('the compromised flag is sticky', () => {
 describe('loading the registry', () => {
     it('reports the currently signing key as active', async () => {
         vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([row()] as never);
-        const keys = await loadSigningKeys('battle-signer-2026-07');
+        const keys = await loadSigningKeys(new Set(['battle-signer-2026-07']));
         expect(keys[0]?.status).toBe('active');
     });
 
@@ -112,7 +112,7 @@ describe('loading the registry', () => {
             row({ keyId: 'current' }),
         ] as never);
 
-        const keys = await loadSigningKeys('current');
+        const keys = await loadSigningKeys(new Set(['current']));
 
         expect(keys.find((k) => k.keyId === 'old')?.status).toBe('rotated');
         expect(keys.find((k) => k.keyId === 'current')?.status).toBe('active');
@@ -124,7 +124,7 @@ describe('loading the registry', () => {
             row({ keyId: 'burned', compromised: true }),
         ] as never);
 
-        const keys = await loadSigningKeys('burned');
+        const keys = await loadSigningKeys(new Set(['burned']));
 
         expect(keys[0]?.status).toBe('compromised');
     });
@@ -135,7 +135,7 @@ describe('loading the registry', () => {
             row({ keyId: 'current' }),
         ] as never);
 
-        const keys = await loadSigningKeys('current');
+        const keys = await loadSigningKeys(new Set(['current']));
 
         expect(keys).toHaveLength(2);
         expect(keys.find((k) => k.keyId === 'old')?.notAfter).toBe(1_760_000_000);
@@ -143,12 +143,12 @@ describe('loading the registry', () => {
 
     it('returns nothing when no key was ever recorded', async () => {
         vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([] as never);
-        await expect(loadSigningKeys(null)).resolves.toEqual([]);
+        await expect(loadSigningKeys(new Set())).resolves.toEqual([]);
     });
 
     it('orders by when each key became valid', async () => {
         vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([] as never);
-        await loadSigningKeys(null);
+        await loadSigningKeys(new Set());
         const call = vi.mocked(prisma.battleSigningKey.findMany).mock.calls[0]![0] as { orderBy: unknown };
         expect(call.orderBy).toEqual({ notBefore: 'asc' });
     });

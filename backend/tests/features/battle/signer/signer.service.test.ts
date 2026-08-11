@@ -27,11 +27,21 @@ const DEV_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b786
 // to exercise production refusal and the attester list.
 const envMock = vi.hoisted(() => ({
     isProduction: false,
+    // The signer builds one backend per served chain family (§G), so the chain list is now
+    // part of what configures it. One EVM chain here: a single-domain deployment, which is
+    // what every deployment is today.
+    battle: { chainIds: ['eip155:84532'] as string[] },
     battleSigner: {
         keyId: 'battle-signer-test',
         privateKey: '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d' as string | undefined,
         kmsProvider: undefined as string | undefined,
+        kmsKeyId: undefined as string | undefined,
+        kmsRegion: undefined as string | undefined,
         requiredAttesters: ['typescript-engine'] as string[],
+        domains: {
+            evm: {} as { keyId?: string; privateKey?: string; kmsKeyId?: string },
+            solana: {} as { keyId?: string; privateKey?: string; kmsKeyId?: string },
+        },
     },
 }));
 
@@ -179,7 +189,7 @@ describe('signing a commitment', () => {
         // Real ECDSA, so the published key is checked to be the one that actually signs.
         const result = await sign({ kind: 'commitment', commitment: COMMITMENT }, NOW);
         const recovered = ethers.recoverAddress(result.digest, result.signature);
-        expect(recovered.toLowerCase()).toBe(activeSigningKey()!.address);
+        expect(recovered.toLowerCase()).toBe(activeSigningKey('eip155:84532')!.address);
     });
 
     it('signs the digest with no message prefix', async () => {
@@ -288,7 +298,7 @@ describe('backend selection', () => {
         envMock.isProduction = true;
         configureSigner(NOW);
 
-        expect(activeSigningKey()).toBeNull();
+        expect(activeSigningKey('eip155:84532')).toBeNull();
         await expect(sign({ kind: 'commitment', commitment: COMMITMENT }, NOW)).rejects.toMatchObject({
             reason: 'signer-not-configured',
         });
@@ -298,7 +308,7 @@ describe('backend selection', () => {
         envMock.battleSigner.kmsProvider = 'aws-kms';
         configureSigner(NOW);
 
-        expect(activeSigningKey()).toBeNull();
+        expect(activeSigningKey('eip155:84532')).toBeNull();
         await expect(sign({ kind: 'commitment', commitment: COMMITMENT }, NOW)).rejects.toBeInstanceOf(
             SignerRefusedError,
         );
@@ -315,7 +325,7 @@ describe('backend selection', () => {
 
 describe('key registry', () => {
     it('publishes the active key', () => {
-        const key = activeSigningKey()!;
+        const key = activeSigningKey('eip155:84532')!;
         expect(key.algorithm).toBe('secp256k1');
         expect(key.status).toBe('active');
         expect(key.notAfter).toBeNull();
@@ -359,5 +369,80 @@ describe('audit log', () => {
         const entries = signerAuditLog();
         expect(entries.at(-1)).toMatchObject({ outcome: 'refused', kind: 'refused' });
         expect(entries.at(-1)!.detail).toContain('typescript-engine');
+    });
+});
+
+/**
+ * Separate keys per reward domain (§G, threat T4).
+ *
+ * §G: "Separate keys for EVM and Solana reward domains." The point is blast radius — one
+ * key signing both means a compromise of either is a compromise of both, and the receipts
+ * of one chain stop being evidence about anything.
+ */
+describe('per-domain signing keys', () => {
+    const EVM_KEY = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
+    const SOLANA_KEY = `0x${'22'.repeat(32)}`;
+
+    beforeEach(() => {
+        resetSigner();
+        envMock.battle.chainIds = ['eip155:84532'];
+        envMock.battleSigner.domains = { evm: {}, solana: {} };
+        envMock.battleSigner.privateKey = EVM_KEY;
+    });
+
+    // A single-domain deployment has nothing to separate, so sharing the top-level config
+    // is not a compromise of anything. Every deployment today is this one.
+    it('uses the shared key when only one domain is served', async () => {
+        await configureSigner(1000);
+
+        expect(activeSigningKey('eip155:84532')).not.toBeNull();
+        expect(listSigningKeys()).toHaveLength(1);
+    });
+
+    /**
+     * The refusal that makes the separation real. A fallback here would silently hand both
+     * chains one key while the deployment looked correctly configured — exactly the blast
+     * radius T4 describes, with nothing to notice it by.
+     */
+    it('refuses to start when two domains are served and one has no key of its own', async () => {
+        envMock.battle.chainIds = ['eip155:84532', 'solana:devnet'];
+
+        await configureSigner(1000);
+
+        expect(activeSigningKey('eip155:84532')).toBeNull();
+        expect(activeSigningKey('solana:devnet')).toBeNull();
+    });
+
+    it('configures both domains when each names its own key', async () => {
+        envMock.battle.chainIds = ['eip155:84532', 'solana:devnet'];
+        envMock.battleSigner.domains = {
+            evm: { keyId: 'battle-signer-evm', privateKey: EVM_KEY },
+            solana: { keyId: 'battle-signer-solana', privateKey: SOLANA_KEY },
+        };
+
+        await configureSigner(1000);
+
+        const evm = activeSigningKey('eip155:84532');
+        const solana = activeSigningKey('solana:devnet');
+        expect(evm?.keyId).toBe('battle-signer-evm');
+        expect(solana?.keyId).toBe('battle-signer-solana');
+        // Different keys, which is the entire property: same material would satisfy every
+        // other assertion here while providing none of the isolation.
+        expect(evm?.address).not.toBe(solana?.address);
+    });
+
+    it('publishes every domain active key, so a verifier can attribute either', async () => {
+        envMock.battle.chainIds = ['eip155:84532', 'solana:devnet'];
+        envMock.battleSigner.domains = {
+            evm: { keyId: 'battle-signer-evm', privateKey: EVM_KEY },
+            solana: { keyId: 'battle-signer-solana', privateKey: SOLANA_KEY },
+        };
+
+        await configureSigner(1000);
+
+        expect(listSigningKeys().map((key) => key.keyId).sort()).toEqual([
+            'battle-signer-evm',
+            'battle-signer-solana',
+        ]);
     });
 });

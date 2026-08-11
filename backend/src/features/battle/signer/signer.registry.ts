@@ -55,15 +55,19 @@ export async function persistSigningKey(key: SigningKeyDescriptor): Promise<void
 /**
  * Every key this deployment has ever used, as descriptors.
  *
- * `activeKeyId` decides which key is reported active; everything else is rotated, whatever
- * the rows happen to say. An operator who swapped keys without registering the old one
- * explicitly still gets the right answer.
+ * `activeKeyIds` decides which keys are reported active; everything else is rotated,
+ * whatever the rows happen to say. An operator who swapped keys without registering the old
+ * one explicitly still gets the right answer.
+ *
+ * A set rather than one id, because §G separates keys per reward domain: a deployment
+ * serving both EVM and Solana has two keys signing at once, and reporting either as rotated
+ * would tell a verifier the current key had been retired.
  *
  * A compromised key is never reported active, even if it somehow matches `activeKeyId`.
  * Signing with a key known to be compromised is the situation the runbook exists to end, so
  * the registry refuses to describe it as the current one.
  */
-export async function loadSigningKeys(activeKeyId: string | null): Promise<SigningKeyDescriptor[]> {
+export async function loadSigningKeys(activeKeyIds: ReadonlySet<string>): Promise<SigningKeyDescriptor[]> {
     const rows = await prisma.battleSigningKey.findMany({ orderBy: { notBefore: 'asc' } });
     return rows.map((row) => ({
         keyId: row.keyId,
@@ -72,6 +76,6 @@ export async function loadSigningKeys(activeKeyId: string | null): Promise<Signi
         address: row.address as Hex,
         notBefore: Number(row.notBefore),
         notAfter: row.notAfter === null ? null : Number(row.notAfter),
-        status: row.compromised ? 'compromised' : row.keyId === activeKeyId ? 'active' : 'rotated',
+        status: row.compromised ? 'compromised' : activeKeyIds.has(row.keyId) ? 'active' : 'rotated',
     }));
 }
