@@ -30,6 +30,12 @@ export type RootStackParamList = {
     Marriage: undefined;
     Rename: { petId?: string } | undefined;
     Defense: { petId?: string } | undefined;
+    /**
+     * Read-only, and reached from the account sheet rather than the tab bar. Frontend
+     * routes it as a seventh sidebar entry, which a five-slot bottom bar has no room
+     * for without truncating every label to fit a screen nobody opens mid-battle.
+     */
+    Leaderboard: undefined;
 };
 
 export type TabItem = {
@@ -61,4 +67,5 @@ export const STACK_TITLES: Record<Exclude<keyof RootStackParamList, 'Landing' | 
     Marriage: 'Marriage',
     Rename: 'Rename Pet',
     Defense: 'Allow Challenges',
+    Leaderboard: 'Leaderboard',
 };

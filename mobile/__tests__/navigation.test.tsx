@@ -24,6 +24,7 @@ jest.mock('../src/screens/DefenseScreen', () => () => null);
 jest.mock('../src/screens/BreedScreen', () => () => null);
 jest.mock('../src/screens/MarriageScreen', () => () => null);
 jest.mock('../src/screens/BattleScreen', () => () => null);
+jest.mock('../src/screens/LeaderboardScreen', () => () => null);
 jest.mock('../src/components/AppHeader', () => () => null);
 jest.mock('../src/screens/LandingScreen', () => {
     const { Text: RNText } = jest.requireActual('react-native');
@@ -79,7 +80,15 @@ describe('routes', () => {
     });
 
     it('keeps the per-pet actions on the stack', () => {
-        expect(Object.keys(STACK_TITLES)).toEqual(['Marriage', 'Rename', 'Defense']);
+        // Leaderboard is on the stack for a different reason than the other three: it
+        // acts on no pet at all, but a five-slot tab bar has no room for a read-only
+        // screen without truncating the labels of the four that do.
+        expect(Object.keys(STACK_TITLES)).toEqual([
+            'Marriage',
+            'Rename',
+            'Defense',
+            'Leaderboard',
+        ]);
     });
 
     it('does not route the deferred features', () => {

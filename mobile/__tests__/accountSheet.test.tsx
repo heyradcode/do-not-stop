@@ -29,6 +29,11 @@ const mockSignAndLogin = jest.fn();
 const mockLogout = jest.fn();
 const mockOpen = jest.fn();
 const mockDisconnect = jest.fn();
+const mockNavigate = jest.fn();
+
+jest.mock('@react-navigation/native', () => ({
+    useNavigation: () => ({ navigate: mockNavigate }),
+}));
 
 jest.mock('wagmi', () => ({
     useAccount: () => ({ address: mockState.address, chainId: mockState.chainId }),
@@ -166,22 +171,35 @@ describe('AccountSheet auth actions', () => {
 
     // Both close the sheet before acting, which unmounts the modal — so each gets
     // its own render rather than reusing a node list that is gone by then.
+    //
+    // Found by accessibility label, not by index: the sheet's action list grows as
+    // screens are added, and an index-based press silently retargets when it does.
+    const pressAction = async (tree: ReactTestRenderer.ReactTestRenderer, label: string) => {
+        const button = tree.root
+            .findAllByType(TouchableOpacity)
+            .find((node) => node.props.accessibilityLabel === label);
+        await ReactTestRenderer.act(async () => button!.props.onPress());
+    };
+
     it('leaves wallet-level actions to AppKit', async () => {
         const tree = await render(<AccountSheet />);
         await openSheet(tree);
-        await ReactTestRenderer.act(async () => {
-            tree.root.findAllByType(TouchableOpacity)[2].props.onPress();
-        });
+        await pressAction(tree, 'Wallet');
         expect(mockOpen).toHaveBeenCalled();
     });
 
     it('disconnects', async () => {
         const tree = await render(<AccountSheet />);
         await openSheet(tree);
-        await ReactTestRenderer.act(async () => {
-            tree.root.findAllByType(TouchableOpacity)[3].props.onPress();
-        });
+        await pressAction(tree, 'Disconnect');
         expect(mockDisconnect).toHaveBeenCalled();
+    });
+
+    it('reaches the leaderboard, which has no tab of its own', async () => {
+        const tree = await render(<AccountSheet />);
+        await openSheet(tree);
+        await pressAction(tree, 'Leaderboard');
+        expect(mockNavigate).toHaveBeenCalledWith('Leaderboard');
     });
 });
 

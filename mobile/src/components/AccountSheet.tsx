@@ -10,11 +10,14 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAppKit } from '@reown/appkit-react-native';
 import { useAccount } from 'wagmi';
 import { useAuth } from '@shared/core';
 
 import NativeBalance from './NativeBalance';
+import type { RootStackParamList } from '../navigation/routes';
 import { neon, neonGlow } from '../theme/neon';
 
 const truncate = (addr: string): string => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -36,6 +39,7 @@ const truncate = (addr: string): string => `${addr.slice(0, 6)}...${addr.slice(-
 export default function AccountSheet() {
     const { open, disconnect } = useAppKit();
     const { address } = useAccount();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const { isAuthenticated, signAndLogin, logout, isSigning, isVerifying, isNonceLoading } =
         useAuth();
     const [isOpen, setIsOpen] = useState(false);
@@ -144,6 +148,20 @@ export default function AccountSheet() {
 
                             <TouchableOpacity
                                 style={[styles.action, styles.secondary]}
+                                accessibilityRole="button"
+                                accessibilityLabel="Leaderboard"
+                                onPress={() => {
+                                    setIsOpen(false);
+                                    navigation.navigate('Leaderboard');
+                                }}
+                            >
+                                <Text style={styles.secondaryText}>Leaderboard</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.action, styles.secondary]}
+                                accessibilityRole="button"
+                                accessibilityLabel="Wallet"
                                 onPress={() => {
                                     setIsOpen(false);
                                     open();
@@ -154,6 +172,8 @@ export default function AccountSheet() {
 
                             <TouchableOpacity
                                 style={[styles.action, styles.danger]}
+                                accessibilityRole="button"
+                                accessibilityLabel="Disconnect"
                                 onPress={() => {
                                     setIsOpen(false);
                                     disconnect();

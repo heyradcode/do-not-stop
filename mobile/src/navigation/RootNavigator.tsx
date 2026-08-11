@@ -13,6 +13,7 @@ import BreedScreen from '../screens/BreedScreen';
 import DefenseScreen from '../screens/DefenseScreen';
 import GalleryScreen from '../screens/GalleryScreen';
 import LandingScreen from '../screens/LandingScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
 import LevelUpScreen from '../screens/LevelUpScreen';
 import MarriageScreen from '../screens/MarriageScreen';
 import RenameScreen from '../screens/RenameScreen';
@@ -41,6 +42,7 @@ const STACK_SCREENS = {
     Marriage: MarriageScreen,
     Rename: RenameScreen,
     Defense: DefenseScreen,
+    Leaderboard: LeaderboardScreen,
 } as const;
 
 /**
