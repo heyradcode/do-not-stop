@@ -3,6 +3,7 @@ import NeonButton from '@components/ui/neon-button';
 import {
     useChainCapabilities,
     useDefenseAuthorization,
+    useBattleSession,
     useDefenseAuthorizations,
     usePetList,
 } from '@shared/core';
@@ -32,6 +33,10 @@ const DefensePanel: React.FC<DefensePanelProps> = ({ isStandaloneView = true }) 
     // applies. A rules change invalidates every grant by design, and being challenged is
     // passive, so without this a defender's pets go quiet and nothing here admits it.
     const { status, refresh } = useDefenseAuthorizations();
+    // Delegated battle signing (§D). Lives here because this is already the screen about
+    // what the wallet has authorized, and the two grants are easier to tell apart side by
+    // side than scattered across the app.
+    const session = useBattleSession();
 
     const [allPets, setAllPets] = useState(true);
     const [selected, setSelected] = useState<string[]>([]);
@@ -100,6 +105,37 @@ const DefensePanel: React.FC<DefensePanelProps> = ({ isStandaloneView = true }) 
                         You have not allowed challenges, so nobody can battle your pets.
                     </p>
                 )}
+
+                {/* Delegated battle signing (§D). Separate from consent above, and the two
+                    are easy to confuse: that one lets *others* challenge you, this one
+                    lets you start battles without a wallet prompt each time. */}
+                {session.supported && (
+                    <div className={styles.session}>
+                        <span className={styles.sessionLabel}>
+                            {session.key
+                                ? 'Battles are signed for this tab, so no wallet prompt each time.'
+                                : 'Approve a battle session to stop confirming every fight in your wallet.'}
+                        </span>
+                        <NeonButton
+                            tone={session.key ? 'magenta' : 'cyan'}
+                            size="sm"
+                            disabled={session.isPending || !isConnected}
+                            onClick={() => {
+                                setSuccess(null);
+                                if (session.key) {
+                                    void session.revoke();
+                                    return;
+                                }
+                                void session.approve().then((key) => {
+                                    if (key) setSuccess('Battle session approved for the next 24 hours.');
+                                });
+                            }}
+                        >
+                            {session.isPending ? 'Signing…' : session.key ? 'End session' : 'Approve session'}
+                        </NeonButton>
+                    </div>
+                )}
+                {session.error && <p className={styles.error}>{session.error.message}</p>}
 
                 <div className="picker">
                     <div className="field">

@@ -14,10 +14,23 @@ import type { ChainId } from '@cryptopets/protocol';
  * the worst place to discover it.
  */
 export function chainIdFor(kind: 'evm' | 'solana', servedChainIds: string[]): ChainId {
-    const prefix = kind === 'evm' ? 'eip155:' : 'solana:';
-    const match = servedChainIds.find((candidate) => candidate.startsWith(prefix));
+    const match = tryChainIdFor(kind, servedChainIds);
     if (!match) {
         throw new Error(`this deployment serves no ${kind} chain (has ${servedChainIds.join(', ') || 'none'})`);
     }
-    return match as ChainId;
+    return match;
+}
+
+/**
+ * The same lookup, returning null instead of throwing.
+ *
+ * For callers deciding *whether* something is possible rather than building something to
+ * sign — which in practice means anything running during render. `chainIdFor` throwing
+ * there does not surface as a handled error, it unmounts the tree: a wallet connected to a
+ * family this deployment does not serve would take the whole screen down instead of
+ * disabling one button.
+ */
+export function tryChainIdFor(kind: 'evm' | 'solana', servedChainIds: string[]): ChainId | null {
+    const prefix = kind === 'evm' ? 'eip155:' : 'solana:';
+    return (servedChainIds.find((candidate) => candidate.startsWith(prefix)) as ChainId | undefined) ?? null;
 }

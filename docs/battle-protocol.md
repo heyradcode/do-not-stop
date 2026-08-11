@@ -288,6 +288,53 @@ Requirements:
 - Require attacker ownership at the finalized source version.
 - Never let a JWT user submit a battle for another wallet.
 
+### Delegated signing (session keys)
+
+The rule above is right and expensive: it puts a wallet prompt on the most repeated action
+in the game. The resolution is *not* to accept a JWT after all, because the objection to a
+JWT is not that it is inconvenient to check but that we mint it ourselves.
+
+Instead the owner signs one `SessionDelegation` naming a key **the client generated and
+holds**, and that key signs intents:
+
+```text
+schemaVersion
+chainId
+deploymentId
+owner
+sessionKey
+scope               ('battle-intent')
+notBefore
+expiresAt
+revocationNonce
+```
+
+What survives: the operator never sees the private key, so it still cannot produce an
+intent. That is the entire property a JWT lacked. What changes is only how often a human is
+asked.
+
+Bounded on three axes, all enforced by the validator rather than trusted to the client:
+
+- **Scope.** Battle intents alone. Defence consent is deliberately excluded — it is the one
+  signature a defender relies on, and a stolen session key must not be able to produce it.
+  Anything on chain is excluded by construction rather than by rule, since `equip` and every
+  transfer check `msg.sender` and this key is not an account the chain knows.
+- **Time.** `MAX_SESSION_SECONDS` (24h), so a client asking for longer is refused.
+- **Revocation.** A nonce the owner bumps, plus `DELETE /api/battle/sessions`, which is
+  unsigned for the same reason consent revocation is: the failure mode of an unauthorized
+  revocation is more prompts, never fewer.
+
+Not carried by any receipt, and that is a scoping decision worth stating. Public replay
+never checks intent signatures, so delegation is an authorization gate rather than evidence.
+Keeping it out of the signed record means the mechanism can be revised — or withdrawn —
+without invalidating a single historical receipt.
+
+The client stores the key in `sessionStorage`, not `localStorage`: per-tab and cleared on
+close bounds a stolen copy to one browsing session, where persistent storage would turn one
+XSS into weeks of authority. EVM only for now; a Solana player keeps the per-battle prompt,
+because delegation needs the client to hold a key of the right family and the Solana signer
+is the wallet adapter rather than a keypair this code owns.
+
 ### Standing defender consent
 
 The current EVM contract lets anyone attack anyone's pet. Backend ranked mode should not apply

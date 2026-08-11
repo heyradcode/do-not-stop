@@ -16,6 +16,7 @@ import { verifySolanaSignature } from '@features/auth/solana';
 import { getPetById } from '@repositories/roster.repository';
 
 import { assertServedDomain } from './domain';
+import { findSessionDelegation } from './session.service';
 
 /**
  * Battle intent submission (§D).
@@ -51,6 +52,13 @@ export interface SubmitIntentRequest {
     intent: BattleIntentWire;
     signature: string;
     signatureFormat: SignatureFormat;
+    /**
+     * The delegated key that signed, when one did (§D).
+     *
+     * Absent means the wallet signed directly, which is the original path and stays
+     * supported: a client with no session, or one whose session lapsed, simply prompts.
+     */
+    sessionKey?: string;
     /** Wallet from the verified JWT. Must be the attacker. */
     authenticatedWallet: string;
     /** Unix seconds. Injected so expiry is testable and never read from a global clock. */
@@ -65,6 +73,8 @@ export type IntentRejection =
     | 'wallet-mismatch'
     | 'wrong-signature-format'
     | 'bad-signature'
+    /** A real signature from a key this wallet has not delegated to, or no longer has. */
+    | 'session-not-authorized'
     | 'unknown-pet'
     | 'not-pet-owner'
     | 'self-battle'
@@ -122,7 +132,30 @@ export async function submitBattleIntent(request: SubmitIntentRequest): Promise<
         );
     }
 
-    if (!verifyIntentSignature(intent, request.signature, expectedFormat)) {
+    // Signed by the wallet, or by a key the wallet delegated to (§D).
+    //
+    // The delegated branch is checked against `sessionKey` rather than by recovering and
+    // seeing who turns up, because recovery is an EVM affordance: Solana verifies against a
+    // named pubkey. Having the client say which key it used keeps one code path for both
+    // families, and costs nothing, since a lie fails the signature check immediately.
+    if (request.sessionKey) {
+        const signer = normalizeAccount(request.sessionKey);
+        if (!verifyIntentSignature(intent, request.signature, expectedFormat, signer)) {
+            return reject('bad-signature', 'signature does not verify against the named session key');
+        }
+        const delegation = await findSessionDelegation(
+            intent.domain.chainId,
+            intent.attackerOwner,
+            signer,
+            request.nowSeconds,
+        );
+        if (!delegation.ok) {
+            // Its own reason, because it is the one a player can act on: their session
+            // lapsed or was revoked, and re-approving takes one prompt. Collapsing it into
+            // `bad-signature` would send them looking at their wallet instead.
+            return reject('session-not-authorized', `${signer} may not sign for ${intent.attackerOwner}: ${delegation.reason}`);
+        }
+    } else if (!verifyIntentSignature(intent, request.signature, expectedFormat)) {
         return reject('bad-signature', 'signature does not recover to the attacker owner');
     }
 
@@ -184,8 +217,22 @@ export async function submitBattleIntent(request: SubmitIntentRequest): Promise<
  * digest supplied by the client. A client that sends a signature over different fields
  * fails here, because the message being checked is derived from the fields it claims.
  */
-export function verifyIntentSignature(intent: BattleIntent, signature: string, format: SignatureFormat): boolean {
+/**
+ * Whether `signature` over `intent` was produced by `expectedSigner`.
+ *
+ * Defaults to the attacker owner, which is the wallet-signed path. A delegated session key
+ * is passed explicitly, and the caller is responsible for having checked that the key is
+ * actually allowed to act for that owner — this function only answers "who signed this",
+ * never "may they".
+ */
+export function verifyIntentSignature(
+    intent: BattleIntent,
+    signature: string,
+    format: SignatureFormat,
+    expectedSigner: string = intent.attackerOwner,
+): boolean {
     try {
+        const signer = normalizeAccount(expectedSigner);
         if (format === 'eip712') {
             const typed = battleIntentTypedData(intent);
             // The protocol declares its type list `as const` so field order cannot drift;
@@ -193,9 +240,9 @@ export function verifyIntentSignature(intent: BattleIntent, signature: string, f
             // rebuilt copy that could silently reorder fields.
             const types = typed.types as unknown as Record<string, ethers.TypedDataField[]>;
             const recovered = ethers.verifyTypedData(typed.domain, types, typed.message, signature);
-            return normalizeAccount(recovered) === intent.attackerOwner;
+            return normalizeAccount(recovered) === signer;
         }
-        return verifySolanaSignature(intent.attackerOwner, signature, battleIntentSolanaMessage(intent));
+        return verifySolanaSignature(signer, signature, battleIntentSolanaMessage(intent));
     } catch {
         // A malformed signature is a refusal, not an exception for the route to handle.
         return false;

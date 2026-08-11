@@ -132,6 +132,11 @@ export { useCreateBattleRoom, type CreateRoomVars } from './battle/useCreateBatt
 export { BATTLE_CONFIG_QUERY_KEY, useBattleConfig, type BattleConfig } from './battle/useBattleConfig';
 export { useBattleMode, type BattleMode, type BattleModeState } from './battle/useBattleMode';
 export {
+    type BattleSession,
+    signIntentWithSession,
+    useBattleSession,
+} from './battle/useBattleSession';
+export {
     useSubmitBattleIntent,
     type AcceptedBattle,
     type SubmitBattleIntentVars,

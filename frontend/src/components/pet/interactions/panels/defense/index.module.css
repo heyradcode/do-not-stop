@@ -77,3 +77,22 @@
     background: rgb(148 163 184 / 8%);
     opacity: 0.85;
 }
+
+/* Delegated battle signing, below the consent controls. Visually separated because the two
+   grants are easy to confuse: consent lets others challenge you, a session lets you start
+   battles without a prompt each time. */
+.session {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgb(148 163 184 / 18%);
+}
+
+.sessionLabel {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    opacity: 0.8;
+}

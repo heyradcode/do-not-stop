@@ -68,6 +68,18 @@ export {
     verifyAuthorizationSignature,
 } from './consent.service';
 export { assertServedDomain, servedChainIds, servedDeploymentId, servedDomain } from './domain';
+export { deleteSessionDelegations, postSessionDelegation } from './session.controller';
+export {
+    findSessionDelegation,
+    revokeSessionDelegations,
+    type SessionDelegationWire,
+    type SessionRejection,
+    submitSessionDelegation,
+    type SubmitSessionRequest,
+    type SubmitSessionResult,
+    toProtocolDelegation,
+    verifyDelegationSignature,
+} from './session.service';
 export { backendBattleModeEnabled, requireBackendBattleMode } from './mode';
 export { postBattleIntent } from './intent.controller';
 export {

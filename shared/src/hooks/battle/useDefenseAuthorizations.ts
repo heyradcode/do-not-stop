@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '../../contexts/ApiClientContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useActiveChain } from '../session/useActiveChain';
-import { chainIdFor } from './chainIdFor';
+import { tryChainIdFor } from './chainIdFor';
 import { useBattleConfig } from './useBattleConfig';
 
 /**
@@ -80,7 +80,7 @@ export const useDefenseAuthorizations = (): UseDefenseAuthorizationsResult => {
     // Null until the config names the chains this deployment serves, since the id is the
     // protocol's (`eip155:84532`), not the adapter's discriminator.
     const chainId =
-        activeChain.kind === 'none' || !config ? null : chainIdFor(activeChain.kind, config.chainIds);
+        activeChain.kind === 'none' || !config ? null : tryChainIdFor(activeChain.kind, config.chainIds);
 
     const query = useQuery({
         queryKey: defenseAuthorizationsQueryKey(baseURL, chainId),

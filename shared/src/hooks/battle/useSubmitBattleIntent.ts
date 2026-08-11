@@ -14,6 +14,7 @@ import { normalizeSolanaSignatureToBase58 } from '../../utils/solana/signatureAu
 
 import { useActiveChain } from '../session/useActiveChain';
 import { chainIdFor } from './chainIdFor';
+import { signIntentWithSession, useBattleSession } from './useBattleSession';
 import { useBattleConfig } from './useBattleConfig';
 
 /**
@@ -64,6 +65,9 @@ export function useSubmitBattleIntent() {
     const activeChain = useActiveChain();
     const { data: config } = useBattleConfig();
     const { signTypedDataAsync } = useSignTypedData();
+    // Null unless the wallet approved a session key; the submit path falls back to the
+    // wallet prompt when it is, which is exactly the behaviour that existed before.
+    const session = useBattleSession();
 
     const [isPending, setIsPending] = useState(false);
     const [error, setError] = useState<Error | null>(null);
@@ -97,15 +101,32 @@ export function useSubmitBattleIntent() {
                     expiresAt: Math.floor(Date.now() / 1000) + INTENT_TTL_SECONDS,
                 };
 
-                const { signature, signatureFormat } =
-                    activeChain.kind === 'evm'
-                        ? { signature: await signEvmIntent(intent, signTypedDataAsync), signatureFormat: 'eip712' as const }
-                        : { signature: await signSolanaIntent(intent), signatureFormat: 'solana-message' as const };
+                // The delegated key when the wallet approved one, the wallet otherwise
+                // (§D). Same signature over the same intent either way — what differs is
+                // only who holds the key, and therefore how often a human is asked.
+                const { signature, signatureFormat, sessionKey } = session.key
+                    ? {
+                          signature: await signIntentWithSession(session.key, battleIntentTypedData(intent)),
+                          signatureFormat: 'eip712' as const,
+                          sessionKey: session.key.address,
+                      }
+                    : activeChain.kind === 'evm'
+                      ? {
+                            signature: await signEvmIntent(intent, signTypedDataAsync),
+                            signatureFormat: 'eip712' as const,
+                            sessionKey: undefined,
+                        }
+                      : {
+                            signature: await signSolanaIntent(intent),
+                            signatureFormat: 'solana-message' as const,
+                            sessionKey: undefined,
+                        };
 
                 const { data: submitted } = await apiClient.post<SubmitIntentResponse>('/api/battle/intents', {
                     intent: toWire(intent),
                     signature,
                     signatureFormat,
+                    ...(sessionKey ? { sessionKey } : {}),
                 });
 
                 const { data: accepted } = await apiClient.post<AcceptedBattle>(
@@ -130,7 +151,7 @@ export function useSubmitBattleIntent() {
                 setIsPending(false);
             }
         },
-        [activeChain, apiClient, config, signTypedDataAsync],
+        [activeChain, apiClient, config, session.key, signTypedDataAsync],
     );
 
     return { submit, isPending, error };

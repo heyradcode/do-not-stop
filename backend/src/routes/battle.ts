@@ -13,7 +13,9 @@ import {
     getSigningKeys,
     postAcceptBattle,
     postBattleIntent,
+    deleteSessionDelegations,
     postDefenseAuthorization,
+    postSessionDelegation,
     postVerifyReceipt,
     requireBackendBattleMode,
 } from '@features/battle/ledger';
@@ -48,6 +50,13 @@ router.delete('/authorizations', verifyToken, asyncRoute(deleteDefenseAuthorizat
 // stale precisely when something is off, and a mode flag should not be what hides it.
 // Scoped to the authenticated wallet in the controller, never to a queried address.
 router.get('/authorizations', verifyToken, asyncRoute(getDefenseAuthorizations));
+
+// Delegated battle-intent signing (§D). The owner approves a client-held key once and that
+// key signs intents, so the wallet prompt stops being per battle. Gated on backend mode
+// like the other writes; revocation is not, for the same reason consent revocation is not:
+// withdrawing authority must keep working whatever else is switched off.
+router.post('/sessions', requireBackendBattleMode, verifyToken, battleRoomRateLimit, asyncRoute(postSessionDelegation));
+router.delete('/sessions', verifyToken, asyncRoute(deleteSessionDelegations));
 
 // Authoritative, re-fetchable reads (§J). No auth: every value here is either already
 // public on chain or is itself a signed artifact anyone is meant to check, so gating

@@ -24,6 +24,11 @@ const STATUS_BY_REASON: Record<IntentRejection, number> = {
     'wallet-mismatch': 403,
     'wrong-signature-format': 422,
     'bad-signature': 401,
+    // 401, like a bad signature: the signature was real but the key is not authorized to
+    // act for this wallet. Its own reason rather than folded into `bad-signature`, because
+    // it is the one a player can fix — the session lapsed or was revoked, and re-approving
+    // is a single prompt. A client should re-delegate and retry rather than give up.
+    'session-not-authorized': 401,
     'unknown-pet': 404,
     'not-pet-owner': 403,
     'self-battle': 422,
@@ -35,6 +40,8 @@ interface SubmitIntentBody {
     intent?: BattleIntentWire;
     signature?: string;
     signatureFormat?: SignatureFormat;
+    /** The delegated key that signed, when one did (§D). Absent means the wallet signed. */
+    sessionKey?: string;
 }
 
 export async function postBattleIntent(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -54,6 +61,7 @@ export async function postBattleIntent(req: AuthenticatedRequest, res: Response)
         intent: body.intent,
         signature: body.signature,
         signatureFormat: body.signatureFormat,
+        ...(typeof body.sessionKey === 'string' ? { sessionKey: body.sessionKey } : {}),
         authenticatedWallet: wallet,
         // The clock enters here and nowhere deeper, so every layer below is testable
         // without faking time.
