@@ -73,6 +73,20 @@ const server = app.listen(env.port, '0.0.0.0', async () => {
         void loadPersistedSigningKeys().catch((error: unknown) =>
             console.error(`[battle-signer] could not load persisted signing keys: ${(error as Error).message}`),
         );
+        // §F is a hard precondition, not a nice-to-have: the backend will not sign a receipt
+        // the independent Go port has not confirmed, so an unset address does not degrade
+        // verification, it stalls every battle at `computed` until it forfeits. Silence here
+        // cost two rounds of diagnosis, because a stalled battle and an unreachable verifier
+        // look identical from the client, which only says it is waiting.
+        if (env.indexerGrpc.addr) {
+            console.log(`[battle-verify] independent verifier at ${env.indexerGrpc.addr}`);
+        } else {
+            console.error(
+                '[battle-verify] INDEXER_GRPC_ADDR is not set. Independent verification cannot run, ' +
+                    'so every battle will stall after `computed` and then forfeit. ' +
+                    'Check it with `pnpm --filter backend exec tsx scripts/diagnose-verifier.ts`.',
+            );
+        }
         battleWorker = startBattleWorker(`backend-${process.pid}`);
         // Aggregates published receipts into Merkle batches and anchors the roots (§I).
         // No-ops unless BATTLE_ANCHOR_* is configured; batches are still built either way.
