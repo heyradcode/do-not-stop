@@ -78,6 +78,7 @@ export const useBreedPets = (options?: UseBreedPetsOptions) => {
         abi: evm?.gameLogic.abi ?? [],
         address: address as `0x${string}` | undefined,
         pendingRequestId: isEvm ? pendingRequestId : null,
+        fromBlock: flow.requestBlockNumber,
         onBreedSuccess: isEvm ? handleBreedFulfilled : undefined,
     });
 

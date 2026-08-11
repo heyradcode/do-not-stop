@@ -106,6 +106,9 @@ export const useCreatePet = (options?: PetMutationOptions): PetMutationResult<Cr
         eventName: 'MintSettled',
         enabled: Boolean(isEvm && evm?.gameLogic.address && pendingRequestId != null),
         chainId: evm?.chainId,
+        // A running settle keeper can land MintSettled before this watch arms, in
+        // which case reading from the head misses it and the mint never completes.
+        fromBlock: flow.requestBlockNumber,
         onLogs(logs) {
             if (pendingRequestId == null) return;
             const typed = logs as unknown as { args: { requestId?: bigint; petId?: bigint } }[];

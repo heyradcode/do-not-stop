@@ -38,6 +38,14 @@ export interface EvmEntropySettleFlowOptions {
 export interface EvmEntropySettleFlow {
     /** Non-null from the request tx landing until the caller clears it. */
     pendingRequestId: bigint | null;
+    /**
+     * Block the request tx landed in, for callers that watch a settled event.
+     *
+     * Both the reveal and, when a keeper is running, the settle itself can land
+     * before a watch armed from the request can start looking. Every watch in this
+     * flow therefore reads from here rather than from the current head.
+     */
+    requestBlockNumber: bigint | undefined;
     /** Receipt of the settle tx, for callers that parse the settled event out of it. */
     settleReceipt: TransactionReceipt | undefined;
     settleConfirmed: boolean;
@@ -126,6 +134,7 @@ export const useEvmEntropySettleFlow = (
         entropyAddress: enabled ? (entropyAddress as `0x${string}` | undefined) : undefined,
         gameLogicAddress: enabled ? evm?.gameLogic.address : undefined,
         requestId: enabled ? pendingRequestId : null,
+        fromBlock: requestReceipt?.blockNumber,
         onFulfilled: handleEntropyFulfilled,
     });
 
@@ -148,6 +157,7 @@ export const useEvmEntropySettleFlow = (
 
     return {
         pendingRequestId,
+        requestBlockNumber: requestReceipt?.blockNumber,
         settleReceipt,
         settleConfirmed: enabled && settleConfirmed,
         isSettling: enabled && settle.isPending,
