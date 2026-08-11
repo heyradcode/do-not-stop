@@ -23,6 +23,7 @@ import PetSelect from '@components/ui/pet-select';
 import Icon, { MuscleIcon, RefreshIcon } from '@components/ui/icon';
 import InfoTooltip from '@components/ui/info-tooltip';
 import NeonButton from '@components/ui/neon-button';
+import TabSwitch from '@components/ui/tab-switch';
 import ItemDetailModal from './item-detail-modal';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
@@ -54,6 +55,11 @@ function petName(pets: { id: unknown; name: string }[], petId: string): string {
  * `ITEM_CATEGORIES` cannot pass backend validation, be stored, be returned by the API, and
  * then silently fail to render here because this list never heard about it.
  */
+const INVENTORY_TABS = [
+    { id: 'bag', label: 'Bag' },
+    { id: 'equipment', label: 'Equipment' },
+] as const;
+
 const CATEGORY_RANK: Record<string, number> = {
     consumable: 0,
     equipment: 1,
@@ -333,20 +339,16 @@ const Inventory: React.FC = () => {
             >
                 {/* One scrolling region for the whole body. `.panel-body` clips, so without
                     this the bag is cut off at the panel's edge with no way to reach the rest. */}
-                <div className={styles.tabs} role="tablist" aria-label="Inventory">
-                    {([['bag', 'Bag'], ['equipment', 'Equipment']] as const).map(([id, label]) => (
-                        <button
-                            key={id}
-                            type="button"
-                            role="tab"
-                            aria-selected={tab.name === id}
-                            className={tab.name === id ? `${styles.tab} ${styles.isActive}` : styles.tab}
-                            onClick={() => setTab(id === 'equipment' ? { name: 'equipment', petId: null } : { name: 'bag' })}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
+                <TabSwitch
+                    options={INVENTORY_TABS}
+                    value={tab.name}
+                    // Widening back to the union the state actually holds: selecting the
+                    // equipment tab from here clears the pet, while the per-item shortcuts
+                    // below open it with one already chosen.
+                    onChange={(next) => setTab(next === 'equipment' ? { name: 'equipment', petId: null } : { name: 'bag' })}
+                    label="Inventory"
+                    tone="amber"
+                />
 
                 <div className={styles.scroll}>
                     {tab.name === 'equipment' ? (

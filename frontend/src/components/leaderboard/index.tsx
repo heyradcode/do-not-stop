@@ -14,12 +14,18 @@ import DashboardPanel from '@components/common/dashboard-panel';
 import SessionGate from '@components/common/session-gate';
 import PetArt from '@components/pet/pet-art';
 import Icon, { TrophyIcon } from '@components/ui/icon';
+import TabSwitch from '@components/ui/tab-switch';
 import { DASHBOARD_HOME } from '@constants/interactionRoutes';
 import { Tones } from '@constants/tones';
 import styles from './index.module.css';
 
 /** Which ranking is showing. Pets is the default: it is the one with a pet in it. */
 type Board = 'pets' | 'players';
+
+const BOARD_TABS = [
+    { id: 'pets', label: 'Pets' },
+    { id: 'players', label: 'Players' },
+] as const satisfies readonly { id: Board; label: string }[];
 
 /** Win rate as a percentage, or null when the row has no battles to divide by. */
 function winRate(wins: number, losses: number): number | null {
@@ -327,20 +333,7 @@ const Leaderboard: React.FC = () => {
                 description="Ranked by wins, then by fewest losses"
                 back={goBack}
             >
-                <div className={styles.tabs} role="tablist" aria-label="Leaderboard type">
-                    {(['pets', 'players'] as const).map((tab) => (
-                        <button
-                            key={tab}
-                            type="button"
-                            role="tab"
-                            aria-selected={board === tab}
-                            className={board === tab ? `${styles.tab} ${styles.isActive}` : styles.tab}
-                            onClick={() => showBoard(tab)}
-                        >
-                            {tab === 'pets' ? 'Pets' : 'Players'}
-                        </button>
-                    ))}
-                </div>
+                <TabSwitch options={BOARD_TABS} value={board} onChange={showBoard} label="Leaderboard type" tone="amber" />
 
                 <div className={styles.search}>
                     <input

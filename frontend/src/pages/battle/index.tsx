@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import InteractionStandalone from '@components/pet/interactions/standalone';
 import BattlePanel from '@components/pet/interactions/panels/battle';
 import DefensePanel from '@components/pet/interactions/panels/defense';
-import styles from './index.module.css';
+import { TabSwitch } from '@components/ui';
 
 /**
  * Top-level `/battle` page: picking a fight, and the standing consent that lets others pick
@@ -26,20 +26,7 @@ const BattlePage: React.FC = () => {
 
     return (
         <InteractionStandalone action="battle" minPets={1}>
-            <div className={styles.tabs} role="tablist" aria-label="Battle arena">
-                {TABS.map((entry) => (
-                    <button
-                        key={entry.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={tab === entry.id}
-                        className={tab === entry.id ? `${styles.tab} ${styles.isActive}` : styles.tab}
-                        onClick={() => setTab(entry.id)}
-                    >
-                        {entry.label}
-                    </button>
-                ))}
-            </div>
+            <TabSwitch options={TABS} value={tab} onChange={setTab} label="Battle arena" tone="magenta" />
 
             {/* Unmounted rather than hidden. The battle panel owns a multi-step state machine
                 and a live room socket; leaving it mounted behind the defence tab would keep
