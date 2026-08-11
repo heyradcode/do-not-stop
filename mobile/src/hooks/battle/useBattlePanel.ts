@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    describeMechanicalLogEntry,
     getReadyPetsUnified,
     useBattlePets,
     useBattleTaunts,
     useChainCapabilities,
     useCreateBattleRoom,
+    useLiveBattleAnimation,
     useOpponents,
     usePetList,
     useWinEstimate,
@@ -59,6 +61,19 @@ export interface UseBattlePanel {
     onStartBattle: () => void;
     result: BattleResolvedResult | null;
     onDismissResult: () => void;
+    /** Fighter and opponent HP as 0-100, stepping down one strike at a time. */
+    hp1Percent: number;
+    hp2Percent: number;
+    /** Flavour line for the strike currently on screen; null before the first. */
+    flourish: string | null;
+    /** Every strike played so far, worded for the log, oldest first. */
+    strikeLog: string[];
+    /** True once the replay has finished, or immediately when there is nothing to play. */
+    replayDone: boolean;
+    /** Restart the same replay from its first strike. */
+    onReplay: () => void;
+    /** Whether a replay exists to watch at all. */
+    hasReplay: boolean;
 }
 
 /**
@@ -134,6 +149,37 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         roomId,
         roomSocketUrl: BATTLE_ROOM_WS_URL,
     });
+
+    /**
+     * The fight, played back one strike at a time.
+     *
+     * `liveReplay` is this client's *own* simulation of the receipt's inputs, and
+     * `useBattlePets` only exposes it once every verification check has passed. So the
+     * animation cannot disagree with the result beside it: if the local replay produced a
+     * different fight, `checkCombatReplay` would have failed and there would be nothing
+     * here to animate. That is why this needs no reconciliation notice of the kind
+     * frontend carried for the old on-chain path.
+     *
+     * It is presentation only either way. The receipt settles the battle; this shows how.
+     */
+    const animation = useLiveBattleAnimation(
+        battle.liveReplay?.log ?? null,
+        battle.liveReplay?.startHp1 ?? null,
+        battle.liveReplay?.startHp2 ?? null,
+        true,
+    );
+
+    const strikeLog = useMemo(
+        () =>
+            animation.history.map((entry) =>
+                describeMechanicalLogEntry(
+                    entry,
+                    fighter?.name ?? 'Your pet',
+                    opponent?.name ?? 'The opponent',
+                ),
+            ),
+        [animation.history, fighter?.name, opponent?.name],
+    );
 
     // Read through a ref so the effect below depends on the pending fight alone.
     // `battle` is a fresh object every render, and depending on it would restart
@@ -231,5 +277,12 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         onStartBattle,
         result,
         onDismissResult: () => setResult(null),
+        hp1Percent: animation.hp1Percent,
+        hp2Percent: animation.hp2Percent,
+        flourish: animation.flourish,
+        strikeLog,
+        replayDone: animation.done,
+        onReplay: animation.replay,
+        hasReplay: (battle.liveReplay?.log.length ?? 0) > 0,
     };
 };

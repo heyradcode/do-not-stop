@@ -41,7 +41,34 @@ const mockState = {
     isConnected: true,
     winProbability: 0.62 as number | null,
     turns: [] as { text: string }[],
+    /**
+     * The client's own replay of the verified receipt, which is the only thing the
+     * scene animates. Null until a battle resolves, and absent entirely when a check
+     * failed — so an unverified fight has nothing to show rather than something
+     * unverified to show.
+     */
+    liveReplay: null as {
+        log: Record<string, unknown>[];
+        startHp1: bigint;
+        startHp2: bigint;
+    } | null,
 };
+
+/** One strike, shaped as `StrikeLogEntry`. */
+const strike = (over: Record<string, unknown> = {}) => ({
+    round: 1,
+    attacker: 1,
+    isMagic: false,
+    damage: 10n,
+    heal: 0n,
+    crit: false,
+    elementMult: 100,
+    furyTriggered: false,
+    rebirthTriggered: false,
+    hp1After: 100n,
+    hp2After: 90n,
+    ...over,
+});
 
 const mockBattle = jest.fn();
 const mockTaunts = jest.fn();
@@ -88,8 +115,21 @@ jest.mock('@shared/core', () => ({
             isPending: false,
             error: null,
             phase: 'idle',
+            liveReplay: mockState.liveReplay,
         };
     },
+    // The real hook, not a stub: the replay's stepping and its done-gate are the
+    // behaviour under test, and a fake would only assert the fake. Pulled in by
+    // relative path because the barrel this factory replaces is what drags the Solana
+    // runtime into jest.
+    useLiveBattleAnimation: (...args: unknown[]) =>
+        jest
+            .requireActual('../../shared/src/hooks/battle/useLiveBattleAnimation')
+            .useLiveBattleAnimation(...args),
+    describeMechanicalLogEntry: (...args: unknown[]) =>
+        jest
+            .requireActual('../../shared/src/hooks/battle/useLiveBattleAnimation')
+            .describeMechanicalLogEntry(...args),
 }));
 
 jest.mock('../src/hooks/usePetErrorToast', () => ({ usePetErrorToast: () => {} }));
@@ -142,6 +182,7 @@ beforeEach(() => {
     mockState.isConnected = true;
     mockState.winProbability = 0.62;
     mockState.turns = [];
+    mockState.liveReplay = null;
     delete mockRouteParams.petId;
     jest.clearAllMocks();
 });
@@ -304,5 +345,71 @@ describe('BattleScreen', () => {
         mockState.opponents = [];
         const tree = await render();
         expect(textOf(tree)).toContain('backend unreachable');
+    });
+});
+
+/**
+ * The replay is presentation over a verified receipt, never a source of truth.
+ *
+ * `useBattlePets` only exposes `liveReplay` once every verification check has passed,
+ * so there is no state where the scene animates a fight the receipt does not commit to.
+ * What is worth pinning here is the other half: that the verdict waits for the fight to
+ * finish, and that a battle with nothing to animate still reports its result at once.
+ */
+describe('battle replay', () => {
+    const replay = (log: ReturnType<typeof strike>[]) => ({
+        log,
+        startHp1: 100n,
+        startHp2: 100n,
+    });
+
+    it('shows nothing to watch until a replay exists', async () => {
+        const tree = await render();
+        expect(textOf(tree)).not.toContain('Bracing for the first strike');
+    });
+
+    it('opens on full bars, before any strike has played', async () => {
+        mockState.liveReplay = replay([strike()]);
+        const tree = await render();
+        // Both fighters at 100%: the first strike has not landed yet.
+        expect(textOf(tree)).toContain('Bracing for the first strike');
+        expect(textOf(tree)).toContain('100%');
+    });
+
+    it('plays a strike, dropping the defender and narrating it', async () => {
+        mockState.liveReplay = replay([strike({ hp1After: 100n, hp2After: 60n })]);
+        const tree = await render();
+
+        await ReactTestRenderer.act(async () => {
+            await new Promise((r) => setTimeout(r, 750));
+        });
+
+        const rendered = textOf(tree);
+        expect(rendered).toContain('60%');
+        expect(rendered).toContain('lands a physical strike');
+        // The mechanical log names both fighters, unlike the one-line flourish.
+        expect(rendered).toContain('Round 1');
+        expect(rendered).toContain('Rex');
+    });
+
+    it('reports the whole log as history, oldest first', async () => {
+        mockState.liveReplay = replay([
+            strike({ round: 1, hp2After: 70n }),
+            strike({ round: 2, attacker: 2, crit: true, hp1After: 55n }),
+        ]);
+        const tree = await render();
+
+        // One act per strike. The next timer is only armed by the effect that runs
+        // after React re-renders from the previous one, so a single long wait would
+        // play the first strike and never schedule the second.
+        for (let i = 0; i < 2; i++) {
+            await ReactTestRenderer.act(async () => {
+                await new Promise((r) => setTimeout(r, 750));
+            });
+        }
+
+        const rendered = textOf(tree);
+        expect(rendered.indexOf('Round 1')).toBeLessThan(rendered.indexOf('Round 2'));
+        expect(rendered).toContain('Crit!');
     });
 });

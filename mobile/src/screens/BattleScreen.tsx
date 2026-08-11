@@ -12,6 +12,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 
 import PetPicker from '../components/PetPicker';
+import BattleScene from './parts/BattleScene';
 import { useBattlePanel } from '../hooks/battle/useBattlePanel';
 import { getLevelDelta, getMatchLabel, getMatchTier } from '../hooks/battle/matchmaking';
 import type { MainTabParamList } from '../navigation/routes';
@@ -129,6 +130,17 @@ export default function BattleScreen() {
                 </View>
             ) : null}
 
+            {panel.hasReplay ? (
+                <BattleScene
+                    fighterName={panel.fighter?.name ?? 'Your pet'}
+                    opponentName={panel.opponent?.name ?? 'Opponent'}
+                    hp1Percent={panel.hp1Percent}
+                    hp2Percent={panel.hp2Percent}
+                    flourish={panel.flourish}
+                    strikeLog={panel.strikeLog}
+                />
+            ) : null}
+
             <TouchableOpacity
                 style={[styles.action, panel.isBusy && styles.actionDisabled]}
                 onPress={panel.onStartBattle}
@@ -144,8 +156,14 @@ export default function BattleScreen() {
                 <Text style={styles.warning}>{panel.validationError}</Text>
             ) : null}
 
+            {/*
+             * Held back until the replay finishes, or the verdict lands on top of the
+             * fight the player is still watching. With no replay to play, the hook reports
+             * done immediately, so a battle that cannot be animated still shows its result
+             * at once.
+             */}
             <Modal
-                visible={panel.result != null}
+                visible={panel.result != null && panel.replayDone}
                 transparent
                 animationType="fade"
                 onRequestClose={panel.onDismissResult}
@@ -177,9 +195,22 @@ export default function BattleScreen() {
                                 </Text>
                             </>
                         ) : null}
+                        {panel.hasReplay ? (
+                            <TouchableOpacity
+                                style={styles.action}
+                                onPress={panel.onReplay}
+                                accessibilityRole="button"
+                                accessibilityLabel="Watch again"
+                                activeOpacity={0.85}
+                            >
+                                <Text style={styles.actionText}>Watch again</Text>
+                            </TouchableOpacity>
+                        ) : null}
                         <TouchableOpacity
                             style={styles.action}
                             onPress={panel.onDismissResult}
+                            accessibilityRole="button"
+                            accessibilityLabel="Close result"
                             activeOpacity={0.85}
                         >
                             <Text style={styles.actionText}>Close</Text>
