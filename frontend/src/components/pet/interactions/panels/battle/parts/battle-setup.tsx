@@ -97,7 +97,12 @@ const CombatantCard: React.FC<{
                             for the filling image and pin it to the emoji's size. */}
                         <div className={styles.combatantCardArt}>
                             <PetArt pet={pet} fill emojiClassName={styles.combatantCardAvatar} />
-                            <EquippedBadges equipped={equipped} rarity={pet.rarity} size="md" />
+                            <EquippedBadges
+                                equipped={equipped}
+                                rarity={pet.rarity}
+                                size="md"
+                                corner="top-right"
+                            />
                         </div>
                         {/* Nothing below is legible over arbitrary generated art without it. */}
                         <div className={styles.combatantCardScrim} aria-hidden />

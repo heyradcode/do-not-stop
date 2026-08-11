@@ -1,24 +1,35 @@
 /* CSS Module — class names are local; reference via `import styles from './equipped-badges.module.css'`.
-   Pinned to the bottom-right of the pet's art. Absolute, so the caller's art container has to
-   be a positioned ancestor — the same requirement `<PetArt fill>` already imposes. */
+   Pinned to a corner of the pet's art. Absolute, so the caller's art container has to be a
+   positioned ancestor — the same requirement `<PetArt fill>` already imposes. */
 
 .strip,
 .stripMd {
     position: absolute;
     right: 6px;
-    bottom: 6px;
     z-index: 2;
     display: flex;
-    /* Stacked, not in a row. A column costs one icon's width along the bottom edge instead
-       of three, which leaves more of the pet visible on a card whose art is the point — and
-       with `bottom` pinned the stack grows upward, away from the name and stats that sit
-       under the art. Slot order still runs weapon, armor, trinket, top to bottom. */
+    /* Stacked, not in a row. A column costs one icon's width along the edge instead of
+       three, which leaves more of the pet visible on a card whose art is the point. Slot
+       order runs weapon, armor, trinket, and the stack grows away from the pinned edge, so
+       it reads top to bottom either way. */
     flex-direction: column;
     gap: 3px;
     /* Decoration over a click target: the card underneath owns the interaction, and an icon
        swallowing that click would make part of the card mysteriously dead. The `title`
        tooltip still works, since browsers show it regardless. */
     pointer-events: none;
+}
+
+/* Right for a gallery card: nothing is drawn over the art, so the gear keeps clear of the
+   pet's face. */
+.cornerBottom {
+    bottom: 6px;
+}
+
+/* Right for a combatant bay, where the name, stat row and HP bar are drawn across the bottom
+   of the same box the art fills — gear pinned low lands on the readout rather than beside it. */
+.cornerTop {
+    top: 6px;
 }
 
 .badge {

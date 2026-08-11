@@ -1,4 +1,5 @@
 import React from 'react';
+import clsx from 'clsx';
 import { getRarityColor, itemArtUrl as buildItemArtUrl, type EquippedItem } from '@shared/core';
 
 import styles from './equipped-badges.module.css';
@@ -13,6 +14,11 @@ import styles from './equipped-badges.module.css';
  * Positioned absolutely, so the caller must place it inside the art's own positioned
  * container — the same one `<PetArt fill>` fills. Both current callers already qualify,
  * because a filling image needs a positioned ancestor for exactly the same reason.
+ *
+ * Which corner it pins to is the caller's call because it depends on what else is drawn over
+ * the art. A gallery card has nothing below, so the gear sits bottom-right, out of the way of
+ * the pet's face. A combatant bay overlays a name, a stat row and an HP bar across the bottom
+ * of the same box, so gear pinned there lands on top of the readout.
  *
  * Renders nothing for a bare pet rather than an empty strip: most pets have no gear, and a
  * placeholder on every card would cost more attention than the feature is worth.
@@ -31,9 +37,20 @@ export type EquippedBadgesProps = {
     rarity: number;
     /** Bigger on a combatant card, which is the subject of its screen. */
     size?: 'sm' | 'md';
+    /**
+     * Which corner of the art to pin to. Defaults to the bottom, which is right wherever the
+     * art is the whole card; pass `top-right` when the caller draws a readout across the
+     * bottom of the same box.
+     */
+    corner?: 'bottom-right' | 'top-right';
 };
 
-const EquippedBadges: React.FC<EquippedBadgesProps> = ({ equipped, rarity, size = 'sm' }) => {
+const EquippedBadges: React.FC<EquippedBadgesProps> = ({
+    equipped,
+    rarity,
+    size = 'sm',
+    corner = 'bottom-right',
+}) => {
     if (!equipped || equipped.length === 0) return null;
 
     // By slot, so a pet's icons do not reshuffle between renders or between cards. Sorted on
@@ -43,7 +60,10 @@ const EquippedBadges: React.FC<EquippedBadgesProps> = ({ equipped, rarity, size 
 
     return (
         <div
-            className={size === 'md' ? styles.stripMd : styles.strip}
+            className={clsx(
+                size === 'md' ? styles.stripMd : styles.strip,
+                corner === 'top-right' ? styles.cornerTop : styles.cornerBottom,
+            )}
             // Set once here and inherited by every badge: custom properties cascade, and one
             // tint for the whole strip is exactly the point.
             style={{ '--rarity': getRarityColor(rarity) } as React.CSSProperties}
