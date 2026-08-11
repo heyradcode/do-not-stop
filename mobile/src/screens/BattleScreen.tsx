@@ -132,8 +132,8 @@ export default function BattleScreen() {
 
             {panel.hasReplay ? (
                 <BattleScene
-                    fighterName={panel.fighter?.name ?? 'Your pet'}
-                    opponentName={panel.opponent?.name ?? 'Opponent'}
+                    fighterName={panel.attackerName}
+                    opponentName={panel.defenderName}
                     hp1Percent={panel.hp1Percent}
                     hp2Percent={panel.hp2Percent}
                     flourish={panel.flourish}
@@ -193,6 +193,41 @@ export default function BattleScreen() {
                                         ? panel.result.xpWin
                                         : panel.result.xpLoss}
                                 </Text>
+
+                                {/*
+                                 * Rendered when it arrives and skipped when it does not.
+                                 * Dialogue is generated best-effort and the result is
+                                 * already on screen without it, so a slow or failed
+                                 * generation must not hold up the verdict.
+                                 */}
+                                {panel.resultTurns.length > 0 ? (
+                                    <View style={styles.dialogue}>
+                                        {panel.resultTurns.map((turn, i) => (
+                                            <View key={i} style={styles.dialogueTurn}>
+                                                <Text
+                                                    style={[
+                                                        styles.dialogueSpeaker,
+                                                        {
+                                                            color:
+                                                                turn.speaker === 'attacker'
+                                                                    ? neon.cyan
+                                                                    : neon.magenta,
+                                                        },
+                                                    ]}
+                                                >
+                                                    {turn.speaker === 'attacker'
+                                                        ? panel.attackerName
+                                                        : panel.defenderName}
+                                                </Text>
+                                                <Text style={styles.dialogueText}>{turn.text}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                ) : panel.dialogueLoading ? (
+                                    <Text style={styles.dialogueWaiting}>
+                                        The pets are catching their breath…
+                                    </Text>
+                                ) : null}
                             </>
                         ) : null}
                         {panel.hasReplay ? (
@@ -324,4 +359,20 @@ const styles = StyleSheet.create({
     },
     resultTitle: { fontSize: 28, fontWeight: '900', letterSpacing: 2, marginBottom: 12 },
     resultLine: { fontSize: 15, color: neon.textMuted, marginBottom: 4 },
+    dialogue: {
+        marginTop: 14,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: neon.border,
+        paddingTop: 12,
+    },
+    dialogueTurn: { marginBottom: 10 },
+    dialogueSpeaker: {
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+        marginBottom: 2,
+    },
+    dialogueText: { fontSize: 14, color: neon.text, lineHeight: 20 },
+    dialogueWaiting: { marginTop: 14, fontSize: 13, color: neon.textDim, fontStyle: 'italic' },
 });

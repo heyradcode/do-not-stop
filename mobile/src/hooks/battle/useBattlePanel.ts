@@ -10,9 +10,11 @@ import {
     useOpponents,
     usePetList,
     useWinEstimate,
+    toDialoguePet,
+    type BattlePersonas,
     type BattlePetsArgs,
     type BattleResolvedResult,
-    type DialoguePetInput,
+    type DialogueTurn,
     type OpponentPet,
     type Pet,
 } from '@shared/core';
@@ -20,20 +22,10 @@ import {
 import { BATTLE_ROOM_WS_URL } from '../../constants/api';
 import { usePetErrorToast } from '../usePetErrorToast';
 import { pickRandomOpponent, sortOpponentsByMatch } from './matchmaking';
+import { useResultDialogue } from './useResultDialogue';
 
 const BATTLE_FAIL_MESSAGE = 'Failed to start the battle. Please try again.';
 const VALIDATION_MESSAGE = 'Pick one of your pets and an opponent first.';
-
-/** Ported from frontend's `battle-utils`; the backend builds a persona from this. */
-const toDialoguePet = (pet: Pet | OpponentPet): DialoguePetInput => ({
-    petId: pet.id,
-    name: pet.name,
-    level: pet.level,
-    rarity: pet.rarity,
-    dna: pet.dna.toString(),
-    winCount: pet.winCount,
-    lossCount: pet.lossCount,
-});
 
 export interface UseBattlePanel {
     isConnected: boolean;
@@ -74,6 +66,12 @@ export interface UseBattlePanel {
     onReplay: () => void;
     /** Whether a replay exists to watch at all. */
     hasReplay: boolean;
+    /** What the two pets say to each other after the fight; taunts excluded. */
+    resultTurns: DialogueTurn[];
+    dialogueLoading: boolean;
+    /** Both names, resolved through the personas captured at battle start. */
+    attackerName: string;
+    defenderName: string;
 }
 
 /**
@@ -119,6 +117,17 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
      */
     const [roomId, setRoomId] = useState<string | null>(null);
     const [pendingStart, setPendingStart] = useState<BattlePetsArgs | null>(null);
+
+    /**
+     * Both personas as they stood when the fight started.
+     *
+     * Not a convenience. Publishing a receipt puts the fighter on cooldown, which drops
+     * it out of `readyPets`, so `fighter` is null by the time a result is on screen and
+     * `opponent` can leave the matchmaking list the same way. Everything that names the
+     * two afterwards — the strike log, the result dialogue — reads through here instead,
+     * or a finished battle narrates itself as "Your pet" against "The opponent".
+     */
+    const personasRef = useRef<BattlePersonas | null>(null);
 
     const readyPets = useMemo(() => getReadyPetsUnified(pets), [pets]);
     const fighter = readyPets.find(({ id }) => id === selectedPetId)?.pet ?? null;
@@ -169,16 +178,23 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         true,
     );
 
+    const dialogue = useResultDialogue({
+        chain: capabilities.activeKind,
+        battleId: battle.hash ?? null,
+        fighter,
+        opponent,
+        personas: personasRef.current,
+        attackerWon: result?.firstWins ?? null,
+        leveledUp: result?.attackerLeveledUp ?? false,
+        enabled: result != null,
+    });
+
     const strikeLog = useMemo(
         () =>
             animation.history.map((entry) =>
-                describeMechanicalLogEntry(
-                    entry,
-                    fighter?.name ?? 'Your pet',
-                    opponent?.name ?? 'The opponent',
-                ),
+                describeMechanicalLogEntry(entry, dialogue.attackerName, dialogue.defenderName),
             ),
-        [animation.history, fighter?.name, opponent?.name],
+        [animation.history, dialogue.attackerName, dialogue.defenderName],
     );
 
     // Read through a ref so the effect below depends on the pending fight alone.
@@ -224,11 +240,12 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
 
         // Taunts first, then the room, then the battle. The taunts call also
         // pre-generates the result dialogue on the backend, keyed by matchup.
-        taunts.generate({
-            chain,
+        const personas = {
             attacker: toDialoguePet(fighter),
             defender: toDialoguePet(opponent),
-        });
+        };
+        personasRef.current = personas;
+        taunts.generate({ chain, ...personas });
 
         // The room is best-effort (Â§J): it gives a spectator or a later replay
         // something to attach to, but a battle still settles from its receipt, so a
@@ -284,5 +301,9 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         replayDone: animation.done,
         onReplay: animation.replay,
         hasReplay: (battle.liveReplay?.log.length ?? 0) > 0,
+        resultTurns: dialogue.resultTurns,
+        dialogueLoading: dialogue.isLoading,
+        attackerName: dialogue.attackerName,
+        defenderName: dialogue.defenderName,
     };
 };

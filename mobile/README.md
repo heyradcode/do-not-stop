@@ -93,11 +93,14 @@ Things worth knowing before changing any of it:
 
 ## Known gaps
 
-- No round-by-round battle animation. A battle plays its taunts and then shows the result the
-  signed receipt carries. Battle *state* is live: it polls `GET /api/battle/:battleId` and
-  subscribes to the room socket for push updates on top.
+- No private chat. `useChatThreads` / `useChatMessages` are in `@shared/core` and unused here.
 - No ERC-20 token balances. The target chain's popular-token list holds a single testnet LINK.
-- No NFT art. Pets fall back to emoji avatars.
+
+Recently closed, so the older notes claiming otherwise are wrong: the battle replays
+round by round from the verified receipt and plays the AI result dialogue after it; pet
+art renders through `PetArt` when `IMAGE_SERVICE_URL` is set, falling back to the emoji
+avatar; the leaderboard, the inventory and equipment all have screens. See
+`docs/plan-mobile-frontend-parity.md` for what is left.
 
 ## Android package name
 

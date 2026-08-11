@@ -41,6 +41,9 @@ const mockState = {
     isConnected: true,
     winProbability: 0.62 as number | null,
     turns: [] as { text: string }[],
+    /** Post-fight reactions. `taunt` turns are filtered out before rendering. */
+    dialogueTurns: [] as { speaker: string; phase: string; text: string }[],
+    dialogueLoading: false,
     /**
      * The client's own replay of the verified receipt, which is the only thing the
      * scene animates. Null until a battle resolves, and absent entirely when a check
@@ -80,6 +83,8 @@ const mockCreateRoom = jest.fn<Promise<string | null>, unknown[]>(async () => 'r
 /** Captures what the panel hands `useBattlePets`, which is where roomId matters. */
 const mockBattleOptions: { roomId?: string | null; roomSocketUrl?: string } = {};
 const mockWinEstimateArgs = jest.fn();
+/** Captures what the result dialogue is asked for, including the personas fallback. */
+const mockDialogueArgs = jest.fn();
 
 jest.mock('@shared/core', () => ({
     getReadyPetsUnified: (pets: Pet[]) =>
@@ -107,6 +112,19 @@ jest.mock('@shared/core', () => ({
         isLoading: false,
     }),
     useCreateBattleRoom: () => ({ createRoom: mockCreateRoom, isLoading: false }),
+    toDialoguePet: (subject: Pet | OpponentPet) => ({
+        petId: subject.id,
+        name: subject.name,
+        level: subject.level,
+        rarity: subject.rarity,
+        dna: subject.dna.toString(),
+        winCount: subject.winCount,
+        lossCount: subject.lossCount,
+    }),
+    useBattleDialogue: (opts: Record<string, unknown>) => {
+        mockDialogueArgs(opts);
+        return { turns: mockState.dialogueTurns, isLoading: mockState.dialogueLoading };
+    },
     useBattlePets: (opts: { roomId?: string | null; roomSocketUrl?: string }) => {
         mockBattleOptions.roomId = opts?.roomId;
         mockBattleOptions.roomSocketUrl = opts?.roomSocketUrl;
@@ -183,6 +201,8 @@ beforeEach(() => {
     mockState.winProbability = 0.62;
     mockState.turns = [];
     mockState.liveReplay = null;
+    mockState.dialogueTurns = [];
+    mockState.dialogueLoading = false;
     delete mockRouteParams.petId;
     jest.clearAllMocks();
 });
@@ -411,5 +431,68 @@ describe('battle replay', () => {
         const rendered = textOf(tree);
         expect(rendered.indexOf('Round 1')).toBeLessThan(rendered.indexOf('Round 2'));
         expect(rendered).toContain('Crit!');
+    });
+});
+
+/**
+ * The result dialogue, and the reason it needs personas captured at battle start.
+ *
+ * Publishing a receipt puts the fighter on cooldown, so it leaves `readyPets` and
+ * `fighter` reads null exactly when the result is on screen. Anything naming the two
+ * afterwards has to fall back to what was captured when the fight began.
+ */
+describe('result dialogue', () => {
+    const startBattle = async (tree: ReactTestRenderer.ReactTestRenderer) => {
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+    };
+
+    it('asks only for the post-fight phase, since taunts already played', async () => {
+        mockState.dialogueTurns = [
+            { speaker: 'attacker', phase: 'taunt', text: 'Before the fight.' },
+            { speaker: 'defender', phase: 'result', text: 'Well fought.' },
+        ];
+        const tree = await render();
+        await startBattle(tree);
+
+        // A taunt turn reaching the result sheet would replay pre-fight lines after it.
+        expect(textOf(tree)).not.toContain('Before the fight.');
+    });
+
+    it('names both fighters from the captured personas once the fighter is on cooldown', async () => {
+        const tree = await render();
+        await startBattle(tree);
+
+        // The receipt has published, so the fighter is cooling down and out of the list.
+        mockState.pets = [pet({ readyAt: 9_999_999_999 })];
+        mockState.opponents = [];
+        await ReactTestRenderer.act(async () => {
+            tree.update(<BattleScreen />);
+        });
+
+        const asked = mockDialogueArgs.mock.calls.at(-1)?.[0] as {
+            attacker: { name: string } | null;
+            defender: { name: string } | null;
+        };
+        expect(asked.attacker?.name).toBe('Rex');
+        expect(asked.defender?.name).toBe('Luna');
+    });
+
+    it('narrates the strike log with those names too, not "Your pet"', async () => {
+        mockState.liveReplay = { log: [strike({ hp2After: 80n })], startHp1: 100n, startHp2: 100n };
+        const tree = await render();
+        await startBattle(tree);
+
+        mockState.pets = [pet({ readyAt: 9_999_999_999 })];
+        await ReactTestRenderer.act(async () => {
+            tree.update(<BattleScreen />);
+        });
+        await ReactTestRenderer.act(async () => {
+            await new Promise((r) => setTimeout(r, 750));
+        });
+
+        expect(textOf(tree)).toContain('Rex');
+        expect(textOf(tree)).not.toContain('Your pet strikes');
     });
 });
