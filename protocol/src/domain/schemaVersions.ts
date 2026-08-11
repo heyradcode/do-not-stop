@@ -29,6 +29,14 @@ export const SCHEMA_VERSIONS = {
     receipt: 1,
     combatLog: 1,
     merkleLeaf: 1,
+    /**
+     * The narrow (20-byte account) reward leaf, which EVM uses.
+     *
+     * Stays 1 rather than tracking the highest number, unlike every other entry here. 2 is
+     * the wide (32-byte account) layout Solana uses, and the two are chosen by account
+     * width rather than by age: both are current and neither will be retired. See
+     * `WIDE_REWARD_LEAF_SCHEMA_VERSION`.
+     */
     merkleRewardLeaf: 1,
 } as const;
 
@@ -50,7 +58,9 @@ const SUPPORTED_VERSIONS: Record<SchemaKind, readonly number[]> = {
     receipt: [1],
     combatLog: [1],
     merkleLeaf: [1],
-    merkleRewardLeaf: [1],
+    // Both permanently: 1 is the 20-byte-account layout the deployed EVM distributor
+    // verifies, 2 the 32-byte-account one Solana needs. Neither supersedes the other.
+    merkleRewardLeaf: [1, 2],
 };
 
 /** The version this build writes for `kind`. */

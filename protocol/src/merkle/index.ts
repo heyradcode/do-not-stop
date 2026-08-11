@@ -1,7 +1,12 @@
 export {
     MERKLE_REWARD_LEAF_DOMAIN,
     rewardMerkleLeaf,
+    rewardMerkleLeafFor,
+    wideRewardMerkleLeaf,
+    WIDE_REWARD_LEAF_SCHEMA_VERSION,
+    type FamilyRewardEntitlement,
     type RewardEntitlement,
+    type WideRewardEntitlement,
 } from './reward';
 export {
     buildMerkleTree,
