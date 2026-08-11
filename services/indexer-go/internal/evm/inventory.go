@@ -111,15 +111,33 @@ func (ix *Indexer) RunInventory(
 		reconcileC = reconcileTicker.C
 	}
 
+	// Its own pacer, not one shared with the roster loop: the two poll different queries and
+	// hold separate watermarks, so one being refused says nothing about the other. Sharing
+	// would let a stalled inventory sync throttle the roster, which is the read everything
+	// else depends on.
+	pace := newPacer(ix.poll, maxPollBackoff)
+	// Started half a period out of phase. Both loops are launched together and tick together,
+	// so they arrived at the subgraph as simultaneous pairs — which is the shape most likely
+	// to trip a rate limit, and why both original error lines carried the same millisecond.
+	pace.until = time.Now().Add(ix.poll / 2)
+
 	report := func(label string, count int, err error) bool {
 		switch {
 		case err != nil && ctx.Err() != nil:
 			return false
 		case err != nil:
-			slog.Error(label+" failed", "err", err)
-		case count > 0:
-			slog.Info(label, "count", count,
-				"itemWatermark", ix.itemWatermark, "equipmentWatermark", ix.equipmentWatermark)
+			delay := pace.failed(time.Now(), err)
+			if rateLimited(err) {
+				slog.Warn(label+" rate limited; backing off", "err", err, "retryIn", delay)
+			} else {
+				slog.Error(label+" failed", "err", err, "retryIn", delay)
+			}
+		default:
+			pace.succeeded()
+			if count > 0 {
+				slog.Info(label, "count", count,
+					"itemWatermark", ix.itemWatermark, "equipmentWatermark", ix.equipmentWatermark)
+			}
 		}
 		return true
 	}
@@ -129,6 +147,9 @@ func (ix *Indexer) RunInventory(
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
+			if !pace.ready(time.Now()) {
+				continue
+			}
 			if synced, err := ix.syncInventory(ctx, items, equipment); !report("evm inventory sync", synced, err) {
 				return nil
 			}
