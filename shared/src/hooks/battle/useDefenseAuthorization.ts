@@ -1,7 +1,6 @@
 import {
     defenseAuthorizationSolanaMessageBytes,
     defenseAuthorizationTypedData,
-    type ChainId,
     type DefenseAuthorization,
 } from '@cryptopets/protocol';
 import { useCallback, useState } from 'react';
@@ -12,6 +11,7 @@ import { useApiClient } from '../../contexts/ApiClientContext';
 import { normalizeSolanaSignatureToBase58 } from '../../utils/solana/signatureAuthCodec';
 
 import { useActiveChain } from '../session/useActiveChain';
+import { chainIdFor } from './chainIdFor';
 import { useBattleConfig } from './useBattleConfig';
 
 /**
@@ -152,16 +152,6 @@ export function useDefenseAuthorization() {
     }, [activeChain, apiClient, config]);
 
     return { grant, revoke, isPending, error };
-}
-
-/** Picks the served chain id matching the connected wallet's family. */
-function chainIdFor(kind: 'evm' | 'solana', servedChainIds: string[]): ChainId {
-    const prefix = kind === 'evm' ? 'eip155:' : 'solana:';
-    const match = servedChainIds.find((candidate) => candidate.startsWith(prefix));
-    if (!match) {
-        throw new Error(`this deployment serves no ${kind} chain (has ${servedChainIds.join(', ') || 'none'})`);
-    }
-    return match as ChainId;
 }
 
 async function signEvmAuthorization(

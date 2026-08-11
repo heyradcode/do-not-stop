@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 
 import { env } from '@config/env';
@@ -57,6 +57,28 @@ app.get('/', (_req: Request, res: Response) => {
             chat: '/api/chat',
         },
     });
+});
+
+/**
+ * Last resort for a route that rejected.
+ *
+ * Express 4 does not await route handlers, so a rejected promise from an `async` one is an
+ * unhandled rejection, and Node 24 exits the process on those by default. Every async
+ * handler in this app is therefore one throw away from taking the whole server down for
+ * every user: a single failed battle accept did exactly that.
+ *
+ * Registered after the routers, since Express picks error middleware by arity and by
+ * position. `next` is unused but must be declared, or Express treats this as an ordinary
+ * middleware and never calls it with an error.
+ */
+app.use((error: Error, req: Request, res: Response, _next: NextFunction) => {
+    console.error(`[api] unhandled error in ${req.method} ${req.originalUrl}:`, error);
+    if (res.headersSent) {
+        return;
+    }
+    // Deliberately opaque: an internal failure's message can name tables, hashes and
+    // wallets, none of which belongs in a client response.
+    res.status(500).json({ error: 'Internal error' });
 });
 
 export default app;

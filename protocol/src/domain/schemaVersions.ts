@@ -19,6 +19,8 @@
 export const SCHEMA_VERSIONS = {
     intent: 1,
     defenseAuthorization: 1,
+    /** Delegated battle-intent signing (§D). Not carried by any receipt. */
+    sessionDelegation: 1,
     /** 2 adds per-pet equipment (roadmap §4). Version 1 snapshots carry none. */
     snapshot: 2,
     /** 2 adds the combat-affecting item catalog (roadmap §4). */
@@ -37,6 +39,7 @@ export type SchemaKind = keyof typeof SCHEMA_VERSIONS;
 const SUPPORTED_VERSIONS: Record<SchemaKind, readonly number[]> = {
     intent: [1],
     defenseAuthorization: [1],
+    sessionDelegation: [1],
     // 1 stays supported: every receipt signed before equipment existed names a v1
     // snapshot, and those have to keep verifying forever (§H).
     snapshot: [1, 2],

@@ -8,6 +8,7 @@ vi.mock('@config/prisma', () => ({
             findUnique: vi.fn(),
         },
         $queryRaw: vi.fn(),
+        defenseAuthorization: { count: vi.fn() },
     },
 }));
 vi.mock('../../src/grpc/rosterReads', () => ({
@@ -19,7 +20,34 @@ vi.mock('../../src/repositories/battleProgress.overlay', () => ({
     servedChainIdForFamily: (chain: string) => servedChainIdForFamily(chain),
 }));
 
+/**
+ * A ruleset with a **non-empty** item catalog, which is the whole point of the stub.
+ *
+ * `servedRuleset()` joins the live catalog onto `SOURCE_DEFAULT_RULESET`, so the two are
+ * equal only while no item is seeded. Stubbing it to the bare constant here would make the
+ * consent filter's hash match by accident and hide the exact bug these cases now pin.
+ */
+vi.mock('../../src/features/battle/ledger/ruleset.builder', async () => {
+    const { SOURCE_DEFAULT_RULESET } = await vi.importActual<typeof import('@cryptopets/protocol')>(
+        '@cryptopets/protocol',
+    );
+    const { hashRuleset } = await vi.importActual<typeof import('@cryptopets/protocol')>('@cryptopets/protocol');
+    const served = {
+        ...SOURCE_DEFAULT_RULESET,
+        itemCatalog: [{ itemType: 3n, slot: 0, hp: 0, atk: 22, def: 0, int: 0, mdef: 0 }],
+    };
+    return {
+        servedRuleset: vi.fn(async () => served),
+        // Derived from the same object the stub serves, so the test cannot pass by having
+        // the hash and the ruleset drift — which is the bug this whole seam exists to stop.
+        servedRulesetHash: vi.fn(async () => hashRuleset(served)),
+    };
+});
+
+import { hashRuleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
+
 import { findReadyOpponents, getPetById } from '../../src/repositories/roster.repository';
+import { servedRulesetHash } from '../../src/features/battle/ledger/ruleset.builder';
 import { prisma } from '@config/prisma';
 
 const rosterRow = {
@@ -45,11 +73,19 @@ const rosterRow = {
     asset: '',
 };
 
-/** `$queryRaw` is called twice per lookup: the page, then its count. */
+/**
+ * `$queryRaw` is called twice per lookup — the page, then its count — and a third time
+ * only when the count is zero, to work out which filter emptied it.
+ *
+ * The third response is queued unconditionally because an unused `mockResolvedValueOnce`
+ * is harmless, while a missing one throws inside the diagnostic rather than in the case
+ * under test, which reads as an unrelated failure.
+ */
 function mockJoinQuery(rows: unknown[], total: number) {
     vi.mocked(prisma.$queryRaw)
         .mockResolvedValueOnce(rows as never)
-        .mockResolvedValueOnce([{ total: BigInt(total) }] as never);
+        .mockResolvedValueOnce([{ total: BigInt(total) }] as never)
+        .mockResolvedValueOnce([{ indexed: 0n, notMine: 0n, offCooldown: 0n, inBand: 0n }] as never);
 }
 
 /** The SQL text of the nth `$queryRaw` call, whitespace-collapsed for matching. */
@@ -74,8 +110,32 @@ function fragmentsOfCall(index: number): string {
         .replace(/\s+/g, ' ');
 }
 
+/**
+ * Every bound value in the nth call, flattened through nested `Prisma.Sql` fragments.
+ *
+ * The consent clause is a fragment interpolated into the outer query, and the ruleset hash
+ * is bound *inside* it, so it never appears among the outer call's own values. Flattening
+ * is what makes it assertable at all.
+ */
+function valuesOfCall(index: number): unknown[] {
+    const [, ...values] = vi.mocked(prisma.$queryRaw).mock.calls[index] as unknown as [string[], ...unknown[]];
+    const flatten = (input: unknown[]): unknown[] =>
+        input.flatMap((value) => {
+            const fragment = value as { sql?: unknown; values?: unknown[] };
+            return typeof fragment?.sql === 'string' && Array.isArray(fragment.values)
+                ? flatten(fragment.values)
+                : [value];
+        });
+    return flatten(values);
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
+    // `clearAllMocks` drops recorded calls but not queued `mockResolvedValueOnce`
+    // implementations. A case that queues three responses and consumes two leaves one
+    // behind, which the next case then consumes as its *first* answer — so a test fails
+    // reporting the previous test's data and nothing in either one looks wrong.
+    vi.mocked(prisma.$queryRaw).mockReset();
     servedChainIdForFamily.mockReturnValue('eip155:31337');
 });
 
@@ -152,6 +212,118 @@ describe('findReadyOpponents', () => {
         expect(consent).toContain('defense_authorization');
         expect(consent).toContain('a.revoked_at IS NULL');
         expect(consent).toContain('a.all_pets OR a.pet_ids @>');
+    });
+
+    /**
+     * Matches on the hash defenders actually signed, which is the *served* ruleset.
+     *
+     * This filtered on `hashRuleset(SOURCE_DEFAULT_RULESET)` while clients sign what
+     * `GET /api/battle/config` serves, which is `servedRuleset()`. Equal only while the item
+     * catalog is empty; seed one equipment item and the predicate matches no authorization
+     * ever written, so matchmaking returns nothing on a deployment full of consenting pets.
+     *
+     * The stubbed ruleset carries an item, so the two hashes genuinely differ here and the
+     * assertion fails against the old code instead of passing by coincidence.
+     */
+    it('matches consent on the served ruleset hash, not the source default', async () => {
+        mockJoinQuery([], 0);
+
+        await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 0, page: 0, pageSize: 10 });
+
+        const served = await vi.mocked(servedRulesetHash)();
+        const values = valuesOfCall(0);
+        expect(values).toContain(served);
+        expect(values).not.toContain(hashRuleset(SOURCE_DEFAULT_RULESET));
+    });
+
+    /**
+     * Which filter emptied the list.
+     *
+     * Four situations render as the same blank picker and only some are the player's to
+     * act on. Working out which one cost several rounds of guessing by hand, which is the
+     * argument for the server answering it.
+     */
+    describe('when the list comes back empty', () => {
+        /** page, count, then the diagnostic pass. */
+        function mockEmptyWithCounts(counts: Record<string, number>) {
+            vi.mocked(prisma.$queryRaw)
+                .mockResolvedValueOnce([] as never)
+                .mockResolvedValueOnce([{ total: 0n }] as never)
+                .mockResolvedValueOnce([
+                    {
+                        indexed: BigInt(counts.indexed ?? 0),
+                        notMine: BigInt(counts.notMine ?? 0),
+                        offCooldown: BigInt(counts.offCooldown ?? 0),
+                        inBand: BigInt(counts.inBand ?? 0),
+                    },
+                ] as never);
+        }
+
+        const call = () =>
+            findReadyOpponents({ chain: 'evm', excludeOwner: '0xme', minLevel: 0, page: 0, pageSize: 10 });
+
+        it('blames an unindexed roster, which is a server problem and not the player’s', async () => {
+            mockEmptyWithCounts({ indexed: 0 });
+            expect((await call()).emptyReason).toBe('roster-empty');
+        });
+
+        it('reports that every pet is the caller’s own', async () => {
+            mockEmptyWithCounts({ indexed: 5, notMine: 0 });
+            expect((await call()).emptyReason).toBe('all-yours');
+        });
+
+        it('reports cooldown when others exist but none are ready', async () => {
+            mockEmptyWithCounts({ indexed: 5, notMine: 3, offCooldown: 0 });
+            expect((await call()).emptyReason).toBe('all-on-cooldown');
+        });
+
+        it('reports the level band when it is what excluded everyone', async () => {
+            mockEmptyWithCounts({ indexed: 5, notMine: 3, offCooldown: 3, inBand: 0 });
+            expect((await call()).emptyReason).toBe('below-min-level');
+        });
+
+        // Consent is the only predicate left once the others are survived, and the two
+        // ways it fails send the player somewhere different.
+        it('reports no consent when nobody has granted any', async () => {
+            mockEmptyWithCounts({ indexed: 5, notMine: 3, offCooldown: 3, inBand: 3 });
+            vi.mocked(prisma.defenseAuthorization.count).mockResolvedValueOnce(0);
+
+            expect((await call()).emptyReason).toBe('no-consent');
+        });
+
+        it('reports stale consent when grants exist but none match the served ruleset', async () => {
+            // The distinction that matters: "turn it on" and "turn it on again" are
+            // different instructions, and only one of them is right for someone who
+            // already did.
+            mockEmptyWithCounts({ indexed: 5, notMine: 3, offCooldown: 3, inBand: 3 });
+            vi.mocked(prisma.defenseAuthorization.count)
+                .mockResolvedValueOnce(2)
+                .mockResolvedValueOnce(0);
+
+            expect((await call()).emptyReason).toBe('consent-stale');
+        });
+
+        it('costs nothing when the list is not empty', async () => {
+            mockJoinQuery([rosterRow], 1);
+
+            const result = await call();
+
+            expect(result.emptyReason).toBeUndefined();
+            // Two queries, not three: the diagnostic pass never runs on the happy path.
+            expect(vi.mocked(prisma.$queryRaw)).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    it('uses the same ruleset hash for the count as for the page', async () => {
+        // The count runs its own copy of the predicate, so a hash fixed in one and not the
+        // other would page correctly and total wrongly.
+        mockJoinQuery([], 0);
+
+        await findReadyOpponents({ chain: 'evm', excludeOwner: '0x', minLevel: 0, page: 0, pageSize: 10 });
+
+        const served = await vi.mocked(servedRulesetHash)();
+        expect(valuesOfCall(0)).toContain(served);
+        expect(valuesOfCall(1)).toContain(served);
     });
 
     it('leaves the level band and daily cap to accept time', async () => {

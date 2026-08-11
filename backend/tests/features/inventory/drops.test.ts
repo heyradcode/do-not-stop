@@ -147,4 +147,72 @@ describe('recordBattleDrops', () => {
         expect(drops).toEqual([]);
         expect(tx.itemEntitlement.createMany).not.toHaveBeenCalled();
     });
+
+    /**
+     * A player fighting two pets they both own is the case the unique key does not survive
+     * naively. Winner and loser are then one wallet, and when both rolls land on the same
+     * item the two entitlements share (sourceRef, owner, itemType), so `skipDuplicates`
+     * keeps one and the player silently loses an item they earned.
+     *
+     * Nothing forbids the battle: `assertBattleSnapshot` refuses a pet fighting *itself*,
+     * and the defender's own wallet can sign the authorization.
+     */
+    describe('when the winner and the loser are the same wallet', () => {
+        /** A battle id where both sides roll the same item, found by scanning the pool. */
+        const COLLIDING = (() => {
+            for (let i = 0; i < 500; i++) {
+                const drops = rollDrops(SEED, `btl_${i}`, WINNER, WINNER, ALWAYS);
+                if (drops.length === 2 && drops[0]!.itemType === drops[1]!.itemType) return `btl_${i}`;
+            }
+            throw new Error('no colliding battle id in the first 500; the drop pool changed');
+        })();
+
+        it('merges the two drops into one entitlement of quantity 2', async () => {
+            const tx = fakeTx();
+
+            const drops = await recordBattleDrops(tx as never, {
+                chain: 'evm', battleId: COLLIDING, seed: SEED,
+                winnerOwner: WINNER, loserOwner: WINNER, rates: ALWAYS,
+            });
+
+            const { data } = tx.itemEntitlement.createMany.mock.calls[0]![0];
+            expect(data).toHaveLength(1);
+            expect(data[0]).toMatchObject({ owner: WINNER, quantity: 2 });
+            // Returned as written, so a caller sees what the table holds.
+            expect(drops).toEqual([{ owner: WINNER, itemType: data[0].itemType, quantity: 2 }]);
+        });
+
+        it('still writes two rows when the same wallet wins two different items', async () => {
+            const battleId = (() => {
+                for (let i = 0; i < 500; i++) {
+                    const drops = rollDrops(SEED, `btl_${i}`, WINNER, WINNER, ALWAYS);
+                    if (drops.length === 2 && drops[0]!.itemType !== drops[1]!.itemType) return `btl_${i}`;
+                }
+                throw new Error('no two-item battle id in the first 500');
+            })();
+            const tx = fakeTx();
+
+            await recordBattleDrops(tx as never, {
+                chain: 'evm', battleId, seed: SEED,
+                winnerOwner: WINNER, loserOwner: WINNER, rates: ALWAYS,
+            });
+
+            expect(tx.itemEntitlement.createMany.mock.calls[0]![0].data).toHaveLength(2);
+        });
+
+        it('merges on the normalized owner, since that is what the unique key stores', async () => {
+            // Two spellings of one address are one wallet to the index and would otherwise
+            // be two groups here, which puts the collision straight back.
+            const tx = fakeTx();
+
+            await recordBattleDrops(tx as never, {
+                chain: 'evm', battleId: COLLIDING, seed: SEED,
+                winnerOwner: WINNER.toUpperCase().replace('0X', '0x'), loserOwner: WINNER, rates: ALWAYS,
+            });
+
+            const { data } = tx.itemEntitlement.createMany.mock.calls[0]![0];
+            expect(data).toHaveLength(1);
+            expect(data[0]).toMatchObject({ owner: WINNER, quantity: 2 });
+        });
+    });
 });

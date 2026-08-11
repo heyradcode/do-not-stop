@@ -41,3 +41,58 @@
     color: rgb(251 113 133);
     font-size: 0.85rem;
 }
+
+/* Current consent state, stated before the controls because it changes what they mean.
+   Three tones rather than one: a stale grant is a problem to repair, no grant is a choice
+   not yet made, and an active grant is reassurance. Rendering all three the same way would
+   make the one that needs acting on look like the two that do not. */
+.status {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+/* Amber, not red: nothing is broken and nothing was lost. The grant did exactly what it
+   promised by expiring with the rules it was signed under. */
+.stale {
+    composes: status;
+    border-color: rgb(251 191 36 / 45%);
+    background: rgb(251 191 36 / 8%);
+    color: rgb(251 191 36 / 92%);
+}
+
+.active {
+    composes: status;
+    border-color: rgb(52 211 153 / 35%);
+    background: rgb(52 211 153 / 8%);
+    color: rgb(52 211 153 / 92%);
+}
+
+.inactive {
+    composes: status;
+    border-color: rgb(148 163 184 / 30%);
+    background: rgb(148 163 184 / 8%);
+    opacity: 0.85;
+}
+
+/* Delegated battle signing, below the consent controls. Visually separated because the two
+   grants are easy to confuse: consent lets others challenge you, a session lets you start
+   battles without a prompt each time. */
+.session {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgb(148 163 184 / 18%);
+}
+
+.sessionLabel {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    opacity: 0.8;
+}

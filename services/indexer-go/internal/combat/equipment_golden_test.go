@@ -230,3 +230,30 @@ func TestSumBonusesIsOrderIndependent(t *testing.T) {
 		t.Errorf("sum depends on order: %+v vs %+v", SumBonuses(parts), SumBonuses(reversed))
 	}
 }
+
+// TestSumBonusesSaturates pins the ceiling, and is the Go half of a parity pair: the
+// TypeScript port asserts the identical thing in equipmentVectors.test.ts.
+//
+// Not a vector case, deliberately. equipment.json hands Simulate one already-summed bonus
+// per pet, so no case in that file reaches this function; a unit test on each side is what
+// holds the two summations together.
+//
+// This port has always saturated. The TypeScript one summed unclamped, which produced a
+// total that bonusFromProto range-rejects at the gRPC boundary, turning a battle nothing
+// could have changed the outcome of into a retry loop and a dead letter.
+func TestSumBonusesSaturates(t *testing.T) {
+	huge := AttrBonus{HP: 40000, ATK: 40000, DEF: 40000, INT: 40000, MDEF: 40000}
+	want := AttrBonus{HP: 65535, ATK: 65535, DEF: 65535, INT: 65535, MDEF: 65535}
+
+	if got := SumBonuses([]AttrBonus{huge, huge}); got != want {
+		t.Errorf("sum did not saturate: got %+v, want %+v", got, want)
+	}
+
+	// Order independence has to survive the clamp: saturating early must not make the
+	// total depend on which item pushed it over.
+	parts := []AttrBonus{{HP: 60000}, {HP: 10000}, {HP: 1}}
+	reversed := []AttrBonus{parts[2], parts[1], parts[0]}
+	if SumBonuses(parts) != SumBonuses(reversed) || SumBonuses(parts).HP != 65535 {
+		t.Errorf("saturated sum depends on order: %+v vs %+v", SumBonuses(parts), SumBonuses(reversed))
+	}
+}

@@ -106,12 +106,40 @@ function buildClient(): ItemCoreClient | null {
 }
 
 /**
+ * A transaction that was broadcast but whose outcome is unknown.
+ *
+ * Distinct from every other failure here, and the distinction is what stops a double mint.
+ * A caller undoing its own bookkeeping after a failed write is only safe when the write
+ * definitely did not happen. "Simulate reverted" and "the receipt says reverted" both mean
+ * that. "The RPC stopped answering while waiting for the receipt" does not: the transaction
+ * may well be mined, and treating it as a failure is how a claim gets released and paid a
+ * second time.
+ */
+export class UnconfirmedTxError extends Error {
+    constructor(
+        readonly hash: `0x${string}`,
+        message: string,
+        // `override` because Error already declares `cause`. Narrowed to a parameter
+        // property so a caller can read it without the optional-chaining dance.
+        override readonly cause?: unknown,
+    ) {
+        super(message);
+        this.name = 'UnconfirmedTxError';
+    }
+}
+
+/**
  * Simulates, sends, and waits for the receipt.
  *
  * Simulated first so a revert surfaces as a rejected request rather than as a failed
  * transaction the player has already been told succeeded. Awaited to completion because
  * both callers change state that depends on the transaction having landed: a burn that is
  * still pending is an item the player could spend again.
+ *
+ * Failures are sorted into two kinds, because the callers have to treat them differently.
+ * Anything before the broadcast, and an on-chain revert, mean nothing moved. Anything after
+ * the broadcast that leaves the outcome unknown raises `UnconfirmedTxError` carrying the
+ * hash, so a caller can record it and refuse to undo state that may already be real.
  *
  * One at a time, like the settle keeper's submitter. Item writes are rare relative to
  * block times, so a single in-flight transaction avoids nonce management entirely.
@@ -134,8 +162,21 @@ async function send(
             args,
         });
         const hash = await walletClient.writeContract(request as Parameters<typeof walletClient.writeContract>[0]);
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+        let receipt: Awaited<ReturnType<typeof publicClient.waitForTransactionReceipt>>;
+        try {
+            receipt = await publicClient.waitForTransactionReceipt({ hash });
+        } catch (error) {
+            // Broadcast, outcome unknown. A timeout here is the ordinary case: the RPC went
+            // away, or the transaction is simply slow, and the chain will very likely mine it.
+            throw new UnconfirmedTxError(
+                hash,
+                `ItemCore.${functionName} was broadcast as ${hash} but its receipt could not be read; treat it as possibly mined`,
+                error,
+            );
+        }
         if (receipt.status !== 'success') {
+            // A confirmed revert, which is a definite no. Safe for a caller to undo.
             throw new Error(`ItemCore.${functionName} reverted on chain (${hash})`);
         }
         return hash;

@@ -51,16 +51,48 @@ describe('tagging', () => {
 });
 
 describe('consent failures', () => {
-    it('flags the ones the defender fixes by granting consent', () => {
-        for (const code of ['no-authorization', 'pet-not-covered', 'revoked']) {
+    /**
+     * One per condition in matchmaking's `hasConsent` predicate
+     * (`backend/src/repositories/roster.repository.ts`). Callers drop the opponent and
+     * re-read the list on these, so the two sets have to agree: a code here that
+     * matchmaking does not filter drops opponents who were fine, and one missing leaves
+     * the player re-picking the only choice that cannot succeed.
+     */
+    it('flags every refusal that means the opponent should not have been listed', () => {
+        for (const code of [
+            'no-authorization', // EXISTS (...) — no grant at all
+            'pet-not-covered', // all_pets OR pet_ids @> pet
+            'revoked', // revoked_at IS NULL
+            'expired', // expires_at > now
+            'not-yet-valid', // not_before <= now
+            'ruleset-mismatch', // ruleset_hash = current
+        ]) {
             expect(isConsentFailure(rejection(code))).toBe(true);
             expect(isConsentFailure(toBattleRejection(rejection(code)))).toBe(true);
         }
     });
 
-    it('does not flag refusals consent cannot fix', () => {
-        for (const code of ['attacker-not-ready', 'expired', 'self-battle']) {
+    // Excluded from the predicate on purpose, and excluded here for the same reason:
+    // these are about this attacker, or about today, not about whether the opponent can
+    // be challenged at all. Dropping them from the list over one would be wrong.
+    it('does not flag refusals that are about the attacker or the day', () => {
+        for (const code of [
+            'attacker-level-below-band',
+            'attacker-level-above-band',
+            'daily-cap-reached',
+            'attacker-not-ready',
+            'self-battle',
+        ]) {
             expect(isConsentFailure(rejection(code))).toBe(false);
         }
+    });
+
+    // `expired` is the authorization's own window closing, not the request's. Reading it
+    // as the latter told the player to retry something that cannot succeed until the
+    // defender acts, and left the opponent in the list to be picked again.
+    it('keeps the two expiries apart', () => {
+        expect(toBattleRejection(rejection('expired'))?.message).toContain('opponent');
+        expect(toBattleRejection(rejection('intent-expired'))?.message).toContain('battle request');
+        expect(isConsentFailure(rejection('intent-expired'))).toBe(false);
     });
 });

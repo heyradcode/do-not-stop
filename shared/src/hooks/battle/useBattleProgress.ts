@@ -62,6 +62,23 @@ export const mergeBattleProgress = (pet: Pet, progress: ProgressDto | undefined)
  * Degrades to unmerged chain values on any failure. That is the honest fallback: stale
  * progression is a worse number, an error is a missing pet list.
  */
+/**
+ * Every progression query for one chain, whatever set of pets it asked about.
+ *
+ * Exported for invalidation, and it has to be the prefix rather than a full key. Anything
+ * that moves a pet's progression moves one pet, while the cached entries are keyed by the
+ * *list* a screen asked for, and the mutation has no idea which lists exist. Matching on
+ * the prefix catches all of them; an exact key would silently miss every one. Same shape
+ * and same reason as `petEquipmentForPetsQueryPrefix`.
+ */
+export function battleProgressQueryPrefix(baseURL: string, chain: PetChain | null): unknown[] {
+    return ['battleProgress', baseURL, chain];
+}
+
+export function battleProgressQueryKey(baseURL: string, chain: PetChain | null, petIds: string[]): unknown[] {
+    return [...battleProgressQueryPrefix(baseURL, chain), petIds];
+}
+
 export const useBattleProgress = (chain: PetChain | null, pets: Pet[]): Pet[] => {
     const apiClient = useApiClient();
     const { isAuthenticated } = useAuth();
@@ -71,7 +88,7 @@ export const useBattleProgress = (chain: PetChain | null, pets: Pet[]): Pet[] =>
     const petIds = useMemo(() => pets.map((pet) => pet.id).sort(), [pets]);
 
     const query = useQuery({
-        queryKey: ['battleProgress', baseURL, chain, petIds],
+        queryKey: battleProgressQueryKey(baseURL, chain, petIds),
         enabled: chain != null && isAuthenticated && petIds.length > 0,
         queryFn: async () => {
             const { data } = await apiClient.post<GraphQLResponse>('/graphql', {

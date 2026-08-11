@@ -139,12 +139,6 @@ export const env = {
         chainId: process.env.ITEM_CORE_CHAIN_ID ? Number(process.env.ITEM_CORE_CHAIN_ID) : undefined,
         address: process.env.ITEM_CORE_ADDRESS?.trim() as `0x${string}` | undefined,
         /**
-         * Wallets allowed to grant items, comma-separated. Empty by default, so the admin
-         * route is closed until someone is named rather than open until someone is
-         * excluded. Normalized here so a checksummed address in the env still matches the
-         * lowercased one the JWT carries.
-         */
-        /**
          * Whether a settled battle pays item drops.
          *
          * Separate from ITEM_CORE_ENABLED and off by default. Recording a drop needs no
@@ -153,6 +147,12 @@ export const env = {
          * added for something else.
          */
         dropsEnabled: process.env.ITEM_DROPS_ENABLED?.trim().toLowerCase() === 'true',
+        /**
+         * Wallets allowed to grant items, comma-separated. Empty by default, so the admin
+         * route is closed until someone is named rather than open until someone is
+         * excluded. Normalized here so a checksummed address in the env still matches the
+         * lowercased one the JWT carries.
+         */
         adminWallets: new Set(
             (process.env.ITEM_ADMIN_WALLETS ?? '')
                 .split(',')
@@ -274,19 +274,63 @@ export const env = {
      * production, so a deployment cannot quietly fall back to an in-process key.
      *
      * `requiredAttesters` is what makes §F's circuit breaker unbypassable: a receipt cannot be
-     * signed unless every listed implementation has attested to that exact receipt hash. Add
-     * `go-verifier` once the independent verifier is wired up; until then the single-attester
-     * default means only the TypeScript engine's agreement is enforced.
+     * signed unless every listed implementation has attested to that exact receipt hash.
+     *
+     * `go-verifier` is in the default, so the independent Go recomputation is a *precondition*
+     * for a signature rather than a step that happened earlier in the pipeline. Those are not
+     * the same guarantee: the pipeline already refuses to advance a battle whose verification
+     * did not match, but that is one code path away from being edited, while this refuses at
+     * the signer — the one place a receipt can actually be produced.
+     *
+     * It costs nothing on the happy path. `verify.worker` writes `verificationDetail` in the
+     * same transition that moves a battle to `verified`, and `sign.worker` only runs from
+     * `verified`, so every battle reaching the signer already carries the attestation. A
+     * deployment running without indexer-go never reaches `verified` at all, and would have
+     * stalled before signing with or without this.
      */
     battleSigner: {
         keyId: process.env.BATTLE_SIGNER_KEY_ID?.trim() || 'battle-signer-dev',
         /** Dev and test only. Ignored (and refused) in production. */
         privateKey: process.env.BATTLE_SIGNER_PRIVATE_KEY?.trim() || undefined,
-        /** e.g. `aws-kms` or `gcp-kms`. Unset locally; required in production. */
+        /** `aws-kms` today. Unset locally; required in production. */
         kmsProvider: process.env.BATTLE_SIGNER_KMS_PROVIDER?.trim() || undefined,
-        requiredAttesters: (process.env.BATTLE_SIGNER_REQUIRED_ATTESTERS?.trim() || 'typescript-engine')
+        /**
+         * The provider's identifier for the key: an ARN or `alias/...` on AWS.
+         *
+         * Separate from `keyId` on purpose. `keyId` is stamped into every receipt and
+         * published in the registry, so it has to stay stable; an ARN carries the account
+         * id and changes if the key is re-imported or moved. Defaults to `keyId` for a
+         * deployment that genuinely uses one name for both.
+         */
+        kmsKeyId: process.env.BATTLE_SIGNER_KMS_KEY_ID?.trim() || undefined,
+        /** Omitted when the runtime already supplies one (ECS task role, Lambda, EC2). */
+        kmsRegion: process.env.BATTLE_SIGNER_KMS_REGION?.trim() || undefined,
+        requiredAttesters: (process.env.BATTLE_SIGNER_REQUIRED_ATTESTERS?.trim() || 'typescript-engine,go-verifier')
             .split(',')
             .map((name) => name.trim())
             .filter((name) => name.length > 0),
+        /**
+         * Per-domain key overrides (§G: "separate keys for EVM and Solana reward domains").
+         *
+         * One key signing both chains means compromising it compromises both (threat T4), so
+         * a deployment serving two families needs two keys. The signer refuses to start
+         * rather than share one, and these are how each is named.
+         *
+         * Left unset by a single-chain deployment, which is every deployment today: with only
+         * one domain there is nothing to separate, so the shared values above are used and
+         * the sharing is not a compromise of anything.
+         */
+        domains: {
+            evm: {
+                keyId: process.env.BATTLE_SIGNER_EVM_KEY_ID?.trim() || undefined,
+                privateKey: process.env.BATTLE_SIGNER_EVM_PRIVATE_KEY?.trim() || undefined,
+                kmsKeyId: process.env.BATTLE_SIGNER_EVM_KMS_KEY_ID?.trim() || undefined,
+            },
+            solana: {
+                keyId: process.env.BATTLE_SIGNER_SOLANA_KEY_ID?.trim() || undefined,
+                privateKey: process.env.BATTLE_SIGNER_SOLANA_PRIVATE_KEY?.trim() || undefined,
+                kmsKeyId: process.env.BATTLE_SIGNER_SOLANA_KMS_KEY_ID?.trim() || undefined,
+            },
+        },
     },
 } as const;

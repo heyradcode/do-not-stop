@@ -9,7 +9,7 @@ import {
     type ItemDefinitionRow,
 } from '@repositories/inventory.repository';
 
-import { asItemEffect, type ItemEffect } from './catalog';
+import { asItemEffect, type ItemEffect, type StatBonus } from './catalog';
 
 /**
  * Inventory reads (roadmap §4).
@@ -97,8 +97,14 @@ export async function getPendingItems(chain: string, owner: string): Promise<Pen
     return pending;
 }
 
+/**
+ * The catalog as a client reads it: every row, unreadable effects included as a null.
+ *
+ * `getCombatCatalog` is the strict counterpart, and anything that decides a fight must use
+ * that one instead.
+ */
 export async function getCatalog(): Promise<ItemView[]> {
-    return [...(await catalogByType()).values()];
+    return [...(await loadCatalog()).byType.values()];
 }
 
 /**
@@ -190,6 +196,36 @@ export async function getPetEquipmentForPets(
 }
 
 /**
+ * What one equipped item contributes to a fight, already narrowed to the modifier.
+ *
+ * Distinct from `EquippedItem` because a combat caller has no use for a name or a
+ * description and every use for a bonus it does not have to re-narrow. The narrowing is
+ * the point: reaching this type at all means the item is catalogued equipment with a
+ * readable modifier, so `snapshot.builder` has nothing left to check.
+ */
+export interface CombatEquippedItem {
+    slot: number;
+    itemType: string;
+    key: string;
+    bonus: StatBonus;
+}
+
+/**
+ * Raised when the catalog cannot answer a question combat needs answered.
+ *
+ * Its own type so acceptance can turn it into a named rejection rather than a 500. Every
+ * case it covers is an operational fault: the seeder is behind the contract, or a row was
+ * edited into a shape the reader does not recognise. Both mean this deployment cannot
+ * state the rules it is about to fight under.
+ */
+export class ItemCatalogError extends Error {
+    constructor(detail: string) {
+        super(detail);
+        this.name = 'ItemCatalogError';
+    }
+}
+
+/**
  * The catalog, read once per process.
  *
  * `item_definition` is backend-owned content whose only writer is `scripts/seed-item-catalog.ts`
@@ -201,46 +237,142 @@ export async function getPetEquipmentForPets(
  * `servedRuleset()` already caches catalog-derived data and documents that a catalog edit
  * needs a restart. With one half frozen and the other live, a mid-process seeder run produced
  * a ruleset that did not price an item the bag was already showing.
+ *
+ * `unreadable` is kept beside the views because `ItemView.effect` is null for two very
+ * different rows: a collectible that legitimately does nothing, and an equipment row whose
+ * modifier would not parse. A display path may treat those alike; a combat path must not,
+ * and the null alone cannot tell them apart.
  */
-let cached: Map<string, ItemView> | null = null;
+interface CachedCatalog {
+    byType: Map<string, ItemView>;
+    /** Types whose stored `effect` column was present but unreadable. */
+    unreadable: Set<string>;
+}
 
-async function catalogByType(): Promise<Map<string, ItemView>> {
+let cached: CachedCatalog | null = null;
+
+async function loadCatalog(): Promise<CachedCatalog> {
     if (!cached) {
-        cached = new Map((await findAllDefinitions()).map((row) => [row.itemType, toItemView(row)]));
+        const byType = new Map<string, ItemView>();
+        const unreadable = new Set<string>();
+        for (const row of await findAllDefinitions()) {
+            const view = toItemView(row);
+            byType.set(row.itemType, view);
+            if (row.effect !== null && view.effect === null) {
+                unreadable.add(row.itemType);
+                // Loud because the only writer is the seeder, so this means the stored
+                // shape and the code that reads it have diverged.
+                console.warn(`[inventory] item ${row.itemType} (${row.key}) has an unreadable effect payload`);
+            }
+        }
+        cached = { byType, unreadable };
     }
     return cached;
 }
 
-/** Drops the cache, for the seeder and for tests. Mirrors `resetServedRuleset`. */
+/**
+ * How many times the catalog has been dropped.
+ *
+ * Read by anything holding its own cache of catalog-derived data, so dropping the catalog
+ * invalidates that too. `servedRuleset` is the one such holder, and it cannot simply be
+ * called from `resetItemCatalog`: `ruleset.builder` imports this module, so the call would
+ * close a cycle. A number it can compare against costs nothing and points the dependency
+ * the way it already runs.
+ */
+let generation = 0;
+
+export function itemCatalogGeneration(): number {
+    return generation;
+}
+
+/** Drops the cache, for the seeder and for tests. Also invalidates anything derived from it. */
 export function resetItemCatalog(): void {
     cached = null;
+    generation += 1;
+}
+
+/**
+ * The catalog as the ruleset must read it.
+ *
+ * Strict where `getCatalog` is lenient, and the split is the rule `catalog.ts` states for
+ * itself: an unreadable effect costs an item its label on a read path, but once effects
+ * feed combat, dropping one silently changes a fight rather than a tooltip. An equipment
+ * row whose modifier will not parse simply vanishes from `itemCatalog`, which moves
+ * `rulesetHash` and invalidates every outstanding defence authorization, from one bad
+ * column and a console warning.
+ */
+export async function getCombatCatalog(): Promise<ItemView[]> {
+    const catalog = await loadCatalog();
+    for (const view of catalog.byType.values()) {
+        if (view.category !== 'equipment') {
+            continue;
+        }
+        if (catalog.unreadable.has(view.itemType) || view.effect?.kind !== 'stat_bonus') {
+            throw new ItemCatalogError(
+                `item ${view.itemType} (${view.key}) is equipment with no readable stat_bonus; this deployment cannot state its own ruleset`,
+            );
+        }
+    }
+    return [...catalog.byType.values()];
+}
+
+/**
+ * What a pet has equipped, resolved for combat.
+ *
+ * Refuses the two states `getPetEquipment` hides. An item with no catalog row is the
+ * seeder running behind the contract; an item whose modifier will not parse is a corrupt
+ * row. Either way the pet is wearing something on chain that this process cannot price,
+ * and the lenient read would have it fight as though the slot were empty.
+ *
+ * That is worse than it sounds, because it is not merely a weaker pet. The receipt would
+ * publish an ungeared snapshot while `ItemCore.equipmentOf(petId)` at the recorded
+ * `sourceVersion` says otherwise, and that discrepancy is indistinguishable from the
+ * operator having quietly removed the gear. §4 put `itemType` in the snapshot precisely so
+ * an outsider could make that comparison; failing here keeps the answer honest.
+ */
+export async function getPetEquipmentForCombat(chain: string, petId: string): Promise<CombatEquippedItem[]> {
+    const slots = await findEquipment(chain, petId);
+    if (slots.length === 0) {
+        return [];
+    }
+
+    const catalog = await loadCatalog();
+    return slots.map(({ slot, itemType }) => {
+        const item = catalog.byType.get(itemType);
+        if (!item) {
+            throw new ItemCatalogError(
+                `pet ${petId} has uncatalogued item type ${itemType} equipped in slot ${slot}; the item catalog is behind the contract`,
+            );
+        }
+        if (catalog.unreadable.has(itemType) || item.effect?.kind !== 'stat_bonus') {
+            throw new ItemCatalogError(
+                `pet ${petId} has item ${itemType} (${item.key}) equipped in slot ${slot}, which carries no readable stat_bonus`,
+            );
+        }
+        return { slot, itemType, key: item.key, bonus: item.effect };
+    });
 }
 
 async function definitionsByType(itemTypes: string[]): Promise<Map<string, ItemView>> {
-    const catalog = await catalogByType();
+    const catalog = await loadCatalog();
     const wanted = new Map<string, ItemView>();
     for (const itemType of new Set(itemTypes)) {
-        const definition = catalog.get(itemType);
+        const definition = catalog.byType.get(itemType);
         if (definition) wanted.set(itemType, definition);
     }
     return wanted;
 }
 
 function toItemView(row: ItemDefinitionRow): ItemView {
-    const effect = asItemEffect(row.effect);
-    if (row.effect !== null && effect === null) {
-        // Readable but unrecognised: the item still renders, without whatever it does.
-        // Loud because the only writer is the seeder, so this means the stored shape and
-        // the code that reads it have diverged.
-        console.warn(`[inventory] item ${row.itemType} (${row.key}) has an unreadable effect payload`);
-    }
     return {
         itemType: row.itemType,
         key: row.key,
         category: row.category,
         slot: row.slot,
         rarity: row.rarity,
-        effect,
+        // Readable but unrecognised leaves the item rendering without whatever it does.
+        // `loadCatalog` records which rows those were, since this null cannot say.
+        effect: asItemEffect(row.effect),
         name: row.name,
         description: row.description,
     };

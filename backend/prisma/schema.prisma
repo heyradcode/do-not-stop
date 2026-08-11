@@ -303,6 +303,42 @@ model BattleIntent {
 }
 
 /// A defender's standing, revocable permission to be challenged while offline (§D).
+/// A wallet's short-lived permission for a client-held key to sign battle intents (§D).
+///
+/// §D requires the *wallet* to authorize a battle, because a JWT is a bearer token this
+/// server issues to itself and so proves nothing about the owner's intent. That stays true:
+/// the delegated key is generated and held by the client, never by us, so an operator still
+/// cannot forge an intent. What the delegation removes is the per-battle wallet prompt.
+///
+/// Deliberately absent from every receipt. Public replay never checks intent signatures, so
+/// this is an authorization gate rather than evidence, and keeping it out of the signed
+/// record means the mechanism can be revised without invalidating a single receipt.
+model SessionDelegation {
+  /// `hashSessionDelegation` from @cryptopets/protocol.
+  delegationHash  String    @id @map("delegation_hash")
+  chainId         String    @map("chain_id")
+  deploymentId    String    @map("deployment_id")
+  owner           String
+  /// The client-held key this authorizes. Compared against the recovered intent signer.
+  sessionKey      String    @map("session_key")
+  /// What the key may sign. One value today ('battle-intent'); widening needs a new
+  /// schema version and a fresh prompt, never a silent grant.
+  scope           String
+  notBefore       BigInt    @map("not_before") // unix seconds
+  expiresAt       BigInt    @map("expires_at")
+  revocationNonce Int       @map("revocation_nonce")
+  signature       String
+  signatureFormat String    @map("signature_format")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  /// Revocation is immediate. Kept rather than deleted so an audit can still see which key
+  /// was allowed to act, and when that stopped.
+  revokedAt       DateTime? @map("revoked_at")
+
+  @@index([chainId, deploymentId, owner])
+  @@index([chainId, deploymentId, sessionKey])
+  @@map("session_delegation")
+}
+
 model DefenseAuthorization {
   /// `hashDefenseAuthorization` from @cryptopets/protocol.
   authorizationHash String    @id @map("authorization_hash")
@@ -547,7 +583,13 @@ model BattleBatch {
 /// can replay.
 model BattleRuleset {
   rulesetHash   String    @id @map("ruleset_hash")
-  version       Int       @unique
+  /// Descriptive, not an identity: `rulesetHash` is what a receipt names and what makes a
+  /// bundle findable. This was `@unique`, which held only while the ruleset was a pure
+  /// constant. Roadmap §4 made the item catalog part of it, so content now varies while
+  /// `version` stays 1, and the unique meant the second bundle could never be written.
+  /// It failed as a `version` conflict that read like a concurrent publish, so accept
+  /// reported success, published nothing, and the battle died in `compute`.
+  version       Int
   engineId      String    @map("engine_id")
   engineVersion Int       @map("engine_version")
   /// The full bundle exactly as published.

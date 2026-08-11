@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const catalog = vi.fn();
-vi.mock('@features/inventory', () => ({ getCatalog: () => catalog() }));
+// The catalog module is stubbed wholesale here, so no generation is ever bumped and
+// `resetServedRuleset` is the seam these cases use. A fixed generation keeps the memo
+// behaving as it does in production between seeder runs.
+vi.mock('@features/inventory', () => ({ getCombatCatalog: () => catalog(), itemCatalogGeneration: () => 0 }));
 
 import { hashRuleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
 
-import { resetServedRuleset, servedRuleset } from '@features/battle/ledger/ruleset.builder';
+import { resetServedRuleset, servedRuleset, servedRulesetHash } from '@features/battle/ledger/ruleset.builder';
 
 /**
  * The ruleset a deployment fights under (roadmap §4).
@@ -111,6 +114,43 @@ describe('servedRuleset', () => {
         await servedRuleset();
         await servedRuleset();
 
+        expect(catalog).toHaveBeenCalledTimes(1);
+    });
+});
+
+/**
+ * The hash and the ruleset come from one place (§D, and the bug that motivated it).
+ *
+ * Four call sites used to run `hashRuleset(await servedRuleset())` themselves, and one of
+ * them hashed `SOURCE_DEFAULT_RULESET` instead. Defenders sign against the served ruleset,
+ * so matchmaking's consent filter matched no authorization ever written and the opponent
+ * list came back empty on a deployment full of consenting pets — silently, because an empty
+ * list is also the correct answer when nobody has consented.
+ */
+describe('servedRulesetHash', () => {
+    beforeEach(() => {
+        catalog.mockResolvedValue([BLADE]);
+    });
+
+    it('is the hash of the ruleset actually served', async () => {
+
+        expect(await servedRulesetHash()).toBe(hashRuleset(await servedRuleset()));
+    });
+
+    it('follows the catalog rather than the source constant', async () => {
+        // The distinction the bug turned on: with items seeded, the served hash and the
+        // constant's hash are different values, and consent is bound to the former.
+        const served = await servedRulesetHash();
+        expect(served).not.toBe(hashRuleset(SOURCE_DEFAULT_RULESET));
+    });
+
+    it('derives once per catalog generation rather than per caller', async () => {
+        const first = await servedRulesetHash();
+        const second = await servedRulesetHash();
+
+        expect(second).toBe(first);
+        // One build, however many callers ask. This also keeps a keccak over the whole
+        // ruleset off the matchmaking query path, which ran it per request.
         expect(catalog).toHaveBeenCalledTimes(1);
     });
 });

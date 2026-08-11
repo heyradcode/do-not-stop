@@ -7,6 +7,7 @@ import {
     isConsentFailure,
     opponentKey,
     pickRandomOpponent,
+    describeBattleStage,
     sortOpponentsByMatch,
     toDialoguePet,
     useChainCapabilities,
@@ -122,6 +123,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const {
         opponents,
         isLoading: opponentsLoading,
+        emptyReason: opponentsEmptyReason,
         refetch: refetchOpponents,
     } = useOpponents({ chain: activeChainKind });
 
@@ -176,27 +178,33 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Reveal the result card once the authoritative event has arrived AND either
     // the live animation has finished or a mismatch cut it short (interstitial
     // instead). Never earlier — the verdict is never shown from the local sim.
+    //
+    // Revealing also raises the overlay, in the same commit. If the player minimized
+    // it (handleBack) while the fight was in flight, the result still has to come
+    // back to them: a minimized battle resolving silently in the background is the
+    // thing this pairing exists to prevent. It used to be a second effect watching
+    // `showResult`, which made the reveal a two-pass sequence whose order nothing in
+    // the code stated, and left one render where the result was showing behind a
+    // closed overlay. Both now happen together or not at all.
     useEffect(() => {
         if (!hasResolvedEvent) return;
+        const reveal = () => {
+            setShowResult(true);
+            setOverlayOpen(true);
+        };
         if (mismatchNotice) {
             const timer = setTimeout(() => {
                 setMismatchNotice(false);
-                setShowResult(true);
+                reveal();
             }, MISMATCH_NOTICE_DURATION_MS);
             return () => clearTimeout(timer);
         }
-        if (animation.done) setShowResult(true);
+        if (animation.done) reveal();
     }, [hasResolvedEvent, mismatchNotice, animation.done]);
-
-    // If the overlay was minimized (handleBack) while the battle was still in
-    // flight, bring it back the moment the result is ready to show — so a
-    // minimized battle can never resolve silently in the background.
-    useEffect(() => {
-        if (showResult) setOverlayOpen(true);
-    }, [showResult]);
     // AI pre-fight taunts — generated on Start Battle, in parallel with the wallet.
     // Requesting taunts also kicks off result pregen on the backend.
     const taunts = useBattleTaunts();
+    const { reset: resetTaunts } = taunts;
     // Shareable room URL — minted alongside the taunts on Start Battle (see
     // handleBattle below), before the wallet has even signed, since no
     // on-chain identifier (tx hash / requestId) exists yet at that point.
@@ -392,31 +400,41 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         handleSelectOpponent(opponentKey(pick.owner, pick.id));
     };
 
-    // Close the overlay if the battle fails before a result (e.g. wallet rejected),
-    // so the user isn't stranded on the taunt/underway screen. The error toast still shows.
+    // Everything a failed battle triggers, in one effect and one commit. This was two
+    // effects reading the same `battle.error`, so which of them ran first was decided
+    // by where they happened to sit in the file. They are ordered here because the
+    // order matters: tear down the in-flight UI, then act on what the failure says
+    // about the opponent.
+    //
+    // `taunts.reset` rather than `taunts`: depending on the object re-ran the whole
+    // body on any taunt-state change while an error was still set.
     useEffect(() => {
-        if (!showResult && battle.error) {
+        if (!battle.error) return;
+
+        // Stranding the player on the taunt/underway screen is the failure mode here
+        // (e.g. wallet rejected). The error toast still shows. Skipped once the result
+        // is up: a late failure must not yank away a card the player is reading.
+        if (!showResult) {
             setOverlayOpen(false);
             pendingBattleStartRef.current = false;
-            taunts.reset();
+            resetTaunts();
         }
-    }, [taunts, battle.error, showResult]);
 
-    // A consent failure means this opponent's owner has no standing authorization
-    // covering the fight (§D) — they never granted one, revoked it, or scoped it to
-    // other pets. Matchmaking already excludes all three server-side, so this is the
-    // narrow race where the grant died between the list being built and the battle
-    // being accepted. Re-reading the list drops the opponent, and clearing the
-    // selection stops the player re-picking the one choice that cannot succeed.
-    //
-    // Deliberately not every rejection: a level-band or daily-cap refusal is about
-    // this attacker or today, not the opponent's willingness, and dropping them from
-    // the list over it would be wrong.
-    useEffect(() => {
-        if (!isConsentFailure(battle.error)) return;
-        setSelectedOpponent('');
-        void refetchOpponents();
-    }, [battle.error, refetchOpponents]);
+        // A consent failure means this opponent's owner has no standing authorization
+        // covering the fight (§D) — they never granted one, revoked it, or scoped it to
+        // other pets. Matchmaking already excludes all three server-side, so this is the
+        // narrow race where the grant died between the list being built and the battle
+        // being accepted. Re-reading the list drops the opponent, and clearing the
+        // selection stops the player re-picking the one choice that cannot succeed.
+        //
+        // Deliberately not every rejection: a level-band or daily-cap refusal is about
+        // this attacker or today, not the opponent's willingness, and dropping them from
+        // the list over it would be wrong.
+        if (isConsentFailure(battle.error)) {
+            setSelectedOpponent('');
+            void refetchOpponents();
+        }
+    }, [battle.error, showResult, resetTaunts, refetchOpponents]);
 
     // Once the tx hash exists, retain it as the stable battleId for the result
     // read. EVM clears battle.hash on receipt completion, so capture it here.
@@ -439,14 +457,23 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // (animation.done OR the mismatch notice has run its course).
     const preResultStatus = mismatchNotice
         ? MISMATCH_NOTICE_MESSAGE
+        // A battle that ended badly said nothing at all: the overlay simply stopped
+        // changing. The server records why it stopped, so show that rather than leave
+        // the player watching a screen that will never move again.
+        : battle.failureReason
+        ? `${describeBattleStage(battle.state)} (${battle.failureReason})`
+        // A failed poll or a receipt that would not verify used to leave the overlay
+        // spinning with the reason sitting unread in `error`.
+        : battle.error
+        ? `Could not follow this battle: ${battle.error.message}`
         : hasResolvedEvent && !animation.done
         ? 'Result in — playing out the fight…'
         : !hasResolvedEvent && animation.done && battle.liveReplay
         ? 'Finalizing…'
-        : battle.phase === 'awaiting-vrf'
-        ? 'Awaiting randomness…'
-        : battle.phase === 'resolving'
-        ? 'Resolving the outcome…'
+        : battle.phase === 'awaiting-vrf' || battle.phase === 'resolving'
+        // The battle's own state rather than one word for six of them. A battle stalled
+        // waiting on the independent verifier looked identical to one about to finish.
+        ? describeBattleStage(battle.state)
         : battle.isConfirming
         ? 'Verifying the receipt…'
         : battle.isPending
@@ -537,6 +564,7 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         selectedOpponentKey: selectedOpponent,
         onSelectOpponent: handleSelectOpponent,
         opponentsLoading,
+        opponentsEmptyReason,
         onRefreshOpponents: handleRefreshOpponents,
         onBattle: handleBattle,
         battleDisabled,

@@ -13,6 +13,8 @@ import {
     type ReadyPet,
     type WinEstimateResult,
     type EquippedItem,
+    type OpponentsEmptyReason,
+    describeNoOpponents,
     useChainCapabilities,
     usePetEquipmentForPets,
 } from '@shared/core';
@@ -38,6 +40,8 @@ export type BattleSetupProps = {
     selectedOpponentKey: string;
     onSelectOpponent: (key: string) => void;
     opponentsLoading: boolean;
+    /** Why the picker is empty, when it is. Null whenever there is anything to show. */
+    opponentsEmptyReason: OpponentsEmptyReason | null;
     onRefreshOpponents: () => void;
     onBattle: () => void;
     battleDisabled: boolean;
@@ -55,7 +59,15 @@ const STAT_KEYS = [
     { label: 'VIT', key: 'life' },
 ] as const;
 
-/** One combatant's full stat card (fighter or rival), or an empty prompt. */
+/**
+ * One combatant bay: the arena slot, its readout, and whoever is standing in it.
+ *
+ * The readout renders whether or not a pet does. An empty bay used to be a dashed box
+ * with one line of centred text, which on a tall panel is mostly void — and void is the
+ * state a player lands on, since neither side is chosen yet. Drawing the frame either
+ * way means an empty bay shows the shape of what will fill it, and picking a fighter
+ * fills that frame in place instead of swapping one layout for another.
+ */
 const CombatantCard: React.FC<{
     pet: Pet | OpponentPet | null;
     side: 'fighter' | 'rival';
@@ -64,68 +76,94 @@ const CombatantCard: React.FC<{
     /** Gear this combatant is wearing. It changes the fight, so it is worth seeing first. */
     equipped?: readonly EquippedItem[];
 }> = ({ pet, side, emptyLabel, owner, equipped }) => {
-    if (!pet) {
-        return (
-            <div
-                className={clsx(
-                    styles.combatantCard,
-                    side === 'rival' && styles.combatantCardRival,
-                    styles.isEmpty,
-                )}
-            >
-                <span className={styles.combatantCardPlaceholder}>{emptyLabel}</span>
-            </div>
-        );
-    }
-    const props = getPetProperties(pet);
-    const rarityColor = getRarityColor(pet.rarity);
-    const hp = getLifePercent(pet);
-    return (
-        <div className={clsx(styles.combatantCard, side === 'rival' && styles.combatantCardRival)}>
-            {/* Art fills the card, and the pet's numbers read over it. The
-                emoji class goes on the glyph rather than this wrapper: it
-                carries a drop-shadow and an animated transform, and either
-                would become the containing block for the filling image and
-                pin it to the emoji's size instead of the card's. */}
-            <div className={styles.combatantCardArt}>
-                <PetArt pet={pet} fill emojiClassName={styles.combatantCardAvatar} />
-                <EquippedBadges equipped={equipped} rarity={pet.rarity} size="md" />
-            </div>
-            {/* Nothing here is legible over arbitrary generated art without it. */}
-            <div className={styles.combatantCardScrim} aria-hidden />
+    const rival = side === 'rival';
+    const props = pet ? getPetProperties(pet) : null;
+    const hp = pet ? getLifePercent(pet) : 0;
 
-            <div className={styles.combatantCardBody}>
-                <div className={styles.combatantCardName}>{pet.name}</div>
-                <div className={styles.combatantCardMeta}>
-                    Lv.{pet.level} · {getPetClass(pet.dna)} ·{' '}
-                    <span style={{ color: rarityColor }}>
-                        {getRarityName(pet.rarity).toUpperCase()}
-                    </span>
-                </div>
-                {owner ? <div className={styles.combatantCardOwner}>{owner}</div> : null}
-                <div className={styles.combatantCardStats}>
-                    {STAT_KEYS.map((stat) => (
-                        <div className={styles.combatantStat} key={stat.label}>
-                            <div className={styles.combatantStatLabel}>{stat.label}</div>
-                            <div className={styles.combatantStatVal}>{props[stat.key]}</div>
+    return (
+        <div
+            className={clsx(
+                styles.combatantCard,
+                rival && styles.combatantCardRival,
+                !pet && styles.isEmpty,
+            )}
+        >
+            <div className={styles.combatantCardFrame}>
+                {pet ? (
+                    <>
+                        {/* Art fills the bay and the numbers read over it. The emoji class goes
+                            on the glyph rather than this wrapper: it carries a drop-shadow and
+                            an animated transform, and either would become the containing block
+                            for the filling image and pin it to the emoji's size. */}
+                        <div className={styles.combatantCardArt}>
+                            <PetArt pet={pet} fill emojiClassName={styles.combatantCardAvatar} />
+                            <EquippedBadges
+                                equipped={equipped}
+                                rarity={pet.rarity}
+                                size="md"
+                                corner="top-right"
+                            />
                         </div>
-                    ))}
-                </div>
-                <div className={styles.combatantCardHp}>
-                    <div className={styles.combatantCardHpHead}>
-                        <span>HP</span>
-                        <span className={styles.combatantCardHpVal}>{hp}/100</span>
+                        {/* Nothing below is legible over arbitrary generated art without it. */}
+                        <div className={styles.combatantCardScrim} aria-hidden />
+                    </>
+                ) : (
+                    /* An empty arena rather than an empty box: floor, plinth, and a sweep
+                       passing over the spot the fighter will stand on. */
+                    <div className={styles.combatantCardArena} aria-hidden>
+                        <div className={styles.combatantCardArenaGrid} />
+                        <div className={styles.combatantCardArenaPlinth} />
+                        <div className={styles.combatantCardArenaSweep} />
                     </div>
-                    <div className={styles.combatantCardHpTrack}>
-                        <div
-                            className={clsx(
-                                styles.combatantCardHpFill,
-                                side === 'fighter'
-                                    ? styles.combatantCardHpFillFighter
-                                    : styles.combatantCardHpFillRival,
-                            )}
-                            style={{ width: `${hp}%` }}
-                        />
+                )}
+
+                <div className={styles.combatantCardBody}>
+                    {pet ? (
+                        <>
+                            <div className={styles.combatantCardName}>{pet.name}</div>
+                            <div className={styles.combatantCardMeta}>
+                                Lv.{pet.level} · {getPetClass(pet.dna)} ·{' '}
+                                <span style={{ color: getRarityColor(pet.rarity) }}>
+                                    {getRarityName(pet.rarity).toUpperCase()}
+                                </span>
+                            </div>
+                            {owner ? <div className={styles.combatantCardOwner}>{owner}</div> : null}
+                        </>
+                    ) : (
+                        <div className={styles.combatantCardPlaceholder}>{emptyLabel}</div>
+                    )}
+
+                    <div className={styles.combatantCardStats}>
+                        {STAT_KEYS.map((stat) => (
+                            <div className={styles.combatantStat} key={stat.label}>
+                                <div className={styles.combatantStatLabel}>{stat.label}</div>
+                                {props ? (
+                                    <div className={styles.combatantStatVal}>{props[stat.key]}</div>
+                                ) : (
+                                    <div className={styles.combatantStatVoid} />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className={styles.combatantCardHp}>
+                        <div className={styles.combatantCardHpHead}>
+                            <span>HP</span>
+                            {pet ? <span className={styles.combatantCardHpVal}>{hp}/100</span> : null}
+                        </div>
+                        <div className={styles.combatantCardHpTrack}>
+                            {pet ? (
+                                <div
+                                    className={clsx(
+                                        styles.combatantCardHpFill,
+                                        rival
+                                            ? styles.combatantCardHpFillRival
+                                            : styles.combatantCardHpFillFighter,
+                                    )}
+                                    style={{ width: `${hp}%` }}
+                                />
+                            ) : null}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -148,6 +186,7 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
     selectedOpponentKey,
     onSelectOpponent,
     opponentsLoading,
+    opponentsEmptyReason,
     onRefreshOpponents,
     onBattle,
     battleDisabled,
@@ -175,6 +214,13 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
         ? `${Math.round(winEstimate.winProbability * 100)}%`
         : '—';
 
+    // The rail only draws a split it actually has. Without an estimate it shows neutral
+    // hatching instead of filling to 50%, which would read as a real even match rather
+    // than as "no estimate yet" — the two mean different things to someone deciding
+    // whether to take the fight.
+    const hasOdds = !winEstimate.isLoading && winEstimate.winProbability != null;
+    const oddsPct = Math.round((winEstimate.winProbability ?? 0.5) * 100);
+
     // The rival list is keyed by owner+id, not by pet id: two players can hold the same
     // token id on different chains, and the panel reports the composite key back.
     const opponentOptions = useMemo(
@@ -182,10 +228,13 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
         [sortedOpponents],
     );
 
+    // Names which of four situations produced the blank picker. They are identical to a
+    // player and only some are theirs to act on, so "none" alone sends people looking for
+    // a mistake that may not be theirs.
     const opponentEmpty = opponentsLoading
         ? 'Finding challengers…'
         : sortedOpponents.length === 0
-        ? 'No opponents available'
+        ? describeNoOpponents(opponentsEmptyReason)
         : 'Select an opponent';
 
     return (
@@ -228,15 +277,22 @@ const BattleSetup: React.FC<BattleSetupProps> = ({
                     />
                 </div>
 
-                {/* VS + win rate */}
+                {/* The spine. One rail spanning both bays, rather than a VS floating between
+                    two hairlines that joined nothing and a win-rate box off to itself. */}
                 <div className={styles.vs}>
                     <div className={styles.vsMark}>VS</div>
-                    <div className={styles.vsDivider} />
+                    <div className={clsx(styles.vsRail, !hasOdds && styles.vsRailUnknown)}>
+                        {hasOdds ? (
+                            <>
+                                <div className={styles.vsRailFill} style={{ height: `${oddsPct}%` }} />
+                                <div className={styles.vsRailPin} style={{ bottom: `${oddsPct}%` }} />
+                            </>
+                        ) : null}
+                    </div>
                     <div className={styles.vsWinrate}>
                         <div className={styles.vsWinrateLabel}>Win Rate</div>
                         <div className={styles.vsWinrateVal}>{winRate}</div>
                     </div>
-                    <div className={styles.vsDivider} />
                 </div>
 
                 {/* On-chain rival */}

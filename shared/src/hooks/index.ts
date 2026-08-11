@@ -29,7 +29,12 @@ export { usePetList, type PetListResult } from './pets/usePetList';
 export { usePetCooldowns, type PetCooldowns, type PetCooldownStatus } from './pets/usePetCooldowns';
 // Backend battle progression. usePetList already applies it to a player's own pets;
 // exported for anything reading pets from the chain by another route.
-export { useBattleProgress, mergeBattleProgress } from './battle/useBattleProgress';
+export {
+    battleProgressQueryKey,
+    battleProgressQueryPrefix,
+    useBattleProgress,
+    mergeBattleProgress,
+} from './battle/useBattleProgress';
 export {
     useCreatePet,
     type CreatePetArgs,
@@ -40,6 +45,7 @@ export { useLevelUpPet, type LevelUpPetArgs } from './pets/useLevelUpPet';
 export { useTrainPet, type TrainPetArgs } from './pets/useTrainPet';
 export { useRenamePet, type RenamePetArgs } from './pets/useRenamePet';
 export {
+    describeBattleStage,
     useBattlePets,
     type BattlePetsArgs,
     type UseBattlePetsOptions,
@@ -50,7 +56,12 @@ export {
     type UseBreedPetsOptions,
 } from './pets/useBreedPets';
 export { useTransferPet, type TransferPetArgs } from './pets/useTransferPet';
-export { useOpponents, type UseOpponentsOptions } from './battle/useOpponents';
+export {
+    describeNoOpponents,
+    type OpponentsEmptyReason,
+    useOpponents,
+    type UseOpponentsOptions,
+} from './battle/useOpponents';
 export { useSearchPets, type UseSearchPetsOptions, type SearchPetsResult } from './pets/useSearchPets';
 export { useAllPets, type UseAllPetsOptions } from './pets/useAllPets';
 export {
@@ -121,6 +132,11 @@ export { useCreateBattleRoom, type CreateRoomVars } from './battle/useCreateBatt
 export { BATTLE_CONFIG_QUERY_KEY, useBattleConfig, type BattleConfig } from './battle/useBattleConfig';
 export { useBattleMode, type BattleMode, type BattleModeState } from './battle/useBattleMode';
 export {
+    type BattleSession,
+    signIntentWithSession,
+    useBattleSession,
+} from './battle/useBattleSession';
+export {
     useSubmitBattleIntent,
     type AcceptedBattle,
     type SubmitBattleIntentVars,
@@ -129,6 +145,12 @@ export {
     useDefenseAuthorization,
     type GrantDefenseVars,
 } from './battle/useDefenseAuthorization';
+export {
+    type ConsentStatus,
+    defenseAuthorizationsQueryKey,
+    type DefenseAuthorizationSummary,
+    useDefenseAuthorizations,
+} from './battle/useDefenseAuthorizations';
 export {
     battleStateQueryKey,
     useBackendBattle,

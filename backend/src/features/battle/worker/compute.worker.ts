@@ -1,5 +1,4 @@
 import {
-    type BattleSnapshot,
     computeProgression,
     bonusFromEquipment,
     hashCombatLog,
@@ -11,7 +10,13 @@ import { BattleState } from '@generated/prisma/enums';
 import type { Prisma } from '@generated/prisma/client';
 
 import { prisma } from '@config/prisma';
-import { applyTransition, type ClaimedMessage, completeOutbox, OUTBOX_TOPICS } from '@features/battle/ledger';
+import {
+    applyTransition,
+    type ClaimedMessage,
+    completeOutbox,
+    decodeStoredSnapshot,
+    OUTBOX_TOPICS,
+} from '@features/battle/ledger';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
 
 /**
@@ -49,9 +54,8 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
     }
     const ruleset = loadRulesetBundle(JSON.stringify(rulesetRow.bundle), battle.rulesetHash as Hex);
 
-    const snapshot = battle.snapshot as unknown as BattleSnapshot;
-    const attacker = deserializePet(snapshot.attacker);
-    const defender = deserializePet(snapshot.defender);
+    const snapshot = decodeStoredSnapshot(battle.snapshot);
+    const { attacker, defender } = snapshot;
 
     // Equipment totals come from the frozen snapshot, not from the catalog: the fight has
     // to use the modifiers that were written down at acceptance, so unequipping since then
@@ -71,11 +75,7 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
         bonusFromEquipment(defender.equipment),
     );
 
-    const progression = computeProgression(
-        { ...snapshot, attacker, defender },
-        outcome.result.firstWins,
-        { maxLevel: ruleset.maxLevel },
-    );
+    const progression = computeProgression(snapshot, outcome.result.firstWins, { maxLevel: ruleset.maxLevel });
     const combatLogHash = hashCombatLog(outcome);
 
     const patch: Prisma.BattleLedgerUncheckedUpdateInput = {
@@ -96,52 +96,6 @@ export async function processComputeMessage(message: ClaimedMessage, nowSeconds:
     });
     notifyBattleRoomIfPresent(battle.roomId, { type: 'battle-updated', battleId: battle.battleId, state: BattleState.computed });
     await completeOutbox(message.id, new Date(nowSeconds * 1000));
-}
-
-/** As stored: JSON, so the item type arrives as a decimal string. */
-export type SnapshotEquipment = {
-    slot: number;
-    itemType: string | bigint;
-    hp: number;
-    atk: number;
-    def: number;
-    int: number;
-    mdef: number;
-}[];
-
-/** The snapshot is stored as JSON, where bigint fields round-trip as decimal strings. */
-function deserializePet(pet: {
-    petId: string | bigint;
-    owner: string;
-    dna: string | bigint;
-    rarity: number;
-    level: number;
-    skill: number;
-    xp: number;
-    lastOpponentId: string | bigint;
-    streak: number;
-    readyAt: number;
-    sourceVersion: string | bigint;
-    equipment?: SnapshotEquipment;
-}) {
-    return {
-        petId: BigInt(pet.petId),
-        owner: pet.owner,
-        dna: BigInt(pet.dna),
-        rarity: pet.rarity,
-        level: pet.level,
-        skill: pet.skill,
-        xp: pet.xp,
-        lastOpponentId: BigInt(pet.lastOpponentId),
-        streak: pet.streak,
-        readyAt: pet.readyAt,
-        sourceVersion: BigInt(pet.sourceVersion),
-        // Widened back to bigint: JSON storage round-trips the item type as a decimal
-        // string, and the protocol's validator wants the number it was written as.
-        ...(pet.equipment && {
-            equipment: pet.equipment.map((entry) => ({ ...entry, itemType: BigInt(entry.itemType) })),
-        }),
-    };
 }
 
 function serializeBigints<T>(value: T): Prisma.InputJsonValue {

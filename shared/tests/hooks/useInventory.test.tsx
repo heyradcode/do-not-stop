@@ -166,4 +166,35 @@ describe('useSpendItem', () => {
             result.current.spend({ chain: 'evm', petId: '7', itemType: '100' }),
         ).rejects.toThrow('You do not hold that item');
     });
+
+    /**
+     * Both things a consumable moves get refreshed, not just the bag.
+     *
+     * Every effect this route accepts writes `pet_battle_progress`: `grant_xp` moves level
+     * and xp, `clear_battle_cooldown` moves readyAt. This used to be left to the caller,
+     * and the one caller did not do it, so a cooldown tonic consumed the item and left the
+     * pet still displayed as resting. The failure was silent in exactly the way a comment
+     * asking a caller to remember something always eventually is.
+     */
+    it('refreshes the bag and the pet progression that the effect moved', async () => {
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+        const invalidated: unknown[][] = [];
+        vi.spyOn(client, 'invalidateQueries').mockImplementation((filters) => {
+            invalidated.push((filters as { queryKey: unknown[] }).queryKey);
+            return Promise.resolve();
+        });
+        const localWrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        );
+
+        post.mockResolvedValue({ data: { burnTxHash: '0xburn', level: 5, xp: 0, readyAt: 0, leveledUp: true } });
+        const { result } = renderHook(() => useSpendItem(), { wrapper: localWrapper });
+
+        await result.current.spend({ chain: 'evm', petId: '7', itemType: '100' });
+
+        expect(invalidated).toContainEqual(['inventory', 'https://api.test', 'evm']);
+        // The prefix, not a full key: progression is cached per *list* of pets a screen
+        // asked about, and this mutation cannot know which lists exist.
+        expect(invalidated).toContainEqual(['battleProgress', 'https://api.test', 'evm']);
+    });
 });

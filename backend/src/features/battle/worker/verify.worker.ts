@@ -1,10 +1,10 @@
 import {
-    type BattleSnapshot,
     bonusFromEquipment,
     type Hex,
     hashCombatLog,
     loadRulesetBundle,
     type PetProgression,
+    type PetSnapshot,
     type ProgressionDelta,
     type SimOutcome,
 } from '@cryptopets/protocol';
@@ -12,10 +12,15 @@ import { BattleState } from '@generated/prisma/enums';
 import type { Prisma } from '@generated/prisma/client';
 
 import { prisma } from '@config/prisma';
-import { applyTransition, type ClaimedMessage, completeOutbox, OUTBOX_TOPICS } from '@features/battle/ledger';
+import {
+    applyTransition,
+    type ClaimedMessage,
+    completeOutbox,
+    decodeStoredSnapshot,
+    OUTBOX_TOPICS,
+} from '@features/battle/ledger';
 import { callVerifyBattle, type VerifyBattleWire, type VerifyPetProgressionWire } from '@grpc-client/verifyBattle';
 import { notifyBattleRoomIfPresent } from '@ws/battleRoomSocket';
-import { type SnapshotEquipment } from './compute.worker';
 
 /**
  * Handles `verify` messages: `computed` -> `verified` (§F).
@@ -57,9 +62,7 @@ export async function processVerifyMessage(message: ClaimedMessage, nowSeconds: 
     }
     const ruleset = loadRulesetBundle(JSON.stringify(rulesetRow.bundle), battle.rulesetHash as Hex);
 
-    const snapshot = battle.snapshot as unknown as BattleSnapshot;
-    const attacker = snapshot.attacker as unknown as Record<string, unknown>;
-    const defender = snapshot.defender as unknown as Record<string, unknown>;
+    const { attacker, defender } = decodeStoredSnapshot(battle.snapshot);
 
     const outcome = await callVerifyBattle({
         attacker: toWirePet(attacker),
@@ -109,21 +112,21 @@ export async function processVerifyMessage(message: ClaimedMessage, nowSeconds: 
     await completeOutbox(message.id, new Date(nowSeconds * 1000));
 }
 
-function toWirePet(pet: Record<string, unknown>) {
+function toWirePet(pet: PetSnapshot) {
     // The resolved equipment total, so the independent recomputation runs on the same
     // inputs the canonical engine used (roadmap §4). Sending the frozen modifiers rather
     // than item ids is what lets the verifier hold no item catalog at all: what §F checks
     // is that the fight follows from the numbers the receipt publishes.
-    const bonus = bonusFromEquipment(pet.equipment as SnapshotEquipment | undefined);
+    const bonus = bonusFromEquipment(pet.equipment);
     return {
         petId: String(pet.petId),
         dna: String(pet.dna),
-        rarity: Number(pet.rarity),
-        level: Number(pet.level),
-        skill: Number(pet.skill),
-        xp: Number(pet.xp),
+        rarity: pet.rarity,
+        level: pet.level,
+        skill: pet.skill,
+        xp: pet.xp,
         lastOpponentId: String(pet.lastOpponentId),
-        streak: Number(pet.streak),
+        streak: pet.streak,
         bonusHp: bonus.hp,
         bonusAtk: bonus.atk,
         bonusDef: bonus.def,

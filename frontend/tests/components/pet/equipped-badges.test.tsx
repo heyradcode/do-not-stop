@@ -74,6 +74,26 @@ describe('EquippedBadges', () => {
         }
     });
 
+    /**
+     * Which corner depends on what the caller draws over the same art. A gallery card has
+     * nothing below, so gear stays out of the pet's face at the bottom. A combatant bay
+     * overlays a name, a stat row and an HP bar across the bottom of the box the art fills,
+     * so gear pinned low sits on top of the readout instead of beside it.
+     */
+    it('pins to the bottom by default, so a gallery card is unchanged', () => {
+        render(<EquippedBadges equipped={[BLADE]} rarity={5} />);
+        expect(screen.getByRole('img', { name: /^Wearing/ })).toHaveClass('cornerBottom');
+    });
+
+    it('pins to the top when the caller draws a readout across the bottom', () => {
+        render(<EquippedBadges equipped={[BLADE]} rarity={5} size="md" corner="top-right" />);
+
+        const strip = screen.getByRole('img', { name: /^Wearing/ });
+        expect(strip).toHaveClass('cornerTop');
+        // Corner and size are independent: the bay wants the bigger icons *and* the top.
+        expect(strip).toHaveClass('stripMd');
+    });
+
     it('names each item for a mouse user, since the icons are tiny', () => {
         render(<EquippedBadges equipped={[BLADE]} rarity={5} />);
         expect(screen.getByTitle('Iron Fang')).toBeInTheDocument();

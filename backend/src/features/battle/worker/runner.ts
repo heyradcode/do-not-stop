@@ -3,6 +3,7 @@ import {
     abandonBattle,
     type ClaimedMessage,
     claimOutbox,
+    expireOrphanedAccepts,
     failOutbox,
     OUTBOX_TOPICS,
 } from '@features/battle/ledger';
@@ -36,6 +37,16 @@ export async function runBattleWorkerOnce(workerId: string, now: Date = new Date
     const topics = Object.keys(HANDLERS) as (typeof OUTBOX_TOPICS)[keyof typeof OUTBOX_TOPICS][];
     const messages = await claimOutbox(topics, workerId, env.battle.workerBatchSize, now);
     const nowSeconds = Math.floor(now.getTime() / 1000);
+
+    // Frees pets held by a battle that never left `accepted`. Nothing else can: the
+    // dead-letter path declines because `accepted` cannot forfeit, so without this the lock
+    // is permanent and the pet simply stops being able to battle, with no state anywhere
+    // saying why. Failures here must not stop the dispatch below, which is the loop's job.
+    try {
+        await expireOrphanedAccepts(nowSeconds);
+    } catch (error) {
+        console.error('[battle-worker] could not expire orphaned accepts:', error);
+    }
 
     for (const message of messages) {
         const handler = HANDLERS[message.topic];

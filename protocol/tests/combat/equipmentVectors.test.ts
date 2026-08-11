@@ -115,6 +115,37 @@ describe('properties the vectors exist to pin', () => {
         ];
         expect(sumBonuses(parts)).toEqual(sumBonuses([...parts].reverse()));
     });
+
+    /**
+     * Saturates rather than running past the ceiling, matching the Go port step for step
+     * (`TestSumBonusesSaturates`).
+     *
+     * Not a vector case, and the reason is worth stating: the vectors hand `simulate` one
+     * already-summed bonus per pet, so nothing in that file reaches this function. The Go
+     * counterpart is a unit test beside its own order-independence test, for the same
+     * reason, and these two are the parity check for the summation itself.
+     *
+     * The final attribute would be identical without the clamp, since `applyBonus` clamps
+     * at the same ceiling. What the clamp protects is the §F wire: an unclamped total was
+     * range-rejected by `bonusFromProto`, which surfaced as "verification unavailable" and
+     * retried the battle to a dead letter.
+     */
+    it('saturates at 65535 rather than running past it', () => {
+        const huge: AttrBonus = { hp: 40000, atk: 40000, def: 40000, int: 40000, mdef: 40000 };
+        expect(sumBonuses([huge, huge])).toEqual({ hp: 65535, atk: 65535, def: 65535, int: 65535, mdef: 65535 });
+    });
+
+    it('saturates identically however many items it takes to get there', () => {
+        // Order independence has to survive the clamp: saturating early must not make the
+        // total depend on which item pushed it over.
+        const parts: AttrBonus[] = [
+            { hp: 60000, atk: 0, def: 0, int: 0, mdef: 0 },
+            { hp: 10000, atk: 0, def: 0, int: 0, mdef: 0 },
+            { hp: 1, atk: 0, def: 0, int: 0, mdef: 0 },
+        ];
+        expect(sumBonuses(parts)).toEqual(sumBonuses([...parts].reverse()));
+        expect(sumBonuses(parts).hp).toBe(65535);
+    });
 });
 
 describe('bonusFromEquipment', () => {

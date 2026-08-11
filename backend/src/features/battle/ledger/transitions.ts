@@ -269,3 +269,55 @@ export async function abandonBattle(
     });
     return { abandoned: result.applied, state: result.state };
 }
+
+/**
+ * How long a battle may sit in `accepted` before it is treated as orphaned.
+ *
+ * `accepted` is meant to be transient: `acceptBattle` opens the ledger row and moves it to
+ * `committed` a few statements later, in the same call. A battle still here minutes later
+ * did not get slower, it stopped — the process died between the two, or the accept threw
+ * after the row was written.
+ *
+ * Generous anyway, because the cost of being wrong is asymmetric: expiring a live battle
+ * would strand a player who has already signed, while expiring a dead one late only means
+ * their pets wait a few more minutes.
+ */
+const ACCEPTED_ORPHAN_SECONDS = 10 * 60;
+
+/**
+ * Expires battles orphaned in `accepted`, releasing the pets they hold.
+ *
+ * Without this a pet locked by an orphan is locked *forever*. Locks are freed by reaching a
+ * terminal state, and `accepted` has no route to one that anything travels: the outbox
+ * dead-letter path calls `abandonBattle`, which declines because `accepted` cannot forfeit,
+ * and nothing else ever wrote `expired`. So the state existed in `ALLOWED_TRANSITIONS`,
+ * described exactly this situation, and had no code behind it — a crash between accept and
+ * commit permanently bricked both pets, with the only symptom a unique-constraint error on
+ * `pet_battle_lock` the next time either one tried to fight.
+ *
+ * Runs on the worker tick rather than as a scheduled job, because it needs no coordination:
+ * `applyTransition` guards on the `from` state, so two workers racing on one battle produce
+ * one expiry and one no-op.
+ */
+export async function expireOrphanedAccepts(nowSeconds: number): Promise<{ expired: number }> {
+    const cutoff = new Date((nowSeconds - ACCEPTED_ORPHAN_SECONDS) * 1000);
+    const orphans = await prisma.battleLedger.findMany({
+        where: { state: BattleState.accepted, createdAt: { lt: cutoff } },
+        select: { battleId: true },
+    });
+
+    let expired = 0;
+    for (const { battleId } of orphans) {
+        const result = await applyTransition({
+            battleId,
+            from: BattleState.accepted,
+            to: BattleState.expired,
+            patch: { failureReason: `orphaned in accepted for over ${ACCEPTED_ORPHAN_SECONDS}s` },
+        });
+        if (result.applied) {
+            expired += 1;
+            console.warn(`[battle-worker] expired orphaned battle ${battleId}; its pets are released`);
+        }
+    }
+    return { expired };
+}
