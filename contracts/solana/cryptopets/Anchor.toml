@@ -5,11 +5,16 @@ anchor_version = "0.32.1"
 resolution = true
 skip-lint = false
 
+# cryptopets-registry's id is Anchor's default scaffold placeholder until `anchor keys
+# sync` replaces it with the generated keypair's address. Do not deploy before that runs:
+# the placeholder is the same value every unconfigured Anchor project uses.
 [programs.localnet]
 cryptopets = "EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1"
+cryptopets_registry = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [programs.devnet]
 cryptopets = "EVzXwxHqwbTLMxfTG3amCb2Sjwmy5A7hqR59GbrvEyV1"
+cryptopets_registry = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
 
 [provider]
 cluster = "devnet"

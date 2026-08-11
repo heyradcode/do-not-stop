@@ -217,11 +217,21 @@ whose address the caller chooses, and the contiguity check must not depend on ca
 accounts. `Publisher` is a PDA per publisher rather than a map, which is the ordinary Solana
 shape and makes revocation an account close.
 
-Reserve generously on `RegistryState`: the upgrade authority is burned in 1.6, so a field that
-does not fit later cannot be added at all.
+**Built, with three corrections to the above.**
 
-*Verify:* `anchor build`, and a unit test asserting `RegistryState::SPACE` matches the field
-list.
+- `Publisher` has **no `allowed` field**. Existence is the permission: `authorize_publisher`
+  creates the account and `revoke_publisher` closes it, so `publish_batch` gates on the
+  account deserializing at all. A boolean would add a state where the account exists and says
+  `false`, which is a stale-flag bug waiting to happen for no gain.
+- **`Batch` gets no reserved padding.** There is one per batch forever, so padding is rent
+  charged on every batch for a field that could never be read anyway.
+- The reasoning for reserving on `RegistryState` above is **backwards**, and the built version
+  keeps 64 bytes for a different reason. Once the upgrade authority is burned no code can ever
+  read a new field, so reserve is not future-proofing. It is only useful in the window between
+  deploy and burn, and 64 bytes of rent on a single account is a cheap option to hold open
+  until the deployed program has been exercised.
+
+*Verify:* `anchor build`, plus `cargo test -p cryptopets-registry` for the space constants.
 
 ### 1.3 `publish_batch`
 
@@ -247,11 +257,18 @@ three-batch happy path asserting the root chain links and sequences stay contigu
 
 ### 1.4 Admin instructions
 
-`set_publisher(allowed: bool)`, `pause()`, `unpause()`, all admin-signed. Pausing does not
-invalidate anything published; publication resumes exactly where it left off.
+`authorize_publisher()`, `revoke_publisher()`, `pause()`, `unpause()`, `set_admin(new_admin)`,
+all admin-signed. Pausing does not invalidate anything published; publication resumes exactly
+where it left off.
 
-*Verify:* `anchor test` asserting a revoked publisher is refused and that unpausing resumes at
-the correct next batch number.
+`set_admin` is **not** in the Solidity feature list this mirrors, and it is not optional here.
+Burning the upgrade authority removes every other recovery path: a compromised or lost admin
+key cannot be fixed by shipping a patch, so rotation has to be an instruction the program
+already has. Single-step, matching `Ownable.transferOwnership`, which makes a typo'd address
+permanent.
+
+*Verify:* `anchor test` asserting a revoked publisher is refused, that unpausing resumes at
+the correct next batch number, and that a non-admin cannot call any of the five.
 
 ### 1.5 Reads
 
