@@ -5,12 +5,14 @@
 
 pub mod admin;
 pub mod breeding;
+pub mod item;
 pub mod marriage;
 pub mod mint;
 pub mod pet;
 
 pub use admin::*;
 pub use breeding::*;
+pub use item::*;
 pub use marriage::*;
 pub use mint::*;
 pub use pet::*;

@@ -111,5 +111,19 @@ pub enum ErrorCode {
     InvalidPetAsset,
     #[msg("Cannot transfer a married pet; divorce first")]
     CannotTransferMarriedPet,
+
+    // ─── Inventory (roadmap §4) ───────────────────────────────────────────────
+    //
+    // Appended, never inserted. `#[error_code]` numbers sequentially from 6000, so adding a
+    // variant anywhere but the end renumbers every one after it and silently changes what a
+    // client's stored error code means.
+    #[msg("Item type 0 is reserved and cannot be catalogued or minted")]
+    ItemTypeReserved,
+    #[msg("Unknown equip slot")]
+    UnknownSlot,
+    #[msg("Quantity must be greater than zero")]
+    ZeroQuantity,
+    #[msg("Not enough of this item")]
+    InsufficientItems,
 }
 

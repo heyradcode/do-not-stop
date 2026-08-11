@@ -171,4 +171,34 @@ pub mod cryptopets {
     pub fn withdraw_stud_fees(ctx: Context<WithdrawStudFees>) -> Result<()> {
         withdraw_stud_fees::handler(ctx)
     }
+
+    // ─── Inventory (roadmap §4) ───────────────────────────────────────────────
+
+    pub fn register_item_slot(ctx: Context<RegisterItemSlot>, item_type: u64, slot: u8) -> Result<()> {
+        catalog::register_item_slot(ctx, item_type, slot)
+    }
+
+    /// `item_type` is unused by the handler but names the `item_slot` PDA seed.
+    pub fn clear_item_slot(ctx: Context<ClearItemSlot>, item_type: u64) -> Result<()> {
+        let _ = item_type;
+        catalog::clear_item_slot(ctx)
+    }
+
+    pub fn authorize_caller(ctx: Context<AuthorizeCaller>) -> Result<()> {
+        catalog::authorize_caller(ctx)
+    }
+
+    pub fn revoke_caller(ctx: Context<RevokeCaller>) -> Result<()> {
+        catalog::revoke_caller(ctx)
+    }
+
+    pub fn mint_items(ctx: Context<MintItems>, item_type: u64, quantity: u64) -> Result<()> {
+        supply::mint_items(ctx, item_type, quantity)
+    }
+
+    /// `item_type` names the `balance` PDA seed; the quantity to burn is the second argument.
+    pub fn burn_items(ctx: Context<BurnItems>, item_type: u64, quantity: u64) -> Result<()> {
+        let _ = item_type;
+        supply::burn_items(ctx, quantity)
+    }
 }
