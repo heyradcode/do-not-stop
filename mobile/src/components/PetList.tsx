@@ -23,6 +23,7 @@ type Props = {
     onBattle: (pet: Pet) => void;
     onRename: (pet: Pet) => void;
     onDefend: (pet: Pet) => void;
+    onEquip: (pet: Pet) => void;
     onSend: (pet: Pet) => void;
 };
 
@@ -36,6 +37,7 @@ export default function PetList({
     onBattle,
     onRename,
     onDefend,
+    onEquip,
     onSend,
 }: Props) {
     if (error) {
@@ -102,6 +104,7 @@ export default function PetList({
                     onBattle={() => onBattle(pet)}
                     onRename={() => onRename(pet)}
                     onDefend={() => onDefend(pet)}
+                    onEquip={() => onEquip(pet)}
                     onSend={() => onSend(pet)}
                 />
             ))}

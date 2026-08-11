@@ -3,8 +3,9 @@
  * sidebar's `NAV_ITEMS`. Same destinations, different shape: frontend renders all
  * seven as sidebar entries, mobile splits them between a tab bar and the stack.
  *
- * Inventory and Shard Forge are deferred in frontend and absent here too, rather
- * than shown disabled: a tab bar has no room to advertise what does not work yet.
+ * Inventory is routed now, on the stack rather than the tab bar. Shard Forge is
+ * still absent rather than shown disabled: a tab bar has no room to advertise what
+ * does not work yet.
  */
 
 import type { NavigatorScreenParams } from '@react-navigation/native';
@@ -36,6 +37,10 @@ export type RootStackParamList = {
      * for without truncating every label to fit a screen nobody opens mid-battle.
      */
     Leaderboard: undefined;
+    /** The bag, reached from the account sheet. Acts on no single pet. */
+    Inventory: undefined;
+    /** Gear one pet. Per-pet, so it arrives from a gallery action like Rename. */
+    Equip: { petId?: string } | undefined;
 };
 
 export type TabItem = {
@@ -68,4 +73,6 @@ export const STACK_TITLES: Record<Exclude<keyof RootStackParamList, 'Landing' | 
     Rename: 'Rename Pet',
     Defense: 'Allow Challenges',
     Leaderboard: 'Leaderboard',
+    Inventory: 'Inventory',
+    Equip: 'Equip',
 };

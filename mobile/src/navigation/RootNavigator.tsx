@@ -11,8 +11,10 @@ import AppHeader from '../components/AppHeader';
 import BattleScreen from '../screens/BattleScreen';
 import BreedScreen from '../screens/BreedScreen';
 import DefenseScreen from '../screens/DefenseScreen';
+import EquipScreen from '../screens/EquipScreen';
 import GalleryScreen from '../screens/GalleryScreen';
 import LandingScreen from '../screens/LandingScreen';
+import InventoryScreen from '../screens/InventoryScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import LevelUpScreen from '../screens/LevelUpScreen';
 import MarriageScreen from '../screens/MarriageScreen';
@@ -43,6 +45,8 @@ const STACK_SCREENS = {
     Rename: RenameScreen,
     Defense: DefenseScreen,
     Leaderboard: LeaderboardScreen,
+    Inventory: InventoryScreen,
+    Equip: EquipScreen,
 } as const;
 
 /**

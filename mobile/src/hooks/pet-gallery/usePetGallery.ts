@@ -108,6 +108,7 @@ export const usePetGallery = (): UsePetGallery => {
         onBattle: (pet) => navigation.navigate('Main', { screen: 'Battle', params: { petId: pet.id } }),
         onRename: (pet) => navigation.navigate('Rename', { petId: pet.id }),
         onDefend: (pet) => navigation.navigate('Defense', { petId: pet.id }),
+        onEquip: (pet) => navigation.navigate('Equip', { petId: pet.id }),
         sendingPet,
         onSend: setSendingPet,
         onCloseSend: () => setSendingPet(null),

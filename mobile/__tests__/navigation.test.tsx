@@ -25,6 +25,8 @@ jest.mock('../src/screens/BreedScreen', () => () => null);
 jest.mock('../src/screens/MarriageScreen', () => () => null);
 jest.mock('../src/screens/BattleScreen', () => () => null);
 jest.mock('../src/screens/LeaderboardScreen', () => () => null);
+jest.mock('../src/screens/InventoryScreen', () => () => null);
+jest.mock('../src/screens/EquipScreen', () => () => null);
 jest.mock('../src/components/AppHeader', () => () => null);
 jest.mock('../src/screens/LandingScreen', () => {
     const { Text: RNText } = jest.requireActual('react-native');
@@ -88,12 +90,16 @@ describe('routes', () => {
             'Rename',
             'Defense',
             'Leaderboard',
+            'Inventory',
+            'Equip',
         ]);
     });
 
     it('does not route the deferred features', () => {
+        // Inventory left this list when roadmap section 4 landed on mobile. Shard Forge has
+        // no implementation on either client, so it stays absent rather than shown
+        // disabled: a tab bar has no room to advertise what does not work yet.
         const everyRoute = [...TAB_ITEMS.map((t) => t.name), ...Object.keys(STACK_TITLES)];
-        expect(everyRoute).not.toContain('Inventory');
         expect(everyRoute).not.toContain('ShardForge');
     });
 });
