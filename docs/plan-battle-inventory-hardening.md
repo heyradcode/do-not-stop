@@ -24,6 +24,8 @@ Every code item is done. What remains needs a decision or production access, not
 | C7 | No way to tell a defender their consent had gone stale | done |
 | D3 | Phase 4 ships a re-consent event | **needs a deliberate rollout** |
 | Q1-Q4 | Cache reset, stranded comment, worker cast, untypechecked scripts | done |
+| S1-S3 | Derived hashes single-sourced, dead outbox topic, chained effects | done |
+| R1-R3 | Two meanings on one `expired` code, nine reasons with no text, dead session key | done |
 | O1-O3 | Migration, seeder, end-to-end | **operator calls** |
 
 Two of these were corrections to this document rather than to the code. D1 and D2 were both
@@ -558,6 +560,66 @@ One note for whoever runs O3. It is the first time either web screen will be ope
 real data, and the review that produced C1 to C6 could not substitute for that: it read the
 code, not the rendered page. Expect the remaining defects to be presentational, and expect
 them to be found by looking rather than by reading.
+
+## S1-S3: structural, after the bugs were fixed
+
+Three follow-ups from reviewing what the fixes above had in common. None changes behaviour a
+player sees; each closes the route by which one of the bugs arrived.
+
+- [x] **S1 Derive each protocol hash once.** `hashRuleset` ran at four call sites, each hashing
+  the result of its own `servedRuleset()` call, and matchmaking hashed `SOURCE_DEFAULT_RULESET`
+  instead. Defenders sign consent against the served ruleset, so that predicate matched no
+  authorization ever written and returned an empty opponent list on a deployment full of
+  consenting pets. `servedRulesetHash()` now derives it beside the ruleset and caches per
+  catalog generation; `hashRuleset` no longer appears in `backend/src` at all. Every other
+  protocol hash was already single-site, bar the two deliberate recompute-and-assert pairs in
+  `publish.worker` and the signer, which are the correct pattern and were left alone. This is
+  the same shape as B1 (`snapshotHash` computed twice) and as the bundle-publish hash: three
+  instances, one cause.
+- [x] **S2 Delete `OUTBOX_TOPICS.batch`.** Declared, never enqueued, never dispatched. Worse
+  than untidy: `claimOutbox` builds its topic list from `HANDLERS`, so a `batch` message would
+  never have been claimed at all, let alone dead-lettered. It would sit pending forever with
+  its battle in a non-terminal state and both pets locked, which is the failure
+  `expireOrphanedAccepts` exists to clean up after. Batching aggregates across receipts on
+  `startBatchAnchor`'s timer, so there is no per-battle message to send.
+- [x] **S3 Collapse `useBattlePanel`'s chained effects,** six to four, which is the one change
+  CLAUDE.md sanctions for that file. The result reveal was two effects chained through state:
+  one set `showResult`, the second existed only to raise the overlay a render later. The two
+  `battle.error` effects read the same signal, so their relative order came from where they
+  sat in the file. Both merged, each into one commit. Added a case for the late-failure guard,
+  which had no coverage and was held only by that accidental ordering.
+
+## R1-R3: the client could not explain the refusals the server was sending
+
+Found by checking, as with S1, whether two things that must agree actually did. Three did not.
+
+- [x] **R1 One code, two meanings.** `expired` was returned by both battle controllers: from
+  the intent path meaning the player's own request timed out, and from the accept path as the
+  `CoverageFailure` meaning the *defender's authorization* had lapsed. The client maps a code
+  to player-facing text with no idea which endpoint answered, so one of the two was always
+  wrong — and it was the one that mattered, telling the player to retry a thing that cannot
+  succeed until the defender re-grants. The intent-side code is now `intent-expired`, matching
+  what the accept path already called it. `expired` keeps only the protocol meaning.
+- [x] **R2 Nine reasons had no text,** including `pet-locked`, `intent-expired` and every
+  operational one, so a player met `Battle refused: item-catalog-stale`. The status maps are
+  `Record<AcceptRejection, number>` and TypeScript forces them complete, which is why neither
+  ever had a gap; the message map is `Record<string, string>` and could not be checked the same
+  way, because the reasons are backend types and `@shared/core` must not import from `backend`.
+  `tests/features/battle/ledger/rejectionMessages.test.ts` now binds the message map to the two
+  status maps' keys. It caught a tenth on its first run: `session-not-authorized`, which is the
+  one refusal on the list a player clears themselves.
+- [x] **R3 A dead session key stayed in storage.** On `session-not-authorized` the client
+  surfaced the error and stopped, leaving the key in `sessionStorage` to fail every subsequent
+  battle identically. The server has just said that key will never work, so the client now
+  discards it locally (not via `revoke`, which would ask the server to retract a delegation it
+  already refuses, and would leave the key behind if that call failed) and re-signs once with
+  the wallet. That is the pre-session path: it costs one prompt instead of the battle. Retried
+  once only, and only for that code.
+- [x] **R3.1 Match the client's drop-set to matchmaking's filter.** `isConsentFailure` decides
+  whether to drop an opponent and re-read the list, and listed three of the six conditions
+  `hasConsent` filters on. A defender whose authorization expired, was not yet valid, or was
+  signed under an older ruleset therefore stayed in the list, so the player re-picked the one
+  choice that could not succeed. Now the same six, documented as being the same six.
 
 ## Do not touch
 

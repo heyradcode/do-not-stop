@@ -50,6 +50,15 @@ export interface BattleSession {
     approve(): Promise<StoredSessionKey | null>;
     /** Drops the local key and tells the server to revoke every delegation for this wallet. */
     revoke(): Promise<void>;
+    /**
+     * Drops the local key without calling the server.
+     *
+     * For the one case where the server has already said the key is dead
+     * (`session-not-authorized`): revoking it there would ask the server to retract a
+     * delegation it has just told us it does not honour, and a failure in that call would
+     * leave the dead key in storage to be reused on the next battle, and the next.
+     */
+    discardLocalKey(): void;
 }
 
 export function useBattleSession(): BattleSession {
@@ -144,6 +153,11 @@ export function useBattleSession(): BattleSession {
         }
     }, [apiClient, chainId, config, owner, signTypedDataAsync, supported]);
 
+    const discardLocalKey = useCallback((): void => {
+        clearSessionKey();
+        setRevision((n) => n + 1);
+    }, []);
+
     const revoke = useCallback(async (): Promise<void> => {
         clearSessionKey();
         setRevision((n) => n + 1);
@@ -154,7 +168,7 @@ export function useBattleSession(): BattleSession {
         }
     }, [apiClient, chainId]);
 
-    return { key, supported, isPending, error, approve, revoke };
+    return { key, supported, isPending, error, approve, revoke, discardLocalKey };
 }
 
 /**

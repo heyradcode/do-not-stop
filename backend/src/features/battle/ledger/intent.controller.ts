@@ -17,10 +17,10 @@ import {
  * distinction is worth making: a client should retry none of these, but a wallet-mismatch is
  * a bug in the client while a used nonce usually means a duplicate submit.
  */
-const STATUS_BY_REASON: Record<IntentRejection, number> = {
+export const STATUS_BY_REASON: Record<IntentRejection, number> = {
     'malformed-intent': 422,
     'wrong-deployment': 422,
-    expired: 422,
+    'intent-expired': 422,
     'wallet-mismatch': 403,
     'wrong-signature-format': 422,
     'bad-signature': 401,

@@ -14,6 +14,7 @@ import { normalizeSolanaSignatureToBase58 } from '../../utils/solana/signatureAu
 
 import { useActiveChain } from '../session/useActiveChain';
 import { chainIdFor } from './chainIdFor';
+import { type StoredSessionKey } from '../../auth/sessionKeyStore';
 import { signIntentWithSession, useBattleSession } from './useBattleSession';
 import { useBattleConfig } from './useBattleConfig';
 
@@ -104,30 +105,55 @@ export function useSubmitBattleIntent() {
                 // The delegated key when the wallet approved one, the wallet otherwise
                 // (§D). Same signature over the same intent either way — what differs is
                 // only who holds the key, and therefore how often a human is asked.
-                const { signature, signatureFormat, sessionKey } = session.key
-                    ? {
-                          signature: await signIntentWithSession(session.key, battleIntentTypedData(intent)),
-                          signatureFormat: 'eip712' as const,
-                          sessionKey: session.key.address,
-                      }
-                    : activeChain.kind === 'evm'
-                      ? {
-                            signature: await signEvmIntent(intent, signTypedDataAsync),
-                            signatureFormat: 'eip712' as const,
-                            sessionKey: undefined,
-                        }
-                      : {
-                            signature: await signSolanaIntent(intent),
-                            signatureFormat: 'solana-message' as const,
-                            sessionKey: undefined,
-                        };
+                const signAndSubmit = async (withSession: StoredSessionKey | null) => {
+                    const { signature, signatureFormat, sessionKey } = withSession
+                        ? {
+                              signature: await signIntentWithSession(withSession, battleIntentTypedData(intent)),
+                              signatureFormat: 'eip712' as const,
+                              sessionKey: withSession.address,
+                          }
+                        : activeChain.kind === 'evm'
+                          ? {
+                                signature: await signEvmIntent(intent, signTypedDataAsync),
+                                signatureFormat: 'eip712' as const,
+                                sessionKey: undefined,
+                            }
+                          : {
+                                signature: await signSolanaIntent(intent),
+                                signatureFormat: 'solana-message' as const,
+                                sessionKey: undefined,
+                            };
 
-                const { data: submitted } = await apiClient.post<SubmitIntentResponse>('/api/battle/intents', {
-                    intent: toWire(intent),
-                    signature,
-                    signatureFormat,
-                    ...(sessionKey ? { sessionKey } : {}),
-                });
+                    return apiClient.post<SubmitIntentResponse>('/api/battle/intents', {
+                        intent: toWire(intent),
+                        signature,
+                        signatureFormat,
+                        ...(sessionKey ? { sessionKey } : {}),
+                    });
+                };
+
+                // A dead session key is the one refusal here the client can clear on its
+                // own. The server has just said this key is not authorized — it lapsed, or
+                // was revoked from another tab — so it will never work again, and leaving
+                // it in storage fails every future battle the same way. Drop it and sign
+                // this one with the wallet, which is the pre-session path and costs a
+                // prompt rather than the battle.
+                //
+                // Retried once, never in a loop: if the wallet's own signature is refused
+                // too, the problem is not the session key.
+                let submitted;
+                try {
+                    ({ data: submitted } = await signAndSubmit(session.key));
+                } catch (err) {
+                    if (!session.key || toBattleRejection(err)?.code !== 'session-not-authorized') {
+                        throw err;
+                    }
+                    session.discardLocalKey();
+                    ({ data: submitted } = await signAndSubmit(null));
+                }
+
+                // The same intent, so a retry cannot burn a second `clientNonce` or move
+                // `expiresAt`. The refused submit consumed nothing.
 
                 const { data: accepted } = await apiClient.post<AcceptedBattle>(
                     `/api/battle/intents/${submitted.intentHash}/accept`,
@@ -151,7 +177,7 @@ export function useSubmitBattleIntent() {
                 setIsPending(false);
             }
         },
-        [activeChain, apiClient, config, session.key, signTypedDataAsync],
+        [activeChain, apiClient, config, session, signTypedDataAsync],
     );
 
     return { submit, isPending, error };

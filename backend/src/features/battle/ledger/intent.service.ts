@@ -69,7 +69,15 @@ export interface SubmitIntentRequest {
 export type IntentRejection =
     | 'malformed-intent'
     | 'wrong-deployment'
-    | 'expired'
+    /**
+     * The intent's own `expiresAt` has passed. Named for the intent rather than a bare
+     * `expired` because the accept path returns a `CoverageFailure` also spelled `expired`,
+     * meaning the *defender's authorization* lapsed. One wire code cannot carry both: the
+     * client maps a code to player-facing text with no idea which endpoint produced it, and
+     * told players their request had timed out when the opponent's consent was the thing
+     * that had run out.
+     */
+    | 'intent-expired'
     | 'wallet-mismatch'
     | 'wrong-signature-format'
     | 'bad-signature'
@@ -109,7 +117,7 @@ export async function submitBattleIntent(request: SubmitIntentRequest): Promise<
     }
 
     if (isExpired(intent, request.nowSeconds)) {
-        return reject('expired', `intent expired at ${intent.expiresAt}, now ${request.nowSeconds}`);
+        return reject('intent-expired', `intent expired at ${intent.expiresAt}, now ${request.nowSeconds}`);
     }
 
     if (normalizeAccount(request.authenticatedWallet) !== intent.attackerOwner) {

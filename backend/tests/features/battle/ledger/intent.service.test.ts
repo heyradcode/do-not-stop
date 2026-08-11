@@ -179,7 +179,7 @@ describe('domain binding', () => {
 describe('expiry', () => {
     it('rejects an expired intent', async () => {
         const result = await submit({}, { nowSeconds: wire.expiresAt });
-        expect(result).toMatchObject({ ok: false, reason: 'expired' });
+        expect(result).toMatchObject({ ok: false, reason: 'intent-expired' });
     });
 
     it('accepts one that expires a second from now', async () => {

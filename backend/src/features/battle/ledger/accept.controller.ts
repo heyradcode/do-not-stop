@@ -14,7 +14,7 @@ import { acceptBattle, type AcceptRejection } from './accept.service';
  * the seeder. It is still a 503 rather than a 500: the deployment is misconfigured, not broken,
  * and a client that backs off and retries is behaving correctly either way.
  */
-const STATUS_BY_REASON: Record<AcceptRejection, number> = {
+export const STATUS_BY_REASON: Record<AcceptRejection, number> = {
     'intent-not-found': 404,
     'intent-already-consumed': 409,
     'intent-expired': 422,
