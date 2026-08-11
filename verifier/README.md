@@ -43,6 +43,27 @@ accusations, and a verifier that stopped early would make the second invisible.
 - **Hash-chain continuity** (`checkChainContinuity`). Every receipt in a run links to its
   predecessor's real hash, sequence numbers are consecutive, and nothing is out of order.
 
+Two further checks are about a *season* rather than a battle, which is a stronger claim: a
+receipt says a fight happened, a reward leaf says a wallet may withdraw a specific amount of a
+specific asset. Both work for EVM and Solana seasons alike, since the only difference between
+the two leaf layouts is how wide an account is.
+
+- **Reward root** (`checkRewardRoot`). Rebuilds the tree from the published entitlement list
+  and compares it against the published root. This is what stops an operator posting a root,
+  showing everyone a list, and having the two differ. It does not say the amounts are *fair*:
+  that is what the recorded rates and sequence range are for, and recomputing it needs the
+  receipt corpus.
+- **Reward claim** (`checkRewardClaim`). Rebuilds one wallet's proof from the published list
+  and verifies it against the root, so a claim can be checked before spending a transaction
+  discovering otherwise. The proof is rebuilt rather than accepted from the operator: a
+  supplied proof that verifies proves only that the operator can produce a consistent pair.
+
+  Note what a matching root does and does not pin about ordering. `merkleNode` hashes a sorted
+  pair, so swapping two leaves that are siblings leaves the root unchanged, while a permutation
+  changing which leaves pair up does not. So a rebuilt root confirms the list produces the
+  published root, not that it is in the operator's exact order — which is enough, because any
+  ordering reproducing the root produces verifying proofs for every wallet in it.
+
 Two situations fail closed rather than being skipped quietly. A receipt that will not parse, or
 fails its own internal consistency, is reported as `malformed-receipt` and left out of the chain
 walk. A receipt naming a ruleset bundle the caller did not supply is reported as

@@ -16,5 +16,12 @@ export { checkCombatReplay } from './combatReplay';
 export { checkEquipment, equipmentBonus } from './equipment';
 export { checkOperatorSignature } from './operatorSignature';
 export { checkProgression } from './progression';
+export {
+    checkRewardClaim,
+    checkRewardRoot,
+    rewardLeafFor,
+    type PublishedEntitlement,
+    type SeasonBinding,
+} from './rewardEntitlement';
 export { checkSeedDerivation } from './seedDerivation';
 export type { CheckResult } from './types';
