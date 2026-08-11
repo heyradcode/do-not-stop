@@ -161,6 +161,18 @@ export default function AccountSheet() {
                             <TouchableOpacity
                                 style={[styles.action, styles.secondary]}
                                 accessibilityRole="button"
+                                accessibilityLabel="Messages"
+                                onPress={() => {
+                                    setIsOpen(false);
+                                    navigation.navigate('Chat');
+                                }}
+                            >
+                                <Text style={styles.secondaryText}>Messages</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.action, styles.secondary]}
+                                accessibilityRole="button"
                                 accessibilityLabel="Inventory"
                                 onPress={() => {
                                     setIsOpen(false);

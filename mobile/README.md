@@ -82,9 +82,11 @@ Things worth knowing before changing any of it:
 - **`useActiveChain` decides which adapter runs**, and it resolves Solana from the auth-signer store
   and nothing else. `src/solana/SolanaAuthSigner.tsx` is what registers it; without that a connected
   Solana wallet is invisible to every one of those hooks.
-- **Navigation is five tabs plus three stack routes.** `Gallery`, `Battle`, `Breed`, `Level Up` and
-  `Train` are tabs; `Marriage`, `Rename` and `Defense` are pushed over the shell from a per-pet
-  action, because each acts on one chosen pet.
+- **Navigation is five tabs plus seven stack routes.** `Gallery`, `Battle`, `Breed`, `Level Up` and
+  `Train` are tabs. `Marriage`, `Rename`, `Defense` and `Equip` are pushed over the shell from a
+  per-pet action, because each acts on one chosen pet. `Leaderboard`, `Inventory` and `Chat` are
+  pushed from the account sheet instead: they act on no single pet, and a bottom bar past five
+  entries truncates every label.
 - **The landing screen is registered conditionally**, not redirected away from. While disconnected
   only `Landing` exists, so there is no window where a tab screen renders against a wallet that is
   not there.
@@ -93,13 +95,12 @@ Things worth knowing before changing any of it:
 
 ## Known gaps
 
-- No private chat. `useChatThreads` / `useChatMessages` are in `@shared/core` and unused here.
 - No ERC-20 token balances. The target chain's popular-token list holds a single testnet LINK.
 
 Recently closed, so the older notes claiming otherwise are wrong: the battle replays
 round by round from the verified receipt and plays the AI result dialogue after it; pet
 art renders through `PetArt` when `IMAGE_SERVICE_URL` is set, falling back to the emoji
-avatar; the leaderboard, the inventory and equipment all have screens. See
+avatar; the leaderboard, the inventory, equipment and private chat all have screens. See
 `docs/plan-mobile-frontend-parity.md` for what is left.
 
 ## Android package name

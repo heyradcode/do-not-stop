@@ -41,6 +41,13 @@ export type RootStackParamList = {
     Inventory: undefined;
     /** Gear one pet. Per-pet, so it arrives from a gallery action like Rename. */
     Equip: { petId?: string } | undefined;
+    /**
+     * Private chat with the players you are married to. One screen holding both the
+     * thread list and a conversation: a phone has no room for frontend's side-by-side
+     * layout, and a thread is not a route of its own because access is rechecked per
+     * request rather than being a property of the URL.
+     */
+    Chat: undefined;
 };
 
 export type TabItem = {
@@ -75,4 +82,5 @@ export const STACK_TITLES: Record<Exclude<keyof RootStackParamList, 'Landing' | 
     Leaderboard: 'Leaderboard',
     Inventory: 'Inventory',
     Equip: 'Equip',
+    Chat: 'Messages',
 };

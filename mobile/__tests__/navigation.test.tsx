@@ -27,6 +27,7 @@ jest.mock('../src/screens/BattleScreen', () => () => null);
 jest.mock('../src/screens/LeaderboardScreen', () => () => null);
 jest.mock('../src/screens/InventoryScreen', () => () => null);
 jest.mock('../src/screens/EquipScreen', () => () => null);
+jest.mock('../src/screens/ChatScreen', () => () => null);
 jest.mock('../src/components/AppHeader', () => () => null);
 jest.mock('../src/screens/LandingScreen', () => {
     const { Text: RNText } = jest.requireActual('react-native');
@@ -92,6 +93,7 @@ describe('routes', () => {
             'Leaderboard',
             'Inventory',
             'Equip',
+            'Chat',
         ]);
     });
 

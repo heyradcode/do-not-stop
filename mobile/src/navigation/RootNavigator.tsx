@@ -10,6 +10,7 @@ import { useAccount } from 'wagmi';
 import AppHeader from '../components/AppHeader';
 import BattleScreen from '../screens/BattleScreen';
 import BreedScreen from '../screens/BreedScreen';
+import ChatScreen from '../screens/ChatScreen';
 import DefenseScreen from '../screens/DefenseScreen';
 import EquipScreen from '../screens/EquipScreen';
 import GalleryScreen from '../screens/GalleryScreen';
@@ -47,6 +48,7 @@ const STACK_SCREENS = {
     Leaderboard: LeaderboardScreen,
     Inventory: InventoryScreen,
     Equip: EquipScreen,
+    Chat: ChatScreen,
 } as const;
 
 /**

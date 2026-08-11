@@ -23,3 +23,13 @@ import { API_URL } from '@env';
 export const BATTLE_ROOM_WS_URL = API_URL
     ? `${API_URL.replace(/^http/, 'ws')}/ws/battle-room`
     : undefined;
+
+/**
+ * Private chat's notification channel, derived the same way.
+ *
+ * Unlike the battle room this one is authenticated: `useChatThreadSocket` offers the JWT
+ * as a WebSocket subprotocol, and the server refuses the upgrade without one. That is why
+ * a thread is readable but not live when this is unset — every read is authorized again
+ * server-side, so losing the socket costs freshness, never access.
+ */
+export const CHAT_WS_URL = API_URL ? `${API_URL.replace(/^http/, 'ws')}/ws/chat` : undefined;
