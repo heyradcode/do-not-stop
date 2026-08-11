@@ -132,15 +132,43 @@ reason Solana reads as further behind than it is.
 *Verify:* `cargo test -p cryptopets` as a compile check, then read each corrected line against
 its `lib.rs` entry.
 
-### 0.3 Cover the Switchboard commit/settle paths
+### 0.3 Cover the randomness-independent logic, and decide how to unblock the rest
 
-`Anchor.toml` loads the Switchboard fixture and notes it is "not yet exercised by tests".
-Breed and mint are the two remaining async Solana flows and neither is tested through the
-randomness reveal. Phases 1 and 6 both add instructions near these; going in without coverage
-means a regression here is invisible.
+**Partly blocked, and the blocker is a missing dependency rather than missing test code.**
 
-*Verify:* `anchor test` with new cases for `commit_mint` to `settle_mint`, `commit_breed` to
-`settle_breed`, and the `cancel_*` expiry path at `randomness_expiry_slots`.
+`commit_mint` calls `assert_randomness_committed`, which parses a real Switchboard
+`RandomnessAccountData` and requires `seed_slot == clock.slot - 1`. `settle_mint` calls
+`read_revealed_randomness`, which requires `data.get_value(clock.slot)` to succeed, and that
+value comes from a Switchboard oracle. The local validator has the Switchboard program loaded
+but no queue and no oracles, so `Randomness.create` has nothing to attach to and there is
+never a value to reveal. A genesis-loaded fixture account does not work either: `seed_slot`
+must equal the previous slot, so a fixed value is correct for exactly one slot.
+
+The `cancel_*` expiry paths are blocked by the same thing despite never reading a revealed
+value, because closing a stuck request needs a request, and only `commit_mint` /
+`commit_breed` create one. This is one blocker, not nine.
+
+**Two options, both decisions rather than chores:**
+
+1. **Run these against devnet**, where Switchboard's queue and oracles exist. Costs devnet SOL
+   per run and makes the suite network-dependent and flaky in CI.
+2. **Build a mock Switchboard program** exposing the same `RandomnessAccountData` layout with
+   a settable value, loaded at the Switchboard address instead of the real one. This is
+   already the EVM side's answer to the identical problem: Hardhat deploys `MockEntropy` and
+   calls `mockReveal(...)` because there is no live Pyth network locally.
+
+Option 2 matches existing practice and keeps the suite hermetic. It is roughly a day of Rust
+plus test wiring, which is more than Phase 0 was scoped for, so it is called out here rather
+than folded in silently.
+
+**Done in the meantime:** Rust unit tests for the two untested pure modules on the mint and
+breed path, `game/breeding.rs` (`breed_cooldown_for`) and `game/rarity.rs` (`Rarity`). These
+are where the arithmetic a regression would actually break lives, and they need no validator
+at all. The shift clamp and the exclusive-threshold ladder are both pinned, since Phase 6 adds
+instructions alongside them.
+
+*Verify:* `cargo test -p cryptopets`. The `anchor test` line stays open until option 1 or 2 is
+chosen.
 
 ---
 

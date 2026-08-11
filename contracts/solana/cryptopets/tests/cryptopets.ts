@@ -1,27 +1,50 @@
 // @ts-nocheck
 //
-// NOT RUN: requires `anchor build` (Rust/Anchor toolchain unavailable in this
-// environment) to generate `../target/types/cryptopets`, plus a local
-// validator with the Metaplex Core and Switchboard On-Demand programs cloned
-// (see Anchor.toml's `[test.validator]` -- those program addresses are
-// UNVERIFIED, confirm before running `anchor test`).
+// NOT RUN HERE: needs `anchor build` to generate `../target/types/cryptopets`,
+// and no Rust/Anchor toolchain is available in the authoring environment.
+// Program fixtures are loaded at genesis from `[[test.genesis]]` in
+// Anchor.toml; see tests/fixtures/README.md for how to dump them.
 //
-// Covers the v2 instruction set (plan-contract-upgrade.md) that doesn't
-// depend on a Switchboard On-Demand randomness commit/reveal cycle:
-// initialize, pause/unpause, and the SetConfig setters. The gacha mint and
-// breed flows -- and anything downstream of them (pets, marriage, fee
-// withdrawals) -- require minting a randomness account and
-// driving it through Switchboard's on-chain commit/reveal, which needs the
-// `@switchboard-xyz/on-demand` JS SDK wired into the local validator; that
-// infrastructure doesn't exist yet, so those flows aren't covered here.
+// Covers the instructions that need no randomness: initialize, pause/unpause,
+// the SetConfig setters, and withdraw_fees.
+//
+// WHY THE MINT AND BREED FLOWS ARE NOT COVERED, and what it would take.
+//
+// It is not missing test scaffolding. `commit_mint` calls
+// `assert_randomness_committed`, which parses a real Switchboard
+// `RandomnessAccountData` and requires `seed_slot == clock.slot - 1`;
+// `settle_mint` calls `read_revealed_randomness`, which requires
+// `data.get_value(clock.slot)` to succeed. That value is produced by a
+// Switchboard oracle, and creating the account at all needs a Switchboard
+// queue.
+//
+// The local validator this suite runs against has the Switchboard program
+// loaded but no queue and no oracles, so `Randomness.create` has nothing to
+// attach to and there is never a value to reveal. Loading a hand-built account
+// at genesis does not work either: `seed_slot` must equal the previous slot,
+// and a fixed value in a genesis account is only correct for one slot.
+//
+// Two real options, both decisions rather than chores:
+//   1. Run these against devnet, where Switchboard's queue and oracles exist.
+//      Costs devnet SOL per run and makes the suite network-dependent.
+//   2. Build a mock Switchboard program exposing the same
+//      `RandomnessAccountData` layout with a settable value, and load it at
+//      the Switchboard address instead of the real one. This is what the EVM
+//      side already does: Hardhat deploys `MockEntropy` and calls
+//      `mockReveal(...)` because there is no live Pyth network locally.
+//
+// Option 2 matches existing practice and keeps the suite hermetic. Until one
+// is chosen, the randomness-independent logic is covered by Rust unit tests in
+// `programs/cryptopets/src/game/` and `src/state/` instead, which is where the
+// arithmetic that a regression would actually break lives.
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Cryptopets } from "../target/types/cryptopets";
 import { expect } from "chai";
 import { globalStatePda, feeVaultPda, fundAccount } from "./utils";
 
-// mpl-core program (plan §2.3/v2.1 Phase A); cloned onto the local validator
-// via Anchor.toml's [test.validator]. UNVERIFIED address, see note above.
+// mpl-core program (plan §2.3/v2.1 Phase A); loaded onto the local validator at
+// genesis via Anchor.toml's [[test.genesis]].
 const MPL_CORE_PROGRAM_ID = new anchor.web3.PublicKey(
   "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d",
 );
@@ -155,12 +178,16 @@ describe("cryptopets", () => {
   });
 
   // TODO (plan §4.3/§4.4): gacha mint (commit_mint/settle_mint), breeding
-  // (commit_breed/settle_breed), and everything that depends on an existing pet
-  // (level_up, train, rename_pet, marriage,
-  // cancel_mint/cancel_breed, clear_stale_marriage, withdraw_stud_fees,
-  // sync_metadata). All of these
-  // need a pet, which only comes from settle_mint/settle_breed minting a
-  // Metaplex Core asset after a Switchboard On-Demand randomness reveal --
-  // build that test harness (Randomness.create/commitIx/revealIx from
-  // @switchboard-xyz/on-demand) before adding coverage here.
+  // (commit_breed/settle_breed), and everything downstream of an existing pet
+  // (level_up, train, rename_pet, transfer_pet, marriage, cancel_mint/
+  // cancel_breed, clear_stale_marriage, withdraw_stud_fees, sync_metadata).
+  //
+  // Every one of these needs a pet, and a pet only comes from settle_mint or
+  // settle_breed minting a Metaplex Core asset after a Switchboard reveal. The
+  // cancel_* paths are blocked for the same reason despite never reading a
+  // revealed value: closing a stuck request needs a request, and only
+  // commit_mint/commit_breed create one.
+  //
+  // So this is one blocker, not nine. Pick option 1 or 2 from the header and
+  // the whole list unblocks together.
 });
