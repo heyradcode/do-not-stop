@@ -282,8 +282,19 @@ export const env = {
         keyId: process.env.BATTLE_SIGNER_KEY_ID?.trim() || 'battle-signer-dev',
         /** Dev and test only. Ignored (and refused) in production. */
         privateKey: process.env.BATTLE_SIGNER_PRIVATE_KEY?.trim() || undefined,
-        /** e.g. `aws-kms` or `gcp-kms`. Unset locally; required in production. */
+        /** `aws-kms` today. Unset locally; required in production. */
         kmsProvider: process.env.BATTLE_SIGNER_KMS_PROVIDER?.trim() || undefined,
+        /**
+         * The provider's identifier for the key: an ARN or `alias/...` on AWS.
+         *
+         * Separate from `keyId` on purpose. `keyId` is stamped into every receipt and
+         * published in the registry, so it has to stay stable; an ARN carries the account
+         * id and changes if the key is re-imported or moved. Defaults to `keyId` for a
+         * deployment that genuinely uses one name for both.
+         */
+        kmsKeyId: process.env.BATTLE_SIGNER_KMS_KEY_ID?.trim() || undefined,
+        /** Omitted when the runtime already supplies one (ECS task role, Lambda, EC2). */
+        kmsRegion: process.env.BATTLE_SIGNER_KMS_REGION?.trim() || undefined,
         requiredAttesters: (process.env.BATTLE_SIGNER_REQUIRED_ATTESTERS?.trim() || 'typescript-engine')
             .split(',')
             .map((name) => name.trim())

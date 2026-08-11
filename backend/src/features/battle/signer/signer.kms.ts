@@ -91,16 +91,45 @@ export async function createKmsSignerFromPort(options: {
  * isolated when it was sitting in the environment — which is the single thing §G's KMS
  * requirement exists to prevent.
  *
- * No adapter is wired yet: which provider this deployment uses is an open decision, and
- * guessing would mean committing an SDK dependency and a credential model to it. The parts
- * that do not depend on that answer are implemented and tested above.
+ * Async because a real backend has to ask the KMS for its public key before it can describe
+ * the key it signs with. That is what makes `configureSigner` async too, and it is the right
+ * trade: the alternative is configuring the address by hand, which is a second copy of the
+ * truth that can drift from the key actually doing the signing.
  */
-export function createKmsSigner(provider: string): SignerBackend {
+export async function createKmsSigner(options: {
+    provider: string;
+    /**
+     * The key id receipts are stamped with, and the registry publishes. Ours, and stable.
+     */
+    keyId: string;
+    /**
+     * The provider's own identifier — an ARN or alias for AWS.
+     *
+     * Deliberately not the same value as `keyId`. A receipt records which key signed it and
+     * that record is permanent, so putting an ARN there would write the account id into
+     * every receipt forever and break the moment the key was re-imported or moved.
+     */
+    kmsKeyId: string;
+    region?: string | undefined;
+    notBefore: number;
+}): Promise<SignerBackend> {
+    const { provider, keyId, kmsKeyId, region, notBefore } = options;
+
+    if (provider === 'aws-kms') {
+        // Imported here rather than at module scope so the SDK is only loaded by a
+        // deployment that actually uses it: local development and every test run resolve
+        // this module without pulling in an AWS client they will never call.
+        const { createAwsKmsPort } = await import('./signer.kms.aws');
+        return createKmsSignerFromPort({
+            port: createAwsKmsPort({ keyId: kmsKeyId, region }),
+            keyId,
+            notBefore,
+        });
+    }
+
     throw new Error(
-        `KMS signer provider "${provider}" has no adapter yet. The provider-independent half is ` +
-            'implemented (see createKmsSignerFromPort); what remains is a KmsKeyPort for this ' +
-            'provider. Production signing must use a managed KMS/HSM key restricted to commitment ' +
-            'and receipt digests (docs/battle-protocol.md §G) — do not set BATTLE_SIGNER_PRIVATE_KEY ' +
-            'in production instead.',
+        `KMS signer provider "${provider}" has no adapter. Supported: aws-kms. Production signing ` +
+            'must use a managed KMS/HSM key restricted to commitment and receipt digests ' +
+            '(docs/battle-protocol.md §G) — do not set BATTLE_SIGNER_PRIVATE_KEY in production instead.',
     );
 }

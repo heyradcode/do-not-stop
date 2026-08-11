@@ -45,16 +45,28 @@ const MAX_AUDIT_ENTRIES = 1000;
  * failure rather than a warning is the difference between a blocked deploy and a quiet
  * downgrade nobody notices until the incident.
  */
-export function configureSigner(nowSeconds: number): void {
+export async function configureSigner(nowSeconds: number): Promise<void> {
     backend = null;
     backendError = null;
 
-    const { keyId, privateKey, kmsProvider } = env.battleSigner;
+    const { keyId, privateKey, kmsProvider, kmsKeyId, kmsRegion } = env.battleSigner;
 
     if (kmsProvider) {
         try {
-            backend = createKmsSigner(kmsProvider);
+            backend = await createKmsSigner({
+                provider: kmsProvider,
+                keyId,
+                // The KMS's own identifier, kept separate from the `keyId` receipts carry:
+                // that one is ours and stays stable across a re-import or a move between
+                // accounts, while this is an ARN that does not.
+                kmsKeyId: kmsKeyId ?? keyId,
+                region: kmsRegion,
+                notBefore: nowSeconds,
+            });
         } catch (error) {
+            // A KMS that cannot be reached at boot leaves the signer unconfigured, which
+            // refuses signing rather than falling back to anything. Recorded so
+            // `/signing-keys` and the audit log say why instead of just going quiet.
             backendError = (error as Error).message;
         }
         return;

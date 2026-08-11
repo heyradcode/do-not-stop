@@ -51,7 +51,7 @@ describe('a restart must not move the active key validity window forward', () =>
     it('adopts the persisted notBefore instead of this process start time', async () => {
         // Second boot: configureSigner stamps "now", but the key really became valid at
         // FIRST_BOOT and every receipt signed since then was signed under it.
-        configureSigner(MUCH_LATER);
+        await configureSigner(MUCH_LATER);
         expect(activeSigningKey()?.notBefore).toBe(MUCH_LATER);
 
         vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([storedRow()] as never);
@@ -63,7 +63,7 @@ describe('a restart must not move the active key validity window forward', () =>
     it('keeps a receipt signed before the restart inside the published window', async () => {
         const signedAt = FIRST_BOOT + 500; // long before this boot
 
-        configureSigner(MUCH_LATER);
+        await configureSigner(MUCH_LATER);
         vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([storedRow()] as never);
         await loadPersistedSigningKeys();
 
@@ -74,7 +74,7 @@ describe('a restart must not move the active key validity window forward', () =>
 
     it('leaves a genuinely new key at its own start time', async () => {
         // Nothing stored yet, so "now" is the truth rather than an artefact of restarting.
-        configureSigner(MUCH_LATER);
+        await configureSigner(MUCH_LATER);
         vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([] as never);
         await loadPersistedSigningKeys();
 
@@ -84,7 +84,7 @@ describe('a restart must not move the active key validity window forward', () =>
     it('never moves the window earlier than the stored row claims', async () => {
         // A stored row from *after* this boot would be nonsense; prefer the earlier value
         // rather than trusting whichever number happens to be larger.
-        configureSigner(FIRST_BOOT);
+        await configureSigner(FIRST_BOOT);
         vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue(
             [storedRow({ notBefore: BigInt(MUCH_LATER) })] as never,
         );
@@ -94,7 +94,7 @@ describe('a restart must not move the active key validity window forward', () =>
     });
 
     it('still records the active key on boot, so it is never missing from the registry', async () => {
-        configureSigner(MUCH_LATER);
+        await configureSigner(MUCH_LATER);
         vi.mocked(prisma.battleSigningKey.findMany).mockResolvedValue([storedRow()] as never);
         await loadPersistedSigningKeys();
 

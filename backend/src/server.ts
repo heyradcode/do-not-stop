@@ -12,7 +12,10 @@ let battleWorker: BattleWorkerHandle | undefined;
 
 // Bind 0.0.0.0 so Render's internal health check can reach the process
 // (listen(port) alone is not always reachable on their network scan).
-const server = app.listen(env.port, '0.0.0.0', () => {
+// The callback is async because `configureSigner` now is: a KMS backend fetches its public
+// key before it can describe the key it signs with. Express ignores the returned promise,
+// so anything that must not be silently swallowed is handled inside.
+const server = app.listen(env.port, '0.0.0.0', async () => {
     const { port } = env;
     console.log(`🚀 Backend server running on 0.0.0.0:${port}`);
     console.log(`📊 Health check: http://localhost:${port}/api/health`);
@@ -37,7 +40,9 @@ const server = app.listen(env.port, '0.0.0.0', () => {
     // signing key at all. The read routes and the public corpus stay served either way —
     // receipts already issued must remain checkable after the mode is switched off.
     if (env.battle.enabled) {
-        configureSigner(Math.floor(Date.now() / 1000));
+        // Awaited: a KMS backend has to fetch its public key before it can say which key it
+        // signs with, so a misconfigured key fails at boot rather than on the first battle.
+        await configureSigner(Math.floor(Date.now() / 1000));
         // Republishes every key this deployment has ever signed under. Without it the
         // registry is only as old as the process, and a rotated key vanishes on the next
         // deploy — making its receipts unverifiable rather than invalid (§H item 4).

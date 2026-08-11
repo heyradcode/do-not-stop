@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ethers } from 'ethers';
 
-import { createKmsSignerFromPort, type KmsKeyPort } from '@features/battle/signer/signer.kms';
+import { createKmsSigner, createKmsSignerFromPort, type KmsKeyPort } from '@features/battle/signer/signer.kms';
 import {
     extractUncompressedPublicKey,
     parseDerSignature,
@@ -173,5 +173,48 @@ describe('createKmsSignerFromPort', () => {
         const backend = await createKmsSignerFromPort({ port, keyId: 'kms-1', notBefore: 1000 });
 
         await expect(backend.sign(new Uint8Array(20))).rejects.toThrow(/32-byte digest/);
+    });
+});
+
+describe('createKmsSigner provider dispatch', () => {
+    /**
+     * An unknown provider must never fall back.
+     *
+     * A fallback here would be an in-process key wearing a KMS's name, and a deployment
+     * could then run believing the material was isolated while it sat in the environment —
+     * the single thing §G's KMS requirement exists to prevent. `configureSigner` records
+     * the failure and refuses to sign, which blocks a launch rather than degrading one.
+     */
+    it('refuses a provider it has no adapter for', async () => {
+        await expect(
+            createKmsSigner({ provider: 'gcp-kms', keyId: 'k', kmsKeyId: 'k', notBefore: 0 }),
+        ).rejects.toThrow(/has no adapter/);
+    });
+
+    it('names the providers it does support, so the error is actionable', async () => {
+        await expect(
+            createKmsSigner({ provider: 'nonsense', keyId: 'k', kmsKeyId: 'k', notBefore: 0 }),
+        ).rejects.toThrow(/aws-kms/);
+    });
+
+    // The KMS identifier is an ARN carrying an account id, and a receipt records which key
+    // signed it permanently. Conflating the two would write infrastructure into every
+    // receipt and break the moment the key was re-imported.
+    it('keeps the receipt key id separate from the provider key id', async () => {
+        const backend = await createKmsSignerFromPort({
+            port: {
+                provider: 'test-kms',
+                getPublicKeyDer: async () =>
+                    Uint8Array.from([
+                        ...Buffer.from('3056301006072a8648ce3d020106052b8104000a034200', 'hex'),
+                        ...ethers.getBytes(signingKey.publicKey),
+                    ]),
+                signDigest: async (digest) => derSignatureFor(digest),
+            },
+            keyId: 'battle-signer-2026',
+            notBefore: 0,
+        });
+
+        expect(backend.key.keyId).toBe('battle-signer-2026');
     });
 });
