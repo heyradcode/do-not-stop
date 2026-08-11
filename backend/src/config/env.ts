@@ -274,9 +274,19 @@ export const env = {
      * production, so a deployment cannot quietly fall back to an in-process key.
      *
      * `requiredAttesters` is what makes §F's circuit breaker unbypassable: a receipt cannot be
-     * signed unless every listed implementation has attested to that exact receipt hash. Add
-     * `go-verifier` once the independent verifier is wired up; until then the single-attester
-     * default means only the TypeScript engine's agreement is enforced.
+     * signed unless every listed implementation has attested to that exact receipt hash.
+     *
+     * `go-verifier` is in the default, so the independent Go recomputation is a *precondition*
+     * for a signature rather than a step that happened earlier in the pipeline. Those are not
+     * the same guarantee: the pipeline already refuses to advance a battle whose verification
+     * did not match, but that is one code path away from being edited, while this refuses at
+     * the signer — the one place a receipt can actually be produced.
+     *
+     * It costs nothing on the happy path. `verify.worker` writes `verificationDetail` in the
+     * same transition that moves a battle to `verified`, and `sign.worker` only runs from
+     * `verified`, so every battle reaching the signer already carries the attestation. A
+     * deployment running without indexer-go never reaches `verified` at all, and would have
+     * stalled before signing with or without this.
      */
     battleSigner: {
         keyId: process.env.BATTLE_SIGNER_KEY_ID?.trim() || 'battle-signer-dev',
@@ -295,7 +305,7 @@ export const env = {
         kmsKeyId: process.env.BATTLE_SIGNER_KMS_KEY_ID?.trim() || undefined,
         /** Omitted when the runtime already supplies one (ECS task role, Lambda, EC2). */
         kmsRegion: process.env.BATTLE_SIGNER_KMS_REGION?.trim() || undefined,
-        requiredAttesters: (process.env.BATTLE_SIGNER_REQUIRED_ATTESTERS?.trim() || 'typescript-engine')
+        requiredAttesters: (process.env.BATTLE_SIGNER_REQUIRED_ATTESTERS?.trim() || 'typescript-engine,go-verifier')
             .split(',')
             .map((name) => name.trim())
             .filter((name) => name.length > 0),
