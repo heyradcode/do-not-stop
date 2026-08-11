@@ -53,6 +53,3 @@ export const BATTLE_BATCH_REGISTRY_ABI = [
  * regardless of how many receipts the batch covers, so this does not scale with batch size.
  */
 export const PUBLISH_BATCH_GAS_LIMIT = 200_000n;
-
-/** The registry's `previousRoot` for the very first batch. */
-export const ZERO_ROOT = `0x${'00'.repeat(32)}` as const;

@@ -1,11 +1,9 @@
-import type { Address, Chain, PublicClient, Transport, WalletClient, Account } from 'viem';
-
 import { prisma } from '@config/prisma';
 
-import { BATTLE_BATCH_REGISTRY_ABI, PUBLISH_BATCH_GAS_LIMIT, ZERO_ROOT } from './abi';
+import { ZERO_ROOT, type BatchAnchorClient, type RootHex } from './client';
 
 /**
- * Anchoring batch roots in `BattleBatchRegistry` (§I).
+ * Anchoring batch roots in a batch registry (§I).
  *
  * This is the one place the backend battle path sends a transaction. It anchors a
  * fingerprint of many battles rather than any single one, which is what makes the design
@@ -15,12 +13,14 @@ import { BATTLE_BATCH_REGISTRY_ABI, PUBLISH_BATCH_GAS_LIMIT, ZERO_ROOT } from '.
  * Anchoring proves publication, not honesty. A root on chain means we cannot later change
  * what a batch contained; it says nothing about whether the battles inside were computed
  * correctly, which is public replay's job (§H).
+ *
+ * Chain-neutral. Everything here is about *which* batch to anchor and whether the chain
+ * already has it; reading the head and sending the transaction are the client's job (see
+ * `client.ts`). Both the EVM registry and the Solana one are anchored by this same logic.
  */
 
 export interface AnchorContext {
-    publicClient: PublicClient<Transport, Chain>;
-    walletClient: WalletClient<Transport, Chain, Account>;
-    registryAddress: Address;
+    client: BatchAnchorClient;
     chainId: string;
     deploymentId: string;
 }
@@ -53,27 +53,16 @@ export async function anchorNextBatch(context: AnchorContext): Promise<AnchorOut
         return { status: 'nothing-to-anchor' };
     }
 
-    const [onChainNumber, onChainRoot] = await Promise.all([
-        context.publicClient.readContract({
-            address: context.registryAddress,
-            abi: BATTLE_BATCH_REGISTRY_ABI,
-            functionName: 'latestBatchNumber',
-        }),
-        context.publicClient.readContract({
-            address: context.registryAddress,
-            abi: BATTLE_BATCH_REGISTRY_ABI,
-            functionName: 'latestRoot',
-        }),
-    ]);
+    const head = await context.client.readHead();
 
     // The transaction landed but the row never got updated — a crash between the two. The
     // chain is the authority here, so reconcile rather than resubmit.
-    if (BigInt(onChainNumber) >= batch.batchNumber) {
+    if (head.batchNumber >= batch.batchNumber) {
         await markAnchored(batch.id, null);
         return { status: 'already-anchored', batchNumber: batch.batchNumber };
     }
 
-    const expectedNumber = BigInt(onChainNumber) + 1n;
+    const expectedNumber = head.batchNumber + 1n;
     if (batch.batchNumber !== expectedNumber) {
         // A batch is missing between the chain's head and ours. Submitting would revert, and
         // guessing which batch to send instead would risk anchoring them out of order.
@@ -83,42 +72,33 @@ export async function anchorNextBatch(context: AnchorContext): Promise<AnchorOut
         };
     }
 
-    const previousRoot = (batch.previousRoot ?? ZERO_ROOT) as `0x${string}`;
-    if (previousRoot.toLowerCase() !== String(onChainRoot).toLowerCase()) {
+    const previousRoot = (batch.previousRoot ?? ZERO_ROOT) as RootHex;
+    if (previousRoot.toLowerCase() !== head.root.toLowerCase()) {
         // Our idea of the chain's head disagrees with the chain's. Anchoring anyway would
         // revert; the divergence needs a human, since it means the local batch chain was
         // built on something the registry never accepted.
         return {
             status: 'out-of-sync',
-            detail: `batch ${batch.batchNumber} links to ${previousRoot} but the registry head is ${String(onChainRoot)}`,
+            detail: `batch ${batch.batchNumber} links to ${previousRoot} but the registry head is ${head.root}`,
         };
     }
 
     try {
-        const hash = await context.walletClient.writeContract({
-            address: context.registryAddress,
-            abi: BATTLE_BATCH_REGISTRY_ABI,
-            functionName: 'publishBatch',
-            args: [
-                batch.batchNumber,
-                previousRoot,
-                batch.merkleRoot as `0x${string}`,
-                batch.rulesetSetHash as `0x${string}`,
-                batch.firstSequence,
-                batch.lastSequence,
-            ],
-            gas: PUBLISH_BATCH_GAS_LIMIT,
+        const { txHash } = await context.client.publishBatch({
+            batchNumber: batch.batchNumber,
+            previousRoot,
+            merkleRoot: batch.merkleRoot as RootHex,
+            rulesetSetHash: batch.rulesetSetHash as RootHex,
+            firstSequence: batch.firstSequence,
+            lastSequence: batch.lastSequence,
         });
-        const receipt = await context.publicClient.waitForTransactionReceipt({ hash });
-        if (receipt.status !== 'success') {
-            return { status: 'failed', detail: `publishBatch(${batch.batchNumber}) reverted in ${hash}` };
-        }
 
-        await markAnchored(batch.id, hash);
-        return { status: 'anchored', batchNumber: batch.batchNumber, txHash: hash };
+        await markAnchored(batch.id, txHash);
+        return { status: 'anchored', batchNumber: batch.batchNumber, txHash };
     } catch (error) {
         // Left unanchored so the next pass retries it. The batch itself is already durable
-        // and its receipts already public; only the anchor is missing.
+        // and its receipts already public; only the anchor is missing. A reverted publish
+        // arrives here too, because the client throws rather than returning a hash for it.
         return { status: 'failed', detail: describe(error) };
     }
 }

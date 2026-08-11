@@ -12,15 +12,14 @@ const ROOT_2 = `0x${'22'.repeat(32)}`;
 const RULESET_SET = `0x${'aa'.repeat(32)}`;
 const TX_HASH = `0x${'ee'.repeat(32)}`;
 
-const readContract = vi.fn();
-const writeContract = vi.fn();
-const waitForTransactionReceipt = vi.fn();
+// A `BatchAnchorClient` fake rather than viem fakes: the service no longer knows what a
+// contract call is, so the seam it is tested through is the one it actually uses.
+const readHead = vi.fn();
+const publishBatch = vi.fn();
 
 function context(): AnchorContext {
     return {
-        publicClient: { readContract, waitForTransactionReceipt } as never,
-        walletClient: { writeContract } as never,
-        registryAddress: '0x1111111111111111111111111111111111111111',
+        client: { readHead, publishBatch },
         chainId: 'eip155:84532',
         deploymentId: 'base-sepolia-live',
     };
@@ -28,9 +27,7 @@ function context(): AnchorContext {
 
 /** Registry state: head batch number and head root. */
 function onChain(latestBatchNumber: bigint, latestRoot: string) {
-    readContract.mockImplementation(({ functionName }: { functionName: string }) =>
-        Promise.resolve(functionName === 'latestBatchNumber' ? latestBatchNumber : latestRoot),
-    );
+    readHead.mockResolvedValue({ batchNumber: latestBatchNumber, root: latestRoot });
 }
 
 function batch(overrides: Partial<Record<string, unknown>> = {}) {
@@ -49,8 +46,7 @@ function batch(overrides: Partial<Record<string, unknown>> = {}) {
 beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(prisma.battleBatch.update).mockResolvedValue({} as never);
-    writeContract.mockResolvedValue(TX_HASH);
-    waitForTransactionReceipt.mockResolvedValue({ status: 'success' });
+    publishBatch.mockResolvedValue({ txHash: TX_HASH });
 });
 
 describe('anchoring the next batch', () => {
@@ -61,8 +57,14 @@ describe('anchoring the next batch', () => {
         const outcome = await anchorNextBatch(context());
 
         expect(outcome).toEqual({ status: 'anchored', batchNumber: 1n, txHash: TX_HASH });
-        const call = writeContract.mock.calls[0]![0] as { args: unknown[] };
-        expect(call.args).toEqual([1n, ZERO_ROOT, ROOT_1, RULESET_SET, 1n, 100n]);
+        expect(publishBatch).toHaveBeenCalledWith({
+            batchNumber: 1n,
+            previousRoot: ZERO_ROOT,
+            merkleRoot: ROOT_1,
+            rulesetSetHash: RULESET_SET,
+            firstSequence: 1n,
+            lastSequence: 100n,
+        });
     });
 
     it('records the transaction hash against the batch', async () => {
@@ -105,7 +107,7 @@ describe('anchoring the next batch', () => {
     it('does nothing when every batch is anchored', async () => {
         vi.mocked(prisma.battleBatch.findFirst).mockResolvedValue(null);
         await expect(anchorNextBatch(context())).resolves.toEqual({ status: 'nothing-to-anchor' });
-        expect(writeContract).not.toHaveBeenCalled();
+        expect(publishBatch).not.toHaveBeenCalled();
     });
 });
 
@@ -118,7 +120,7 @@ describe('crash safety', () => {
         const outcome = await anchorNextBatch(context());
 
         expect(outcome).toEqual({ status: 'already-anchored', batchNumber: 1n });
-        expect(writeContract).not.toHaveBeenCalled();
+        expect(publishBatch).not.toHaveBeenCalled();
         expect(prisma.battleBatch.update).toHaveBeenCalled();
     });
 
@@ -146,7 +148,7 @@ describe('refusing to submit a transaction that would revert', () => {
 
         expect(outcome).toMatchObject({ status: 'out-of-sync' });
         expect(String((outcome as { detail: string }).detail)).toContain('expects batch 2');
-        expect(writeContract).not.toHaveBeenCalled();
+        expect(publishBatch).not.toHaveBeenCalled();
     });
 
     it('reports out-of-sync when our link disagrees with the registry head', async () => {
@@ -161,7 +163,7 @@ describe('refusing to submit a transaction that would revert', () => {
 
         expect(outcome).toMatchObject({ status: 'out-of-sync' });
         expect(String((outcome as { detail: string }).detail)).toContain('registry head');
-        expect(writeContract).not.toHaveBeenCalled();
+        expect(publishBatch).not.toHaveBeenCalled();
     });
 
     it('reads the on-chain head before submitting rather than paying for a revert', async () => {
@@ -170,15 +172,21 @@ describe('refusing to submit a transaction that would revert', () => {
 
         await anchorNextBatch(context());
 
-        expect(readContract).toHaveBeenCalledTimes(2);
+        expect(readHead).toHaveBeenCalledTimes(1);
+        expect(readHead.mock.invocationCallOrder[0]!).toBeLessThan(
+            publishBatch.mock.invocationCallOrder[0]!,
+        );
     });
 });
 
 describe('failures leave the batch retryable', () => {
+    // A revert reaches the service as a throw, because a client returning a hash for a
+    // reverted publish would mark the batch anchored against a transaction that anchored
+    // nothing. `evmClient.test.ts` is what proves the EVM client actually throws there.
     it('reports a reverted transaction without marking the batch anchored', async () => {
         vi.mocked(prisma.battleBatch.findFirst).mockResolvedValue(batch() as never);
         onChain(0n, ZERO_ROOT);
-        waitForTransactionReceipt.mockResolvedValue({ status: 'reverted' });
+        publishBatch.mockRejectedValue(new Error('publishBatch(1) reverted in 0xdead'));
 
         const outcome = await anchorNextBatch(context());
 
@@ -191,7 +199,7 @@ describe('failures leave the batch retryable', () => {
         // missing, so the next pass retries it.
         vi.mocked(prisma.battleBatch.findFirst).mockResolvedValue(batch() as never);
         onChain(0n, ZERO_ROOT);
-        writeContract.mockRejectedValue(new Error('insufficient funds'));
+        publishBatch.mockRejectedValue(new Error('insufficient funds'));
 
         const outcome = await anchorNextBatch(context());
 

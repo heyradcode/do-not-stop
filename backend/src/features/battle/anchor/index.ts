@@ -1,13 +1,15 @@
-import { createPublicClient, createWalletClient, http, type Address, type Chain } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import type { Address } from 'viem';
 
 import { env, type EvmAnchorConfig } from '@config/env';
 import { buildNextBatch, type BatchScope } from '@features/battle/batcher';
 
 import { anchorNextBatch, type AnchorContext } from './anchor.service';
+import { createEvmAnchorClient, evmClientsFor } from './evmClient';
 
 export { anchorNextBatch, type AnchorContext, type AnchorOutcome } from './anchor.service';
-export { BATTLE_BATCH_REGISTRY_ABI, PUBLISH_BATCH_GAS_LIMIT, ZERO_ROOT } from './abi';
+export { ZERO_ROOT, type BatchAnchorClient, type BatchCommitment, type RegistryHead } from './client';
+export { createEvmAnchorClient, evmClientsFor } from './evmClient';
+export { BATTLE_BATCH_REGISTRY_ABI, PUBLISH_BATCH_GAS_LIMIT } from './abi';
 
 /**
  * The batch-and-anchor loop (§I).
@@ -46,9 +48,12 @@ function startForChain(chainId: string): BatchAnchorHandle {
     const { anchorIntervalMs } = env.battle;
 
     if (anchor) {
+        // Read from config rather than the context: the registry address is the client's
+        // business now, and re-exposing it on `AnchorContext` just to log it would put a
+        // chain-specific field back on the chain-neutral type.
+        const registry = env.battle.anchors[chainId]?.registryAddress;
         console.log(
-            `[battle-anchor] ${chainId}: batching and anchoring every ${anchorIntervalMs}ms ` +
-                `to ${anchor.registryAddress}`,
+            `[battle-anchor] ${chainId}: batching and anchoring every ${anchorIntervalMs}ms to ${registry}`,
         );
     } else {
         console.log(
@@ -65,9 +70,11 @@ function startForChain(chainId: string): BatchAnchorHandle {
 /**
  * The anchoring client for one chain, or undefined when it has none.
  *
- * Non-EVM chain ids return undefined regardless of configuration: the client below is viem,
- * and pointing it at a Solana RPC would fail per tick rather than at boot. Solana anchoring
- * is a separate program and a separate client (see `docs/plan-solana-parity.md` Phase 2).
+ * Non-EVM chain ids return undefined regardless of configuration: the only client wired up
+ * so far is the EVM one, and pointing it at a Solana RPC would fail per tick rather than at
+ * boot. Solana anchoring is a separate program and a separate `BatchAnchorClient` (see
+ * `docs/plan-solana-parity.md` Phase 2.3); when it lands, it slots in here and nothing in
+ * `anchor.service` changes.
  */
 function anchorContextFor(scope: BatchScope): AnchorContext | undefined {
     const config: EvmAnchorConfig | undefined = env.battle.anchors[scope.chainId];
@@ -82,21 +89,8 @@ function anchorContextFor(scope: BatchScope): AnchorContext | undefined {
         return undefined;
     }
 
-    const chain = {
-        id: config.evmChainId,
-        name: `chain-${config.evmChainId}`,
-        nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-        rpcUrls: { default: { http: [config.rpcUrl] } },
-    } as const satisfies Chain;
-
     return {
-        publicClient: createPublicClient({ chain, transport: http(config.rpcUrl) }),
-        walletClient: createWalletClient({
-            account: privateKeyToAccount(config.privateKey),
-            chain,
-            transport: http(config.rpcUrl),
-        }),
-        registryAddress: config.registryAddress as Address,
+        client: createEvmAnchorClient(evmClientsFor(config), config.registryAddress as Address),
         chainId: scope.chainId,
         deploymentId: scope.deploymentId,
     };
