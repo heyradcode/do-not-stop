@@ -68,6 +68,64 @@ export function marriageProposalPda(programId: anchor.web3.PublicKey, petAId: nu
   );
 }
 
+// ─── cryptopets-registry (docs/plan-solana-parity.md Phase 1) ────────────────
+//
+// Separate program, separate seeds. Transcribed from
+// `programs/cryptopets-registry/src/state.rs`.
+
+export const REGISTRY_SEED = Buffer.from("registry");
+export const PUBLISHER_SEED = Buffer.from("publisher");
+export const BATCH_SEED = Buffer.from("batch");
+
+export function registryPda(programId: anchor.web3.PublicKey) {
+  return anchor.web3.PublicKey.findProgramAddressSync([REGISTRY_SEED], programId);
+}
+
+export function publisherPda(
+  programId: anchor.web3.PublicKey,
+  publisher: anchor.web3.PublicKey,
+) {
+  return anchor.web3.PublicKey.findProgramAddressSync(
+    [PUBLISHER_SEED, publisher.toBuffer()],
+    programId,
+  );
+}
+
+/// `Batch` PDAs are seeded by the batch number as a little-endian `u64`, matching
+/// `&batch_number.to_le_bytes()` in the `#[derive(Accounts)]` seeds.
+export function batchPda(programId: anchor.web3.PublicKey, batchNumber: number | anchor.BN) {
+  const seed = new anchor.BN(batchNumber).toArrayLike(Buffer, "le", 8);
+  return anchor.web3.PublicKey.findProgramAddressSync([BATCH_SEED, seed], programId);
+}
+
+/// A distinct non-zero 32-byte root, so a test never accidentally passes because two
+/// roots it meant to differ happened to match.
+export function root(fill: number): number[] {
+  return Array.from({ length: 32 }, () => fill);
+}
+
+export const ZERO_ROOT: number[] = Array.from({ length: 32 }, () => 0);
+
+/**
+ * Asserts a call fails, and fails with the Anchor error `code` when one is given.
+ *
+ * Checking the code matters here: `publish_batch` has seven distinct rejections and a bare
+ * "it threw" would pass for the wrong one, which is exactly the bug such a test is meant
+ * to catch.
+ */
+export async function expectError(promise: Promise<unknown>, code?: string) {
+  try {
+    await promise;
+  } catch (err: any) {
+    const actual = err?.error?.errorCode?.code;
+    if (code && actual !== code) {
+      throw new Error(`expected error ${code}, got ${actual ?? err?.message ?? err}`);
+    }
+    return;
+  }
+  throw new Error(`expected ${code ?? "a failure"}, but the call succeeded`);
+}
+
 /// Airdrops `lamports` to `pubkey` and waits for confirmation. Defaults to 1 SOL.
 export async function fundAccount(
   provider: anchor.Provider,
