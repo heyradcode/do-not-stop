@@ -5,10 +5,19 @@ use crate::errors::ErrorCode;
 #[account]
 pub struct PetAccount {
     pub id: u32,
-    /// Owner at the time this pet was minted or bred (plan §2.3/v2.1 Phase A).
-    /// Informational only — post-mint Core-wallet transfers do not update this field
-    /// (there is no `transfer_pet` instruction). Current ownership is the Metaplex Core
-    /// asset's `owner` field, read via `utils::metadata::core_asset_owner(&asset_account)`.
+    /// Cached owner, written at mint and rewritten by `transfer_pet` (plan §2.3/v2.1
+    /// Phase A).
+    ///
+    /// Not the source of truth. Current ownership is the Metaplex Core asset's `owner`
+    /// field, read via `utils::metadata::core_asset_owner(&asset_account)`. This field
+    /// exists because a Core asset lookup cannot answer "every pet this wallet owns" in one
+    /// call: the gallery's `getProgramAccounts` memcmp filters on these bytes.
+    ///
+    /// It can go stale, and nothing here detects it. A holder may transfer the asset
+    /// directly through `mpl-core` without touching this program, which leaves the pet
+    /// listed under its previous owner in that query until some instruction rewrites the
+    /// field. Read `core_asset_owner` for any ownership decision; this is an index, never
+    /// an authority.
     pub owner: Pubkey,
     pub dna: u64,
     pub rarity: u8,
@@ -35,17 +44,21 @@ pub struct PetAccount {
     /// EVM's `uint256`.
     pub parent1_id: u32,
     pub parent2_id: u32,
-    /// Times this pet has been used as a breeding parent; will drive the breed
-    /// cooldown curve (plan §4.1, not yet wired on Solana).
+    /// Times this pet has been used as a breeding parent (plan §4.1). Drives the breed
+    /// cooldown curve: `settle_breed` charges each parent
+    /// `breed_cooldown_for(breed_count)` from its *current* count and increments
+    /// afterwards, so a pet's first breed pays the base cooldown rather than double it.
     pub breed_count: u8,
     /// Breed-specific cooldown, separate from `ready_time`'s battle cooldown (plan
     /// §4.1). `0` = breed-ready immediately.
     pub breed_ready_time: i64,
-    /// Train-specific cooldown (plan §3.4). `0` = train-ready immediately; Solana has
-    /// no `train` instruction yet.
+    /// Train-specific cooldown (plan §3.4), separate from `ready_time`'s battle lockout
+    /// and `breed_ready_time`'s breed cooldown. `0` = train-ready immediately; `train`
+    /// applies `GlobalState.train_cooldown_seconds` on each use.
     pub train_ready_time: i64,
-    /// Resolved at mint from DNA + rarity tier (plan §3.7); `0` until species pools
-    /// land on Solana.
+    /// Resolved by `resolve_species` from DNA and rarity tier against
+    /// `GlobalState.pool_sizes`, at mint and at breed alike (plan §3.7). `0` only when the
+    /// tier's pool size is `0`, which is the one case it stays unset.
     pub species_id: u16,
     /// Pet id of this pet's spouse (plan §4.4, mirrors EVM `marriageOf[petId].spouseId`);
     /// `0` = not married, since `next_pet_id` starts at 1.

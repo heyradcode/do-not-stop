@@ -38,10 +38,14 @@ pub use requests::*;
 /// CPI. `PetAccount`'s PDA seeds are now `[PetAccount::SEED, asset_pubkey]` (replacing
 /// `[PetAccount::SEED, owner, pet_id]`), and the Core asset's `owner` field (read via
 /// `utils::metadata::core_asset_owner`) is the source of truth for pet ownership, replacing
-/// `pet.owner` (now informational-only, see its doc comment). `transfer_pet` is removed —
-/// ownership transfers happen as standard Core asset transfers through any wallet. Bumps
-/// `PetAccount::SPACE` (+32 bytes). Breaking; requires redeploy + reinit of pet accounts
-/// (`GlobalState`/`PlayerProfile` layouts unchanged).
+/// `pet.owner` (now a cache rather than an authority, see its doc comment). `transfer_pet`
+/// was removed here, on the reasoning that ownership transfers happen as standard Core
+/// asset transfers through any wallet. It was **reinstated afterwards** and exists today:
+/// a standard Core transfer leaves `pet.owner` stale, and that field is what the gallery's
+/// `getProgramAccounts` memcmp filters on, so the program needs a transfer path of its own
+/// that keeps the cache in step. No version bump for the reinstatement, since an
+/// instruction is not a layout. Bumps `PetAccount::SPACE` (+32 bytes). Breaking; requires
+/// redeploy + reinit of pet accounts (`GlobalState`/`PlayerProfile` layouts unchanged).
 /// v7: removes retired battle config and consent state. `PetAccount.open_to_challenges`
 /// is gone — `commit_battle` was its only reader, and defender consent is now a
 /// wallet-signed `DefenseAuthorization` (§D), so the flag protected nothing while still
