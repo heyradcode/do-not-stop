@@ -39,6 +39,18 @@ const mockEquip = jest.fn();
 const mockUnequip = jest.fn();
 const mockNotify = jest.fn();
 
+/**
+ * A marker rather than null, so the bag can be asserted to draw item art. Nulling it
+ * would let the art vanish again unnoticed, which is how the gallery shipped without
+ * pet avatars for the whole project.
+ */
+jest.mock('../src/components/ItemArt', () => {
+    const { Text: RNText } = jest.requireActual('react-native');
+    const React_ = jest.requireActual('react');
+    return ({ item }: { item: { itemType: string } }) =>
+        React_.createElement(RNText, null, `[item-art:${item.itemType}]`);
+});
+
 jest.mock('../src/components/PetArt', () => () => null);
 
 jest.mock('@shared/core', () => ({
@@ -130,6 +142,15 @@ describe('slots', () => {
         const tree = await render();
         expect(labels(tree)).toContain('Unequip Weapon');
         expect(labels(tree)).not.toContain('Equip Weapon');
+    });
+
+    it('draws art for both a worn item and the choices offered', async () => {
+        mockState.bySlot = new Map([[0, { slot: 0, item: gear({ itemType: '10' }) }]]);
+        mockState.entries = [{ item: gear({ itemType: '11', slot: 1, name: 'Hide Vest' }), quantity: '1' }];
+        const tree = await render();
+
+        expect(textOf(tree)).toContain('[item-art:10]'); // worn
+        expect(textOf(tree)).toContain('[item-art:11]'); // offered
     });
 
     it('says an empty slot has nothing that fits, distinct from having no slot', async () => {

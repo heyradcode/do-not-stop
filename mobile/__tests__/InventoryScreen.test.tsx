@@ -40,6 +40,18 @@ const mockSpend = jest.fn();
 const mockRefetch = jest.fn();
 const mockNotify = jest.fn();
 
+/**
+ * A marker rather than null, so the bag can be asserted to draw item art. Nulling it
+ * would let the art vanish again unnoticed, which is how the gallery shipped without
+ * pet avatars for the whole project.
+ */
+jest.mock('../src/components/ItemArt', () => {
+    const { Text: RNText } = jest.requireActual('react-native');
+    const React_ = jest.requireActual('react');
+    return ({ item: subject }: { item: { itemType: string } }) =>
+        React_.createElement(RNText, null, `[item-art:${subject.itemType}]`);
+});
+
 jest.mock('../src/components/PetArt', () => () => null);
 
 jest.mock('@shared/core', () => ({
@@ -115,6 +127,14 @@ describe('the bag', () => {
         const tree = await render();
         expect(textOf(tree)).toContain('XP Potion');
         expect(textOf(tree)).toContain('×3');
+    });
+
+    it('draws each item with its art, not a coloured tile alone', async () => {
+        // Without it a legendary sword and a crafting shard look alike: both are a name
+        // on a rarity-tinted rectangle.
+        mockState.entries = [{ item: item({ itemType: '42' }), quantity: '1' }];
+        const tree = await render();
+        expect(textOf(tree)).toContain('[item-art:42]');
     });
 
     it('hides a spent stack, since zero is written rather than deleted', async () => {

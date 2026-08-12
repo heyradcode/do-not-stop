@@ -14,6 +14,7 @@ import {
     type ItemDefinition,
 } from '@shared/core';
 
+import ItemArt from '../components/ItemArt';
 import PetPicker from '../components/PetPicker';
 import { useNotifyError } from '../hooks/useNotifyError';
 import { useTxErrorToast } from '../hooks/useTxErrorToast';
@@ -135,6 +136,7 @@ export default function EquipScreen() {
 
                             {worn ? (
                                 <View style={styles.worn}>
+                                    <ItemArt item={worn.item} size={36} />
                                     <View style={styles.wornBody}>
                                         <Text
                                             style={[
@@ -191,6 +193,7 @@ export default function EquipScreen() {
                                                     accessibilityLabel={`Choose ${item.name}`}
                                                     activeOpacity={0.85}
                                                 >
+                                                    <ItemArt item={item} size={28} />
                                                     <Text
                                                         style={[
                                                             styles.chipName,
@@ -275,7 +278,7 @@ const styles = StyleSheet.create({
     },
     slotEmpty: { fontSize: 13, color: neon.textMuted },
     worn: { flexDirection: 'row', alignItems: 'center' },
-    wornBody: { flex: 1, minWidth: 0 },
+    wornBody: { flex: 1, minWidth: 0, marginLeft: 10 },
     wornName: { fontSize: 15, fontWeight: '800' },
     wornEffect: { fontSize: 12, color: neon.textMuted, marginTop: 2 },
     remove: {

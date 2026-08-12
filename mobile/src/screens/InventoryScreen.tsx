@@ -23,6 +23,7 @@ import {
     type ItemDefinition,
 } from '@shared/core';
 
+import ItemArt from '../components/ItemArt';
 import PetPicker from '../components/PetPicker';
 import { useNotifyError } from '../hooks/useNotifyError';
 import { neon, neonGlow } from '../theme/neon';
@@ -162,7 +163,10 @@ export default function InventoryScreen() {
                             accessibilityLabel={`Open ${item.name}`}
                             activeOpacity={0.85}
                         >
-                            <Text style={styles.qty}>×{quantity}</Text>
+                            <View style={styles.tileHead}>
+                                <ItemArt item={item} size={40} />
+                                <Text style={styles.qty}>×{quantity}</Text>
+                            </View>
                             <Text
                                 style={[styles.tileName, { color: getRarityColor(item.rarity) }]}
                                 numberOfLines={2}
@@ -193,9 +197,17 @@ export default function InventoryScreen() {
                     />
                     {open ? (
                         <View style={styles.sheet}>
-                            <Text style={[styles.sheetName, { color: getRarityColor(open.rarity) }]}>
-                                {open.name}
-                            </Text>
+                            <View style={styles.sheetHead}>
+                                <ItemArt item={open} size={64} />
+                                <Text
+                                    style={[
+                                        styles.sheetName,
+                                        { color: getRarityColor(open.rarity) },
+                                    ]}
+                                >
+                                    {open.name}
+                                </Text>
+                            </View>
                             <Text style={styles.sheetDesc}>{open.description}</Text>
 
                             {itemStats(open.effect).length > 0 ? (
@@ -319,7 +331,14 @@ const styles = StyleSheet.create({
         padding: 12,
         minHeight: 108,
     },
-    qty: { fontSize: 12, fontWeight: '800', color: neon.textMuted, marginBottom: 4 },
+    tileHead: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4,
+    },
+    qty: { fontSize: 12, fontWeight: '800', color: neon.textMuted },
+    sheetHead: { flexDirection: 'row', alignItems: 'center' },
     tileName: { fontSize: 15, fontWeight: '800' },
     tileSub: {
         fontSize: 11,
@@ -345,7 +364,7 @@ const styles = StyleSheet.create({
         padding: 20,
         ...neonGlow(neon.purple, 14, 0.35),
     },
-    sheetName: { fontSize: 19, fontWeight: '800' },
+    sheetName: { fontSize: 19, fontWeight: '800', marginLeft: 12, flex: 1 },
     sheetDesc: { fontSize: 14, color: neon.textMuted, marginTop: 6, lineHeight: 20 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 },
     chip: {
