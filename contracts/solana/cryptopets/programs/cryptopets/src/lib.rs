@@ -206,10 +206,10 @@ pub mod cryptopets {
         equip::equip(ctx, slot, item_type)
     }
 
-    /// `item_type` names the `balance` PDA seed the item is returned to; which item that is
-    /// comes from the slot, not from the caller, and the two are checked against each other.
+    /// `item_type` names the `balance` PDA the item is returned to, and is checked against
+    /// what the slot actually holds, so naming the wrong one fails rather than crediting a
+    /// different stack.
     pub fn unequip(ctx: Context<Unequip>, slot: u8, item_type: u64) -> Result<()> {
-        let _ = item_type;
-        equip::unequip(ctx, slot)
+        equip::unequip(ctx, slot, item_type)
     }
 }

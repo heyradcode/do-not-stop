@@ -74,6 +74,9 @@ pub mod cryptopets_rewards {
     ) -> Result<()> {
         require!(merkle_root != [0u8; 32], ErrorCode::EmptyRoot);
         require!(claims_close_at > claims_open_at, ErrorCode::BadClaimWindow);
+        // A zero cap is claimable by nobody, and a season cannot be edited afterwards, so
+        // the mistake would only surface as every claim failing with ExceedsSeasonCap.
+        require!(season_cap > 0 && per_wallet_cap > 0, ErrorCode::ZeroCap);
 
         let season = &mut ctx.accounts.season;
         season.merkle_root = merkle_root;

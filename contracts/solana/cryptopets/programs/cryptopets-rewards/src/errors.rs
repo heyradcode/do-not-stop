@@ -30,4 +30,10 @@ pub enum ErrorCode {
     WrongTokenOwner,
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
+
+    // Appended, never inserted. `#[error_code]` numbers sequentially from 6000, so adding a
+    // variant anywhere but the end renumbers every one after it and silently changes what a
+    // client's stored error code means. Free to ignore before the first deploy; not after.
+    #[msg("Caps must be greater than zero, or nobody can claim")]
+    ZeroCap,
 }

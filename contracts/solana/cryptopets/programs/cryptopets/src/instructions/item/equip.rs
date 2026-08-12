@@ -63,18 +63,22 @@ pub fn equip(ctx: Context<Equip>, slot: u8, item_type: u64) -> Result<()> {
     );
 
     let equipment = &mut ctx.accounts.equipment;
-    equipment.asset = ctx.accounts.pet_asset.key();
-    // Denormalized so the off-chain projection can be joined to `pet_roster` on the numeric
-    // id it records; see the field's own comment for what keying by the asset would cost.
-    equipment.pet_id = ctx.accounts.pet.id;
-    equipment.version = CURRENT_ACCOUNT_VERSION;
-    equipment.bump = ctx.bumps.equipment;
     require!(
         equipment.slots[slot as usize] == 0,
         ErrorCode::SlotAlreadyFilled
     );
 
     let was_bare = !equipment.any_equipped();
+
+    // After the checks, not before. A failed instruction rolls back either way, so this is
+    // about reading order rather than correctness: every validation above, every mutation
+    // below.
+    equipment.asset = ctx.accounts.pet_asset.key();
+    // Denormalized so the off-chain projection can be joined to `pet_roster` on the numeric
+    // id it records; see the field's own comment for what keying by the asset would cost.
+    equipment.pet_id = ctx.accounts.pet.id;
+    equipment.version = CURRENT_ACCOUNT_VERSION;
+    equipment.bump = ctx.bumps.equipment;
 
     let balance = &mut ctx.accounts.balance;
     balance.quantity = balance
@@ -113,7 +117,7 @@ pub fn equip(ctx: Context<Equip>, slot: u8, item_type: u64) -> Result<()> {
 /// Pays the current owner rather than whoever equipped it, the same rule `ItemCore.unequip`
 /// applies: it is what stops an item being stranded behind a pet its equipper can no longer
 /// reach. Here that is automatic, since only the current owner may call this at all.
-pub fn unequip(ctx: Context<Unequip>, slot: u8) -> Result<()> {
+pub fn unequip(ctx: Context<Unequip>, slot: u8, item_type: u64) -> Result<()> {
     require!(!ctx.accounts.global_state.paused, ErrorCode::Paused);
     require!((slot as usize) < SLOT_COUNT, ErrorCode::UnknownSlot);
 
@@ -124,15 +128,19 @@ pub fn unequip(ctx: Context<Unequip>, slot: u8) -> Result<()> {
     );
 
     let equipment = &mut ctx.accounts.equipment;
-    let item_type = equipment.slots[slot as usize];
-    require!(item_type != 0, ErrorCode::SlotEmpty);
-    require!(
-        ctx.accounts.balance.item_type == item_type,
-        ErrorCode::NotEquippable
-    );
+    let equipped = equipment.slots[slot as usize];
+    require!(equipped != 0, ErrorCode::SlotEmpty);
+
+    // The caller names the item, because `balance`'s PDA is seeded by it, and it must be the
+    // one actually in the slot. Checked against the slot rather than against
+    // `balance.item_type`: the balance account may be newly created here (see its comment),
+    // where that field is still zero and the comparison would reject a valid unequip.
+    require!(equipped == item_type, ErrorCode::WrongSlot);
 
     equipment.slots[slot as usize] = 0;
 
+    // Set unconditionally rather than only on creation: on an existing account these are
+    // already correct, and on a newly created one they are what make it a valid balance.
     let balance = &mut ctx.accounts.balance;
     balance.owner = ctx.accounts.owner.key();
     balance.item_type = item_type;
@@ -286,8 +294,13 @@ pub struct Unequip<'info> {
     )]
     pub equipment: Account<'info, PetEquipment>,
 
-    /// `init_if_needed` because the owner may have spent every loose copy while this one was
-    /// equipped, leaving no balance account to return it to.
+    /// `init_if_needed`, though in the ordinary case the account already exists: nothing
+    /// closes an `ItemBalance` (a spent stack stays at quantity 0), and the freeze means the
+    /// owner who equipped is the owner who unequips.
+    ///
+    /// It is here for the case where that does not hold — a pet whose asset left its owner
+    /// by some path this program did not mediate. Without it the item would be stranded in a
+    /// slot its holder cannot empty. Costs the owner rent only when it actually creates one.
     #[account(
         init_if_needed,
         payer = owner,
