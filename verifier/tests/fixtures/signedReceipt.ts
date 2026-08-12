@@ -57,6 +57,19 @@ export const FORGED_BEACON = {
 
 const PUBLISHED_AT = roundTime(QUICKNET, BEACON.round);
 const DOMAIN = { chainId: 'eip155:84532' as const, deploymentId: 'base-sepolia-live' };
+
+/**
+ * The same deployment's Solana half.
+ *
+ * Nothing about a receipt's verification is chain-specific — the operator signs both with
+ * secp256k1, the seed comes from drand, and the combat engine is one implementation — but a
+ * deployment serving both families signs under two keys (§G), so a corpus spanning them is
+ * the case the chain walk has to get right. Owners are base58 rather than `0x`, which is the
+ * one visible difference in a snapshot.
+ */
+export const SOLANA_DOMAIN = { chainId: 'solana:devnet' as const, deploymentId: 'base-sepolia-live' };
+export const SOLANA_SIGNING_KEY_ID = 'battle-signer-solana-2026-07';
+
 export const RULESET_HASH = hashRuleset(SOURCE_DEFAULT_RULESET);
 
 /**
@@ -126,6 +139,21 @@ export const SNAPSHOT: BattleSnapshot = {
         sourceVersion: BigInt(PUBLISHED_AT - 50),
     },
     takenAt: PUBLISHED_AT - 6,
+};
+
+/**
+ * The same fight on Solana: base58 owners, a `solana:` domain, everything else identical.
+ *
+ * Identical on purpose. Combat, seed derivation and progression are one implementation
+ * across both chains, so a Solana receipt differing in its *outcome* would mean a bug, not a
+ * fixture. What this exists to exercise is the surrounding bookkeeping — the second signing
+ * key and the chain walk over a corpus carrying both.
+ */
+export const SOLANA_SNAPSHOT: BattleSnapshot = {
+    ...SNAPSHOT,
+    domain: SOLANA_DOMAIN,
+    attacker: { ...SNAPSHOT.attacker, owner: 'HN7cABqLq46Es1jh92dQQpjP4LxRo7vLYCsRoQ8HWzEA' },
+    defender: { ...SNAPSHOT.defender, owner: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM' },
 };
 
 export const TEST_PRIVATE_KEY = `0x${'11'.repeat(32)}` as Hex;
@@ -204,8 +232,12 @@ export function buildReceipt(overrides: ReceiptOverrides = {}): BattleReceipt {
     const snapshot = overrides.snapshot ?? SNAPSHOT;
     const ruleset = overrides.ruleset ?? SOURCE_DEFAULT_RULESET;
     const rulesetHash = overrides.rulesetHash ?? hashRuleset(ruleset);
+    // Taken from the snapshot rather than the module constant: the seed binds the domain,
+    // and a receipt whose domain and snapshot disagreed would fail its own seed check
+    // instead of being the cross-chain fixture a caller asked for.
+    const domain = snapshot.domain;
     const seed = deriveBattleSeed({
-        domain: DOMAIN,
+        domain,
         drandRandomness: beacon.randomness,
         battleId,
         snapshotHash: hashBattleSnapshot(snapshot),
@@ -226,7 +258,7 @@ export function buildReceipt(overrides: ReceiptOverrides = {}): BattleReceipt {
         equipmentBonus(snapshot.defender.equipment),
     );
     return {
-        domain: DOMAIN,
+        domain,
         battleId,
         intentHash: `0x${'11'.repeat(32)}`,
         commitmentHash: `0x${'22'.repeat(32)}`,

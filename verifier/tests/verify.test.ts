@@ -3,7 +3,15 @@ import { describe, expect, it } from 'vitest';
 
 import { builtInRulesets } from '../src/io/loadRulesets';
 import { verifyReceipts } from '../src/verify';
-import { buildReceipt, buildSignedReceipt, envelopeFor, FORGED_BEACON, testTrustedKey } from './fixtures/signedReceipt';
+import {
+    buildReceipt,
+    buildSignedReceipt,
+    envelopeFor,
+    FORGED_BEACON,
+    SOLANA_SIGNING_KEY_ID,
+    SOLANA_SNAPSHOT,
+    testTrustedKey,
+} from './fixtures/signedReceipt';
 
 /** Every check a single well-formed receipt is expected to produce, in pipeline order. */
 const SINGLE_RECEIPT_CHECKS = [
@@ -140,5 +148,103 @@ describe('verifyReceipts', () => {
 
     it('passes an empty input with no results at all', () => {
         expect(verifyReceipts([], [])).toEqual({ results: [], ok: true });
+    });
+});
+
+/**
+ * A deployment serving both chains signs under two keys: §G gives each reward domain its
+ * own, and `keyConfigFor` refuses to start a multi-family deployment that shares one. So the
+ * per-wallet and per-pet corpus views carry receipts from both, interleaved.
+ *
+ * The chain walk is per key. Running it over the whole corpus reported `mixed-signing-key`
+ * at the first receipt of the second key — an accusation, against an honest operator, for
+ * the ordinary dual-chain case.
+ */
+describe('a corpus spanning both chains', () => {
+    /** One EVM receipt and one Solana receipt, each first in its own key's chain. */
+    function crossChainCorpus() {
+        const evm = buildSignedReceipt({ battleId: 'btl_evm_1', sequence: 1 });
+        const solana = buildSignedReceipt({
+            battleId: 'btl_sol_1',
+            snapshot: SOLANA_SNAPSHOT,
+            signingKeyId: SOLANA_SIGNING_KEY_ID,
+            sequence: 1,
+        });
+        return { evm, solana };
+    }
+
+    it('verifies clean, rather than calling an honest operator a forger', () => {
+        const { evm, solana } = crossChainCorpus();
+        const report = verifyReceipts(
+            [evm.envelope, solana.envelope],
+            [evm.trustedKey, solana.trustedKey],
+        );
+
+        const continuity = report.results.filter((r) => r.check === 'chain-continuity');
+        expect(continuity.every((r) => r.ok)).toBe(true);
+        expect(report.ok).toBe(true);
+    });
+
+    // One per key, each naming the key it walked, so a failure says which chain broke.
+    it('walks one chain per signing key', () => {
+        const { evm, solana } = crossChainCorpus();
+        const report = verifyReceipts(
+            [evm.envelope, solana.envelope],
+            [evm.trustedKey, solana.trustedKey],
+        );
+
+        const continuity = report.results.filter((r) => r.check === 'chain-continuity');
+        expect(continuity).toHaveLength(2);
+        expect(continuity.map((r) => r.subject)).toEqual([
+            evm.receipt.signingKeyId,
+            SOLANA_SIGNING_KEY_ID,
+        ]);
+    });
+
+    // Splitting the corpus must not soften the check: a break inside one key's run is still
+    // a break, and the other key's clean run must not paper over it.
+    it('still catches a break within one chain, and blames only that one', () => {
+        const evm = buildSignedReceipt({ battleId: 'btl_evm_1', sequence: 1 });
+        const solanaFirst = buildSignedReceipt({
+            battleId: 'btl_sol_1',
+            snapshot: SOLANA_SNAPSHOT,
+            signingKeyId: SOLANA_SIGNING_KEY_ID,
+            sequence: 1,
+        });
+        // Sequence 3 where 2 belongs: a withheld Solana receipt.
+        const solanaGap = buildSignedReceipt({
+            battleId: 'btl_sol_3',
+            snapshot: SOLANA_SNAPSHOT,
+            signingKeyId: SOLANA_SIGNING_KEY_ID,
+            sequence: 3,
+            previousReceiptHash: hashBattleReceipt(solanaFirst.receipt),
+        });
+
+        const report = verifyReceipts(
+            [evm.envelope, solanaFirst.envelope, solanaGap.envelope],
+            [evm.trustedKey, solanaFirst.trustedKey],
+        );
+
+        const continuity = report.results.filter((r) => r.check === 'chain-continuity');
+        const evmWalk = continuity.find((r) => r.subject === evm.receipt.signingKeyId);
+        const solanaWalk = continuity.find((r) => r.subject === SOLANA_SIGNING_KEY_ID);
+
+        expect(evmWalk?.ok).toBe(true);
+        expect(solanaWalk?.ok).toBe(false);
+        expect(solanaWalk?.detail).toMatch(/sequence-not-consecutive/);
+    });
+
+    // The receipt itself is chain-blind: same drand seed, same engine, same progression.
+    // A Solana receipt failing one of those would be a bug, not a fixture difference.
+    it('runs every per-receipt check on a Solana receipt too', () => {
+        const solana = buildSignedReceipt({
+            battleId: 'btl_sol_1',
+            snapshot: SOLANA_SNAPSHOT,
+            signingKeyId: SOLANA_SIGNING_KEY_ID,
+        });
+        const report = verifyReceipts([solana.envelope], [solana.trustedKey]);
+
+        expect(report.results.map((r) => r.check)).toEqual(SINGLE_RECEIPT_CHECKS);
+        expect(report.ok).toBe(true);
     });
 });

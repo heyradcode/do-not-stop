@@ -65,11 +65,41 @@ export function verifyReceipts(
     }
 
 
-    if (wellFormed.length > 0) {
-        results.push(checkChainContinuity(wellFormed));
+    for (const [signingKeyId, run] of groupBySigningKey(wellFormed)) {
+        results.push({ ...checkChainContinuity(run), subject: signingKeyId });
     }
 
     return { results, ok: results.every((result) => result.ok) };
+}
+
+/**
+ * Receipts split into one run per signing key, in the order they arrived.
+ *
+ * There is one hash chain per *key*, not per corpus. §G gives each reward domain its own
+ * key and the backend refuses to start a multi-family deployment that shares one, so a
+ * deployment serving EVM and Solana signs under two — and any export spanning both, such as
+ * the per-wallet and per-pet corpus views, carries receipts from each.
+ *
+ * Walking that as a single chain reported `mixed-signing-key` at the first receipt of the
+ * second key: a failure, against an honest operator, for the ordinary dual-chain case. For a
+ * tool whose whole purpose is to substantiate accusations, a false one is the worst
+ * available answer.
+ *
+ * Input order is preserved within each key rather than sorted by sequence. An export that
+ * arrives out of order *should* fail the walk, and sorting here would repair the evidence
+ * before looking at it.
+ */
+function groupBySigningKey(receipts: readonly BattleReceipt[]): Map<string, BattleReceipt[]> {
+    const runs = new Map<string, BattleReceipt[]>();
+    for (const receipt of receipts) {
+        const run = runs.get(receipt.signingKeyId);
+        if (run) {
+            run.push(receipt);
+        } else {
+            runs.set(receipt.signingKeyId, [receipt]);
+        }
+    }
+    return runs;
 }
 
 function verifyOne(
