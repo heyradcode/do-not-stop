@@ -1,0 +1,377 @@
+{
+  "receipts": [
+    {
+      "receiptHash": "0x7498cf98d6ad707b44eb8c48a53927d3729ee1defb320c2610531feac18c7974",
+      "signature": "0xc9b8709a449debd7f0b89de4f61752bef0094a18a91adf18359bfc2a48ff7de30b6d71339c7fc6f900653f8b1eb44f8cb3a8da8343736723dedecc69ae75441e1c",
+      "signingKeyId": "battle-signer-2026-07",
+      "payload": {
+        "domain": {
+          "chainId": "eip155:84532",
+          "deploymentId": "base-sepolia-live"
+        },
+        "battleId": "btl_evm_1",
+        "intentHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "commitmentHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "defenseAuthorizationHash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "snapshot": {
+          "domain": {
+            "chainId": "eip155:84532",
+            "deploymentId": "base-sepolia-live"
+          },
+          "attacker": {
+            "petId": "1",
+            "owner": "0xabcdef0123456789abcdef0123456789abcdef01",
+            "dna": "1234567890123456",
+            "rarity": 3,
+            "level": 10,
+            "skill": 4,
+            "xp": 120,
+            "lastOpponentId": "0",
+            "streak": 0,
+            "readyAt": 1692806267,
+            "sourceVersion": "1692806317"
+          },
+          "defender": {
+            "petId": "2",
+            "owner": "0x2222222222222222222222222222222222222222",
+            "dna": "6543210987654321",
+            "rarity": 2,
+            "level": 11,
+            "skill": 7,
+            "xp": 45,
+            "lastOpponentId": "1",
+            "streak": 2,
+            "readyAt": 1692806267,
+            "sourceVersion": "1692806317"
+          },
+          "takenAt": 1692806361
+        },
+        "beacon": {
+          "chainHash": "0x52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
+          "round": 1000,
+          "signature": "0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39",
+          "randomness": "0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd"
+        },
+        "seed": "0x866a46313cbce1828f74be0ec8ffa7751c5ab16b924d50e6631f8a17470c2906",
+        "rulesetVersion": 1,
+        "rulesetHash": "0xe51caf2298cfd0afab7d4bb3e391bdc0e1187d014782dbbb72e10ca42a4ccbac",
+        "result": {
+          "attackerWon": true,
+          "rounds": 5,
+          "winnerHpRemaining": 208
+        },
+        "combatLogHash": "0x4f26656c3567de63dda7af98029c66637b965f63f8324241998a990551890e44",
+        "progression": {
+          "attacker": {
+            "petId": "1",
+            "won": true,
+            "decayShift": 0,
+            "xpAwarded": 110,
+            "lastOpponentId": "2",
+            "streak": 0,
+            "level": 10,
+            "xp": 230,
+            "leveledUp": false
+          },
+          "defender": {
+            "petId": "2",
+            "won": false,
+            "decayShift": 3,
+            "xpAwarded": 2,
+            "lastOpponentId": "1",
+            "streak": 3,
+            "level": 11,
+            "xp": 47,
+            "leveledUp": false
+          }
+        },
+        "sequence": 1,
+        "previousReceiptHash": null,
+        "attackerPreviousReceiptHash": null,
+        "defenderPreviousReceiptHash": null,
+        "createdAt": 1692806368,
+        "signingKeyId": "battle-signer-2026-07"
+      }
+    },
+    {
+      "receiptHash": "0x421483b8b91dc55fddfc4a5c72dbd061c5e2c764f2d3b3c893f49c06aec40303",
+      "signature": "0xe1b31608a754a7df4451fd98d373dcfeea4476b6aa2ce38c97f900db8ae39d312a249ca8afc6564473bb2222a2159308896681d8c14d23d14aad1d3e0cfebb2f1c",
+      "signingKeyId": "battle-signer-solana-2026-07",
+      "payload": {
+        "domain": {
+          "chainId": "solana:devnet",
+          "deploymentId": "base-sepolia-live"
+        },
+        "battleId": "btl_sol_1",
+        "intentHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "commitmentHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "defenseAuthorizationHash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "snapshot": {
+          "domain": {
+            "chainId": "solana:devnet",
+            "deploymentId": "base-sepolia-live"
+          },
+          "attacker": {
+            "petId": "1",
+            "owner": "HN7cABqLq46Es1jh92dQQpjP4LxRo7vLYCsRoQ8HWzEA",
+            "dna": "1234567890123456",
+            "rarity": 3,
+            "level": 10,
+            "skill": 4,
+            "xp": 120,
+            "lastOpponentId": "0",
+            "streak": 0,
+            "readyAt": 1692806267,
+            "sourceVersion": "1692806317"
+          },
+          "defender": {
+            "petId": "2",
+            "owner": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+            "dna": "6543210987654321",
+            "rarity": 2,
+            "level": 11,
+            "skill": 7,
+            "xp": 45,
+            "lastOpponentId": "1",
+            "streak": 2,
+            "readyAt": 1692806267,
+            "sourceVersion": "1692806317"
+          },
+          "takenAt": 1692806361
+        },
+        "beacon": {
+          "chainHash": "0x52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
+          "round": 1000,
+          "signature": "0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39",
+          "randomness": "0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd"
+        },
+        "seed": "0xe6ab296514101771304d0e6c51862a72d3f64c9b3344a7eeb17f296bc2515f8b",
+        "rulesetVersion": 1,
+        "rulesetHash": "0xe51caf2298cfd0afab7d4bb3e391bdc0e1187d014782dbbb72e10ca42a4ccbac",
+        "result": {
+          "attackerWon": true,
+          "rounds": 5,
+          "winnerHpRemaining": 199
+        },
+        "combatLogHash": "0xbe6135f9aeda66b54780352eccf16ee423a9f9d5675520a0e127282e3b18538f",
+        "progression": {
+          "attacker": {
+            "petId": "1",
+            "won": true,
+            "decayShift": 0,
+            "xpAwarded": 110,
+            "lastOpponentId": "2",
+            "streak": 0,
+            "level": 10,
+            "xp": 230,
+            "leveledUp": false
+          },
+          "defender": {
+            "petId": "2",
+            "won": false,
+            "decayShift": 3,
+            "xpAwarded": 2,
+            "lastOpponentId": "1",
+            "streak": 3,
+            "level": 11,
+            "xp": 47,
+            "leveledUp": false
+          }
+        },
+        "sequence": 1,
+        "previousReceiptHash": null,
+        "attackerPreviousReceiptHash": null,
+        "defenderPreviousReceiptHash": null,
+        "createdAt": 1692806369,
+        "signingKeyId": "battle-signer-solana-2026-07"
+      }
+    },
+    {
+      "receiptHash": "0xd806808a93c7869f2d810508d9d1b3d0855b0d312f876bc976847c03e9a4824c",
+      "signature": "0x45fe4e802f2c409ae435a646543b7ae5646aeebc83c451b990346d4c0d941ee23a9c34bf361e8cb88b6c3d1b68d77cb681e034a7c7de0884caa7a88bd471e0ad1c",
+      "signingKeyId": "battle-signer-2026-07",
+      "payload": {
+        "domain": {
+          "chainId": "eip155:84532",
+          "deploymentId": "base-sepolia-live"
+        },
+        "battleId": "btl_evm_2",
+        "intentHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "commitmentHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "defenseAuthorizationHash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "snapshot": {
+          "domain": {
+            "chainId": "eip155:84532",
+            "deploymentId": "base-sepolia-live"
+          },
+          "attacker": {
+            "petId": "1",
+            "owner": "0xabcdef0123456789abcdef0123456789abcdef01",
+            "dna": "1234567890123456",
+            "rarity": 3,
+            "level": 10,
+            "skill": 4,
+            "xp": 120,
+            "lastOpponentId": "0",
+            "streak": 0,
+            "readyAt": 1692806267,
+            "sourceVersion": "1692806317"
+          },
+          "defender": {
+            "petId": "2",
+            "owner": "0x2222222222222222222222222222222222222222",
+            "dna": "6543210987654321",
+            "rarity": 2,
+            "level": 11,
+            "skill": 7,
+            "xp": 45,
+            "lastOpponentId": "1",
+            "streak": 2,
+            "readyAt": 1692806267,
+            "sourceVersion": "1692806317"
+          },
+          "takenAt": 1692806361
+        },
+        "beacon": {
+          "chainHash": "0x52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
+          "round": 1000,
+          "signature": "0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39",
+          "randomness": "0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd"
+        },
+        "seed": "0xa7bec03e4c2161af922a1533a2783bac1769fb85824a2b13614d944bdaca191b",
+        "rulesetVersion": 1,
+        "rulesetHash": "0xe51caf2298cfd0afab7d4bb3e391bdc0e1187d014782dbbb72e10ca42a4ccbac",
+        "result": {
+          "attackerWon": true,
+          "rounds": 6,
+          "winnerHpRemaining": 163
+        },
+        "combatLogHash": "0x3063d000d690bfa5cfaf9cc1ca35ef400faed001d09a6455430f7050cfe25ad1",
+        "progression": {
+          "attacker": {
+            "petId": "1",
+            "won": true,
+            "decayShift": 0,
+            "xpAwarded": 110,
+            "lastOpponentId": "2",
+            "streak": 0,
+            "level": 10,
+            "xp": 230,
+            "leveledUp": false
+          },
+          "defender": {
+            "petId": "2",
+            "won": false,
+            "decayShift": 3,
+            "xpAwarded": 2,
+            "lastOpponentId": "1",
+            "streak": 3,
+            "level": 11,
+            "xp": 47,
+            "leveledUp": false
+          }
+        },
+        "sequence": 2,
+        "previousReceiptHash": "0x7498cf98d6ad707b44eb8c48a53927d3729ee1defb320c2610531feac18c7974",
+        "attackerPreviousReceiptHash": "0x7498cf98d6ad707b44eb8c48a53927d3729ee1defb320c2610531feac18c7974",
+        "defenderPreviousReceiptHash": "0x7498cf98d6ad707b44eb8c48a53927d3729ee1defb320c2610531feac18c7974",
+        "createdAt": 1692806370,
+        "signingKeyId": "battle-signer-2026-07"
+      }
+    },
+    {
+      "receiptHash": "0xada137d35319aadbe2dd6a759eb20241af92293af6576e75c9e160131b8a04cc",
+      "signature": "0xdd74e0f6457613223d8f2a9bb5bd9fb532d0407ea6808635300e46d3d462a256694e0fb21674cc58e4cee8f6a9e3a7786cacc9eb00a94264af968a06c5b2b0931c",
+      "signingKeyId": "battle-signer-solana-2026-07",
+      "payload": {
+        "domain": {
+          "chainId": "solana:devnet",
+          "deploymentId": "base-sepolia-live"
+        },
+        "battleId": "btl_sol_2",
+        "intentHash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "commitmentHash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+        "defenseAuthorizationHash": "0x3333333333333333333333333333333333333333333333333333333333333333",
+        "snapshot": {
+          "domain": {
+            "chainId": "solana:devnet",
+            "deploymentId": "base-sepolia-live"
+          },
+          "attacker": {
+            "petId": "1",
+            "owner": "HN7cABqLq46Es1jh92dQQpjP4LxRo7vLYCsRoQ8HWzEA",
+            "dna": "1234567890123456",
+            "rarity": 3,
+            "level": 10,
+            "skill": 4,
+            "xp": 120,
+            "lastOpponentId": "0",
+            "streak": 0,
+            "readyAt": 1692806267,
+            "sourceVersion": "1692806317"
+          },
+          "defender": {
+            "petId": "2",
+            "owner": "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",
+            "dna": "6543210987654321",
+            "rarity": 2,
+            "level": 11,
+            "skill": 7,
+            "xp": 45,
+            "lastOpponentId": "1",
+            "streak": 2,
+            "readyAt": 1692806267,
+            "sourceVersion": "1692806317"
+          },
+          "takenAt": 1692806361
+        },
+        "beacon": {
+          "chainHash": "0x52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971",
+          "round": 1000,
+          "signature": "0xb44679b9a59af2ec876b1a6b1ad52ea9b1615fc3982b19576350f93447cb1125e342b73a8dd2bacbe47e4b6b63ed5e39",
+          "randomness": "0xfe290beca10872ef2fb164d2aa4442de4566183ec51c56ff3cd603d930e54fdd"
+        },
+        "seed": "0xf9035a8f3d11d133e3dad75f17539c750cdeed78a64609a4cb817978972d9396",
+        "rulesetVersion": 1,
+        "rulesetHash": "0xe51caf2298cfd0afab7d4bb3e391bdc0e1187d014782dbbb72e10ca42a4ccbac",
+        "result": {
+          "attackerWon": true,
+          "rounds": 3,
+          "winnerHpRemaining": 271
+        },
+        "combatLogHash": "0x4b16d7b05339a08ca0cd30f4d1be01e3913341bbac6a3bbf267310a091bfd449",
+        "progression": {
+          "attacker": {
+            "petId": "1",
+            "won": true,
+            "decayShift": 0,
+            "xpAwarded": 110,
+            "lastOpponentId": "2",
+            "streak": 0,
+            "level": 10,
+            "xp": 230,
+            "leveledUp": false
+          },
+          "defender": {
+            "petId": "2",
+            "won": false,
+            "decayShift": 3,
+            "xpAwarded": 2,
+            "lastOpponentId": "1",
+            "streak": 3,
+            "level": 11,
+            "xp": 47,
+            "leveledUp": false
+          }
+        },
+        "sequence": 2,
+        "previousReceiptHash": "0x421483b8b91dc55fddfc4a5c72dbd061c5e2c764f2d3b3c893f49c06aec40303",
+        "attackerPreviousReceiptHash": "0x421483b8b91dc55fddfc4a5c72dbd061c5e2c764f2d3b3c893f49c06aec40303",
+        "defenderPreviousReceiptHash": "0x421483b8b91dc55fddfc4a5c72dbd061c5e2c764f2d3b3c893f49c06aec40303",
+        "createdAt": 1692806371,
+        "signingKeyId": "battle-signer-solana-2026-07"
+      }
+    }
+  ],
+  "nextCursor": null
+}

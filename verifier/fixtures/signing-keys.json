@@ -3,6 +3,10 @@
     {
       "keyId": "battle-signer-2026-07",
       "address": "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a"
+    },
+    {
+      "keyId": "battle-signer-solana-2026-07",
+      "address": "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a"
     }
   ]
 }

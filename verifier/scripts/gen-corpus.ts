@@ -5,6 +5,7 @@
  * - `fixtures/corpus.json`, a chain of valid signed receipts
  * - `fixtures/signing-keys.json`, the trusted key that signed them
  * - `fixtures/corpus-tampered.json`, the same chain with one receipt altered
+ * - `fixtures/corpus-cross-chain.json`, a wallet page spanning both chains' signing keys
  *
  * Run with `pnpm --filter @cryptopets/verifier corpus`.
  *
@@ -26,7 +27,12 @@ import { publishRuleset, SOURCE_DEFAULT_RULESET } from '@cryptopets/protocol';
 
 import { GEARED_RULESET } from '../tests/fixtures/signedReceipt';
 
-import { buildCorpus, buildTamperedCorpus, corpusSigningKeys } from '../tests/fixtures/corpus';
+import {
+    buildCorpus,
+    buildCrossChainCorpus,
+    buildTamperedCorpus,
+    corpusSigningKeys,
+} from '../tests/fixtures/corpus';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RULESETS_DIR = join(HERE, '../rulesets');
@@ -55,4 +61,7 @@ for (const ruleset of [SOURCE_DEFAULT_RULESET, GEARED_RULESET]) {
 
 writeJson(join(FIXTURES_DIR, 'corpus.json'), buildCorpus());
 writeJson(join(FIXTURES_DIR, 'corpus-tampered.json'), buildTamperedCorpus());
+// A dual-chain wallet page: two signing keys interleaved, which is the shape the
+// per-key sequence export cannot produce and the chain walk has to handle.
+writeJson(join(FIXTURES_DIR, 'corpus-cross-chain.json'), buildCrossChainCorpus());
 writeJson(join(FIXTURES_DIR, 'signing-keys.json'), corpusSigningKeys());

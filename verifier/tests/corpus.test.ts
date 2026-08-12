@@ -8,7 +8,12 @@ import { loadReceipts, loadSigningKeys } from '../src/io';
 import { pinnedRulesets } from '../src/ruleset';
 import { verifyReceipts } from '../src/verify';
 
-import { buildCorpus, buildTamperedCorpus, corpusSigningKeys } from './fixtures/corpus';
+import {
+    buildCorpus,
+    buildCrossChainCorpus,
+    buildTamperedCorpus,
+    corpusSigningKeys,
+} from './fixtures/corpus';
 
 /**
  * The committed-corpus regression guard, and the same thing CI runs on every PR.
@@ -30,6 +35,7 @@ describe('the committed corpus is in sync with its generator', () => {
     it.each([
         ['corpus.json', () => buildCorpus()],
         ['corpus-tampered.json', () => buildTamperedCorpus()],
+        ['corpus-cross-chain.json', () => buildCrossChainCorpus()],
         ['signing-keys.json', () => corpusSigningKeys()],
     ])('%s matches a fresh generation', (name, build) => {
         expect(JSON.parse(readFixture(name))).toEqual(JSON.parse(JSON.stringify(build())));
@@ -90,5 +96,48 @@ describe('the tampered corpus is rejected', () => {
 
         expect(firstReceipt.length).toBeGreaterThan(0);
         expect(firstReceipt.every((result) => result.ok)).toBe(true);
+    });
+});
+
+/**
+ * The dual-chain wallet page, run through the same path the CLI uses.
+ *
+ * `corpus.json` is a per-key sequence export and so can never mix keys. This one is the
+ * wallet view of a player who fought on both chains, which is the shape that made the
+ * verifier report `mixed-signing-key` against an honest operator until the chain walk was
+ * split per key. Committed so CI keeps checking it, not just the unit tests.
+ */
+describe('a wallet page spanning both chains', () => {
+    it('verifies clean, loaded exactly as the CLI loads it', async () => {
+        const envelopes = await loadReceipts(join(FIXTURES, 'corpus-cross-chain.json'));
+        const keys = await loadSigningKeys(join(FIXTURES, 'signing-keys.json'));
+
+        const report = verifyReceipts(envelopes, keys, { rulesets: pinnedRulesets() });
+
+        expect(report.results.filter((result) => !result.ok)).toEqual([]);
+        expect(report.ok).toBe(true);
+    });
+
+    // The interleaving is the point: neither key's receipts are contiguous in the file, so a
+    // walk that did not group by key would break on the first switch.
+    it('really does interleave the two keys', async () => {
+        const envelopes = await loadReceipts(join(FIXTURES, 'corpus-cross-chain.json'));
+        const keyIds = envelopes.map((envelope) => envelope.signingKeyId);
+
+        expect(new Set(keyIds).size).toBe(2);
+        // Adjacent entries from different keys somewhere in the list.
+        expect(keyIds.some((keyId, index) => index > 0 && keyId !== keyIds[index - 1])).toBe(true);
+    });
+
+    // One walk per key, so a failure names the chain that broke rather than the corpus.
+    it('reports one chain-continuity result per signing key', async () => {
+        const envelopes = await loadReceipts(join(FIXTURES, 'corpus-cross-chain.json'));
+        const keys = await loadSigningKeys(join(FIXTURES, 'signing-keys.json'));
+
+        const report = verifyReceipts(envelopes, keys, { rulesets: pinnedRulesets() });
+        const continuity = report.results.filter((result) => result.check === 'chain-continuity');
+
+        expect(continuity).toHaveLength(2);
+        expect(new Set(continuity.map((result) => result.subject)).size).toBe(2);
     });
 });

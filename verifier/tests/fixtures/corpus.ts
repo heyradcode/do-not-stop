@@ -2,9 +2,15 @@ import { type BattleReceipt, hashBattleReceipt, type Hex } from '@cryptopets/pro
 
 import type { SignedReceiptEnvelope, TrustedSigningKey } from '../../src/io/types';
 
-import { buildReceipt, envelopeFor, FORGED_BEACON, testTrustedKey,
+import {
+    buildReceipt,
+    envelopeFor,
+    FORGED_BEACON,
     GEARED_RULESET,
     gearedSnapshot,
+    SOLANA_SIGNING_KEY_ID,
+    SOLANA_SNAPSHOT,
+    testTrustedKey,
 } from './signedReceipt';
 
 /**
@@ -102,7 +108,68 @@ export function buildTamperedCorpus(): CorpusPage {
     return { receipts: buildChain(1).map((receipt) => envelopeFor(receipt)), nextCursor: null };
 }
 
-/** The trusted key list matching the corpus signatures. */
+/**
+ * The trusted key list matching the corpus signatures.
+ *
+ * Both keys, not just the one `corpus.json` uses. `listSigningKeys` hands a verifier every
+ * key a deployment signs under and lets it match on `signingKeyId`, so a list carrying only
+ * the EVM key would make the cross-chain corpus fail on a missing key rather than on
+ * anything real.
+ */
 export function corpusSigningKeys(): { keys: TrustedSigningKey[] } {
-    return { keys: [testTrustedKey()] };
+    return { keys: [testTrustedKey(), testTrustedKey(SOLANA_SIGNING_KEY_ID)] };
+}
+
+/**
+ * The wallet-view corpus: one player's battles across both chains.
+ *
+ * `corpus.json` above is a page from `GET /api/receipts?signingKeyId=...`, which is per key
+ * by construction and so can never mix. The per-wallet and per-pet views can and do — a
+ * deployment serving EVM and Solana signs under two keys (§G), and a player who fought on
+ * both appears in each. That is the shape that reported `mixed-signing-key` against an
+ * honest operator until the chain walk was split per key, so it is worth committing rather
+ * than leaving to unit tests alone.
+ *
+ * Ordered by `createdAt` like the wallet endpoint orders it, which interleaves the two
+ * chains. Each key's own run stays correctly linked; neither is contiguous in this list.
+ */
+const CROSS_CHAIN_SIZE = 2;
+
+function buildCrossChainReceipts(): BattleReceipt[] {
+    const domains = [
+        { snapshot: undefined, signingKeyId: undefined, tag: 'evm' },
+        { snapshot: SOLANA_SNAPSHOT, signingKeyId: SOLANA_SIGNING_KEY_ID, tag: 'sol' },
+    ] as const;
+
+    const byDomain = domains.map(({ snapshot, signingKeyId, tag }) => {
+        const run: BattleReceipt[] = [];
+        let previousReceiptHash: Hex | null = null;
+        for (let index = 0; index < CROSS_CHAIN_SIZE; index++) {
+            const receipt = buildReceipt({
+                battleId: `btl_${tag}_${index + 1}`,
+                sequence: index + 1,
+                previousReceiptHash,
+                attackerPreviousReceiptHash: previousReceiptHash,
+                defenderPreviousReceiptHash: previousReceiptHash,
+                // Interleaved in time: each chain's second battle happens after the other
+                // chain's first, which is what makes the wallet view alternate between them.
+                createdAt: CROSS_CHAIN_BASE_TIME + index * 2 + (tag === 'sol' ? 1 : 0),
+                ...(snapshot ? { snapshot } : {}),
+                ...(signingKeyId ? { signingKeyId } : {}),
+            });
+            run.push(receipt);
+            previousReceiptHash = hashBattleReceipt(receipt);
+        }
+        return run;
+    });
+
+    return byDomain.flat().sort((a, b) => a.createdAt - b.createdAt);
+}
+
+/** Base timestamp for the interleave, after the beacon's own publication time. */
+const CROSS_CHAIN_BASE_TIME = buildReceipt().createdAt;
+
+/** A valid dual-chain wallet page. CI asserts this verifies clean. */
+export function buildCrossChainCorpus(): CorpusPage {
+    return { receipts: buildCrossChainReceipts().map((receipt) => envelopeFor(receipt)), nextCursor: null };
 }

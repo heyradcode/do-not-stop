@@ -54,6 +54,14 @@ jobs:
         if: always()
         run: pnpm --filter @cryptopets/verifier cli -- fixtures/corpus.json --keys fixtures/signing-keys.json
 
+      # A deployment serving both chains signs under two keys, so its per-wallet and
+      # per-pet exports interleave them. The hash chain is per key, and walking such an
+      # export as one chain reported mixed-signing-key against an honest operator. The
+      # per-key export above cannot produce that shape, so it needs its own corpus.
+      - name: Cross-chain corpus must verify
+        if: always()
+        run: pnpm --filter @cryptopets/verifier cli -- fixtures/corpus-cross-chain.json --keys fixtures/signing-keys.json
+
       # The half that stops this from being theatre. "The honest corpus verifies" is also
       # true of a verifier that has quietly degraded into always passing; only this step
       # notices that.
