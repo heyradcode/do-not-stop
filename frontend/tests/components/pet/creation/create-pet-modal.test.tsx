@@ -20,6 +20,13 @@ const petList = { refetch: vi.fn() };
 const capabilities = { isConnected: true, kind: 'solana' };
 /** The EVM async-mint flags, mutable so a test can leave one stuck on. */
 const asyncFlags = { isAwaitingFulfillment: false, isSettling: false };
+/** An outstanding Solana mint request, which blocks any further commit_mint. */
+const pendingMint = {
+    isPending: false,
+    canCancel: false,
+    cancel: { run: vi.fn().mockResolvedValue(undefined), isPending: false, error: null },
+    refetch: vi.fn(),
+};
 
 vi.mock('@shared/core', () => ({
     useAuth: () => ({
@@ -42,6 +49,7 @@ vi.mock('@shared/core', () => ({
         capturedOnSuccess = opts?.onSuccess;
         return { ...createPet, ...asyncFlags };
     },
+    usePendingSolanaMint: () => pendingMint,
 }));
 
 import CreatePetModal from '@components/pet/creation/create-pet-modal';
@@ -57,6 +65,9 @@ beforeEach(() => {
     createPet.isPending = false;
     asyncFlags.isAwaitingFulfillment = false;
     asyncFlags.isSettling = false;
+    capabilities.kind = 'solana';
+    pendingMint.isPending = false;
+    pendingMint.canCancel = false;
 });
 
 describe('CreatePetModal', () => {
@@ -157,5 +168,45 @@ describe('CreatePetModal', () => {
 
         expect(createPet.reset).toHaveBeenCalled();
         expect(onClose).toHaveBeenCalledOnce();
+    });
+});
+
+/**
+ * A Solana wallet can only hold one mint request at a time, so an unresolved one is the
+ * reason Create Pet would fail. The dialog is where the player is standing when it does.
+ */
+describe('an unresolved Solana mint', () => {
+    it('says nothing when there is no pending request', () => {
+        renderModal();
+        expect(screen.queryByText(/unresolved mint on Solana/)).not.toBeInTheDocument();
+    });
+
+    it('explains that a new attempt resumes it while the randomness is live', () => {
+        pendingMint.isPending = true;
+        renderModal();
+
+        expect(screen.getByText(/resume it rather than start a new one/)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Clear stuck mint' })).not.toBeInTheDocument();
+    });
+
+    // The mint fee is spent either way; `cancel_mint` only returns the request's rent. A
+    // player deciding whether to clear it should read that before clicking, not after.
+    it('offers the clear once it has expired, and says the fee is gone', async () => {
+        pendingMint.isPending = true;
+        pendingMint.canCancel = true;
+        renderModal();
+
+        expect(screen.getByText(/the mint fee is not returned/)).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Clear stuck mint' }));
+        expect(pendingMint.cancel.run).toHaveBeenCalledOnce();
+    });
+
+    it('stays out of the way on EVM, which has its own settle path', () => {
+        capabilities.kind = 'evm';
+        pendingMint.isPending = true;
+        pendingMint.canCancel = true;
+        renderModal();
+
+        expect(screen.queryByText(/unresolved mint on Solana/)).not.toBeInTheDocument();
     });
 });

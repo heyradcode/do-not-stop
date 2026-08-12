@@ -11,7 +11,7 @@ Branch: `feat/solana-parity-catchup`
 | 2 Backend anchoring | **Done** — EVM and Solana clients behind one interface |
 | 3 Reward leaf v2 | **Done** — the wide layout, with v1 permanently retained |
 | 4 `cryptopets_rewards` | **Written**, with cross-language leaf vectors |
-| 5 Seasons and claims | **Done** for the backend and verifier; the claim **UI does not exist for either chain** |
+| 5 Seasons and claims | **Done**, backend, verifier and the claim screen for both chains |
 | 6 Items and equipment | **Written** — ledger, equip/unequip, the freeze |
 | 7 Indexer projections | **Done** and verified under a real Go toolchain |
 | 8 Frontend, catalog, docs | **Done** |
@@ -32,10 +32,7 @@ resolution in `cryptopets-rewards` are the two highest-risk spots — check thos
    validator has the Switchboard program but no queue and no oracles. Pick devnet (real
    oracles, network-dependent, costs SOL) or a mock Switchboard program (hermetic, matches
    what `MockEntropy` already does on the EVM side). Recommended: the mock.
-2. **The rewards claim screen does not exist**, on either chain. `/api/rewards/seasons/:id`
-   and `/claim/:wallet` are served and nothing consumes them. This is a UI feature rather
-   than a Solana gap, which is why it is not folded into Phase 5.
-3. **Phase 1.6 is operational**: `anchor keys sync`, deploy, exercise, then
+2. **Phase 1.6 is operational**: `anchor keys sync`, deploy, exercise, then
    `solana program set-upgrade-authority --final` on the registry only.
 
 ## Decisions (locked)
@@ -183,6 +180,13 @@ must equal the previous slot, so a fixed value is correct for exactly one slot.
 The `cancel_*` expiry paths are blocked by the same thing despite never reading a revealed
 value, because closing a stuck request needs a request, and only `commit_mint` /
 `commit_breed` create one. This is one blocker, not nine.
+
+The *client* side of `cancel_mint` was a separate gap, and it is closed: `usePendingSolanaMint`
+now mirrors `usePendingSolanaBreed`, and the create-pet dialog surfaces it. Before that,
+`cancel_mint` existed on the program and nothing called it, so a wallet whose randomness
+expired could never mint again — `commit_mint` uses `init`, one request per wallet, and the
+resume path fails at reveal forever. The fee was already spent and `mint_count` already
+incremented, so the escalating fee curve had moved against them too.
 
 **Two options, both decisions rather than chores:**
 

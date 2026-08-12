@@ -64,6 +64,26 @@
         color: rgb(125 214 255 / 55%);
     }
 
+    /* An unresolved mint the player cannot get past on their own. Amber rather
+       than red: nothing is lost yet, and the action below clears it. */
+    .stuckMint {
+        padding: 12px 14px;
+        border: 1px solid rgb(255 191 105 / 34%);
+        border-radius: 6px;
+        background: rgb(255 191 105 / 8%);
+        color: rgb(255 214 160 / 88%);
+        font-size: var(--cp-font-size-sm);
+        line-height: 1.5;
+
+        & p {
+            margin: 0;
+        }
+    }
+
+    .stuckMintActions {
+        margin-top: 10px;
+    }
+
     .field {
         display: flex;
         flex-direction: column;

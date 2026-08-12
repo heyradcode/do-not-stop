@@ -9,6 +9,7 @@ import TransactionStatus from '@components/common/transaction-status';
 import { useNotifyError } from '@hooks/useNotifyError';
 import { useTxErrorToast } from '@hooks/useTxErrorToast';
 import MintedPetArt from './parts/minted-pet-art';
+import PendingMintNotice from './parts/pending-mint-notice';
 import styles from './index.module.css';
 
 interface CreatePetModalProps {
@@ -130,6 +131,10 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
                     reveal, so until then nobody — not even the contract — knows
                     what this pet looks like. */}
                 <MintedPetArt petId={mintedPetId ?? null} chain={kind === 'solana' ? 'solana' : 'evm'} />
+
+                {/* Above the form, because a stuck request is why the button below
+                    would fail — read after the failure it explains nothing. */}
+                <PendingMintNotice enabled={kind === 'solana' && !success} />
 
                 <div className={styles.field}>
                     <label htmlFor="petName">Pet Name</label>
