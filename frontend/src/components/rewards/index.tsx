@@ -35,14 +35,28 @@ function chainLabel(chainId: string): string {
 }
 
 /**
- * A raw token amount, grouped for reading.
+ * A token amount for display.
  *
- * Not converted to decimal units: the season does not carry the token's decimals, and
- * guessing 18 would misreport an SPL mint (commonly 6 or 9) by orders of magnitude. Showing
- * the exact base-unit figure is the honest option until decimals travel with the season.
+ * With `decimals` recorded, the base-unit integer is shifted into whole units — that is the
+ * only form a player can read. Trailing zeros are trimmed, so 1.250000 shows as 1.25.
+ *
+ * With `decimals` null, the amount stays in base units and the caller labels it as such.
+ * Guessing is the one thing not to do: assuming 18 misreports an SPL mint (commonly 6 or 9)
+ * by orders of magnitude, and assuming 0 overstates an ERC-20 by eighteen of them.
+ *
+ * Done on the string with BigInt rather than in floating point: a season payout can exceed
+ * `Number.MAX_SAFE_INTEGER`, where dividing would quietly round the number being shown.
  */
-function formatAmount(raw: string): string {
-    return /^\d+$/.test(raw) ? BigInt(raw).toLocaleString('en-US') : raw;
+export function formatAmount(raw: string, decimals: number | null): string {
+    if (!/^\d+$/.test(raw)) return raw;
+    if (decimals === null || decimals < 0) return BigInt(raw).toLocaleString('en-US');
+    if (decimals === 0) return BigInt(raw).toLocaleString('en-US');
+
+    const padded = raw.padStart(decimals + 1, '0');
+    const whole = padded.slice(0, padded.length - decimals);
+    const fraction = padded.slice(padded.length - decimals).replace(/0+$/, '');
+    const groupedWhole = BigInt(whole).toLocaleString('en-US');
+    return fraction ? `${groupedWhole}.${fraction}` : groupedWhole;
 }
 
 const Rewards: React.FC = () => {
@@ -123,9 +137,11 @@ const Rewards: React.FC = () => {
                             <p className={styles.muted}>Nothing to claim in this season.</p>
                         ) : claim && season ? (
                             <>
-                                <p className={styles.amount}>{formatAmount(claim.amount)}</p>
+                                <p className={styles.amount}>{formatAmount(claim.amount, season.tokenDecimals)}</p>
                                 <p className={styles.amountNote}>
-                                    in the season&apos;s token, in its smallest unit
+                                    {season.tokenDecimals === null
+                                        ? "in the season's token, in its smallest unit"
+                                        : "in the season's token"}
                                 </p>
 
                                 {season.openedAt === null ? (

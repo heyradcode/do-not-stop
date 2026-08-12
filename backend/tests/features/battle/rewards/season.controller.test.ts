@@ -40,6 +40,7 @@ const EVM_SEASON = {
     evmChainId: 84532,
     chainRef: null,
     token: '0x2222222222222222222222222222222222222222',
+    tokenDecimals: 18,
     merkleRoot: `0x${'11'.repeat(32)}`,
     totalAmount: '125',
     params: { perWin: '100', perLoss: '25', perBattleCap: '1000' },
@@ -187,5 +188,40 @@ describe('listing seasons', () => {
         const query = vi.mocked(prisma.rewardSeason.findMany).mock.calls[0]![0] as { select: Record<string, boolean> };
         expect(query.select.merkleRoot).toBeUndefined();
         expect(query.select.firstSequence).toBeUndefined();
+    });
+});
+
+describe('token decimals', () => {
+    // Display only: the leaf binds token and amount in the smallest unit, so recording
+    // decimals cannot move a root. Serving them is what lets a client show 1.25 instead of
+    // 1250000000000000000.
+    it('serves the decimals a season recorded', async () => {
+        vi.mocked(prisma.rewardSeason.findUnique).mockResolvedValue(EVM_SEASON as never);
+        const response = res();
+
+        await getSeason({ params: { seasonId: '1' } } as never, response as never);
+
+        expect(response.body.tokenDecimals).toBe(18);
+    });
+
+    // Null is unknown, not zero. A client renders base units rather than overstating an
+    // 18-decimal token by eighteen orders of magnitude.
+    it('serves null for a season that recorded none', async () => {
+        vi.mocked(prisma.rewardSeason.findUnique).mockResolvedValue({ ...EVM_SEASON, tokenDecimals: null } as never);
+        const response = res();
+
+        await getSeason({ params: { seasonId: '1' } } as never, response as never);
+
+        expect(response.body.tokenDecimals).toBeNull();
+    });
+
+    it('includes decimals in the list, so it can render amounts too', async () => {
+        vi.mocked(prisma.rewardSeason.findMany).mockResolvedValue([] as never);
+        const response = res();
+
+        await listSeasons({} as never, response as never);
+
+        const query = vi.mocked(prisma.rewardSeason.findMany).mock.calls[0]![0] as { select: Record<string, boolean> };
+        expect(query.select.tokenDecimals).toBe(true);
     });
 });

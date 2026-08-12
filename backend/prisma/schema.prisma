@@ -686,6 +686,10 @@ model RewardSeason {
   /// no `block.chainid`, so this is what stops a devnet proof being in a mainnet tree.
   chainRef    String? @map("chain_ref")
   token       String
+  /// The token's decimals, for display only — the leaf binds `token` and `amount` in the
+  /// smallest unit, so this never affects a root. Null means unknown (a season built before
+  /// this was recorded), which a client renders as base units rather than guessing zero.
+  tokenDecimals Int? @map("token_decimals")
 
   merkleRoot String @map("merkle_root")
   /// Sum of every entitlement. Must be within the on-chain season cap, or late claims

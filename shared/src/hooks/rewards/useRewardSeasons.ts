@@ -20,6 +20,8 @@ export interface RewardSeasonSummary {
     deploymentId: string;
     /** ERC-20 address or SPL mint. */
     token: string;
+    /** Decimals for display, or null when unrecorded. See `RewardSeason.tokenDecimals`. */
+    tokenDecimals: number | null;
     /** Sum of every entitlement, in the token's smallest unit. */
     totalAmount: string;
     /** Null until the root is posted on chain: the season exists but cannot be claimed yet. */

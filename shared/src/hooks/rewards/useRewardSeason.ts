@@ -30,6 +30,15 @@ export interface RewardSeason {
     chainRef: string | null;
     /** ERC-20 address or SPL mint. */
     token: string;
+    /**
+     * The token's decimals, or null when the season did not record them.
+     *
+     * Display only — the leaf binds `token` and `amount` in the smallest unit, so this can
+     * never affect a root. Null means unknown rather than zero, and a client must show base
+     * units instead of guessing: treating an 18-decimal token as 0-decimal overstates the
+     * amount by eighteen orders of magnitude.
+     */
+    tokenDecimals: number | null;
     merkleRoot: string;
     totalAmount: string;
     /** The rates the amounts were computed from, kept so the season is reproducible. */

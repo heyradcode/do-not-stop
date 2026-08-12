@@ -17,7 +17,7 @@ vi.mock('@shared/core', () => ({
     useRewardsAdapter: () => useRewardsAdapter(),
 }));
 
-import Rewards from '../../src/components/rewards';
+import Rewards, { formatAmount } from '../../src/components/rewards';
 
 /**
  * The rewards screen exists to keep three outcomes apart that a naive version merges:
@@ -37,6 +37,7 @@ const SEASON = {
     token: 'Mint',
     evmChainId: null,
     chainRef: 'Genesis',
+    tokenDecimals: null,
     openedAt: '2026-08-01',
 };
 
@@ -191,5 +192,44 @@ describe('claiming', () => {
         view();
 
         expect(screen.getByText('already claimed')).toBeInTheDocument();
+    });
+});
+
+describe('amount formatting', () => {
+    // Base units are unreadable: 1250000000000000000 of an 18-decimal token is 1.25.
+    it.each([
+        ['1250000000000000000', 18, '1.25'],
+        ['1250000', 6, '1.25'],
+        ['1000000000000000000', 18, '1'],
+        ['1', 18, '0.000000000000000001'],
+        ['0', 18, '0'],
+        ['1234567890123456789012', 18, '1,234.567890123456789012'],
+    ])('renders %s at %s decimals as %s', (raw, decimals, expected) => {
+        expect(formatAmount(raw, decimals)).toBe(expected);
+    });
+
+    // Null is unknown, not zero. Guessing 0 would overstate an 18-decimal token by
+    // eighteen orders of magnitude, so the raw figure is shown and labelled instead.
+    it('falls back to grouped base units when decimals are unrecorded', () => {
+        expect(formatAmount('1250000000000000000', null)).toBe('1,250,000,000,000,000,000');
+    });
+
+    it('leaves a zero-decimal token grouped and whole', () => {
+        expect(formatAmount('1250000', 0)).toBe('1,250,000');
+    });
+
+    // A payout can exceed Number.MAX_SAFE_INTEGER, where float division would silently
+    // round the number being shown to a player.
+    it('does not lose precision past Number.MAX_SAFE_INTEGER', () => {
+        expect(formatAmount('9007199254740993', 0)).toBe('9,007,199,254,740,993');
+    });
+
+    it('labels the unit only while decimals are unknown', () => {
+        useRewardSeason.mockReturnValue({ data: { ...SEASON, tokenDecimals: 6 }, isLoading: false, error: null });
+        useRewardClaim.mockReturnValue({ data: { ...CLAIM, amount: '1250000' }, isLoading: false, error: null, refetch: vi.fn() });
+        view();
+
+        expect(screen.getByText('1.25')).toBeInTheDocument();
+        expect(screen.queryByText(/smallest unit/i)).not.toBeInTheDocument();
     });
 });

@@ -49,6 +49,8 @@ export type SeasonTarget =
           evmChainId: number;
           /** ERC-20 the season pays in. */
           token: string;
+          /** The token's decimals, for display. Never enters a leaf. */
+          decimals?: number;
       }
     | {
           family: 'solana';
@@ -58,6 +60,8 @@ export type SeasonTarget =
           chainRef: string;
           /** SPL mint the season pays in. */
           token: string;
+          /** The mint's decimals, for display. Never enters a leaf. */
+          decimals?: number;
       };
 
 export interface SeasonInputs {
@@ -132,6 +136,10 @@ export async function buildSeason(inputs: SeasonInputs): Promise<BuiltSeason> {
                 evmChainId: inputs.target.family === 'evm' ? inputs.target.evmChainId : null,
                 chainRef: inputs.target.family === 'solana' ? inputs.target.chainRef : null,
                 token: normalizeAccount(inputs.target.token),
+                // Display only: the leaf binds `token` and `amount` in the smallest unit,
+                // so recording this cannot move the root. Null when the caller did not
+                // supply it, which a client renders as base units rather than guessing.
+                tokenDecimals: inputs.target.decimals ?? null,
                 merkleRoot: tree.root,
                 totalAmount: totalAmount.toString(),
                 // Stored so the season is reproducible rather than merely asserted.
