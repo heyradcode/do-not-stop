@@ -229,3 +229,8 @@ export {
     type SlotName,
     type StatBonus,
 } from '../types/item';
+
+// Reward seasons (§I). Reads only: the claim itself is a chain write and belongs on an
+// adapter, the way equipping does.
+export { useRewardSeason, rewardSeasonQueryKey, type RewardSeason } from './rewards/useRewardSeason';
+export { useRewardClaim, rewardClaimQueryKey, type RewardClaim } from './rewards/useRewardClaim';

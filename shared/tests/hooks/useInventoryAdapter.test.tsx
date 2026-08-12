@@ -29,6 +29,27 @@ vi.mock('../../src/contexts/PetsConfigContext', () => ({ usePetsConfig: () => co
 const apiClient = { post: vi.fn(), defaults: { baseURL: 'https://api.test' } };
 vi.mock('../../src/contexts/ApiClientContext', () => ({ useApiClient: () => apiClient }));
 
+// Both chains' hooks run every render, per the rules of hooks, so the Solana ones have to be
+// mocked even for the EVM cases.
+const solana = {
+    program: null as unknown,
+    programId: null as unknown,
+    signingWallet: null as { publicKey: unknown } | null,
+};
+vi.mock('../../src/hooks/chains/solana/useProgram', () => ({
+    useProgram: () => ({ program: solana.program, programId: solana.programId }),
+}));
+vi.mock('../../src/contexts/SolanaAnchorContext', () => ({
+    useSolanaAnchor: () => ({ signingWallet: solana.signingWallet }),
+}));
+
+const equipOnSolana = vi.fn();
+const unequipOnSolana = vi.fn();
+vi.mock('../../src/utils/solana/equipItem', () => ({
+    equipItemOnSolana: (...args: unknown[]) => equipOnSolana(...args),
+    unequipItemOnSolana: (...args: unknown[]) => unequipOnSolana(...args),
+}));
+
 import { useInventoryAdapter } from '../../src/hooks/adapters/useInventoryAdapter';
 import { useEquipItem } from '../../src/hooks/inventory/useEquipItem';
 
@@ -40,6 +61,9 @@ const wrapper = ({ children }: { children: React.ReactNode }) => {
 beforeEach(() => {
     vi.clearAllMocks();
     chain.kind = 'evm';
+    solana.program = null;
+    solana.programId = null;
+    solana.signingWallet = null;
     writeState.data = undefined;
     writeState.isPending = false;
     writeState.error = null;
@@ -79,16 +103,49 @@ describe('useInventoryAdapter', () => {
 
     // Solana has no item contract: §4 validates the model on EVM before porting, and an
     // SPL Token-2022 mint per type is a different shape from an ERC-1155 id.
-    it('reports itself disabled on Solana rather than offering a button that throws', async () => {
+    it('reports itself disabled on Solana with no wallet connected', async () => {
         chain.kind = 'solana';
         const { result } = renderHook(() => useInventoryAdapter(), { wrapper });
 
         expect(result.current.kind).toBe('solana');
         expect(result.current.canEquip).toBe(false);
-        await expect(result.current.equip.mutateAsync({ petId: '7', slot: 0, itemType: '1' })).rejects.toThrow(
-            /not available on Solana/,
+        await expect(result.current.equip.mutateAsync({ petId: 'AssetPubkey', slot: 0, itemType: '1' })).rejects.toThrow(
+            /Connect a Solana wallet/,
         );
         expect(writeContractAsync).not.toHaveBeenCalled();
+    });
+
+    it('equips through the Solana program once a wallet is connected', async () => {
+        chain.kind = 'solana';
+        solana.program = {};
+        solana.programId = {};
+        solana.signingWallet = { publicKey: 'OwnerPubkey' };
+        equipOnSolana.mockResolvedValue('sig');
+
+        const { result } = renderHook(() => useInventoryAdapter(), { wrapper });
+        expect(result.current.canEquip).toBe(true);
+
+        await result.current.equip.mutateAsync({ petId: 'AssetPubkey', slot: 0, itemType: '1' });
+
+        // The asset pubkey, not the numeric id: every Solana PDA here is seeded by it.
+        expect(equipOnSolana.mock.calls[0]![0]).toMatchObject({ assetKey: 'AssetPubkey', slot: 0, itemType: '1' });
+        expect(writeContractAsync).not.toHaveBeenCalled();
+    });
+
+    // EVM's unequip reads the slot and returns whatever is there; Solana needs the type to
+    // name the balance PDA it credits, and defaulting would credit a different stack.
+    it('refuses a Solana unequip with no item type rather than guessing one', async () => {
+        chain.kind = 'solana';
+        solana.program = {};
+        solana.programId = {};
+        solana.signingWallet = { publicKey: 'OwnerPubkey' };
+
+        const { result } = renderHook(() => useInventoryAdapter(), { wrapper });
+
+        await expect(result.current.unequip.mutateAsync({ petId: 'AssetPubkey', slot: 0 })).rejects.toThrow(
+            /needs the item type/,
+        );
+        expect(unequipOnSolana).not.toHaveBeenCalled();
     });
 
     // Optional config, like GameConfig: a deployment without ItemCore still runs, and only

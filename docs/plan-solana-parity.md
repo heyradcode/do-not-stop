@@ -2,6 +2,42 @@
 
 Branch: `feat/solana-parity-catchup`
 
+## Status
+
+| Phase | State |
+|---|---|
+| 0 Groundwork | **Done**, except 0.3 — see "Open" below |
+| 1 `cryptopets_registry` | **Written** (1.1-1.5). 1.6 (deploy, then burn the upgrade authority) is an operational step |
+| 2 Backend anchoring | **Done** — EVM and Solana clients behind one interface |
+| 3 Reward leaf v2 | **Done** — the wide layout, with v1 permanently retained |
+| 4 `cryptopets_rewards` | **Written**, with cross-language leaf vectors |
+| 5 Seasons and claims | **Done** for the backend and verifier; the claim **UI does not exist for either chain** |
+| 6 Items and equipment | **Written** — ledger, equip/unequip, the freeze |
+| 7 Indexer projections | **Done** and verified under a real Go toolchain |
+| 8 Frontend, catalog, docs | **Done** |
+
+**Verified green:** protocol 672 tests, verifier 104, frontend 373, backend 1087,
+indexer-go `go build`/`go vet`/`go test` all pass, root `pnpm lint` clean. The frozen golden
+vectors and the EVM contracts are untouched by this branch.
+
+**Unverified:** every Rust change. There is no `cargo`/`anchor`/`rustc`/`solana` on PATH in
+the authoring environment, so nothing under `contracts/solana/` has been compiled, let alone
+run. The `mpl_core` plugin builder shapes in `equip.rs` and the `anchor-spl` dependency
+resolution in `cryptopets-rewards` are the two highest-risk spots — check those first under
+`anchor build`.
+
+## Open
+
+1. **Phase 0.3 needs a decision.** The mint and breed flows cannot be tested locally: the
+   validator has the Switchboard program but no queue and no oracles. Pick devnet (real
+   oracles, network-dependent, costs SOL) or a mock Switchboard program (hermetic, matches
+   what `MockEntropy` already does on the EVM side). Recommended: the mock.
+2. **The rewards claim screen does not exist**, on either chain. `/api/rewards/seasons/:id`
+   and `/claim/:wallet` are served and nothing consumes them. This is a UI feature rather
+   than a Solana gap, which is why it is not folded into Phase 5.
+3. **Phase 1.6 is operational**: `anchor keys sync`, deploy, exercise, then
+   `solana program set-upgrade-authority --final` on the registry only.
+
 ## Decisions (locked)
 
 1. **Native Solana anchoring.** A new Anchor program mirrors `BattleBatchRegistry`. Solana
