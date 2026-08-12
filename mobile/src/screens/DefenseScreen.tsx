@@ -9,6 +9,8 @@ import {
     usePetList,
 } from '@shared/core';
 
+import SessionGate from '../components/SessionGate';
+
 import { useNotifyError } from '../hooks/useNotifyError';
 import type { ConsentStatus } from '@shared/core';
 import type { RootStackParamList } from '../navigation/routes';
@@ -84,6 +86,11 @@ export default function DefenseScreen() {
     const nothingChosen = !allPets && selected.length === 0;
 
     return (
+        <SessionGate
+            title="Allow Challenges"
+            connectPrompt="Connect your wallet to allow challenges."
+            signInPrompt="Sign in to allow challenges. Consent is recorded against your session as well as your signature."
+        >
         <ActionScreenLayout
             title="Allow Challenges"
             subtitle="Let other players battle your pets while you are away."
@@ -143,6 +150,7 @@ export default function DefenseScreen() {
                 change ends it automatically.
             </Text>
         </ActionScreenLayout>
+        </SessionGate>
     );
 }
 

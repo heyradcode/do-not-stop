@@ -23,6 +23,7 @@ import {
     type ItemDefinition,
 } from '@shared/core';
 
+import SessionGate from '../components/SessionGate';
 import ItemArt from '../components/ItemArt';
 import PetPicker from '../components/PetPicker';
 import { useNotifyError } from '../hooks/useNotifyError';
@@ -92,6 +93,11 @@ export default function InventoryScreen() {
     };
 
     return (
+        <SessionGate
+            title="Inventory"
+            connectPrompt="Connect your wallet to see your items."
+            signInPrompt="Sign in to see your items. The bag is read from your session, so there is no way to show it yet."
+        >
         <ScrollView style={styles.root} contentContainerStyle={styles.content}>
             <Text style={styles.title}>Inventory</Text>
             <Text style={styles.subtitle}>
@@ -271,6 +277,7 @@ export default function InventoryScreen() {
                 </View>
             </Modal>
         </ScrollView>
+        </SessionGate>
     );
 }
 

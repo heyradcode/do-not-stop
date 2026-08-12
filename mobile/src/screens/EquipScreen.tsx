@@ -14,6 +14,7 @@ import {
     type ItemDefinition,
 } from '@shared/core';
 
+import SessionGate from '../components/SessionGate';
 import ItemArt from '../components/ItemArt';
 import PetPicker from '../components/PetPicker';
 import { useNotifyError } from '../hooks/useNotifyError';
@@ -107,6 +108,11 @@ export default function EquipScreen() {
     };
 
     return (
+        <SessionGate
+            title="Equip"
+            connectPrompt="Connect your wallet to gear a pet."
+            signInPrompt="Sign in to see your gear. Both the bag and a pet’s slots are read from your session."
+        >
         <ScrollView style={styles.root} contentContainerStyle={styles.content}>
             <Text style={styles.title}>Equip</Text>
             <Text style={styles.subtitle}>
@@ -247,6 +253,7 @@ export default function EquipScreen() {
                 })
             )}
         </ScrollView>
+        </SessionGate>
     );
 }
 

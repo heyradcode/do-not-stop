@@ -19,6 +19,7 @@ import {
     type PetChain,
 } from '@shared/core';
 
+import SessionGate from '../components/SessionGate';
 import PetArt from '../components/PetArt';
 import { neon, neonGlow } from '../theme/neon';
 
@@ -264,8 +265,13 @@ export default function LeaderboardScreen() {
     const last = Math.min(active.total, (page + 1) * active.pageSize);
 
     return (
-        <FlatList
-            style={styles.root}
+        <SessionGate
+            title="Leaderboard"
+            connectPrompt="Connect your wallet to see the rankings."
+            signInPrompt="Sign in to see the rankings. The board is ranked server-side, so it needs to know who is asking."
+        >
+            <FlatList
+                style={styles.root}
             contentContainerStyle={styles.content}
             data={body ? [] : standings}
             keyExtractor={(item) => item.key}
@@ -300,7 +306,8 @@ export default function LeaderboardScreen() {
                     </View>
                 )
             }
-        />
+            />
+        </SessionGate>
     );
 }
 

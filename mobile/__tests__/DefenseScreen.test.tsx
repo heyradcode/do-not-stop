@@ -37,6 +37,17 @@ const mockRefreshConsent = jest.fn();
 const mockGrant = jest.fn(async () => '0xhash');
 const mockRevoke = jest.fn(async () => true);
 
+/**
+ * Pass-through here: these suites are about what the screen draws once the session
+ * exists. The gate has its own suite, so re-exercising it five times would only make
+ * every fixture carry auth state it does not use.
+ */
+jest.mock('../src/components/SessionGate', () => {
+    const React_ = jest.requireActual('react');
+    return ({ children }: { children: React.ReactNode }) =>
+        React_.createElement(React_.Fragment, null, children);
+});
+
 jest.mock('@shared/core', () => ({
     useDefenseAuthorizations: () => ({
         status: mockState.consent,

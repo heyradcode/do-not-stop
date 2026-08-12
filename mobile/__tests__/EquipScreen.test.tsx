@@ -55,6 +55,17 @@ jest.mock('../src/components/ItemArt', () => {
 
 jest.mock('../src/components/PetArt', () => () => null);
 
+/**
+ * Pass-through here: these suites are about what the screen draws once the session
+ * exists. The gate has its own suite, so re-exercising it five times would only make
+ * every fixture carry auth state it does not use.
+ */
+jest.mock('../src/components/SessionGate', () => {
+    const React_ = jest.requireActual('react');
+    return ({ children }: { children: React.ReactNode }) =>
+        React_.createElement(React_.Fragment, null, children);
+});
+
 jest.mock('@shared/core', () => ({
     SLOT: { weapon: 0, armor: 1, trinket: 2 },
     useChainCapabilities: () => ({

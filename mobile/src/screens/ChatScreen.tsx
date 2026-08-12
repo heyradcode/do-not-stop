@@ -23,6 +23,7 @@ import {
 } from '@shared/core';
 import { useAccount } from 'wagmi';
 
+import SessionGate from '../components/SessionGate';
 import PetArt from '../components/PetArt';
 import { CHAT_WS_URL } from '../constants/api';
 import { neon, neonGlow } from '../theme/neon';
@@ -97,6 +98,11 @@ export default function ChatScreen() {
     }
 
     return (
+        <SessionGate
+            title="Messages"
+            connectPrompt="Connect your wallet to see your conversations."
+            signInPrompt="Sign in to see your conversations. Access is derived from your marriages every time you read."
+        >
         <View style={styles.root}>
             <View style={styles.header}>
                 <Text style={styles.title}>Messages</Text>
@@ -156,6 +162,7 @@ export default function ChatScreen() {
                 />
             )}
         </View>
+        </SessionGate>
     );
 }
 
