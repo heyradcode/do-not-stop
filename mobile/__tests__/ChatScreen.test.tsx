@@ -59,6 +59,8 @@ const mockReact = jest.fn();
 const mockMarkRead = jest.fn();
 const mockMessagesArgs = jest.fn();
 
+jest.mock('../src/components/PetArt', () => () => null);
+
 jest.mock('@shared/core', () => ({
     CHAT_REACTIONS: ['👍', '❤️', '😂', '😮', '😢', '🙏', '👎'],
     shortAddress: (a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`,

@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useMarriageInfo, useSpousePet, type OpponentPet, type Pet } from '@shared/core';
 
+import PetArt from '../../components/PetArt';
 import { neon } from '../../theme/neon';
 
 type Props = {
@@ -40,6 +41,9 @@ export default function MarriageCard({ pet, petById, busy, onDivorce }: Props) {
 
     return (
         <View style={styles.card}>
+            {/* Only the caller's own pet gets art: the spouse is usually someone else's,
+                so `useSpousePet` often has a name and nothing else to render from. */}
+            <PetArt pet={pet} size={40} />
             <View style={styles.body}>
                 <Text style={styles.name}>{pet.name}</Text>
                 <Text style={styles.spouse}>
@@ -71,6 +75,7 @@ const styles = StyleSheet.create({
     },
     body: {
         flex: 1,
+        marginLeft: 10,
     },
     name: {
         fontSize: 16,

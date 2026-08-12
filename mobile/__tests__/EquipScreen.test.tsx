@@ -39,6 +39,8 @@ const mockEquip = jest.fn();
 const mockUnequip = jest.fn();
 const mockNotify = jest.fn();
 
+jest.mock('../src/components/PetArt', () => () => null);
+
 jest.mock('@shared/core', () => ({
     SLOT: { weapon: 0, armor: 1, trinket: 2 },
     useChainCapabilities: () => ({

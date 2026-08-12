@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { ReadyPet } from '@shared/core';
 
+import PetArt from './PetArt';
 import { neon } from '../theme/neon';
 
 type Props = {
@@ -26,6 +27,10 @@ const NO_PETS_HINT = 'No pets in this wallet yet. Mint one from the Gallery tab.
 /**
  * Horizontal chips in place of frontend's `<select>`. RN has no native picker
  * without a dependency, and the lists here are short: only pets off cooldown.
+ *
+ * Each chip carries the pet's art, as every frontend picker does. Choosing between
+ * pets by name alone asks the player to remember which one Rex is, when the thing
+ * they recognise it by is sitting one field away in the same object.
  */
 export default function PetPicker({
     pets,
@@ -59,6 +64,7 @@ export default function PetPicker({
                             disabled={disabled}
                             activeOpacity={0.85}
                         >
+                            <PetArt pet={pet} size={36} />
                             <Text style={[styles.chipName, active && styles.chipNameActive]}>
                                 {pet.name}
                             </Text>

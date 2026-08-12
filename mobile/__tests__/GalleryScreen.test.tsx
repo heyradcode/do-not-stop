@@ -27,7 +27,13 @@ jest.mock('@shared/core', () => ({
     getRarityName: (r: number) => (r === 2 ? 'Uncommon' : 'Common'),
 }));
 
-jest.mock('../src/components/PetArt', () => () => null);
+/** A marker rather than null, so the card can be asserted to draw art at all. */
+jest.mock('../src/components/PetArt', () => {
+    const { Text: RNText } = jest.requireActual('react-native');
+    const React_ = jest.requireActual('react');
+    return ({ pet }: { pet: { id: string } }) =>
+        React_.createElement(RNText, null, `[art:${pet.id}]`);
+});
 
 import {
     getGeneration,
@@ -199,6 +205,11 @@ describe('GalleryScreen', () => {
         mockGallery.mockReturnValue(galleryValue({ pets: [pet({ winCount: 0, lossCount: 0 })] }));
         // 0% would read as a losing record rather than as no record at all.
         expect(textOf(await render())).not.toContain('win rate');
+    });
+
+    it('draws the pet art, which the card omitted entirely until now', async () => {
+        mockGallery.mockReturnValue(galleryValue({ pets: [pet({ id: '7' })] }));
+        expect(textOf(await render())).toContain('[art:7]');
     });
 
     it('surfaces the empty state rather than an empty list', async () => {

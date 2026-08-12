@@ -48,6 +48,8 @@ const mutationResult = (mutate: jest.Mock) => ({
     lifecycle: {},
 });
 
+jest.mock('../src/components/PetArt', () => () => null);
+
 jest.mock('@shared/core', () => ({
     useSyncMetadata: () => ({ sync: jest.fn(), isPending: false, error: null }),
     getReadyPetsUnified: (pets: Pet[]) => pets.map((p) => ({ id: p.id, pet: p })),

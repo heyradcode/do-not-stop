@@ -38,6 +38,8 @@ const mockBreed = jest.fn();
 
 jest.mock('../src/hooks/useTxErrorToast', () => ({ useTxErrorToast: () => {} }));
 
+jest.mock('../src/components/PetArt', () => () => null);
+
 jest.mock('@shared/core', () => ({
     useStudFees: () => ({
         amountLamports: null,

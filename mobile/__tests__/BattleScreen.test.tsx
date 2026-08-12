@@ -88,6 +88,18 @@ const mockWinEstimateArgs = jest.fn();
 /** Captures what the result dialogue is asked for, including the personas fallback. */
 const mockDialogueArgs = jest.fn();
 
+/**
+ * Rendered as a marker rather than nulled, so the opponent rows can be asserted to draw
+ * art. A stub returning null would let the art disappear again without a test noticing —
+ * which is exactly how the gallery went without avatars for the whole project.
+ */
+jest.mock('../src/components/PetArt', () => {
+    const { Text: RNText } = jest.requireActual('react-native');
+    const React_ = jest.requireActual('react');
+    return ({ pet: subject }: { pet: { id: string } }) =>
+        React_.createElement(RNText, null, `[art:${subject.id}]`);
+});
+
 jest.mock('@shared/core', () => ({
     getReadyPetsUnified: (pets: Pet[]) =>
         pets.filter((p) => p.readyAt === 0).map((p) => ({ id: p.id, pet: p })),
@@ -385,6 +397,13 @@ describe('BattleScreen', () => {
         mockState.turns = [{ text: 'You call that a stance?' }];
         const tree = await render();
         expect(textOf(tree)).toContain('You call that a stance?');
+    });
+
+    it('draws each opponent with its art, not a name alone', async () => {
+        mockState.opponents = [foe({ id: '9', name: 'Luna' }), foe({ id: '12', name: 'Momo' })];
+        const rendered = textOf(await render());
+        expect(rendered).toContain('[art:9]');
+        expect(rendered).toContain('[art:12]');
     });
 
     it('surfaces an opponent load failure', async () => {

@@ -40,6 +40,8 @@ const mockSpend = jest.fn();
 const mockRefetch = jest.fn();
 const mockNotify = jest.fn();
 
+jest.mock('../src/components/PetArt', () => () => null);
+
 jest.mock('@shared/core', () => ({
     useChainCapabilities: () => ({ activeKind: 'ethereum', isConnected: true }),
     useInventory: () => ({

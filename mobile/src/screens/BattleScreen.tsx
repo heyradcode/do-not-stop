@@ -11,6 +11,7 @@ import {
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 
+import PetArt from '../components/PetArt';
 import PetPicker from '../components/PetPicker';
 import BattleScene from './parts/BattleScene';
 import { useBattlePanel } from '../hooks/battle/useBattlePanel';
@@ -99,6 +100,7 @@ export default function BattleScreen() {
                             disabled={panel.isBusy}
                             activeOpacity={0.85}
                         >
+                            <PetArt pet={o} size={40} />
                             <View style={styles.oppBody}>
                                 <Text style={styles.oppName}>{o.name}</Text>
                                 <Text style={styles.oppMeta}>
@@ -309,7 +311,8 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     oppRowActive: { borderColor: neon.magenta, backgroundColor: neon.bgInput },
-    oppBody: { flex: 1 },
+    oppBody: {
+        marginLeft: 10, flex: 1 },
     oppName: { fontSize: 16, fontWeight: '700', color: neon.text },
     oppMeta: { fontSize: 13, color: neon.textMuted, marginTop: 2 },
     tier: { fontSize: 13, fontWeight: '800' },

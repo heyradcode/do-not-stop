@@ -19,11 +19,33 @@ import {
     useChatThreads,
     type ChatMessage,
     type ChatThread,
+    type PetChain,
 } from '@shared/core';
 import { useAccount } from 'wagmi';
 
+import PetArt from '../components/PetArt';
 import { CHAT_WS_URL } from '../constants/api';
 import { neon, neonGlow } from '../theme/neon';
+
+/**
+ * One side of a married pair, shaped for `PetArt`.
+ *
+ * A thread's `chain` is typed as a plain string on the wire while `PetArt` wants a
+ * `PetChain`, so the narrowing happens here once rather than as a cast at each of the two
+ * call sites. Anything unrecognised falls back to `evm`, which only decides which URL
+ * shape the art service is asked for; a wrong guess costs the image, not the row.
+ *
+ * `petDna` is a serialized bigint, so it is parsed rather than passed through.
+ */
+const artFor = (
+    thread: ChatThread,
+    pair: ChatThread['pets'][number],
+    side: 'pet' | 'spouse',
+): { id: string; chain: PetChain; dna: bigint } => ({
+    id: side === 'pet' ? pair.petId : pair.spousePetId,
+    chain: thread.chain === 'solana' ? 'solana' : 'evm',
+    dna: BigInt(side === 'pet' ? pair.petDna : pair.spouseDna),
+});
 
 /** How many reactions the picker offers. The full set is far more than a sheet can hold. */
 const QUICK_REACTIONS = CHAT_REACTIONS.slice(0, 6);
@@ -107,9 +129,23 @@ export default function ChatScreen() {
                             accessibilityLabel={`Open chat with ${shortAddress(item.counterpart)}`}
                             activeOpacity={0.85}
                         >
-                            <Text style={styles.threadName}>
-                                {shortAddress(item.counterpart)}
-                            </Text>
+                            <View style={styles.threadHead}>
+                                {/*
+                                 * The pair the thread exists because of. `petDna` is a
+                                 * serialized bigint on the wire, so it is parsed here
+                                 * rather than being handed to PetArt as a string.
+                                 */}
+                                {item.pets[0] ? (
+                                    <View style={styles.threadArt}>
+                                        <PetArt pet={artFor(item, item.pets[0], 'pet')} size={32} />
+                                        <Text style={styles.heart}>♥</Text>
+                                        <PetArt pet={artFor(item, item.pets[0], 'spouse')} size={32} />
+                                    </View>
+                                ) : null}
+                                <Text style={styles.threadName}>
+                                    {shortAddress(item.counterpart)}
+                                </Text>
+                            </View>
                             <Text style={styles.threadPets} numberOfLines={2}>
                                 {item.pets
                                     .map((p) => `${p.petName} ♥ ${p.spouseName}`)
@@ -353,6 +389,9 @@ const styles = StyleSheet.create({
         padding: 14,
         marginBottom: 10,
     },
+    threadHead: { flexDirection: 'row', alignItems: 'center' },
+    threadArt: { flexDirection: 'row', alignItems: 'center', marginRight: 10 },
+    heart: { color: neon.magenta, fontSize: 12, marginHorizontal: 2 },
     threadName: { fontSize: 16, fontWeight: '800', color: neon.text },
     threadPets: { fontSize: 12, color: neon.textMuted, marginTop: 4, lineHeight: 17 },
     bubbleWrap: { marginBottom: 10, maxWidth: '82%' },
