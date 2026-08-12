@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useChainCapabilities, useCreatePet, useFees } from '@shared/core';
+import {
+    PET_NAME_MAX_BYTES,
+    isPetNameWithinChainLimit,
+    petNameByteLength,
+    useChainCapabilities,
+    useCreatePet,
+    useFees,
+} from '@shared/core';
 import { Tones } from '@constants/tones';
 import Icon, { CheckIcon, PawIcon } from '@components/ui/icon';
 import NeonButton from '@components/ui/neon-button';
@@ -84,6 +91,16 @@ const CreatePetModal: React.FC<CreatePetModalProps> = ({ isOpen, onClose }) => {
         const trimmed = petName.trim();
         if (!trimmed) {
             notifyError('Please enter a pet name', undefined, 'create-pet-validation');
+            return;
+        }
+        // The input's maxLength counts UTF-16 units; both chains count UTF-8 bytes. Caught
+        // here so an over-long name is not discovered after the mint fee is committed.
+        if (!isPetNameWithinChainLimit(trimmed)) {
+            notifyError(
+                `That name is ${petNameByteLength(trimmed)} bytes. Names are limited to ${PET_NAME_MAX_BYTES}, and accented, CJK and emoji characters each take more than one.`,
+                undefined,
+                'create-pet-validation',
+            );
             return;
         }
 

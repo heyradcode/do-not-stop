@@ -51,6 +51,14 @@ const petList = {
 const capabilities = { randomness: { provider: 'vrf' }, kind: 'solana' };
 
 vi.mock('@shared/core', () => ({
+    // The real chain rule, checked independently of the shared implementation: both
+    // chains cap a pet name at 32 UTF-8 bytes, and the inputs' maxLength counts UTF-16.
+    PET_NAME_MAX_BYTES: 32,
+    petNameByteLength: (s: string) => Buffer.byteLength(s, 'utf8'),
+    isPetNameWithinChainLimit: (s: string) => {
+        const bytes = Buffer.byteLength(s.trim(), 'utf8');
+        return bytes >= 1 && bytes <= 32;
+    },
     // DNA-derived helpers stubbed so the parent/DNA cards render without real DNA.
     getPetAvatar: () => '🐉',
     // No art service in these tests: PetArt renders the emoji alone.
@@ -135,6 +143,37 @@ describe('BreedPanel — My Pets tab (cycle selectors)', () => {
             parentId1: '1',
             parentId2: '2',
             name: 'Gamma',
+        });
+    });
+
+    // The input caps at 20 UTF-16 units and both chains cap the name at 32 UTF-8 bytes, so
+    // a CJK offspring name clears the form and reverts at commit, with the breed fee spent.
+    it('refuses an offspring name the chain will not take, and says why', async () => {
+        render(<BreedPanel />);
+
+        await userEvent.type(
+            screen.getByPlaceholderText('Name for the new pet…'),
+            '猫'.repeat(12),
+        );
+
+        expect(screen.getByText(/36 bytes and the limit is 32/)).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Breed Pets' }));
+        expect(breed.mutate).not.toHaveBeenCalled();
+    });
+
+    it('accepts a multi-byte offspring name that fits', async () => {
+        render(<BreedPanel />);
+
+        await userEvent.type(
+            screen.getByPlaceholderText('Name for the new pet…'),
+            '猫'.repeat(10),
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Breed Pets' }));
+
+        expect(breed.mutate).toHaveBeenCalledWith({
+            parentId1: '1',
+            parentId2: '2',
+            name: '猫'.repeat(10),
         });
     });
 

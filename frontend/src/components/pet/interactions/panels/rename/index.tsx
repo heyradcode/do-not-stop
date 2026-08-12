@@ -3,8 +3,11 @@ import clsx from 'clsx';
 import TransactionStatus from '@components/common/transaction-status';
 import NeonButton from '@components/ui/neon-button';
 import {
+    PET_NAME_MAX_BYTES,
     getPetClass,
     getReadyPetsUnified,
+    isPetNameWithinChainLimit,
+    petNameByteLength,
     useChainCapabilities,
     usePetList,
     useRenamePet,
@@ -80,6 +83,11 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
     const selectedPetObj = selectablePets.find(({ id }) => id === selectedPet)?.pet ?? null;
     const previewName = newName.trim() || selectedPetObj?.name || 'New Name';
     const meetsMin = newName.trim().length >= 2;
+    // Both chains cap the name at 32 UTF-8 bytes, and `maxLength` counts UTF-16 units, so
+    // a name inside the input's cap can still be rejected on chain. Checked here rather
+    // than discovered in the wallet after the player has approved the transaction.
+    const fitsOnChain = isPetNameWithinChainLimit(newName);
+    const nameBytes = petNameByteLength(newName.trim());
 
     const handleChangeName = async () => {
         if (!isConnected) {
@@ -88,6 +96,14 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
         }
         if (!selectedPet || !newName.trim()) {
             notifyError('Please select a pet and enter a new name', undefined, 'rename-validation');
+            return;
+        }
+        if (!fitsOnChain) {
+            notifyError(
+                `That name is ${nameBytes} bytes. Names are limited to ${PET_NAME_MAX_BYTES}, and accented, CJK and emoji characters each take more than one.`,
+                undefined,
+                'rename-validation',
+            );
             return;
         }
 
@@ -139,7 +155,7 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                             <div className={styles.reqs}>
                                 <div className={styles.isPending}>○ Min 2 characters</div>
                                 <div className={styles.isPending}>
-                                    ○ Max {MAX_NAME_LEN} characters
+                                    ○ Max {PET_NAME_MAX_BYTES} bytes
                                 </div>
                             </div>
                         </PetShowcase>
@@ -154,8 +170,9 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                                 <div className={meetsMin ? styles.isOk : styles.isPending}>
                                     {meetsMin ? '✓' : '○'} Min 2 characters
                                 </div>
-                                <div className={styles.isOk}>
-                                    ✓ Max {MAX_NAME_LEN} characters ({newName.length})
+                                <div className={fitsOnChain ? styles.isOk : styles.isPending}>
+                                    {fitsOnChain ? '✓' : '○'} Max {PET_NAME_MAX_BYTES} bytes (
+                                    {nameBytes})
                                 </div>
                             </div>
                         </PetShowcase>
@@ -195,7 +212,9 @@ const RenamePanel: React.FC<RenamePanelProps> = ({ isStandaloneView = true }) =>
                     <NeonButton
                         tone="emerald"
                         onClick={handleChangeName}
-                        disabled={isPending || !selectedPet || !newName.trim() || !isConnected}
+                        disabled={
+                            isPending || !selectedPet || !newName.trim() || !fitsOnChain || !isConnected
+                        }
                     >
                         {isPending ? 'Changing Name...' : 'Change Name'}
                     </NeonButton>

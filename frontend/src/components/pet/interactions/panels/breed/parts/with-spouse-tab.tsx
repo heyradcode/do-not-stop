@@ -2,6 +2,7 @@ import React from 'react';
 import type { Pet, PetChain } from '@shared/core';
 import PendingBreedNotice from './pending-breed-notice';
 import SpouseLabel from './spouse-label';
+import NameTooLongNotice from './name-too-long-notice';
 import styles from '../index.module.css';
 
 export type WithSpouseTabProps = {
@@ -141,6 +142,7 @@ const WithSpouseTab: React.FC<WithSpouseTabProps> = ({
                             placeholder="Name for the new pet…"
                             maxLength={20}
                         />
+                        <NameTooLongNotice name={childName} />
                     </div>
                 </>
             )}

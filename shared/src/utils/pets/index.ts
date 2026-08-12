@@ -5,6 +5,13 @@ export { getPetSkill, type PetSkill } from './skills';
 export { petArtUrl, type PetArtIdentity } from './petArtUrl';
 export { getReadyPets as getReadyPetsUnified, type ReadyPet } from './readyPets';
 export { NoActiveChainError } from './errors';
+export {
+    PET_NAME_MAX_BYTES,
+    PET_NAME_MIN_BYTES,
+    petNameByteLength,
+    isPetNameWithinChainLimit,
+    truncatePetNameToChainLimit,
+} from './petName';
 
 /**
  * Canonical wallet-address normalization, re-exported from the MIT protocol package so

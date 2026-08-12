@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    isPetNameWithinChainLimit,
     useBreedPets,
     useBreedRelationCheck,
     useChainCapabilities,
@@ -138,10 +139,16 @@ export const useBreedPanel = (): UseBreedPanel => {
         ? 'Breed Pets'
         : 'Breed with Spouse';
 
+    // The child's name is capped at 32 UTF-8 bytes on both chains, while the input's
+    // maxLength counts UTF-16 units. Without this a CJK or emoji name passes the form and
+    // reverts at commit, after the breed fee is already committed.
+    const childName = tab === 'own' ? ownChildName : spouseChildName;
+    const nameFitsOnChain = isPetNameWithinChainLimit(childName);
+
     const canSubmit =
         tab === 'own'
-            ? Boolean(ownPet1 && ownPet2 && ownChildName.trim() && !areRelated)
-            : Boolean(spousePetId && spouseId && spouseChildName.trim() && !areRelated);
+            ? Boolean(ownPet1 && ownPet2 && ownChildName.trim() && nameFitsOnChain && !areRelated)
+            : Boolean(spousePetId && spouseId && spouseChildName.trim() && nameFitsOnChain && !areRelated);
 
     const onBreed = () => {
         breed.clearErrors();

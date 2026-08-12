@@ -33,6 +33,14 @@ const petList = {
 const capabilities = { renameMinLevel: 1, isConnected: true };
 
 vi.mock('@shared/core', () => ({
+    // The real chain rule, checked independently of the shared implementation: both
+    // chains cap a pet name at 32 UTF-8 bytes, and the inputs' maxLength counts UTF-16.
+    PET_NAME_MAX_BYTES: 32,
+    petNameByteLength: (s: string) => Buffer.byteLength(s, 'utf8'),
+    isPetNameWithinChainLimit: (s: string) => {
+        const bytes = Buffer.byteLength(s.trim(), 'utf8');
+        return bytes >= 1 && bytes <= 32;
+    },
     getPetAvatar: () => '🐉',
     // No art service in these tests: PetArt renders the emoji alone.
     petArtUrl: () => null,
@@ -145,6 +153,30 @@ describe('RenamePanel', () => {
 
         expect(renamePet.reset).toHaveBeenCalled();
         expect(renamePet.mutate).toHaveBeenCalledWith({ petId: '1', name: 'Gamma' });
+    });
+
+    // The input caps at 20 UTF-16 units and both chains cap at 32 UTF-8 bytes, so a CJK
+    // name inside the form is over the chain limit. The requirement row said "Max 20
+    // characters ✓" while the transaction was going to revert.
+    it('blocks a name the form accepts but the chain will not', async () => {
+        render(<RenamePanel />);
+
+        await choosePet('Alpha');
+        await userEvent.type(screen.getByPlaceholderText('Enter new name...'), '猫'.repeat(12));
+
+        expect(screen.getByText(/Max 32 bytes \(36\)/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Change Name' })).toBeDisabled();
+        expect(renamePet.mutate).not.toHaveBeenCalled();
+    });
+
+    it('accepts a multi-byte name that fits', async () => {
+        render(<RenamePanel />);
+
+        await choosePet('Alpha');
+        await userEvent.type(screen.getByPlaceholderText('Enter new name...'), '猫'.repeat(10));
+        await userEvent.click(screen.getByRole('button', { name: 'Change Name' }));
+
+        expect(renamePet.mutate).toHaveBeenCalledWith({ petId: '1', name: '猫'.repeat(10) });
     });
 
     it('shows a success message once the rename settles', async () => {

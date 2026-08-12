@@ -5,7 +5,8 @@ import userEvent from '@testing-library/user-event';
 vi.mock('@tanstack/react-query', () => ({
     useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
-vi.mock('@hooks/useNotifyError', () => ({ useNotifyError: () => vi.fn() }));
+const notifyError = vi.fn();
+vi.mock('@hooks/useNotifyError', () => ({ useNotifyError: () => notifyError }));
 vi.mock('@hooks/useTxErrorToast', () => ({ useTxErrorToast: vi.fn() }));
 
 const createPet = {
@@ -29,6 +30,14 @@ const pendingMint = {
 };
 
 vi.mock('@shared/core', () => ({
+    // The real chain rule, checked independently of the shared implementation: both
+    // chains cap a pet name at 32 UTF-8 bytes, and the inputs' maxLength counts UTF-16.
+    PET_NAME_MAX_BYTES: 32,
+    petNameByteLength: (s: string) => Buffer.byteLength(s, 'utf8'),
+    isPetNameWithinChainLimit: (s: string) => {
+        const bytes = Buffer.byteLength(s.trim(), 'utf8');
+        return bytes >= 1 && bytes <= 32;
+    },
     useAuth: () => ({
         isAuthenticated: true,
         isSigning: false,
@@ -100,6 +109,30 @@ describe('CreatePetModal', () => {
         await userEvent.click(screen.getByRole('button', { name: /Create Pet/ }));
 
         expect(createPet.mutate).toHaveBeenCalledWith({ name: 'Sparky' });
+    });
+
+    // The input's maxLength is 20 UTF-16 units; both chains cap the name at 32 UTF-8
+    // bytes. Twelve CJK characters clear the form at 36 bytes and revert at commit_mint,
+    // after the escalating mint fee is already spent.
+    it('refuses a name the form accepts but the chain will not', async () => {
+        renderModal();
+        await userEvent.type(screen.getByPlaceholderText('Enter pet name...'), '猫'.repeat(12));
+        await userEvent.click(screen.getByRole('button', { name: /Create Pet/ }));
+
+        expect(createPet.mutate).not.toHaveBeenCalled();
+        expect(notifyError).toHaveBeenCalledWith(
+            expect.stringContaining('36 bytes'),
+            undefined,
+            'create-pet-validation',
+        );
+    });
+
+    it('accepts a multi-byte name that does fit', async () => {
+        renderModal();
+        await userEvent.type(screen.getByPlaceholderText('Enter pet name...'), '猫'.repeat(10));
+        await userEvent.click(screen.getByRole('button', { name: /Create Pet/ }));
+
+        expect(createPet.mutate).toHaveBeenCalledWith({ name: '猫'.repeat(10) });
     });
 
     // Art is generated on first request, so closing on settlement would drop the
