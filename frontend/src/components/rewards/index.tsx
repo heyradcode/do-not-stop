@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     useRewardClaim,
+    useRewardClaimed,
     useRewardSeason,
     useRewardSeasons,
     useRewardsAdapter,
@@ -72,6 +73,8 @@ const Rewards: React.FC = () => {
     const seasonQuery = useRewardSeason(activeId);
     const claimQuery = useRewardClaim(activeId, walletAddress);
     const adapter = useRewardsAdapter();
+    // Chain truth, not the backend's: it serves the proof regardless of what has been spent.
+    const { claimed, refetch: refetchClaimed } = useRewardClaimed(seasonQuery.data, walletAddress);
 
     const season = seasonQuery.data;
     const claim = claimQuery.data;
@@ -89,7 +92,8 @@ const Rewards: React.FC = () => {
             token: season.token,
             evmChainId: season.evmChainId,
         });
-        await claimQuery.refetch();
+        // The backend's answer does not change on a claim; the chain's does.
+        await refetchClaimed();
     };
 
     return (
@@ -147,7 +151,9 @@ const Rewards: React.FC = () => {
                                         : "in the season's token"}
                                 </p>
 
-                                {season.openedAt === null ? (
+                                {claimed ? (
+                                    <p className={styles.muted}>Already claimed.</p>
+                                ) : season.openedAt === null ? (
                                     <p className={styles.muted}>
                                         This season&apos;s root is not on chain yet, so there is nothing to claim
                                         against. Check back once it opens.

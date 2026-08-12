@@ -8,6 +8,7 @@ const useRewardSeasons = vi.fn();
 const useRewardSeason = vi.fn();
 const useRewardClaim = vi.fn();
 const useRewardsAdapter = vi.fn();
+const useRewardClaimed = vi.fn();
 
 vi.mock('@shared/core', () => ({
     useChainCapabilities: () => useChainCapabilities(),
@@ -15,6 +16,7 @@ vi.mock('@shared/core', () => ({
     useRewardSeason: (id: number | null) => useRewardSeason(id),
     useRewardClaim: (id: number | null, wallet: string | null) => useRewardClaim(id, wallet),
     useRewardsAdapter: () => useRewardsAdapter(),
+    useRewardClaimed: (s: unknown, w: unknown) => useRewardClaimed(s, w),
 }));
 
 import Rewards, { formatAmount } from '../../src/components/rewards';
@@ -73,6 +75,7 @@ beforeEach(() => {
     useRewardClaim.mockReturnValue({ data: CLAIM, isLoading: false, error: null, refetch: vi.fn() });
     useRewardsAdapter.mockReturnValue(adapter());
     claimMutate.mockResolvedValue(undefined);
+    useRewardClaimed.mockReturnValue({ claimed: false, isLoading: false, refetch: vi.fn() });
 });
 
 describe('season discovery', () => {
@@ -249,5 +252,40 @@ describe('a failed season fetch is not a blank pane', () => {
         view();
 
         expect(screen.queryByRole('button', { name: /^claim$/i })).not.toBeInTheDocument();
+    });
+});
+
+describe('a claim already spent on chain', () => {
+    // The backend keeps serving the proof — it has no view of what has been spent — so
+    // without reading the chain a claimed wallet saw the button again on every reload, and
+    // clicking it failed at the distributor. Safe, but it reads as a broken button.
+    it('reports the claim instead of offering the button again', () => {
+        useRewardClaimed.mockReturnValue({ claimed: true, isLoading: false, refetch: vi.fn() });
+        view();
+
+        expect(screen.getByText(/Already claimed/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^claim$/i })).not.toBeInTheDocument();
+    });
+
+    // undefined means "not read yet", distinct from false. Treating it as claimed would
+    // hide a live button; treating it as not-claimed is what the button is for.
+    it('still offers the button while the chain read is pending', () => {
+        useRewardClaimed.mockReturnValue({ claimed: undefined, isLoading: true, refetch: vi.fn() });
+        view();
+
+        expect(screen.getByRole('button', { name: /^claim$/i })).toBeInTheDocument();
+    });
+
+    it('re-reads the chain after claiming, not the backend', async () => {
+        const refetch = vi.fn();
+        useRewardClaimed.mockReturnValue({ claimed: false, isLoading: false, refetch });
+        const claimRefetch = vi.fn();
+        useRewardClaim.mockReturnValue({ data: CLAIM, isLoading: false, error: null, refetch: claimRefetch });
+        view();
+
+        await userEvent.click(screen.getByRole('button', { name: /^claim$/i }));
+
+        expect(refetch).toHaveBeenCalled();
+        expect(claimRefetch).not.toHaveBeenCalled();
     });
 });
