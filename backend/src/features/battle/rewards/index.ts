@@ -5,7 +5,7 @@ export {
     type RewardRates,
     type WalletEntitlement,
 } from './entitlements';
-export { getSeason, getSeasonClaim } from './season.controller';
+export { getSeason, getSeasonClaim, listSeasons } from './season.controller';
 export {
     boundsViolations,
     openSeasonOnChain,

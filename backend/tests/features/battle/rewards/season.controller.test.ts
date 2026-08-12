@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@config/prisma', () => ({
-    prisma: { rewardSeason: { findUnique: vi.fn() } },
+    prisma: { rewardSeason: { findUnique: vi.fn(), findMany: vi.fn() } },
 }));
 
 vi.mock('@features/battle/rewards/season.service', () => ({
@@ -9,7 +9,7 @@ vi.mock('@features/battle/rewards/season.service', () => ({
 }));
 
 import { prisma } from '@config/prisma';
-import { getSeason, getSeasonClaim } from '@features/battle/rewards/season.controller';
+import { getSeason, getSeasonClaim, listSeasons } from '@features/battle/rewards/season.controller';
 import { getClaimProof } from '@features/battle/rewards/season.service';
 
 /**
@@ -145,5 +145,47 @@ describe('claim proofs', () => {
         await getSeasonClaim({ params: { seasonId, wallet: 'w' } } as never, response as never);
 
         expect(response.status).toHaveBeenCalledWith(422);
+    });
+});
+
+describe('listing seasons', () => {
+    // Without this a season is reachable only by someone told its number out of band:
+    // getSeason needs an id the caller already has, and nothing else publishes one.
+    it('serves every season, newest first', async () => {
+        vi.mocked(prisma.rewardSeason.findMany).mockResolvedValue([
+            { seasonId: 2, chainId: 'solana:devnet' },
+            { seasonId: 1, chainId: 'eip155:84532' },
+        ] as never);
+        const response = res();
+
+        await listSeasons({} as never, response as never);
+
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect((response.body.seasons as { seasonId: number }[]).map((s) => s.seasonId)).toEqual([2, 1]);
+        const query = vi.mocked(prisma.rewardSeason.findMany).mock.calls[0]![0] as { orderBy: unknown };
+        expect(query.orderBy).toEqual({ seasonId: 'desc' });
+    });
+
+    it('is an empty list, not a 404, before any season exists', async () => {
+        vi.mocked(prisma.rewardSeason.findMany).mockResolvedValue([] as never);
+        const response = res();
+
+        await listSeasons({} as never, response as never);
+
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect(response.body.seasons).toEqual([]);
+    });
+
+    // The root and the sequence range belong to getSeason, where the reproducibility
+    // contract lives; two copies would give a client two answers to check against.
+    it('omits the root and the sequence range', async () => {
+        vi.mocked(prisma.rewardSeason.findMany).mockResolvedValue([] as never);
+        const response = res();
+
+        await listSeasons({} as never, response as never);
+
+        const query = vi.mocked(prisma.rewardSeason.findMany).mock.calls[0]![0] as { select: Record<string, boolean> };
+        expect(query.select.merkleRoot).toBeUndefined();
+        expect(query.select.firstSequence).toBeUndefined();
     });
 });

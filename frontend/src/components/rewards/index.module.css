@@ -1,0 +1,95 @@
+/* Season rewards (§I). CSS Modules, local camelCase names — no BEM `__` elements. */
+
+.layout {
+    display: grid;
+    grid-template-columns: minmax(12rem, 18rem) 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (max-width: 40rem) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.seasonList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.season,
+.seasonActive {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: 0.5rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.season:hover {
+    border-color: rgb(255 255 255 / 28%);
+}
+
+.seasonActive {
+    border-color: var(--tone-cyan, #4dd0e1);
+    background: rgb(77 208 225 / 10%);
+}
+
+.seasonName {
+    font-weight: 600;
+}
+
+.seasonChain {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+/* A season whose root is not on chain yet: it exists, but nothing can be claimed. */
+.pending {
+    margin-left: auto;
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+.detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.amount {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.amountNote {
+    margin: 0;
+    font-size: 0.8rem;
+    opacity: 0.65;
+}
+
+.muted {
+    margin: 0;
+    opacity: 0.75;
+}
+
+.error {
+    margin: 0;
+    color: var(--tone-magenta, #ff6ea9);
+}

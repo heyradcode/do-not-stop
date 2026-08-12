@@ -70,3 +70,33 @@ export async function getSeason(req: Request, res: Response): Promise<void> {
         lastSequence: season.lastSequence.toString(),
     });
 }
+
+/**
+ * Every published season, newest first.
+ *
+ * A client cannot ask "what can I claim" without first knowing which seasons exist, and
+ * nothing else publishes that: `getSeason` needs an id the caller already has. Without this
+ * a season is reachable only by someone who was told its number out of band.
+ *
+ * Deliberately thin. It carries what a list needs to render and to look a season up, not the
+ * root or the sequence range — those belong to `getSeason`, where the reproducibility
+ * contract lives, and duplicating them here would give two answers to check against.
+ *
+ * Unauthenticated and unfiltered by wallet, like the rest of this path: which seasons exist
+ * is public, and who is entitled within one is what the claim endpoint answers.
+ */
+export async function listSeasons(_req: Request, res: Response): Promise<void> {
+    const seasons = await prisma.rewardSeason.findMany({
+        orderBy: { seasonId: 'desc' },
+        select: {
+            seasonId: true,
+            chainId: true,
+            deploymentId: true,
+            token: true,
+            totalAmount: true,
+            openedAt: true,
+        },
+    });
+
+    res.status(200).json({ seasons });
+}

@@ -580,6 +580,7 @@ route reachable by anything holding a token.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| GET | `/api/rewards/seasons` | Every published season, newest first: id, chain, deployment, token, total and opened-at. Deliberately thin — a client cannot ask "what can I claim" without first knowing which seasons exist, and `getSeason` needs an id the caller already has. The root and the sequence range are **not** here: they belong to the single-season read, where the reproducibility contract lives, and two copies would give a client two answers to check against. |
 | GET | `/api/rewards/seasons/:seasonId` | Season metadata: the receipt `sequence` range it covers, the distributor and token its leaves bind to, the chain identity they bind (`evmChainId` or `chainRef`, exactly one non-null), the root, the total, and the rates it was computed from. The range and rates are the reproducibility contract — they say exactly which slice of the corpus to replay to arrive at this root, and the chain identity is what lets anyone rebuild the leaves to check it. |
 | GET | `/api/rewards/seasons/:seasonId/claim/:wallet` | The wallet's `amount`, its Merkle `proof`, and the `breakdown` behind the number. **404 `no-entitlement`** covers both an unknown season and a wallet that earned nothing — the answer to "what can I claim" is the same either way, and distinguishing them would leak which wallets participated to anyone enumerating. |
 
