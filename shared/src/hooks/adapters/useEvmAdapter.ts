@@ -181,8 +181,16 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
             if (!canWrite) throw new Error('EVM contract not configured');
             if (fees.breedFee == null) throw new Error('Breed fee not loaded yet');
             if (fees.entropyFee == null) throw new Error('Entropy fee not loaded yet');
-            if (crossOwner && fees.studFee == null) throw new Error('Stud fee not loaded yet');
-            const value = fees.breedFee + fees.entropyFee + (crossOwner ? (fees.studFee ?? 0n) : 0n);
+            // `requestCreateFromDNA` branches on `ownerOf(petId1) == ownerOf(petId2)`, not on
+            // what the caller claims, and refunds no surplus msg.value. So a stud fee added
+            // for a pair the contract reads as same-owner is paid and gone. The caller's own
+            // pet list settles it: if parent2 is in it, both parents are ours whatever the
+            // flag says. This is reachable — a marriage starts cross-owner, and one spouse
+            // transferring their pet to the other leaves the panel's flag behind.
+            const bothOurs = evmPets.some((p) => p.id === parentId2);
+            const chargesStudFee = Boolean(crossOwner) && !bothOurs;
+            if (chargesStudFee && fees.studFee == null) throw new Error('Stud fee not loaded yet');
+            const value = fees.breedFee + fees.entropyFee + (chargesStudFee ? (fees.studFee ?? 0n) : 0n);
             await breedW.writeContractAsync({
                 address: gameLogic, abi: gameLogicAbi, functionName: 'requestCreateFromDNA',
                 args: [BigInt(parentId1), BigInt(parentId2), name], value, gas: EVM_GAS_LIMITS.requestBreed,

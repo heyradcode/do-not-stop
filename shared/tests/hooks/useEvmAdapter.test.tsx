@@ -191,6 +191,46 @@ describe('useEvmAdapter', () => {
         );
     });
 
+    it('adds the stud fee for a genuine cross-owner breed', async () => {
+        const { result } = renderHook(() => useEvmAdapter({ enabled: true }));
+
+        // Pet 2 is not in this wallet's list, so the contract will take its cross-owner
+        // branch and require breedFee + studFee.
+        await result.current.breedPets.mutateAsync({
+            parentId1: '7', parentId2: '2', name: 'Baby', crossOwner: true,
+        });
+        expect(write.writeContractAsync).toHaveBeenCalledWith(
+            expect.objectContaining({ value: 4n + 5n }),
+        );
+    });
+
+    // requestCreateFromDNA branches on ownerOf(petId1) == ownerOf(petId2) and refunds no
+    // surplus msg.value, so a stud fee sent for a pair it reads as same-owner is gone. The
+    // caller's own pet list is the check: a marriage that starts cross-owner and then has
+    // one spouse transferred to the other leaves the panel still passing crossOwner.
+    it('withholds the stud fee when both parents are the caller\'s own', async () => {
+        const { result } = renderHook(() => useEvmAdapter({ enabled: true }));
+
+        await result.current.breedPets.mutateAsync({
+            parentId1: '7', parentId2: '7', name: 'Baby', crossOwner: true,
+        });
+        expect(write.writeContractAsync).toHaveBeenCalledWith(
+            expect.objectContaining({ value: 4n }),
+        );
+    });
+
+    // The stud fee not being loaded only blocks a breed that would actually pay one.
+    it('does not wait on the stud fee for a same-owner breed', async () => {
+        fees.studFee = undefined as unknown as bigint;
+        const { result } = renderHook(() => useEvmAdapter({ enabled: true }));
+
+        await expect(
+            result.current.breedPets.mutateAsync({
+                parentId1: '7', parentId2: '7', name: 'Baby', crossOwner: true,
+            }),
+        ).resolves.toBeUndefined();
+    });
+
     it('throws when the contract is not configured', async () => {
         config.evm = null;
         const { result } = renderHook(() => useEvmAdapter({ enabled: true }));
