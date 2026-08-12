@@ -153,6 +153,28 @@ export default function AccountSheet() {
                              * holds. It had no entry point at all until now — the screen
                              * was registered in the navigator and nothing navigated to it.
                              */}
+                            {/*
+                             * Defence consent is wallet-wide by default — `DefenseScreen`
+                             * opens with "all my pets" ticked — so it belongs here beside
+                             * the other account-level actions. It was reachable only by
+                             * tapping one pet's Defend button, which asks the player to
+                             * pick a pet in order to reach a screen whose default answer
+                             * is "all of them", and hides the whole feature behind a label
+                             * that does not match what it does. The per-pet action stays:
+                             * arriving from a card narrows the grant to that pet.
+                             */}
+                            <TouchableOpacity
+                                style={[styles.action, styles.secondary]}
+                                accessibilityRole="button"
+                                accessibilityLabel="Allow Challenges"
+                                onPress={() => {
+                                    setIsOpen(false);
+                                    navigation.navigate('Defense');
+                                }}
+                            >
+                                <Text style={styles.secondaryText}>Allow Challenges</Text>
+                            </TouchableOpacity>
+
                             <TouchableOpacity
                                 style={[styles.action, styles.secondary]}
                                 accessibilityRole="button"

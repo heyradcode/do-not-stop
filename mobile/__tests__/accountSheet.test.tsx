@@ -204,6 +204,16 @@ describe('AccountSheet auth actions', () => {
         expect(mockNavigate).toHaveBeenCalledWith('Marriage');
     });
 
+    it('reaches defence consent, which is wallet-wide and was per-pet only', async () => {
+        // The screen opens with "all my pets" ticked, so requiring a pet to be chosen
+        // just to reach it inverted the feature. The per-pet Defend action still
+        // exists; it narrows the grant rather than being the only way in.
+        const tree = await render(<AccountSheet />);
+        await openSheet(tree);
+        await pressAction(tree, 'Allow Challenges');
+        expect(mockNavigate).toHaveBeenCalledWith('Defense');
+    });
+
     it('reaches the leaderboard, which has no tab of its own', async () => {
         const tree = await render(<AccountSheet />);
         await openSheet(tree);

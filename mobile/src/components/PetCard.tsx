@@ -77,8 +77,20 @@ export default function PetCard({
                 <TouchableOpacity style={styles.action} onPress={onRename} activeOpacity={0.85}>
                     <Text style={styles.actionText}>Rename</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.action} onPress={onDefend} activeOpacity={0.85}>
-                    <Text style={styles.actionText}>Defend</Text>
+                {/*
+                 * "Allow" rather than "Defend": the screen this opens grants standing
+                 * consent to be challenged, and "Defend" reads as an action taken during
+                 * a fight. Shortened from the screen's own "Allow Challenges" only
+                 * because five buttons share this row.
+                 */}
+                <TouchableOpacity
+                    style={styles.action}
+                    onPress={onDefend}
+                    accessibilityRole="button"
+                    accessibilityLabel="Allow challenges for this pet"
+                    activeOpacity={0.85}
+                >
+                    <Text style={styles.actionText}>Allow</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.action} onPress={onEquip} activeOpacity={0.85}>
                     <Text style={styles.actionText}>Equip</Text>
