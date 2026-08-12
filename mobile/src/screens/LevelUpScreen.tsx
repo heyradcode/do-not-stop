@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useChainCapabilities, useFees, useLevelUpPet } from '@shared/core';
 
 import PetPicker from '../components/PetPicker';
+import { SyncMetadataButton } from '../components/SolanaExtras';
 import { usePetPicker } from '../hooks/usePetPicker';
 import { useNotifyError } from '../hooks/useNotifyError';
 import { useTxErrorToast } from '../hooks/useTxErrorToast';
@@ -83,6 +84,7 @@ export default function LevelUpScreen() {
                     </Text>
                 </View>
             ) : null}
+            <SyncMetadataButton petId={picker.selectedId || undefined} />
         </ActionScreenLayout>
     );
 }

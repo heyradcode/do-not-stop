@@ -25,16 +25,25 @@ const pet = (over: Partial<Pet> = {}): Pet => ({
 });
 
 const mockState = {
+    /** What the consent read reports; `unknown` renders no card at all. */
+    consent: { kind: 'unknown' } as Record<string, unknown>,
     pets: [pet(), pet({ id: '2', name: 'Momo' })] as Pet[],
     isConnected: true,
     isPending: false,
     error: null as Error | null,
 };
 
+const mockRefreshConsent = jest.fn();
 const mockGrant = jest.fn(async () => '0xhash');
 const mockRevoke = jest.fn(async () => true);
 
 jest.mock('@shared/core', () => ({
+    useDefenseAuthorizations: () => ({
+        status: mockState.consent,
+        isLoading: false,
+        error: null,
+        refresh: mockRefreshConsent,
+    }),
     usePetList: () => ({ pets: mockState.pets, isLoading: false, error: null, refetch: jest.fn() }),
     useChainCapabilities: () => ({ isConnected: mockState.isConnected }),
     useDefenseAuthorization: () => ({
@@ -103,6 +112,7 @@ const pressWithdraw = async (tree: ReactTestRenderer.ReactTestRenderer) => {
 };
 
 beforeEach(() => {
+    mockState.consent = { kind: 'unknown' };
     mockState.pets = [pet(), pet({ id: '2', name: 'Momo' })];
     mockState.isConnected = true;
     mockState.isPending = false;
@@ -178,5 +188,56 @@ describe('DefenseScreen', () => {
         const tree = await render();
         await press(tree, 0);
         expect(textOf(tree)).toContain('No pets to authorize yet.');
+    });
+});
+
+/**
+ * What is currently granted, which is the half of the consent API that used to be
+ * missing from both clients.
+ *
+ * Being challenged is passive: a defender never discovers their consent has lapsed by
+ * trying something and failing, their pets simply stop being challengeable, and the only
+ * person who sees an error is the attacker, who cannot fix it. So the screen has to say
+ * it unprompted, and it has to distinguish two states that ask for the same action.
+ */
+describe('consent status', () => {
+    it('shows nothing while the answer is unknown, rather than guessing "not allowed"', async () => {
+        mockState.consent = { kind: 'unknown' };
+        const tree = await render();
+        const rendered = textOf(tree);
+        expect(rendered).not.toContain('Challenges allowed');
+        expect(rendered).not.toContain('Not allowed');
+        expect(rendered).not.toContain('Needs re-signing');
+    });
+
+    it('reports an active grant', async () => {
+        mockState.consent = { kind: 'active', authorizations: [{}, {}] };
+        const tree = await render();
+        expect(textOf(tree)).toContain('Challenges allowed');
+        expect(textOf(tree)).toContain('2 active grants');
+    });
+
+    it('says nobody can challenge when nothing is granted', async () => {
+        mockState.consent = { kind: 'none' };
+        const tree = await render();
+        expect(textOf(tree)).toContain('Not allowed');
+    });
+
+    it('distinguishes a lapsed grant from never having granted one', async () => {
+        // Both ask the player to sign again, but "you never allowed challenges" when the
+        // rules simply moved reads as the app having forgotten.
+        mockState.consent = { kind: 'stale', authorizations: [{}] };
+        const tree = await render();
+        const rendered = textOf(tree);
+        expect(rendered).toContain('Needs re-signing');
+        expect(rendered).toContain('rules changed');
+        expect(rendered).not.toContain('Not allowed');
+    });
+
+    it('re-reads after a grant, or the summary contradicts what just happened', async () => {
+        mockState.consent = { kind: 'none' };
+        const tree = await render();
+        await pressAllow(tree);
+        expect(mockRefreshConsent).toHaveBeenCalled();
     });
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import PetPicker from '../components/PetPicker';
+import { StudFeeBalance } from '../components/SolanaExtras';
 import { useBreedPanel } from '../hooks/breed/useBreedPanel';
 import { neon, neonGlow } from '../theme/neon';
 
@@ -35,6 +36,8 @@ export default function BreedScreen() {
                     </TouchableOpacity>
                 ))}
             </View>
+
+            <StudFeeBalance />
 
             {isOwn ? (
                 <>

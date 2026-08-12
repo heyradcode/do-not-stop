@@ -49,6 +49,7 @@ const mutationResult = (mutate: jest.Mock) => ({
 });
 
 jest.mock('@shared/core', () => ({
+    useSyncMetadata: () => ({ sync: jest.fn(), isPending: false, error: null }),
     getReadyPetsUnified: (pets: Pet[]) => pets.map((p) => ({ id: p.id, pet: p })),
     usePetList: () => ({ pets: mockState.pets, isLoading: false, error: null, refetch: jest.fn() }),
     useChainCapabilities: () => ({

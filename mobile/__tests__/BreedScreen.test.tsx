@@ -36,7 +36,15 @@ const mockState = {
 
 const mockBreed = jest.fn();
 
+jest.mock('../src/hooks/useTxErrorToast', () => ({ useTxErrorToast: () => {} }));
+
 jest.mock('@shared/core', () => ({
+    useStudFees: () => ({
+        amountLamports: null,
+        isLoading: false,
+        withdraw: { run: jest.fn(), isPending: false, error: null },
+        refetch: jest.fn(),
+    }),
     usePetList: () => ({ pets: mockState.pets, isLoading: false, error: null, refetch: jest.fn() }),
     useChainCapabilities: () => ({
         randomness: { provider: mockState.randomnessProvider },

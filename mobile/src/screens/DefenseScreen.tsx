@@ -2,9 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
-import { useChainCapabilities, useDefenseAuthorization, usePetList } from '@shared/core';
+import {
+    useChainCapabilities,
+    useDefenseAuthorization,
+    useDefenseAuthorizations,
+    usePetList,
+} from '@shared/core';
 
 import { useNotifyError } from '../hooks/useNotifyError';
+import type { ConsentStatus } from '@shared/core';
 import type { RootStackParamList } from '../navigation/routes';
 import ActionScreenLayout from './parts/ActionScreenLayout';
 import { neon } from '../theme/neon';
@@ -19,6 +25,12 @@ import { neon } from '../theme/neon';
  *
  * Unlike the other action screens this one lists *all* pets, not just those off
  * cooldown: consent is about who may be challenged later, not who can act now.
+ *
+ * It also reports what is currently granted, which is the half that used to be missing.
+ * Being challenged is passive: a defender never finds out their consent has lapsed by
+ * trying something and failing, their pets simply stop being challengeable, and the only
+ * person who sees an error is the attacker, who cannot fix it. Without this the person
+ * who has to re-sign is the only one not told.
  */
 export default function DefenseScreen() {
     const { params } = useRoute<RouteProp<RootStackParamList, 'Defense'>>();
@@ -26,6 +38,7 @@ export default function DefenseScreen() {
     const { pets } = usePetList();
     const notifyError = useNotifyError();
     const { grant, revoke, isPending, error } = useDefenseAuthorization();
+    const { status, refresh } = useDefenseAuthorizations();
 
     const [allPets, setAllPets] = useState(true);
     const [selected, setSelected] = useState<string[]>([]);
@@ -56,6 +69,7 @@ export default function DefenseScreen() {
                     ? 'Every pet you own can now be challenged.'
                     : `${selected.length} pet${selected.length === 1 ? '' : 's'} can now be challenged.`,
             );
+            refresh();
         }
     };
 
@@ -63,6 +77,7 @@ export default function DefenseScreen() {
         setSuccess(null);
         if (await revoke()) {
             setSuccess('Consent withdrawn. Your pets can no longer be challenged.');
+            refresh();
         }
     };
 
@@ -79,6 +94,8 @@ export default function DefenseScreen() {
             actionDisabled={isPending || nothingChosen || !isConnected}
             secondary={{ label: 'Withdraw', onPress: handleRevoke, disabled: isPending || !isConnected }}
         >
+            <ConsentStatusCard status={status} />
+
             <TouchableOpacity
                 style={styles.row}
                 onPress={() => setAllPets((v) => !v)}
@@ -129,7 +146,60 @@ export default function DefenseScreen() {
     );
 }
 
+/**
+ * What is granted right now.
+ *
+ * `stale` is deliberately its own message rather than folded into `none`. Both ask the
+ * player for the same action, but "you never allowed challenges" and "the rules changed,
+ * please allow them again" are not the same statement, and showing the first when the
+ * second is true reads as the app having forgotten.
+ */
+const ConsentStatusCard: React.FC<{ status: ConsentStatus }> = ({ status }) => {
+    if (status.kind === 'unknown') return null;
+
+    const [tone, headline, detail] =
+        status.kind === 'active'
+            ? [
+                  neon.success,
+                  'Challenges allowed',
+                  `${status.authorizations.length} active grant${status.authorizations.length === 1 ? '' : 's'}.`,
+              ]
+            : status.kind === 'stale'
+              ? [
+                    neon.magenta,
+                    'Needs re-signing',
+                    'The rules changed since you signed, so your grants no longer cover any battle. Allow challenges again to restore them.',
+                ]
+              : [neon.textDim, 'Not allowed', 'Nobody can challenge your pets right now.'];
+
+    return (
+        <View style={[styles.status, { borderColor: tone }]}>
+            <Text style={[styles.statusTitle, { color: tone }]}>{headline}</Text>
+            <Text style={styles.statusDetail}>{detail}</Text>
+        </View>
+    );
+};
+
 const styles = StyleSheet.create({
+    status: {
+        borderWidth: 1,
+        borderRadius: 12,
+        backgroundColor: neon.bgPanel,
+        padding: 12,
+        marginBottom: 12,
+    },
+    statusTitle: {
+        fontSize: 12,
+        fontWeight: '800',
+        letterSpacing: 1,
+        textTransform: 'uppercase',
+    },
+    statusDetail: {
+        fontSize: 13,
+        color: neon.textMuted,
+        marginTop: 4,
+        lineHeight: 18,
+    },
     row: {
         flexDirection: 'row',
         alignItems: 'center',
