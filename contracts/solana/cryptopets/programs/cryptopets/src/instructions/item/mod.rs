@@ -7,7 +7,9 @@
 //! and nothing else.
 
 pub mod catalog;
+pub mod equip;
 pub mod supply;
 
 pub use catalog::*;
+pub use equip::*;
 pub use supply::*;

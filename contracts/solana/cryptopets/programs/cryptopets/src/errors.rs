@@ -125,5 +125,15 @@ pub enum ErrorCode {
     ZeroQuantity,
     #[msg("Not enough of this item")]
     InsufficientItems,
+    #[msg("This item is not equipment")]
+    NotEquippable,
+    #[msg("This item does not go in that slot")]
+    WrongSlot,
+    #[msg("That slot already holds an item")]
+    SlotAlreadyFilled,
+    #[msg("That slot is empty")]
+    SlotEmpty,
+    #[msg("Cannot transfer a pet with equipment; unequip first")]
+    CannotTransferGearedPet,
 }
 

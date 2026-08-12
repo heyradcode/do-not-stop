@@ -549,6 +549,28 @@ corpus in `.github/workflows/verifier.yml`.
 
 # Phase 6: items and equipment in the `cryptopets` program
 
+**Built (6.1 to 6.6), across two commits:** the ledger (`state/item.rs`,
+`instructions/item/{catalog,supply}.rs`), then equip and unequip with the freeze
+(`instructions/item/equip.rs`) and the `transfer_pet` guard.
+
+Three things settled while building, worth recording because none is obvious from the step
+descriptions below:
+
+- **Unequip needs two plugin CPIs, in this order.** mpl-core refuses to remove a
+  `FreezeDelegate` while it is frozen, which is the point of a freeze, so the asset is thawed
+  with `UpdatePluginV1` and only then removed with `RemovePluginV1`. Removing it rather than
+  leaving it thawed returns the asset to a clean state, so the next equip's `AddPluginV1`
+  succeeds instead of failing on a plugin that is already attached.
+- **The freeze is added on the first item and removed on the last**, not per equip. Adding a
+  plugin an asset already carries fails.
+- **`transfer_pet`'s equipment account is optional.** It exists only once a pet has equipped
+  something, and every pet minted before items shipped has none. Optional is safe precisely
+  because that check is not the enforcement: a geared asset is frozen, so omitting the account
+  costs a worse error message rather than opening a hole.
+
+*Not run:* no toolchain, and the `mpl_core` plugin builder shapes carry the same "unverified
+against the real crate" caveat `core_asset_owner` already does.
+
 ### 6.1 Accounts
 
 ```

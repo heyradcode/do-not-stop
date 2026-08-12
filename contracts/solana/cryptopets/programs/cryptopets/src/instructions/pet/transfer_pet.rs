@@ -3,7 +3,7 @@ use mpl_core::instructions::TransferV1CpiBuilder;
 
 use crate::{
     errors::ErrorCode,
-    state::{GlobalState, PetAccount},
+    state::{GlobalState, PetAccount, PetEquipment},
     utils::metadata::core_asset_owner,
 };
 
@@ -30,6 +30,18 @@ pub fn handler(ctx: Context<TransferPet>) -> Result<()> {
         ctx.accounts.pet.spouse_id == 0,
         ErrorCode::CannotTransferMarriedPet
     );
+
+    // A geared pet cannot move, mirroring EVM `PetCore._beforeTokenTransfer` (roadmap §4):
+    // pets and items are separate assets, and the stripping has to happen first.
+    //
+    // **Not the enforcement.** The FreezeDelegate plugin `equip` attaches is, because it
+    // lives on the asset and mpl-core applies it to every transfer path, including ones that
+    // never call this program. This check exists so the common case fails with a named error
+    // instead of an opaque mpl-core one, which is why it is safe for the account to be
+    // optional: omitting it does not open a hole, it just gets the worse message.
+    if let Some(equipment) = &ctx.accounts.equipment {
+        require!(!equipment.any_equipped(), ErrorCode::CannotTransferGearedPet);
+    }
 
     // mpl-core CPI: move the Core asset to `new_owner`. The asset's owner is the transfer
     // authority and signs the outer transaction, so this is `invoke()` (no PDA seeds). The
@@ -73,6 +85,20 @@ pub struct TransferPet<'info> {
 
     /// CHECK: recipient wallet that receives the Core asset. Any pubkey is valid.
     pub new_owner: UncheckedAccount<'info>,
+
+    /// This pet's equipment, when it has any (roadmap §4).
+    ///
+    /// Optional because the account only exists once a pet has equipped something, and every
+    /// pet minted before items shipped has none. A caller omitting it does not bypass
+    /// anything: a geared asset is frozen, so mpl-core refuses the transfer regardless.
+    // Canonical `bump` rather than `bump = equipment.bump`: the stored form would have to be
+    // read off an account that may not be there, and recomputing costs a little compute on a
+    // path that sends a CPI anyway.
+    #[account(
+        seeds = [PetEquipment::SEED, pet_asset.key().as_ref()],
+        bump,
+    )]
+    pub equipment: Option<Account<'info, PetEquipment>>,
 
     #[account(mut)]
     pub owner: Signer<'info>,

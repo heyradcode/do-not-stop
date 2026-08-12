@@ -201,4 +201,15 @@ pub mod cryptopets {
         let _ = item_type;
         supply::burn_items(ctx, quantity)
     }
+
+    pub fn equip(ctx: Context<Equip>, slot: u8, item_type: u64) -> Result<()> {
+        equip::equip(ctx, slot, item_type)
+    }
+
+    /// `item_type` names the `balance` PDA seed the item is returned to; which item that is
+    /// comes from the slot, not from the caller, and the two are checked against each other.
+    pub fn unequip(ctx: Context<Unequip>, slot: u8, item_type: u64) -> Result<()> {
+        let _ = item_type;
+        equip::unequip(ctx, slot)
+    }
 }
