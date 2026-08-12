@@ -35,6 +35,11 @@ function chainLabel(chainId: string): string {
     return chainId.startsWith('solana:') ? 'Solana' : 'EVM';
 }
 
+/** Which adapter a season needs, from the namespace of its protocol chain id. */
+function seasonChainKind(chainId: string): 'evm' | 'solana' {
+    return chainId.startsWith('solana:') ? 'solana' : 'evm';
+}
+
 /**
  * A token amount for display.
  *
@@ -62,7 +67,7 @@ export function formatAmount(raw: string, decimals: number | null): string {
 
 const Rewards: React.FC = () => {
     const navigate = useNavigate();
-    const { walletAddress } = useChainCapabilities();
+    const { walletAddress, activeKind } = useChainCapabilities();
     const seasonsQuery = useRewardSeasons();
     const [selectedId, setSelectedId] = useState<number | null>(null);
 
@@ -73,15 +78,35 @@ const Rewards: React.FC = () => {
     const seasonQuery = useRewardSeason(activeId);
     const claimQuery = useRewardClaim(activeId, walletAddress);
     const adapter = useRewardsAdapter();
+
+    /**
+     * Whether the connected wallet is even on this season's chain.
+     *
+     * The list is every published season on both chains, and the adapter is the *active*
+     * chain's. Without this the two are never compared: an EVM session on a Solana season
+     * would send a base58 program id where viem expects an address, and a Solana session on
+     * an EVM season would hand `0x…` to `new PublicKey`. Both fail after the click, in a
+     * library, with nothing on screen having suggested the season was not claimable here.
+     */
+    const seasonKind = seasonQuery.data ? seasonChainKind(seasonQuery.data.chainId) : null;
+    const onSeasonChain = seasonKind !== null && activeKind === seasonKind;
+
     // Chain truth, not the backend's: it serves the proof regardless of what has been spent.
-    const { claimed, refetch: refetchClaimed } = useRewardClaimed(seasonQuery.data, walletAddress);
+    // Only asked on the season's own chain — `useRewardClaimed` branches on the active one,
+    // so a cross-chain pairing would read a distributor address the wrong library cannot parse.
+    const { claimed, refetch: refetchClaimed } = useRewardClaimed(
+        onSeasonChain ? seasonQuery.data : undefined,
+        walletAddress,
+    );
 
     const season = seasonQuery.data;
     const claim = claimQuery.data;
     const phase = adapter.claim.lifecycle.phase;
 
     const onClaim = async () => {
-        if (!season || !claim) return;
+        // Belt and braces: the button is already hidden off-chain, but this is the call that
+        // would hand a base58 program id to viem, and it is worth being unreachable twice.
+        if (!season || !claim || !onSeasonChain) return;
         await adapter.claim.mutateAsync({
             seasonId: season.seasonId,
             wallet: claim.wallet,
@@ -157,6 +182,12 @@ const Rewards: React.FC = () => {
                                     <p className={styles.muted}>
                                         This season&apos;s root is not on chain yet, so there is nothing to claim
                                         against. Check back once it opens.
+                                    </p>
+                                ) : !onSeasonChain ? (
+                                    <p className={styles.muted}>
+                                        This is a {chainLabel(season.chainId)} season. Switch to{' '}
+                                        {chainLabel(season.chainId)} to claim it — your entitlement keeps
+                                        until you do.
                                     </p>
                                 ) : !adapter.canClaim ? (
                                     <p className={styles.muted}>Connect a wallet on this season&apos;s chain to claim.</p>

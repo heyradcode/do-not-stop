@@ -69,7 +69,9 @@ const view = () =>
 
 beforeEach(() => {
     vi.clearAllMocks();
-    useChainCapabilities.mockReturnValue({ walletAddress: 'Wallet' });
+    // Solana by default, matching SEASON's chainId: the screen compares the two, and a
+    // mismatch is the case the wrong-chain tests below cover deliberately.
+    useChainCapabilities.mockReturnValue({ walletAddress: 'Wallet', activeKind: 'solana' });
     useRewardSeasons.mockReturnValue({ data: SEASONS, isLoading: false, error: null });
     useRewardSeason.mockReturnValue({ data: SEASON, isLoading: false, error: null });
     useRewardClaim.mockReturnValue({ data: CLAIM, isLoading: false, error: null, refetch: vi.fn() });
@@ -287,5 +289,59 @@ describe('a claim already spent on chain', () => {
 
         expect(refetch).toHaveBeenCalled();
         expect(claimRefetch).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * The list is every published season on both chains, while the adapter is the active
+ * chain's. Nothing compared the two, so an EVM session viewing a Solana season got a live
+ * Claim button that handed a base58 program id to viem — and a Solana session on an EVM
+ * season handed `0x…` to `new PublicKey`. Both failed inside a library, after the click,
+ * with nothing on screen having suggested the season was not claimable there.
+ */
+describe('a season on the chain you are not on', () => {
+    it('explains the switch instead of offering a button', () => {
+        useChainCapabilities.mockReturnValue({ walletAddress: '0xWallet', activeKind: 'evm' });
+        view();
+
+        expect(screen.getByText(/This is a Solana season/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^claim$/i })).not.toBeInTheDocument();
+    });
+
+    it('says the same for an EVM season from a Solana session', () => {
+        useRewardSeason.mockReturnValue({
+            data: { ...SEASON, seasonId: 1, chainId: 'eip155:84532', distributor: `0x${'11'.repeat(20)}`, evmChainId: 84532 },
+            isLoading: false,
+            error: null,
+        });
+        view();
+
+        expect(screen.getByText(/This is a EVM season/i)).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /^claim$/i })).not.toBeInTheDocument();
+    });
+
+    // The entitlement still stands; only the claim has to wait. Saying nothing about that
+    // reads as "you lost it".
+    it('keeps showing what was earned', () => {
+        useChainCapabilities.mockReturnValue({ walletAddress: '0xWallet', activeKind: 'evm' });
+        view();
+
+        expect(screen.getByText('1,250,000')).toBeInTheDocument();
+        expect(screen.getByText(/keeps until you do/i)).toBeInTheDocument();
+    });
+
+    // useRewardClaimed branches on the *active* chain, so asking it about a season from the
+    // other one reads a distributor address the wrong library cannot parse.
+    it('does not ask the chain whether a cross-chain season was claimed', () => {
+        useChainCapabilities.mockReturnValue({ walletAddress: '0xWallet', activeKind: 'evm' });
+        view();
+
+        expect(useRewardClaimed).toHaveBeenCalledWith(undefined, '0xWallet');
+    });
+
+    it('asks on the season\'s own chain', () => {
+        view();
+
+        expect(useRewardClaimed).toHaveBeenCalledWith(SEASON, 'Wallet');
     });
 });
