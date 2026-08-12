@@ -32,6 +32,7 @@ export default function GalleryScreen() {
         onRename,
         onDefend,
         onEquip,
+        equippedFor,
         sendingPet,
         onSend,
         onCloseSend,
@@ -91,6 +92,7 @@ export default function GalleryScreen() {
                 onRename={onRename}
                 onDefend={onDefend}
                 onEquip={onEquip}
+                equippedFor={equippedFor}
                 onSend={onSend}
             />
 

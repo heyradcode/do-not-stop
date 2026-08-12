@@ -10,9 +10,11 @@ import {
     getRarityName,
     getXpNumbers,
     getXpPercent,
+    type EquippedItem,
     type Pet,
 } from '@shared/core';
 
+import EquippedBadges from './EquippedBadges';
 import PetArt from './PetArt';
 import type { PetCooldownStatus } from '../hooks/usePetCooldowns';
 import { neon, neonGlow } from '../theme/neon';
@@ -43,6 +45,8 @@ const winRatio = (pet: Pet): number => {
 type Props = {
     pet: Pet;
     status: PetCooldownStatus;
+    /** Filled slots, or undefined for a pet wearing nothing. */
+    equipped?: EquippedItem[];
     onBattle: () => void;
     onRename: () => void;
     onDefend: () => void;
@@ -62,6 +66,7 @@ type Props = {
 export default function PetCard({
     pet,
     status,
+    equipped,
     onBattle,
     onRename,
     onDefend,
@@ -97,6 +102,8 @@ export default function PetCard({
                     </Text>
                 </View>
             </View>
+
+            <EquippedBadges equipped={equipped} rarity={pet.rarity} />
 
             {skill ? (
                 <View style={styles.skill}>

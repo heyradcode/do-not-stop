@@ -7,7 +7,7 @@ import {
     Text,
     View,
 } from 'react-native';
-import type { Pet } from '@shared/core';
+import type { EquippedItem, Pet } from '@shared/core';
 
 import PetCard from './PetCard';
 import type { PetCooldownStatus } from '../hooks/usePetCooldowns';
@@ -24,6 +24,7 @@ type Props = {
     onRename: (pet: Pet) => void;
     onDefend: (pet: Pet) => void;
     onEquip: (pet: Pet) => void;
+    equippedFor: (petId: string) => EquippedItem[] | undefined;
     onSend: (pet: Pet) => void;
 };
 
@@ -38,6 +39,7 @@ export default function PetList({
     onRename,
     onDefend,
     onEquip,
+    equippedFor,
     onSend,
 }: Props) {
     if (error) {
@@ -105,6 +107,7 @@ export default function PetList({
                     onRename={() => onRename(pet)}
                     onDefend={() => onDefend(pet)}
                     onEquip={() => onEquip(pet)}
+                    equipped={equippedFor(pet.id)}
                     onSend={() => onSend(pet)}
                 />
             ))}

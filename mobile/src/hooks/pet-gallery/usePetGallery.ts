@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useChainCapabilities, useCreatePet, usePetList, type Pet } from '@shared/core';
+import {
+    useChainCapabilities,
+    useCreatePet,
+    usePetEquipmentForPets,
+    usePetList,
+    type EquippedItem,
+    type Pet,
+} from '@shared/core';
 
 import type { RootStackParamList } from '../../navigation/routes';
 import { useNotifyError } from '../useNotifyError';
@@ -27,6 +34,14 @@ export interface UsePetGallery {
     error: Error | null;
     totalWins: number;
     statusFor: (pet: Pet) => PetCooldownStatus;
+    /**
+     * A pet's filled equip slots, or undefined when it wears nothing.
+     *
+     * Undefined also covers "not answered yet" — the batched read simply omits pets with
+     * no gear — so a caller that must tell those apart needs the query's own loading
+     * state rather than this. A gallery card does not: both mean "draw no badges".
+     */
+    equippedFor: (petId: string) => EquippedItem[] | undefined;
     refreshing: boolean;
     onRefresh: () => void;
     createPet: ReturnType<typeof useCreatePet>;
@@ -47,8 +62,22 @@ type GalleryNavigation = NativeStackNavigationProp<RootStackParamList>;
 
 export const usePetGallery = (): UsePetGallery => {
     const navigation = useNavigation<GalleryNavigation>();
-    const { isConnected } = useChainCapabilities();
+    const { isConnected, activeKind } = useChainCapabilities();
     const { pets, isLoading, error, refetch } = usePetList();
+
+    /**
+     * Every pet's gear in one request.
+     *
+     * The batched hook rather than `usePetEquipment` per card: that is the difference
+     * between one query and one per pet, which is the reason the batched one exists. Pets
+     * with nothing equipped are simply absent from the map, so a missing key means "no
+     * gear" — `isLoading` is what distinguishes "not answered yet".
+     */
+    const petIds = useMemo(() => pets.map((pet) => pet.id), [pets]);
+    const { byPet: equippedByPet } = usePetEquipmentForPets({
+        chain: activeKind,
+        petIds,
+    });
     const notifyError = useNotifyError();
     const [createModalOpen, setCreateModalOpen] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -99,6 +128,8 @@ export const usePetGallery = (): UsePetGallery => {
         error,
         totalWins,
         statusFor,
+        /** A pet's filled slots, or undefined for a pet wearing nothing. */
+        equippedFor: (petId: string): EquippedItem[] | undefined => equippedByPet.get(petId),
         refreshing,
         onRefresh,
         createPet,

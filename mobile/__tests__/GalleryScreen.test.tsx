@@ -24,6 +24,10 @@ jest.mock('@shared/core', () => ({
     ...jest.requireActual('../../shared/src/utils/ethereum/petCard'),
     ...jest.requireActual('../../shared/src/utils/pets/skills'),
     getRarityColor: (r: number) => (r === 2 ? '#C0C0C0' : '#8B4513'),
+    // No image service in tests, so the badge falls back to its rarity-tinted initial.
+    // That fallback is the interesting path anyway: it is what a deployment without
+    // IMAGE_SERVICE_URL shows, and it still says a slot is filled.
+    itemArtUrl: () => null,
     getRarityName: (r: number) => (r === 2 ? 'Uncommon' : 'Common'),
 }));
 
@@ -85,6 +89,8 @@ const galleryValue = (over: Record<string, unknown> = {}) => ({
     error: null,
     totalWins: 0,
     statusFor: () => readyStatus,
+    /** The batched equipment read; a pet with no gear simply has no entry. */
+    equippedFor: () => undefined,
     refreshing: false,
     onRefresh: jest.fn(),
     createPet: {},
@@ -210,6 +216,36 @@ describe('GalleryScreen', () => {
     it('draws the pet art, which the card omitted entirely until now', async () => {
         mockGallery.mockReturnValue(galleryValue({ pets: [pet({ id: '7' })] }));
         expect(textOf(await render())).toContain('[art:7]');
+    });
+
+    it('shows a badge per equipped slot, and nothing for a bare pet', async () => {
+        // `usePetEquipmentForPets` had no mobile caller at all, so a geared pet was
+        // indistinguishable from a bare one everywhere outside the equip screen.
+        const gear = (slot: number, name: string) => ({
+            slot,
+            item: { itemType: String(slot), name, rarity: 2, category: 'equipment', slot, key: '', effect: null, description: '' },
+        });
+        mockGallery.mockReturnValue(
+            galleryValue({
+                pets: [pet({ id: '7' })],
+                equippedFor: () => [gear(1, 'Hide Vest'), gear(0, 'Iron Fang')],
+            }),
+        );
+
+        // One label for the strip, ordered by slot so icons never reshuffle between
+        // renders: weapon (0) before armor (1), whatever order the server sent.
+        const tree = await render();
+        const labels = tree.root
+            .findAll((n) => typeof n.props.accessibilityLabel === 'string')
+            .map((n) => n.props.accessibilityLabel as string);
+        expect(labels).toContain('Wearing Iron Fang, Hide Vest');
+
+        mockGallery.mockReturnValue(galleryValue({ pets: [pet({ id: '7' })] }));
+        const bare = await render();
+        const bareLabels = bare.root
+            .findAll((n) => typeof n.props.accessibilityLabel === 'string')
+            .map((n) => n.props.accessibilityLabel as string);
+        expect(bareLabels.some((l) => l.startsWith('Wearing'))).toBe(false);
     });
 
     it('surfaces the empty state rather than an empty list', async () => {

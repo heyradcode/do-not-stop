@@ -33,8 +33,11 @@ const mockState = {
     isLoading: false,
     error: null as Error | null,
     isConnected: true,
+    /** Pet id to its filled slots. A pet with no gear has no entry, by design. */
+    equippedByPet: new Map<string, unknown[]>(),
 };
 
+const mockEquipmentArgs = jest.fn();
 const mockRefetch = jest.fn(async () => undefined);
 const mockNotify = jest.fn();
 const mockNavigate = jest.fn();
@@ -46,6 +49,11 @@ jest.mock('@shared/core', () => ({
     // They are dependency-free, so they come from their own module rather than
     // being faked.
     ...jest.requireActual('../../shared/src/utils/ethereum/petReadyTime'),
+    /** Captured so the batched read can be asserted to ask for every pet, once. */
+    usePetEquipmentForPets: (opts: { petIds: string[] }) => {
+        mockEquipmentArgs(opts);
+        return { byPet: mockState.equippedByPet, isLoading: false, error: null, refetch: jest.fn() };
+    },
     usePetList: () => ({
         pets: mockState.pets,
         isLoading: mockState.isLoading,
@@ -227,6 +235,34 @@ describe('usePetGallery', () => {
         });
         expect(mockNavigate).toHaveBeenNthCalledWith(2, 'Rename', { petId: '42' });
         expect(mockNavigate).toHaveBeenNthCalledWith(3, 'Defense', { petId: '42' });
+        await unmount();
+    });
+});
+
+/**
+ * Gear is read for the whole roster in one request.
+ *
+ * `usePetEquipmentForPets` exists precisely so a gallery does not fire one query per
+ * card, and it had no mobile caller at all until now. Asserting the id list rather than
+ * the call count is what pins that: a per-card hook would ask for one id at a time.
+ */
+describe('usePetGallery equipment', () => {
+    it('asks for every pet at once, not one query per card', async () => {
+        mockState.pets = [pet({ id: '1' }), pet({ id: '2' }), pet({ id: '3' })];
+        const { unmount } = await renderHook();
+
+        const asked = mockEquipmentArgs.mock.calls.at(-1)?.[0] as { petIds: string[] };
+        expect(asked.petIds).toEqual(['1', '2', '3']);
+        await unmount();
+    });
+
+    it('reports undefined for a pet wearing nothing, which is how the read omits it', async () => {
+        mockState.pets = [pet({ id: '1' }), pet({ id: '2' })];
+        mockState.equippedByPet = new Map([['1', [{ slot: 0 }]]]);
+        const { seen, unmount } = await renderHook();
+
+        expect(seen.current.equippedFor('1')).toHaveLength(1);
+        expect(seen.current.equippedFor('2')).toBeUndefined();
         await unmount();
     });
 });
