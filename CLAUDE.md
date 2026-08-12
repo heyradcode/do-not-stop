@@ -148,6 +148,20 @@ Both sat mid-struct, so every field after them moved: `CURRENT_ACCOUNT_VERSION` 
 
 **Rust/Anchor changes here were written without a local toolchain (no `cargo`/`anchor`/`rustc`/`solana` on PATH in this environment) — run `anchor build` / `anchor test` before trusting them.**
 
+### Nothing in CI builds Rust, so every transcription of it is checked from the other side
+The workflows cover protocol, `contracts/ethereum`, indexer-go, mobile and the verifier. None runs `cargo test` or `anchor build`, so a Solana program's own tests — the space-constant sums, `leaf.rs`'s vector module, the frozen combat port's golden vectors — only run on a developer's machine. Four places transcribe the programs into another language by hand, and "re-diff it by hand" was the only thing holding each of them:
+
+| Transcription | Checked by |
+|---|---|
+| `cryptopets-rewards/src/leaf.rs` ← reward-leaf vectors and domain tags | `protocol/tests/merkle/rewardLeafVectors.test.ts` |
+| `indexer-go/internal/solana/idl/cryptopets.json` ← `PetAccount`, `ItemBalance`, `PetEquipment`, `ItemSlot` | `internal/solana/idl_source_test.go` |
+| `backend/.../anchor/solanaClient.ts` ← `RegistryState` offsets and `SPACE` | `tests/features/battle/anchor/solanaClient.test.ts` |
+| `shared/src/utils/solana/{pdas,constants}.ts` ← 15 PDA seeds, 2 memcmp offsets | `tests/utils/solana/programSourceParity.test.ts` |
+
+Each reads the Rust source and compares. Parsing it with a regex is cruder than compiling it and deliberately so: what these protect is the literal bytes both sides must agree on — field order, widths, seed strings, offsets, hashes — which is all positional decoding and PDA derivation depend on. **A new hand-transcription needs a new entry here**, because the alternative is a value that is only wrong in production.
+
+Two limits worth knowing. These check the *source*, not the deployed program, so a program built from a different commit is still out of scope. And `fieldReader` in the indexer fails closed when a field decodes as the wrong type but cannot see two same-width fields exchanged — `TestDecodePetAccountCannotSeeASameTypeDrift` pins that gap, and `idl_source_test.go` is what covers it.
+
 ### Entropy / randomness
 Both remaining async EVM flows — breed (`requestCreateFromDNA`) and starter mint
 (`requestMintStarter`) — use Pyth Entropy v2 (`requestV2` → `entropyCallback`

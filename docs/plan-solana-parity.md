@@ -24,9 +24,16 @@ EVM and the adapter on Solana, never the boundary where the two disagreed. Worth
 for the rest of this plan: a Solana pet has **two** keys, and any code holding one of them is
 one substitution away from an address nothing lives at.
 
-**Verified green:** protocol 672 tests, verifier 112, frontend 419, shared 656, backend 1098,
+**Verified green:** protocol 681 tests, verifier 112, frontend 419, shared 674, backend 1101,
 indexer-go `go vet`/`go test` all pass, root `pnpm lint` clean. The frozen golden vectors and
 the EVM contracts are untouched by this branch.
+
+**Cross-language transcriptions are now checked from the TS/Go side** (see CLAUDE.md's table).
+No CI job builds Rust, so each program's own tests run on a developer's machine or nowhere;
+four places transcribe the programs by hand and each now has a test in the consuming package
+that reads the Rust and compares. Nothing had drifted, so this closes a hole rather than
+fixing a bug — but it means a v8 account-version bump fails a test instead of corrupting a
+projection.
 
 **Unverified:** every Rust change. There is no `cargo`/`anchor`/`rustc`/`solana` on PATH in
 the authoring environment, so nothing under `contracts/solana/` has been compiled, let alone
