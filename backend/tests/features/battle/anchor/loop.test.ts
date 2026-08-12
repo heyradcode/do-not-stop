@@ -181,3 +181,35 @@ describe('scheduling', () => {
         expect(buildNextBatch).not.toHaveBeenCalled();
     });
 });
+
+describe('malformed anchor config', () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    // startBatchAnchor runs at boot, so an uncaught throw here takes down battles, chat and
+    // every read with it. Missing config already degrades to batch-only; malformed config
+    // must not be more severe than absent config.
+    it('does not take the process down when a key will not parse', async () => {
+        battle.anchors = { [SOLANA]: { ...solanaAnchorConfig, privateKey: 'not-a-key' } };
+
+        expect(() => startBatchAnchor()).not.toThrow();
+
+        await vi.advanceTimersByTimeAsync(battle.anchorIntervalMs);
+        expect(buildNextBatch).toHaveBeenCalledTimes(2);
+        expect(anchorNextBatch).not.toHaveBeenCalled();
+    });
+
+    it('keeps batching the other chain when one chain is misconfigured', async () => {
+        battle.anchors = {
+            [EVM]: { ...evmAnchorConfig, privateKey: 'nonsense' as `0x${string}` },
+            [SOLANA]: solanaAnchorConfig,
+        };
+
+        startBatchAnchor();
+        await vi.advanceTimersByTimeAsync(battle.anchorIntervalMs);
+
+        // Both still batch; only the broken chain loses anchoring.
+        expect(buildNextBatch).toHaveBeenCalledTimes(2);
+        expect(anchorNextBatch.mock.calls.map(([c]) => (c as { chainId: string }).chainId)).toEqual([SOLANA]);
+    });
+});

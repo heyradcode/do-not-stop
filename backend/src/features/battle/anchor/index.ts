@@ -82,10 +82,24 @@ function anchorContextFor(scope: BatchScope): AnchorContext | undefined {
         return undefined;
     }
 
-    const client =
-        config.kind === 'evm'
-            ? createEvmAnchorClient(evmClientsFor(config), config.registryAddress as Address)
-            : createSolanaAnchorClient(config);
+    // Construction parses a key and an address, so a typo throws here rather than on the
+    // first tick. Caught, because the alternative is worse than not anchoring: this runs at
+    // boot from `startBatchAnchor`, and an uncaught throw takes down battles, chat and every
+    // read with it. Missing config already degrades to batch-only; malformed config must not
+    // be more severe than absent config.
+    let client;
+    try {
+        client =
+            config.kind === 'evm'
+                ? createEvmAnchorClient(evmClientsFor(config), config.registryAddress as Address)
+                : createSolanaAnchorClient(config);
+    } catch (error) {
+        console.error(
+            `[battle-anchor] ${scope.chainId}: anchor settings are present but unusable, so batches ` +
+                `will be built and left unanchored: ${(error as Error).message.split('\n')[0]}`,
+        );
+        return undefined;
+    }
 
     return { client, chainId: scope.chainId, deploymentId: scope.deploymentId };
 }
