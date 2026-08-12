@@ -234,3 +234,5 @@ export {
 // adapter, the way equipping does.
 export { useRewardSeason, rewardSeasonQueryKey, type RewardSeason } from './rewards/useRewardSeason';
 export { useRewardClaim, rewardClaimQueryKey, type RewardClaim } from './rewards/useRewardClaim';
+export { useRewardsAdapter } from './adapters/useRewardsAdapter';
+export type { ClaimRewardArgs, RewardsAdapter } from './adapters/rewardsTypes';

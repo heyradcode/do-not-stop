@@ -1,6 +1,8 @@
 import { Buffer } from 'buffer';
 import { PublicKey } from '@solana/web3.js';
 
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from './constants';
+
 const GLOBAL_STATE_SEED = Buffer.from('global-state');
 const PLAYER_PROFILE_SEED = Buffer.from('player-profile');
 const PET_SEED = Buffer.from('pet');
@@ -86,3 +88,52 @@ export const itemSlotPda = (programId: PublicKey, itemType: string | bigint): [P
 export const petEquipmentPda = (programId: PublicKey, assetKey: string): [PublicKey, number] => {
     return PublicKey.findProgramAddressSync([EQUIPMENT_SEED, new PublicKey(assetKey).toBuffer()], programId);
 };
+
+// ─── Rewards (§I) ────────────────────────────────────────────────────────────
+
+const REWARDS_SEED = Buffer.from('rewards');
+const SEASON_SEED = Buffer.from('season');
+const VAULT_SEED = Buffer.from('vault');
+const CLAIM_SEED = Buffer.from('claim');
+
+/** `u32` seed component, little-endian, matching `&season_id.to_le_bytes()` in Rust. */
+const seasonIdSeed = (seasonId: number): Buffer => {
+    const buf = Buffer.alloc(4);
+    buf.writeUInt32LE(seasonId >>> 0, 0);
+    return buf;
+};
+
+/** Admin and pause state for the distributor: seeds ["rewards"]. */
+export const rewardsStatePda = (programId: PublicKey): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([REWARDS_SEED], programId);
+
+/** One season: seeds ["season", season_id_le_u32]. */
+export const seasonPda = (programId: PublicKey, seasonId: number): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([SEASON_SEED, seasonIdSeed(seasonId)], programId);
+
+/** A season's payout vault, whose authority is the season PDA: seeds ["vault", season_id_le_u32]. */
+export const seasonVaultPda = (programId: PublicKey, seasonId: number): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([VAULT_SEED, seasonIdSeed(seasonId)], programId);
+
+/**
+ * The nullifier: seeds ["claim", season_id_le_u32, wallet].
+ *
+ * Its **existence** is the record that a wallet has claimed, so the program's `init` is what
+ * makes a second claim impossible. Deriving it from the season and the wallet is also what
+ * stops a claimant choosing their own.
+ */
+export const claimedPda = (programId: PublicKey, seasonId: number, wallet: PublicKey): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync([CLAIM_SEED, seasonIdSeed(seasonId), wallet.toBuffer()], programId);
+
+/**
+ * The associated token account for `owner` and `mint`.
+ *
+ * Derived here rather than pulled from `@solana/spl-token`, which this package does not
+ * depend on: the derivation is three fixed seeds against a program id that is the same on
+ * every cluster, and it is the only thing that library would be used for.
+ */
+export const associatedTokenAddress = (owner: PublicKey, mint: PublicKey): [PublicKey, number] =>
+    PublicKey.findProgramAddressSync(
+        [owner.toBuffer(), new PublicKey(TOKEN_PROGRAM_ID).toBuffer(), mint.toBuffer()],
+        new PublicKey(ASSOCIATED_TOKEN_PROGRAM_ID),
+    );
