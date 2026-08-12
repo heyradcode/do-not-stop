@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
@@ -250,5 +254,92 @@ describe('decoding the publisher key', () => {
     it('tolerates surrounding whitespace', () => {
         const keypair = keypairFrom(`  ${bs58.encode(testSecretKey())}\n`);
         expect(keypair.secretKey).toEqual(testSecretKey());
+    });
+});
+
+/**
+ * The transcription against the program it transcribes.
+ *
+ * Everything above builds its fixture from the same offsets the client reads, so a layout
+ * change in `state.rs` leaves the client and the fixture wrong together and every test here
+ * still passes. Nothing in this repo would notice: no CI job builds Rust, so the program's
+ * own `space_constants_match_their_field_lists` test never runs outside a developer's
+ * machine.
+ *
+ * This derives the layout from `state.rs` instead and feeds the client a buffer laid out
+ * that way. If the two disagree, `readHead` returns numbers from the wrong bytes — which is
+ * the actual failure, and one that would otherwise be discovered by anchoring a batch
+ * against a head that was never there.
+ */
+describe('the layout this client hardcodes', () => {
+    const STATE_RS = join(
+        dirname(fileURLToPath(import.meta.url)),
+        '../../../../../contracts/solana/cryptopets/programs/cryptopets-registry/src/state.rs',
+    );
+
+    /** Borsh widths for the types `RegistryState` actually uses. */
+    const WIDTHS: Record<string, number> = { Pubkey: 32, u64: 8, bool: 1, u8: 1 };
+
+    function widthOf(type: string): number {
+        const array = /^\[u8; (\d+)\]$/.exec(type);
+        if (array) return Number(array[1]);
+        const width = WIDTHS[type];
+        if (width === undefined) throw new Error(`unhandled Rust type in RegistryState: ${type}`);
+        return width;
+    }
+
+    /** `RegistryState`'s fields, in declaration order, with their byte offsets. */
+    function layoutFromSource(): { fields: { name: string; offset: number }[]; space: number } {
+        const source = readFileSync(STATE_RS, 'utf8');
+        const body = source.split('pub struct RegistryState {')[1]!.split('\n}')[0]!;
+        const fields: { name: string; offset: number }[] = [];
+        // Starts at 8: the Anchor discriminator precedes the first field.
+        let offset = 8;
+        for (const line of body.split('\n')) {
+            const match = /^\s*pub (\w+): ([^,]+),/.exec(line);
+            if (!match) continue;
+            fields.push({ name: match[1]!, offset });
+            offset += widthOf(match[2]!.trim());
+        }
+        return { fields, space: offset };
+    }
+
+    function offsetOf(name: string): number {
+        const field = layoutFromSource().fields.find((entry) => entry.name === name);
+        if (!field) throw new Error(`RegistryState has no field ${name}`);
+        return field.offset;
+    }
+
+    it('agrees with RegistryState::SPACE', () => {
+        // 154 is what the client refuses to read below, and what the fixtures above allocate.
+        expect(layoutFromSource().space).toBe(154);
+    });
+
+    it('reads the batch number and root from where the program writes them', async () => {
+        const { space } = layoutFromSource();
+        const data = Buffer.alloc(space);
+        REGISTRY_STATE_DISC.copy(data, 0);
+        Buffer.alloc(32, 0xcd).copy(data, offsetOf('admin'));
+        data.writeBigUInt64LE(9n, offsetOf('latest_batch_number'));
+        Buffer.from(ROOT_2.slice(2), 'hex').copy(data, offsetOf('latest_root'));
+        data.writeBigUInt64LE(1234n, offsetOf('latest_last_sequence'));
+        data.writeUInt8(0, offsetOf('paused'));
+
+        getAccountInfo.mockResolvedValue({ data });
+
+        await expect(createSolanaAnchorClient(config()).readHead()).resolves.toEqual({
+            batchNumber: 9n,
+            root: ROOT_2,
+        });
+    });
+
+    // The head fields specifically: a shift anywhere before them moves both, and `admin`
+    // being 32 bytes makes an off-by-one land inside a plausible-looking number.
+    it('places the head fields where the client expects them', () => {
+        expect(offsetOf('admin')).toBe(8);
+        expect(offsetOf('latest_batch_number')).toBe(40);
+        expect(offsetOf('latest_root')).toBe(48);
+        expect(offsetOf('latest_last_sequence')).toBe(80);
+        expect(offsetOf('paused')).toBe(88);
     });
 });
