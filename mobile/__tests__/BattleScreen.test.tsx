@@ -279,6 +279,28 @@ describe('BattleScreen', () => {
         );
     });
 
+    it('follows a second Gallery pick, since the tab never unmounts', async () => {
+        /*
+         * `useState(initialPetId)` reads its argument once. Battle is a tab, mounted with
+         * the shell and never unmounted, so the pet a card asked for was honoured on the
+         * first tap and ignored on every one after: tapping Battle on Jane left the arena
+         * on whoever was picked first.
+         */
+        mockState.pets = [pet({ id: '1', name: 'Rex' }), pet({ id: '2', name: 'Jane' })];
+        mockRouteParams.petId = '1';
+        const tree = await render();
+
+        // Arriving again from a different card, without remounting the screen.
+        mockRouteParams.petId = '2';
+        await ReactTestRenderer.act(async () => {
+            tree.update(<BattleScreen />);
+        });
+
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+        expect(mockBattle).toHaveBeenCalledWith(expect.objectContaining({ petId1: '2' }));
+    });
+
     it('sends defenderOwner, which the backend needs to find the consent grant', async () => {
         const tree = await render();
         await pressWith(tree, 'Rex');

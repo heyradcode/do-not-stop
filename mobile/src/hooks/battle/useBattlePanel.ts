@@ -121,6 +121,21 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
     const createRoom = useCreateBattleRoom();
 
     const [selectedPetId, setSelectedPetId] = useState(initialPetId ?? '');
+
+    /**
+     * Follow the caller when it sends a different pet.
+     *
+     * `useState(initialPetId)` reads its argument once, on first mount, and Battle is a
+     * *tab*: it mounts with the shell and never unmounts. So the pet a Gallery card asked
+     * for was honoured on the first tap and silently ignored on every one after it — tap
+     * Battle on Jane and the arena stayed on whoever was picked first.
+     *
+     * `Rename` and `Defense` already did this; the two screens that took a pet id without
+     * following it were this one and `Equip`.
+     */
+    useEffect(() => {
+        if (initialPetId) setSelectedPetId(initialPetId);
+    }, [initialPetId]);
     const [selectedOpponentKey, setSelectedOpponentKey] = useState('');
     const [validationError, setValidationError] = useState<string | null>(null);
     const [result, setResult] = useState<BattleResolvedResult | null>(null);

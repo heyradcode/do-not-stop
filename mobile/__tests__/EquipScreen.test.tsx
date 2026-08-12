@@ -38,6 +38,8 @@ const mockState = {
 const mockEquip = jest.fn();
 const mockUnequip = jest.fn();
 const mockNotify = jest.fn();
+/** Which pet the slots are read for; the whole point of following the route param. */
+const mockEquipmentPetId = jest.fn();
 
 /**
  * A marker rather than null, so the bag can be asserted to draw item art. Nulling it
@@ -61,14 +63,17 @@ jest.mock('@shared/core', () => ({
     }),
     usePetList: () => ({ pets: [{ id: '1', name: 'Rex', level: 2 }] }),
     useInventory: () => ({ entries: mockState.entries }),
-    usePetEquipment: () => ({
-        equipped: [...mockState.bySlot.values()],
-        bySlot: mockState.bySlot,
-        isLoading: mockState.slotsLoading,
-        isSuccess: true,
-        error: null,
-        refetch: jest.fn(),
-    }),
+    usePetEquipment: (opts: { petId: string | null }) => {
+        mockEquipmentPetId(opts.petId);
+        return {
+            equipped: [...mockState.bySlot.values()],
+            bySlot: mockState.bySlot,
+            isLoading: mockState.slotsLoading,
+            isSuccess: true,
+            error: null,
+            refetch: jest.fn(),
+        };
+    },
     useEquipItem: () => ({
         canEquip: mockState.canEquip,
         equip: mockEquip,
@@ -83,7 +88,8 @@ jest.mock('@shared/core', () => ({
 
 jest.mock('../src/hooks/useNotifyError', () => ({ useNotifyError: () => mockNotify }));
 jest.mock('../src/hooks/useTxErrorToast', () => ({ useTxErrorToast: () => {} }));
-jest.mock('@react-navigation/native', () => ({ useRoute: () => ({ params: { petId: '1' } }) }));
+const mockRouteParams: { petId?: string } = { petId: '1' };
+jest.mock('@react-navigation/native', () => ({ useRoute: () => ({ params: mockRouteParams }) }));
 
 import EquipScreen from '../src/screens/EquipScreen';
 
@@ -125,6 +131,8 @@ beforeEach(() => {
     mockState.slotsLoading = false;
     mockState.canEquip = true;
     mockState.isConnected = true;
+    mockRouteParams.petId = '1';
+    mockEquipmentPetId.mockClear();
     jest.clearAllMocks();
 });
 
@@ -207,6 +215,22 @@ describe('committing', () => {
             undefined,
             'equip-validation',
         );
+    });
+
+    it('follows a second pet arriving from another card', async () => {
+        // Navigating to a screen already on the stack reuses the mounted instance, so a
+        // `useState` initializer never sees the new pet. Battle had the same bug with
+        // worse reach, because a tab never unmounts at all.
+        const tree = await render();
+        mockRouteParams.petId = '2';
+        await ReactTestRenderer.act(async () => {
+            tree.update(<EquipScreen />);
+        });
+
+        // The slots are read for pet 2 now. Asserting the argument rather than the
+        // rendering is what makes this fail when the param is ignored: the screen looks
+        // identical either way, it just describes the wrong pet.
+        expect(mockEquipmentPetId).toHaveBeenLastCalledWith('2');
     });
 
     it('says why on a chain with no item contract, rather than showing a dead button', async () => {

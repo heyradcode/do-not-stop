@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
@@ -53,6 +53,17 @@ export default function EquipScreen() {
     const notifyError = useNotifyError();
 
     const [selected, setSelected] = useState(route.params?.petId ?? '');
+
+    /**
+     * Follow the caller when it sends a different pet, for the same reason the battle
+     * panel does: a `useState` initializer reads its argument once, and navigating to a
+     * screen already on the stack reuses the mounted instance rather than remounting it.
+     * Arriving from a second pet's card would otherwise leave this on the first.
+     */
+    const petIdParam = route.params?.petId;
+    useEffect(() => {
+        if (petIdParam) setSelected(petIdParam);
+    }, [petIdParam]);
     /** Which item is chosen per slot, before the player commits it. */
     const [choice, setChoice] = useState<Record<number, string>>({});
 
