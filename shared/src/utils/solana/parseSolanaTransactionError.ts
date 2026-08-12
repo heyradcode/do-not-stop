@@ -33,12 +33,21 @@ export const formatSolanaActionError = (error: unknown, fallback = 'Transaction 
         return 'Switchboard randomness is still processing. Wait a few seconds and try again.';
     }
 
-    if (lower.includes('breedrequestalreadypending')) {
-        return 'A breed is already in progress for this wallet. Try again to finish it.';
+    // The dead end, and the only one waiting does not fix: the oracle's seed slot is gone,
+    // so this request can never settle. The pending-request banners offer the cancel that
+    // clears it, which is why this says clear rather than retry.
+    if (lower.includes('randomnessexpired') || lower.includes('randomness has expired')) {
+        return 'This request sat too long and its randomness expired. Clear the pending request to start a new one.';
     }
 
-    if (lower.includes('battlerequestalreadypending')) {
-        return 'A battle is already in progress for this wallet. Try again to finish it.';
+    // Reveal and settle share a transaction, so the oracle answering late lands here rather
+    // than on the expiry above. Retrying is the right advice.
+    if (lower.includes('randomnessnotresolved') || lower.includes('not yet revealed')) {
+        return 'Switchboard has not published this randomness yet. Wait a few seconds and try again.';
+    }
+
+    if (lower.includes('breedrequestalreadypending')) {
+        return 'A breed is already in progress for this wallet. Try again to finish it.';
     }
 
     if (lower.includes('already in use')) {
@@ -53,13 +62,8 @@ export const formatSolanaActionError = (error: unknown, fallback = 'Transaction 
         return 'You cannot breed a pet with itself.';
     }
 
-    if (lower.includes('simulation failed') || lower.includes('custom program error')) {
-        return fallback;
-    }
-
-    if (message.trim()) {
-        return fallback;
-    }
-
+    // Everything else, including a raw simulation failure or an unmapped custom program
+    // error, reaches the caller's fallback. Anchor's own text names an instruction and an
+    // error code, which tells a player nothing they can act on.
     return fallback;
 };

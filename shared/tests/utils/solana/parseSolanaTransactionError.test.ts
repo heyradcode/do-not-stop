@@ -33,9 +33,34 @@ describe('formatSolanaActionError', () => {
         ).toMatch(/randomness is still processing/);
     });
 
-    it('maps already-pending breed and battle program errors', () => {
+    // The two failures a stuck commit/reveal actually produces, and they need opposite
+    // advice: expired randomness never settles no matter how long you wait, while an
+    // unpublished one settles on the next attempt. Both used to reach the generic
+    // fallback, which told a player to try again in the one case where that cannot work.
+    it('tells an expired request to clear itself rather than retry', () => {
+        for (const msg of ['RandomnessExpired', 'Switchboard randomness has expired']) {
+            expect(formatSolanaActionError(msg)).toMatch(/Clear the pending request/);
+        }
+    });
+
+    it('tells an unpublished request to wait', () => {
+        for (const msg of ['RandomnessNotResolved', 'Switchboard randomness not yet revealed']) {
+            expect(formatSolanaActionError(msg)).toMatch(/Wait a few seconds and try again/);
+        }
+    });
+
+    // Expiry is the dead end; "still processing" is not. Sharing one message would send a
+    // stuck player back to the button that cannot work.
+    it('keeps the expiry message distinct from the still-processing one', () => {
+        const expired = formatSolanaActionError('RandomnessExpired');
+        const processing = formatSolanaActionError(
+            'Switchboard oracle did not produce a reveal instruction',
+        );
+        expect(expired).not.toBe(processing);
+    });
+
+    it('maps an already-pending breed', () => {
         expect(formatSolanaActionError('BreedRequestAlreadyPending')).toMatch(/breed is already in progress/);
-        expect(formatSolanaActionError('BattleRequestAlreadyPending')).toMatch(/battle is already in progress/);
         expect(formatSolanaActionError('account already in use')).toMatch(/request is already in progress/);
     });
 

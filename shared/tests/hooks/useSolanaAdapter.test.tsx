@@ -98,6 +98,20 @@ describe('SOLANA_CAPABILITIES', () => {
         expect(parsed.isContractError).toBe(true);
         expect(typeof parsed.message).toBe('string');
     });
+
+    it('flags a wallet rejection', () => {
+        expect(SOLANA_CAPABILITIES.parseError(new Error('User rejected'), 'f').isUserRejection).toBe(true);
+    });
+
+    // isUserRejection is decided by searching the *formatted* copy for "cancelled", so any
+    // message that happens to use that word is silently reclassified as the player having
+    // declined — which suppresses the error surfacing they need. Expired randomness is the
+    // near miss: it is about clearing a request, not about a wallet prompt.
+    it('does not read an expired request as a wallet rejection', () => {
+        const parsed = SOLANA_CAPABILITIES.parseError(new Error('RandomnessExpired'), 'f');
+        expect(parsed.isUserRejection).toBe(false);
+        expect(parsed.message).toMatch(/Clear the pending request/);
+    });
 });
 
 describe('useSolanaAdapter', () => {
