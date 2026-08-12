@@ -12,7 +12,7 @@ Branch: `feat/solana-parity-catchup`
 | 3 Reward leaf v2 | **Done** — the wide layout, with v1 permanently retained |
 | 4 `cryptopets_rewards` | **Written**, with cross-language leaf vectors |
 | 5 Seasons and claims | **Done**, backend, verifier and the claim screen for both chains |
-| 6 Items and equipment | **Written** — ledger, equip/unequip, the freeze |
+| 6 Items and equipment | **Written on chain**; the backend half of 6.5 does not exist, so consumables and drops still do not work on Solana — Open item 3 |
 | 7 Indexer projections | **Done** and verified under a real Go toolchain |
 | 8 Frontend, catalog, docs | **Done**, after a review fixed the seam below |
 
@@ -24,7 +24,7 @@ EVM and the adapter on Solana, never the boundary where the two disagreed. Worth
 for the rest of this plan: a Solana pet has **two** keys, and any code holding one of them is
 one substitution away from an address nothing lives at.
 
-**Verified green:** protocol 681 tests, verifier 112, frontend 419, shared 674, backend 1101,
+**Verified green:** protocol 681 tests, verifier 112, frontend 433, shared 683, backend 1104,
 indexer-go `go vet`/`go test` all pass, root `pnpm lint` clean. The frozen golden vectors and
 the EVM contracts are untouched by this branch.
 
@@ -49,6 +49,17 @@ resolution in `cryptopets-rewards` are the two highest-risk spots — check thos
    what `MockEntropy` already does on the EVM side). Recommended: the mock.
 2. **Phase 1.6 is operational**: `anchor keys sync`, deploy, exercise, then
    `solana program set-upgrade-authority --final` on the registry only.
+3. **The backend has no Solana item writer**, so consumables cannot be spent and drops
+   cannot be claimed on Solana. Phase 6.5 built `mint_items` and `burn_items` behind the
+   authorized-caller gate and nothing calls them: `inventory.chain.ts` is viem, with an EVM
+   key and address. Both write paths now return `unsupported-chain` rather than handing a
+   base58 pubkey to a client expecting an `Address`, so the limit is stated rather than
+   discovered inside viem — but it is a limit, and drops are the main acquisition path.
+
+   Building it needs three things that do not exist yet: the program deployed, a keypair
+   registered as an `AuthorizedCaller`, and a decision about where that key lives. It is a
+   real trust grant — an authorized caller can burn any wallet's items — so it is the same
+   class of decision as 1.6 rather than a coding task.
 
 ## Decisions (locked)
 
@@ -625,6 +636,11 @@ on both chains, two keys interleaved. It runs as its own CLI step in the workflo
 **Built (6.1 to 6.6), across two commits:** the ledger (`state/item.rs`,
 `instructions/item/{catalog,supply}.rs`), then equip and unequip with the freeze
 (`instructions/item/equip.rs`) and the `transfer_pet` guard.
+
+**On chain only.** 6.5's `mint_items` and `burn_items` have no backend caller, so spending a
+consumable and claiming a drop still do not work on Solana — see Open item 3. Equip and
+unequip are unaffected, because the player's own wallet sends those; it is precisely the
+authorized-caller paths, the ones the *backend* must send, that are missing their client.
 
 Three things settled while building, worth recording because none is obvious from the step
 descriptions below:

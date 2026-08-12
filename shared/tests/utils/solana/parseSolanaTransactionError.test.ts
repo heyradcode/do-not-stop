@@ -59,6 +59,20 @@ describe('formatSolanaActionError', () => {
         expect(expired).not.toBe(processing);
     });
 
+    /**
+     * Every pet action checks the signer against the Core asset's live owner, while the
+     * gallery lists pets by the denormalized `PetAccount.owner` index, which an mpl-core
+     * transfer leaves stale. So "Not authorized" nearly always means the list is behind,
+     * not that the player did something forbidden — and the raw message sends them looking
+     * for a permission problem that does not exist.
+     */
+    it('reads Unauthorized as a stale list rather than a permission problem', () => {
+        for (const msg of ['Unauthorized', 'Not authorized to perform this action']) {
+            expect(formatSolanaActionError(msg)).toMatch(/does not own that pet on chain/);
+            expect(formatSolanaActionError(msg)).toMatch(/refresh/);
+        }
+    });
+
     it('maps an already-pending breed', () => {
         expect(formatSolanaActionError('BreedRequestAlreadyPending')).toMatch(/breed is already in progress/);
         expect(formatSolanaActionError('account already in use')).toMatch(/request is already in progress/);

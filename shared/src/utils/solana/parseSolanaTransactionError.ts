@@ -46,6 +46,19 @@ export const formatSolanaActionError = (error: unknown, fallback = 'Transaction 
         return 'Switchboard has not published this randomness yet. Wait a few seconds and try again.';
     }
 
+    /**
+     * Almost always a stale gallery rather than a real permission problem.
+     *
+     * Every pet action checks the signer against the Metaplex Core asset's *live* owner,
+     * while `usePets` lists pets by `PetAccount.owner` — a denormalized index the program
+     * documents as stale-able, because an mpl-core transfer moves the asset without
+     * touching this program. So the pet is on screen, the wallet no longer holds it, and
+     * "Not authorized" is technically right and useless.
+     */
+    if (lower.includes('unauthorized') || lower.includes('not authorized')) {
+        return 'This wallet does not own that pet on chain. If it is still showing in your list, refresh — the list can lag a transfer made outside the game.';
+    }
+
     if (lower.includes('breedrequestalreadypending')) {
         return 'A breed is already in progress for this wallet. Try again to finish it.';
     }
