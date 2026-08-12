@@ -18,9 +18,24 @@ import type { Pet } from '@shared/core';
 // pulled from their own module and the barrel is stubbed.
 jest.mock('@shared/core', () => ({
     ...jest.requireActual('../../shared/src/utils/ethereum/petReadyTime'),
+    // The real card helpers, not fakes: what the card must show is the same number the
+    // web app shows, and both read these. A stub here would assert the stub, and the
+    // whole point of the card carrying stats is that the two clients agree.
+    ...jest.requireActual('../../shared/src/utils/ethereum/petCard'),
+    ...jest.requireActual('../../shared/src/utils/pets/skills'),
     getRarityColor: (r: number) => (r === 2 ? '#C0C0C0' : '#8B4513'),
     getRarityName: (r: number) => (r === 2 ? 'Uncommon' : 'Common'),
 }));
+
+jest.mock('../src/components/PetArt', () => () => null);
+
+import {
+    getGeneration,
+    getPetClass,
+    getPetProperties,
+    getXpNumbers,
+} from '../../shared/src/utils/ethereum/petCard';
+import { getPetSkill } from '../../shared/src/utils/pets/skills';
 
 const mockGallery = jest.fn();
 jest.mock('../src/hooks/pet-gallery/usePetGallery', () => ({
@@ -115,6 +130,75 @@ describe('GalleryScreen', () => {
         expect(rendered).toContain('Uncommon');
         expect(rendered).toContain('ID #1');
         expect(rendered).toContain('Level 3');
+    });
+
+    /**
+     * What the card draws, checked against the shared helpers rather than against
+     * literals.
+     *
+     * The card knew all of this and drew none of it: art, stats, skill and class were
+     * one render away the whole time. Asserting against `getPetProperties` and friends
+     * rather than hardcoded numbers is what makes this a parity test — if the card ever
+     * reads the wrong field, the expectation moves with the helper and the test still
+     * catches it.
+     */
+    it('shows the DNA stat tiles, from the same helper the web app uses', async () => {
+        const subject = pet();
+        mockGallery.mockReturnValue(galleryValue({ pets: [subject] }));
+        const rendered = textOf(await render());
+
+        const props = getPetProperties(subject);
+        for (const [label, value] of [
+            ['STR', props.attack],
+            ['INT', props.intelligence],
+            ['DEF', props.defense],
+            ['VIT', props.life],
+        ] as const) {
+            expect(rendered).toContain(label);
+            expect(rendered).toContain(String(value));
+        }
+        // AGI is deliberately absent: nothing in the data model backs it.
+        expect(rendered).not.toContain('AGI');
+    });
+
+    it('names the species skill and the pet class', async () => {
+        const subject = pet({ speciesId: 3 });
+        mockGallery.mockReturnValue(galleryValue({ pets: [subject] }));
+        const rendered = textOf(await render());
+
+        expect(rendered).toContain(getPetSkill(3)!.name);
+        expect(rendered).toContain(getPetClass(subject.dna));
+        expect(rendered).toContain(`Gen ${subject.generation ?? getGeneration(subject.dna)}`);
+    });
+
+    it('omits the skill block for a pet with no species, rather than showing an empty one', async () => {
+        // Solana pets and older EVM rows carry no speciesId, and `getPetSkill` returns
+        // null for them. A bordered empty block would read as a missing value.
+        const subject = pet();
+        expect(subject.speciesId).toBeUndefined();
+        mockGallery.mockReturnValue(galleryValue({ pets: [subject] }));
+
+        const rendered = textOf(await render());
+        expect(rendered).toContain('Rex');
+        expect(rendered).not.toContain(getPetSkill(0)!.name);
+    });
+
+    it('shows XP as current over max rather than a bare number', async () => {
+        const subject = pet();
+        mockGallery.mockReturnValue(galleryValue({ pets: [subject] }));
+        const rendered = textOf(await render());
+
+        const xp = getXpNumbers(subject);
+        expect(rendered).toContain(`${xp.xpCurrent}/${xp.xpMax}`);
+    });
+
+    it('shows a win rate only once the pet has fought', async () => {
+        mockGallery.mockReturnValue(galleryValue({ pets: [pet({ winCount: 3, lossCount: 1 })] }));
+        expect(textOf(await render())).toContain('75% win rate');
+
+        mockGallery.mockReturnValue(galleryValue({ pets: [pet({ winCount: 0, lossCount: 0 })] }));
+        // 0% would read as a losing record rather than as no record at all.
+        expect(textOf(await render())).not.toContain('win rate');
     });
 
     it('surfaces the empty state rather than an empty list', async () => {
