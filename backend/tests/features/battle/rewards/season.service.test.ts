@@ -351,3 +351,42 @@ describe('solana seasons', () => {
         });
     });
 });
+
+describe('token decimals at build time', () => {
+    // A season cannot be edited after it is built, so this is the only moment the omission
+    // can be corrected. Afterwards every player sees base units for that season forever.
+    it('warns loudly when a season is built with no decimals', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.mocked(prisma.battleReceipt.findMany).mockResolvedValue([receiptRow(ALICE, BOB, true)] as never);
+
+        await buildSeason(INPUTS);
+
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('no token decimals'));
+        warn.mockRestore();
+    });
+
+    it('stays quiet when decimals are supplied, and records them', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.mocked(prisma.battleReceipt.findMany).mockResolvedValue([receiptRow(ALICE, BOB, true)] as never);
+
+        await buildSeason({ ...INPUTS, target: { ...EVM_TARGET, decimals: 18 } });
+
+        expect(warn).not.toHaveBeenCalled();
+        const created = tx.rewardSeason.create.mock.calls[0]![0] as { data: { tokenDecimals: number | null } };
+        expect(created.data.tokenDecimals).toBe(18);
+        warn.mockRestore();
+    });
+
+    // Zero is a real decimals value, not an omission: some tokens genuinely have none.
+    it('treats zero decimals as supplied rather than missing', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        vi.mocked(prisma.battleReceipt.findMany).mockResolvedValue([receiptRow(ALICE, BOB, true)] as never);
+
+        await buildSeason({ ...INPUTS, target: { ...EVM_TARGET, decimals: 0 } });
+
+        expect(warn).not.toHaveBeenCalled();
+        const created = tx.rewardSeason.create.mock.calls[0]![0] as { data: { tokenDecimals: number | null } };
+        expect(created.data.tokenDecimals).toBe(0);
+        warn.mockRestore();
+    });
+});

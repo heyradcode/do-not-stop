@@ -104,6 +104,7 @@ export async function buildSeason(inputs: SeasonInputs): Promise<BuiltSeason> {
     }
 
     assertTargetMatchesChain(inputs.chainId, inputs.target);
+    warnIfDecimalsMissing(inputs);
 
     const contributions = await loadAnchoredContributions(inputs);
     if (contributions.length === 0) {
@@ -191,6 +192,28 @@ function seasonLeaf(target: SeasonTarget, seasonId: number, wallet: string, amou
               token: target.token,
               amount,
           });
+}
+
+/**
+ * Warns when a season is built without its token's decimals.
+ *
+ * Not an error: null is a supported value meaning "unknown", and every season built before
+ * the column existed has it. But a season is **immutable once built**, so this is the only
+ * moment the omission can still be corrected — afterwards every player sees that season's
+ * amounts in base units forever, and the only fix is superseding the season entirely.
+ *
+ * Deliberately not resolved by reading the chain. The season builder touches no RPC at all,
+ * and adding a client to both families for one integer is disproportionate when the operator
+ * already supplies the token, the distributor, and the chain reference in the same call.
+ */
+function warnIfDecimalsMissing(inputs: SeasonInputs): void {
+    if (inputs.target.decimals === undefined) {
+        console.warn(
+            `[rewards] season ${inputs.seasonId} is being built with no token decimals; ` +
+                'its amounts will render in the smallest unit for good, because a ' +
+                'season cannot be edited after it is built',
+        );
+    }
 }
 
 /**
