@@ -233,3 +233,21 @@ describe('amount formatting', () => {
         expect(screen.queryByText(/smallest unit/i)).not.toBeInTheDocument();
     });
 });
+
+describe('a failed season fetch is not a blank pane', () => {
+    // Every branch used to test claimQuery only, so a claim that resolved alongside a failed
+    // season fell through to null: an empty pane with nothing to explain it.
+    it('reports the failure when the season fetch fails', () => {
+        useRewardSeason.mockReturnValue({ data: undefined, isLoading: false, error: new Error('boom') });
+        view();
+
+        expect(screen.getByText(/Could not check your entitlement/i)).toBeInTheDocument();
+    });
+
+    it('offers no claim button without a season to claim against', () => {
+        useRewardSeason.mockReturnValue({ data: undefined, isLoading: false, error: new Error('boom') });
+        view();
+
+        expect(screen.queryByRole('button', { name: /^claim$/i })).not.toBeInTheDocument();
+    });
+});

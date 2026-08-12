@@ -129,9 +129,12 @@ const Rewards: React.FC = () => {
                             <p className={styles.muted}>Connect a wallet to see what you earned.</p>
                         ) : claimQuery.isLoading || seasonQuery.isLoading ? (
                             <p className={styles.muted}>Checking your entitlement…</p>
-                        ) : claimQuery.error ? (
+                        ) : claimQuery.error || seasonQuery.error ? (
                             // Distinct from "nothing to claim" on purpose: we could not find
-                            // out, which is not the same as having earned nothing.
+                            // out, which is not the same as having earned nothing. Both
+                            // queries count: without the season there is no distributor to
+                            // claim against, and falling through would render an empty pane
+                            // with nothing to explain it.
                             <p className={styles.error}>Could not check your entitlement. Try again shortly.</p>
                         ) : claim === null ? (
                             <p className={styles.muted}>Nothing to claim in this season.</p>
