@@ -1,5 +1,5 @@
 import { PublicKey, SystemProgram } from '@solana/web3.js';
-import { BN, type Idl, type Program } from '@coral-xyz/anchor';
+import { BN, Program, type AnchorProvider } from '@coral-xyz/anchor';
 
 import { TOKEN_PROGRAM_ID } from './constants';
 import {
@@ -13,10 +13,16 @@ import {
 /**
  * Claiming a season reward on Solana (§I), against `cryptopets_rewards`.
  *
- * `program.methods.<name>!(...)`: `Program<Idl>` makes `.methods` an index signature, so
- * consumers with `noUncheckedIndexedAccess` see every property as possibly undefined. The
- * instruction exists on whichever program's IDL was fetched — asserted, not defensively
- * checked, matching the other Solana writers here.
+ * **This loads its own program, and that is the point.** Every other Solana writer here is
+ * handed the `Program` from `useProgram`, which is built from the *pets* program's IDL and
+ * bound to the pets program id. `cryptopets_rewards` is a different program at an address
+ * that is not known until a season names it, so reusing that instance produced a call to
+ * `.methods.claim` that does not exist on the pets IDL — and would have been addressed to the
+ * wrong program even if it had. Taking a provider instead of a `Program` makes that
+ * substitution unrepresentable rather than merely documented.
+ *
+ * The IDL is fetched from the distributor's own IDL account, so `new Program` picks the
+ * address up from it and the instruction can only go to the program the season named.
  *
  * **Permissionless in who sends it, not in who is paid.** The leaf binds the beneficiary and
  * the program constrains the destination token account to that wallet, so anyone can pay the
@@ -25,7 +31,8 @@ import {
  */
 
 export type ClaimRewardArgs = {
-    program: Program<Idl>;
+    /** Signs and sends. The rewards program is loaded through this, not passed in. */
+    provider: AnchorProvider;
     /** The `cryptopets_rewards` program id, from the season's `distributor`. */
     programId: PublicKey;
     /** Who signs and pays the fee, plus the nullifier account's rent. */
@@ -55,7 +62,16 @@ const proofElement = (hex: string, index: number): number[] => {
 };
 
 export const claimRewardOnSolana = async (args: ClaimRewardArgs): Promise<string> => {
-    const { program, programId, payer, wallet, mint, seasonId, amount, proof } = args;
+    const { provider, programId, payer, wallet, mint, seasonId, amount, proof } = args;
+
+    const idl = await Program.fetchIdl(programId, provider);
+    if (!idl) {
+        throw new Error(
+            `No IDL published for the reward distributor at ${programId.toBase58()}. ` +
+                'Run `anchor idl init` for cryptopets_rewards, or point the season at a distributor that has one.',
+        );
+    }
+    const program = new Program(idl, provider);
 
     const [rewards] = rewardsStatePda(programId);
     const [season] = seasonPda(programId, seasonId);

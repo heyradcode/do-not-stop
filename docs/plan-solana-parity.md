@@ -14,9 +14,17 @@ Branch: `feat/solana-parity-catchup`
 | 5 Seasons and claims | **Done**, backend, verifier and the claim screen for both chains |
 | 6 Items and equipment | **Written** — ledger, equip/unequip, the freeze |
 | 7 Indexer projections | **Done** and verified under a real Go toolchain |
-| 8 Frontend, catalog, docs | **Done** |
+| 8 Frontend, catalog, docs | **Done**, after a review fixed the seam below |
 
-**Verified green:** protocol 672 tests, verifier 104, frontend 373, backend 1087,
+Phase 8 was marked done while Solana equip and unequip could not run at all. `useEquipItem`
+passed the numeric pet id to a write whose PDAs are seeded by the Core asset, and
+`unequip(slot)` had no parameter for the item type the Solana instruction needs, so both
+threw before reaching the chain. The tests missed it because they covered `useEquipItem` on
+EVM and the adapter on Solana, never the boundary where the two disagreed. Worth remembering
+for the rest of this plan: a Solana pet has **two** keys, and any code holding one of them is
+one substitution away from an address nothing lives at.
+
+**Verified green:** protocol 672 tests, verifier 104, frontend 414, shared 654, backend 1087,
 indexer-go `go build`/`go vet`/`go test` all pass, root `pnpm lint` clean. The frozen golden
 vectors and the EVM contracts are untouched by this branch.
 

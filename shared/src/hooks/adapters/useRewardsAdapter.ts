@@ -59,9 +59,10 @@ const disabledAdapter = (kind: RewardsAdapter['kind'], reason: string): RewardsA
 export const useRewardsAdapter = (): RewardsAdapter => {
     const chain = useActiveChain();
 
-    // `program` only: `useProgram` also resolves the *pets* program id, and rewards is a
-    // different program whose address comes from the season's `distributor`.
-    const { program } = useProgram();
+    // The provider, not the `Program`. `useProgram` builds that from the *pets* IDL and binds
+    // it to the pets program id; `cryptopets_rewards` is a different program at an address no
+    // config knows until a season names it, so `claimRewardOnSolana` loads its own from this.
+    const { provider } = useProgram();
     const { signingWallet } = useSolanaAnchor();
     const solanaPayer = signingWallet?.publicKey ?? null;
 
@@ -89,16 +90,17 @@ export const useRewardsAdapter = (): RewardsAdapter => {
     };
 
     const claimTx = useSolanaTxLifecycle();
-    const solanaCanClaim = chain.kind === 'solana' && Boolean(program && solanaPayer);
+    const solanaCanClaim = chain.kind === 'solana' && Boolean(provider && solanaPayer);
 
     const solanaClaim: AdapterMutation<ClaimRewardArgs> = {
         mutateAsync: ({ seasonId, wallet, amount, proof, distributor, token }) =>
             claimTx.run(() => {
-                if (!program || !solanaPayer) throw new Error('Solana wallet is not connected');
+                if (!provider || !solanaPayer) throw new Error('Solana wallet is not connected');
                 return claimRewardOnSolana({
-                    program,
-                    // The season's distributor, not `useProgram`'s id: that hook resolves the
-                    // pets program, and rewards is a different one.
+                    provider,
+                    // The season's distributor, and the only program id in play here: the
+                    // rewards IDL is fetched from it, so the instruction cannot be addressed
+                    // anywhere else.
                     programId: new PublicKey(distributor),
                     payer: solanaPayer,
                     wallet: new PublicKey(wallet),

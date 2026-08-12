@@ -17,9 +17,14 @@ vi.mock('wagmi', () => ({
 const chain = { kind: 'evm' as 'evm' | 'solana' | 'none' };
 vi.mock('../../src/hooks/session/useActiveChain', () => ({ useActiveChain: () => chain }));
 
-const solana = { program: null as unknown, programId: null as unknown, signingWallet: null as { publicKey: unknown } | null };
+const solana = {
+    // The adapter reads `provider`, not `program`: the rewards program lives at an address
+    // only a season knows, so claimRewardOnSolana loads its own IDL from it.
+    provider: null as unknown,
+    signingWallet: null as { publicKey: unknown } | null,
+};
 vi.mock('../../src/hooks/chains/solana/useProgram', () => ({
-    useProgram: () => ({ program: solana.program, programId: solana.programId }),
+    useProgram: () => ({ provider: solana.provider }),
 }));
 vi.mock('../../src/contexts/SolanaAnchorContext', () => ({
     useSolanaAnchor: () => ({ signingWallet: solana.signingWallet }),
@@ -61,8 +66,7 @@ beforeEach(() => {
     chain.kind = 'evm';
     writeState.data = undefined;
     writeState.isPending = false;
-    solana.program = null;
-    solana.programId = null;
+    solana.provider = null;
     solana.signingWallet = null;
     account.isConnected = true;
 });
@@ -126,7 +130,7 @@ describe('solana claims', () => {
 
     it('claims through the rewards program once a wallet is connected', async () => {
         chain.kind = 'solana';
-        solana.program = {};
+        solana.provider = {};
         solana.signingWallet = { publicKey: 'PayerPubkey' };
         claimOnSolana.mockResolvedValue('sig');
 
@@ -144,9 +148,41 @@ describe('solana claims', () => {
         expect(writeContractAsync).not.toHaveBeenCalled();
     });
 
+    // The adapter used to hand over `useProgram`'s instance, which is built from the *pets*
+    // IDL and bound to the pets program id. `.methods.claim` does not exist there, so every
+    // Solana claim threw before reaching the chain — and would have gone to the wrong
+    // program if it had not. Passing a provider is what makes that unrepresentable.
+    it('hands over a provider, never a pets Program instance', async () => {
+        chain.kind = 'solana';
+        solana.provider = {};
+        solana.signingWallet = { publicKey: 'PayerPubkey' };
+        claimOnSolana.mockResolvedValue('sig');
+
+        const { result } = renderHook(() => useRewardsAdapter(), { wrapper });
+        await result.current.claim.mutateAsync(SOL_ARGS);
+
+        const call = claimOnSolana.mock.calls[0]![0] as Record<string, unknown>;
+        expect(call.provider).toBe(solana.provider);
+        expect(call).not.toHaveProperty('program');
+    });
+
+    // Without a provider there is nothing to sign with, and the disabled adapter has to say
+    // so rather than offering a button that throws deeper in.
+    it('stays disabled while the provider is missing, even with a wallet', async () => {
+        chain.kind = 'solana';
+        solana.provider = null;
+        solana.signingWallet = { publicKey: 'PayerPubkey' };
+
+        const { result } = renderHook(() => useRewardsAdapter(), { wrapper });
+
+        expect(result.current.canClaim).toBe(false);
+        await expect(result.current.claim.mutateAsync(SOL_ARGS)).rejects.toThrow(/Connect a Solana wallet/);
+        expect(claimOnSolana).not.toHaveBeenCalled();
+    });
+
     it('surfaces a failed claim as an error phase and rethrows', async () => {
         chain.kind = 'solana';
-        solana.program = {};
+        solana.provider = {};
         solana.signingWallet = { publicKey: 'PayerPubkey' };
         claimOnSolana.mockRejectedValue(new Error('already claimed'));
 
