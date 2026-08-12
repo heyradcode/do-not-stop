@@ -9,6 +9,7 @@ import {
     MESSAGES_PATH,
     MARRIAGE_PATH,
     RENAME_PATH,
+    REWARDS_PATH,
     TRAIN_PATH,
 } from '@constants/interactionRoutes';
 import galleryIcon from '@assets/nav-icons/gallery.svg';
@@ -21,6 +22,9 @@ import marriageIcon from '@assets/nav-icons/marriage.svg';
 import renameIcon from '@assets/nav-icons/rename.svg';
 import messagesIcon from '@assets/nav-icons/messages.svg';
 import leaderboardIcon from '@assets/nav-icons/leaderboard.svg';
+// The crystal left behind when Shard Forge was removed. Reused rather than redrawn: a
+// gem reads as a reward token, and it was otherwise a dead asset.
+import rewardsIcon from '@assets/nav-icons/shard.svg';
 
 export type NavItem = {
     id: string;
@@ -68,5 +72,13 @@ export const NAV_ITEMS: readonly NavItem[] = [
         iconSrc: leaderboardIcon,
         tone: 'amber',
         path: LEADERBOARD_PATH,
+    },
+    // Last, next to the leaderboard: the two read-only "how am I doing" views.
+    {
+        id: 'rewards',
+        label: 'Rewards',
+        iconSrc: rewardsIcon,
+        tone: 'violet',
+        path: REWARDS_PATH,
     },
 ];

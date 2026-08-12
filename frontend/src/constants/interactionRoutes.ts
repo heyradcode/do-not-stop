@@ -77,3 +77,6 @@ export const INVENTORY_PATH = '/inventory';
 
 /** Private chat with married-pet counterparts. Also not an interaction. */
 export const MESSAGES_PATH = '/messages';
+
+/** Season reward entitlements and the claim (§I). Read-only until there is something to claim. */
+export const REWARDS_PATH = '/rewards';
