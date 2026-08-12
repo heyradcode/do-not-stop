@@ -41,7 +41,7 @@ const anchor = { signingWallet: { publicKey: Keypair.generate().publicKey } as {
 vi.mock('../../src/hooks/chains/solana/usePetActions', () => ({ usePetActions: () => actions }));
 vi.mock('../../src/hooks/chains/solana/usePets', () => ({ usePets: () => petsQuery }));
 vi.mock('../../src/contexts/SolanaAnchorContext', () => ({
-    useSolanaAnchor: () => ({ ...anchor, connection: { rpcEndpoint: 'https://api.devnet.solana.com' }, idlAddress: null }),
+    useSolanaAnchor: () => ({ ...anchor, connection: { rpcEndpoint: 'https://api.devnet.solana.com' } }),
 }));
 vi.mock('../../src/hooks/chains/solana/useProgram', () => ({
     useProgram: () => ({ program: null, programId: null, provider: null, isConfigured: false, isLoading: false, isFetching: false, error: null, refetch: vi.fn(), isReady: false }),

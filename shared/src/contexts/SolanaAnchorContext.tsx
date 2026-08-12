@@ -8,11 +8,16 @@ export type SolanaSigningWallet = {
     signAllTransactions<T extends Transaction | VersionedTransaction>(txs: T[]): Promise<T[]>;
 };
 
+/**
+ * There is deliberately no `idlAddress` here. Anchor's `Program.fetchIdl` takes the
+ * *program* id and derives the IDL account itself, so an explicit IDL address has nowhere
+ * to go: passing one would make it derive a PDA of a PDA. The field used to exist, was
+ * threaded through from `VITE_CRYPTOPETS_IDL_ADDRESS`, and was read by nothing — an
+ * operator who set it got silence rather than an effect.
+ */
 export type SolanaAnchorContextValue = {
     connection: Connection;
     programId: PublicKey | null;
-    /** Explicit IDL account address; overrides the PDA derived from programId in `useProgram`. */
-    idlAddress: PublicKey | null;
     signingWallet: SolanaSigningWallet | null;
 };
 
@@ -30,7 +35,6 @@ export type SolanaAnchorProviderProps = {
     children: ReactNode;
     connection: Connection;
     programId: PublicKey | null;
-    idlAddress?: PublicKey | null;
     signingWallet: SolanaSigningWallet | null;
 };
 
@@ -38,17 +42,15 @@ export const SolanaAnchorProvider = ({
     children,
     connection,
     programId,
-    idlAddress = null,
     signingWallet,
 }: SolanaAnchorProviderProps) => {
     const value = useMemo(
         (): SolanaAnchorContextValue => ({
             connection,
             programId,
-            idlAddress,
             signingWallet,
         }),
-        [connection, programId, idlAddress, signingWallet]
+        [connection, programId, signingWallet]
     );
 
     return <SolanaAnchorContext.Provider value={value}>{children}</SolanaAnchorContext.Provider>;

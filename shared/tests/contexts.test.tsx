@@ -142,7 +142,6 @@ describe('SolanaAnchorContext', () => {
         expect(result.current).toEqual({
             connection,
             programId,
-            idlAddress: null,
             signingWallet,
         });
     });

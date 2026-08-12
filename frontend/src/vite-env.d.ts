@@ -18,8 +18,6 @@ interface ImportMetaEnv {
     readonly VITE_SOLANA_CLUSTER?: string;
     /** Deployed CryptoPets program id (public key). */
     readonly VITE_CRYPTOPETS_PROGRAM_ID?: string;
-    /** On-chain IDL account address (public key), used to fetch the program IDL. */
-    readonly VITE_CRYPTOPETS_IDL_ADDRESS?: string;
 }
 
 interface ImportMeta {
