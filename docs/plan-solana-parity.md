@@ -24,7 +24,7 @@ EVM and the adapter on Solana, never the boundary where the two disagreed. Worth
 for the rest of this plan: a Solana pet has **two** keys, and any code holding one of them is
 one substitution away from an address nothing lives at.
 
-**Verified green:** protocol 672 tests, verifier 104, frontend 419, shared 656, backend 1098,
+**Verified green:** protocol 672 tests, verifier 112, frontend 419, shared 656, backend 1098,
 indexer-go `go vet`/`go test` all pass, root `pnpm lint` clean. The frozen golden vectors and
 the EVM contracts are untouched by this branch.
 
@@ -579,19 +579,37 @@ so a Solana season's leaves could not be rebuilt by anyone outside, which made i
 uncheckable and its claims unbuildable. That is the actual Solana gap in this step, and it also
 supplies what `checkRewardRoot` needs. The endpoint had no tests; it has them now.
 
-**Left:** the rewards screen itself, for both chains. When it is built, the claim write goes
-through the chain adapter the way pet actions do rather than reaching into
-`frontend/src/chains/solana/` from a component.
+**Also done:** the rewards screen, for both chains, with the claim write going through the
+chain adapter the way pet actions do rather than reaching into `frontend/src/chains/solana/`
+from a component. A later review found it offered a live Claim button for a season on the
+*other* chain, since the list spans both and the adapter is the active chain's; it now
+compares the two and names the chain to switch to.
 
 *Verify:* `pnpm --filter backend exec vitest run tests/features/battle/rewards`.
 
 ### 5.5 Verifier
 
-`@cryptopets/verifier` learns the v2 leaf so a Solana entitlement can be checked
-independently. It still depends only on `protocol`.
+**Done, and the gap was not the one this step predicted.** The v2 leaf was already handled:
+`SeasonBinding` carries `chainId` for EVM and `chainRef` for Solana, `rewardLeafFor` absorbs
+the width difference, and the tests cover both families including that one cannot rebuild the
+other's root.
 
-*Verify:* `pnpm --filter @cryptopets/verifier test`, and add a Solana case to the receipt
-corpus in `.github/workflows/verifier.yml`.
+What was actually broken was the **chain walk**. There is one receipt hash chain per signing
+key, and §G gives each chain family its own, so a dual-chain deployment signs under two.
+`verifyReceipts` walked the whole corpus as a single chain, which returned `mixed-signing-key`
+at the first receipt of the second key — a failure reported against an honest operator, in the
+ordinary dual-chain case. It now groups by key and reports one result per key.
+
+Nothing caught it because nothing could: every fixture was EVM, `DOMAIN` was a module constant
+and `buildReceipt` seeded from it regardless of the snapshot passed in, so a Solana receipt was
+not constructible. And `corpus.json` is a page from the per-key sequence export, which by
+construction can never mix keys — so the CI corpus step could not have failed either.
+
+`fixtures/corpus-cross-chain.json` is the missing shape: a wallet page for a player who fought
+on both chains, two keys interleaved. It runs as its own CLI step in the workflow.
+
+*Verify:* `pnpm --filter @cryptopets/verifier test`, plus the three corpus steps in
+`.github/workflows/verifier.yml` (honest, cross-chain, tampered).
 
 ---
 
