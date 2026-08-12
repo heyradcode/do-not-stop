@@ -32,7 +32,7 @@ vi.mock('@constants/tokens', () => ({ getPopularTokens: () => [] }));
 vi.mock('@components/wallet/native-balance', () => ({ default: () => <div data-testid="native-balance" /> }));
 vi.mock('@components/wallet/network-switcher', () => ({
     EthereumNetworkSwitcher: () => <div data-testid="eth-switcher" />,
-    SolanaNetworkSwitcher: () => <div data-testid="sol-switcher" />,
+    SolanaNetworkIndicator: () => <div data-testid="sol-network" />,
 }));
 
 import AccountDropdown from '@components/wallet/account-dropdown';

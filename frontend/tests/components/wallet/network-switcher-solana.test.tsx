@@ -1,19 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
 const wallet = { connected: false };
 vi.mock('@solana/wallet-adapter-react', () => ({ useWallet: () => wallet }));
 
-vi.mock('@constants/chains/solana', () => ({
-    SOLANA_NETWORKS: [
-        { name: 'Solana Local', isTestnet: false },
-        { name: 'Devnet', isTestnet: true },
-        { name: 'Mainnet', isTestnet: false },
-    ],
-}));
+import { SolanaNetworkIndicator } from '@components/wallet/network-switcher';
 
-import { SolanaNetworkSwitcher } from '@components/wallet/network-switcher';
+/**
+ * This was a switcher, and its tests pinned the illusion: one asserted that picking a network
+ * updated the trigger label, which it did — by setting local state and nothing else. The
+ * connection endpoint is fixed at boot from `VITE_SOLANA_CLUSTER`, so the label moved and the
+ * app kept talking to the same cluster. It also opened on a hardcoded `'Solana Local'`
+ * regardless of what was configured.
+ *
+ * So the tests now check the opposite property: that the label is derived from the same
+ * environment value `AppProviders` passes to `SolanaWalletProvider`, and that there is nothing
+ * to click.
+ *
+ * The real `solanaNetworkNameFromCluster` is used rather than a mocked constants module —
+ * the mapping from cluster to label is the thing under test.
+ */
 
 beforeEach(() => {
     document.body.innerHTML = '<div id="root"></div>';
@@ -21,40 +27,50 @@ beforeEach(() => {
 });
 afterEach(() => {
     document.body.innerHTML = '';
+    vi.unstubAllEnvs();
 });
 
-describe('SolanaNetworkSwitcher', () => {
+describe('SolanaNetworkIndicator', () => {
     it('renders nothing when the wallet is not connected', () => {
-        const { container } = render(<SolanaNetworkSwitcher />);
+        vi.stubEnv('VITE_SOLANA_CLUSTER', 'devnet');
+        const { container } = render(<SolanaNetworkIndicator />);
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('defaults the trigger to Solana Local when connected', () => {
+    // The bug this replaces: a devnet deployment displayed "Solana Local".
+    it.each([
+        ['devnet', 'Solana Devnet'],
+        ['testnet', 'Solana Testnet'],
+        ['mainnet-beta', 'Solana Mainnet'],
+        ['localnet', 'Solana Local'],
+    ])('reports the configured cluster (%s)', (cluster, expected) => {
         wallet.connected = true;
-        render(<SolanaNetworkSwitcher />);
+        vi.stubEnv('VITE_SOLANA_CLUSTER', cluster);
+
+        render(<SolanaNetworkIndicator />);
+
+        expect(screen.getByText(expected)).toBeInTheDocument();
+    });
+
+    // An unset cluster is localnet by convention, which is what AppProviders resolves too.
+    it('falls back to local with no cluster configured', () => {
+        wallet.connected = true;
+        vi.stubEnv('VITE_SOLANA_CLUSTER', '');
+
+        render(<SolanaNetworkIndicator />);
+
         expect(screen.getByText('Solana Local')).toBeInTheDocument();
     });
 
-    it('opens the network list with the current network marked active', async () => {
+    // The point of the change: nothing here claims to be actionable. A control that appears
+    // to switch chains and does not is worse than no control.
+    it('offers nothing to press', () => {
         wallet.connected = true;
-        render(<SolanaNetworkSwitcher />);
+        vi.stubEnv('VITE_SOLANA_CLUSTER', 'devnet');
 
-        await userEvent.click(screen.getByRole('button', { name: /Solana Local/ }));
+        render(<SolanaNetworkIndicator />);
 
-        expect(screen.getByText('Select Solana Network')).toBeInTheDocument();
-        const active = screen.getByText('Solana Local', { selector: '.optionName' }).closest('button');
-        expect(active).toHaveClass('option', 'active');
-    });
-
-    it('switches the displayed network on selection', async () => {
-        wallet.connected = true;
-        render(<SolanaNetworkSwitcher />);
-        await userEvent.click(screen.getByRole('button', { name: /Solana Local/ }));
-
-        await userEvent.click(screen.getByText('Devnet', { selector: '.optionName' }));
-
-        // Modal closed; trigger now reflects the new network.
-        expect(screen.queryByText('Select Solana Network')).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Devnet/ })).toBeInTheDocument();
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('Solana Devnet');
     });
 });

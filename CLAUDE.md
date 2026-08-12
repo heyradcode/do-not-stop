@@ -82,7 +82,7 @@ what each aggregates. Two things it will not tell you: `pnpm test` equals
 | `website` | Next.js | Marketing/docs site |
 | `services/indexer-go` | Go | Optional cross-chain indexer (EVM pull + Solana push) |
 | `contracts/ethereum` | Solidity, Hardhat | EVM contracts (`PetCore`, `GameLogic`, `GameConfig`, `ItemCore`) + subgraph |
-| `contracts/solana/cryptopets` | Rust, Anchor | Solana programs |
+| `contracts/solana/cryptopets` | Rust, Anchor | Three Solana programs: `cryptopets` (pets, breeding, marriage, items and equipment), `cryptopets_registry` (battle batch roots, **upgrade authority burned after deploy** — an upgradeable registry could rewrite the history it records), `cryptopets_rewards` (season distributor and SPL vault, authority retained). The split is what lets the registry's authority be burned while the other two stay patchable |
 | `shared` (`@shared/core`) | TypeScript | Common utils/types/hooks, consumed as raw TS (no build step), shared by frontend + mobile |
 | `protocol` (`@cryptopets/protocol`) | TypeScript | MIT, dependency-free battle protocol: the TS combat engine plus (in progress) canonical encodings, hashes, and drand seed derivation. Consumed as raw TS by `shared`/`backend` and by `verifier` |
 | `verifier` (`@cryptopets/verifier`) | TypeScript | MIT, standalone public receipt verifier (§H). Depends only on `protocol`; no backend access, no database. Checks seed derivation, operator signature, drand BLS beacon, combat replay, progression, and hash-chain continuity, reporting each independently |

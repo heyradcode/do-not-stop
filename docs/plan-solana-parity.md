@@ -57,8 +57,8 @@ resolution in `cryptopets-rewards` are the two highest-risk spots — check thos
 2. **SPL token rewards.** A new SPL mint plus a Solana distributor program mirroring
    `SeasonRewardDistributor`. Solana players claim on Solana.
 3. **Equipment on Solana.** Items and equipment ship on Solana, reversing
-   `docs/plan-inventory-items.md:15`'s EVM-only deferral. That doc's decision table needs
-   updating as part of Phase 8.
+   `docs/plan-inventory-items.md:15`'s EVM-only deferral. That doc's decision table now reads
+   "Both" and points back here.
 
 ## Where Solana actually stands
 
@@ -846,14 +846,19 @@ the old hash is refused rather than silently re-priced.
 
 ### 8.4 Documentation
 
-- `docs/plan-inventory-items.md:15`: change the Chains row from "EVM only. Solana deferred" and
-  add a Built banner recording the reversal.
-- `docs/battle-protocol.md` §I: record that anchoring is per protocol chain id, each against
-  its own registry on its own chain, and that reward leaves are v1 for EVM and v2 for Solana.
-- `CLAUDE.md`: the inventory section says `item_roster` and `pet_equipment` are EVM-only. Update
-  it, and update the Solana section to list the two new programs.
-- `contracts/solana/cryptopets/README.md`: the registry's burned upgrade authority transaction
-  signature, per 1.6.
+**Done, except the one that needs a deploy.**
+
+- `docs/plan-inventory-items.md:15`: Chains row now reads "Both", pointing at Phases 6-8 here.
+- `docs/battle-protocol.md` §I: records that anchoring is per protocol chain id against its own
+  registry, and that leaves are v1 on EVM and v2 on Solana. It also states *why* the per-chain
+  batcher is sound — receipt sequence is per signing key, §G gives each family its own, and the
+  signer refuses to start if a dual-family deployment tries to share one. Without that, the
+  registries' contiguity rule and the per-chain batcher would deadlock each other.
+- `CLAUDE.md`: the inventory section covers Solana's escrow and freeze, and the component map
+  now names all three programs and which one has its authority burned.
+
+**Left:** `contracts/solana/cryptopets/README.md` wants the registry's burned-authority
+transaction signature, which does not exist until 1.6 is run.
 
 *Verify:* `pnpm lint` and re-read each edited claim against the code it describes.
 

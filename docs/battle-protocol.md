@@ -683,6 +683,26 @@ or an optimistic challenge protocol.
 Implement the EVM registry and claim path first. Port to Solana only after operating the EVM version
 successfully.
 
+Implemented on both chains, with the batching and the claim path differing in the two ways this
+section leaves open:
+
+- **Anchoring is per protocol chain id, each against its own registry on its own chain.** There
+  is no shared registry and no cross-chain root: `BattleBatchRegistry` on EVM, the
+  `cryptopets_registry` program on Solana, and one batching timer per configured chain id. The
+  contiguity rule each registry enforces — `firstSequence` must continue the previous batch's
+  `lastSequence` — works because receipt sequence is allocated per *signing key*, and §G above
+  gives each chain family its own. A deployment sharing one key across both families would
+  interleave the sequences and deadlock batching on each chain after the first batch; the signer
+  refuses to start in that configuration, which is what makes the per-chain batcher sound.
+- **Reward leaves are v1 on EVM and v2 on Solana.** v1 packs a 20-byte account and cannot
+  represent a 32-byte pubkey, so Solana needs the wide layout. Under the append-only rule v1 is
+  never retired: it is the layout every published EVM tree was built under. The family is chosen
+  by the season's own chain, never by a build flag, so a proof built for one family cannot verify
+  against the other's root.
+
+A verifier is handed every signing key a deployment uses and matches on `signingKeyId`, so a
+corpus spanning both chains carries two hash chains and is walked as two.
+
 ## §J. Ledger, delivery, and recovery
 
 > **In plain words:** the database is the source of truth for battles in flight; the WebSocket is

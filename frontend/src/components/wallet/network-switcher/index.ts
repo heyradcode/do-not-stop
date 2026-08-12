@@ -1,2 +1,3 @@
 export { default as EthereumNetworkSwitcher } from './ethereum';
-export { default as SolanaNetworkSwitcher } from './solana';
+// A label rather than a switcher; the file says why.
+export { default as SolanaNetworkIndicator } from './solana';

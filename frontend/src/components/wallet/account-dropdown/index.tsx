@@ -9,7 +9,7 @@ import { NeonButton, NeonCard } from '@components/ui';
 import Icon, { CheckIcon, CopyIcon } from '@components/ui/icon';
 import {
     EthereumNetworkSwitcher,
-    SolanaNetworkSwitcher,
+    SolanaNetworkIndicator,
 } from '@components/wallet/network-switcher';
 import TokenBalance from '@components/wallet/token-balance';
 import NativeBalance from '@components/wallet/native-balance';
@@ -153,7 +153,7 @@ const AccountDropdown: React.FC = () => {
     return (
         <div className="account-dropdown">
             {isConnected && <EthereumNetworkSwitcher />}
-            {solanaConnected && <SolanaNetworkSwitcher />}
+            {solanaConnected && <SolanaNetworkIndicator />}
             <div className={styles.dropdown} ref={dropdownRef}>
                 <NeonButton
                     className={styles.trigger}
