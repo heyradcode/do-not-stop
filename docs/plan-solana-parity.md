@@ -24,9 +24,9 @@ EVM and the adapter on Solana, never the boundary where the two disagreed. Worth
 for the rest of this plan: a Solana pet has **two** keys, and any code holding one of them is
 one substitution away from an address nothing lives at.
 
-**Verified green:** protocol 672 tests, verifier 104, frontend 414, shared 654, backend 1087,
-indexer-go `go build`/`go vet`/`go test` all pass, root `pnpm lint` clean. The frozen golden
-vectors and the EVM contracts are untouched by this branch.
+**Verified green:** protocol 672 tests, verifier 104, frontend 419, shared 656, backend 1098,
+indexer-go `go vet`/`go test` all pass, root `pnpm lint` clean. The frozen golden vectors and
+the EVM contracts are untouched by this branch.
 
 **Unverified:** every Rust change. There is no `cargo`/`anchor`/`rustc`/`solana` on PATH in
 the authoring environment, so nothing under `contracts/solana/` has been compiled, let alone

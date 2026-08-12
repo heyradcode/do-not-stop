@@ -52,14 +52,19 @@ func decodeItemBalance(layout *accountLayout, data []byte) (indexer.ItemUpdate, 
 		return indexer.ItemUpdate{}, false
 	}
 
-	return indexer.ItemUpdate{
+	r := newFieldReader(fields)
+	update := indexer.ItemUpdate{
 		Chain: "solana",
 		// base58, unnormalized: lowercasing it would be a different pubkey, not a
 		// different spelling of the same one.
-		Owner:    fields["owner"].(string),
-		ItemType: strconv.FormatUint(fields["itemType"].(uint64), 10),
-		Quantity: fields["quantity"].(uint64),
-	}, true
+		Owner:    r.str("owner"),
+		ItemType: r.decimal("itemType"),
+		Quantity: r.u64("quantity"),
+	}
+	if !r.ok() {
+		return indexer.ItemUpdate{}, false
+	}
+	return update, true
 }
 
 // decodePetEquipment decodes one PetEquipment account into one update per slot.
@@ -87,7 +92,11 @@ func decodePetEquipment(layout *accountLayout, data []byte) ([]indexer.Equipment
 	// roster row, so a geared pet would resolve to no equipment and fight bare
 	// — and nothing would error, because zero rows is also what an ungeared pet
 	// looks like. The account carries the id as a field for exactly this.
-	petID := strconv.FormatUint(fields["petId"].(uint64), 10)
+	r := newFieldReader(fields)
+	petID := r.decimal("petId")
+	if !r.ok() {
+		return nil, false
+	}
 
 	updates := make([]indexer.EquipmentUpdate, 0, equipSlotCount)
 	for slot, raw := range slots {

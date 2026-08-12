@@ -194,3 +194,96 @@ func fieldDataOffset(t *testing.T, name string) int {
 	return 0
 }
 
+
+// retypeLayoutField returns a copy of a layout with one field's declared type replaced.
+// Only useful for a same-sized type, which keeps bodySize and every offset identical — the
+// case where nothing but the field read itself can notice.
+func retypeLayoutField(t *testing.T, layout *accountLayout, name string, typ idlType) *accountLayout {
+	t.Helper()
+	fields := append([]idlField(nil), layout.fields...)
+	found := false
+	for i := range fields {
+		if fields[i].Name == name {
+			fields[i].Type = typ
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("field %q not present in layout", name)
+	}
+	return &accountLayout{
+		discriminator:    layout.discriminator,
+		discriminatorB58: layout.discriminatorB58,
+		bodySize:         layout.bodySize,
+		fields:           fields,
+	}
+}
+
+// A drifted IDL is what an account-version bump produces when idl/cryptopets.json is not
+// re-diffed against what `anchor build` generates. The length and the discriminator still
+// match, so nothing before the field reads catches it.
+//
+// This covers the half that is *detectable*: a field whose decoded Go type no longer
+// matches what the decoder asks for. `readyTime` is i64 on chain and the decoder reads it
+// as one; declaring it u64 is eight bytes either way, so every offset survives and only the
+// read disagrees. The old decoder asserted types bare, so this panicked on the subscription
+// goroutine and took the process with it. It now answers the way a bad discriminator does.
+func TestDecodePetAccountRejectsADriftedLayout(t *testing.T) {
+	layout, err := resolvePetLayout()
+	if err != nil {
+		t.Fatalf("resolve layout: %v", err)
+	}
+	var owner [32]byte
+	data := buildPetAccount(t, 1, owner, 1, 1, 1, 1, 0, 0, "x")
+
+	drifted := retypeLayoutField(t, layout, "readyTime", idlType{Primitive: "u64"})
+
+	// The assertion that matters is that this returns at all rather than panicking.
+	if _, ok := decodePetAccount(drifted, data); ok {
+		t.Error("accepted a layout whose field types do not match the account")
+	}
+}
+
+// The other half, stated so nobody mistakes the test above for full coverage: a drift that
+// keeps every type the same is *not* detectable here. Two u32 fields exchanged decode
+// cleanly and simply report the wrong values. Only re-diffing the IDL against `anchor build`
+// catches that, which is why CLAUDE.md asks for it rather than trusting this decoder to
+// notice.
+func TestDecodePetAccountCannotSeeASameTypeDrift(t *testing.T) {
+	layout, err := resolvePetLayout()
+	if err != nil {
+		t.Fatalf("resolve layout: %v", err)
+	}
+	var owner [32]byte
+	data := buildPetAccount(t, 1, owner, 1, 1, 1, 1, 0, 0, "x")
+
+	fields := append([]idlField(nil), layout.fields...)
+	p1, p2 := -1, -1
+	for i, f := range fields {
+		switch f.Name {
+		case "parent1Id":
+			p1 = i
+		case "parent2Id":
+			p2 = i
+		}
+	}
+	if p1 < 0 || p2 < 0 {
+		t.Fatal("fixture assumes parent1Id and parent2Id are both present")
+	}
+	fields[p1].Name, fields[p2].Name = fields[p2].Name, fields[p1].Name
+	drifted := &accountLayout{
+		discriminator:    layout.discriminator,
+		discriminatorB58: layout.discriminatorB58,
+		bodySize:         layout.bodySize,
+		fields:           fields,
+	}
+
+	update, ok := decodePetAccount(drifted, data)
+	if !ok {
+		t.Fatal("expected a same-type drift to decode; if this now fails, the guarantee got stronger")
+	}
+	// 40 and 41 in the fixture, reported the wrong way round and silently.
+	if update.Parent1ID != "41" || update.Parent2ID != "40" {
+		t.Errorf("expected the swapped lineage, got p1=%s p2=%s", update.Parent1ID, update.Parent2ID)
+	}
+}

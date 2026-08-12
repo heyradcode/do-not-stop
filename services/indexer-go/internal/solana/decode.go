@@ -7,7 +7,6 @@ import (
 	"bytes"
 	_ "embed"
 	"fmt"
-	"strconv"
 
 	"github.com/radcrew/do-not-stop/services/indexer-go/internal/indexer"
 )
@@ -41,37 +40,48 @@ func decodePetAccount(layout *accountLayout, data []byte) (indexer.RosterUpdate,
 		return indexer.RosterUpdate{}, false
 	}
 
-	nameBuf, _ := fields["name"].([]byte)
-	nameLen, _ := fields["nameLen"].(uint64)
+	r := newFieldReader(fields)
+
+	nameBuf := r.bytes("name")
+	nameLen := r.u64("nameLen")
 	// A name length past the fixed buffer means the layout drifted — bail
-	// rather than emit a garbage name.
-	if int(nameLen) > len(nameBuf) {
+	// rather than emit a garbage name. Checked before the slice, and only once
+	// the two reads above are known to have found their fields.
+	if !r.ok() || int(nameLen) > len(nameBuf) {
 		return indexer.RosterUpdate{}, false
 	}
 
-	return indexer.RosterUpdate{
+	update := indexer.RosterUpdate{
 		Chain:     "solana",
-		PetID:     strconv.FormatUint(fields["id"].(uint64), 10),
-		Owner:     fields["owner"].(string), // base58, no normalization for Solana
+		PetID:     r.decimal("id"),
+		Owner:     r.str("owner"), // base58, no normalization for Solana
 		Name:      string(nameBuf[:nameLen]),
-		Level:     uint32(fields["level"].(uint64)),
-		Rarity:    uint32(fields["rarity"].(uint64)),
-		DNA:       strconv.FormatUint(fields["dna"].(uint64), 10),
-		WinCount:  uint32(fields["winCount"].(uint64)),
-		LossCount: uint32(fields["lossCount"].(uint64)),
-		ReadyAt:   fields["readyTime"].(int64),
+		Level:     r.u32("level"),
+		Rarity:    r.u32("rarity"),
+		DNA:       r.decimal("dna"),
+		WinCount:  r.u32("winCount"),
+		LossCount: r.u32("lossCount"),
+		ReadyAt:   r.i64("readyTime"),
 
 		// v2 fields (state.rs PetAccount). Decoded by IDL name; "0"/0 zero
 		// values mean none, matching the on-chain semantics.
-		XP:           uint32(fields["xp"].(uint64)),
-		Generation:   uint32(fields["generation"].(uint64)),
-		Parent1ID:    strconv.FormatUint(fields["parent1Id"].(uint64), 10),
-		Parent2ID:    strconv.FormatUint(fields["parent2Id"].(uint64), 10),
-		BreedCount:   uint32(fields["breedCount"].(uint64)),
-		SpeciesID:    uint32(fields["speciesId"].(uint64)),
-		SpouseID:     strconv.FormatUint(fields["spouseId"].(uint64), 10),
-		BreedReadyAt: fields["breedReadyTime"].(int64),
-		TrainReadyAt: fields["trainReadyTime"].(int64),
-		Asset:        fields["asset"].(string), // base58 Core asset pubkey
-	}, true
+		XP:           r.u32("xp"),
+		Generation:   r.u32("generation"),
+		Parent1ID:    r.decimal("parent1Id"),
+		Parent2ID:    r.decimal("parent2Id"),
+		BreedCount:   r.u32("breedCount"),
+		SpeciesID:    r.u32("speciesId"),
+		SpouseID:     r.decimal("spouseId"),
+		BreedReadyAt: r.i64("breedReadyTime"),
+		TrainReadyAt: r.i64("trainReadyTime"),
+		Asset:        r.str("asset"), // base58 Core asset pubkey
+	}
+
+	// One check for the whole struct. A field decoded as the wrong type means the IDL and
+	// the on-chain account disagree, which is what an account-version bump does; that has
+	// to read as "not this account" rather than take the process down mid-subscription.
+	if !r.ok() {
+		return indexer.RosterUpdate{}, false
+	}
+	return update, true
 }
