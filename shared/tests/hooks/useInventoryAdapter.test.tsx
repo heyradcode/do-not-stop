@@ -214,6 +214,75 @@ describe('useEquipItem', () => {
         await expect(result.current.equip(0, '100')).rejects.toThrow('No pet selected');
         expect(writeContractAsync).not.toHaveBeenCalled();
     });
+
+    /**
+     * A Solana pet is addressed two ways, and this hook is where the two meet.
+     * `pet_equipment` joins to `pet_roster` on the numeric id, so the reads it invalidates
+     * are keyed by that, while every PDA `equip` touches is seeded by the Core asset.
+     * Sending the id to the write derives an address nothing lives at, which is why
+     * `equipItemOnSolana` rejects one outright — and it did, on every equip, until the
+     * asset was threaded through.
+     */
+    describe('which key reaches the write', () => {
+        const ASSET = 'DjVE6JNiYqPL2QXyCUUh8rNjHrbz9hXHNYt99MQ59qw1';
+
+        beforeEach(() => {
+            chain.kind = 'solana';
+            solana.program = {};
+            solana.programId = {};
+            solana.signingWallet = { publicKey: {} };
+            equipOnSolana.mockResolvedValue('sig');
+            unequipOnSolana.mockResolvedValue('sig');
+        });
+
+        it('sends the Core asset to a Solana equip, not the numeric id', async () => {
+            const { result } = renderHook(
+                () => useEquipItem({ chain: 'solana', petId: '7', assetKey: ASSET }),
+                { wrapper },
+            );
+            await result.current.equip(0, '100');
+
+            expect(equipOnSolana).toHaveBeenCalledWith(expect.objectContaining({ assetKey: ASSET }));
+        });
+
+        // Solana returns the item to a balance PDA seeded by its type, so unequip needs it.
+        // The hook used not to accept one at all, and the adapter threw on every call.
+        it('carries the item type through a Solana unequip', async () => {
+            const { result } = renderHook(
+                () => useEquipItem({ chain: 'solana', petId: '7', assetKey: ASSET }),
+                { wrapper },
+            );
+            await result.current.unequip(1, '11');
+
+            expect(unequipOnSolana).toHaveBeenCalledWith(
+                expect.objectContaining({ assetKey: ASSET, slot: 1, itemType: '11' }),
+            );
+        });
+
+        it('says what is missing when a Solana pet has no asset on record', async () => {
+            const { result } = renderHook(
+                () => useEquipItem({ chain: 'solana', petId: '7', assetKey: null }),
+                { wrapper },
+            );
+
+            await expect(result.current.equip(0, '100')).rejects.toThrow(/no Core asset on record/);
+            expect(equipOnSolana).not.toHaveBeenCalled();
+        });
+
+        // EVM has one key, and passing an asset key must not change which one is used.
+        it('still sends the token id on EVM', async () => {
+            chain.kind = 'evm';
+            const { result } = renderHook(
+                () => useEquipItem({ chain: 'evm', petId: '7', assetKey: ASSET }),
+                { wrapper },
+            );
+            await result.current.equip(0, '100');
+
+            expect(writeContractAsync).toHaveBeenCalledWith(
+                expect.objectContaining({ args: [7n, 0, 100n] }),
+            );
+        });
+    });
 });
 
 describe('solana lifecycles are per action', () => {

@@ -71,9 +71,12 @@ const EquipPanel: React.FC<EquipPanelProps> = ({ initialPetId = null }) => {
     const petId = selectedPet || null;
     const { entries } = useInventory({ chain });
     const { bySlot, isLoading: slotsLoading } = usePetEquipment({ chain, petId });
+    // Solana equip PDAs are seeded by the Core asset while the equipment projection is keyed
+    // by the numeric id, so the hook is given both and picks per chain.
     const { canEquip, equip, unequip, equipLifecycle, unequipLifecycle, isPending } = useEquipItem({
         chain,
         petId,
+        assetKey: pets.find((pet) => String(pet.id) === selectedPet)?.assetKey ?? null,
     });
 
     useTxErrorToast((equipLifecycle.error ?? unequipLifecycle.error) as Error | null);
@@ -117,8 +120,15 @@ const EquipPanel: React.FC<EquipPanelProps> = ({ initialPetId = null }) => {
     };
 
     const handleUnequip = async (slot: number) => {
+        // The item type comes from the slot we are emptying: Solana returns the item to a
+        // balance PDA seeded by it, so there is no address to credit without it.
+        const equippedType = bySlot.get(slot)?.item.itemType;
+        if (!equippedType) {
+            notifyError('That slot is already empty', undefined, 'equip-validation');
+            return;
+        }
         try {
-            await unequip(slot);
+            await unequip(slot, equippedType);
         } catch (err) {
             console.error('[equip]', err);
         }

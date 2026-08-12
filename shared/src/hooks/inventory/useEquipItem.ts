@@ -23,21 +23,36 @@ import { petEquipmentForPetsQueryPrefix } from './usePetEquipmentForPets';
 
 export interface UseEquipItemOptions {
     chain: PetChain | null;
-    /** Pet whose slots to refresh once the transaction lands. */
+    /** Pet whose slots to refresh once the transaction lands. Numeric id on both chains. */
     petId: string | null;
+    /**
+     * The pet's Metaplex Core asset pubkey, required on Solana and ignored on EVM.
+     *
+     * A Solana pet has two keys and this hook needs both: `pet_equipment` is joined to
+     * `pet_roster` by the numeric id, so the reads above are keyed by it, while every PDA
+     * `equip`/`unequip` touches is seeded by the asset. Passing the id to the write derives
+     * an address nothing lives at, which is why `equipItemOnSolana` refuses one outright.
+     */
+    assetKey?: string | null;
 }
 
 export interface UseEquipItemResult {
     /** False when the chain has no item contract; render a reason, not a dead button. */
     canEquip: boolean;
     equip(slot: number, itemType: string): Promise<void>;
-    unequip(slot: number): Promise<void>;
+    /**
+     * `itemType` is what is currently in the slot. EVM does not need it — `ItemCore.unequip`
+     * reads the slot itself — but Solana returns the item to a balance PDA seeded by its
+     * type, so there is no address to credit without it. The program still checks the slot
+     * against the value, so a wrong one fails rather than crediting the wrong stack.
+     */
+    unequip(slot: number, itemType: string): Promise<void>;
     equipLifecycle: TxLifecycle;
     unequipLifecycle: TxLifecycle;
     isPending: boolean;
 }
 
-export const useEquipItem = ({ chain, petId }: UseEquipItemOptions): UseEquipItemResult => {
+export const useEquipItem = ({ chain, petId, assetKey }: UseEquipItemOptions): UseEquipItemResult => {
     const adapter = useInventoryAdapter();
     const queryClient = useQueryClient();
     const apiClient = useApiClient();
@@ -64,16 +79,28 @@ export const useEquipItem = ({ chain, petId }: UseEquipItemOptions): UseEquipIte
         ]);
     };
 
+    /**
+     * The key the *write* is addressed by, which is not the key the reads use.
+     *
+     * On Solana that is the Core asset; on EVM the token id is the only key there is. A
+     * missing asset key is raised here rather than passed through, because the adapter would
+     * otherwise see the numeric id and report it as the wrong sort of value entirely.
+     */
+    const writeKey = (): string => {
+        if (!petId) throw new Error('No pet selected');
+        if (chain !== 'solana') return petId;
+        if (!assetKey) throw new Error('This Solana pet has no Core asset on record, so its gear cannot be changed');
+        return assetKey;
+    };
+
     return {
         canEquip: adapter.canEquip,
         equip: async (slot, itemType) => {
-            if (!petId) throw new Error('No pet selected');
-            await adapter.equip.mutateAsync({ petId, slot, itemType });
+            await adapter.equip.mutateAsync({ petId: writeKey(), slot, itemType });
             await refresh();
         },
-        unequip: async (slot) => {
-            if (!petId) throw new Error('No pet selected');
-            await adapter.unequip.mutateAsync({ petId, slot });
+        unequip: async (slot, itemType) => {
+            await adapter.unequip.mutateAsync({ petId: writeKey(), slot, itemType });
             await refresh();
         },
         equipLifecycle: adapter.equip.lifecycle,

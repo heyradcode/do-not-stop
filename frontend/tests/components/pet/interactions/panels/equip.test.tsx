@@ -145,7 +145,40 @@ describe('slots', () => {
 
         expect(screen.getByText('Iron Fang')).toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'Unequip' }));
-        expect(unequip).toHaveBeenCalledWith(0);
+        // With the item type: Solana returns the item to a balance PDA seeded by it, so
+        // there is no address to credit without it. EVM ignores the argument.
+        expect(unequip).toHaveBeenCalledWith(0, '1');
+    });
+
+    // A Solana pet is addressed two ways: `pet_equipment` joins to `pet_roster` on the
+    // numeric id, while every equip PDA is seeded by the Core asset. The panel has to hand
+    // over both, or the write derives an address nothing lives at.
+    it('passes the Core asset alongside the numeric id on Solana', async () => {
+        useChainCapabilities.mockReturnValue({ activeKind: 'solana', isConnected: true });
+        usePetList.mockReturnValue({
+            pets: [
+                {
+                    id: '7',
+                    name: 'Rex',
+                    dna: '1234567890123456',
+                    level: 10,
+                    assetKey: 'DjVE6JNiYqPL2QXyCUUh8rNjHrbz9hXHNYt99MQ59qw1',
+                },
+            ],
+        });
+
+        await renderWithPet();
+
+        expect(useEquipItem).toHaveBeenCalledWith(
+            expect.objectContaining({
+                chain: 'solana',
+                petId: '7',
+                assetKey: 'DjVE6JNiYqPL2QXyCUUh8rNjHrbz9hXHNYt99MQ59qw1',
+            }),
+        );
+        expect(usePetEquipment).toHaveBeenCalledWith(
+            expect.objectContaining({ chain: 'solana', petId: '7' }),
+        );
     });
 });
 
