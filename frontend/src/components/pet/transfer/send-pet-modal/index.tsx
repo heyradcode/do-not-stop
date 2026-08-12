@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
     getRarityColor,
+    sameAccount,
     SLOT,
     useChainCapabilities,
     usePetEquipment,
@@ -76,7 +77,10 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
         const trimmed = raw.trim();
         if (!trimmed) return 'Please enter a recipient address';
         if (!addrCaps.isValid(trimmed)) return `Please enter a valid ${chainLabel} address`;
-        if (trimmed.toLowerCase() === (walletAddress ?? '').toLowerCase()) {
+        // `sameAccount`, not `toLowerCase()`. Base58 Solana pubkeys are case-sensitive, so
+        // folding case can make two distinct keys compare equal and refuse a legitimate
+        // recipient as the sender. EVM addresses still fold, which is what the helper is for.
+        if (sameAccount(trimmed, walletAddress ?? '')) {
             return 'You cannot send a pet to yourself';
         }
         return null;

@@ -28,7 +28,7 @@ const IncomingProposalRow: React.FC<IncomingProposalRowProps> = ({
                 pet={petById.get(proposal.proposerPetId)}
                 name={proposal.proposerPetName}
             />
-            <span className={styles.proposalArrow}>â†’</span>
+            <span className={styles.proposalArrow}>→</span>
             <ProposalPet
                 className={styles.proposalTarget}
                 id={proposal.targetPetId}

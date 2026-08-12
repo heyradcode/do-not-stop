@@ -48,6 +48,12 @@ const marriageInfo = { isMarried: false, hasProposal: false, spouseId: undefined
 let incomingProposals: { proposerPetId: string; proposerPetName: string; proposerOwner: string; targetPetId: string; expiry: number }[] = [];
 
 vi.mock('@shared/core', () => ({
+    // Shape-based account equality, mirroring the protocol's normalizeAccount: EVM
+    // addresses fold case, base58 Solana pubkeys do not.
+    sameAccount: (a: string, b: string) =>
+        Boolean(a) && Boolean(b) &&
+        (/^0x[0-9a-fA-F]{40}$/.test(a) ? a.toLowerCase() : a) ===
+            (/^0x[0-9a-fA-F]{40}$/.test(b) ? b.toLowerCase() : b),
     formatExpiry: (expirySec: number) => {
         const diff = expirySec - Math.floor(Date.now() / 1000);
         if (diff <= 0) return 'Expired';

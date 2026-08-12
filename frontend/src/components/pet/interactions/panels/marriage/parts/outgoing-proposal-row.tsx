@@ -1,6 +1,6 @@
 import React from 'react';
 import clsx from 'clsx';
-import { formatExpiry, useMarriageInfo, type OpponentPet, type Pet } from '@shared/core';
+import { formatExpiry, sameAccount, useMarriageInfo, type OpponentPet, type Pet } from '@shared/core';
 import { AuthActionButton } from '@components/common';
 import ProposalPet from './proposal-pet';
 import styles from '../index.module.css';
@@ -23,10 +23,14 @@ const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({
     busy,
 }) => {
     const info = useMarriageInfo(pet);
+    // `sameAccount` rather than folding both sides to lowercase: base58 Solana pubkeys are
+    // case-sensitive, so two distinct wallets can differ only in case and would compare
+    // equal — showing this wallet a Cancel button on somebody else's proposal.
     const isOwn =
         info.hasProposal &&
         walletAddress != null &&
-        info.proposer?.toLowerCase() === walletAddress.toLowerCase();
+        info.proposer != null &&
+        sameAccount(info.proposer, walletAddress);
     if (!isOwn) return null;
 
     const expirySec = info.proposalExpiry ? Number(info.proposalExpiry) : 0;
@@ -36,7 +40,7 @@ const OutgoingProposalRow: React.FC<OutgoingProposalRowProps> = ({
         <li className={clsx(styles.proposalCard, styles.outgoing)}>
             <div className={styles.proposalPets}>
                 <ProposalPet className={styles.proposalProposer} id={pet.id} pet={pet} />
-                <span className={styles.proposalArrow}>â†’</span>
+                <span className={styles.proposalArrow}>→</span>
                 <ProposalPet
                     className={styles.proposalTarget}
                     id={targetId}
