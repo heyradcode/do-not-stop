@@ -40,6 +40,7 @@ const mockState = {
     opponentsError: null as Error | null,
     /** Which filter emptied the opponent list; the server names it. */
     emptyReason: null as string | null,
+    isAuthenticated: true,
     isConnected: true,
     winProbability: 0.62 as number | null,
     turns: [] as { text: string }[],
@@ -132,6 +133,7 @@ jest.mock('@shared/core', () => ({
         turns: mockState.turns,
         isLoading: false,
     }),
+    useAuth: () => ({ isAuthenticated: mockState.isAuthenticated }),
     useCreateBattleRoom: () => ({ createRoom: mockCreateRoom, isLoading: false }),
     // The real one: selection correctness is the thing under test, and a fake key
     // function would let both the screen and the hook agree on a wrong shape.
@@ -240,6 +242,7 @@ beforeEach(() => {
     mockState.opponentsLoading = false;
     mockState.opponentsError = null;
     mockState.emptyReason = null;
+    mockState.isAuthenticated = true;
     mockState.isConnected = true;
     mockState.winProbability = 0.62;
     mockState.turns = [];
@@ -610,6 +613,7 @@ describe('empty opponent list', () => {
 
     it('falls back to a plain line when the server names no reason', async () => {
         mockState.emptyReason = null;
+    mockState.isAuthenticated = true;
         const tree = await render();
         expect(textOf(tree)).toContain('No opponents available');
     });

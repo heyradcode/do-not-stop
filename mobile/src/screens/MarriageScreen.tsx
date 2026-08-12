@@ -70,7 +70,7 @@ export default function MarriageScreen() {
             {panel.tab === 'propose' ? (
                 <>
                     <Text style={styles.hint}>
-                        Pick one of your pets, then enter the id of your partner&apos;s pet.
+                        Pick one of your pets, then search for your partner&apos;s pet by name.
                     </Text>
                     <PetPicker
                         pets={panel.chainPets.map((pet) => ({ id: pet.id, pet }))}

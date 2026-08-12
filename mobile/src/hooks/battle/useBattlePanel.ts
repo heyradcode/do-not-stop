@@ -9,6 +9,7 @@ import {
     useCreateBattleRoom,
     useLiveBattleAnimation,
     opponentKey,
+    useAuth,
     useOpponents,
     usePetList,
     useWinEstimate,
@@ -112,6 +113,9 @@ export interface UseBattlePanel {
  */
 export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
     const capabilities = useChainCapabilities();
+    // `useOpponents` is disabled until the session exists, so an unauthenticated player
+    // gets an empty list with no reason attached — the server was never asked.
+    const { isAuthenticated } = useAuth();
     const { pets, refetch } = usePetList();
     const taunts = useBattleTaunts();
     const createRoom = useCreateBattleRoom();
@@ -306,7 +310,12 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         opponentsError,
         opponentsEmptyMessage:
             rawOpponents.length === 0 && !opponentsLoading && !opponentsError
-                ? describeNoOpponents(emptyReason ?? null)
+                ? // Sign-in first: the query never ran, so there is no server-side reason
+                  // to report and `describeNoOpponents(null)` would claim "no opponents
+                  // available" about a question nobody asked.
+                  !isAuthenticated
+                    ? 'Sign in from the account menu to see who you can challenge.'
+                    : describeNoOpponents(emptyReason ?? null)
                 : null,
         selectedOpponentKey,
         onSelectOpponent: setSelectedOpponentKey,
