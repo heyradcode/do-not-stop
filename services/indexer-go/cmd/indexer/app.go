@@ -69,9 +69,11 @@ func run() error {
 			}
 		}(adapter)
 
-		// Inventory is optional per chain (roadmap §4 is EVM-first), so an adapter
-		// opts in by implementing InventoryIndexer. Its own goroutine, so a stalled
-		// inventory poll cannot hold up the roster loop everything else reads.
+		// Inventory is optional per chain, so an adapter opts in by implementing
+		// InventoryIndexer. Both chains do now (roadmap §4 shipped EVM-first and
+		// Solana followed), but the assertion stays: it is what lets a chain without
+		// an item contract exist at all. Its own goroutine, so a stalled inventory
+		// poll cannot hold up the roster loop everything else reads.
 		if inv, ok := adapter.(indexer.InventoryIndexer); ok {
 			wg.Add(1)
 			go func(a indexer.ChainIndexer, in indexer.InventoryIndexer) {

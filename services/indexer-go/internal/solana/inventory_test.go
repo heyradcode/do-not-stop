@@ -193,3 +193,47 @@ func TestInventoryDiscriminatorsAreDistinct(t *testing.T) {
 		seen[key] = name
 	}
 }
+
+// The two subscriptions must filter on different bytes, or one would receive the
+// other's accounts and the decoder would be the only thing separating them.
+func TestInventorySubscriptionsFilterDistinctLayouts(t *testing.T) {
+	itemLayout, _ := resolveItemBalanceLayout()
+	equipLayout, _ := resolvePetEquipmentLayout()
+	petLayout, _ := resolvePetLayout()
+
+	if itemLayout.discriminatorB58 == equipLayout.discriminatorB58 {
+		t.Error("item and equipment subscriptions would share a memcmp filter")
+	}
+	// Not required for correctness, since the discriminator filter already
+	// separates them, but a shared dataSize means both filters must hold rather
+	// than either. Worth knowing if it ever changes.
+	if itemLayout.totalLen() == equipLayout.totalLen() {
+		t.Logf("item and equipment accounts are both %d bytes; only the discriminator separates them",
+			itemLayout.totalLen())
+	}
+	if petLayout.discriminatorB58 == itemLayout.discriminatorB58 {
+		t.Error("the roster subscription would receive item balances")
+	}
+}
+
+// Subscription ids must be distinct across both sessions: subNames is one table
+// shared by the roster and inventory handlers, so a collision would mislabel a
+// confirmation or a rejection.
+func TestSubscriptionIDsAreDistinct(t *testing.T) {
+	if len(subNames) != 3 {
+		t.Fatalf("expected 3 registered subscriptions, got %d", len(subNames))
+	}
+	seen := make(map[string]int, len(subNames))
+	for id, name := range subNames {
+		if other, dup := seen[name]; dup {
+			t.Errorf("ids %d and %d share the name %q", id, other, name)
+		}
+		seen[name] = id
+	}
+	if _, ok := subNames[itemSubID]; !ok {
+		t.Error("item subscription id is not registered in subNames")
+	}
+	if _, ok := subNames[equipSubID]; !ok {
+		t.Error("equipment subscription id is not registered in subNames")
+	}
+}

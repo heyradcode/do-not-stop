@@ -37,8 +37,13 @@ const defaultCommitment = "finalized"
 type Indexer struct {
 	cfg    Config
 	layout *accountLayout
-	rpc    *rpcClient
-	dial   wsDialer
+	// Inventory layouts (roadmap §4), resolved up front for the same reason the
+	// roster's is: a malformed IDL should fail at construction, not on the first
+	// account that arrives.
+	itemLayout  *accountLayout
+	equipLayout *accountLayout
+	rpc         *rpcClient
+	dial        wsDialer
 
 	// lastSig is the newest battle-bearing signature seen (live or backfill);
 	// the post-reconnect backfill sweeps (lastSig, now]. Owned by Run/Scan,
@@ -54,12 +59,22 @@ func New(cfg Config) (*Indexer, error) {
 	if err != nil {
 		return nil, err
 	}
+	itemLayout, err := resolveItemBalanceLayout()
+	if err != nil {
+		return nil, err
+	}
+	equipLayout, err := resolvePetEquipmentLayout()
+	if err != nil {
+		return nil, err
+	}
 	if cfg.Commitment == "" {
 		cfg.Commitment = defaultCommitment
 	}
 	return &Indexer{
-		cfg:    cfg,
-		layout: layout,
+		cfg:         cfg,
+		layout:      layout,
+		itemLayout:  itemLayout,
+		equipLayout: equipLayout,
 		rpc: &rpcClient{
 			url:        cfg.RPCURL,
 			http:       &http.Client{Timeout: 30 * time.Second},
@@ -75,7 +90,7 @@ func (ix *Indexer) Chain() string { return "solana" }
 // pet stamped with the snapshot slot. Doubles as startup scan, post-reconnect
 // catch-up, and periodic reconciliation.
 func (ix *Indexer) Scan(ctx context.Context, roster chan<- indexer.RosterUpdate) (int, error) {
-	res, err := ix.rpc.getProgramPetAccounts(ctx, ix.cfg.ProgramID, ix.layout)
+	res, err := ix.rpc.getProgramAccountsByLayout(ctx, ix.cfg.ProgramID, ix.layout)
 	if err != nil {
 		return 0, err
 	}

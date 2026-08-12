@@ -98,9 +98,10 @@ type programAccountsResult struct {
 	Value []programAccount `json:"value"`
 }
 
-// getProgramPetAccounts fetches every PetAccount via dataSize + discriminator
-// memcmp filters (same query the Node scanner issues), with the snapshot slot.
-func (c *rpcClient) getProgramPetAccounts(
+// getProgramAccountsByLayout fetches every account matching one layout, via
+// dataSize + discriminator memcmp filters, with the snapshot slot. Used for the
+// roster and for each inventory account type.
+func (c *rpcClient) getProgramAccountsByLayout(
 	ctx context.Context,
 	programID string,
 	layout *accountLayout,

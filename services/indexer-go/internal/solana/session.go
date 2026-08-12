@@ -16,10 +16,32 @@ const (
 	backoffCap  = 30 * time.Second
 )
 
-// Run maintains the subscription session forever: dial, subscribe, catch up,
-// stream; on any failure, back off and start over. Returns nil only when ctx
+// Run maintains the roster subscription session forever: dial, subscribe, catch
+// up, stream; on any failure, back off and start over. Returns nil only when ctx
 // ends.
 func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) error {
+	return ix.connectLoop(ctx, "roster", func(ctx context.Context, conn wsConn) (bool, error) {
+		return ix.session(ctx, conn, roster)
+	})
+}
+
+// connectLoop is the dial/backoff half of a session, shared by the roster and
+// inventory loops.
+//
+// Two loops rather than one, and two connections, because a programSubscribe
+// carries one filter set: the roster subscription narrows to PetAccount by
+// dataSize and discriminator, so it cannot deliver an ItemBalance no matter how
+// the handler is written. Dropping the filters to share a connection would trade
+// a second socket for every account the program owns, decoded and discarded.
+//
+// Keeping them apart also means a failing inventory subscription cannot stall
+// roster sync, which is what matchmaking and every pet surface read from — the
+// same reason the EVM adapter keeps its two loops separate.
+func (ix *Indexer) connectLoop(
+	ctx context.Context,
+	name string,
+	run func(context.Context, wsConn) (bool, error),
+) error {
 	attempt := 0
 	for {
 		if ctx.Err() != nil {
@@ -32,14 +54,14 @@ func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) 
 				return nil
 			}
 			attempt++
-			slog.Error("solana ws dial failed", "attempt", attempt, "err", err)
+			slog.Error("solana ws dial failed", "loop", name, "attempt", attempt, "err", err)
 			if !sleepBackoff(ctx, attempt) {
 				return nil
 			}
 			continue
 		}
 
-		subscribed, err := ix.session(ctx, conn, roster)
+		subscribed, err := run(ctx, conn)
 		_ = conn.Close()
 		if ctx.Err() != nil {
 			return nil
@@ -49,7 +71,7 @@ func (ix *Indexer) Run(ctx context.Context, roster chan<- indexer.RosterUpdate) 
 		}
 		attempt++
 		metrics.WSReconnect()
-		slog.Error("solana ws session ended; reconnecting", "attempt", attempt, "err", err)
+		slog.Error("solana ws session ended; reconnecting", "loop", name, "attempt", attempt, "err", err)
 		if !sleepBackoff(ctx, attempt) {
 			return nil
 		}

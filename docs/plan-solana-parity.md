@@ -679,20 +679,17 @@ error code.
 
 # Phase 7: indexer projections for Solana items
 
-**Decode layer built and verified; the live loop is not yet wired.** `internal/solana/`
-decodes `ItemBalance` and `PetEquipment` into `ItemUpdate` / `EquipmentUpdate`, with the IDL
-extended and tests passing under a real Go toolchain (`go build`, `go vet`, `go test ./...`).
-What remains is emitting them: `handleProgramNotification` still only decodes `PetAccount`,
-and the adapter does not implement `InventoryIndexer`, so `item_roster` and `pet_equipment`
-stay empty on Solana.
+**Built and verified** under a real Go toolchain (`go build`, `go vet`, `go test ./...`). The
+Solana adapter implements `InventoryIndexer`, so `cmd/indexer`'s existing type-assert picks it
+up with no change at the call site.
 
-**That last step has a real design choice in it.** Solana has one `programSubscribe` covering
-every account type the program owns, but `ChainIndexer.Run` receives only the roster channel
-and `InventoryIndexer.RunInventory` is a separate loop. So either the adapter opens a **second
-subscription** to the same program (simple, matches the interface, doubles the connection), or
-the single session **fans out** into whichever channels are currently set (one connection, but
-needs the two loops to coordinate). The EVM adapter never faced this because its two loops are
-independent HTTP queries.
+**The design choice resolved itself once the filters were read.** The question looked like
+"one subscription fanned out, or two?" — but `subscribe` narrows the roster subscription by
+`dataSize` and a discriminator `memcmp`, so it can never deliver an `ItemBalance` however the
+handler is written. Sharing one connection would have meant dropping those filters and
+receiving every account the program owns, decoded and discarded. So: a second connection,
+carrying **two** subscriptions, since a `programSubscribe` holds one filter set and the two
+account types differ in both size and discriminator.
 
 Two notes on what "watermark" means here, since 7.1 below is written for the EVM shape:
 

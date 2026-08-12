@@ -22,8 +22,32 @@ type wsNotification struct {
 	Error  *rpcError       `json:"error"`
 }
 
-// subNames maps subscribe request ids to what was requested (see subscribe).
-var subNames = map[int]string{1: "programSubscribe"}
+// subNames maps subscribe request ids to what was requested (see subscribe and
+// subscribeInventory). Both sessions share this table, which is safe because the
+// ids are allocated globally rather than per connection.
+var subNames = map[int]string{
+	1:          "programSubscribe(pet)",
+	itemSubID:  "programSubscribe(item)",
+	equipSubID: "programSubscribe(equipment)",
+}
+
+// logSubscriptionFrame reports a subscribe confirmation or rejection.
+//
+// A rejection is loud because it is silent otherwise: the connection stays up
+// and simply never delivers, which reads as a quiet chain rather than a broken
+// subscription.
+func logSubscriptionFrame(note wsNotification) {
+	name := subNames[note.ID]
+	switch {
+	case name == "":
+		// unrelated frame
+	case note.Error != nil:
+		slog.Error("solana subscription rejected — no live feed, reconcile scan only",
+			"sub", name, "code", note.Error.Code, "err", note.Error.Message)
+	default:
+		slog.Info("solana subscription confirmed", "sub", name, "subscription_id", string(note.Result))
+	}
+}
 
 func (ix *Indexer) handleMessage(
 	ctx context.Context,
@@ -35,16 +59,7 @@ func (ix *Indexer) handleMessage(
 		return // unknown frame
 	}
 	if note.Method == "" {
-		name := subNames[note.ID]
-		switch {
-		case name == "":
-			// unrelated frame
-		case note.Error != nil:
-			slog.Error("solana subscription rejected — no live feed, reconcile scan only",
-				"sub", name, "code", note.Error.Code, "err", note.Error.Message)
-		default:
-			slog.Info("solana subscription confirmed", "sub", name, "subscription_id", string(note.Result))
-		}
+		logSubscriptionFrame(note)
 		return
 	}
 
