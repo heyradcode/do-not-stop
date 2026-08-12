@@ -44,6 +44,8 @@ import { claimEntitlement, grantItem, isAdmin, useItem } from '@features/invento
 import { prisma } from '@config/prisma';
 
 const OWNER = '0xaaa0000000000000000000000000000000000001';
+/** A base58 pubkey, which is what would reach a viem client expecting an `Address`. */
+const SOLANA_OWNER = 'HN7cABqLq46Es1jh92dQQpjP4LxRo7vLYCsRoQ8HWzEA';
 
 const POTION = { itemType: '100', category: 'consumable', effect: { kind: 'grant_xp', amount: 50 } };
 const DRAUGHT = { itemType: '110', category: 'consumable', effect: { kind: 'clear_battle_cooldown' } };
@@ -161,7 +163,9 @@ describe('useItem', () => {
 });
 
 describe('claimEntitlement', () => {
-    const ROW = { id: 'e1', owner: OWNER, itemType: '100', quantity: 2, claimedAt: null };
+    // `chain` is a real column on item_entitlement, and the claim path reads it: only EVM
+    // has a write client, so a Solana row is refused rather than sent to viem.
+    const ROW = { id: 'e1', chain: 'evm', owner: OWNER, itemType: '100', quantity: 2, claimedAt: null };
 
     it('claims the row, then mints, then records the hash', async () => {
         vi.mocked(prisma.itemEntitlement.findUnique).mockResolvedValue(ROW as never);
@@ -274,5 +278,51 @@ describe('isAdmin', () => {
     it('accepts only wallets on the allowlist', () => {
         expect(isAdmin('0xadmin')).toBe(true);
         expect(isAdmin(OWNER)).toBe(false);
+    });
+});
+
+/**
+ * `cryptopets` has `mint_items` and `burn_items` behind the same authorized-caller gate
+ * `ItemCore.onlyAuthorized` uses, but nothing in the backend calls them: `getItemCoreClient`
+ * is viem and has no Solana counterpart. Phase 6 built the on-chain half and the backend half
+ * was never wired.
+ *
+ * So these paths refuse by name. Without the guard a Solana owner — a base58 pubkey — reaches
+ * a client expecting an `Address` and the failure surfaces from inside viem, naming a bad
+ * address rather than an unbuilt feature.
+ */
+describe('a chain with no write client', () => {
+    beforeEach(() => {
+        chain.getItemCoreClient.mockReturnValue(client as never);
+    });
+
+    it('refuses to spend a consumable on Solana', async () => {
+        const result = await useItem('solana', SOLANA_OWNER, '1', '100');
+
+        expect(result).toBe('unsupported-chain');
+        expect(client.burnFrom).not.toHaveBeenCalled();
+    });
+
+    // Before the client is even resolved, so the answer does not depend on whether the EVM
+    // side happens to be configured.
+    it('refuses regardless of whether EVM writes are configured', async () => {
+        chain.getItemCoreClient.mockReturnValue(null);
+
+        expect(await useItem('solana', SOLANA_OWNER, '1', '100')).toBe('unsupported-chain');
+    });
+
+    // Checked before the row is claimed. The catch releases a claim whose mint moved
+    // nothing, so this would not burn the entitlement — but it would throw out of viem on
+    // every attempt, naming the wrong problem.
+    it('refuses to claim a Solana entitlement, without claiming the row', async () => {
+        vi.mocked(prisma.itemEntitlement.findUnique).mockResolvedValue({
+            id: 'e2', chain: 'solana', owner: SOLANA_OWNER, itemType: '100', quantity: 1, claimedAt: null,
+        } as never);
+
+        const result = await claimEntitlement(SOLANA_OWNER, 'e2');
+
+        expect(result).toBe('unsupported-chain');
+        expect(prisma.itemEntitlement.updateMany).not.toHaveBeenCalled();
+        expect(client.mintTo).not.toHaveBeenCalled();
     });
 });

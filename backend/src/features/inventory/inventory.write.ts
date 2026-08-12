@@ -17,6 +17,14 @@ import { getItemCoreClient, UnconfirmedTxError } from './inventory.chain';
  * statement by the owner rather than by this server, and it is why gear in a battle
  * snapshot is checkable against chain state by someone who does not trust us.
  *
+ * **EVM only, and that is a gap rather than a design.** `cryptopets` has `mint_items` and
+ * `burn_items` behind the same authorized-caller gate `ItemCore.onlyAuthorized` uses, but
+ * nothing here calls them: `getItemCoreClient` is viem, and there is no Solana counterpart.
+ * So a Solana player cannot spend a consumable or claim a drop, and the two paths below
+ * refuse by name instead of handing a base58 pubkey to a client that expects an `Address`
+ * and failing somewhere in viem. `grantItem` writes only a database row and is unaffected,
+ * though a Solana entitlement it creates cannot be claimed until this is built.
+ *
  * Every failure below is a named result rather than an exception, so the controller maps
  * one list of outcomes to status codes instead of pattern-matching error strings.
  */
@@ -62,6 +70,11 @@ export async function useItem(
     petId: string,
     itemType: string,
 ): Promise<UseItemResult | WriteFailure> {
+    // Before the client, because a Solana request must not reach one. `chain` is the family
+    // (`evm` | `solana`), and only the first has a writer.
+    if (chain !== 'evm') {
+        return 'unsupported-chain';
+    }
     const client = getItemCoreClient();
     if (!client) {
         return 'writes-disabled';
@@ -191,6 +204,12 @@ export async function claimEntitlement(caller: string, entitlementId: string): P
     }
     if (entitlement.claimedAt) {
         return 'already-claimed';
+    }
+    // Checked before the row is claimed, not after. The catch below releases a claim whose
+    // mint definitely moved nothing, so an unguarded Solana entitlement would not be burned
+    // — but it would throw out of viem on every attempt, which names the wrong problem.
+    if (entitlement.chain !== 'evm') {
+        return 'unsupported-chain';
     }
 
     // Claims the row first, conditioned on it still being unclaimed. Two concurrent calls
