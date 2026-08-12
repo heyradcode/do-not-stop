@@ -17,7 +17,13 @@ import type { AdapterMutation } from './types';
  */
 
 export interface EquipArgs {
-    /** Pet id as a decimal string. */
+    /**
+     * Which pet, in the form the write needs: a decimal pet id on EVM, a Metaplex Core
+     * asset pubkey on Solana, because every Solana PDA involved is seeded by the asset.
+     *
+     * Note this is NOT the form `pet_equipment.pet_id` stores. That column holds the
+     * numeric id on both chains, so the projection can be joined to `pet_roster`.
+     */
     petId: string;
     /** Equip slot 0-2 (ItemCore.SLOT_*). */
     slot: number;
@@ -28,6 +34,15 @@ export interface EquipArgs {
 export interface UnequipArgs {
     petId: string;
     slot: number;
+    /**
+     * Which item is being removed. Optional because EVM does not need it: `ItemCore.unequip`
+     * reads the slot and returns whatever is there.
+     *
+     * Solana does need it. The item goes back to a balance PDA seeded by its type, so
+     * without it there is no address to credit, and `unequipItemOnSolana` throws rather than
+     * defaulting to one that holds a different stack.
+     */
+    itemType?: string;
 }
 
 export interface InventoryAdapter {
@@ -35,9 +50,9 @@ export interface InventoryAdapter {
     /**
      * Whether this chain can equip at all.
      *
-     * False on Solana, which has no item contract yet (§4 is EVM-first), and false on EVM
-     * when `itemCore` is unconfigured. A UI reads this to disable the control with a reason
-     * rather than offering a button that throws.
+     * False on EVM when `itemCore` is unconfigured, and on Solana when no wallet is
+     * connected. A UI reads this to disable the control with a reason rather than offering a
+     * button that throws.
      */
     canEquip: boolean;
     equip: AdapterMutation<EquipArgs>;

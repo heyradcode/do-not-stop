@@ -263,6 +263,10 @@
             "type": "pubkey"
           },
           {
+            "name": "petId",
+            "type": "u32"
+          },
+          {
             "name": "slots",
             "type": {
               "array": [

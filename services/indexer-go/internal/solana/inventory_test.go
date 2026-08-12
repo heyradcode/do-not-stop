@@ -28,7 +28,7 @@ func buildItemBalance(t *testing.T, owner [32]byte, itemType, quantity uint64) [
 	return buf
 }
 
-func buildPetEquipment(t *testing.T, asset [32]byte, slots [3]uint64) []byte {
+func buildPetEquipment(t *testing.T, asset [32]byte, petID uint32, slots [3]uint64) []byte {
 	t.Helper()
 	layout, err := resolvePetEquipmentLayout()
 	if err != nil {
@@ -38,6 +38,7 @@ func buildPetEquipment(t *testing.T, asset [32]byte, slots [3]uint64) []byte {
 	buf := make([]byte, 0, layout.totalLen())
 	buf = append(buf, layout.discriminator...)
 	buf = append(buf, asset[:]...)
+	buf = binary.LittleEndian.AppendUint32(buf, petID)
 	for _, itemType := range slots {
 		buf = binary.LittleEndian.AppendUint64(buf, itemType)
 	}
@@ -94,7 +95,7 @@ func TestDecodePetEquipment(t *testing.T) {
 
 	var asset [32]byte
 	asset[31] = 0x09
-	updates, ok := decodePetEquipment(layout, buildPetEquipment(t, asset, [3]uint64{1, 0, 77}))
+	updates, ok := decodePetEquipment(layout, buildPetEquipment(t, asset, 42, [3]uint64{1, 0, 77}))
 	if !ok {
 		t.Fatal("decodePetEquipment returned ok=false for a valid account")
 	}
@@ -114,8 +115,10 @@ func TestDecodePetEquipment(t *testing.T) {
 		if update.ItemType != wantTypes[slot] {
 			t.Errorf("slot %d itemType = %q, want %q", slot, update.ItemType, wantTypes[slot])
 		}
-		if update.PetID != base58Encode(asset[:]) {
-			t.Errorf("slot %d petId = %q, want the asset pubkey", slot, update.PetID)
+		// The numeric id, not the asset: pet_equipment joins pet_roster on this,
+		// and the roster records the numeric id.
+		if update.PetID != "42" {
+			t.Errorf("slot %d petId = %q, want the numeric pet id 42", slot, update.PetID)
 		}
 		if update.Chain != "solana" {
 			t.Errorf("slot %d chain = %q", slot, update.Chain)
@@ -128,7 +131,7 @@ func TestDecodePetEquipment(t *testing.T) {
 func TestDecodePetEquipmentEmitsEmptySlots(t *testing.T) {
 	layout, _ := resolvePetEquipmentLayout()
 
-	updates, ok := decodePetEquipment(layout, buildPetEquipment(t, [32]byte{2}, [3]uint64{0, 0, 0}))
+	updates, ok := decodePetEquipment(layout, buildPetEquipment(t, [32]byte{2}, 7, [3]uint64{0, 0, 0}))
 	if !ok {
 		t.Fatal("a fully unequipped pet must still decode")
 	}
@@ -153,7 +156,7 @@ func TestInventoryDecodersRejectForeignAccounts(t *testing.T) {
 	}
 
 	balance := buildItemBalance(t, [32]byte{1}, 1, 1)
-	equipment := buildPetEquipment(t, [32]byte{1}, [3]uint64{1, 2, 3})
+	equipment := buildPetEquipment(t, [32]byte{1}, 9, [3]uint64{1, 2, 3})
 
 	if _, ok := decodeItemBalance(balanceLayout, equipment); ok {
 		t.Error("an ItemBalance decoder accepted a PetEquipment account")
@@ -235,5 +238,39 @@ func TestSubscriptionIDsAreDistinct(t *testing.T) {
 	}
 	if _, ok := subNames[equipSubID]; !ok {
 		t.Error("equipment subscription id is not registered in subNames")
+	}
+}
+
+// The bug this guards: pet_equipment is joined to pet_roster on pet_id, so the
+// two decoders must emit the SAME identifier for the same pet. Emitting the Core
+// asset here instead of the numeric id matched no roster row, which resolved a
+// geared pet to no equipment and let it fight bare — with nothing to error on,
+// because zero rows is also what an ungeared pet looks like.
+func TestEquipmentPetIDMatchesRosterPetID(t *testing.T) {
+	petLayout, _ := resolvePetLayout()
+	equipLayout, _ := resolvePetEquipmentLayout()
+
+	const petID = 4242
+	var owner, asset [32]byte
+	owner[0] = 0x11
+	asset[0] = 0x22
+
+	roster, ok := decodePetAccount(petLayout, buildPetAccount(t, petID, owner, 1, 1, 1, 0, 0, 0, "x"))
+	if !ok {
+		t.Fatal("decodePetAccount returned ok=false")
+	}
+	updates, ok := decodePetEquipment(equipLayout, buildPetEquipment(t, asset, petID, [3]uint64{1, 0, 0}))
+	if !ok {
+		t.Fatal("decodePetEquipment returned ok=false")
+	}
+
+	for _, update := range updates {
+		if update.PetID != roster.PetID {
+			t.Fatalf("equipment pet_id %q does not match roster pet_id %q; the join would find nothing",
+				update.PetID, roster.PetID)
+		}
+	}
+	if updates[0].PetID == base58Encode(asset[:]) {
+		t.Error("equipment pet_id is the Core asset; pet_roster records the numeric id")
 	}
 }

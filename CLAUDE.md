@@ -31,24 +31,11 @@ The import above pulls in the cross-tool non-negotiables and command baseline fr
 Run from repo root unless noted. Package manager is **pnpm** (`packageManager: pnpm@9.15.9`).
 
 ### Install / dev
-```bash
-pnpm install                 # root only
-pnpm install:all             # root + frontend + website + backend + mobile + contracts/ethereum + image-generator
-pnpm dev                     # backend + frontend + image-generator + indexer-go (concurrent)
-pnpm dev:fe                  # frontend only
-pnpm dev:be                  # backend only
-pnpm dev:mobile              # mobile only
-pnpm dev:web                 # website only
-pnpm dev:art                 # image-generator only (pet art, :8787)
-pnpm dev:idx                 # indexer-go only, hot-reloaded by air (health :8090, gRPC :50051)
-pnpm eth:node                # local Hardhat network
-pnpm eth:deploy              # deploy contracts to it
-pnpm sol:docker               # start Solana validator (docker-compose)
-pnpm sol:inject-ngrok         # tunnel local Solana RPC for mobile/device testing
-pnpm fe:eth:local            # HH node + deploy + VRF watcher + backend + frontend, concurrently
-pnpm mobile:eth:local        # same, with mobile instead of frontend
-pnpm fe:sol:local            # backend + frontend + Solana docker/ngrok, concurrently
-```
+
+Read the root `package.json` `scripts` block for the list itself (`install:all`, `dev`,
+`dev:fe`/`be`/`art`/`idx`/`mobile`/`web`, `eth:node`, `sol:docker`, the `fe:*:local` stacks).
+What that block does not tell you:
+
 > `pnpm dev` runs four services and, unlike the `fe:*:local` stacks, **deliberately omits `--kill-others-on-fail`**. Two of the four are optional and exit at boot when unconfigured: `image-generator` without `CF_ACCOUNT_ID`/`CF_API_TOKEN`, `indexer-go` without `DATABASE_URL`. Under `--kill-others-on-fail` either one would take the backend and frontend down with it, which is why they used to be left out entirely. Without the flag a misconfigured optional service dies in its own pane and the rest keep running. The cost is that a backend crash no longer tears the stack down either, so read the pane labels (`BE`, `FE`, `ART`, `IDX`). Run `pnpm dev:be` / `dev:fe` / `dev:art` / `dev:idx` individually when you want one.
 >
 > `pnpm dev:idx` needs [`air`](https://github.com/air-verse/air) on `PATH` (`go install github.com/air-verse/air@latest`); config is `services/indexer-go/.air.toml`. It is the only service here without a pnpm script of its own, so the root script `cd`s into the package.
@@ -56,12 +43,11 @@ pnpm fe:sol:local            # backend + frontend + Solana docker/ngrok, concurr
 > `pnpm eth:deploy` and `pnpm eth:vrf:watch` currently reference `deploy:inject` and `vrf:watch` scripts that **no longer exist** in `contracts/ethereum/package.json` (that package was refactored to `scripts/deploy.ts` plus Hardhat Ignition). If these fail, deploy directly with `pnpm --prefix contracts/ethereum deploy` (or `deploy:sepolia` / `deploy:base-sepolia`) instead of chasing the root wrapper script. `DEVELOPMENT.md` and `contracts/ethereum/README.md` also document a few commands (`pnpm clean`, `pnpm vrf:watch`, and an older "start everything" meaning of `pnpm dev`) that don't match the current root scripts, so treat those docs as partially stale and trust `package.json` scripts blocks over prose.
 
 ### Lint / test / build (root aggregates)
-```bash
-pnpm lint                    # frontend lint:check + @shared/core lint + website lint + mobile lint
-pnpm lint:fix
-pnpm test                    # equals contracts/ethereum test (Hardhat/Mocha), NOT a full monorepo test run
-pnpm build                   # compile contracts + build backend + frontend + website
-```
+
+`pnpm lint`, `pnpm lint:fix`, `pnpm test`, `pnpm build` — see the root `package.json` for
+what each aggregates. Two things it will not tell you: `pnpm test` equals
+`contracts/ethereum` test alone (Hardhat/Mocha), **not** a full monorepo test run, and:
+
 **`pnpm lint` and `pnpm test` do not cover every package.** `image-generator` is not in *any* root aggregate and is not even a workspace member; it has its own lockfile and its own CI workflow. Do not reach for `pnpm --filter image-generator <script>` either: it prints `No projects matched the filters` **and exits 0**, so it reports success having run nothing. Run per-package commands below when touching those.
 
 ### Per-package commands
@@ -104,7 +90,14 @@ pnpm build                   # compile contracts + build backend + frontend + we
 | `services/image-generator` | Node.js, TypeScript, Cloudflare Workers AI, R2 | Standalone service rendering pet NFT art + ERC-721 metadata. **Not a pnpm workspace member** (see below) |
 
 ### Data flow
-On-chain pet state (EVM via subgraph watermark polling, Solana via WebSocket push + backfill) is mirrored into Prisma-owned Postgres (`pet_roster`) by **`indexer-go`, which is the only indexer**. It also owns `item_roster` and `pet_equipment` (roadmap §4, EVM-only), on their own watermarks separate from the roster's — a shared cursor advanced by the busy stream would skip the quiet one's unread rows permanently, since the incremental query filters on `updatedAt_gt`. The backend's built-in Node `RosterIndexer` no longer exists — nothing in `backend/src` indexes chain state, so a local stack that needs a populated roster has to run `indexer-go`. `battle_history` is not indexed at all: the backend writes it from its own signed receipts. `indexer-go` also answers pet-state reads and win estimates over gRPC; if it is down the backend falls back to reading Postgres directly (`ROSTER_READ_SOURCE` controls `grpc` vs `postgres`, and matchmaking always reads Postgres). Frontend, mobile, and website all talk to the backend via REST + GraphQL; none of them read chain state directly. The one thing outside that path is pet art: the frontend and mobile app request images straight from `image-generator` (`VITE_IMAGE_SERVICE_URL` / mobile's `IMAGE_SERVICE_URL`), which reads `PetCore` over RPC itself rather than trusting the indexer, because a stale `dna` there would not render an outdated pet but a *different* one, and cache that permanently. Both clients build the URL with `petArtUrl` from `@shared/core`, so the route shape (numeric id on EVM, Core asset pubkey on Solana) is written down once; only the environment read is per-platform. Art is optional by construction: unset the variable, or let the service be down, and pets fall back to their emoji avatars. Note the service transcribes `PetCore.Pet` by hand in `src/chain.ts` rather than importing an ABI, so a change to that struct silently breaks every EVM read here until it is copied across. See `backend/API.md`, `services/indexer-go/README.md`, `services/image-generator/README.md`.
+On-chain pet state (EVM via subgraph watermark polling, Solana via WebSocket push + backfill) is mirrored into Prisma-owned Postgres (`pet_roster`) by **`indexer-go`, which is the only indexer**. It also owns `item_roster` and `pet_equipment` (roadmap §4), on **both** chains. On EVM those ride their own watermarks separate from the roster's — a shared cursor advanced by the busy stream would skip the quiet one's unread rows permanently, since the incremental query filters on `updatedAt_gt`. Solana needs no second watermark: there is no incremental query to filter, so the version is the slot an account was seen at and the store's monotonic `last_version` guard does the whole job. Note `pet_equipment.pet_id` holds the **numeric** pet id on both chains, even though the Solana `PetEquipment` account is *seeded* by the Core asset — the column is joined to `pet_roster`, and keying it by the asset would match nothing, resolving a geared pet to no equipment and letting it fight bare with nothing to error on. The backend's built-in Node `RosterIndexer` no longer exists — nothing in `backend/src` indexes chain state, so a local stack that needs a populated roster has to run `indexer-go`. `battle_history` is not indexed at all: the backend writes it from its own signed receipts. `indexer-go` also answers pet-state reads and win estimates over gRPC; if it is down the backend falls back to reading Postgres directly (`ROSTER_READ_SOURCE` controls `grpc` vs `postgres`, and matchmaking always reads Postgres). Frontend, mobile, and website all talk to the backend via REST + GraphQL; none of them read chain state directly. The one thing outside that path is pet art: the frontend and mobile app request images straight from `image-generator` (`VITE_IMAGE_SERVICE_URL` / mobile's `IMAGE_SERVICE_URL`), which reads `PetCore` over RPC itself rather than trusting the indexer, because a stale `dna` there would not render an outdated pet but a *different* one, and cache that permanently. Both clients build the URL with `petArtUrl` from `@shared/core`, so the route shape (numeric id on EVM, Core asset pubkey on Solana) is written down once; only the environment read is per-platform. Art is optional by construction: unset the variable, or let the service be down, and pets fall back to their emoji avatars. Note the service transcribes `PetCore.Pet` by hand in `src/chain.ts` rather than importing an ABI, so a change to that struct silently breaks every EVM read here until it is copied across. See `backend/API.md`, `services/indexer-go/README.md`, `services/image-generator/README.md`.
+
+### Per-directory notes load on demand
+
+Guidance that only matters inside one package lives in that package's own `CLAUDE.md`, which
+loads when you work there rather than in every session: `frontend/`, `backend/`,
+`contracts/ethereum/`, `contracts/solana/`, `services/indexer-go/`. Universal rules, the
+cross-chain non-negotiables, and anything safety-critical stay in this file and `AGENTS.md`.
 
 Note: there is no `docs/architecture.md` and no `services/indexer-go/ARCHITECTURE.md`. The component map and data flow live in this file's Architecture section, and the indexer's real doc is `services/indexer-go/README.md`. Everything that used to link to those two paths now points at the real ones, so a new reference to either is a mistake rather than a known gap.
 
@@ -113,13 +106,6 @@ Note: there is no `docs/architecture.md` and no `services/indexer-go/ARCHITECTUR
 
 What that adapter does NOT unify: `frontend/src/chains/ethereum/` (wagmi client, in-tree ABI JSONs: `gameConfigAbi.json`, `gameLogicAbi.json`, `petCoreAbi.json`) and `frontend/src/chains/solana/` (Anchor wallet/provider/signer) are still separate, low-level wiring with no shared interface between them, each adapter reaches into its own directly. The async breed and mint randomness flows are also not unified: EVM's Pyth Entropy watch lives in `shared/src/hooks/chains/ethereum/useWatchEntropyFulfillment.ts` and `usePolledContractEvent.ts`, Solana's Switchboard flow in `shared/src/utils/solana/breedWithSwitchboardVrf.ts` and `mintWithSwitchboardVrf.ts`. Battles take neither path as of §L Phase 6: they are drand-seeded and settled by the backend. The combat simulator is not unified either; see the next section. Treat the adapter as a thin, uniform shape over pet-action mutations and reads, not a claim that the underlying chain logic is shared.
 
-### Frontend panels: a controller hook when there's a state machine, direct composition when there isn't
-`frontend/src/components/pet/interactions/panels/` holds two shapes, and which one a panel uses is not about size. The test is whether the panel owns a **multi-step state machine** — a flow with intermediate states the player sits and watches.
-
-- **It does** → a headless controller hook in `frontend/src/hooks/<feature>/`, and the component consumes that single hook and holds **no** `useState`/`useEffect` of its own. `battle` (27-line view over `useBattlePanel`), `breed` (73 over `useBreedPanel`), `marriage` (94 over `useMarriagePanel`). Each of those flows has real intermediate states: request, entropy reveal, settle, result, and for battle a mismatch reconciliation.
-- **It doesn't** → the component composes the shared hooks directly and keeps its form state local. `rename`, `level-up`, `train`, `defense` all open with the same preamble (`useChainCapabilities`, `usePetList`, `useNotifyError`, plus the action hook, plus `useFees` where the action costs money). These are one action over one selected pet; there is no interim state worth modelling.
-
-Do not "fix" `useBattlePanel` for being 511 lines. Its own doc comment records the reasoning: selection and validation are tightly coupled (random-match and battle-start both touch validation), so one controller is the honest seam, and the genuinely separable concerns were already extracted to `useResultDialogue` (still in `frontend/src/hooks/battle/`, since it maps dialogue turns onto view props) and `useBattleOutcome` (now `@shared/core`, along with `useLiveBattleAnimation` — both are platform-neutral, so mobile's battle scene gets them for free). If it does get touched, the thing worth consolidating is its six `useEffect`s, whose ordering is implicit, not its line count.
 
 ### Combat simulator: one frozen port, two live ones, and the vectors that hold them together
 The battle/combat logic began as four independent implementations. As of §L Phase 6 they are no longer peers, and the Solidity one is gone:
@@ -213,8 +199,10 @@ projection to the catalog in TypeScript rather than SQL, so the two owners stay 
 
 Four things are easy to get wrong here:
 
-- **Equipping escrows the token into `ItemCore`, and only the player can send it.**
-  `equip` requires `msg.sender` to be the pet's owner, so the backend physically cannot do
+- **Equipping escrows the item, and only the player can send it — on both chains.**
+  EVM's `equip` requires `msg.sender` to be the pet's owner; Solana's requires the signer to
+  be the Core asset's owner, read from the asset rather than from `pet.owner`, which a direct
+  transfer leaves stale. Either way the backend physically cannot do
   it — that is what makes gear in a battle snapshot checkable against chain state by
   someone who does not trust the operator, rather than an assertion by it. Escrow also
   stops one sword buffing five pets without a locked-balance invariant that breaks the
@@ -266,35 +254,29 @@ be a deliberate rollout rather than a row edit that quietly re-prices live battl
 equipment reaches the ruleset for the same reason — re-prompting every defender because a
 badge was added would train players to click through the one prompt that matters.
 
+The catalog is **one numbering across both chains**: an item type means the same thing on EVM
+and Solana, and `getCombatCatalog` is chain-blind for that reason. Numbering them
+independently would fracture `itemCatalogHash`, and with it `rulesetHash`, so a defender on
+one chain would be consenting to different rules than a defender on the other. Consequently
+adding Solana items to a live deployment moves `rulesetHash` and invalidates every outstanding
+`DefenseAuthorization` — ship it as an announced restart, not a row edit.
+
+Solana's escrow differs in mechanism and matches in guarantee. There is no holding account:
+`equip` decrements the owner's `ItemBalance` and writes the type into `PetEquipment`, which
+*is* the record. And because Metaplex Core transfers bypass the program entirely — there is no
+`_beforeTokenTransfer` hook to hang a check on — a geared pet is held in place by an mpl-core
+`FreezeDelegate` plugin rather than by a check in `transfer_pet`. That check exists only to
+produce a readable error; the freeze is the enforcement.
+
 ### Every WebSocket channel goes through one upgrade listener
 `backend/src/ws/channel.ts` owns the process's single `upgrade` handler and dispatches on path; `battleRoomSocket.ts` and `chatSocket.ts` are thin registrations on top of it. Do **not** add a channel by constructing `new WebSocketServer({ server, path })`. That attaches one upgrade listener *per instance* to the same HTTP server, Node calls every listener on every upgrade, so each connection is handled twice, the client gets two HTTP 101 responses, and the second is parsed as a frame — `RangeError: Invalid WebSocket frame: RSV1 must be clear`. It breaks **every** channel, not just the new one, and per-channel tests will not catch it because each builds its own HTTP server with a single channel attached (`tests/ws/channel.test.ts` is the regression test that does).
 
 A channel may declare an authorizer, which runs before the handshake so a refused client never becomes a subscriber at all. The battle room has none: its frames carry nothing a client could not re-fetch, which is the only thing that makes an anonymous socket acceptable. Chat has one, and needed it for presence — "is my counterpart online" is a claim about identities, and an anonymous socket has none, so counting connections would report one person with two tabs as two people. Presence therefore counts identities, not sockets. The JWT arrives as a WebSocket subprotocol rather than a query parameter: browsers cannot set headers on a WebSocket, and a URL-borne token is recorded by proxies and access logs.
 
-### Private chat (roadmap §2 v1): access is derived per request, never stored
-`chat_thread` deliberately does not record the marriage that justifies it. Every read, send, and socket upgrade rechecks `pet_roster.spouse_id` through `chat.service.authorizeThread`, so a divorce closes the conversation the moment the indexer sees it, with no revocation step that could be forgotten. The thread row survives — deleting it would destroy the history — it just stops answering.
-
-Two consequences worth keeping: a non-participant gets **404, not 403**, identical to a thread that does not exist, because 403 would confirm a thread id to anyone probing; and the caller is normalized (`normalizeAccount`) at the service boundary, since the caller doubles as the thread's participant key and an unnormalized spelling would open a second thread beside the first and split the conversation.
 
 ### Known v1 contract limitations (design context, not regressions to "fix")
 `contracts/plan-contract-upgrade.md` documents intentional v1 gaps that v2 is designed around: no battle authorization (anyone can call `battle()`/`attack()` on anyone's pets), an EVM `changeDna` cheat that lets a level-20 pet set arbitrary DNA, and a Solana `create_starter_pet` that accepts client-supplied dna/rarity. v2 plan: EVM moves to UUPS proxies (`PetCoreProxy` + `GameLogicProxy`, with `CombatSimV1` deployed as a separate contract to stay under the 24KB bytecode ceiling); Solana adds versioned/reserved-space accounts and migrates pets to Metaplex Core NFTs. This is a plan doc; check current contract source before assuming any of it is implemented.
 
-### Hardhat specifics worth knowing
-- Contract sources live in `contracts/ethereum/src/` (not `contracts/`): `PetCore.sol`, `GameLogic.sol`, `GameConfig.sol`, `DnaLib.sol`, `TestDeployer.sol`, plus `BattleBatchRegistry.sol` / `SeasonRewardDistributor.sol` for the backend-battle anchor and rewards, and `ItemCore.sol` for inventory (§4).
-- `@openzeppelin/contracts-upgradeable` is pinned to **4.7.3** while `@openzeppelin/contracts` is `^5.4.0`. A new upgradeable contract uses the 4.x initializer style (`__ERC1155_init`), not v5's `_update` hook — `ItemCore.sol` is the worked example.
-- `scripts/deploy.ts` has **no `localhost` network** (see `scripts/networks.ts`), so the documented local path does not run. To deploy locally, start `pnpm hh node`, deploy `MockEntropy`, write an `ignition/parameters/.runtime-localhost.json` naming it, and call `pnpm hh ignition deploy ignition/modules/CryptoPetsV2Live.ts --network localhost --parameters <file> --deployment-id <name>` directly.
-- Both compiler profiles (`default` and `production`) are pinned to `viaIR` explicitly, because Hardhat Ignition silently drops viaIR/optimizer settings from a flat config and the two profiles must match. `CombatSim.sol`'s "stack too deep" was the original reason; with it deleted the remaining sources compile without viaIR, so the setting is now an optimizer choice rather than a requirement.
-- The `localhost` network hardcodes the 5 standard Hardhat dev private keys; only live networks (Sepolia, Base Sepolia, see `scripts/networks.ts`) read `PRIVATE_KEY` from env.
-- Deployment is Hardhat Ignition-based (`ignition/modules/CryptoPetsV2Live.ts`); use `pnpm --prefix contracts/ethereum deploy:status` / `deploy:visualize` to inspect.
-
-### Solana local setup
-`contracts/solana/docker-compose.yml` runs two services: `solana-dev` (the validator itself, ports 8899/8900/9900) and an **ngrok tunnel** service exposing the local RPC (needs `NGROK_AUTHTOKEN`, ngrok web UI on 4040). This is how mobile/on-device testing reaches a local validator (`pnpm sol:inject-ngrok`), and it isn't documented in `DEVELOPMENT.md`.
-
-### indexer-go internals
-Two chain adapters (Solana WS push, EVM subgraph pull) behind a `ChainIndexer` interface feed a single version-guarded pgx batch writer into Postgres. Layout: `cmd/indexer` (binary, supports `-scan-once`), `internal/{indexer,evm,solana,store,combat,grpcsrv}`, `pb/` (buf-generated). It indexes the roster only: the battle pipeline (`battlebus`, `BattleEvent`, `InsertBattles`) is gone, and `battle_history` is written by the backend from signed receipts. An optional in-memory read cache (`ROSTER_CACHE_ENABLED`) is write-through and version-guarded; it's only coherent while `indexer-go` is the sole writer, so it should stay off during shadow-mode (dual-indexer) operation and only be enabled at promotion.
-
-### Auth
-Backend auth is nonce, then wallet-signature, then JWT (`backend/README.md`), guarding a single `/graphql` endpoint; the authenticated wallet becomes the matchmaking `caller` context (`backend/API.md`). Roster/battle reads are read-only projections of what the indexer(s) wrote; the backend no longer decodes contract events itself. `winEstimate` returns `null` (not an error) when unavailable, so treat that as a degraded UI state, not a failure.
 
 ### Testing conventions
 See `docs/testing.md` for the full per-package suite table. Test work is expected to land on dedicated branches per test type/area (e.g. `test/frontend-modules`), not mixed into feature branches, with coverage reported after each change.

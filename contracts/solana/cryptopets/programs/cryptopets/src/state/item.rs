@@ -74,8 +74,9 @@ impl ItemSlot {
 
 /// What is equipped on one pet, indexed by slot. `0` means an empty slot.
 ///
-/// Keyed by the pet's Metaplex Core asset rather than its numeric id, because the asset is
-/// what ownership is read from on this chain.
+/// **Seeded** by the pet's Metaplex Core asset rather than its numeric id, because the asset
+/// is what ownership is read from on this chain. It carries the numeric id as a field anyway;
+/// see `pet_id`.
 ///
 /// This account *is* the escrow. Equipping decrements the owner's [`ItemBalance`] and writes
 /// the type here; there is no separate holding account, unlike ERC-1155's transfer-to-self.
@@ -85,6 +86,15 @@ impl ItemSlot {
 #[account]
 pub struct PetEquipment {
     pub asset: Pubkey,
+    /// The pet's numeric id, denormalized from `PetAccount`.
+    ///
+    /// Redundant on chain, since the asset already identifies the pet, and load-bearing off
+    /// it. `pet_equipment` is joined to `pet_roster` on `pet_id`, and the roster records the
+    /// **numeric** id; a projection keyed by the asset instead would match nothing, so a
+    /// geared pet would resolve to no equipment and fight bare. Nothing would error: zero
+    /// rows is also what an ungeared pet looks like, and the receipt would then publish an
+    /// ungeared snapshot while `equipmentOf` at the recorded version disagreed.
+    pub pet_id: u32,
     pub slots: [u64; SLOT_COUNT],
     pub version: u8,
     pub bump: u8,
@@ -94,6 +104,7 @@ impl PetEquipment {
     pub const SEED: &'static [u8] = b"equipment";
     pub const SPACE: usize = 8 /* discriminator */
         + 32 /* asset */
+        + 4 /* pet_id */
         + 8 * SLOT_COUNT /* slots */
         + 1 /* version */
         + 1; /* bump */
@@ -139,7 +150,7 @@ mod tests {
     fn space_constants_match_their_field_lists() {
         assert_eq!(ItemBalance::SPACE, 8 + 32 + 8 + 8 + 1 + 1);
         assert_eq!(ItemSlot::SPACE, 8 + 8 + 1 + 1 + 1);
-        assert_eq!(PetEquipment::SPACE, 8 + 32 + 24 + 1 + 1);
+        assert_eq!(PetEquipment::SPACE, 8 + 32 + 4 + 24 + 1 + 1);
         assert_eq!(AuthorizedCaller::SPACE, 8 + 32 + 1 + 1);
     }
 
@@ -160,7 +171,8 @@ mod tests {
 
     #[test]
     fn any_equipped_reports_each_slot() {
-        let mut equipment = PetEquipment { asset: Pubkey::default(), slots: [0; SLOT_COUNT], version: 1, bump: 0 };
+        let mut equipment =
+            PetEquipment { asset: Pubkey::default(), pet_id: 1, slots: [0; SLOT_COUNT], version: 1, bump: 0 };
         assert!(!equipment.any_equipped());
 
         for index in 0..SLOT_COUNT {

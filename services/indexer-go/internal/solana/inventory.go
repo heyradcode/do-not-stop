@@ -80,9 +80,14 @@ func decodePetEquipment(layout *accountLayout, data []byte) ([]indexer.Equipment
 		return nil, false
 	}
 
-	// Keyed by the Core asset, which is what PetAccount is seeded by on this
-	// chain and what the roster records as its Asset.
-	asset := fields["asset"].(string)
+	// The NUMERIC pet id, not the Core asset the account is seeded by.
+	//
+	// pet_equipment is joined to pet_roster on pet_id, and decodePetAccount
+	// records the numeric id there. Emitting the asset instead would match no
+	// roster row, so a geared pet would resolve to no equipment and fight bare
+	// — and nothing would error, because zero rows is also what an ungeared pet
+	// looks like. The account carries the id as a field for exactly this.
+	petID := strconv.FormatUint(fields["petId"].(uint64), 10)
 
 	updates := make([]indexer.EquipmentUpdate, 0, equipSlotCount)
 	for slot, raw := range slots {
@@ -92,7 +97,7 @@ func decodePetEquipment(layout *accountLayout, data []byte) ([]indexer.Equipment
 		}
 		updates = append(updates, indexer.EquipmentUpdate{
 			Chain:    "solana",
-			PetID:    asset,
+			PetID:    petID,
 			Slot:     uint32(slot),
 			ItemType: strconv.FormatUint(itemType, 10),
 		})

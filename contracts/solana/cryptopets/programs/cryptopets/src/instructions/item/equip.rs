@@ -64,6 +64,9 @@ pub fn equip(ctx: Context<Equip>, slot: u8, item_type: u64) -> Result<()> {
 
     let equipment = &mut ctx.accounts.equipment;
     equipment.asset = ctx.accounts.pet_asset.key();
+    // Denormalized so the off-chain projection can be joined to `pet_roster` on the numeric
+    // id it records; see the field's own comment for what keying by the asset would cost.
+    equipment.pet_id = ctx.accounts.pet.id;
     equipment.version = CURRENT_ACCOUNT_VERSION;
     equipment.bump = ctx.bumps.equipment;
     require!(

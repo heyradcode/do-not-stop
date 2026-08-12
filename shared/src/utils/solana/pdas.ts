@@ -9,6 +9,16 @@ const MARRIAGE_PROPOSAL_SEED = Buffer.from('marriage-proposal');
 const FEE_VAULT_SEED = Buffer.from('fee-vault');
 const MINT_REQUEST_SEED = Buffer.from('mint-request');
 const STUD_FEE_SEED = Buffer.from('stud-fee');
+const ITEM_SEED = Buffer.from('item');
+const ITEM_SLOT_SEED = Buffer.from('item-slot');
+const EQUIPMENT_SEED = Buffer.from('equipment');
+
+/** `u64` seed component, little-endian, matching `&item_type.to_le_bytes()` in Rust. */
+const itemTypeSeed = (itemType: string | bigint): Buffer => {
+    const buf = Buffer.alloc(8);
+    buf.writeBigUInt64LE(BigInt(itemType), 0);
+    return buf;
+};
 
 export const globalStatePda = (programId: PublicKey): [PublicKey, number] => {
     return PublicKey.findProgramAddressSync([GLOBAL_STATE_SEED], programId);
@@ -48,4 +58,31 @@ export const mintRequestPda = (programId: PublicKey, owner: PublicKey): [PublicK
 /** Stud-fee escrow PDA for cross-owner breeding: seeds ["stud-fee", other_owner]. */
 export const studFeeAccountPda = (programId: PublicKey, otherOwner: PublicKey): [PublicKey, number] => {
     return PublicKey.findProgramAddressSync([STUD_FEE_SEED, otherOwner.toBuffer()], programId);
+};
+
+// ─── Inventory (roadmap §4) ──────────────────────────────────────────────────
+
+/** One wallet's holding of one item type: seeds ["item", owner, item_type_le_u64]. */
+export const itemBalancePda = (
+    programId: PublicKey,
+    owner: PublicKey,
+    itemType: string | bigint,
+): [PublicKey, number] => {
+    return PublicKey.findProgramAddressSync([ITEM_SEED, owner.toBuffer(), itemTypeSeed(itemType)], programId);
+};
+
+/** The catalog entry saying which slot an item may occupy: seeds ["item-slot", item_type_le_u64]. */
+export const itemSlotPda = (programId: PublicKey, itemType: string | bigint): [PublicKey, number] => {
+    return PublicKey.findProgramAddressSync([ITEM_SLOT_SEED, itemTypeSeed(itemType)], programId);
+};
+
+/**
+ * A pet's equipped slots: seeds ["equipment", asset_pubkey].
+ *
+ * Seeded by the Metaplex Core asset, like `petPdaByAsset`, because that is what ownership is
+ * read from on this chain. The account itself also stores the numeric pet id, which is what
+ * the `pet_equipment` projection records so it can be joined to `pet_roster`.
+ */
+export const petEquipmentPda = (programId: PublicKey, assetKey: string): [PublicKey, number] => {
+    return PublicKey.findProgramAddressSync([EQUIPMENT_SEED, new PublicKey(assetKey).toBuffer()], programId);
 };

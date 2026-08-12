@@ -12,7 +12,7 @@ end for what remains before this is live.
 
 | Decision | Choice |
 |---|---|
-| Chains | EVM only. Solana deferred, per §4's EVM-first recommendation. |
+| Chains | Both. EVM shipped first per §4's recommendation; Solana followed (see `docs/plan-solana-parity.md` Phases 6-8). |
 | Categories | Consumable, collectible/material, equipment with combat stats. No cosmetics. |
 | Acquisition | Battle-reward drops plus an owner-gated admin grant. |
 | Clients | Web only. Hooks live in `@shared/core` so mobile can adopt them later. |
