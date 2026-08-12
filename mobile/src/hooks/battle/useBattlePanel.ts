@@ -8,6 +8,7 @@ import {
     useChainCapabilities,
     useCreateBattleRoom,
     useLiveBattleAnimation,
+    opponentKey,
     useOpponents,
     usePetList,
     useWinEstimate,
@@ -51,7 +52,15 @@ export interface UseBattlePanel {
      * the one thing that does not help.
      */
     opponentsEmptyMessage: string | null;
-    selectedOpponentId: string;
+    /**
+     * The chosen opponent as `owner::id`, not a bare pet id.
+     *
+     * Pet ids are not unique across owners on Solana, so an id alone can name two
+     * different pets. Frontend has always keyed on this; mobile keyed its list rows by the
+     * same string while selecting on the id, which resolved to whichever matching pet came
+     * first and then sent that pet's owner as `defenderOwner`.
+     */
+    selectedOpponentKey: string;
     onSelectOpponent: (id: string) => void;
     opponent: OpponentPet | null;
     onRandomOpponent: () => void;
@@ -108,7 +117,7 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
     const createRoom = useCreateBattleRoom();
 
     const [selectedPetId, setSelectedPetId] = useState(initialPetId ?? '');
-    const [selectedOpponentId, setSelectedOpponentId] = useState('');
+    const [selectedOpponentKey, setSelectedOpponentKey] = useState('');
     const [validationError, setValidationError] = useState<string | null>(null);
     const [result, setResult] = useState<BattleResolvedResult | null>(null);
 
@@ -154,12 +163,14 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         () => sortOpponentsByMatch(rawOpponents, fighter?.level ?? null),
         [rawOpponents, fighter?.level],
     );
-    const opponent = opponents.find((o) => o.id === selectedOpponentId) ?? null;
+    const opponent =
+        opponents.find((o) => opponentKey(o.owner, o.id) === selectedOpponentKey) ?? null;
 
     const { winProbability, isLoading: winEstimateLoading } = useWinEstimate(
         capabilities.activeKind,
         selectedPetId || null,
-        selectedOpponentId || null,
+        // The estimate is per pet, so it takes the resolved pet's id rather than the key.
+        opponent?.id ?? null,
     );
 
     const battle = useBattlePets({
@@ -226,7 +237,7 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
     // Clear a stale opponent when the fighter changes: the previous pick was
     // chosen against a different level band and may no longer be a legal match.
     useEffect(() => {
-        setSelectedOpponentId('');
+        setSelectedOpponentKey('');
     }, [selectedPetId]);
 
     const onRandomOpponent = useCallback(() => {
@@ -235,7 +246,7 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
             return;
         }
         const picked = pickRandomOpponent(opponents, fighter.level);
-        if (picked) setSelectedOpponentId(picked.id);
+        if (picked) setSelectedOpponentKey(opponentKey(picked.owner, picked.id));
     }, [fighter, opponents]);
 
     const onStartBattle = useCallback(() => {
@@ -297,8 +308,8 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
             rawOpponents.length === 0 && !opponentsLoading && !opponentsError
                 ? describeNoOpponents(emptyReason ?? null)
                 : null,
-        selectedOpponentId,
-        onSelectOpponent: setSelectedOpponentId,
+        selectedOpponentKey,
+        onSelectOpponent: setSelectedOpponentKey,
         opponent,
         onRandomOpponent,
         winProbability,

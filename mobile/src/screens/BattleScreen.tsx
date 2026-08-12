@@ -8,6 +8,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { opponentKey } from '@shared/core';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 
@@ -91,12 +92,16 @@ export default function BattleScreen() {
                     const delta = getLevelDelta(panel.fighter?.level ?? null, o.level);
                     const tier = getMatchTier(delta);
                     const label = getMatchLabel(tier, delta);
-                    const active = o.id === panel.selectedOpponentId;
+                    // The same key the row is identified by. Selecting on `o.id` alone
+                    // picked the wrong pet when two owners hold the same id, which they
+                    // can on Solana.
+                    const key = opponentKey(o.owner, o.id);
+                    const active = key === panel.selectedOpponentKey;
                     return (
                         <TouchableOpacity
-                            key={`${o.owner}::${o.id}`}
+                            key={key}
                             style={[styles.oppRow, active && styles.oppRowActive]}
-                            onPress={() => panel.onSelectOpponent(o.id)}
+                            onPress={() => panel.onSelectOpponent(key)}
                             disabled={panel.isBusy}
                             activeOpacity={0.85}
                         >

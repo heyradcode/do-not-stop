@@ -133,6 +133,10 @@ jest.mock('@shared/core', () => ({
         isLoading: false,
     }),
     useCreateBattleRoom: () => ({ createRoom: mockCreateRoom, isLoading: false }),
+    // The real one: selection correctness is the thing under test, and a fake key
+    // function would let both the screen and the hook agree on a wrong shape.
+    opponentKey: (owner: string, id: string) =>
+        jest.requireActual('../../shared/src/utils/battleMatchmaking').opponentKey(owner, id),
     toDialoguePet: (subject: Pet | OpponentPet) => ({
         petId: subject.id,
         name: subject.name,
@@ -404,6 +408,29 @@ describe('BattleScreen', () => {
         const rendered = textOf(await render());
         expect(rendered).toContain('[art:9]');
         expect(rendered).toContain('[art:12]');
+    });
+
+    /**
+     * Pet ids are not unique across owners on Solana, so an id alone can name two pets.
+     *
+     * Selecting on the id resolved to whichever matched first, and `defenderOwner` then
+     * named the wrong wallet — the backend would look for a consent grant that wallet
+     * never signed. Invisible on EVM, where ERC-721 ids are globally unique, which is why
+     * it survived: this deployment is Base Sepolia.
+     */
+    it('picks the right pet when two owners hold the same id', async () => {
+        mockState.opponents = [
+            foe({ id: '1', name: 'FirstOwnerPet', owner: '0xaaa' }),
+            foe({ id: '1', name: 'SecondOwnerPet', owner: '0xbbb' }),
+        ];
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'SecondOwnerPet');
+        await pressWith(tree, 'Start Battle');
+
+        expect(mockBattle).toHaveBeenCalledWith(
+            expect.objectContaining({ petId2: '1', defenderOwner: '0xbbb' }),
+        );
     });
 
     it('surfaces an opponent load failure', async () => {
