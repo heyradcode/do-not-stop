@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    describeBattleStage,
     describeMechanicalLogEntry,
     describeNoOpponents,
     getReadyPetsUnified,
@@ -69,6 +70,18 @@ export interface UseBattlePanel {
     winEstimateLoading: boolean;
     taunts: string[];
     phase: string;
+    /**
+     * What the battle is waiting on, in words, or null when nothing is in flight.
+     *
+     * A backend battle passes through six states after the signature and mobile rendered
+     * one word for all of them, so a fight stalled at `computed` — waiting on the
+     * independent Go verifier to agree — looked exactly like one about to finish. "It is
+     * stuck" and "it is working" were the same screen.
+     *
+     * A battle that ends badly said nothing at all: the server records why it stopped,
+     * and without it the player watches a screen that will never move again.
+     */
+    stageLabel: string | null;
     isBusy: boolean;
     validationError: string | null;
     onStartBattle: () => void;
@@ -340,6 +353,13 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         winEstimateLoading,
         taunts: taunts.turns?.map((t) => t.text) ?? [],
         phase: battle.phase,
+        stageLabel: battle.failureReason
+            ? `${describeBattleStage(battle.state)} (${battle.failureReason})`
+            : battle.error
+              ? `Could not follow this battle: ${battle.error.message}`
+              : battle.isPending || battle.phase === 'awaiting-vrf' || battle.phase === 'resolving'
+                ? describeBattleStage(battle.state)
+                : null,
         isBusy: battle.isPending || createRoom.isLoading,
         validationError,
         onStartBattle,

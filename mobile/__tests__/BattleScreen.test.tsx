@@ -41,6 +41,10 @@ const mockState = {
     /** Which filter emptied the opponent list; the server names it. */
     emptyReason: null as string | null,
     isAuthenticated: true,
+    /** The backend's own battle state, and why it stopped if it did. */
+    phase: 'idle',
+    battleState: null as string | null,
+    failureReason: null as string | null,
     isConnected: true,
     winProbability: 0.62 as number | null,
     turns: [] as { text: string }[],
@@ -117,8 +121,12 @@ jest.mock('@shared/core', () => ({
         emptyReason: mockState.emptyReason,
         refetch: jest.fn(),
     }),
-    // The real wording, so a new reason cannot be added to the server without this
-    // screen learning to say it.
+    // The real wording for both: a new backend state or empty-reason must not need this
+    // screen edited to be sayable.
+    describeBattleStage: (...args: unknown[]) =>
+        jest
+            .requireActual('../../shared/src/hooks/battle/useBattlePets')
+            .describeBattleStage(...args),
     describeNoOpponents: (...args: unknown[]) =>
         jest
             .requireActual('../../shared/src/hooks/battle/useOpponents')
@@ -159,7 +167,9 @@ jest.mock('@shared/core', () => ({
             mutate: mockBattle,
             isPending: false,
             error: null,
-            phase: 'idle',
+            phase: mockState.phase,
+            state: mockState.battleState,
+            failureReason: mockState.failureReason,
             liveReplay: mockState.liveReplay,
         };
     },
@@ -243,6 +253,9 @@ beforeEach(() => {
     mockState.opponentsError = null;
     mockState.emptyReason = null;
     mockState.isAuthenticated = true;
+    mockState.phase = 'idle';
+    mockState.battleState = null;
+    mockState.failureReason = null;
     mockState.isConnected = true;
     mockState.winProbability = 0.62;
     mockState.turns = [];
@@ -636,7 +649,50 @@ describe('empty opponent list', () => {
     it('falls back to a plain line when the server names no reason', async () => {
         mockState.emptyReason = null;
     mockState.isAuthenticated = true;
+    mockState.phase = 'idle';
+    mockState.battleState = null;
+    mockState.failureReason = null;
         const tree = await render();
         expect(textOf(tree)).toContain('No opponents available');
+    });
+});
+
+/**
+ * What a battle is waiting on.
+ *
+ * Six backend states rendered as the single word "Fighting…", so a fight stalled at
+ * `computed` — waiting on the independent Go verifier to agree — looked exactly like one
+ * about to finish. And a battle that ended badly said nothing at all: the overlay simply
+ * stopped changing, with the reason sitting unread on the server.
+ */
+describe('battle stage', () => {
+    it('says nothing while idle', async () => {
+        const tree = await render();
+        expect(textOf(tree)).not.toContain('Waiting for');
+    });
+
+    it('names the stage rather than one word for six of them', async () => {
+        mockState.phase = 'resolving';
+        mockState.battleState = 'computed';
+        const tree = await render();
+        expect(textOf(tree)).toContain('independent verifier');
+    });
+
+    it('distinguishes waiting on randomness from running the fight', async () => {
+        mockState.phase = 'awaiting-vrf';
+        mockState.battleState = 'committed';
+        expect(textOf(await render())).toContain('committed randomness round');
+
+        mockState.battleState = 'seeded';
+        expect(textOf(await render())).toContain('Running the fight');
+    });
+
+    it('says why a battle stopped instead of leaving the screen frozen', async () => {
+        mockState.battleState = 'verification_failed';
+        mockState.failureReason = 'engines disagreed';
+        const tree = await render();
+
+        expect(textOf(tree)).toContain('two engines disagreed');
+        expect(textOf(tree)).toContain('engines disagreed');
     });
 });

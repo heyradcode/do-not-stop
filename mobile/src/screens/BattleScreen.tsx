@@ -168,6 +168,15 @@ export default function BattleScreen() {
             ) : null}
 
             {/*
+             * What the fight is waiting on. "Fighting…" covered six backend states, so a
+             * battle stalled on the independent verifier looked like one about to
+             * finish, and one that ended badly looked like one still running.
+             */}
+            {panel.stageLabel ? (
+                <Text style={styles.stage}>{panel.stageLabel}</Text>
+            ) : null}
+
+            {/*
              * Held back until the replay finishes, or the verdict lands on top of the
              * fight the player is still watching. With no replay to play, the hook reports
              * done immediately, so a battle that cannot be animated still shows its result
@@ -304,6 +313,13 @@ const styles = StyleSheet.create({
     disabled: { opacity: 0.4 },
     spinner: { marginVertical: 16 },
     hint: { fontSize: 14, color: neon.textMuted, lineHeight: 20, marginVertical: 8 },
+    stage: {
+        marginTop: 10,
+        fontSize: 13,
+        color: neon.textMuted,
+        textAlign: 'center',
+        lineHeight: 19,
+    },
     warning: { marginTop: 12, fontSize: 13, color: neon.magenta, lineHeight: 19 },
     oppRow: {
         flexDirection: 'row',
