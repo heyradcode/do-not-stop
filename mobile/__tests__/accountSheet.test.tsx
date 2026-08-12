@@ -195,6 +195,15 @@ describe('AccountSheet auth actions', () => {
         expect(mockDisconnect).toHaveBeenCalled();
     });
 
+    it('reaches marriage, which had no entry point at all until it was added here', async () => {
+        // The screen was registered, titled and implemented, and nothing navigated to
+        // it. `navigation.test.tsx` guards the whole route table against a repeat.
+        const tree = await render(<AccountSheet />);
+        await openSheet(tree);
+        await pressAction(tree, 'Marriage');
+        expect(mockNavigate).toHaveBeenCalledWith('Marriage');
+    });
+
     it('reaches the leaderboard, which has no tab of its own', async () => {
         const tree = await render(<AccountSheet />);
         await openSheet(tree);

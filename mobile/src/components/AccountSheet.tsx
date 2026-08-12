@@ -146,6 +146,25 @@ export default function AccountSheet() {
                                 </TouchableOpacity>
                             )}
 
+                            {/*
+                             * Marriage is here rather than on the pet card because it is
+                             * not a per-pet action: the screen has its own tabs, picks
+                             * both sides itself, and lists every marriage the wallet
+                             * holds. It had no entry point at all until now — the screen
+                             * was registered in the navigator and nothing navigated to it.
+                             */}
+                            <TouchableOpacity
+                                style={[styles.action, styles.secondary]}
+                                accessibilityRole="button"
+                                accessibilityLabel="Marriage"
+                                onPress={() => {
+                                    setIsOpen(false);
+                                    navigation.navigate('Marriage');
+                                }}
+                            >
+                                <Text style={styles.secondaryText}>Marriage</Text>
+                            </TouchableOpacity>
+
                             <TouchableOpacity
                                 style={[styles.action, styles.secondary]}
                                 accessibilityRole="button"

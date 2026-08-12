@@ -157,3 +157,44 @@ describe('RootNavigator', () => {
         expect(textOf(tree)).toContain('Connect your wallet');
     });
 });
+
+/**
+ * Every stack route has to be reachable from somewhere.
+ *
+ * `Marriage` was registered in the navigator, titled, typed and fully implemented, and
+ * for weeks nothing navigated to it. No other test could see that: the navigator mounts
+ * it happily, its own suite renders it directly, and a player simply had no way in.
+ *
+ * So this scans the source for a `navigate('Route')` on each one. Crude on purpose — a
+ * real navigation graph would need the app running — but it fails loudly the moment a
+ * screen is added without a door, which is the only failure mode that mattered here.
+ */
+describe('reachability', () => {
+    const fs = jest.requireActual('fs') as typeof import('fs');
+    const path = jest.requireActual('path') as typeof import('path');
+
+    const sourceText = (() => {
+        const root = path.join(__dirname, '..', 'src');
+        const files: string[] = [];
+        const walk = (dir: string) => {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const full = path.join(dir, entry.name);
+                if (entry.isDirectory()) walk(full);
+                else if (/\.tsx?$/.test(entry.name)) files.push(full);
+            }
+        };
+        walk(root);
+        return files.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
+    })();
+
+    // Plain substring rather than a regex: the three quote styles are the only shapes a
+    // navigate call takes here, and matching them literally keeps the check readable.
+    const reaches = (route: string) =>
+        ["navigate('", 'navigate("', 'navigate(`'].some((call) =>
+            sourceText.includes(`${call}${route}`),
+        );
+
+    it.each(Object.keys(STACK_TITLES))('has a way into %s', (route) => {
+        expect(reaches(route)).toBe(true);
+    });
+});
