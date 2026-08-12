@@ -25,6 +25,9 @@ const pet = (over: Partial<Pet> = {}): Pet => ({
 });
 
 const mockState = {
+    /** A stored session key, or null when none has been approved. */
+    sessionKey: null as Record<string, unknown> | null,
+    sessionSupported: true,
     /** What the consent read reports; `unknown` renders no card at all. */
     consent: { kind: 'unknown' } as Record<string, unknown>,
     pets: [pet(), pet({ id: '2', name: 'Momo' })] as Pet[],
@@ -34,6 +37,8 @@ const mockState = {
 };
 
 const mockRefreshConsent = jest.fn();
+const mockApproveSession = jest.fn(async () => ({ address: '0xkey' }));
+const mockRevokeSession = jest.fn(async () => undefined);
 const mockGrant = jest.fn(async () => '0xhash');
 const mockRevoke = jest.fn(async () => true);
 
@@ -49,6 +54,16 @@ jest.mock('../src/components/SessionGate', () => {
 });
 
 jest.mock('@shared/core', () => ({
+    /** Delegated battle signing: a separate signature from the consent grant. */
+    useBattleSession: () => ({
+        key: mockState.sessionKey,
+        supported: mockState.sessionSupported,
+        isPending: false,
+        error: null,
+        approve: mockApproveSession,
+        revoke: mockRevokeSession,
+        discardLocalKey: jest.fn(),
+    }),
     useDefenseAuthorizations: () => ({
         status: mockState.consent,
         isLoading: false,
@@ -102,6 +117,17 @@ const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
  * secondary — so the two buttons are always the last two touchables, whatever the
  * checkbox rows above them look like.
  */
+/** Every touchable's accessibility label, for asserting which controls are offered. */
+const labelsOf = (tree: ReactTestRenderer.ReactTestRenderer): unknown[] =>
+    tree.root.findAllByType(TouchableOpacity).map((n) => n.props.accessibilityLabel);
+
+const pressLabel = async (tree: ReactTestRenderer.ReactTestRenderer, label: string) => {
+    const node = tree.root
+        .findAllByType(TouchableOpacity)
+        .find((n) => n.props.accessibilityLabel === label);
+    await ReactTestRenderer.act(async () => node!.props.onPress());
+};
+
 const press = async (tree: ReactTestRenderer.ReactTestRenderer, index: number) => {
     await ReactTestRenderer.act(async () => {
         tree.root.findAllByType(TouchableOpacity)[index].props.onPress();
@@ -123,6 +149,8 @@ const pressWithdraw = async (tree: ReactTestRenderer.ReactTestRenderer) => {
 };
 
 beforeEach(() => {
+    mockState.sessionKey = null;
+    mockState.sessionSupported = true;
     mockState.consent = { kind: 'unknown' };
     mockState.pets = [pet(), pet({ id: '2', name: 'Momo' })];
     mockState.isConnected = true;
@@ -250,5 +278,49 @@ describe('consent status', () => {
         const tree = await render();
         await pressAllow(tree);
         expect(mockRefreshConsent).toHaveBeenCalled();
+    });
+});
+
+/**
+ * Delegated battle signing, and the reason it sits on this screen without being the same
+ * thing as the consent above it.
+ *
+ * Consent lets *other* players challenge you. A session lets *you* start battles without
+ * a wallet prompt each time. Both are wallet signatures; only this one replaces future
+ * ones, and confusing them would have a player approve the wrong thing.
+ */
+describe('battle session', () => {
+    it('offers to approve one when none is held', async () => {
+        const tree = await render();
+        expect(textOf(tree)).toContain('stop confirming every fight');
+        expect(labelsOf(tree)).toContain('Approve battle session');
+    });
+
+    it('approves on tap and says how long it lasts', async () => {
+        const tree = await render();
+        await pressLabel(tree, 'Approve battle session');
+        expect(mockApproveSession).toHaveBeenCalled();
+        expect(textOf(tree)).toContain('next 24 hours');
+    });
+
+    it('offers to end an existing one instead of approving a second', async () => {
+        mockState.sessionKey = { address: '0xkey' };
+        const tree = await render();
+
+        expect(textOf(tree)).toContain('no wallet prompt each time');
+        expect(labelsOf(tree)).toContain('End battle session');
+        expect(labelsOf(tree)).not.toContain('Approve battle session');
+
+        await pressLabel(tree, 'End battle session');
+        expect(mockRevokeSession).toHaveBeenCalled();
+    });
+
+    it('renders nothing on a chain that cannot delegate', async () => {
+        // Solana has no session support here, and an approve button that cannot work is
+        // worse than no button: it invites a signature that buys nothing.
+        mockState.sessionSupported = false;
+        const tree = await render();
+        expect(textOf(tree)).not.toContain('battle session');
+        expect(labelsOf(tree)).not.toContain('Approve battle session');
     });
 });

@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import {
+    useBattleSession,
     useChainCapabilities,
     useDefenseAuthorization,
     useDefenseAuthorizations,
@@ -41,6 +42,7 @@ export default function DefenseScreen() {
     const notifyError = useNotifyError();
     const { grant, revoke, isPending, error } = useDefenseAuthorization();
     const { status, refresh } = useDefenseAuthorizations();
+    const session = useBattleSession();
 
     const [allPets, setAllPets] = useState(true);
     const [selected, setSelected] = useState<string[]>([]);
@@ -149,6 +151,60 @@ export default function DefenseScreen() {
                 Valid 30 days, up to 50 battles per day. You can withdraw at any time, and a rules
                 change ends it automatically.
             </Text>
+
+            {/*
+             * Delegated battle signing (§D), and easy to confuse with the consent above:
+             * that one lets *others* challenge you, this one lets you start battles
+             * without a wallet prompt each time. Both are wallet signatures; only this
+             * one replaces future ones.
+             *
+             * The key is generated on the device and never sent anywhere, so the operator
+             * cannot sign in your name — the wallet signature above only says the key may
+             * act for you, and for how long.
+             */}
+            {session.supported ? (
+                <View style={styles.session}>
+                    <Text style={styles.sessionLabel}>
+                        {session.key
+                            ? 'Battles are signed on this device, so no wallet prompt each time.'
+                            : 'Approve a battle session to stop confirming every fight in your wallet.'}
+                    </Text>
+                    <TouchableOpacity
+                        style={[
+                            styles.sessionBtn,
+                            session.key ? styles.sessionEnd : null,
+                            (session.isPending || !isConnected) && styles.sessionOff,
+                        ]}
+                        disabled={session.isPending || !isConnected}
+                        onPress={() => {
+                            setSuccess(null);
+                            if (session.key) {
+                                session.revoke();
+                                return;
+                            }
+                            session.approve().then((key) => {
+                                if (key) setSuccess('Battle session approved for the next 24 hours.');
+                            });
+                        }}
+                        accessibilityRole="button"
+                        accessibilityLabel={session.key ? 'End battle session' : 'Approve battle session'}
+                        activeOpacity={0.85}
+                    >
+                        <Text
+                            style={[
+                                styles.sessionBtnText,
+                                session.key ? styles.sessionEndText : null,
+                            ]}
+                        >
+                            {session.isPending
+                                ? 'Signing…'
+                                : session.key
+                                  ? 'End session'
+                                  : 'Approve session'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            ) : null}
         </ActionScreenLayout>
         </SessionGate>
     );
@@ -249,6 +305,31 @@ const styles = StyleSheet.create({
         color: neon.textMuted,
         paddingVertical: 12,
     },
+    session: {
+        marginTop: 18,
+        borderTopWidth: 1,
+        borderTopColor: neon.border,
+        paddingTop: 16,
+    },
+    sessionLabel: {
+        fontSize: 13,
+        color: neon.textMuted,
+        lineHeight: 19,
+        marginBottom: 10,
+    },
+    sessionBtn: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 18,
+        paddingVertical: 10,
+        borderRadius: 10,
+        backgroundColor: neon.bgCard,
+        borderWidth: 1,
+        borderColor: neon.cyan,
+    },
+    sessionBtnText: { color: neon.cyan, fontSize: 14, fontWeight: '800' },
+    sessionEnd: { borderColor: neon.magenta },
+    sessionEndText: { color: neon.magenta },
+    sessionOff: { opacity: 0.5 },
     terms: {
         marginTop: 16,
         fontSize: 13,
