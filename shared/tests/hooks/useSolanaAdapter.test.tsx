@@ -99,6 +99,16 @@ describe('SOLANA_CAPABILITIES', () => {
         expect(typeof parsed.message).toBe('string');
     });
 
+    // `level_up` transfers GlobalState.level_up_fee_lamports and never reads pet.level.
+    // EVM's PetCore scales the same action quadratically, and the panel used to apply that
+    // curve on both chains.
+    it('charges the level-up fee flat, at every level', () => {
+        const base = 10_000_000n;
+        for (const level of [1, 2, 5, 50, 100]) {
+            expect(SOLANA_CAPABILITIES.levelUpFeeFor(base, level)).toBe(base);
+        }
+    });
+
     it('flags a wallet rejection', () => {
         expect(SOLANA_CAPABILITIES.parseError(new Error('User rejected'), 'f').isUserRejection).toBe(true);
     });

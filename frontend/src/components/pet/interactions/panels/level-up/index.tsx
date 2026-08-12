@@ -27,7 +27,7 @@ export type LevelUpPanelProps = {
 };
 
 const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) => {
-    const { levelUpFee, isConnected } = useChainCapabilities();
+    const { levelUpFee, levelUpFeeFor, isConnected } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
 
@@ -58,13 +58,13 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
     const selectedLevel = selectedPetObj?.level;
     const selectedXp = selectedPetObj ? getXpNumbers(selectedPetObj) : null;
 
-    // Level-up fee is level-scaled: baseFee × (100 + (level-1)²) / 100.
+    // The curve is the chain's, not this panel's: EVM scales quadratically with level and
+    // Solana charges a flat fee. Hardcoding the EVM formula here quoted a Solana player a
+    // number their wallet was never going to be debited.
     const levelUpCost = useMemo(() => {
         if (selectedLevel == null || fees.levelUpFee == null) return null;
-        const diff = BigInt(Math.max(selectedLevel - 1, 0));
-        const multiplier = 100n + diff * diff;
-        return fees.formatAmount((fees.levelUpFee * multiplier) / 100n);
-    }, [fees, selectedLevel]);
+        return fees.formatAmount(levelUpFeeFor(fees.levelUpFee, selectedLevel));
+    }, [fees, levelUpFeeFor, selectedLevel]);
 
     useTxErrorToast(hookError);
 
@@ -88,12 +88,21 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
         }
     };
 
+    // "from" only means something where the price climbs. On a flat-fee chain the base fee
+    // is the whole price, and hedging it reads as a quote the player cannot pin down.
+    //
+    // Probed at level 11 rather than 2 because EVM's curve is integer division: at level 2
+    // the multiplier is 101/100, which floors back to the base fee for any base under 100
+    // wei and would report a rising fee as flat.
+    const feeRisesWithLevel =
+        fees.levelUpFee != null && levelUpFeeFor(fees.levelUpFee, 11) > fees.levelUpFee;
+
     const buttonLabel = isPending
         ? 'Leveling Up...'
         : levelUpCost
         ? `Level Up (${levelUpCost})`
         : levelUpFee
-        ? `Level Up (from ${levelUpFee.amount} ${levelUpFee.symbol})`
+        ? `Level Up (${feeRisesWithLevel ? 'from ' : ''}${levelUpFee.amount} ${levelUpFee.symbol})`
         : 'Level Up';
 
     return (
@@ -104,7 +113,9 @@ const LevelUpPanel: React.FC<LevelUpPanelProps> = ({ isStandaloneView = true }) 
                         <h4>⬆️ Level Up Pet</h4>
                         <p>
                             {levelUpFee
-                                ? `Pay from ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet — cost rises with level`
+                                ? feeRisesWithLevel
+                                    ? `Pay from ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet — cost rises with level`
+                                    : `Pay ${levelUpFee.amount} ${levelUpFee.symbol} to level up your pet`
                                 : 'Pay a small SOL fee to level up your pet'}
                         </p>
                     </>

@@ -101,6 +101,22 @@ describe('EVM_CAPABILITIES', () => {
     it('parses contract errors', () => {
         expect(EVM_CAPABILITIES.parseError(new Error('User rejected'), 'fb').isUserRejection).toBe(true);
     });
+
+    // PetCore.levelUp: baseFee × (100 + (level-1)²) / 100. The level-up panel quotes this
+    // and useEvmAdapter sends it as the transaction's `value`, so the two cannot disagree.
+    it('scales the level-up fee quadratically, matching PetCore', () => {
+        const base = 1_000_000n;
+        expect(EVM_CAPABILITIES.levelUpFeeFor(base, 1)).toBe(base);
+        expect(EVM_CAPABILITIES.levelUpFeeFor(base, 2)).toBe((base * 101n) / 100n);
+        expect(EVM_CAPABILITIES.levelUpFeeFor(base, 5)).toBe((base * 116n) / 100n);
+        expect(EVM_CAPABILITIES.levelUpFeeFor(base, 11)).toBe(base * 2n);
+    });
+
+    // A level below 1 is not reachable on chain, but the panel reads it off a pet whose
+    // level can be absent; clamping keeps that from producing a negative exponent.
+    it('clamps below level 1 rather than going negative', () => {
+        expect(EVM_CAPABILITIES.levelUpFeeFor(1_000n, 0)).toBe(1_000n);
+    });
 });
 
 describe('useEvmAdapter', () => {

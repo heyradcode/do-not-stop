@@ -9,6 +9,7 @@ const NULL_CAPABILITIES: ChainCapabilities = {
     chainLabel: '',
     address: { label: 'Address', placeholder: '', isValid: () => false },
     levelUpFee: null,
+    levelUpFeeFor: (baseFee) => baseFee,
     renameMinLevel: 1,
     randomness: { provider: null, appliesTo: [] },
     explorerTxUrl: () => null,

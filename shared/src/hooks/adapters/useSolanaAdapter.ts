@@ -18,6 +18,9 @@ export const SOLANA_CAPABILITIES: ChainCapabilities = {
         isValid: (v) => { try { new PublicKey(v); return true; } catch { return false; } },
     },
     levelUpFee: null,
+    // `level_up` transfers GlobalState.level_up_fee_lamports and never reads the pet's
+    // level, so the fee is flat here. Deliberately unlike EVM's quadratic curve.
+    levelUpFeeFor: (baseFee) => baseFee,
     renameMinLevel: 1,
     randomness: { provider: 'switchboard', appliesTo: ['breed'] },
     explorerTxUrl: () => null,
@@ -201,7 +204,7 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         levelUpPet,
         trainPet,
         renamePet,
-        transferPet,
+        transferPet,
         breedPets,
     };
 };

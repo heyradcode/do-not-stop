@@ -6,6 +6,7 @@ const NONE_CAPABILITIES: ChainCapabilities = {
     chainLabel: '',
     address: { label: 'Recipient Address:', placeholder: '', isValid: () => false },
     levelUpFee: null,
+    levelUpFeeFor: (baseFee) => baseFee,
     renameMinLevel: 1,
     randomness: { provider: null, appliesTo: [] },
     explorerTxUrl: () => null,
@@ -30,6 +31,6 @@ export const noneAdapter: ChainAdapter = {
     levelUpPet:  disconnectedMutation('levelUp'),
     trainPet:    disconnectedMutation('train'),
     renamePet:   disconnectedMutation('rename'),
-    transferPet: disconnectedMutation('transfer'),
+    transferPet: disconnectedMutation('transfer'),
     breedPets:   disconnectedMutation('breed'),
 };

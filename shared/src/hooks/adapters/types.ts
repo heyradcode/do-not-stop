@@ -30,6 +30,19 @@ export interface ChainCapabilities {
     };
     /** null when the action is free on this chain. */
     levelUpFee: { amount: string; symbol: string } | null;
+    /**
+     * What levelling a pet at `level` actually costs, given the chain's base fee.
+     *
+     * The two chains disagree, which is why this is a capability rather than one formula
+     * in the panel. EVM's `PetCore.levelUp` scales quadratically,
+     * `baseFee × (100 + (level-1)²) / 100`; Solana's `level_up` transfers
+     * `GlobalState.level_up_fee_lamports` flat and never looks at the level. Applying the
+     * EVM curve on Solana quotes a level-10 pet 81% above what its wallet is debited.
+     *
+     * The EVM write path computes its `value` through this too, so the number shown and
+     * the number sent cannot drift apart.
+     */
+    levelUpFeeFor(baseFee: bigint, level: number): bigint;
     /** Minimum pet level before rename is allowed. */
     renameMinLevel: number;
     randomness: {

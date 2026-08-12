@@ -18,6 +18,11 @@ export const EVM_CAPABILITIES: ChainCapabilities = {
         isValid: (v) => isAddress(v),
     },
     levelUpFee: { amount: '0.004', symbol: 'ETH' },
+    // PetCore.levelUp: baseFee × (100 + (level-1)²) / 100.
+    levelUpFeeFor: (baseFee, level) => {
+        const diff = BigInt(Math.max(level - 1, 0));
+        return (baseFee * (100n + diff * diff)) / 100n;
+    },
     renameMinLevel: 2,
     randomness: { provider: 'chainlink', appliesTo: ['breed'] },
     explorerTxUrl: () => null,
@@ -111,15 +116,14 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
         isPending: isInFlight(createW, createR),
     };
 
-    // PetCore: levelUp pays a level-scaled fee, capped at maxLevel.
-    // fee = levelUpFee × (100 + (level-1)²) / 100 (matches the contract).
+    // PetCore: levelUp pays a level-scaled fee, capped at maxLevel. The curve lives on the
+    // capability so the panel quotes the same number this sends.
     const levelUpPet: AdapterMutation<{ petId: string }> = {
         async mutateAsync({ petId }) {
             if (!canWrite) throw new Error('EVM contract not configured');
             if (fees.levelUpFee == null) throw new Error('Level-up fee not loaded yet');
             const level = evmPets.find((p) => p.id === petId)?.level ?? 1;
-            const diff = BigInt(Math.max(level - 1, 0));
-            const value = (fees.levelUpFee * (100n + diff * diff)) / 100n;
+            const value = EVM_CAPABILITIES.levelUpFeeFor(fees.levelUpFee, level);
             await levelUpW.writeContractAsync({
                 address: petCore, abi: petCoreAbi, functionName: 'levelUp',
                 args: [BigInt(petId)], value, gas: EVM_GAS_LIMITS.levelUp,
@@ -204,7 +208,7 @@ export const useEvmAdapter = ({ enabled }: { enabled: boolean }): ChainAdapter =
         levelUpPet,
         trainPet,
         renamePet,
-        transferPet,
+        transferPet,
         breedPets,
     };
 };
