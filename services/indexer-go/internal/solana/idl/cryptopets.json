@@ -20,6 +20,58 @@
         141,
         184
       ]
+    },
+    {
+      "name": "ItemBalance",
+      "discriminator": [
+        99,
+        197,
+        231,
+        109,
+        247,
+        225,
+        4,
+        211
+      ]
+    },
+    {
+      "name": "ItemSlot",
+      "discriminator": [
+        159,
+        194,
+        100,
+        50,
+        163,
+        56,
+        118,
+        228
+      ]
+    },
+    {
+      "name": "PetEquipment",
+      "discriminator": [
+        74,
+        180,
+        25,
+        81,
+        225,
+        187,
+        177,
+        252
+      ]
+    },
+    {
+      "name": "AuthorizedCaller",
+      "discriminator": [
+        73,
+        200,
+        196,
+        188,
+        55,
+        245,
+        114,
+        142
+      ]
     }
   ],
   "types": [
@@ -145,6 +197,107 @@
                 8
               ]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemBalance",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "itemType",
+            "type": "u64"
+          },
+          {
+            "name": "quantity",
+            "type": "u64"
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ItemSlot",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "itemType",
+            "type": "u64"
+          },
+          {
+            "name": "slotPlusOne",
+            "type": "u8"
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PetEquipment",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset",
+            "type": "pubkey"
+          },
+          {
+            "name": "slots",
+            "type": {
+              "array": [
+                "u64",
+                3
+              ]
+            }
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AuthorizedCaller",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }

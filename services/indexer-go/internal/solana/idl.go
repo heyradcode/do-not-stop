@@ -205,5 +205,24 @@ func readValue(buf []byte, offset int, t idlType) (any, int, error) {
 		return bytes.Clone(buf[offset : offset+size]), size, nil
 	}
 
+	if t.Array != nil {
+		// Any other fixed array, element by element. Borsh writes these packed with no
+		// length prefix, so PetEquipment's [u64; 3] is three consecutive u64s — which is
+		// exactly why this must not be modelled as three named fields instead. It would
+		// decode identically today and then read as drift against the IDL `anchor build`
+		// generates, which is the one diff nobody can afford to start ignoring.
+		values := make([]any, 0, t.Array.Len)
+		cursor := offset
+		for i := 0; i < t.Array.Len; i++ {
+			value, used, err := readValue(buf, cursor, t.Array.Elem)
+			if err != nil {
+				return nil, 0, fmt.Errorf("element %d: %w", i, err)
+			}
+			values = append(values, value)
+			cursor += used
+		}
+		return values, size, nil
+	}
+
 	return nil, 0, fmt.Errorf("unsupported IDL type at decode")
 }

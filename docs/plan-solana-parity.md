@@ -679,6 +679,29 @@ error code.
 
 # Phase 7: indexer projections for Solana items
 
+**Decode layer built and verified; the live loop is not yet wired.** `internal/solana/`
+decodes `ItemBalance` and `PetEquipment` into `ItemUpdate` / `EquipmentUpdate`, with the IDL
+extended and tests passing under a real Go toolchain (`go build`, `go vet`, `go test ./...`).
+What remains is emitting them: `handleProgramNotification` still only decodes `PetAccount`,
+and the adapter does not implement `InventoryIndexer`, so `item_roster` and `pet_equipment`
+stay empty on Solana.
+
+**That last step has a real design choice in it.** Solana has one `programSubscribe` covering
+every account type the program owns, but `ChainIndexer.Run` receives only the roster channel
+and `InventoryIndexer.RunInventory` is a separate loop. So either the adapter opens a **second
+subscription** to the same program (simple, matches the interface, doubles the connection), or
+the single session **fans out** into whichever channels are currently set (one connection, but
+needs the two loops to coordinate). The EVM adapter never faced this because its two loops are
+independent HTTP queries.
+
+Two notes on what "watermark" means here, since 7.1 below is written for the EVM shape:
+
+- Solana has **no separate item watermark** and needs none. There is no incremental query to
+  filter, so version is the slot an account was seen at, and the store's existing monotonic
+  `last_version` guard does the whole job.
+- `pet_equipment.pet_id` holds the **Core asset pubkey** on Solana, matching what `PetAccount`
+  is seeded by and what the roster records as `Asset`.
+
 ### 7.1 Solana inventory adapter
 
 `services/indexer-go/internal/evm/inventory.go` has no Solana counterpart. Add one under
