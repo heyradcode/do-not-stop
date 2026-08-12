@@ -38,6 +38,8 @@ const mockState = {
     opponents: [foe()] as OpponentPet[],
     opponentsLoading: false,
     opponentsError: null as Error | null,
+    /** Which filter emptied the opponent list; the server names it. */
+    emptyReason: null as string | null,
     isConnected: true,
     winProbability: 0.62 as number | null,
     turns: [] as { text: string }[],
@@ -99,8 +101,15 @@ jest.mock('@shared/core', () => ({
         isLoading: mockState.opponentsLoading,
         error: mockState.opponentsError,
         total: mockState.opponents.length,
+        emptyReason: mockState.emptyReason,
         refetch: jest.fn(),
     }),
+    // The real wording, so a new reason cannot be added to the server without this
+    // screen learning to say it.
+    describeNoOpponents: (...args: unknown[]) =>
+        jest
+            .requireActual('../../shared/src/hooks/battle/useOpponents')
+            .describeNoOpponents(...args),
     useWinEstimate: (...args: unknown[]) => {
         mockWinEstimateArgs(...args);
         return { winProbability: mockState.winProbability, samples: 100, isLoading: false };
@@ -159,13 +168,30 @@ jest.mock('@react-navigation/native', () => ({
 
 import BattleScreen from '../src/screens/BattleScreen';
 
+/**
+ * Every tree rendered by a test, so `afterEach` can unmount them.
+ *
+ * Without this a finished test's component stays mounted and its replay timer keeps
+ * firing into the next one, re-rendering a dead tree *after* `jest.clearAllMocks()` has
+ * run. The symptom is a test that passes alone and fails in the file, because the last
+ * recorded call belongs to the previous test's component rather than this one's.
+ */
+const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
+
 const render = async () => {
     let tree!: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(() => {
         tree = ReactTestRenderer.create(<BattleScreen />);
     });
+    mounted.push(tree);
     return tree;
 };
+
+afterEach(async () => {
+    await ReactTestRenderer.act(async () => {
+        for (const tree of mounted.splice(0)) tree.unmount();
+    });
+});
 
 const textOfNode = (node: ReactTestRenderer.ReactTestInstance): string =>
     node
@@ -197,6 +223,7 @@ beforeEach(() => {
     mockState.opponents = [foe()];
     mockState.opponentsLoading = false;
     mockState.opponentsError = null;
+    mockState.emptyReason = null;
     mockState.isConnected = true;
     mockState.winProbability = 0.62;
     mockState.turns = [];
@@ -494,5 +521,50 @@ describe('result dialogue', () => {
 
         expect(textOf(tree)).toContain('Rex');
         expect(textOf(tree)).not.toContain('Your pet strikes');
+    });
+});
+
+/**
+ * Why the opponent list is empty.
+ *
+ * Four very different situations render as the same blank picker, and only some are the
+ * player's to act on. The server names which filter emptied it precisely so the client
+ * does not have to guess, and mobile discarded that until now — a roster nobody had
+ * indexed and a rival who had simply not allowed challenges both read as
+ * "No opponents available right now."
+ */
+describe('empty opponent list', () => {
+    beforeEach(() => {
+        mockState.opponents = [];
+    });
+
+    it('says an unindexed roster is not the player’s to fix', async () => {
+        mockState.emptyReason = 'roster-empty';
+        const tree = await render();
+        expect(textOf(tree)).toContain('server-side gap');
+    });
+
+    it('points at the other player when nobody has allowed challenges', async () => {
+        mockState.emptyReason = 'no-consent';
+        const tree = await render();
+        expect(textOf(tree)).toContain('Allow Challenges');
+    });
+
+    it('distinguishes consent signed under older rules from none at all', async () => {
+        mockState.emptyReason = 'consent-stale';
+        const tree = await render();
+        expect(textOf(tree)).toContain('older set of battle rules');
+    });
+
+    it('tells a player on cooldown to come back, not that the game is empty', async () => {
+        mockState.emptyReason = 'all-on-cooldown';
+        const tree = await render();
+        expect(textOf(tree)).toContain('Try again shortly');
+    });
+
+    it('falls back to a plain line when the server names no reason', async () => {
+        mockState.emptyReason = null;
+        const tree = await render();
+        expect(textOf(tree)).toContain('No opponents available');
     });
 });

@@ -80,7 +80,11 @@ export default function BattleScreen() {
                     Could not load opponents: {panel.opponentsError.message}
                 </Text>
             ) : panel.opponents.length === 0 ? (
-                <Text style={styles.hint}>No opponents available right now.</Text>
+                // The server says which filter emptied the list. "No opponents available"
+                // reads as the app being broken when the real answer is often that nobody
+                // has allowed challenges yet, which is another player's to fix, or that
+                // nothing has been indexed, which is not the player's at all.
+                <Text style={styles.hint}>{panel.opponentsEmptyMessage}</Text>
             ) : (
                 panel.opponents.slice(0, 20).map((o) => {
                     const delta = getLevelDelta(panel.fighter?.level ?? null, o.level);
@@ -225,7 +229,7 @@ export default function BattleScreen() {
                                     </View>
                                 ) : panel.dialogueLoading ? (
                                     <Text style={styles.dialogueWaiting}>
-                                        The pets are catching their breath…
+                                        The pets are catching their breathâ€¦
                                     </Text>
                                 ) : null}
                             </>

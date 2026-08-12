@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     describeMechanicalLogEntry,
+    describeNoOpponents,
     getReadyPetsUnified,
     useBattlePets,
     useBattleTaunts,
@@ -40,6 +41,16 @@ export interface UseBattlePanel {
     opponents: OpponentPet[];
     opponentsLoading: boolean;
     opponentsError: Error | null;
+    /**
+     * Why the list is empty, in words, or null when it is not.
+     *
+     * The server names which filter emptied it, because four very different situations
+     * render as the same blank picker and only some are the player's to act on: nothing
+     * indexed yet is ours, nobody having allowed challenges is another player's, and a
+     * cooldown is nobody's. "No opponents available" tells the one person who could act
+     * the one thing that does not help.
+     */
+    opponentsEmptyMessage: string | null;
     selectedOpponentId: string;
     onSelectOpponent: (id: string) => void;
     opponent: OpponentPet | null;
@@ -124,7 +135,7 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
      * Not a convenience. Publishing a receipt puts the fighter on cooldown, which drops
      * it out of `readyPets`, so `fighter` is null by the time a result is on screen and
      * `opponent` can leave the matchmaking list the same way. Everything that names the
-     * two afterwards — the strike log, the result dialogue — reads through here instead,
+     * two afterwards â€” the strike log, the result dialogue â€” reads through here instead,
      * or a finished battle narrates itself as "Your pet" against "The opponent".
      */
     const personasRef = useRef<BattlePersonas | null>(null);
@@ -136,6 +147,7 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         opponents: rawOpponents,
         isLoading: opponentsLoading,
         error: opponentsError,
+        emptyReason,
     } = useOpponents({ chain: capabilities.activeKind, enabled: capabilities.isConnected });
 
     const opponents = useMemo(
@@ -281,6 +293,10 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         opponents,
         opponentsLoading,
         opponentsError,
+        opponentsEmptyMessage:
+            rawOpponents.length === 0 && !opponentsLoading && !opponentsError
+                ? describeNoOpponents(emptyReason ?? null)
+                : null,
         selectedOpponentId,
         onSelectOpponent: setSelectedOpponentId,
         opponent,
