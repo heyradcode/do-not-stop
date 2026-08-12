@@ -46,13 +46,27 @@ export interface ChainCapabilities {
     /** Minimum pet level before rename is allowed. */
     renameMinLevel: number;
     randomness: {
-        /** null when no chain is active (disconnected). */
-        provider: 'chainlink' | 'switchboard' | null;
         /**
-         * Which flows still draw randomness from the chain. Battles never do: they are
-         * seeded from a committed drand round by the backend (§E), on either chain.
+         * Which oracle the active chain draws on-chain randomness from.
+         *
+         * `pyth-entropy` on EVM, not Chainlink: the VRF migration removed that dependency
+         * entirely and there is no `randMod` or Chainlink import left in
+         * `contracts/ethereum/src`. The label said `chainlink` for a long time and nothing
+         * caught it, because the only reader compares against `switchboard` — so it was a
+         * false statement that happened to behave, and the next person to write
+         * `provider === 'chainlink'` meaning "EVM" would have got a lie that works.
+         *
+         * null when no chain is active (disconnected).
          */
-        appliesTo: 'breed'[];
+        provider: 'pyth-entropy' | 'switchboard' | null;
+        /**
+         * Which flows still draw randomness from the chain.
+         *
+         * Both remaining async flows, on both chains: breed and the gacha mint. Battles are
+         * not among them — they are seeded from a committed drand round by the backend (§E),
+         * on either chain, which is what retired the per-battle on-chain path.
+         */
+        appliesTo: ('breed' | 'mint')[];
     };
     explorerTxUrl(hash: string): string | null;
     parseError(error: unknown, fallback: string): { message: string; isUserRejection: boolean; isContractError: boolean };

@@ -22,7 +22,8 @@ export const SOLANA_CAPABILITIES: ChainCapabilities = {
     // level, so the fee is flat here. Deliberately unlike EVM's quadratic curve.
     levelUpFeeFor: (baseFee) => baseFee,
     renameMinLevel: 1,
-    randomness: { provider: 'switchboard', appliesTo: ['breed'] },
+    // Switchboard On-Demand, for `commit_breed` and `commit_mint` alike.
+    randomness: { provider: 'switchboard', appliesTo: ['breed', 'mint'] },
     explorerTxUrl: () => null,
     parseError: (err, fallback) => {
         const message = formatSolanaActionError(err, fallback);

@@ -98,6 +98,17 @@ describe('EVM_CAPABILITIES', () => {
         expect(EVM_CAPABILITIES.address.isValid('not-an-address')).toBe(false);
     });
 
+    // Said `chainlink` long after the Pyth Entropy migration removed that dependency. The
+    // only reader compares against `switchboard`, so the wrong label behaved correctly and
+    // nothing caught it — until someone wrote `=== 'chainlink'` to mean "EVM".
+    it('names Pyth Entropy, the oracle EVM actually uses', () => {
+        expect(EVM_CAPABILITIES.randomness.provider).toBe('pyth-entropy');
+    });
+
+    it('covers breed and mint, the two flows still drawing from the chain', () => {
+        expect([...EVM_CAPABILITIES.randomness.appliesTo].sort()).toEqual(['breed', 'mint']);
+    });
+
     it('parses contract errors', () => {
         expect(EVM_CAPABILITIES.parseError(new Error('User rejected'), 'fb').isUserRejection).toBe(true);
     });

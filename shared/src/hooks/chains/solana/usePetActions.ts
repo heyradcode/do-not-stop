@@ -177,7 +177,8 @@ export const usePetActions = () => {
     });
 
     /**
-     * Breed via Switchboard On-Demand VRF (commit + reveal), matching the EVM Chainlink flow.
+     * Breed via Switchboard On-Demand VRF (commit + reveal), matching the EVM Pyth Entropy
+     * flow. Chainlink was the v1 scheme and has been gone since the entropy migration.
      * For cross-owner breeding, pass `parent2AssetKey` and `parent2Owner`; for same-wallet
      * breeding both can be omitted (parent2AssetKey is looked up on-chain).
      */

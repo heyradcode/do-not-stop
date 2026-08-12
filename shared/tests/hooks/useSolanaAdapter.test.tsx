@@ -273,3 +273,27 @@ describe('when the program itself is the problem', () => {
         expect(result.current.pets.error?.message).toBe('rpc timeout');
     });
 });
+
+/**
+ * The randomness capability is read — `useBreedPanel` branches on
+ * `provider === 'switchboard'` — so a wrong label behaves correctly only for as long as
+ * nobody tests for the other value. The EVM entry said `chainlink` long after the Pyth
+ * Entropy migration removed that dependency, and nothing noticed for exactly that reason.
+ */
+describe('the randomness capability describes the real oracle', () => {
+    it('names Switchboard on Solana', () => {
+        expect(SOLANA_CAPABILITIES.randomness.provider).toBe('switchboard');
+    });
+
+    // Both async flows, not just breed: commit_mint commits Switchboard randomness the same
+    // way commit_breed does.
+    it('covers breed and mint, the two flows still drawing from the chain', () => {
+        expect([...SOLANA_CAPABILITIES.randomness.appliesTo].sort()).toEqual(['breed', 'mint']);
+    });
+
+    // Battles are seeded from a committed drand round by the backend on both chains, which
+    // is what retired the on-chain per-battle path.
+    it('does not claim battles draw randomness from the chain', () => {
+        expect(SOLANA_CAPABILITIES.randomness.appliesTo).not.toContain('battle');
+    });
+});

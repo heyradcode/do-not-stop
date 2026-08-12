@@ -24,7 +24,8 @@ export const EVM_CAPABILITIES: ChainCapabilities = {
         return (baseFee * (100n + diff * diff)) / 100n;
     },
     renameMinLevel: 2,
-    randomness: { provider: 'chainlink', appliesTo: ['breed'] },
+    // Pyth Entropy v2, for `requestCreateFromDNA` and `requestMintStarter` alike.
+    randomness: { provider: 'pyth-entropy', appliesTo: ['breed', 'mint'] },
     explorerTxUrl: () => null,
     parseError: (err, _fallback) => parseContractError(err),
 };
