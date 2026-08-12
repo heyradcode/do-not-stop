@@ -93,6 +93,30 @@ export const MainTabs = () => (
 );
 
 /**
+ * Screens opened from the account sheet, which push without a transition.
+ *
+ * The sheet is a Modal — its own native window — and closing it fades over ~300ms. The
+ * default push slides in over ~350ms, so the two overlap and the screen you came from is
+ * visible through the fading sheet for most of that: the Gallery "blinks" on the way to
+ * the Leaderboard. Reordering the calls so the push starts first does not fix it, because
+ * both are still animating at once.
+ *
+ * With no push animation the destination is fully painted the instant `navigate` returns,
+ * so the sheet's own fade is the only transition and it reveals where you are going. The
+ * sheet still animates; the screen under it no longer needs to.
+ *
+ * `Rename` and `Equip` are absent deliberately: they are reached by tapping a pet card,
+ * with no modal involved, where the slide reads as moving deeper into that pet.
+ */
+const FROM_ACCOUNT_SHEET = new Set<keyof typeof STACK_SCREENS>([
+    'Defense',
+    'Marriage',
+    'Leaderboard',
+    'Chat',
+    'Inventory',
+]);
+
+/**
  * Landing sits outside the tab shell so the connect screen has no tab bar and no
  * header.
  *
@@ -134,7 +158,10 @@ export const RootNavigator = () => {
                             key={name}
                             name={name}
                             component={STACK_SCREENS[name]}
-                            options={{ title: STACK_TITLES[name] }}
+                            options={{
+                                title: STACK_TITLES[name],
+                                ...(FROM_ACCOUNT_SHEET.has(name) ? { animation: 'none' as const } : {}),
+                            }}
                         />
                     ))}
                 </>

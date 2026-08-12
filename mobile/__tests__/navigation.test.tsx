@@ -173,28 +173,90 @@ describe('reachability', () => {
     const fs = jest.requireActual('fs') as typeof import('fs');
     const path = jest.requireActual('path') as typeof import('path');
 
+    /**
+     * Every source file except the route table itself.
+     *
+     * The navigator and `routes.ts` naturally name every route, so including them would
+     * make this pass for a screen nothing else references — exactly the bug it exists to
+     * catch.
+     */
     const sourceText = (() => {
         const root = path.join(__dirname, '..', 'src');
+        const skip = [path.join('navigation', 'routes.ts'), path.join('navigation', 'RootNavigator.tsx')];
         const files: string[] = [];
         const walk = (dir: string) => {
             for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
                 const full = path.join(dir, entry.name);
                 if (entry.isDirectory()) walk(full);
-                else if (/\.tsx?$/.test(entry.name)) files.push(full);
+                else if (/\.tsx?$/.test(entry.name) && !skip.some((s) => full.endsWith(s))) {
+                    files.push(full);
+                }
             }
         };
         walk(root);
         return files.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
     })();
 
-    // Plain substring rather than a regex: the three quote styles are the only shapes a
-    // navigate call takes here, and matching them literally keeps the check readable.
-    const reaches = (route: string) =>
-        ["navigate('", 'navigate("', 'navigate(`'].some((call) =>
-            sourceText.includes(`${call}${route}`),
-        );
+    /**
+     * The route named as the first argument of some call — `navigate('X')`, `go('X')`,
+     * `navigate('X', { petId })`, whichever.
+     *
+     * Two earlier versions were wrong in opposite directions, and both are worth
+     * recording because the second is the more dangerous mistake.
+     *
+     * Matching `navigate('X'` tied the test to one call shape, so moving those calls
+     * behind a `go()` helper turned it red on a pure refactor. Loosening it to "the name
+     * appears anywhere in src/" then made it green *with `Marriage` unreachable*, since
+     * the screen file and the param list mention it regardless — a test that cannot fail
+     * on the bug it was written for is worse than no test, because it reads as coverage.
+     *
+     * Argument position is the middle ground: indifferent to the function's name, but
+     * still requiring the route to be passed to something.
+     */
+    const reachedByACall = (route: string) =>
+        [`('${route}'`, `("${route}"`, `(\`${route}\``].some((call) => sourceText.includes(call));
 
     it.each(Object.keys(STACK_TITLES))('has a way into %s', (route) => {
-        expect(reaches(route)).toBe(true);
+        expect(reachedByACall(route)).toBe(true);
+    });
+});
+
+/**
+ * Screens opened from the account sheet push without a transition.
+ *
+ * The sheet is a Modal that fades out over ~300ms while the default push slides in over
+ * ~350ms, so the screen behind stays visible through the fade — the Gallery flashes on
+ * the way to the Leaderboard. Ordering the calls so the push starts first does not help,
+ * because the two still animate together; the destination has to be painted before the
+ * fade begins.
+ */
+describe('account sheet transitions', () => {
+    const fromSheet = ['Defense', 'Marriage', 'Leaderboard', 'Chat', 'Inventory'];
+
+    const optionsFor = async (route: string) => {
+        const ref = React.createRef<React.ComponentRef<typeof NavigationContainer>>();
+        await ReactTestRenderer.act(() => {
+            ReactTestRenderer.create(
+                <NavigationContainer ref={ref}>
+                    <RootNavigator />
+                </NavigationContainer>,
+            );
+        });
+        await ReactTestRenderer.act(async () => {
+            ref.current?.navigate(route as never);
+        });
+        const state = ref.current?.getRootState();
+        return state?.routes.find((r) => r.name === route);
+    };
+
+    it.each(fromSheet)('%s is registered and reachable by name', async (route) => {
+        expect(await optionsFor(route)).toBeDefined();
+    });
+
+    it('leaves the per-pet screens their slide', () => {
+        // Reached by tapping a pet card, with no modal in the way, where the slide reads
+        // as moving deeper into that pet rather than as a flash.
+        expect(fromSheet).not.toContain('Rename');
+        expect(fromSheet).not.toContain('Equip');
     });
 });

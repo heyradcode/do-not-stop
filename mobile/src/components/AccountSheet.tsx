@@ -44,6 +44,23 @@ export default function AccountSheet() {
         useAuth();
     const [isOpen, setIsOpen] = useState(false);
 
+    /**
+     * Push a screen, then close the sheet — in that order.
+     *
+     * Closing first looked like a flicker of the Gallery: the sheet fades out over
+     * ~300ms, revealing whatever is behind it, and the navigation push only starts
+     * animating underneath at the same moment. The screen you came from is what shows
+     * through the gap.
+     *
+     * Navigating first puts the destination behind the sheet before the fade begins,
+     * so the fade reveals where you are going rather than where you were. The Modal is
+     * its own native window above the navigator, so the push is invisible until then.
+     */
+    const go = (route: keyof RootStackParamList) => {
+        navigation.navigate(route as never);
+        setIsOpen(false);
+    };
+
     const { width } = useWindowDimensions();
     const sheetWidth = Math.min(400, width - 40);
 
@@ -167,10 +184,7 @@ export default function AccountSheet() {
                                 style={[styles.action, styles.secondary]}
                                 accessibilityRole="button"
                                 accessibilityLabel="Allow Challenges"
-                                onPress={() => {
-                                    setIsOpen(false);
-                                    navigation.navigate('Defense');
-                                }}
+                                onPress={() => go('Defense')}
                             >
                                 <Text style={styles.secondaryText}>Allow Challenges</Text>
                             </TouchableOpacity>
@@ -179,10 +193,7 @@ export default function AccountSheet() {
                                 style={[styles.action, styles.secondary]}
                                 accessibilityRole="button"
                                 accessibilityLabel="Marriage"
-                                onPress={() => {
-                                    setIsOpen(false);
-                                    navigation.navigate('Marriage');
-                                }}
+                                onPress={() => go('Marriage')}
                             >
                                 <Text style={styles.secondaryText}>Marriage</Text>
                             </TouchableOpacity>
@@ -191,10 +202,7 @@ export default function AccountSheet() {
                                 style={[styles.action, styles.secondary]}
                                 accessibilityRole="button"
                                 accessibilityLabel="Leaderboard"
-                                onPress={() => {
-                                    setIsOpen(false);
-                                    navigation.navigate('Leaderboard');
-                                }}
+                                onPress={() => go('Leaderboard')}
                             >
                                 <Text style={styles.secondaryText}>Leaderboard</Text>
                             </TouchableOpacity>
@@ -203,10 +211,7 @@ export default function AccountSheet() {
                                 style={[styles.action, styles.secondary]}
                                 accessibilityRole="button"
                                 accessibilityLabel="Messages"
-                                onPress={() => {
-                                    setIsOpen(false);
-                                    navigation.navigate('Chat');
-                                }}
+                                onPress={() => go('Chat')}
                             >
                                 <Text style={styles.secondaryText}>Messages</Text>
                             </TouchableOpacity>
@@ -215,10 +220,7 @@ export default function AccountSheet() {
                                 style={[styles.action, styles.secondary]}
                                 accessibilityRole="button"
                                 accessibilityLabel="Inventory"
-                                onPress={() => {
-                                    setIsOpen(false);
-                                    navigation.navigate('Inventory');
-                                }}
+                                onPress={() => go('Inventory')}
                             >
                                 <Text style={styles.secondaryText}>Inventory</Text>
                             </TouchableOpacity>
