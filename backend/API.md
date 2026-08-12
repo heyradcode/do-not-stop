@@ -578,6 +578,13 @@ Read-only by design. Building a season and opening it on chain are operator acti
 real money attached; they belong behind an owner key and a deliberate command, not an HTTP
 route reachable by anything holding a token.
 
+That command is `backend/scripts/build-season.ts`. It defaults to a **dry run** and writes
+nothing without `--commit`, because a season cannot be edited once built — `buildSeason`
+refuses to overwrite one, matching `SeasonRewardDistributor.openSeason`'s own refusal, and a
+mistake is corrected by superseding the season with a new id rather than editing it. Pass
+`--decimals`: without it the season records none, and its amounts render in the token's
+smallest unit permanently.
+
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/rewards/seasons` | Every published season, newest first: id, chain, deployment, token, total and opened-at. Deliberately thin — a client cannot ask "what can I claim" without first knowing which seasons exist, and `getSeason` needs an id the caller already has. The root and the sequence range are **not** here: they belong to the single-season read, where the reproducibility contract lives, and two copies would give a client two answers to check against. |
