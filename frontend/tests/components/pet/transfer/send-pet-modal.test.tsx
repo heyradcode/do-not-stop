@@ -29,6 +29,9 @@ let capturedOnSuccess: (() => void) | undefined;
 const petList = { refetch: vi.fn() };
 
 vi.mock('@shared/core', () => ({
+    // On-curve check, stubbed by shape: the fixtures below choose addresses whose curve
+    // status is what the test is about, so a real ed25519 check is not needed here.
+    isSolanaWalletAddress: (a: string) => !a.startsWith('PDA'),
     // Shape-based account equality, mirroring the protocol's normalizeAccount: EVM
     // addresses fold case, base58 Solana pubkeys do not.
     sameAccount: (a: string, b: string) =>
@@ -218,5 +221,56 @@ describe('SendPetModal equipment warning', () => {
         await userEvent.type(screen.getByRole('textbox'), '0xrecipient');
         await userEvent.click(screen.getByRole('button', { name: 'Send Pet' }));
         expect(transferPet.mutate).toHaveBeenCalledWith({ to: '0xrecipient', petId: '7' });
+    });
+});
+
+/**
+ * Base58 carries no checksum, so a mistyped Solana address usually still parses as a pubkey
+ * and clears the format check. Roughly half of all 32-byte values are off the ed25519 curve,
+ * which makes the curve test the sharpest cheap check on a typo available.
+ *
+ * A caution rather than a block, and the tests pin that: off-curve means only a program can
+ * move what is sent there, not that it is lost, and a treasury or multisig PDA is a
+ * legitimate destination.
+ */
+describe('an off-curve recipient', () => {
+    beforeEach(() => {
+        capabilities.activeKind = 'solana';
+        capabilities.chainLabel = 'Solana';
+        capabilities.walletAddress = 'HN7cABqLq46Es1jh92dQQpjP4LxRo7vLYCsRoQ8HWzEA';
+    });
+
+    it('says nothing for an ordinary wallet address', async () => {
+        renderModal();
+        await userEvent.type(screen.getByRole('textbox'), '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM');
+
+        expect(screen.queryByText(/off the ed25519 curve/)).not.toBeInTheDocument();
+    });
+
+    it('warns when no wallet holds the key', async () => {
+        renderModal();
+        await userEvent.type(screen.getByRole('textbox'), 'PDAsomethingProgramDerived');
+
+        expect(screen.getByText(/off the ed25519 curve/)).toBeInTheDocument();
+    });
+
+    it('still lets the send through, since a program can own a pet', async () => {
+        renderModal();
+        await userEvent.type(screen.getByRole('textbox'), 'PDAsomethingProgramDerived');
+        await userEvent.click(screen.getByRole('button', { name: 'Send Pet' }));
+
+        expect(notifyError).not.toHaveBeenCalled();
+        expect(transferPet.mutate).toHaveBeenCalled();
+    });
+
+    // EVM has no curve concept, and blocking there would be nonsense.
+    it('says nothing on EVM', async () => {
+        capabilities.activeKind = 'evm';
+        capabilities.chainLabel = 'Ethereum';
+        capabilities.walletAddress = EVM_SELF;
+        renderModal();
+        await userEvent.type(screen.getByRole('textbox'), 'PDAlookalike');
+
+        expect(screen.queryByText(/off the ed25519 curve/)).not.toBeInTheDocument();
     });
 });

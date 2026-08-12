@@ -47,21 +47,22 @@ export type BattleOverlayProps = {
     onBack: () => void;
     fighterName: string;
     opponentName: string;
-    // Live-replay animation — null falls
-    // back to the static getLifePercent bars below (Solana, or an EVM deployment
-    // with no GameConfig wired up). Presentation only; never the source of the
-    // result banner, which always comes from battleOutcome (on-chain).
+    // Live-replay animation — null falls back to the static getLifePercent bars below,
+    // which happens until the signed receipt has been fetched and verified, and permanently
+    // if any check fails. Chain-independent: the replay is the client's own simulation of
+    // the verified receipt, and battles are backend-authoritative on both chains.
+    // Presentation only; never the source of the result banner, which comes from
+    // battleOutcome.
     liveHp1Percent?: number | null;
     liveHp2Percent?: number | null;
     liveFlourish?: string | null;
     /** Round-by-round mechanical log (the strike log, formatted) for the bottom
-     *  log panel. Null — not just empty — when there's
-     *  no live-replay feature this deployment (Solana, or an EVM deployment with no
-     *  GameConfig wired up), same fallback rule as liveHp1Percent/liveHp2Percent. */
+     *  log panel. Null — not just empty — when there is no verified replay to draw it
+     *  from, same fallback rule as liveHp1Percent/liveHp2Percent. */
     liveLog?: MechanicalLogLine[] | null;
     /** Whether there's a live-replay log to watch again (same fallback rule as
-     *  liveHp1Percent/liveHp2Percent — false on Solana or an EVM deployment with no
-     *  GameConfig wired up). Gates the "Watch Again" action on the result screen. */
+     *  liveHp1Percent/liveHp2Percent). Gates the "Watch Again" action on the result
+     *  screen. */
     canReplay: boolean;
     /** Restarts the fight animation from the first strike, then returns to the result
      *  screen automatically once it finishes again. */

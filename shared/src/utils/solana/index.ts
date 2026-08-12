@@ -1,5 +1,5 @@
 export { parseProgramId } from './programId';
-export { isValidSolanaAddress } from './isValidSolanaAddress';
+export { isSolanaWalletAddress } from './isSolanaWalletAddress';
 export {
     globalStatePda,
     playerProfilePda,

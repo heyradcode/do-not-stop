@@ -450,11 +450,11 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     // Pre-result phase (overlay stays open through taunts → battling).
     const isBattling = battle.isPending || battle.isConfirming;
     const preResultTitle = isBattling ? 'The battle is underway…' : 'Face-off!';
-    // EVM v2 battle is async: request → VRF → settle. Label each phase so the
-    // long VRF wait doesn't keep showing "Awaiting your wallet". The live-replay
-    // states take priority once entropy has revealed (see the gating effect
-    // above): the result card itself never appears until hasResolvedEvent AND
-    // (animation.done OR the mismatch notice has run its course).
+    // A battle is async on both chains: intent → committed drand round → signed receipt.
+    // Label each phase so the wait on the round doesn't keep showing "Awaiting your
+    // wallet". The live-replay states take priority once the receipt verifies (see the
+    // gating effect above): the result card itself never appears until the outcome has
+    // resolved AND (animation.done OR the mismatch notice has run its course).
     const preResultStatus = mismatchNotice
         ? MISMATCH_NOTICE_MESSAGE
         // A battle that ended badly said nothing at all: the overlay simply stopped
@@ -502,8 +502,9 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
     const fighterDisplayName = selectedFighter?.name ?? 'Your pet';
     const opponentDisplayName = opponent?.name ?? 'Opponent';
     // Mechanical (round-by-round) log for the bottom log panel — null (not just empty)
-    // when there's no live-replay feature this deployment (Solana, or an EVM deployment
-    // with no GameConfig wired up), same fallback rule as liveHp1Percent/liveHp2Percent below.
+    // until the signed receipt has been verified and replayed, and permanently if any check
+    // fails. Not chain-dependent: `useBattlePets` has no chain branch left, so a Solana
+    // battle animates exactly as an EVM one does.
     const liveLog: MechanicalLogLine[] | null = useMemo(
         () =>
             battle.liveReplay
@@ -536,16 +537,16 @@ export const useBattlePanel = ({ isStandaloneView }: UseBattlePanelArgs): UseBat
         onTauntsComplete: handleTauntsComplete,
         fighterName: fighterDisplayName,
         opponentName: opponentDisplayName,
-        // Live-replay animation: only
-        // populated once entropy has revealed and the sim inputs are known;
-        // battle-overlay falls back to its existing static HP display otherwise
-        // (Solana, or an EVM deployment with no GameConfig wired up).
+        // Live-replay animation: only populated once the signed receipt has been fetched
+        // and every verification check passed, since what is animated is the client's own
+        // replay of that receipt. battle-overlay falls back to its static HP display until
+        // then, and permanently if verification fails.
         liveHp1Percent: battle.liveReplay ? animation.hp1Percent : null,
         liveHp2Percent: battle.liveReplay ? animation.hp2Percent : null,
         liveLog,
         liveFlourish: animation.flourish,
-        // Nothing to replay without a live-replay log (Solana, or an EVM deployment with
-        // no GameConfig wired up — see the liveLog comment above for the same fallback rule).
+        // Nothing to replay without a verified log — see the liveLog comment above for the
+        // same fallback rule.
         canReplay: Boolean(battle.liveReplay?.log?.length),
         onWatchReplay: handleWatchReplay,
     };

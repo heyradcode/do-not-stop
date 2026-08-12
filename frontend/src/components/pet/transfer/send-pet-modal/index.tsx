@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
     getRarityColor,
+    isSolanaWalletAddress,
     sameAccount,
     SLOT,
     useChainCapabilities,
@@ -72,6 +73,24 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
 
     const addressPlaceholder = addrCaps.placeholder;
     const addressLabel = addrCaps.label;
+
+    /**
+     * A recipient nobody holds a key for.
+     *
+     * Base58 has no checksum, so a mistyped Solana address usually still parses as a pubkey
+     * and passes `addrCaps.isValid` — and about half of all 32-byte values are off the
+     * ed25519 curve, which makes this the sharpest cheap check on a typo there is.
+     *
+     * A warning rather than a refusal, deliberately. Off-curve means only a program can move
+     * what is sent there, not that it is lost: a PDA can own a Core asset, and a treasury or
+     * multisig is a legitimate destination. Blocking would also make Solana stricter than
+     * EVM, which accepts any 20-byte hex without complaint.
+     */
+    const recipientIsOffCurve =
+        chain === 'solana' &&
+        recipientAddress.trim().length > 0 &&
+        addrCaps.isValid(recipientAddress.trim()) &&
+        !isSolanaWalletAddress(recipientAddress);
 
     const validateRecipient = (raw: string): string | null => {
         const trimmed = raw.trim();
@@ -163,6 +182,14 @@ const SendPetModal: React.FC<SendPetModalProps> = ({ isOpen, onClose, pet, petId
                 <p className={styles.gearUnknown} role="status">
                     Could not check this pet’s equipment. If it is wearing any, the send will be
                     rejected until you unequip it.
+                </p>
+            )}
+
+            {recipientIsOffCurve && (
+                <p className={styles.gearUnknown} role="status">
+                    That address is off the ed25519 curve, so no wallet holds its key — it is a
+                    program address. Check it carefully: only a program built to move this pet
+                    could send it on.
                 </p>
             )}
 
