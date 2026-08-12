@@ -7,7 +7,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 const writeContractAsync = vi.fn();
 const writeState = { writeContractAsync, data: undefined as string | undefined, isPending: false, error: null, reset: vi.fn() };
 const receiptState = { isSuccess: false, isError: false, error: null };
+const account = { isConnected: true };
 vi.mock('wagmi', () => ({
+    useAccount: () => account,
     useWriteContract: () => writeState,
     useWaitForTransactionReceipt: () => receiptState,
 }));
@@ -62,6 +64,7 @@ beforeEach(() => {
     solana.program = null;
     solana.programId = null;
     solana.signingWallet = null;
+    account.isConnected = true;
 });
 
 describe('evm claims', () => {
@@ -161,5 +164,24 @@ describe('no wallet', () => {
         expect(result.current.kind).toBe('none');
         expect(result.current.canClaim).toBe(false);
         await expect(result.current.claim.mutateAsync(EVM_ARGS)).rejects.toThrow(/Connect a wallet/);
+    });
+});
+
+describe('canClaim honours its contract on both chains', () => {
+    // It promised "false with no wallet connected"; the Solana branch checked and EVM did
+    // not, so a disconnected EVM session offered a button that throws on click.
+    it('is false on evm with no wallet connected', async () => {
+        account.isConnected = false;
+        const { result } = renderHook(() => useRewardsAdapter(), { wrapper });
+
+        expect(result.current.kind).toBe('evm');
+        expect(result.current.canClaim).toBe(false);
+        await expect(result.current.claim.mutateAsync(EVM_ARGS)).rejects.toThrow(/Connect a wallet/);
+        expect(writeContractAsync).not.toHaveBeenCalled();
+    });
+
+    it('is true on evm once connected', () => {
+        const { result } = renderHook(() => useRewardsAdapter(), { wrapper });
+        expect(result.current.canClaim).toBe(true);
     });
 });

@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
 import { usePetsConfig } from '../../contexts/PetsConfigContext';
 import { useProgram } from '../chains/solana/useProgram';
 import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
 import { equipItemOnSolana, unequipItemOnSolana } from '../../utils/solana/equipItem';
+import { useSolanaTxLifecycle } from '../tx/useSolanaTxLifecycle';
 import { useActiveChain } from '../session/useActiveChain';
 import type { AdapterMutation, TxLifecycle, TxPhase } from './types';
 import type { EquipArgs, InventoryAdapter, UnequipArgs } from './inventoryTypes';
@@ -127,66 +127,46 @@ export const useInventoryAdapter = (): InventoryAdapter => {
         isPending: isInFlight(unequipW as WriteState, unequipR),
     };
 
-    // Solana's writes are a single `.rpc()` that resolves on confirmation, so the lifecycle
-    // is tracked here rather than derived from a wagmi hook pair.
-    const [solanaPhase, setSolanaPhase] = useState<TxPhase>('idle');
-    const [solanaError, setSolanaError] = useState<Error | null>(null);
+    // One lifecycle per action, matching the EVM branch's reason for one write hook each:
+    // a shared instance lets an equip in flight blank an unequip's error, and reports both
+    // buttons pending while either runs.
+    const equipTx = useSolanaTxLifecycle();
+    const unequipTx = useSolanaTxLifecycle();
     const solanaCanEquip = chain.kind === 'solana' && Boolean(program && programId && solanaOwner);
-
-    const runSolana = async (send: () => Promise<string>) => {
-        if (!program || !programId || !solanaOwner) throw new Error('Solana wallet is not connected');
-        setSolanaPhase('awaiting-wallet');
-        setSolanaError(null);
-        try {
-            await send();
-            setSolanaPhase('success');
-        } catch (error) {
-            setSolanaError(error as Error);
-            setSolanaPhase('error');
-            throw error;
-        }
-    };
-
-    const solanaLifecycle: TxLifecycle = {
-        phase: solanaPhase,
-        error: solanaError,
-        reset: () => {
-            setSolanaPhase('idle');
-            setSolanaError(null);
-        },
-    };
 
     const solanaEquip: AdapterMutation<EquipArgs> = {
         mutateAsync: ({ petId, slot, itemType }) =>
-            runSolana(() =>
-                // `petId` is the Core asset pubkey here, because that is what the
-                // equipment PDA is seeded by. It is NOT what `pet_equipment.pet_id`
-                // holds: that column carries the numeric id, so the projection can be
-                // joined to `pet_roster`. `equipItemOnSolana` rejects a numeric id
-                // rather than deriving an address nothing lives at.
-                equipItemOnSolana({ program: program!, programId: programId!, owner: solanaOwner!, assetKey: petId, slot, itemType }),
-            ),
-        lifecycle: solanaLifecycle,
-        isPending: solanaPhase === 'awaiting-wallet',
+            equipTx.run(() => {
+                if (!program || !programId || !solanaOwner) throw new Error('Solana wallet is not connected');
+                // `petId` is the Core asset pubkey here, because that is what the equipment
+                // PDA is seeded by. It is NOT what `pet_equipment.pet_id` holds: that column
+                // carries the numeric id, so the projection can be joined to `pet_roster`.
+                // `equipItemOnSolana` rejects a numeric id rather than deriving an address
+                // nothing lives at.
+                return equipItemOnSolana({ program, programId, owner: solanaOwner, assetKey: petId, slot, itemType });
+            }).then(() => undefined),
+        lifecycle: equipTx.lifecycle,
+        isPending: equipTx.isPending,
     };
 
     const solanaUnequip: AdapterMutation<UnequipArgs> = {
         mutateAsync: ({ petId, slot, itemType }) =>
-            runSolana(() =>
-                unequipItemOnSolana({
-                    program: program!,
-                    programId: programId!,
-                    owner: solanaOwner!,
+            unequipTx.run(() => {
+                if (!program || !programId || !solanaOwner) throw new Error('Solana wallet is not connected');
+                return unequipItemOnSolana({
+                    program,
+                    programId,
+                    owner: solanaOwner,
                     assetKey: petId,
                     slot,
                     // Required here and unused on EVM: Solana returns the item to a balance
                     // PDA seeded by its type, so there is no address to credit without it.
                     // Defaulting would derive a real address holding the wrong stack.
                     itemType: requireItemType(itemType),
-                }),
-            ),
-        lifecycle: solanaLifecycle,
-        isPending: solanaPhase === 'awaiting-wallet',
+                });
+            }).then(() => undefined),
+        lifecycle: unequipTx.lifecycle,
+        isPending: unequipTx.isPending,
     };
 
     if (chain.kind === 'solana') {

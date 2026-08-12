@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { PublicKey } from '@solana/web3.js';
 
 import { useProgram } from '../chains/solana/useProgram';
 import { useSolanaAnchor } from '../../contexts/SolanaAnchorContext';
 import { claimRewardOnSolana } from '../../utils/solana/claimReward';
+import { useSolanaTxLifecycle } from '../tx/useSolanaTxLifecycle';
 import { useActiveChain } from '../session/useActiveChain';
 import { SEASON_REWARD_DISTRIBUTOR_ABI } from './rewardsAbi';
 import type { AdapterMutation, TxLifecycle, TxPhase } from './types';
@@ -65,6 +65,10 @@ export const useRewardsAdapter = (): RewardsAdapter => {
     const { signingWallet } = useSolanaAnchor();
     const solanaPayer = signingWallet?.publicKey ?? null;
 
+    // `canClaim` promises false with no wallet connected; the Solana branch checked and this
+    // one hardcoded true, so a disconnected EVM session offered a button that throws.
+    const { isConnected: evmConnected } = useAccount();
+
     const claimW = useWriteContract();
     const claimR = useWaitForTransactionReceipt({ hash: claimW.data, query: { enabled: !!claimW.data } });
 
@@ -84,28 +88,14 @@ export const useRewardsAdapter = (): RewardsAdapter => {
         isPending: claimW.isPending || (!!claimW.data && !claimR.isSuccess && !claimR.isError),
     };
 
-    const [solanaPhase, setSolanaPhase] = useState<TxPhase>('idle');
-    const [solanaError, setSolanaError] = useState<Error | null>(null);
+    const claimTx = useSolanaTxLifecycle();
     const solanaCanClaim = chain.kind === 'solana' && Boolean(program && solanaPayer);
 
-    const solanaLifecycle: TxLifecycle = {
-        phase: solanaPhase,
-        error: solanaError,
-        reset: () => {
-            setSolanaPhase('idle');
-            setSolanaError(null);
-        },
-    };
-
     const solanaClaim: AdapterMutation<ClaimRewardArgs> = {
-        async mutateAsync({ seasonId, wallet, amount, proof, distributor, token }) {
-            if (!program || !solanaPayer) {
-                throw new Error('Solana wallet is not connected');
-            }
-            setSolanaPhase('awaiting-wallet');
-            setSolanaError(null);
-            try {
-                await claimRewardOnSolana({
+        mutateAsync: ({ seasonId, wallet, amount, proof, distributor, token }) =>
+            claimTx.run(() => {
+                if (!program || !solanaPayer) throw new Error('Solana wallet is not connected');
+                return claimRewardOnSolana({
                     program,
                     // The season's distributor, not `useProgram`'s id: that hook resolves the
                     // pets program, and rewards is a different one.
@@ -117,15 +107,9 @@ export const useRewardsAdapter = (): RewardsAdapter => {
                     amount,
                     proof,
                 });
-                setSolanaPhase('success');
-            } catch (error) {
-                setSolanaError(error as Error);
-                setSolanaPhase('error');
-                throw error;
-            }
-        },
-        lifecycle: solanaLifecycle,
-        isPending: solanaPhase === 'awaiting-wallet',
+            }).then(() => undefined),
+        lifecycle: claimTx.lifecycle,
+        isPending: claimTx.isPending,
     };
 
     if (chain.kind === 'solana') {
@@ -134,7 +118,9 @@ export const useRewardsAdapter = (): RewardsAdapter => {
             : disabledAdapter('solana', 'Connect a Solana wallet to claim');
     }
     if (chain.kind === 'evm') {
-        return { kind: 'evm', canClaim: true, claim: evmClaim };
+        return evmConnected
+            ? { kind: 'evm', canClaim: true, claim: evmClaim }
+            : disabledAdapter('evm', 'Connect a wallet to claim');
     }
     return disabledAdapter('none', 'Connect a wallet to claim');
 };

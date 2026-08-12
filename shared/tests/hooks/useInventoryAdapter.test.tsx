@@ -215,3 +215,46 @@ describe('useEquipItem', () => {
         expect(writeContractAsync).not.toHaveBeenCalled();
     });
 });
+
+describe('solana lifecycles are per action', () => {
+    beforeEach(() => {
+        chain.kind = 'solana';
+        solana.program = {};
+        solana.programId = {};
+        solana.signingWallet = { publicKey: 'OwnerPubkey' };
+    });
+
+    // The EVM branch uses one write hook per action for a stated reason: an equip in flight
+    // must not blank an unequip's error. A shared Solana lifecycle reintroduced exactly that.
+    it('does not let one action clear the other’s error', async () => {
+        equipOnSolana.mockRejectedValue(new Error('insufficient items'));
+        unequipOnSolana.mockImplementation(() => new Promise(() => {})); // never settles
+
+        const { result, rerender } = renderHook(() => useInventoryAdapter(), { wrapper });
+
+        await expect(
+            result.current.equip.mutateAsync({ petId: 'AssetPubkey', slot: 0, itemType: '1' }),
+        ).rejects.toThrow('insufficient items');
+        rerender();
+        expect(result.current.equip.lifecycle.error?.message).toBe('insufficient items');
+
+        // Start an unequip; the equip's error must survive it.
+        void result.current.unequip.mutateAsync({ petId: 'AssetPubkey', slot: 0, itemType: '1' });
+        rerender();
+
+        expect(result.current.equip.lifecycle.error?.message).toBe('insufficient items');
+        expect(result.current.equip.lifecycle.phase).toBe('error');
+    });
+
+    it('reports only the running action as pending', async () => {
+        unequipOnSolana.mockImplementation(() => new Promise(() => {}));
+
+        const { result, rerender } = renderHook(() => useInventoryAdapter(), { wrapper });
+
+        void result.current.unequip.mutateAsync({ petId: 'AssetPubkey', slot: 0, itemType: '1' });
+        rerender();
+
+        expect(result.current.unequip.isPending).toBe(true);
+        expect(result.current.equip.isPending).toBe(false);
+    });
+});
