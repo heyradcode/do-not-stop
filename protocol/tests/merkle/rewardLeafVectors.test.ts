@@ -77,3 +77,64 @@ describe('reward-leaf golden vectors', () => {
         expect(vectors.schemaVersion).toBe(WIDE_REWARD_LEAF_SCHEMA_VERSION);
     });
 });
+
+/**
+ * The other half, read directly rather than trusted.
+ *
+ * `cryptopets_rewards/src/leaf.rs` transcribes these hashes and both domain tags by hand,
+ * because that crate carries no JSON dependency. Its own `#[test]` module checks the
+ * transcription — under `cargo test`, which no CI job here runs: the workflows cover
+ * protocol, contracts/ethereum, indexer-go, mobile and the verifier, and nothing builds
+ * Rust. So the file says "keep in sync manually" and, until this test, nothing did.
+ *
+ * A drift is invisible until a real claim is submitted, and then every proof fails with no
+ * indication which side moved. Parsing the Rust for its literals is cruder than compiling
+ * it, and it catches the one failure mode that matters: a hash copied across wrong, or a
+ * case added here and not there.
+ */
+describe('the Rust transcription in leaf.rs', () => {
+    const LEAF_RS = join(
+        dirname(fileURLToPath(import.meta.url)),
+        '../../../contracts/solana/cryptopets/programs/cryptopets-rewards/src/leaf.rs',
+    );
+    const source = readFileSync(LEAF_RS, 'utf8');
+
+    /** A `pub const NAME: [u8; 32] = [ 0x.., ... ];` literal, as `0x`-prefixed hex. */
+    function byteArrayConst(name: string): string {
+        const declaration = source.indexOf(`${name}: [u8; 32] = [`);
+        expect(declaration, `${name} not found in leaf.rs`).toBeGreaterThan(-1);
+        const open = source.indexOf('[', source.indexOf('= [', declaration));
+        const close = source.indexOf('];', open);
+        const bytes = source.slice(open, close).match(/0x[0-9a-f]{2}/g) ?? [];
+        expect(bytes).toHaveLength(32);
+        return `0x${bytes.map((b) => b.slice(2)).join('')}`;
+    }
+
+    /** Every hash in the vector table, in declaration order. */
+    const transcribed = [...source.matchAll(/hex32\("([0-9a-f]{64})"\)/g)].map((m) => `0x${m[1]}`);
+
+    it('hardcodes the leaf domain tag', () => {
+        expect(byteArrayConst('REWARD_LEAF_DOMAIN')).toBe(vectors.domain);
+    });
+
+    it('hardcodes the node domain tag', () => {
+        expect(byteArrayConst('MERKLE_NODE_DOMAIN')).toBe(vectors.nodeDomain);
+    });
+
+    it('hardcodes the schema version', () => {
+        const match = source.match(/REWARD_LEAF_SCHEMA_VERSION: u16 = (\d+);/);
+        expect(Number(match?.[1])).toBe(vectors.schemaVersion);
+    });
+
+    // A case added here and not there would leave the Rust silently checking a subset.
+    it('transcribes every case, and no extras', () => {
+        expect(transcribed).toHaveLength(vectors.cases.length);
+    });
+
+    it.each(vectors.cases.map((entry, index) => [entry.name, entry, index] as const))(
+        '%s is transcribed faithfully, in order',
+        (_name, entry, index) => {
+            expect(transcribed[index]).toBe(entry.expectedLeaf);
+        },
+    );
+});
