@@ -86,7 +86,7 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
     const owner = enabled && signingWallet?.publicKey ? signingWallet.publicKey : null;
 
     const actions = usePetActions();
-    const { program, programId } = useProgram();
+    const { program, programId, isLoading: programLoading, error: programError } = useProgram();
     const petsQuery = useSolanaPets(owner);
 
     const solanaPets = useMemo<Pet[]>(() => {
@@ -196,8 +196,23 @@ export const useSolanaAdapter = ({ enabled }: { enabled: boolean }): ChainAdapte
         capabilities: { ...SOLANA_CAPABILITIES, explorerTxUrl },
         pets: {
             data: solanaPets,
-            isLoading: petsQuery.isLoading || petsQuery.isFetching,
-            error: (petsQuery.error as Error | null) ?? null,
+            // The IDL fetch counts as loading. `usePets` stays disabled until the program is
+            // ready, and a disabled query reports neither loading nor error, so without this
+            // the gallery renders its empty state while the program is still resolving.
+            isLoading: programLoading || petsQuery.isLoading || petsQuery.isFetching,
+            /**
+             * The program's own failure first.
+             *
+             * `useProgram` fetches the IDL from chain and says exactly what is wrong when it
+             * cannot — a program id pointing nowhere, or a deployment where `anchor idl init`
+             * was never run, which is an operational step easy to skip. That error used to be
+             * dropped here: `usePets` is disabled while the program is unready, a disabled
+             * query has a null error, and the adapter reported only that one. So the whole
+             * failure surfaced as an empty pet list, indistinguishable from owning no pets.
+             *
+             * EVM has no equivalent, since there is no ABI to fetch at runtime.
+             */
+            error: ((programError as Error | null) ?? (petsQuery.error as Error | null)) ?? null,
             refetch: () => { void petsQuery.refetch(); },
         },
         createPet,

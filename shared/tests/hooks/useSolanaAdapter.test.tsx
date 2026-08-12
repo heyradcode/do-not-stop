@@ -43,8 +43,25 @@ vi.mock('../../src/hooks/chains/solana/usePets', () => ({ usePets: () => petsQue
 vi.mock('../../src/contexts/SolanaAnchorContext', () => ({
     useSolanaAnchor: () => ({ ...anchor, connection: { rpcEndpoint: 'https://api.devnet.solana.com' } }),
 }));
+/**
+ * `useProgram` fetches the IDL from chain, so it has failures of its own — a program id
+ * pointing nowhere, or a deployment where `anchor idl init` was never run. Mutable so a test
+ * can put it in that state.
+ */
+const programState = {
+    program: null as unknown,
+    programId: null as unknown,
+    provider: null as unknown,
+    isConfigured: false,
+    isLoading: false,
+    isFetching: false,
+    error: null as Error | null,
+    refetch: vi.fn(),
+    isReady: false,
+};
+
 vi.mock('../../src/hooks/chains/solana/useProgram', () => ({
-    useProgram: () => ({ program: null, programId: null, provider: null, isConfigured: false, isLoading: false, isFetching: false, error: null, refetch: vi.fn(), isReady: false }),
+    useProgram: () => programState,
 }));
 // Avoid loading Switchboard builders; expose only the real error formatter.
 vi.mock('../../src/utils/solana', async () => {
@@ -74,6 +91,8 @@ beforeEach(() => {
     actions.breedPets.mutateAsync.mockResolvedValue(undefined);
     actions.breedSubPhase = 'idle';
     anchor.signingWallet = { publicKey: Keypair.generate().publicKey };
+    Object.assign(programState, { isLoading: false, error: null, isReady: false });
+    Object.assign(petsQuery, { isLoading: false, isFetching: false, error: null });
 });
 
 describe('SOLANA_CAPABILITIES', () => {
@@ -204,5 +223,53 @@ describe('useSolanaAdapter', () => {
         const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
         await result.current.transferPet.mutateAsync({ petId: '1', to: validAddress });
         expect(actions.transferPet.mutateAsync).toHaveBeenCalledWith({ assetKey: ASSET_1, to: validAddress });
+    });
+});
+
+/**
+ * `useProgram` fetches the IDL from chain, which EVM has no equivalent of — there is no ABI
+ * to look up at runtime. So it has failure modes the pet query cannot express, and they used
+ * to vanish here: `usePets` stays disabled while the program is unready, a disabled query
+ * reports neither loading nor error, and the adapter forwarded only that one.
+ *
+ * The result was an empty pet list, silently, for a deployment whose program id points
+ * nowhere or where `anchor idl init` was never run — indistinguishable from owning no pets,
+ * and `useProgram` had the exact message all along.
+ */
+describe('when the program itself is the problem', () => {
+    it('surfaces the IDL failure instead of an empty gallery', () => {
+        programState.error = new Error('IDL not found on-chain for this program.');
+
+        const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
+
+        expect(result.current.pets.error?.message).toMatch(/IDL not found/);
+    });
+
+    // Otherwise the gallery renders "no pets" while the IDL is still in flight.
+    it('counts the IDL fetch as loading', () => {
+        programState.isLoading = true;
+
+        const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
+
+        expect(result.current.pets.isLoading).toBe(true);
+    });
+
+    // The program is the earlier failure, so it wins: a pet-query error that only exists
+    // because the program never resolved would name the wrong cause.
+    it('prefers the program error over the pet query error', () => {
+        programState.error = new Error('IDL not found on-chain for this program.');
+        petsQuery.error = new Error('rpc timeout') as never;
+
+        const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
+
+        expect(result.current.pets.error?.message).toMatch(/IDL not found/);
+    });
+
+    it('still reports a pet query failure when the program is fine', () => {
+        petsQuery.error = new Error('rpc timeout') as never;
+
+        const { result } = renderHook(() => useSolanaAdapter({ enabled: true }));
+
+        expect(result.current.pets.error?.message).toBe('rpc timeout');
     });
 });
