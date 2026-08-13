@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
     useAllPets,
@@ -15,6 +15,15 @@ import {
 import { useNotifyError } from '../useNotifyError';
 
 export type MarriageTab = 'propose' | 'accept';
+
+/**
+ * How often the Incoming tab re-reads proposals.
+ *
+ * Sized against the expiry rather than picked for feel: at a 60s TTL this costs at most a
+ * sixth of the window, leaving time to read the row and tap Accept. Each tick is one
+ * multicall across the roster, so it is not free.
+ */
+const PROPOSAL_POLL_MS = 10_000;
 
 export type PendingAccept = {
     proposal: IncomingProposal;
@@ -78,10 +87,37 @@ export const useMarriagePanel = (): UseMarriagePanel => {
         [allRosterPets],
     );
 
-    const { proposals, isLoading: proposalsLoading } = useIncomingProposals(
-        activeKind,
-        chainPetIds,
-    );
+    const { proposals, isLoading: proposalsLoading, refetch: refetchProposals } =
+        useIncomingProposals(activeKind, chainPetIds);
+
+    /**
+     * Re-read incoming proposals while the Incoming tab is open.
+     *
+     * The shared hook caches for 15s and schedules no refetch of its own, and this panel
+     * used to drop its `refetch` entirely, so a proposal arriving while the tab was open
+     * never appeared: the only way to see one was to leave the screen and come back.
+     *
+     * That is bad at any expiry and unusable at the current one. `GameConfig.proposalTTL`
+     * is 60 seconds on this deployment (its source calls that the dev value and names 7
+     * days for production), so a proposal the recipient cannot see for a whole minute is a
+     * proposal they cannot accept at all.
+     *
+     * Only while the tab is showing: polling a screen nobody is reading spends the
+     * player's battery and an RPC multicall over every pet in the roster.
+     *
+     * Held through a ref because the hook builds a fresh `refetch` closure on every
+     * render. Depending on it directly would tear the interval down and start a new one
+     * each time anything re-rendered, so the full period would restart continuously and
+     * the read might never actually fire.
+     */
+    const refetchProposalsRef = useRef(refetchProposals);
+    refetchProposalsRef.current = refetchProposals;
+
+    useEffect(() => {
+        if (tab !== 'accept') return;
+        const timer = setInterval(() => refetchProposalsRef.current(), PROPOSAL_POLL_MS);
+        return () => clearInterval(timer);
+    }, [tab]);
 
     const busy =
         marriage.propose.isPending ||

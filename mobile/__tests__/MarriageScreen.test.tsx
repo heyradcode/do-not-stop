@@ -57,6 +57,7 @@ const mockMutations = {
 };
 const mockInvalidate = jest.fn();
 const mockRefetch = jest.fn();
+const mockRefetchProposals = jest.fn();
 const mockIncomingArgs = jest.fn();
 
 jest.mock('@shared/core', () => ({
@@ -81,7 +82,11 @@ jest.mock('@shared/core', () => ({
     petArtUrl: () => null,
     useIncomingProposals: (...args: unknown[]) => {
         mockIncomingArgs(...args);
-        return { proposals: mockState.proposals, isLoading: mockState.proposalsLoading };
+        return {
+            proposals: mockState.proposals,
+            isLoading: mockState.proposalsLoading,
+            refetch: mockRefetchProposals,
+        };
     },
     useMarriage: () => ({
         propose: { mutateAsync: mockMutations.propose, isPending: false },
@@ -112,13 +117,29 @@ jest.mock('../src/hooks/useNotifyError', () => ({ useNotifyError: () => mockNoti
 
 import MarriageScreen from '../src/screens/MarriageScreen';
 
+/**
+ * Every tree is unmounted after its test.
+ *
+ * The Incoming tab polls on an interval, and an interval belonging to a component that is
+ * never unmounted keeps Node's event loop alive: the suite passes and then jest hangs
+ * instead of exiting, which reads as a broken test run rather than a leak.
+ */
+const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
+
 const render = async () => {
     let tree!: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(() => {
         tree = ReactTestRenderer.create(<MarriageScreen />);
     });
+    mounted.push(tree);
     return tree;
 };
+
+afterEach(async () => {
+    await ReactTestRenderer.act(async () => {
+        mounted.splice(0).forEach((tree) => tree.unmount());
+    });
+});
 
 const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
     tree.root
@@ -271,6 +292,59 @@ describe('MarriageScreen', () => {
      * screen it just disappears and reads as never having arrived. That is exactly how a
      * real proposal, correctly written on chain, was reported as missing.
      */
+    /*
+     * A proposal that arrives while the tab is open used to be unreachable: the shared hook
+     * caches for 15s and schedules nothing, and this panel dropped its `refetch`, so the
+     * list only changed if you left the screen and came back. At a 60s expiry that is the
+     * whole window.
+     */
+    it('keeps re-reading proposals while the Incoming tab is open', async () => {
+        // The timer is spied rather than faked: `act` is async here, and fake timers
+        // deadlock against it. What matters is that a repeating read is scheduled at all,
+        // and that its callback re-reads, so drive the callback directly.
+        const setSpy = jest.spyOn(global, 'setInterval');
+        try {
+            const tree = await render();
+            await pressWith(tree, 'Incoming');
+
+            const scheduled = setSpy.mock.calls.find(([, ms]) => ms === 10_000);
+            expect(scheduled).toBeDefined();
+
+            mockRefetchProposals.mockClear();
+            await ReactTestRenderer.act(async () => {
+                (scheduled![0] as () => void)();
+            });
+            expect(mockRefetchProposals).toHaveBeenCalled();
+        } finally {
+            setSpy.mockRestore();
+        }
+    });
+
+    it('does not poll while the Propose tab is showing', async () => {
+        // One multicall across the whole roster per tick, on a screen nobody is reading.
+        const setSpy = jest.spyOn(global, 'setInterval');
+        try {
+            await render();
+            expect(setSpy.mock.calls.some(([, ms]) => ms === 10_000)).toBe(false);
+        } finally {
+            setSpy.mockRestore();
+        }
+    });
+
+    it('stops polling when the tab is left', async () => {
+        const clearSpy = jest.spyOn(global, 'clearInterval');
+        try {
+            const tree = await render();
+            await pressWith(tree, 'Incoming');
+            clearSpy.mockClear();
+            await pressWith(tree, 'Propose');
+
+            expect(clearSpy).toHaveBeenCalled();
+        } finally {
+            clearSpy.mockRestore();
+        }
+    });
+
     it('shows how long an incoming proposal has left', async () => {
         mockState.proposals = [proposal({ expiry: Math.floor(Date.now() / 1000) + 45 })];
         const tree = await render();
