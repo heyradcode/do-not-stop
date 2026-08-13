@@ -37,6 +37,13 @@ export interface UseBattlePanel {
     readyPets: { id: string; pet: Pet }[];
     /** Whether the wallet holds any pets at all, before the cooldown filter. */
     hasAnyPets: boolean;
+    /**
+     * Why the wallet's own list is short, when it is. Distinct from `opponentsError`:
+     * this one is about pets the player owns and cannot see.
+     */
+    petsError: Error | null;
+    /** Re-reads the wallet's pets, for when the message above offers to try again. */
+    retryPets: () => void;
     selectedPetId: string;
     onSelectPet: (id: string) => void;
     fighter: Pet | null;
@@ -129,7 +136,10 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
     // `useOpponents` is disabled until the session exists, so an unauthenticated player
     // gets an empty list with no reason attached — the server was never asked.
     const { isAuthenticated } = useAuth();
-    const { pets, refetch } = usePetList();
+    // `error` was being dropped here. A pet whose record fails to load is filtered out of
+    // the list with nothing said, so the picker shows three of four pets and reads as the
+    // fourth not existing — which is how a perfectly minted pet went looking like a bug.
+    const { pets, refetch, error: petsError } = usePetList();
     const taunts = useBattleTaunts();
     const createRoom = useCreateBattleRoom();
 
@@ -330,6 +340,8 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         isConnected: capabilities.isConnected,
         readyPets,
         hasAnyPets: pets.length > 0,
+        petsError,
+        retryPets: refetch,
         selectedPetId,
         onSelectPet: setSelectedPetId,
         fighter,

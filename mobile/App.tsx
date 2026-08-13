@@ -12,6 +12,7 @@ import { appKit, wagmiConfig } from './src/AppKitConfig';
 import { API_URL } from './config';
 import { useEvmPetsConfig } from './src/petsContractParams';
 import { ToastProvider } from './src/components/ui/toast';
+import SignInErrorReporter from './src/components/SignInErrorReporter';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { neon } from './src/theme/neon';
 import { SolanaAppKitAnchorBridge } from './src/solana/SolanaAppKitAnchorBridge';
@@ -55,6 +56,8 @@ export default function App() {
                 <AuthProvider>
                   <PetsConfig>
                     <ToastProvider>
+                      {/* Inside ToastProvider and under AuthProvider, which is what it needs. */}
+                      <SignInErrorReporter />
                       <NavigationContainer>
                         <RootNavigator />
                       </NavigationContainer>

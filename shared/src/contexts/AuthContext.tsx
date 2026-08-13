@@ -32,7 +32,22 @@ interface AuthContextType {
     isSigning: boolean;
     isVerifying: boolean;
     isNonceLoading: boolean;
+    /**
+     * Why the last sign-in attempt failed, or null.
+     *
+     * Every failure here used to be logged and dropped, so a sign-in that never reached
+     * the wallet was indistinguishable from one the player abandoned: the button simply
+     * went back to idle. Nothing downstream could tell the difference either, because
+     * this context exposed no failure at all.
+     *
+     * Covers all three legs — fetching the nonce, signing it, and verifying it — since
+     * from the player's side they are one action that either signed them in or did not.
+     */
+    signInError: Error | null;
 }
+
+const toError = (value: unknown): Error =>
+    value instanceof Error ? value : new Error(String(value));
 
 /** Decode a JWT and return true if it exists and hasn't expired. */
 const isJwtValid = (token: string): boolean => {
@@ -61,6 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isRestoring, setRestoring] = useState(true);
     const [user, setUser] = useState<User | null>(null);
     const [pendingNonce, setPendingNonce] = useState<string | null>(null);
+    const [signInError, setSignInError] = useState<Error | null>(null);
     const [isSolanaSigning, setSolanaSigning] = useState(false);
 
     // Restore auth from a previously stored JWT on mount (no network call needed —
@@ -143,12 +159,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setAuthenticated(true);
             setUser(authData.user);
             setPendingNonce(null);
+            setSignInError(null);
         }
     }, [authData]);
 
     useEffect(() => {
         if (verifyError) {
             setPendingNonce(null);
+            setSignInError(toError(verifyError));
             console.error('Authentication failed:', verifyError);
         }
     }, [verifyError]);
@@ -156,6 +174,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         if (signError) {
             setPendingNonce(null);
+            setSignInError(toError(signError));
             console.error('Signing failed:', signError);
         }
     }, [signError]);
@@ -170,6 +189,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const signAndLogin = async () => {
+        // Cleared per attempt, so a retry is never shown the previous failure.
+        setSignInError(null);
+
         const pullNonce = async (): Promise<string> => {
             const res = await getNonce();
             if (res.isError) {
@@ -195,6 +217,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 signMessage({ message });
             } catch (error) {
+                setSignInError(toError(error));
                 console.error('Error getting nonce:', error);
             }
             return;
@@ -220,6 +243,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 chainId: 0,
             });
         } catch (error) {
+            setSignInError(toError(error));
             console.error('Solana sign-in failed:', error);
         } finally {
             setSolanaSigning(false);
@@ -237,6 +261,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 isSigning: isEvmSigning || isSolanaSigning,
                 isVerifying,
                 isNonceLoading,
+                signInError,
             }}
         >
             {children}

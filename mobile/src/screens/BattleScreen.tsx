@@ -48,6 +48,26 @@ export default function BattleScreen() {
             <Text style={styles.title}>Battle Arena</Text>
 
             <Text style={styles.label}>Your fighter</Text>
+
+            {/*
+             * A pet the wallet owns but whose record would not load. It is filtered out of
+             * the picker because there is nothing to draw, so without this the list is
+             * simply one pet short and looks like the pet was never minted.
+             */}
+            {panel.petsError ? (
+                <View style={styles.petsError}>
+                    <Text style={styles.petsErrorText}>{panel.petsError.message}</Text>
+                    <TouchableOpacity
+                        onPress={panel.retryPets}
+                        accessibilityRole="button"
+                        accessibilityLabel="Retry loading your pets"
+                        activeOpacity={0.85}
+                    >
+                        <Text style={styles.petsErrorRetry}>Try again</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : null}
+
             <PetPicker
                 pets={panel.readyPets}
                 selectedId={panel.selectedPetId}
@@ -302,6 +322,21 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
         color: neon.textMuted,
         marginBottom: 8,
+    },
+    petsError: {
+        borderWidth: 1,
+        borderColor: neon.borderMagenta,
+        backgroundColor: neon.bgPanel,
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+    },
+    petsErrorText: { color: neon.magenta, fontSize: 13, lineHeight: 19 },
+    petsErrorRetry: {
+        color: neon.cyan,
+        fontSize: 13,
+        fontWeight: '800',
+        marginTop: 8,
     },
     opponentHeader: {
         flexDirection: 'row',

@@ -35,6 +35,8 @@ const foe = (over: Partial<OpponentPet> = {}): OpponentPet => ({
 
 const mockState = {
     pets: [pet()] as Pet[],
+    /** A pet the wallet owns whose record would not load, so it is not in `pets`. */
+    petsError: null as Error | null,
     opponents: [foe()] as OpponentPet[],
     opponentsLoading: false,
     opponentsError: null as Error | null,
@@ -81,6 +83,7 @@ const strike = (over: Record<string, unknown> = {}) => ({
 });
 
 const mockBattle = jest.fn();
+const mockRefetchPets = jest.fn();
 const mockTaunts = jest.fn();
 // `useCreateBattleRoom().createRoom` resolves to the room id itself, or null when
 // it fails; it catches internally and never rejects. The mock returned a
@@ -108,7 +111,12 @@ jest.mock('../src/components/PetArt', () => {
 jest.mock('@shared/core', () => ({
     getReadyPetsUnified: (pets: Pet[]) =>
         pets.filter((p) => p.readyAt === 0).map((p) => ({ id: p.id, pet: p })),
-    usePetList: () => ({ pets: mockState.pets, isLoading: false, error: null, refetch: jest.fn() }),
+    usePetList: () => ({
+        pets: mockState.pets,
+        isLoading: false,
+        error: mockState.petsError,
+        refetch: mockRefetchPets,
+    }),
     useChainCapabilities: () => ({
         isConnected: mockState.isConnected,
         activeKind: mockState.isConnected ? 'evm' : null,
@@ -248,6 +256,8 @@ const pressWith = async (tree: ReactTestRenderer.ReactTestRenderer, label: strin
 
 beforeEach(() => {
     mockState.pets = [pet()];
+    mockState.petsError = null;
+    mockRefetchPets.mockClear();
     mockState.opponents = [foe()];
     mockState.opponentsLoading = false;
     mockState.opponentsError = null;
@@ -279,6 +289,40 @@ describe('BattleScreen', () => {
         const tree = await render();
         expect(textOf(tree)).toContain('Rex');
         expect(textOf(tree)).not.toContain('Cooling');
+    });
+
+    /*
+     * A pet whose record fails to load is filtered out before the picker ever sees it, so
+     * the list is one short and nothing explains why. That is indistinguishable from the
+     * pet not existing, and it sent someone hunting for a pet that had minted correctly.
+     * The list is right to omit it — there is nothing to draw — but the screen has to say so.
+     */
+    it('says when a pet it cannot read is missing from the list', async () => {
+        mockState.pets = [pet({ id: '5', name: 'TIMON' })];
+        mockState.petsError = new Error(
+            'Could not load 1 of your 4 pets (id 12). They are still yours; this is a read that failed.',
+        );
+
+        const tree = await render();
+
+        expect(textOf(tree)).toContain('Could not load 1 of your 4 pets');
+        expect(textOf(tree)).toContain('12');
+    });
+
+    it('offers to read the pets again rather than leaving it there', async () => {
+        mockState.petsError = new Error('Could not load 1 of your 4 pets (id 12).');
+        const tree = await render();
+
+        await pressWith(tree, 'Try again');
+
+        expect(mockRefetchPets).toHaveBeenCalled();
+    });
+
+    it('stays quiet when every pet loaded', async () => {
+        mockState.pets = [pet(), pet({ id: '2', name: 'Momo' })];
+        const tree = await render();
+        expect(textOf(tree)).not.toContain('Could not load');
+        expect(textOf(tree)).not.toContain('Try again');
     });
 
     it('preselects the pet a Gallery battle action arrived with', async () => {
