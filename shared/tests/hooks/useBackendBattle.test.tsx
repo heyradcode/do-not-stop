@@ -76,12 +76,19 @@ describe('reading the authoritative endpoint', () => {
         expect(get).not.toHaveBeenCalled();
     });
 
-    it('reports a terminal state as settled', async () => {
-        get.mockResolvedValue({ data: summary('signed') });
-        const { result } = renderHook(() => useBackendBattle('btl_0001'), { wrapper });
+    // Every receipt-bearing state, not just the ends of the range. `published` sits
+    // between the other two and was missing, which stranded battles on any deployment
+    // that does not run the Merkle batcher: `published` is where they stop, so
+    // verification never ran and the poll never ended.
+    it.each(['signed', 'published', 'batched'])(
+        'reports %s as settled, since a receipt exists in all three',
+        async (state) => {
+            get.mockResolvedValue({ data: summary(state) });
+            const { result } = renderHook(() => useBackendBattle('btl_0001'), { wrapper });
 
-        await waitFor(() => expect(result.current.isSettled).toBe(true));
-    });
+            await waitFor(() => expect(result.current.isSettled).toBe(true));
+        },
+    );
 
     it('treats a failure state as settled too, so a failed battle stops being polled', async () => {
         get.mockResolvedValue({ data: summary('verification_failed') });

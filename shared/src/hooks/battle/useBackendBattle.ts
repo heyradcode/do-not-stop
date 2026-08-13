@@ -35,9 +35,19 @@ export interface BattleStateSummary {
     updatedAt: string;
 }
 
-/** States the pipeline never leaves, so there is nothing further to wait for. */
+/**
+ * States the pipeline never leaves, so there is nothing further to wait for.
+ *
+ * All three receipt-bearing states belong here, not just the first and last.
+ * `published` sits between `signed` and `batched`, and omitting it stranded every
+ * battle on a deployment that never runs the Merkle batcher: `isSettled` gates
+ * `hasReceipt` in useBattlePets, so verification never started, no result was ever
+ * produced, and the poll below never stopped either. A battle that had settled
+ * correctly showed "Receipt signed. Checking it…" indefinitely.
+ */
 const TERMINAL_STATES = new Set([
     'signed',
+    'published',
     'batched',
     'rejected',
     'forfeited',
