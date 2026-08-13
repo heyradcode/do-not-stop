@@ -5,8 +5,9 @@
  * fired during any of them costs the player a real fee for a pet they did not
  * ask for.
  *
- * No `@shared/core` stub here: this component imports only types from it, and
- * those are erased before jest sees the file.
+ * No `@shared/core` stub here. The component now imports one value from it,
+ * `parseContractError`, which is pure and dependency-free, so the real thing runs
+ * and there is nothing to fake.
  */
 
 import React from 'react';
@@ -185,9 +186,18 @@ describe('CreatePetModal feedback', () => {
         expect(textOf(tree)).toContain('insufficient funds');
     });
 
-    it('renders a non-Error rejection rather than "[object Object]"', async () => {
-        const tree = await render({ createPet: createPet({ error: 'user rejected' }) });
-        expect(textOf(tree)).toContain('user rejected');
+    // A wallet refusal arrives as a viem error whose `message` is the whole request
+    // dump — chain, calldata, gas, a docs URL and a version banner — which used to be
+    // rendered verbatim into this small sheet. It is also the one failure carrying no
+    // information the player can act on, so it is the one that gets rewritten.
+    it.each([
+        ['a non-Error rejection', 'user rejected'],
+        ['a viem rejection dump', new Error('User rejected the request.\nDocs: https://viem.sh/')],
+    ])('replaces %s with wording a player can act on', async (_label, error) => {
+        const tree = await render({ createPet: createPet({ error }) });
+
+        expect(textOf(tree)).toContain('Cancelled in your wallet');
+        expect(textOf(tree)).not.toContain('viem.sh');
     });
 
     it('reports a submitted transaction while still working', async () => {

@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 import {
+    parseContractError,
     useBattleSession,
     useChainCapabilities,
     useDefenseAuthorization,
@@ -47,6 +48,10 @@ export default function DefenseScreen() {
     const [allPets, setAllPets] = useState(true);
     const [selected, setSelected] = useState<string[]>([]);
     const [success, setSuccess] = useState<string | null>(null);
+    // Reported beside the session button rather than only in the layout's banner at the
+    // top: the player is looking at the button they just came back from the wallet for,
+    // and on a phone the banner is off-screen above it.
+    const [sessionNote, setSessionNote] = useState<string | null>(null);
 
     // Arriving from a Gallery card's Defend action means one pet was chosen, so
     // narrow the scope to it rather than silently granting for the whole wallet.
@@ -86,6 +91,13 @@ export default function DefenseScreen() {
     };
 
     const nothingChosen = !allPets && selected.length === 0;
+
+    // Whole hours left on the delegation. An absolute expiry would need date handling for
+    // a window that always crosses into tomorrow, and "another 23 hours" answers the only
+    // question being asked here: is this on, and for how long.
+    const sessionHoursLeft = session.key
+        ? Math.max(0, Math.round((session.key.expiresAt * 1000 - Date.now()) / 3_600_000))
+        : 0;
 
     return (
         <SessionGate
@@ -166,7 +178,7 @@ export default function DefenseScreen() {
                 <View style={styles.session}>
                     <Text style={styles.sessionLabel}>
                         {session.key
-                            ? 'Battles are signed on this device, so no wallet prompt each time.'
+                            ? `Active for another ${sessionHoursLeft} hour${sessionHoursLeft === 1 ? '' : 's'}. Battles are signed on this device, so there is no wallet prompt each time.`
                             : 'Approve a battle session to stop confirming every fight in your wallet.'}
                     </Text>
                     <TouchableOpacity
@@ -178,12 +190,35 @@ export default function DefenseScreen() {
                         disabled={session.isPending || !isConnected}
                         onPress={() => {
                             setSuccess(null);
+                            setSessionNote(null);
                             if (session.key) {
-                                session.revoke();
+                                // The hook clears the local key before calling the server and
+                                // does not catch, so a failed request rejects here. Signing has
+                                // still stopped on this device; only the server-side revocation
+                                // is outstanding, and saying so beats an unhandled rejection.
+                                session
+                                    .revoke()
+                                    .then(() =>
+                                        setSessionNote(
+                                            'Session ended. Each battle will ask your wallet again.',
+                                        ),
+                                    )
+                                    .catch(() =>
+                                        setSessionNote(
+                                            'Session ended on this device, but the server could not be reached. It lapses on its own within 24 hours.',
+                                        ),
+                                    );
                                 return;
                             }
+                            // A failure sets `session.error`, which is reported below. Reading it
+                            // here would read the value captured when this handler was created,
+                            // which is always the previous attempt's.
                             session.approve().then((key) => {
-                                if (key) setSuccess('Battle session approved for the next 24 hours.');
+                                if (key) {
+                                    setSessionNote(
+                                        'Approved. Battles are signed on this device from now on.',
+                                    );
+                                }
                             });
                         }}
                         accessibilityRole="button"
@@ -203,6 +238,21 @@ export default function DefenseScreen() {
                                   : 'Approve session'}
                         </Text>
                     </TouchableOpacity>
+
+                    {/*
+                     * `session.error` is read here, at render, so it is always the current
+                     * attempt's. It takes precedence over the note: a failure after a past
+                     * success must not be read as still succeeding.
+                     */}
+                    {session.error ? (
+                        <Text style={styles.sessionBad}>
+                            {parseContractError(session.error).isUserRejection
+                                ? 'Not approved. The signature was refused in your wallet, so no session was created.'
+                                : `Not approved. ${session.error.message}`}
+                        </Text>
+                    ) : sessionNote ? (
+                        <Text style={styles.sessionOk}>{sessionNote}</Text>
+                    ) : null}
                 </View>
             ) : null}
         </ActionScreenLayout>
@@ -330,6 +380,8 @@ const styles = StyleSheet.create({
     sessionEnd: { borderColor: neon.magenta },
     sessionEndText: { color: neon.magenta },
     sessionOff: { opacity: 0.5 },
+    sessionOk: { marginTop: 10, fontSize: 13, lineHeight: 19, color: neon.success },
+    sessionBad: { marginTop: 10, fontSize: 13, lineHeight: 19, color: neon.danger },
     terms: {
         marginTop: 16,
         fontSize: 13,

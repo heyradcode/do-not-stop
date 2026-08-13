@@ -12,8 +12,17 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
-import type { CreatePetArgs, PetMutationResult } from '@shared/core';
+import { parseContractError, type CreatePetArgs, type PetMutationResult } from '@shared/core';
 import { neon, neonGlow } from '../theme/neon';
+
+/**
+ * A wallet refusal and a prompt that never arrived report identically (code 4001), and
+ * on a phone the second is common: MetaMask sitting on an update or onboarding screen
+ * never renders the request, then denies it. So the wording covers both rather than
+ * telling a player they cancelled something they were never shown.
+ */
+const REJECTED_HINT =
+    'Cancelled in your wallet. If you never saw a prompt, open MetaMask, clear any update screen, and try again.';
 
 type Props = {
     visible: boolean;
@@ -24,6 +33,10 @@ type Props = {
 export default function CreatePetModal({ visible, onClose, createPet }: Props) {
     const { mutate, isPending, error, hash, isAwaitingFulfillment, isSettling, reset } = createPet;
     const [name, setName] = useState('');
+    // Only the refusal case is rewritten. A revert reason or a gas failure is worth
+    // showing verbatim, because it says something specific about why this mint failed;
+    // a rejection dump says nothing the player can act on.
+    const isUserRejection = error ? parseContractError(error).isUserRejection : false;
     const { width } = useWindowDimensions();
     const cardWidth = Math.min(400, width - 48);
 
@@ -123,7 +136,11 @@ export default function CreatePetModal({ visible, onClose, createPet }: Props) {
                         </TouchableOpacity>
                         {error ? (
                             <Text style={styles.error}>
-                                {error instanceof Error ? error.message : String(error)}
+                                {isUserRejection
+                                    ? REJECTED_HINT
+                                    : error instanceof Error
+                                      ? error.message
+                                      : String(error)}
                             </Text>
                         ) : null}
                         {hash && !error ? (

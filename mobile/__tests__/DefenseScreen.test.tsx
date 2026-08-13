@@ -24,10 +24,18 @@ const pet = (over: Partial<Pet> = {}): Pet => ({
     ...over,
 });
 
+/** A live delegation, expiring a full day out so the hours-left line is stable. */
+const sessionKeyFixture = () => ({
+    address: '0xkey',
+    expiresAt: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
+});
+
 const mockState = {
     /** A stored session key, or null when none has been approved. */
     sessionKey: null as Record<string, unknown> | null,
     sessionSupported: true,
+    /** What `useBattleSession` reports after a failed approve. */
+    sessionError: null as Error | null,
     /** What the consent read reports; `unknown` renders no card at all. */
     consent: { kind: 'unknown' } as Record<string, unknown>,
     pets: [pet(), pet({ id: '2', name: 'Momo' })] as Pet[],
@@ -54,12 +62,15 @@ jest.mock('../src/components/SessionGate', () => {
 });
 
 jest.mock('@shared/core', () => ({
+    // The real parser rather than a stand-in. It is pure and dependency-free, and a copy
+    // here would drift from the branch the screen actually takes on a wallet refusal.
+    parseContractError: jest.requireActual('@shared/core').parseContractError,
     /** Delegated battle signing: a separate signature from the consent grant. */
     useBattleSession: () => ({
         key: mockState.sessionKey,
         supported: mockState.sessionSupported,
         isPending: false,
-        error: null,
+        error: mockState.sessionError,
         approve: mockApproveSession,
         revoke: mockRevokeSession,
         discardLocalKey: jest.fn(),
@@ -151,6 +162,9 @@ const pressWithdraw = async (tree: ReactTestRenderer.ReactTestRenderer) => {
 beforeEach(() => {
     mockState.sessionKey = null;
     mockState.sessionSupported = true;
+    mockState.sessionError = null;
+    mockRevokeSession.mockResolvedValue(undefined);
+    mockApproveSession.mockResolvedValue({ address: '0xkey' });
     mockState.consent = { kind: 'unknown' };
     mockState.pets = [pet(), pet({ id: '2', name: 'Momo' })];
     mockState.isConnected = true;
@@ -296,15 +310,15 @@ describe('battle session', () => {
         expect(labelsOf(tree)).toContain('Approve battle session');
     });
 
-    it('approves on tap and says how long it lasts', async () => {
+    it('confirms the approval where the button is', async () => {
         const tree = await render();
         await pressLabel(tree, 'Approve battle session');
         expect(mockApproveSession).toHaveBeenCalled();
-        expect(textOf(tree)).toContain('next 24 hours');
+        expect(textOf(tree)).toContain('Approved');
     });
 
     it('offers to end an existing one instead of approving a second', async () => {
-        mockState.sessionKey = { address: '0xkey' };
+        mockState.sessionKey = sessionKeyFixture();
         const tree = await render();
 
         expect(textOf(tree)).toContain('no wallet prompt each time');
@@ -313,6 +327,72 @@ describe('battle session', () => {
 
         await pressLabel(tree, 'End battle session');
         expect(mockRevokeSession).toHaveBeenCalled();
+    });
+
+    it('says how much time is left on a held session', async () => {
+        mockState.sessionKey = sessionKeyFixture();
+        const tree = await render();
+        expect(textOf(tree)).toContain('Active for another 24 hours');
+    });
+
+    /*
+     * Every one of these used to render nothing at all. `approve` swallows its failure
+     * into `session.error` and resolves null, and that error was wired nowhere, so a
+     * refused signature and a successful one looked identical: the button said "Signing…"
+     * and then went back to saying "Approve session".
+     */
+    it('reports a signature refused in the wallet', async () => {
+        mockApproveSession.mockResolvedValue(null);
+        mockState.sessionError = new Error('User rejected the request.\nDocs: https://viem.sh/');
+        const tree = await render();
+
+        await pressLabel(tree, 'Approve battle session');
+
+        expect(textOf(tree)).toContain('refused in your wallet');
+        expect(textOf(tree)).not.toContain('viem.sh');
+    });
+
+    it('reports a failure that is not a refusal, with its reason', async () => {
+        mockApproveSession.mockResolvedValue(null);
+        mockState.sessionError = new Error('delegation scope not accepted');
+        const tree = await render();
+
+        await pressLabel(tree, 'Approve battle session');
+        expect(textOf(tree)).toContain('delegation scope not accepted');
+    });
+
+    it('does not let a stale success outlive a later failure', async () => {
+        // The note is set by a callback and the error is read at render, so the two can
+        // disagree. A failure has to win, or a refused re-approval reads as approved.
+        const tree = await render();
+        await pressLabel(tree, 'Approve battle session');
+        expect(textOf(tree)).toContain('Approved');
+
+        mockState.sessionError = new Error('delegation scope not accepted');
+        mockApproveSession.mockResolvedValue(null);
+        await pressLabel(tree, 'Approve battle session');
+
+        expect(textOf(tree)).not.toContain('Approved.');
+        expect(textOf(tree)).toContain('Not approved');
+    });
+
+    it('confirms the session ended', async () => {
+        mockState.sessionKey = sessionKeyFixture();
+        const tree = await render();
+
+        await pressLabel(tree, 'End battle session');
+        expect(textOf(tree)).toContain('Session ended.');
+    });
+
+    it('says a revoke stopped signing here even when the server call failed', async () => {
+        // The hook clears the local key first and does not catch, so this rejects. Signing
+        // has still stopped on this device, which is the part the player cares about.
+        mockState.sessionKey = sessionKeyFixture();
+        mockRevokeSession.mockRejectedValue(new Error('network down'));
+        const tree = await render();
+
+        await pressLabel(tree, 'End battle session');
+        expect(textOf(tree)).toContain('Session ended on this device');
     });
 
     it('renders nothing on a chain that cannot delegate', async () => {
