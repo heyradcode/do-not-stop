@@ -18,6 +18,48 @@ import {
     isSupportedChain,
     resolveTargetChainId,
 } from '../src/constants/ethereumNetworks';
+import { withRpcUrl } from '../src/ethereumChains';
+
+/**
+ * Unset, viem reads through the chain's built-in public endpoint, which for Base Sepolia
+ * is the shared `https://sepolia.base.org`. This app's reads are not light there: the pet
+ * list is one Multicall3 `aggregate3` over every pet the wallet owns, and incoming
+ * proposals another over the whole roster. Both were timing out, and a timed-out multicall
+ * drops pets from the list rather than failing loudly.
+ *
+ * `withRpcUrl` takes the URL as an argument rather than reading `@env` itself, because
+ * `react-native-dotenv` inlines that at transform time and a test could only assert
+ * whatever `.env` this machine happens to have.
+ */
+describe('withRpcUrl', () => {
+    it('leaves a chain untouched when no url is configured', () => {
+        expect(withRpcUrl(baseSepolia, undefined)).toBe(baseSepolia);
+        expect(withRpcUrl(baseSepolia, '')).toBe(baseSepolia);
+        expect(withRpcUrl(baseSepolia, '   ')).toBe(baseSepolia);
+    });
+
+    it('reads through the configured url instead of the public default', () => {
+        const custom = withRpcUrl(baseSepolia, 'https://my-node.example/v2/key');
+        expect(custom.rpcUrls.default.http).toEqual(['https://my-node.example/v2/key']);
+        expect(baseSepolia.rpcUrls.default.http[0]).not.toBe('https://my-node.example/v2/key');
+    });
+
+    it('changes nothing a wallet matches a network on', () => {
+        // id, currency and explorer are what a wallet uses to recognise or add a network.
+        // Rewriting them would offer a network the wallet cannot place.
+        const custom = withRpcUrl(baseSepolia, 'https://my-node.example');
+        expect(custom.id).toBe(baseSepolia.id);
+        expect(custom.name).toBe(baseSepolia.name);
+        expect(custom.nativeCurrency).toEqual(baseSepolia.nativeCurrency);
+        expect(custom.blockExplorers).toEqual(baseSepolia.blockExplorers);
+    });
+
+    it('does not mutate the shared chain object', () => {
+        const before = [...baseSepolia.rpcUrls.default.http];
+        withRpcUrl(baseSepolia, 'https://my-node.example');
+        expect(baseSepolia.rpcUrls.default.http).toEqual(before);
+    });
+});
 
 describe('resolveTargetChainId', () => {
     it('parses a chain id', () => {

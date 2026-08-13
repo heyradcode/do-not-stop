@@ -1,7 +1,7 @@
 import type { Chain } from 'viem';
 import { baseSepolia, mainnet, sepolia } from 'wagmi/chains';
-import { EVM_CHAIN_ID } from '@env';
-import { hardhatLocal } from '../ethereumChains';
+import { EVM_CHAIN_ID, EVM_RPC_URL } from '@env';
+import { hardhatLocal, withRpcUrl } from '../ethereumChains';
 
 /** Display metadata aligned with `frontend/src/constants/chains/ethereum.ts`. */
 export type EvmNetworkOption = {
@@ -60,8 +60,22 @@ export const TARGET_CHAIN_ID = resolveTargetChainId(EVM_CHAIN_ID);
  * to prevent.
  */
 export const CHAINS: EvmNetworkOption[] = [
-    { chain: baseSepolia, name: 'Base Sepolia', symbol: 'ETH', isTestnet: true },
-    { chain: sepolia, name: 'Sepolia', symbol: 'ETH', isTestnet: true },
+    // `EVM_RPC_URL` applies to the target chain only, matching how the contract-address
+    // overrides work: the variables are chain-agnostic, so pointing them at whatever
+    // `EVM_CHAIN_ID` names is the only reading that cannot send reads for one deployment
+    // down another chain's endpoint.
+    {
+        chain: withRpcUrl(baseSepolia, TARGET_CHAIN_ID === baseSepolia.id ? EVM_RPC_URL : undefined),
+        name: 'Base Sepolia',
+        symbol: 'ETH',
+        isTestnet: true,
+    },
+    {
+        chain: withRpcUrl(sepolia, TARGET_CHAIN_ID === sepolia.id ? EVM_RPC_URL : undefined),
+        name: 'Sepolia',
+        symbol: 'ETH',
+        isTestnet: true,
+    },
     ...(__DEV__ && TARGET_CHAIN_ID === hardhatLocal.id
         ? [{ chain: hardhatLocal, name: 'Hardhat Local', symbol: 'ETH', isTestnet: true }]
         : []),
