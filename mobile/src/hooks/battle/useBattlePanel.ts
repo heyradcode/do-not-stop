@@ -10,6 +10,8 @@ import {
     useCreateBattleRoom,
     useLiveBattleAnimation,
     opponentKey,
+    isBattleRejection,
+    isConsentFailure,
     useAuth,
     useOpponents,
     usePetList,
@@ -199,6 +201,7 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         isLoading: opponentsLoading,
         error: opponentsError,
         emptyReason,
+        refetch: refetchOpponents,
     } = useOpponents({ chain: capabilities.activeKind, enabled: capabilities.isConnected });
 
     const opponents = useMemo(
@@ -274,7 +277,32 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         battleRef.current.mutate(pendingStart);
     }, [pendingStart]);
 
-    usePetErrorToast(battle.error, null, validationError, BATTLE_FAIL_MESSAGE);
+    /*
+     * The server's own words for a refused battle, rather than the generic fallback.
+     *
+     * `usePetError` returns a validation message verbatim but runs a mutation error through
+     * the chain adapter's parser, which rewrites anything it does not recognise into
+     * "Battle failed" and loses the reason. A rejection is exactly the case where the
+     * reason is the whole message: "One of those pets is not on record yet" tells a player
+     * to wait for the indexer, while "Battle failed" tells them to retry, which cannot work.
+     */
+    const rejectionMessage = isBattleRejection(battle.error) ? battle.error.message : null;
+    usePetErrorToast(battle.error, null, validationError ?? rejectionMessage, BATTLE_FAIL_MESSAGE);
+
+    /*
+     * A defender whose consent lapsed between the list being built and the battle being
+     * accepted. Matchmaking excludes those server-side, so this is the narrow race, not the
+     * normal case. Re-reading drops them from the list, and clearing the selection stops the
+     * player immediately re-picking the one opponent that cannot succeed.
+     *
+     * Deliberately only consent: a level-band or daily-cap refusal is about this attacker or
+     * about today, not the defender's willingness, and dropping them over it would be wrong.
+     */
+    useEffect(() => {
+        if (!battle.error || !isConsentFailure(battle.error)) return;
+        setSelectedOpponentKey('');
+        refetchOpponents();
+    }, [battle.error, refetchOpponents]);
 
     // Clear a stale opponent when the fighter changes: the previous pick was
     // chosen against a different level band and may no longer be a legal match.

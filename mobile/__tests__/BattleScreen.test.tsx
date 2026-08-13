@@ -37,6 +37,8 @@ const mockState = {
     pets: [pet()] as Pet[],
     /** A pet the wallet owns whose record would not load, so it is not in `pets`. */
     petsError: null as Error | null,
+    /** What `useBattlePets` reports after a refused battle. */
+    battleError: null as Error | null,
     opponents: [foe()] as OpponentPet[],
     opponentsLoading: false,
     opponentsError: null as Error | null,
@@ -84,6 +86,7 @@ const strike = (over: Record<string, unknown> = {}) => ({
 
 const mockBattle = jest.fn();
 const mockRefetchPets = jest.fn();
+const mockRefetchOpponents = jest.fn();
 const mockTaunts = jest.fn();
 // `useCreateBattleRoom().createRoom` resolves to the room id itself, or null when
 // it fails; it catches internally and never rejects. The mock returned a
@@ -127,8 +130,15 @@ jest.mock('@shared/core', () => ({
         error: mockState.opponentsError,
         total: mockState.opponents.length,
         emptyReason: mockState.emptyReason,
-        refetch: jest.fn(),
+        // One stable function, not a fresh `jest.fn()` per render. The real hook returns
+        // React Query's `refetch`, which is stable, and an effect depending on it would
+        // re-run on every render against a mock that is not.
+        refetch: mockRefetchOpponents,
     }),
+    isBattleRejection: (...args: unknown[]) =>
+        jest.requireActual('../../shared/src/utils/battleFailureMessage').isBattleRejection(...args),
+    isConsentFailure: (...args: unknown[]) =>
+        jest.requireActual('../../shared/src/utils/battleFailureMessage').isConsentFailure(...args),
     // The real wording for both: a new backend state or empty-reason must not need this
     // screen edited to be sayable.
     describeBattleStage: (...args: unknown[]) =>
@@ -174,7 +184,7 @@ jest.mock('@shared/core', () => ({
         return {
             mutate: mockBattle,
             isPending: false,
-            error: null,
+            error: mockState.battleError,
             phase: mockState.phase,
             state: mockState.battleState,
             failureReason: mockState.failureReason,
@@ -195,7 +205,13 @@ jest.mock('@shared/core', () => ({
             .describeMechanicalLogEntry(...args),
 }));
 
-jest.mock('../src/hooks/usePetErrorToast', () => ({ usePetErrorToast: () => {} }));
+// Records its arguments so the message the player would actually see can be asserted.
+// The third argument wins over the mutation error inside the real hook, which is the
+// whole point of routing a rejection through it.
+const mockPetErrorToast = jest.fn();
+jest.mock('../src/hooks/usePetErrorToast', () => ({
+    usePetErrorToast: (...args: unknown[]) => mockPetErrorToast(...args),
+}));
 
 const mockRouteParams: { petId?: string } = {};
 jest.mock('@react-navigation/native', () => ({
@@ -257,7 +273,10 @@ const pressWith = async (tree: ReactTestRenderer.ReactTestRenderer, label: strin
 beforeEach(() => {
     mockState.pets = [pet()];
     mockState.petsError = null;
+    mockState.battleError = null;
     mockRefetchPets.mockClear();
+    mockRefetchOpponents.mockClear();
+    mockPetErrorToast.mockClear();
     mockState.opponents = [foe()];
     mockState.opponentsLoading = false;
     mockState.opponentsError = null;
@@ -323,6 +342,62 @@ describe('BattleScreen', () => {
         const tree = await render();
         expect(textOf(tree)).not.toContain('Could not load');
         expect(textOf(tree)).not.toContain('Try again');
+    });
+
+    /*
+     * A refused battle used to reach the player as "Failed to start the battle. Please try
+     * again." while the server's actual sentence went only to the console. The two point
+     * opposite ways: "One of those pets is not on record yet" means wait for the indexer,
+     * and "please try again" means retry now, which cannot work.
+     */
+    it('shows the server’s reason for a refused battle, not the fallback', async () => {
+        const { BattleRejectionError } = jest.requireActual(
+            '../../shared/src/utils/battleFailureMessage',
+        );
+        mockState.battleError = new BattleRejectionError(
+            'unknown-pet',
+            'One of those pets is not on record yet.',
+        );
+
+        await render();
+
+        const [, , validationOrReason] = mockPetErrorToast.mock.calls.at(-1)!;
+        expect(validationOrReason).toBe('One of those pets is not on record yet.');
+    });
+
+    it('leaves an ordinary failure to the fallback wording', async () => {
+        // Not every failure is an explained refusal. A dropped connection has no sentence
+        // worth repeating, and the caller's fallback is the better text.
+        mockState.battleError = new Error('socket hang up');
+
+        await render();
+
+        const [, , validationOrReason] = mockPetErrorToast.mock.calls.at(-1)!;
+        expect(validationOrReason).toBeNull();
+    });
+
+    it('drops an opponent whose consent lapsed and re-reads the list', async () => {
+        const { BattleRejectionError } = jest.requireActual(
+            '../../shared/src/utils/battleFailureMessage',
+        );
+        mockState.battleError = new BattleRejectionError('expired', 'That grant has expired.');
+
+        await render();
+
+        expect(mockRefetchOpponents).toHaveBeenCalled();
+    });
+
+    it('keeps the opponent when the refusal is not about their consent', async () => {
+        // A level-band or unknown-pet refusal is about this attacker or the indexer, not
+        // the defender's willingness. Dropping them would be wrong.
+        const { BattleRejectionError } = jest.requireActual(
+            '../../shared/src/utils/battleFailureMessage',
+        );
+        mockState.battleError = new BattleRejectionError('unknown-pet', 'Not on record yet.');
+
+        await render();
+
+        expect(mockRefetchOpponents).not.toHaveBeenCalled();
     });
 
     it('preselects the pet a Gallery battle action arrived with', async () => {
