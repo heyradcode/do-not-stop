@@ -24,6 +24,8 @@ const pet = (over: Partial<Pet> = {}): Pet => ({
 });
 
 const mockState = {
+    solanaPending: false,
+    solanaCanCancel: false,
     pets: [pet(), pet({ id: '2', name: 'Momo' })] as Pet[],
     areRelated: false,
     pendingIds: [] as string[],
@@ -40,7 +42,18 @@ jest.mock('../src/hooks/useTxErrorToast', () => ({ useTxErrorToast: () => {} }))
 
 jest.mock('../src/components/PetArt', () => () => null);
 
+const mockCancelSolana = jest.fn(async () => undefined);
+const mockSettleBreed = jest.fn(async () => undefined);
+const mockCancelBreed = jest.fn(async () => undefined);
+
 jest.mock('@shared/core', () => ({
+    /** Solana holds one outstanding request per owner, not one per parent. */
+    usePendingSolanaBreed: () => ({
+        isPending: mockState.solanaPending,
+        canCancel: mockState.solanaCanCancel,
+        cancel: { run: mockCancelSolana, isPending: false, error: null },
+        refetch: jest.fn(),
+    }),
     useStudFees: () => ({
         amountLamports: null,
         isLoading: false,
@@ -61,6 +74,11 @@ jest.mock('@shared/core', () => ({
     useBreedRelationCheck: () => ({ areRelated: mockState.areRelated }),
     usePendingBreed: (id?: string) => ({
         isPending: id != null && mockState.pendingIds.includes(id),
+        // The way out of a stuck breed. Without these the screen can detect one and
+        // offer nothing, which is the bug this stub used to model faithfully.
+        settle: { run: mockSettleBreed, isPending: false, error: null },
+        cancel: { run: mockCancelBreed, isPending: false, error: null },
+        refetch: jest.fn(),
     }),
     useBreedPets: () => ({
         mutate: mockBreed,
@@ -106,6 +124,13 @@ const press = async (tree: ReactTestRenderer.ReactTestRenderer, index: number) =
 };
 
 /** The breed button is the last touchable on the screen. */
+const pressLabel = async (tree: ReactTestRenderer.ReactTestRenderer, label: string) => {
+    const node = tree.root
+        .findAllByType(TouchableOpacity)
+        .find((n) => n.props.accessibilityLabel === label);
+    await ReactTestRenderer.act(async () => node!.props.onPress());
+};
+
 const breedButton = (tree: ReactTestRenderer.ReactTestRenderer) => {
     const buttons = tree.root.findAllByType(TouchableOpacity);
     return buttons[buttons.length - 1];
@@ -133,6 +158,8 @@ const selectParent2 = async (tree: ReactTestRenderer.ReactTestRenderer) =>
     press(tree, 2 + mockState.pets.length);
 
 beforeEach(() => {
+    mockState.solanaPending = false;
+    mockState.solanaCanCancel = false;
     mockState.pets = [pet(), pet({ id: '2', name: 'Momo' })];
     mockState.areRelated = false;
     mockState.pendingIds = [];
@@ -261,5 +288,72 @@ describe('BreedScreen — async randomness', () => {
         mockState.isAwaitingFulfillment = true;
         const tree = await render();
         expect(textOf(tree)).toContain('Waiting for randomness');
+    });
+});
+
+/**
+ * Getting out of an interrupted breed.
+ *
+ * v2 breed is request then settle. If the settle never lands the parents stay pending
+ * and cannot breed again — and the screen used to say "settle or cancel it first" while
+ * offering neither, so the pets were stuck for good.
+ */
+describe('BreedScreen — recovering a stuck breed', () => {
+    it('offers settle and cancel rather than naming them and stopping', async () => {
+        mockState.pendingIds = ['1'];
+        const tree = await render();
+        // The per-pet query only runs for a selected parent, so nothing is pending
+        // until one is chosen — the same shape the blocking test above relies on.
+        await selectParent1(tree);
+
+        const labels = tree.root
+            .findAllByType(TouchableOpacity)
+            .map((n) => n.props.accessibilityLabel);
+        expect(labels).toContain('Settle pending breed');
+        expect(labels).toContain('Cancel pending breed');
+    });
+
+    it('settles on tap', async () => {
+        mockState.pendingIds = ['1'];
+        const tree = await render();
+        await selectParent1(tree);
+        await pressLabel(tree, 'Settle pending breed');
+        expect(mockSettleBreed).toHaveBeenCalled();
+    });
+
+    it('cancels on tap', async () => {
+        mockState.pendingIds = ['1'];
+        const tree = await render();
+        await selectParent1(tree);
+        await pressLabel(tree, 'Cancel pending breed');
+        expect(mockCancelBreed).toHaveBeenCalled();
+    });
+
+    it('offers no settle on Solana, which resumes instead', async () => {
+        // Solana's request has no settle step: a new attempt resumes it. Offering one
+        // would ask for a transaction the program does not have.
+        mockState.pendingIds = [];
+        mockState.solanaPending = true;
+        mockState.solanaCanCancel = false;
+        const tree = await render();
+
+        expect(textOf(tree)).toContain('will resume it');
+        const labels = tree.root
+            .findAllByType(TouchableOpacity)
+            .map((n) => n.props.accessibilityLabel);
+        expect(labels).not.toContain('Settle pending breed');
+        // Cancel only once the randomness has expired.
+        expect(labels).not.toContain('Cancel pending breed');
+    });
+
+    it('offers cancel on Solana once the randomness has expired', async () => {
+        mockState.pendingIds = [];
+        mockState.solanaPending = true;
+        mockState.solanaCanCancel = true;
+        const tree = await render();
+
+        expect(textOf(tree)).toContain('Randomness has expired');
+        await pressLabel(tree, 'Cancel pending breed');
+        expect(mockCancelSolana).toHaveBeenCalled();
     });
 });

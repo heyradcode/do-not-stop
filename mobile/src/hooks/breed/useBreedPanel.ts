@@ -6,6 +6,7 @@ import {
     useFees,
     useMarriageInfo,
     usePendingBreed,
+    usePendingSolanaBreed,
     usePetList,
     type Pet,
     type PetChain,
@@ -49,6 +50,22 @@ export interface UseBreedPanel {
     };
     areRelated: boolean;
     hasPendingBreed: boolean;
+    /**
+     * The unresolved EVM breed blocking these parents, with the actions that clear it.
+     *
+     * Null when nothing is stuck, or when the stuck one is Solana's — that path has no
+     * settle, so it is reported separately below.
+     */
+    stuckBreed: {
+        settle: { run(): Promise<void>; isPending: boolean; error: Error | null };
+        cancel: { run(): Promise<void>; isPending: boolean; error: Error | null };
+    } | null;
+    /** Solana's outstanding request, which resumes on the next attempt rather than settling. */
+    pendingSolana: {
+        isPending: boolean;
+        canCancel: boolean;
+        cancel: { run: () => Promise<unknown>; isPending: boolean; error: Error | null };
+    };
     breedButtonLabel: string;
     breedDisabled: boolean;
     onBreed: () => void;
@@ -129,10 +146,26 @@ export const useBreedPanel = (): UseBreedPanel => {
     const pendingOwn2 = usePendingBreed(tab === 'own' ? ownPet2 || undefined : undefined);
     const pendingMarried = usePendingBreed(tab === 'spouse' ? spousePetId || undefined : undefined);
     const pendingSpouse = usePendingBreed(tab === 'spouse' ? spouseId : undefined);
+    /**
+     * Solana's equivalent, checked once for the wallet rather than per pet: the program
+     * holds one outstanding request per owner, not one per parent.
+     */
+    const pendingSolana = usePendingSolanaBreed(true);
+
     const hasPendingBreed =
-        tab === 'own'
+        (tab === 'own'
             ? pendingOwn1.isPending || pendingOwn2.isPending
-            : pendingMarried.isPending || pendingSpouse.isPending;
+            : pendingMarried.isPending || pendingSpouse.isPending) || pendingSolana.isPending;
+
+    /**
+     * The stuck breed itself, so the screen can offer a way out of it.
+     *
+     * Detecting one and saying "settle or cancel it first" without offering either left
+     * the parents unbreedable forever: v2 breed is request then settle, and if the settle
+     * never lands nothing else can move them.
+     */
+    const stuckBreed =
+        [pendingOwn1, pendingOwn2, pendingMarried, pendingSpouse].find((p) => p.isPending) ?? null;
 
     const handleSuccess = useCallback(
         ({ name }: { name: string }) => {
@@ -215,6 +248,8 @@ export const useBreedPanel = (): UseBreedPanel => {
         },
         areRelated,
         hasPendingBreed,
+        stuckBreed,
+        pendingSolana,
         breedButtonLabel,
         breedDisabled:
             breed.isPending || breed.isAwaitingFulfillment || hasPendingBreed || !canSubmit,

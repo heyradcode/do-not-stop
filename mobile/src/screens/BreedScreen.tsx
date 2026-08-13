@@ -122,10 +122,80 @@ export default function BreedScreen() {
                 </Text>
             ) : null}
 
-            {panel.hasPendingBreed ? (
-                <Text style={styles.warning}>
-                    A breed is already pending for one of these pets. Settle or cancel it first.
-                </Text>
+            {/*
+             * Recovery for an interrupted breed. v2 breed is request then settle, so if
+             * the settle never lands the parents stay pending and cannot breed again.
+             * This used to say "settle or cancel it first" and offer neither, which left
+             * the pets stuck for good.
+             *
+             * Solana has no settle: its request resumes on the next attempt, and cancel
+             * only becomes possible once the randomness has expired.
+             */}
+            {panel.pendingSolana.isPending ? (
+                <View style={styles.stuck}>
+                    <Text style={styles.warning}>
+                        You have an unresolved breed on Solana.{' '}
+                        {panel.pendingSolana.canCancel
+                            ? 'Randomness has expired — cancel to free the parents.'
+                            : 'Starting a new breed will resume it and mint the offspring.'}
+                    </Text>
+                    {panel.pendingSolana.canCancel ? (
+                        <TouchableOpacity
+                            style={[
+                                styles.stuckBtn,
+                                panel.pendingSolana.cancel.isPending && styles.disabled,
+                            ]}
+                            onPress={() => {
+                                panel.pendingSolana.cancel.run();
+                            }}
+                            disabled={panel.pendingSolana.cancel.isPending}
+                            accessibilityRole="button"
+                            accessibilityLabel="Cancel pending breed"
+                            activeOpacity={0.85}
+                        >
+                            <Text style={styles.stuckBtnText}>
+                                {panel.pendingSolana.cancel.isPending ? 'Cancelling…' : 'Cancel'}
+                            </Text>
+                        </TouchableOpacity>
+                    ) : null}
+                </View>
+            ) : panel.stuckBreed ? (
+                <View style={styles.stuck}>
+                    <Text style={styles.warning}>
+                        A breed is already pending for one of these pets. Settle it once the
+                        randomness is ready, which mints the offspring, or cancel it if it has
+                        not arrived.
+                    </Text>
+                    <View style={styles.stuckRow}>
+                        {(
+                            [
+                                ['Settle', panel.stuckBreed.settle, 'Settle pending breed'],
+                                ['Cancel', panel.stuckBreed.cancel, 'Cancel pending breed'],
+                            ] as const
+                        ).map(([label, action, a11y]) => {
+                            const busy =
+                                panel.stuckBreed!.settle.isPending ||
+                                panel.stuckBreed!.cancel.isPending;
+                            return (
+                                <TouchableOpacity
+                                    key={label}
+                                    style={[styles.stuckBtn, busy && styles.disabled]}
+                                    onPress={() => {
+                                        action.run();
+                                    }}
+                                    disabled={busy}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={a11y}
+                                    activeOpacity={0.85}
+                                >
+                                    <Text style={styles.stuckBtnText}>
+                                        {action.isPending ? `${label.slice(0, -1)}ing…` : label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
+                </View>
             ) : null}
 
             <TouchableOpacity
@@ -234,6 +304,27 @@ const styles = StyleSheet.create({
         color: neon.textMuted,
         lineHeight: 19,
     },
+    stuck: {
+        marginTop: 12,
+        borderWidth: 1,
+        borderColor: neon.borderMagenta,
+        backgroundColor: neon.bgPanel,
+        borderRadius: 12,
+        padding: 12,
+    },
+    stuckRow: { flexDirection: 'row', marginTop: 10 },
+    stuckBtn: {
+        marginTop: 10,
+        marginRight: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 9,
+        borderRadius: 10,
+        backgroundColor: neon.bgCard,
+        borderWidth: 1,
+        borderColor: neon.cyan,
+    },
+    stuckBtnText: { color: neon.cyan, fontSize: 14, fontWeight: '800' },
+    disabled: { opacity: 0.5 },
     warning: {
         marginTop: 12,
         fontSize: 13,
