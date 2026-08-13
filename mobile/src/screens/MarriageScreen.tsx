@@ -9,6 +9,8 @@ import {
     View,
 } from 'react-native';
 
+import { formatExpiry } from '@shared/core';
+
 import PetPicker from '../components/PetPicker';
 import PetSearchField from '../components/PetSearchField';
 import { useMarriagePanel } from '../hooks/marriage/useMarriagePanel';
@@ -115,6 +117,17 @@ export default function MarriageScreen() {
                                     </Text>
                                     <Text style={styles.rowSub}>
                                         to {panel.targetPetName(p.targetPetId)}
+                                    </Text>
+                                    {/*
+                                     * A proposal is only offered while it is live, so without
+                                     * this the window is invisible: one that lapses between
+                                     * opening the screen and tapping Accept simply vanishes,
+                                     * and reads as never having arrived. `proposalTTL` is 60s
+                                     * on this deployment, which makes that the normal case
+                                     * rather than the rare one.
+                                     */}
+                                    <Text style={styles.rowExpiry}>
+                                        Expires in {formatExpiry(p.expiry)}
                                     </Text>
                                 </View>
                                 <TouchableOpacity
@@ -250,6 +263,7 @@ const styles = StyleSheet.create({
     rowBody: { flex: 1 },
     rowTitle: { fontSize: 16, fontWeight: '700', color: neon.text },
     rowSub: { fontSize: 13, color: neon.textMuted, marginTop: 2 },
+    rowExpiry: { fontSize: 12, color: neon.magenta, marginTop: 4, fontWeight: '700' },
     smallBtn: {
         borderWidth: 1,
         borderColor: neon.cyan,

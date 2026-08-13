@@ -60,6 +60,10 @@ const mockRefetch = jest.fn();
 const mockIncomingArgs = jest.fn();
 
 jest.mock('@shared/core', () => ({
+    // The real formatter, taken from its own module rather than the package barrel: the
+    // barrel drags in `queryClient` and the rest of the surface this suite mocks away. It
+    // is pure, and a stub would let the wording drift from the rows frontend renders.
+    formatExpiry: jest.requireActual('../../shared/src/utils/common/time').formatExpiry,
     usePetList: () => ({ pets: mockState.pets, isLoading: false, error: null, refetch: mockRefetch }),
     useChainCapabilities: () => ({
         kind: mockState.kind,
@@ -258,6 +262,27 @@ describe('MarriageScreen', () => {
             'marriage',
         );
         expect(textOf(tree)).not.toContain('Proposal sent!');
+    });
+
+    /*
+     * `proposalTTL` is 60 seconds on this deployment (GameConfig's dev default; the source
+     * notes prod is 7 days). A proposal can therefore lapse between opening the screen and
+     * reaching for Accept, and the list only ever holds live ones, so without the window on
+     * screen it just disappears and reads as never having arrived. That is exactly how a
+     * real proposal, correctly written on chain, was reported as missing.
+     */
+    it('shows how long an incoming proposal has left', async () => {
+        mockState.proposals = [proposal({ expiry: Math.floor(Date.now() / 1000) + 45 })];
+        const tree = await render();
+        await pressWith(tree, 'Incoming');
+        expect(textOf(tree)).toContain('Expires in 1m');
+    });
+
+    it('says a proposal has expired rather than showing a bare countdown', async () => {
+        mockState.proposals = [proposal({ expiry: 1 })];
+        const tree = await render();
+        await pressWith(tree, 'Incoming');
+        expect(textOf(tree)).toContain('Expired');
     });
 
     it('confirms before accepting, rather than marrying on one tap', async () => {
