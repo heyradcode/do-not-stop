@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { usePetError } from '@shared/core';
 
 import { useToast } from '../components/ui/toast';
+import { CHAIN_MISMATCH_MESSAGE, isChainMismatchError } from '../utils/chainMismatch';
 
 /**
  * Maps pet-action errors to friendly toast messages.
@@ -39,6 +40,14 @@ export const usePetErrorToast = (
             console.error('[pet-action] mutation error:', mutationError);
         } else if (validationError) {
             console.error('[pet-action] validation error:', validationError);
+        }
+
+        // Same override as useTxErrorToast: a wrong-network refusal otherwise arrives as
+        // the caller's generic fallback, which tells the player to retry something that
+        // cannot succeed until the wallet moves.
+        if (isChainMismatchError(mutationError) || isChainMismatchError(receiptError)) {
+            toast.error(CHAIN_MISMATCH_MESSAGE);
+            return;
         }
 
         if (display.isUserRejection) {

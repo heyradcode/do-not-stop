@@ -9,6 +9,7 @@ import {
     isSupportedChain,
 } from '../constants/ethereumNetworks';
 import { useApprovedEvmChains } from '../hooks/useApprovedEvmChains';
+import { useEvmChainSync } from '../hooks/useEvmChainSync';
 import { useEvmSessionChain } from '../hooks/useEvmSessionChain';
 import { useNotifyError } from '../hooks/useNotifyError';
 import { neon, neonGlow } from '../theme/neon';
@@ -61,6 +62,10 @@ export default function NetworkGate() {
     const [error, setError] = useState<string | null>(null);
 
     useEvmSessionChain();
+    // Runs before the early return below, so it keeps working while the gate is hidden.
+    // The desync it repairs is invisible to this gate: `chainId` reads as a supported
+    // chain throughout, because that stale value is itself the bug.
+    useEvmChainSync();
 
     // `null` means the approved set is unknown, so it cannot rule the target out.
     const targetAuthorized = approvedChains === null || approvedChains.includes(TARGET_CHAIN_ID);
