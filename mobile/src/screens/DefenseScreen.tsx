@@ -92,6 +92,24 @@ export default function DefenseScreen() {
 
     const nothingChosen = !allPets && selected.length === 0;
 
+    /*
+     * Two controls on this screen ask the wallet to sign: "Allow Challenges" (grant) and the
+     * session button while there is no key yet (session.approve). Both go through the same
+     * connection, and a wallet holds one `eth_signTypedData` at a time — a second arrives as
+     *   -32002 Request of type 'eth_signTypedData' already pending for origin …
+     *
+     * Each button used to gate on its own hook's `isPending` and knew nothing about the
+     * other, so tapping one and then the other while the wallet was still coming to the
+     * foreground sent two. That gap is wide on Android, where the app switch is slow enough
+     * that the first tap looks like it did nothing.
+     *
+     * `revoke` and ending a session are excluded on purpose: neither signs (revoke is a
+     * plain DELETE), so blocking them would only make the screen feel stuck.
+     */
+    const signaturePending = isPending || session.isPending;
+    const sessionDisabled =
+        !isConnected || (session.key ? session.isPending : signaturePending);
+
     // Whole hours left on the delegation. An absolute expiry would need date handling for
     // a window that always crosses into tomorrow, and "another 23 hours" answers the only
     // question being asked here: is this on, and for how long.
@@ -112,7 +130,7 @@ export default function DefenseScreen() {
             error={error ? error.message : null}
             actionLabel={isPending ? 'Signing…' : 'Allow Challenges'}
             onAction={handleGrant}
-            actionDisabled={isPending || nothingChosen || !isConnected}
+            actionDisabled={signaturePending || nothingChosen || !isConnected}
             secondary={{ label: 'Withdraw', onPress: handleRevoke, disabled: isPending || !isConnected }}
         >
             <ConsentStatusCard status={status} />
@@ -185,9 +203,9 @@ export default function DefenseScreen() {
                         style={[
                             styles.sessionBtn,
                             session.key ? styles.sessionEnd : null,
-                            (session.isPending || !isConnected) && styles.sessionOff,
+                            sessionDisabled && styles.sessionOff,
                         ]}
-                        disabled={session.isPending || !isConnected}
+                        disabled={sessionDisabled}
                         onPress={() => {
                             setSuccess(null);
                             setSessionNote(null);

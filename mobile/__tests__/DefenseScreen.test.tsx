@@ -41,6 +41,8 @@ const mockState = {
     pets: [pet(), pet({ id: '2', name: 'Momo' })] as Pet[],
     isConnected: true,
     isPending: false,
+    /** `useBattleSession().isPending` — a session approval waiting on the wallet. */
+    sessionPending: false,
     error: null as Error | null,
 };
 
@@ -69,7 +71,7 @@ jest.mock('@shared/core', () => ({
     useBattleSession: () => ({
         key: mockState.sessionKey,
         supported: mockState.sessionSupported,
-        isPending: false,
+        isPending: mockState.sessionPending,
         error: mockState.sessionError,
         approve: mockApproveSession,
         revoke: mockRevokeSession,
@@ -169,6 +171,7 @@ beforeEach(() => {
     mockState.pets = [pet(), pet({ id: '2', name: 'Momo' })];
     mockState.isConnected = true;
     mockState.isPending = false;
+    mockState.sessionPending = false;
     mockState.error = null;
     delete mockRouteParams.petId;
     jest.clearAllMocks();
@@ -209,6 +212,52 @@ describe('DefenseScreen', () => {
         const tree = await render();
         await pressAllow(tree);
         expect(textOf(tree)).toContain('Every pet you own can now be challenged.');
+    });
+
+    /*
+     * A wallet holds one `eth_signTypedData` at a time. Both signing controls here go
+     * through the same connection, and each used to gate only on its own hook's
+     * `isPending`, so the second tap reached the wallet as
+     * `-32002 ... already pending for origin`. The window is wide on Android: the first
+     * tap looks inert until the wallet finishes coming to the foreground.
+     */
+    describe('while a wallet signature is outstanding', () => {
+        const sessionButton = (tree: ReactTestRenderer.ReactTestRenderer, label: string) =>
+            tree.root
+                .findAllByType(TouchableOpacity)
+                .find((n) => n.props.accessibilityLabel === label);
+
+        const allowButton = (tree: ReactTestRenderer.ReactTestRenderer) => {
+            const buttons = tree.root.findAllByType(TouchableOpacity);
+            return buttons[buttons.length - 2];
+        };
+
+        it('will not let a consent grant start a session signature too', async () => {
+            mockState.isPending = true;
+            const tree = await render();
+            expect(sessionButton(tree, 'Approve battle session')!.props.disabled).toBe(true);
+        });
+
+        it('will not let a session approval start a consent signature too', async () => {
+            mockState.sessionPending = true;
+            const tree = await render();
+            expect(allowButton(tree).props.disabled).toBe(true);
+        });
+
+        it('still lets an existing session be ended, since that signs nothing', async () => {
+            // `revoke` is a plain DELETE. Blocking it would only make the screen feel stuck
+            // while a grant is waiting on the wallet.
+            mockState.sessionKey = sessionKeyFixture();
+            mockState.isPending = true;
+            const tree = await render();
+            expect(sessionButton(tree, 'End battle session')!.props.disabled).toBe(false);
+        });
+
+        it('offers both controls when nothing is pending', async () => {
+            const tree = await render();
+            expect(sessionButton(tree, 'Approve battle session')!.props.disabled).toBe(false);
+            expect(allowButton(tree).props.disabled).toBe(false);
+        });
     });
 
     it('withdraws consent', async () => {
