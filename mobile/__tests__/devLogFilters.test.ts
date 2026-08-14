@@ -4,7 +4,12 @@
  * assert against the message text verbatim, exactly as WalletConnect emitted it.
  */
 
-import { IGNORED_DEV_LOG_PATTERNS, installDevLogFilters, shouldIgnoreConsoleLine } from '../src/devLogFilters';
+import {
+    IGNORED_DEV_LOG_PATTERNS,
+    installDevLogFilters,
+    shouldIgnoreConsoleLine,
+    shouldIgnoreRejection,
+} from '../src/devLogFilters';
 
 const isIgnored = (line: string) => IGNORED_DEV_LOG_PATTERNS.some((p) => p.test(line));
 
@@ -118,6 +123,57 @@ describe('shouldIgnoreConsoleLine', () => {
 
     it('survives a non-string argument', () => {
         expect(shouldIgnoreConsoleLine([undefined, null, 42, { a: 1 }])).toBe(false);
+    });
+});
+
+/**
+ * A different surface from the two above: React Native reports unhandled rejections through
+ * `ExceptionsManager.handleException`, so neither `LogBox.ignoreLogs` nor the `console.error`
+ * wrapper sees them.
+ *
+ * The one being filtered is `@reown/appkit-wagmi-react-native` calling an async
+ * `connectWagmi` without awaiting it, inside a `try/catch` that therefore catches nothing.
+ * On restart with a session that has no accounts left, it surfaces as a startup crash for a
+ * failure whose outcome — stay disconnected, offer Connect — is already correct and visible.
+ */
+describe('shouldIgnoreRejection', () => {
+    /** How viem builds it: the detail line lives in `message`. */
+    const appKitRejection = () => {
+        const error = new Error(
+            'User rejected the request.\n\nDetails: No accounts found or user rejected connection via AppKit.\nVersion: viem@2.38.4',
+        );
+        error.name = 'UserRejectedRequestError';
+        return error;
+    };
+
+    it('ignores the unawaited AppKit connect from app startup', () => {
+        expect(shouldIgnoreRejection(appKitRejection())).toBe(true);
+    });
+
+    /*
+     * The case that keeps this filter honest. Refusing a transaction in the wallet throws
+     * the same error class with the same first line, and that one is the player's own
+     * action — it has to keep surfacing.
+     */
+    it('does not ignore a wallet refusing a transaction', () => {
+        const error = new Error(
+            'User rejected the request.\n\nRequest Arguments:\n  from: 0xEb43\n  to: 0x4B89\nVersion: viem@2.38.4',
+        );
+        error.name = 'UserRejectedRequestError';
+        expect(shouldIgnoreRejection(error)).toBe(false);
+    });
+
+    it('does not ignore anything from our own code', () => {
+        expect(shouldIgnoreRejection(new Error('BattleRejectionError: not on record yet'))).toBe(
+            false,
+        );
+    });
+
+    it('survives a rejection that is not an Error', () => {
+        expect(shouldIgnoreRejection(undefined)).toBe(false);
+        expect(shouldIgnoreRejection('No accounts found or user rejected connection via AppKit')).toBe(
+            true,
+        );
     });
 });
 

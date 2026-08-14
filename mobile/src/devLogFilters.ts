@@ -37,6 +37,85 @@ export const shouldIgnoreConsoleLine = (args: unknown[]): boolean => {
     return IGNORED_DEV_LOG_PATTERNS.some((pattern) => pattern.test(text));
 };
 
+/**
+ * Unhandled promise rejections that are a library's own missing `await`, not an app fault.
+ *
+ * Only one so far, and it is worth naming precisely.
+ * `@reown/appkit-wagmi-react-native/src/adapter.ts` syncs wagmi to the restored AppKit
+ * connector during `init`:
+ *
+ *     try {
+ *       connectWagmi(this.wagmiConfig, { connector: connectorInstance });
+ *     } catch (error) { ... }
+ *
+ * `connectWagmi` is async and is not awaited, so that `catch` can never run — the rejection
+ * escapes the try block entirely. When the app restarts with a WalletConnect session that
+ * has no accounts left, `UniversalConnector.connect` throws
+ * `UserRejectedRequestError('No accounts found or user rejected connection via AppKit.')`
+ * and it lands as an uncaught rejection at startup.
+ *
+ * The outcome it reports is already correct and already visible: the connect fails, wagmi
+ * stays disconnected, and the UI offers Connect. Nothing is being swallowed except the
+ * claim that the app crashed.
+ *
+ * wagmi's own reconnect path is unaffected — it catches (`.connect({ isReconnecting: true })
+ * .catch(() => null)`), so restoring a live session still works.
+ */
+export const IGNORED_UNHANDLED_REJECTIONS: RegExp[] = [
+    /No accounts found or user rejected connection via AppKit/,
+];
+
+/**
+ * Whether an unhandled rejection is one of the above.
+ *
+ * Deliberately narrow: it matches the AppKit connection message, not `UserRejectedRequestError`
+ * in general. Refusing a transaction in the wallet produces the same error class, and that
+ * one has to keep surfacing.
+ */
+export const shouldIgnoreRejection = (rejection: unknown): boolean => {
+    const text =
+        rejection instanceof Error ? `${rejection.name}: ${rejection.message}` : String(rejection);
+    return IGNORED_UNHANDLED_REJECTIONS.some((pattern) => pattern.test(text));
+};
+
+/**
+ * Filter unhandled rejections without changing how any other one is reported.
+ *
+ * React Native routes these through `ExceptionsManager.handleException`, not `console.error`,
+ * which is why the console wrapper below cannot see them. Its tracker is re-enterable
+ * (`enable` calls `disable` first), so re-enabling with RN's own options and one extra guard
+ * replaces the handler cleanly and keeps RN's formatting for everything else.
+ *
+ * Only ever consulted for rejections nobody handled. An error the app awaits and surfaces
+ * never reaches here, so this cannot hide a failure the UI was going to report.
+ *
+ * Guarded because both requires are RN internals. If they move in a future version the
+ * right outcome is the noise coming back, not rejection reporting disappearing.
+ *
+ * The deep import is deliberate and has no top-level equivalent: React Native does not
+ * re-export `promiseRejectionTrackingOptions`, and reaching it is what lets RN keep
+ * formatting and reporting every rejection we do not filter. Writing our own handler
+ * instead would mean reimplementing that formatting against `ExceptionsManager`, which is
+ * a deeper import for a worse result.
+ */
+const installRejectionFilter = (): void => {
+    try {
+        const tracking = require('promise/setimmediate/rejection-tracking');
+        // eslint-disable-next-line @react-native/no-deep-imports
+        const options = require('react-native/Libraries/promiseRejectionTrackingOptions').default;
+
+        tracking.enable({
+            ...options,
+            onUnhandled: (id: number, rejection: unknown) => {
+                if (shouldIgnoreRejection(rejection)) return;
+                options.onUnhandled(id, rejection);
+            },
+        });
+    } catch {
+        /* RN internals moved; leave rejection reporting exactly as it was. */
+    }
+};
+
 /** Fast Refresh re-runs the entry module, and wrapping an already-wrapped console recurses. */
 let installed = false;
 
@@ -64,6 +143,9 @@ export const installDevLogFilters = (): void => {
         if (shouldIgnoreConsoleLine(args)) return;
         original(...args);
     };
+
+    // Third surface: unhandled rejections do not pass through either of the two above.
+    installRejectionFilter();
 };
 
 /*
