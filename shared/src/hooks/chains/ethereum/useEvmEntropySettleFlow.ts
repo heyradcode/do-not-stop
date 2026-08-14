@@ -33,7 +33,33 @@ export interface EvmEntropySettleFlowOptions {
     settleGas: bigint;
     /** Prefix for the settle-failure log, e.g. `settleMint`. */
     label: string;
+    /**
+     * How long to let a keeper settle before asking the player to do it, in ms.
+     *
+     * Settling is permissionless, and `backend/src/features/settle-keeper/` exists so the
+     * player is not asked for a second signature. This hook used to send its own settle the
+     * instant entropy revealed, racing that keeper: whoever lost produced a wallet prompt
+     * for work already done, and signing it spent gas on a transaction that then reverted.
+     * The settle is sent with an explicit `gas`, which skips simulation, so nothing catches
+     * it first.
+     *
+     * The wait is cancelled the moment the caller clears the pending request, which is what
+     * it does when it sees the settled event — so a keeper that wins costs no delay at all.
+     * The full period is only ever paid when nothing else settles, which is exactly the
+     * deployment that needs the player to.
+     *
+     * `isAwaitingFulfillment` is already true throughout, so this extends an existing
+     * spinner rather than adding dead air. Pass 0 to settle immediately, which is right for
+     * a local stack running with `KEEPER_ENABLED` off.
+     */
+    settleGraceMs?: number;
 }
+
+/**
+ * Long enough for a keeper watching `Revealed` to land its transaction on a 2s-block
+ * testnet, short enough that a deployment without one is not left staring at a spinner.
+ */
+const DEFAULT_SETTLE_GRACE_MS = 15_000;
 
 export interface EvmEntropySettleFlow {
     /** Non-null from the request tx landing until the caller clears it. */
@@ -66,7 +92,15 @@ export interface EvmEntropySettleFlow {
 export const useEvmEntropySettleFlow = (
     options: EvmEntropySettleFlowOptions,
 ): EvmEntropySettleFlow => {
-    const { enabled, requestHash, requestEventName, settleFunctionName, settleGas, label } = options;
+    const {
+        enabled,
+        requestHash,
+        requestEventName,
+        settleFunctionName,
+        settleGas,
+        label,
+        settleGraceMs = DEFAULT_SETTLE_GRACE_MS,
+    } = options;
     const { evm } = usePetsConfig();
     const { address } = useAccount();
 
@@ -100,10 +134,19 @@ export const useEvmEntropySettleFlow = (
         query: { enabled: enabled && Boolean(evm?.gameLogic.address) },
     });
 
-    // 3. Send the settle tx when entropy reveals for our request.
+    // 3. Send the settle tx when entropy reveals for our request, unless a keeper gets
+    //    there first. See `settleGraceMs`.
     const settle = useWriteContract();
     const settleSentRef = useRef(false);
-    const handleEntropyFulfilled = useCallback((id: bigint) => {
+    const graceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const cancelGrace = useCallback(() => {
+        if (graceTimerRef.current === null) return;
+        clearTimeout(graceTimerRef.current);
+        graceTimerRef.current = null;
+    }, []);
+
+    const sendSettle = useCallback((id: bigint) => {
         if (settleSentRef.current || !evm?.gameLogic.address) return;
         settleSentRef.current = true;
         settle.writeContract(
@@ -129,6 +172,38 @@ export const useEvmEntropySettleFlow = (
         );
     }, [evm?.gameLogic.address, evm?.gameLogic.abi, evm?.chainId, settle, settleFunctionName, settleGas, label]);
 
+    const handleEntropyFulfilled = useCallback((id: bigint) => {
+        // A timer already running means this reveal has been seen; a second one must not
+        // queue a second settle, the same reason `settleSentRef` exists.
+        if (settleSentRef.current || graceTimerRef.current !== null) return;
+        if (settleGraceMs <= 0) {
+            sendSettle(id);
+            return;
+        }
+        graceTimerRef.current = setTimeout(() => {
+            graceTimerRef.current = null;
+            sendSettle(id);
+        }, settleGraceMs);
+    }, [sendSettle, settleGraceMs]);
+
+    /*
+     * Somebody else settled: the caller clears the pending request when it sees the settled
+     * event, and that is the signal that no prompt is needed. Without this the grace period
+     * would only ever delay the duplicate prompt rather than prevent it.
+     *
+     * The *transition* to null, not merely being null. `pendingRequestId` is null on every
+     * render before the request lands too, and treating that as a cancellation would let
+     * any unrelated re-render between the reveal and the timer firing silently disarm it.
+     */
+    const lastPendingRef = useRef<bigint | null>(null);
+    useEffect(() => {
+        if (lastPendingRef.current !== null && pendingRequestId === null) cancelGrace();
+        lastPendingRef.current = pendingRequestId;
+    }, [pendingRequestId, cancelGrace]);
+
+    // A pending timer outliving the component would prompt against a flow nobody is watching.
+    useEffect(() => cancelGrace, [cancelGrace]);
+
     // 4. Watch Pyth Entropy `Revealed` (caller = gameLogic, sequenceNumber = requestId).
     useWatchEntropyFulfillment({
         entropyAddress: enabled ? (entropyAddress as `0x${string}` | undefined) : undefined,
@@ -152,8 +227,9 @@ export const useEvmEntropySettleFlow = (
     const reset = useCallback(() => {
         setPendingRequestId(null);
         settleSentRef.current = false;
+        cancelGrace();
         settle.reset();
-    }, [settle]);
+    }, [settle, cancelGrace]);
 
     return {
         pendingRequestId,
