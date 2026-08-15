@@ -1,5 +1,13 @@
 import React from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+    ActivityIndicator,
+    Modal,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
 import BattleScene from './BattleScene';
 import type { UseBattlePanel } from '../../hooks/battle/useBattlePanel';
@@ -17,9 +25,45 @@ import { neon, neonGlow } from '../../theme/neon';
  * screen is a view over, split out for length and not for reuse, so a prop list enumerating
  * the fields would be a second copy of the panel's shape to keep in step.
  */
-export default function BattleStage({ panel }: { panel: UseBattlePanel }) {
+type Props = {
+    panel: UseBattlePanel;
+    visible: boolean;
+    onClose: () => void;
+};
+
+export default function BattleStage({ panel, visible, onClose }: Props) {
+    const watching = panel.hasReplay || panel.result != null;
+
     return (
-        <>
+        <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+            <View style={styles.stage}>
+                <View style={styles.header}>
+                    <Text style={styles.heading}>
+                        {panel.attackerName} vs {panel.defenderName}
+                    </Text>
+                    <Pressable
+                        onPress={onClose}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Leave the arena"
+                    >
+                        <Text style={styles.close}>×</Text>
+                    </Pressable>
+                </View>
+
+                {/*
+                 * Something to look at before there is anything to watch. The fight runs
+                 * through six backend states before a replay exists, and an empty screen for
+                 * that whole time reads as the app having stopped.
+                 */}
+                {!watching ? (
+                    <View style={styles.waiting}>
+                        <ActivityIndicator size="large" color={neon.magenta} />
+                        <Text style={styles.waitingText}>
+                            {panel.stageLabel ?? 'Fighting…'}
+                        </Text>
+                    </View>
+                ) : null}
             {panel.taunts.length > 0 ? (
                 <View style={styles.taunts}>
                     {panel.taunts.map((line, i) => (
@@ -47,12 +91,7 @@ export default function BattleStage({ panel }: { panel: UseBattlePanel }) {
          * done immediately, so a battle that cannot be animated still shows its result
          * at once.
          */}
-        <Modal
-            visible={panel.result != null && panel.replayDone}
-            transparent
-            animationType="fade"
-            onRequestClose={panel.onDismissResult}
-        >
+    {panel.result != null && panel.replayDone ? (
             <View style={styles.modalRoot}>
                 <View style={styles.sheet}>
                     {panel.result ? (
@@ -137,12 +176,43 @@ export default function BattleStage({ panel }: { panel: UseBattlePanel }) {
                     </TouchableOpacity>
                 </View>
             </View>
+    ) : null}
+            </View>
         </Modal>
-        </>
     );
 }
 
 const styles = StyleSheet.create({
+    stage: {
+        flex: 1,
+        backgroundColor: neon.bgDeep,
+        padding: 16,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    heading: {
+        flex: 1,
+        fontSize: 18,
+        fontWeight: '800',
+        color: neon.text,
+    },
+    close: {
+        fontSize: 28,
+        color: neon.magenta,
+        paddingHorizontal: 8,
+    },
+    waiting: {
+        alignItems: 'center',
+        paddingVertical: 40,
+    },
+    waitingText: {
+        marginTop: 12,
+        fontSize: 14,
+        color: neon.textMuted,
+    },
     taunts: {
         marginTop: 16,
         borderLeftWidth: 2,

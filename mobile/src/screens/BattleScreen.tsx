@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     ActivityIndicator,
     ScrollView,
@@ -33,6 +33,15 @@ const TIER_COLOR: Record<string, string> = {
 export default function BattleScreen() {
     const { params } = useRoute<RouteProp<MainTabParamList, 'Battle'>>();
     const panel = useBattlePanel(params?.petId);
+
+    /**
+     * The arena opens when Start is pressed, not when a replay exists.
+     *
+     * A fight runs through six backend states before there is anything to animate, and it can
+     * fail on any of them. Opening on the press puts the wait and the failure where the player
+     * is already looking, rather than behind a screen they have to notice has changed.
+     */
+    const [arenaOpen, setArenaOpen] = useState(false);
 
     if (!panel.isConnected) {
         return (
@@ -175,8 +184,16 @@ export default function BattleScreen() {
                  */}
                 {panel.opponent ? <PetDetailStrip pet={panel.opponent} /> : null}
 
-                <BattleStage panel={panel} />
             </ScrollView>
+
+            <BattleStage
+                panel={panel}
+                visible={arenaOpen}
+                onClose={() => {
+                    setArenaOpen(false);
+                    panel.onDismissResult();
+                }}
+            />
 
             {/*
              * Pinned rather than trailing the content. Start Battle sat below a pet picker,
@@ -188,17 +205,14 @@ export default function BattleScreen() {
                     <Text style={[styles.warning, styles.barItem]}>{panel.validationError}</Text>
                 ) : null}
 
-                {/*
-                 * What the fight is waiting on. "Fighting…" covered six backend states, so a
-                 * battle stalled on the independent verifier looked like one about to
-                 * finish, and one that ended badly looked like one still running.
-                 */}
-                {panel.stageLabel ? <Text style={styles.stage}>{panel.stageLabel}</Text> : null}
 
                 <TouchableOpacity
                     testID="action-primary"
                     style={[styles.action, styles.barItem, panel.isBusy && styles.actionDisabled]}
-                    onPress={panel.onStartBattle}
+                    onPress={() => {
+                        setArenaOpen(true);
+                        panel.onStartBattle();
+                    }}
                     disabled={panel.isBusy}
                     activeOpacity={0.85}
                 >

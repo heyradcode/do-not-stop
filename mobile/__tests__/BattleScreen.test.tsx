@@ -280,6 +280,16 @@ const pressWith = async (tree: ReactTestRenderer.ReactTestRenderer, label: strin
     });
 };
 
+/**
+ * Opens the arena, which is where a fight is now watched.
+ *
+ * Start sets `arenaOpen` before it validates, so this needs no pet or opponent chosen: these
+ * tests are about what the arena shows once it is open, not about getting a battle accepted.
+ */
+const openArena = async (tree: ReactTestRenderer.ReactTestRenderer) => {
+    await pressWith(tree, 'Start Battle');
+};
+
 beforeEach(() => {
     mockState.pets = [pet()];
     mockState.petsError = null;
@@ -550,6 +560,7 @@ describe('BattleScreen', () => {
     it('shows the taunts once they arrive', async () => {
         mockState.turns = [{ text: 'You call that a stance?' }];
         const tree = await render();
+        await openArena(tree);
         expect(textOf(tree)).toContain('You call that a stance?');
     });
 
@@ -618,6 +629,7 @@ describe('battle replay', () => {
     it('opens on full bars, before any strike has played', async () => {
         mockState.liveReplay = replay([strike()]);
         const tree = await render();
+        await openArena(tree);
         // Both fighters at 100%: the first strike has not landed yet.
         expect(textOf(tree)).toContain('Bracing for the first strike');
         expect(textOf(tree)).toContain('100%');
@@ -626,6 +638,7 @@ describe('battle replay', () => {
     it('plays a strike, dropping the defender and narrating it', async () => {
         mockState.liveReplay = replay([strike({ hp1After: 100n, hp2After: 60n })]);
         const tree = await render();
+        await openArena(tree);
 
         await ReactTestRenderer.act(async () => {
             await new Promise((r) => setTimeout(r, 750));
@@ -645,6 +658,7 @@ describe('battle replay', () => {
             strike({ round: 2, attacker: 2, crit: true, hp1After: 55n }),
         ]);
         const tree = await render();
+        await openArena(tree);
 
         // One act per strike. The next timer is only armed by the effect that runs
         // after React re-renders from the previous one, so a single long wait would
@@ -782,7 +796,9 @@ describe('empty opponent list', () => {
  * stopped changing, with the reason sitting unread on the server.
  */
 describe('battle stage', () => {
-    it('says nothing while idle', async () => {
+    it('says nothing while idle, because the arena has not been entered', async () => {
+        // The stage label moved into the arena when the arena started opening on Start. Until
+        // then there is no fight to narrate and nothing of it on screen.
         const tree = await render();
         expect(textOf(tree)).not.toContain('Waiting for');
     });
@@ -791,22 +807,28 @@ describe('battle stage', () => {
         mockState.phase = 'resolving';
         mockState.battleState = 'computed';
         const tree = await render();
+        await openArena(tree);
         expect(textOf(tree)).toContain('independent verifier');
     });
 
     it('distinguishes waiting on randomness from running the fight', async () => {
         mockState.phase = 'awaiting-vrf';
         mockState.battleState = 'committed';
-        expect(textOf(await render())).toContain('committed randomness round');
+        const committed = await render();
+        await openArena(committed);
+        expect(textOf(committed)).toContain('committed randomness round');
 
         mockState.battleState = 'seeded';
-        expect(textOf(await render())).toContain('Running the fight');
+        const seeded = await render();
+        await openArena(seeded);
+        expect(textOf(seeded)).toContain('Running the fight');
     });
 
     it('says why a battle stopped instead of leaving the screen frozen', async () => {
         mockState.battleState = 'verification_failed';
         mockState.failureReason = 'engines disagreed';
         const tree = await render();
+        await openArena(tree);
 
         expect(textOf(tree)).toContain('two engines disagreed');
         expect(textOf(tree)).toContain('engines disagreed');
@@ -852,5 +874,39 @@ describe('BattleScreen — chosen opponent', () => {
 
         await pressWith(tree, 'Momo');
         expect(textOf(tree)).toContain('no record');
+    });
+});
+
+describe('the arena', () => {
+    const closeControl = (tree: ReactTestRenderer.ReactTestRenderer) =>
+        tree.root.findAll((n) => n.props.accessibilityLabel === 'Leave the arena');
+
+    const isOpen = (tree: ReactTestRenderer.ReactTestRenderer) => closeControl(tree).length > 0;
+
+    it('stays shut until Start is pressed', async () => {
+        const tree = await render();
+        expect(isOpen(tree)).toBe(false);
+
+        await openArena(tree);
+        expect(isOpen(tree)).toBe(true);
+    });
+
+    it('opens on the press, before there is anything to watch', async () => {
+        // Six backend states run before a replay exists, and a fight can fail on any of them.
+        // Waiting for the replay would leave the player on the setup screen with no sign the
+        // battle had started, and none when it stopped.
+        const tree = await render();
+        await openArena(tree);
+
+        expect(isOpen(tree)).toBe(true);
+        expect(textOf(tree)).not.toContain('Bracing for the first strike');
+    });
+
+    it('closes again', async () => {
+        const tree = await render();
+        await openArena(tree);
+
+        await ReactTestRenderer.act(async () => closeControl(tree)[0].props.onPress());
+        expect(isOpen(tree)).toBe(false);
     });
 });
