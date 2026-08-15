@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useAccount, useSwitchChain } from 'wagmi';
 import { CHAINS, getChainConfig } from '../constants/ethereumNetworks';
-import { neon, neonGlow } from '../theme/neon';
+import { alpha, neon, neonGlow } from '../theme/neon';
 
 /**
  * Mirrors the web `EthereumNetworkSwitcher`: compact trigger, “Select Network”
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
         backgroundColor: neon.bgCard,
     },
     optionTestnet: {
-        borderColor: 'rgba(255, 152, 0, 0.55)',
+        borderColor: alpha(neon.warning, 0.55),
     },
     optionActive: {
         borderColor: neon.purple,
@@ -260,8 +260,8 @@ const styles = StyleSheet.create({
         ...neonGlow(neon.purple, 10, 0.3),
     },
     optionTestnetActive: {
-        backgroundColor: 'rgba(255, 152, 0, 0.12)',
-        borderColor: '#ff9800',
+        backgroundColor: alpha(neon.warning, 0.12),
+        borderColor: neon.warning,
     },
     optionPressed: {
         opacity: 0.9,
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
         color: neon.cyan,
     },
     optionNameTestnet: {
-        color: '#ffb74d',
+        color: neon.warningText,
     },
     optionSymbol: {
         fontSize: 14,

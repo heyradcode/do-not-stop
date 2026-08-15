@@ -12,13 +12,11 @@ import { useApprovedEvmChains } from '../hooks/useApprovedEvmChains';
 import { useEvmChainSync } from '../hooks/useEvmChainSync';
 import { useEvmSessionChain } from '../hooks/useEvmSessionChain';
 import { useNotifyError } from '../hooks/useNotifyError';
-import { neon, neonGlow } from '../theme/neon';
+import { alpha, neon, neonGlow } from '../theme/neon';
 
 /** MetaMask's user-rejection code, per EIP-1193. */
 const USER_REJECTED = 4001;
 
-const AMBER = '#ff9800';
-const AMBER_TEXT = '#ffb74d';
 
 function describeSwitchFailure(
     err: unknown,
@@ -144,7 +142,7 @@ export default function NetworkGate() {
                 activeOpacity={0.85}
             >
                 {isBusy ? (
-                    <ActivityIndicator color={AMBER_TEXT} size="small" />
+                    <ActivityIndicator color={neon.warningText} size="small" />
                 ) : (
                     <Text style={styles.btnText}>
                         {targetAuthorized ? `Switch to ${targetName}` : 'Reconnect wallet'}
@@ -173,17 +171,17 @@ const styles = StyleSheet.create({
     gate: {
         marginTop: 12,
         width: '100%',
-        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+        backgroundColor: alpha(neon.warning, 0.1),
         borderWidth: 1,
-        borderColor: 'rgba(255, 152, 0, 0.55)',
+        borderColor: alpha(neon.warning, 0.55),
         borderRadius: 12,
         padding: 12,
-        ...neonGlow(AMBER, 8, 0.2),
+        ...neonGlow(neon.warning, 8, 0.2),
     },
     title: {
         fontSize: 14,
         fontWeight: '800',
-        color: AMBER_TEXT,
+        color: neon.warningText,
         marginBottom: 4,
     },
     detail: {
@@ -198,12 +196,12 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: AMBER,
+        borderColor: neon.warning,
         minWidth: 140,
         alignItems: 'center',
     },
     btnText: {
-        color: AMBER_TEXT,
+        color: neon.warningText,
         fontWeight: '800',
         fontSize: 13,
     },
