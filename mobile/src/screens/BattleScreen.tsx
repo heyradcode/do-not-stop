@@ -13,6 +13,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
 
 import PetArt from '../components/PetArt';
+import PetDetailStrip from '../components/PetDetailStrip';
 import PetPicker from '../components/PetPicker';
 import GlyphDivider from '../components/ui/GlyphDivider';
 import BattleScene from './parts/BattleScene';
@@ -115,39 +116,68 @@ export default function BattleScreen() {
                     // nothing has been indexed, which is not the player's at all.
                     <Text style={styles.hint}>{panel.opponentsEmptyMessage}</Text>
                 ) : (
-                    panel.opponents.slice(0, 20).map((o) => {
-                        const delta = getLevelDelta(panel.fighter?.level ?? null, o.level);
-                        const tier = getMatchTier(delta);
-                        const label = getMatchLabel(tier, delta);
-                        // The same key the row is identified by. Selecting on `o.id` alone
-                        // picked the wrong pet when two owners hold the same id, which they
-                        // can on Solana.
-                        const key = opponentKey(o.owner, o.id);
-                        const active = key === panel.selectedOpponentKey;
-                        return (
-                            <TouchableOpacity
-                                key={key}
-                                style={[styles.oppRow, active && styles.oppRowActive]}
-                                onPress={() => panel.onSelectOpponent(key)}
-                                disabled={panel.isBusy}
-                                activeOpacity={0.85}
-                            >
-                                <PetArt pet={o} size={40} />
-                                <View style={styles.oppBody}>
-                                    <Text style={styles.oppName}>{o.name}</Text>
+                    /*
+                     * A horizontal strip of chips, the same shape as the pet picker directly
+                     * above it. Both rows on this screen are "choose one of these", so they
+                     * read as a pair, and roughly four opponents are in view at once with the
+                     * next one half-showing to say the strip scrolls.
+                     *
+                     * Not a pager. One opponent per screen made choosing between twenty a
+                     * swipe each, and this is the screen where you are comparing them.
+                     */
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.oppRow}
+                    >
+                        {panel.opponents.slice(0, 20).map((o) => {
+                            const delta = getLevelDelta(panel.fighter?.level ?? null, o.level);
+                            const tier = getMatchTier(delta);
+                            const label = getMatchLabel(tier, delta);
+                            // The same key the row is identified by. Selecting on `o.id` alone
+                            // picked the wrong pet when two owners hold the same id, which
+                            // they can on Solana.
+                            const key = opponentKey(o.owner, o.id);
+                            const active = key === panel.selectedOpponentKey;
+                            return (
+                                <TouchableOpacity
+                                    key={key}
+                                    style={[styles.oppChip, active && styles.oppChipActive]}
+                                    onPress={() => panel.onSelectOpponent(key)}
+                                    disabled={panel.isBusy}
+                                    activeOpacity={0.85}
+                                >
+                                    <PetArt pet={o} size={36} />
+                                    <Text style={styles.oppName} numberOfLines={1}>
+                                        {o.name}
+                                    </Text>
+                                    <Text style={styles.oppMeta}>Lv.{o.level}</Text>
                                     <Text style={styles.oppMeta}>
-                                        Lv.{o.level} · W {o.winCount} · L {o.lossCount}
+                                        {o.winCount}W/{o.lossCount}L
                                     </Text>
-                                </View>
-                                {label ? (
-                                    <Text style={[styles.tier, { color: TIER_COLOR[tier] }]}>
-                                        {label}
-                                    </Text>
-                                ) : null}
-                            </TouchableOpacity>
-                        );
-                    })
+                                    {label ? (
+                                        <Text
+                                            style={[styles.tier, { color: TIER_COLOR[tier] }]}
+                                            numberOfLines={1}
+                                        >
+                                            {label}
+                                        </Text>
+                                    ) : null}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
                 )}
+
+                {/*
+                 * The chosen opponent's numbers, the same strip the picker shows for your own
+                 * pet. An opponent chip is 80px of art, name and level, which is enough to
+                 * scan the strip and not enough to decide a fight: the stats you are actually
+                 * weighing are underneath it.
+                 *
+                 * `OpponentPet` extends `Pet`, so this is the same component, not a variant.
+                 */}
+                {panel.opponent ? <PetDetailStrip pet={panel.opponent} /> : null}
 
                 {panel.fighter && panel.opponent ? (
                     <View style={styles.estimate}>
@@ -378,21 +408,23 @@ const styles = StyleSheet.create({
     },
     warning: { marginTop: 12, fontSize: 13, color: neon.magenta, lineHeight: 19 },
     oppRow: {
-        flexDirection: 'row',
+        marginBottom: 8,
+    },
+    oppChip: {
+        width: 80,
         alignItems: 'center',
         borderWidth: 1,
         borderColor: neon.border,
         backgroundColor: neon.bgCard,
         borderRadius: 12,
-        padding: 14,
-        marginBottom: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 6,
+        marginRight: 8,
     },
-    oppRowActive: { borderColor: neon.magenta, backgroundColor: neon.bgInput },
-    oppBody: {
-        marginLeft: 10, flex: 1 },
-    oppName: { fontSize: 16, fontWeight: '700', color: neon.text },
-    oppMeta: { fontSize: 13, color: neon.textMuted, marginTop: 2 },
-    tier: { fontSize: 13, fontWeight: '800' },
+    oppChipActive: { borderColor: neon.magenta, backgroundColor: neon.bgInput },
+    oppName: { fontSize: 13, fontWeight: '700', color: neon.text },
+    oppMeta: { fontSize: 11, color: neon.textMuted, marginTop: 1 },
+    tier: { fontSize: 10, fontWeight: '800', marginTop: 3 },
     estimate: {
         marginTop: 12,
         borderWidth: 1,

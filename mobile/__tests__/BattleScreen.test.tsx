@@ -590,6 +590,10 @@ describe('BattleScreen', () => {
      * named the wrong wallet — the backend would look for a consent grant that wallet
      * never signed. Invisible on EVM, where ERC-721 ids are globally unique, which is why
      * it survived: this deployment is Base Sepolia.
+     *
+     * It has to be the second of the two that is selected. A lookup by bare id resolves to
+     * whichever matched first, so picking the first cannot tell a correct implementation
+     * from a broken one.
      */
     it('picks the right pet when two owners hold the same id', async () => {
         mockState.opponents = [
@@ -839,5 +843,37 @@ describe('BattleScreen — versus mark', () => {
         // fight each one is.
         const tree = await render();
         expect(textOf(tree)).toContain('VS');
+    });
+});
+
+describe('BattleScreen — chosen opponent', () => {
+    it('shows nothing until an opponent is chosen', async () => {
+        mockState.opponents = [foe({ id: '9', name: 'Luna', level: 11 })];
+        expect(textOf(await render())).not.toContain('STR');
+    });
+
+    it('shows the chosen opponent stats the chip has no room for', async () => {
+        // The chip is 80px of art, name and level. What decides a fight is underneath it.
+        mockState.opponents = [foe({ id: '9', name: 'Luna', level: 11 })];
+        const tree = await render();
+        await pressWith(tree, 'Luna');
+
+        expect(textOf(tree)).toContain('STR');
+    });
+
+    it('follows the choice to another opponent', async () => {
+        // Both are mounted in the strip, so this is a real re-selection rather than a
+        // re-render with a different prop.
+        mockState.opponents = [
+            foe({ id: '9', name: 'Luna', winCount: 4, lossCount: 1 }),
+            foe({ id: '12', name: 'Momo', winCount: 0, lossCount: 0 }),
+        ];
+        const tree = await render();
+
+        await pressWith(tree, 'Luna');
+        expect(textOf(tree)).toContain('80% wins');
+
+        await pressWith(tree, 'Momo');
+        expect(textOf(tree)).toContain('no record');
     });
 });
