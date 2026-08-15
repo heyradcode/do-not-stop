@@ -8,6 +8,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAccount } from 'wagmi';
 
 import AppHeader from '../components/AppHeader';
+import DrawerHost from '../components/DrawerHost';
 import BattleScreen from '../screens/BattleScreen';
 import BreedScreen from '../screens/BreedScreen';
 import ChatScreen from '../screens/ChatScreen';
@@ -69,8 +70,12 @@ const TAB_OPTIONS = TAB_ITEMS.reduce(
     {} as Record<keyof MainTabParamList, BottomTabNavigationOptions>,
 );
 
+/**
+ * Wrapped in `DrawerHost` rather than having the drawer own itself, so the edge swipe covers
+ * every tab rather than only the strip of header the button sits in.
+ */
 export const MainTabs = () => (
-    <>
+    <DrawerHost>
         <AppHeader />
         <Tab.Navigator
             screenOptions={{
@@ -90,7 +95,7 @@ export const MainTabs = () => (
                 />
             ))}
         </Tab.Navigator>
-    </>
+    </DrawerHost>
 );
 
 /**

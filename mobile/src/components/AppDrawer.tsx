@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
     Animated,
     Modal,
+    PanResponder,
     Pressable,
     StyleSheet,
     Text,
@@ -13,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { usePanelTransition } from '../hooks/usePanelTransition';
+import { shouldCloseFromDrag, useDrawer } from './DrawerHost';
 import { DRAWER_ITEMS, STACK_TITLES, type RootStackParamList } from '../navigation/routes';
 import { neon, neonGlow } from '../theme/neon';
 
@@ -31,11 +32,12 @@ import { neon, neonGlow } from '../theme/neon';
  * must be ordered last, and a reanimated release that actually targets 0.82 — this project
  * has hit the 0.82 ceiling before. What that buys is edge-swipe-to-open, which is also the
  * gesture most likely to fight the horizontal pagers in Gallery and Marriage. Five
- * destinations reached from a button do not need it.
+ * destinations reached from a button do not need it. The edge swipe arrived later anyway,
+ * as `DrawerHost`, which owns the open state so the button is not the only way in.
  */
 export default function AppDrawer() {
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-    const { isVisible, progress, open, close } = usePanelTransition();
+    const { isVisible, progress, open, close } = useDrawer();
     const insets = useSafeAreaInsets();
     const { width } = useWindowDimensions();
 
@@ -55,6 +57,21 @@ export default function AppDrawer() {
         navigation.navigate(route as never);
         close();
     };
+
+    /**
+     * Pushing the panel back to the left closes it, the mirror of the swipe that opened it.
+     *
+     * Claimed in the capture phase so it wins against the rows underneath. That costs nothing
+     * a tap needs: capture only fires once a touch has moved, and a tap has not moved.
+     */
+    const dismiss = useMemo(
+        () =>
+            PanResponder.create({
+                onMoveShouldSetPanResponderCapture: shouldCloseFromDrag,
+                onPanResponderGrant: close,
+            }),
+        [close],
+    );
 
     const slide = progress.interpolate({ inputRange: [0, 1], outputRange: [-panelWidth, 0] });
 
@@ -82,6 +99,8 @@ export default function AppDrawer() {
                 </Animated.View>
 
                 <Animated.View
+                    testID="drawer-panel"
+                    {...dismiss.panHandlers}
                     style={[
                         styles.panel,
                         {
@@ -123,6 +142,15 @@ const styles = StyleSheet.create({
         height: 40,
         alignItems: 'center',
         justifyContent: 'center',
+        /*
+         * Nudged down against the header title rather than centred on the row.
+         *
+         * The row centres on the full line box of 28px text, but the glyph reads against the
+         * title's cap height, which sits lower than that box. Centring by geometry therefore
+         * looks high. The `hitSlop` on the control absorbs the offset, so the tap target does
+         * not move with it.
+         */
+        marginTop: 6,
     },
     triggerGlyph: {
         fontSize: 22,
