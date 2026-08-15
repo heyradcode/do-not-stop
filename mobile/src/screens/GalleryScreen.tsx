@@ -40,7 +40,8 @@ export default function GalleryScreen() {
     } = usePetGallery();
 
     return (
-        // No outer ScrollView: PetList brings its own scroll and pull-to-refresh.
+        // No outer ScrollView: PetList brings its own, and its pager needs the horizontal
+        // gesture. Refresh is the button above rather than a pull, for the same reason.
         <View style={styles.root}>
             <View style={styles.stats}>
                 <View style={[styles.stat, styles.statCyan]}>

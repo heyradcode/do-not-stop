@@ -248,6 +248,16 @@ describe('GalleryScreen', () => {
         expect(bareLabels.some((l) => l.startsWith('Wearing'))).toBe(false);
     });
 
+    it('pages through the roster instead of stacking it', async () => {
+        // The wiring, not the pager: `carousel.test.tsx` covers what the pager does. Without
+        // this, reverting `PetList` to its vertical stack would leave every test above green,
+        // since they only ever look at one pet's card.
+        mockGallery.mockReturnValue(
+            galleryValue({ pets: [pet(), pet({ id: '2' }), pet({ id: '3' })] }),
+        );
+        expect(textOf(await render())).toContain('1 / 3');
+    });
+
     it('surfaces the empty state rather than an empty list', async () => {
         mockGallery.mockReturnValue(galleryValue());
         expect(textOf(await render())).toContain('No pets yet');
