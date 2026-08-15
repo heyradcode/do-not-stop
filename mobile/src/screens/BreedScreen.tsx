@@ -54,6 +54,27 @@ export default function BreedScreen() {
                             onSelect={panel.own.setPet1}
                             emptyHint="No pets to breed yet."
                         />
+                        {/*
+                         * Between the two parents rather than above them.
+                         *
+                         * Both rows are identical chip strips with the same "Select Pet"
+                         * label, so without a break between them the second reads as more of
+                         * the first rather than as the other half of a pair. This is the one
+                         * screen that asks for two pets at once.
+                         *
+                         * Hidden from screen readers: it says nothing the two pickers do not
+                         * already say, and read aloud it is "black heart suit".
+                         */}
+                        <View
+                            style={styles.pairing}
+                            accessibilityElementsHidden
+                            importantForAccessibility="no-hide-descendants"
+                        >
+                            <View style={styles.pairingRule} />
+                            <Text style={styles.pairingHeart}>♥</Text>
+                            <View style={styles.pairingRule} />
+                        </View>
+
                         <PetPicker
                             pets={panel.allPets.filter(({ id }) => id !== panel.own.pet1)}
                             selectedId={panel.own.pet2}
@@ -279,6 +300,26 @@ const styles = StyleSheet.create({
     },
     tabTextActive: {
         color: neon.cyan,
+    },
+    pairing: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    pairingRule: {
+        flex: 1,
+        height: 1,
+        backgroundColor: neon.border,
+    },
+    pairingHeart: {
+        fontSize: 34,
+        // Android clips a glyph this size against the default line box.
+        lineHeight: 42,
+        marginHorizontal: 16,
+        color: neon.magenta,
+        textShadowColor: neon.magenta,
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 14,
     },
     label: {
         fontSize: 12,

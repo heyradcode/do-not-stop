@@ -239,6 +239,22 @@ describe('BreedScreen — own pets', () => {
     });
 });
 
+describe('BreedScreen — pairing mark', () => {
+    it('sits between the two parents, and only where there are two', async () => {
+        // Both parent rows are identical chip strips under the same "Select Pet" label, so
+        // the mark is what says the second one is the other half of a pair rather than more
+        // of the first. The spouse tab picks one pet and has nothing to pair it with here.
+        expect(textOf(await render())).toContain('♥');
+
+        mockState.pets = [pet()];
+        expect(textOf(await render())).not.toContain('♥');
+    });
+
+    // Nothing here checks that the mark is not pressable, because `selectParent2` above
+    // already does: it presses by index, and one extra touchable between the pickers would
+    // retarget it. That is a better guard than a count, which would rot on the next button.
+});
+
 describe('BreedScreen — with spouse', () => {
     it('auto-switches to the spouse tab when there is only one pet', async () => {
         // The My Pets tab needs two, so landing there with one is a dead end.
