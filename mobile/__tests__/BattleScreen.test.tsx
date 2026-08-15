@@ -13,6 +13,16 @@ import React from 'react';
 import { Text, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { OpponentPet, Pet } from '@shared/core';
+/**
+ * `useSafeAreaInsets` throws outside a `SafeAreaProvider`, and this suite renders a screen on
+ * its own. The library ships this mock for exactly that. Repeated per suite rather than
+ * registered globally: a global one needs a `setupFiles` entry pointing at a file whose name
+ * says nothing about what it does.
+ */
+jest.mock('react-native-safe-area-context', () =>
+    require('react-native-safe-area-context/jest/mock').default,
+);
+
 
 const pet = (over: Partial<Pet> = {}): Pet => ({
     id: '1',

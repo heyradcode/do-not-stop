@@ -1,6 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import ScreenActionBar from './ScreenActionBar';
 import { neon, neonGlow } from '../../theme/neon';
 
 type Props = {
@@ -22,6 +23,18 @@ type Props = {
  * Shared chrome for the single-mutation screens. Frontend gets this from its
  * `.interface` / `action-controls` CSS classes plus `TransactionStatus`; RN has no
  * cascade, so the structure has to be a component.
+ *
+ * The action row is pinned outside the `ScrollView`, not rendered after `children`.
+ *
+ * Inside the scroll its position tracked the height of whatever the screen put above it, so
+ * the same button sat in a different place on every screen and, on the longer ones, below the
+ * fold — a primary action you have to go looking for. Fixed, it is in the same place
+ * everywhere, and reaching it never depends on how many pets a wallet happens to hold.
+ *
+ * The error and success lines moved with it, which is the less obvious half. Feedback about
+ * an action belongs beside the control that caused it: `DefenseScreen` had already worked
+ * around this with its own note next to the session button, because the layout's banner was
+ * off-screen above by the time the player came back from the wallet.
  */
 export default function ActionScreenLayout({
     title,
@@ -35,40 +48,52 @@ export default function ActionScreenLayout({
     error,
 }: Props) {
     return (
-        <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>{subtitle}</Text>
-
-            {children}
-
-            <TouchableOpacity
-                style={[styles.action, actionDisabled && styles.actionDisabled]}
-                onPress={onAction}
-                disabled={actionDisabled}
-                activeOpacity={0.85}
+        <View style={styles.root}>
+            <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={styles.content}
+                keyboardShouldPersistTaps="handled"
             >
-                <Text style={styles.actionText}>{actionLabel}</Text>
-            </TouchableOpacity>
+                <Text style={styles.title}>{title}</Text>
+                <Text style={styles.subtitle}>{subtitle}</Text>
 
-            {secondary ? (
+                {children}
+            </ScrollView>
+
+            <ScreenActionBar>
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+
+                {success ? (
+                    <View style={styles.success}>
+                        <Text style={styles.successText}>{success}</Text>
+                    </View>
+                ) : null}
+
                 <TouchableOpacity
-                    style={[styles.secondary, secondary.disabled && styles.actionDisabled]}
-                    onPress={secondary.onPress}
-                    disabled={secondary.disabled}
+                    testID="action-primary"
+                    style={[styles.action, actionDisabled && styles.actionDisabled]}
+                    onPress={onAction}
+                    disabled={actionDisabled}
                     activeOpacity={0.85}
+                    accessibilityRole="button"
                 >
-                    <Text style={styles.secondaryText}>{secondary.label}</Text>
+                    <Text style={styles.actionText}>{actionLabel}</Text>
                 </TouchableOpacity>
-            ) : null}
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
-
-            {success ? (
-                <View style={styles.success}>
-                    <Text style={styles.successText}>{success}</Text>
-                </View>
-            ) : null}
-        </ScrollView>
+                {secondary ? (
+                    <TouchableOpacity
+                        testID="action-secondary"
+                        style={[styles.secondary, secondary.disabled && styles.actionDisabled]}
+                        onPress={secondary.onPress}
+                        disabled={secondary.disabled}
+                        activeOpacity={0.85}
+                        accessibilityRole="button"
+                    >
+                        <Text style={styles.secondaryText}>{secondary.label}</Text>
+                    </TouchableOpacity>
+                ) : null}
+            </ScreenActionBar>
+        </View>
     );
 }
 
@@ -77,9 +102,12 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: neon.bgDeep,
     },
+    scroll: {
+        flex: 1,
+    },
     content: {
         padding: 16,
-        paddingBottom: 32,
+        paddingBottom: 24,
     },
     title: {
         fontSize: 22,
@@ -97,6 +125,8 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         lineHeight: 20,
     },
+    // No `marginTop` on any of the four below: they are `ScreenActionBar` children, and its
+    // `gap` already spaces them. Both would make the strip taller the more rows it shows.
     action: {
         backgroundColor: neon.bgCard,
         borderRadius: 12,
@@ -104,7 +134,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: neon.cyan,
-        marginTop: 20,
         ...neonGlow(neon.cyan, 10, 0.4),
     },
     actionDisabled: {
@@ -123,7 +152,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         borderWidth: 1,
         borderColor: neon.borderMagenta,
-        marginTop: 12,
     },
     secondaryText: {
         color: neon.magenta,
@@ -131,12 +159,10 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     error: {
-        marginTop: 12,
         fontSize: 13,
         color: neon.danger,
     },
     success: {
-        marginTop: 16,
         borderWidth: 1,
         borderColor: 'rgba(57, 255, 180, 0.45)',
         backgroundColor: neon.bgPanel,

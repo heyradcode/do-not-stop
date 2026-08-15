@@ -15,6 +15,7 @@ import PetPicker from '../components/PetPicker';
 import PetSearchField from '../components/PetSearchField';
 import { useMarriagePanel } from '../hooks/marriage/useMarriagePanel';
 import MarriageCard from './parts/MarriageCard';
+import ScreenActionBar from './parts/ScreenActionBar';
 import { neon, neonGlow } from '../theme/neon';
 
 /**
@@ -47,118 +48,135 @@ export default function MarriageScreen() {
     };
 
     const canPropose = Boolean(myPet && partnerId.trim() && !panel.busy);
+    const isProposeTab = panel.tab === 'propose';
 
     return (
-        <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-            <Text style={styles.title}>Marriage</Text>
+        <View style={styles.root}>
+            <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+                <Text style={styles.title}>Marriage</Text>
 
-            <View style={styles.tabs}>
-                {(['propose', 'accept'] as const).map((t) => (
-                    <TouchableOpacity
-                        key={t}
-                        style={[styles.tab, panel.tab === t && styles.tabActive]}
-                        onPress={() => panel.onTabChange(t)}
-                        activeOpacity={0.85}
-                    >
-                        <Text style={[styles.tabText, panel.tab === t && styles.tabTextActive]}>
-                            {t === 'propose'
-                                ? 'Propose'
-                                : `Incoming${panel.proposalCount > 0 ? ` (${panel.proposalCount})` : ''}`}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
-
-            {panel.tab === 'propose' ? (
-                <>
-                    <Text style={styles.hint}>
-                        Pick one of your pets, then search for your partner&apos;s pet by name.
-                    </Text>
-                    <PetPicker
-                        pets={panel.chainPets.map((pet) => ({ id: pet.id, pet }))}
-                        selectedId={myPet}
-                        onSelect={setMyPet}
-                        disabled={panel.busy}
-                        emptyHint="No pets on this chain yet."
-                    />
-                    <Text style={styles.label}>Partner&apos;s pet</Text>
-                    <PetSearchField
-                        chain={panel.chain}
-                        value={partnerId}
-                        onChange={setPartnerId}
-                        excludeIds={myPet ? [myPet] : []}
-                        disabled={panel.busy}
-                    />
-                    <TouchableOpacity
-                        style={[styles.action, !canPropose && styles.actionDisabled]}
-                        onPress={handlePropose}
-                        disabled={!canPropose}
-                        activeOpacity={0.85}
-                    >
-                        <Text style={styles.actionText}>
-                            {panel.isProposing ? 'Proposing…' : 'Send Proposal'}
-                        </Text>
-                    </TouchableOpacity>
-                </>
-            ) : (
-                <>
-                    {panel.proposalsLoading ? (
-                        <View style={styles.centered}>
-                            <ActivityIndicator color={neon.cyan} />
-                        </View>
-                    ) : panel.proposals.length === 0 ? (
-                        <Text style={styles.hint}>No incoming proposals.</Text>
-                    ) : (
-                        panel.proposals.map((p) => (
-                            <View key={`${p.proposerPetId}-${p.targetPetId}`} style={styles.row}>
-                                <View style={styles.rowBody}>
-                                    <Text style={styles.rowTitle}>
-                                        {p.proposerPetName} (#{p.proposerPetId})
-                                    </Text>
-                                    <Text style={styles.rowSub}>
-                                        to {panel.targetPetName(p.targetPetId)}
-                                    </Text>
-                                    {/*
-                                     * A proposal is only offered while it is live, so without
-                                     * this the window is invisible: one that lapses between
-                                     * opening the screen and tapping Accept simply vanishes,
-                                     * and reads as never having arrived. `proposalTTL` is 60s
-                                     * on this deployment, which makes that the normal case
-                                     * rather than the rare one.
-                                     */}
-                                    <Text style={styles.rowExpiry}>
-                                        Expires in {formatExpiry(p.expiry)}
-                                    </Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={[styles.smallBtn, panel.busy && styles.actionDisabled]}
-                                    onPress={() => panel.onOpenAccept(p)}
-                                    disabled={panel.busy}
-                                    activeOpacity={0.85}
-                                >
-                                    <Text style={styles.smallBtnText}>Accept</Text>
-                                </TouchableOpacity>
-                            </View>
-                        ))
-                    )}
-                </>
-            )}
-
-            <Text style={styles.sectionTitle}>Active marriages</Text>
-            {panel.chainPets.map((pet) => (
-                <MarriageCard
-                    key={pet.id}
-                    pet={pet}
-                    petById={panel.petById}
-                    busy={panel.busy}
-                    onDivorce={panel.onDivorce}
-                />
-            ))}
-
-            {panel.success ? (
-                <View style={styles.success}>
-                    <Text style={styles.successText}>{panel.success}</Text>
+                <View style={styles.tabs}>
+                    {(['propose', 'accept'] as const).map((t) => (
+                        <TouchableOpacity
+                            key={t}
+                            style={[styles.tab, panel.tab === t && styles.tabActive]}
+                            onPress={() => panel.onTabChange(t)}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={[styles.tabText, panel.tab === t && styles.tabTextActive]}>
+                                {t === 'propose'
+                                    ? 'Propose'
+                                    : `Incoming${panel.proposalCount > 0 ? ` (${panel.proposalCount})` : ''}`}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
+
+                {isProposeTab ? (
+                    <>
+                        <Text style={styles.hint}>
+                            Pick one of your pets, then search for your partner&apos;s pet by name.
+                        </Text>
+                        <PetPicker
+                            pets={panel.chainPets.map((pet) => ({ id: pet.id, pet }))}
+                            selectedId={myPet}
+                            onSelect={setMyPet}
+                            disabled={panel.busy}
+                            emptyHint="No pets on this chain yet."
+                        />
+                        <Text style={styles.label}>Partner&apos;s pet</Text>
+                        <PetSearchField
+                            chain={panel.chain}
+                            value={partnerId}
+                            onChange={setPartnerId}
+                            excludeIds={myPet ? [myPet] : []}
+                            disabled={panel.busy}
+                        />
+                    </>
+                ) : (
+                    <>
+                        {panel.proposalsLoading ? (
+                            <View style={styles.centered}>
+                                <ActivityIndicator color={neon.cyan} />
+                            </View>
+                        ) : panel.proposals.length === 0 ? (
+                            <Text style={styles.hint}>No incoming proposals.</Text>
+                        ) : (
+                            panel.proposals.map((p) => (
+                                <View key={`${p.proposerPetId}-${p.targetPetId}`} style={styles.row}>
+                                    <View style={styles.rowBody}>
+                                        <Text style={styles.rowTitle}>
+                                            {p.proposerPetName} (#{p.proposerPetId})
+                                        </Text>
+                                        <Text style={styles.rowSub}>
+                                            to {panel.targetPetName(p.targetPetId)}
+                                        </Text>
+                                        {/*
+                                         * A proposal is only offered while it is live, so without
+                                         * this the window is invisible: one that lapses between
+                                         * opening the screen and tapping Accept simply vanishes,
+                                         * and reads as never having arrived. `proposalTTL` is 60s
+                                         * on this deployment, which makes that the normal case
+                                         * rather than the rare one.
+                                         */}
+                                        <Text style={styles.rowExpiry}>
+                                            Expires in {formatExpiry(p.expiry)}
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={[styles.smallBtn, panel.busy && styles.actionDisabled]}
+                                        onPress={() => panel.onOpenAccept(p)}
+                                        disabled={panel.busy}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Text style={styles.smallBtnText}>Accept</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))
+                        )}
+                    </>
+                )}
+
+                <Text style={styles.sectionTitle}>Active marriages</Text>
+                {panel.chainPets.map((pet) => (
+                    <MarriageCard
+                        key={pet.id}
+                        pet={pet}
+                        petById={panel.petById}
+                        busy={panel.busy}
+                        onDivorce={panel.onDivorce}
+                    />
+                ))}
+            </ScrollView>
+
+            {/*
+             * Only when it has something in it. Send Proposal belongs to the Propose tab,
+             * and an empty pinned strip on the Accept tab is a border across the screen
+             * saying nothing. Success is kept in it either way, because a divorce is
+             * confirmed from the marriage list on both tabs.
+             */}
+            {isProposeTab || panel.success ? (
+                <ScreenActionBar>
+                    {panel.success ? (
+                        <View style={styles.success}>
+                            <Text style={styles.successText}>{panel.success}</Text>
+                        </View>
+                    ) : null}
+
+                    {isProposeTab ? (
+                        <TouchableOpacity
+                            testID="action-primary"
+                            style={[styles.action, styles.barItem, !canPropose && styles.actionDisabled]}
+                            onPress={handlePropose}
+                            disabled={!canPropose}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={styles.actionText}>
+                                {panel.isProposing ? 'Proposing…' : 'Send Proposal'}
+                            </Text>
+                        </TouchableOpacity>
+                    ) : null}
+                </ScreenActionBar>
             ) : null}
 
             <Modal
@@ -198,12 +216,16 @@ export default function MarriageScreen() {
                     </View>
                 </View>
             </Modal>
-        </ScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: neon.bgDeep },
+    scroll: { flex: 1 },
+    // Cancels the modal-driven `marginTop` on `action` for its one use inside
+    // `ScreenActionBar`, whose `gap` already spaces the rows.
+    barItem: { marginTop: 0 },
     content: { padding: 16, paddingBottom: 32 },
     centered: {
         flex: 1,
@@ -292,7 +314,6 @@ const styles = StyleSheet.create({
     actionDisabled: { opacity: 0.5 },
     actionText: { color: neon.cyan, fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
     success: {
-        marginTop: 16,
         borderWidth: 1,
         borderColor: 'rgba(57, 255, 180, 0.45)',
         backgroundColor: neon.bgPanel,

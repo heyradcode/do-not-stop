@@ -10,6 +10,16 @@ import React from 'react';
 import { Text, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Pet } from '@shared/core';
+/**
+ * `useSafeAreaInsets` throws outside a `SafeAreaProvider`, and this suite renders a screen on
+ * its own. The library ships this mock for exactly that. Repeated per suite rather than
+ * registered globally: a global one needs a `setupFiles` entry pointing at a file whose name
+ * says nothing about what it does.
+ */
+jest.mock('react-native-safe-area-context', () =>
+    require('react-native-safe-area-context/jest/mock').default,
+);
+
 
 const pet = (over: Partial<Pet> = {}): Pet => ({
     id: '1',
@@ -126,9 +136,12 @@ const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
         .join(' | ');
 
 /**
- * ActionScreenLayout renders its children first, then the primary action, then the
- * secondary — so the two buttons are always the last two touchables, whatever the
- * checkbox rows above them look like.
+ * Found by `testID`, not by position.
+ *
+ * These used to index from the end of the touchable list, which held only while the action
+ * buttons were the last things `ActionScreenLayout` rendered. They are in a fixed bar outside
+ * the scroll now, so "last two touchables" stopped being true and every one of these lookups
+ * silently pointed at a checkbox row instead.
  */
 /** Every touchable's accessibility label, for asserting which controls are offered. */
 const labelsOf = (tree: ReactTestRenderer.ReactTestRenderer): unknown[] =>
@@ -147,18 +160,17 @@ const press = async (tree: ReactTestRenderer.ReactTestRenderer, index: number) =
     });
 };
 
+const byTestId = (tree: ReactTestRenderer.ReactTestRenderer, id: string) =>
+    tree.root.findAllByType(TouchableOpacity).find((n) => n.props.testID === id);
+
 const pressAllow = async (tree: ReactTestRenderer.ReactTestRenderer) => {
-    const buttons = tree.root.findAllByType(TouchableOpacity);
-    await ReactTestRenderer.act(async () => {
-        buttons[buttons.length - 2].props.onPress();
-    });
+    const node = byTestId(tree, 'action-primary');
+    await ReactTestRenderer.act(async () => node!.props.onPress());
 };
 
 const pressWithdraw = async (tree: ReactTestRenderer.ReactTestRenderer) => {
-    const buttons = tree.root.findAllByType(TouchableOpacity);
-    await ReactTestRenderer.act(async () => {
-        buttons[buttons.length - 1].props.onPress();
-    });
+    const node = byTestId(tree, 'action-secondary');
+    await ReactTestRenderer.act(async () => node!.props.onPress());
 };
 
 beforeEach(() => {
@@ -227,10 +239,8 @@ describe('DefenseScreen', () => {
                 .findAllByType(TouchableOpacity)
                 .find((n) => n.props.accessibilityLabel === label);
 
-        const allowButton = (tree: ReactTestRenderer.ReactTestRenderer) => {
-            const buttons = tree.root.findAllByType(TouchableOpacity);
-            return buttons[buttons.length - 2];
-        };
+        const allowButton = (tree: ReactTestRenderer.ReactTestRenderer) =>
+            byTestId(tree, 'action-primary')!;
 
         it('will not let a consent grant start a session signature too', async () => {
             mockState.isPending = true;

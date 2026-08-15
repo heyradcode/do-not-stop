@@ -15,6 +15,7 @@ import { useRoute } from '@react-navigation/native';
 import PetArt from '../components/PetArt';
 import PetPicker from '../components/PetPicker';
 import BattleScene from './parts/BattleScene';
+import ScreenActionBar from './parts/ScreenActionBar';
 import { useBattlePanel } from '../hooks/battle/useBattlePanel';
 import { getLevelDelta, getMatchLabel, getMatchTier } from '../hooks/battle/matchmaking';
 import type { MainTabParamList } from '../navigation/routes';
@@ -44,157 +45,165 @@ export default function BattleScreen() {
         panel.winProbability != null ? `${Math.round(panel.winProbability * 100)}%` : null;
 
     return (
-        <ScrollView style={styles.root} contentContainerStyle={styles.content}>
-            <Text style={styles.title}>Battle Arena</Text>
+        <View style={styles.root}>
+            <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+                <Text style={styles.title}>Battle Arena</Text>
 
-            <Text style={styles.label}>Your fighter</Text>
+                <Text style={styles.label}>Your fighter</Text>
 
-            {/*
-             * A pet the wallet owns but whose record would not load. It is filtered out of
-             * the picker because there is nothing to draw, so without this the list is
-             * simply one pet short and looks like the pet was never minted.
-             */}
-            {panel.petsError ? (
-                <View style={styles.petsError}>
-                    <Text style={styles.petsErrorText}>{panel.petsError.message}</Text>
-                    <TouchableOpacity
-                        onPress={panel.retryPets}
-                        accessibilityRole="button"
-                        accessibilityLabel="Retry loading your pets"
-                        activeOpacity={0.85}
-                    >
-                        <Text style={styles.petsErrorRetry}>Try again</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : null}
-
-            <PetPicker
-                pets={panel.readyPets}
-                selectedId={panel.selectedPetId}
-                onSelect={panel.onSelectPet}
-                disabled={panel.isBusy}
-                hasAnyPets={panel.hasAnyPets}
-                emptyHint="No pets are off cooldown. A pet that just fought has to wait."
-            />
-
-            <View style={styles.opponentHeader}>
-                <Text style={styles.label}>Opponent</Text>
-                <TouchableOpacity
-                    onPress={panel.onRandomOpponent}
-                    disabled={panel.isBusy || !panel.fighter}
-                    activeOpacity={0.85}
-                >
-                    <Text
-                        style={[
-                            styles.randomText,
-                            (panel.isBusy || !panel.fighter) && styles.disabled,
-                        ]}
-                    >
-                        Random
-                    </Text>
-                </TouchableOpacity>
-            </View>
-
-            {panel.opponentsLoading ? (
-                <ActivityIndicator color={neon.cyan} style={styles.spinner} />
-            ) : panel.opponentsError ? (
-                <Text style={styles.warning}>
-                    Could not load opponents: {panel.opponentsError.message}
-                </Text>
-            ) : panel.opponents.length === 0 ? (
-                // The server says which filter emptied the list. "No opponents available"
-                // reads as the app being broken when the real answer is often that nobody
-                // has allowed challenges yet, which is another player's to fix, or that
-                // nothing has been indexed, which is not the player's at all.
-                <Text style={styles.hint}>{panel.opponentsEmptyMessage}</Text>
-            ) : (
-                panel.opponents.slice(0, 20).map((o) => {
-                    const delta = getLevelDelta(panel.fighter?.level ?? null, o.level);
-                    const tier = getMatchTier(delta);
-                    const label = getMatchLabel(tier, delta);
-                    // The same key the row is identified by. Selecting on `o.id` alone
-                    // picked the wrong pet when two owners hold the same id, which they
-                    // can on Solana.
-                    const key = opponentKey(o.owner, o.id);
-                    const active = key === panel.selectedOpponentKey;
-                    return (
+                {/*
+                 * A pet the wallet owns but whose record would not load. It is filtered out of
+                 * the picker because there is nothing to draw, so without this the list is
+                 * simply one pet short and looks like the pet was never minted.
+                 */}
+                {panel.petsError ? (
+                    <View style={styles.petsError}>
+                        <Text style={styles.petsErrorText}>{panel.petsError.message}</Text>
                         <TouchableOpacity
-                            key={key}
-                            style={[styles.oppRow, active && styles.oppRowActive]}
-                            onPress={() => panel.onSelectOpponent(key)}
-                            disabled={panel.isBusy}
+                            onPress={panel.retryPets}
+                            accessibilityRole="button"
+                            accessibilityLabel="Retry loading your pets"
                             activeOpacity={0.85}
                         >
-                            <PetArt pet={o} size={40} />
-                            <View style={styles.oppBody}>
-                                <Text style={styles.oppName}>{o.name}</Text>
-                                <Text style={styles.oppMeta}>
-                                    Lv.{o.level} · W {o.winCount} · L {o.lossCount}
-                                </Text>
-                            </View>
-                            {label ? (
-                                <Text style={[styles.tier, { color: TIER_COLOR[tier] }]}>
-                                    {label}
-                                </Text>
-                            ) : null}
+                            <Text style={styles.petsErrorRetry}>Try again</Text>
                         </TouchableOpacity>
-                    );
-                })
-            )}
+                    </View>
+                ) : null}
 
-            {panel.fighter && panel.opponent ? (
-                <View style={styles.estimate}>
-                    <Text style={styles.estimateLabel}>Estimated win chance</Text>
-                    <Text style={styles.estimateValue}>
-                        {panel.winEstimateLoading ? '…' : (winPct ?? 'unavailable')}
-                    </Text>
-                </View>
-            ) : null}
-
-            {panel.taunts.length > 0 ? (
-                <View style={styles.taunts}>
-                    {panel.taunts.map((line, i) => (
-                        <Text key={i} style={styles.tauntLine}>
-                            {line}
-                        </Text>
-                    ))}
-                </View>
-            ) : null}
-
-            {panel.hasReplay ? (
-                <BattleScene
-                    fighterName={panel.attackerName}
-                    opponentName={panel.defenderName}
-                    hp1Percent={panel.hp1Percent}
-                    hp2Percent={panel.hp2Percent}
-                    flourish={panel.flourish}
-                    strikeLog={panel.strikeLog}
+                <PetPicker
+                    pets={panel.readyPets}
+                    selectedId={panel.selectedPetId}
+                    onSelect={panel.onSelectPet}
+                    disabled={panel.isBusy}
+                    hasAnyPets={panel.hasAnyPets}
+                    emptyHint="No pets are off cooldown. A pet that just fought has to wait."
                 />
-            ) : null}
 
-            <TouchableOpacity
-                style={[styles.action, panel.isBusy && styles.actionDisabled]}
-                onPress={panel.onStartBattle}
-                disabled={panel.isBusy}
-                activeOpacity={0.85}
-            >
-                <Text style={styles.actionText}>
-                    {panel.isBusy ? 'Fighting…' : 'Start Battle'}
-                </Text>
-            </TouchableOpacity>
+                <View style={styles.opponentHeader}>
+                    <Text style={styles.label}>Opponent</Text>
+                    <TouchableOpacity
+                        onPress={panel.onRandomOpponent}
+                        disabled={panel.isBusy || !panel.fighter}
+                        activeOpacity={0.85}
+                    >
+                        <Text
+                            style={[
+                                styles.randomText,
+                                (panel.isBusy || !panel.fighter) && styles.disabled,
+                            ]}
+                        >
+                            Random
+                        </Text>
+                    </TouchableOpacity>
+                </View>
 
-            {panel.validationError ? (
-                <Text style={styles.warning}>{panel.validationError}</Text>
-            ) : null}
+                {panel.opponentsLoading ? (
+                    <ActivityIndicator color={neon.cyan} style={styles.spinner} />
+                ) : panel.opponentsError ? (
+                    <Text style={styles.warning}>
+                        Could not load opponents: {panel.opponentsError.message}
+                    </Text>
+                ) : panel.opponents.length === 0 ? (
+                    // The server says which filter emptied the list. "No opponents available"
+                    // reads as the app being broken when the real answer is often that nobody
+                    // has allowed challenges yet, which is another player's to fix, or that
+                    // nothing has been indexed, which is not the player's at all.
+                    <Text style={styles.hint}>{panel.opponentsEmptyMessage}</Text>
+                ) : (
+                    panel.opponents.slice(0, 20).map((o) => {
+                        const delta = getLevelDelta(panel.fighter?.level ?? null, o.level);
+                        const tier = getMatchTier(delta);
+                        const label = getMatchLabel(tier, delta);
+                        // The same key the row is identified by. Selecting on `o.id` alone
+                        // picked the wrong pet when two owners hold the same id, which they
+                        // can on Solana.
+                        const key = opponentKey(o.owner, o.id);
+                        const active = key === panel.selectedOpponentKey;
+                        return (
+                            <TouchableOpacity
+                                key={key}
+                                style={[styles.oppRow, active && styles.oppRowActive]}
+                                onPress={() => panel.onSelectOpponent(key)}
+                                disabled={panel.isBusy}
+                                activeOpacity={0.85}
+                            >
+                                <PetArt pet={o} size={40} />
+                                <View style={styles.oppBody}>
+                                    <Text style={styles.oppName}>{o.name}</Text>
+                                    <Text style={styles.oppMeta}>
+                                        Lv.{o.level} · W {o.winCount} · L {o.lossCount}
+                                    </Text>
+                                </View>
+                                {label ? (
+                                    <Text style={[styles.tier, { color: TIER_COLOR[tier] }]}>
+                                        {label}
+                                    </Text>
+                                ) : null}
+                            </TouchableOpacity>
+                        );
+                    })
+                )}
+
+                {panel.fighter && panel.opponent ? (
+                    <View style={styles.estimate}>
+                        <Text style={styles.estimateLabel}>Estimated win chance</Text>
+                        <Text style={styles.estimateValue}>
+                            {panel.winEstimateLoading ? '…' : (winPct ?? 'unavailable')}
+                        </Text>
+                    </View>
+                ) : null}
+
+                {panel.taunts.length > 0 ? (
+                    <View style={styles.taunts}>
+                        {panel.taunts.map((line, i) => (
+                            <Text key={i} style={styles.tauntLine}>
+                                {line}
+                            </Text>
+                        ))}
+                    </View>
+                ) : null}
+
+                {panel.hasReplay ? (
+                    <BattleScene
+                        fighterName={panel.attackerName}
+                        opponentName={panel.defenderName}
+                        hp1Percent={panel.hp1Percent}
+                        hp2Percent={panel.hp2Percent}
+                        flourish={panel.flourish}
+                        strikeLog={panel.strikeLog}
+                    />
+                ) : null}
+            </ScrollView>
 
             {/*
-             * What the fight is waiting on. "Fighting…" covered six backend states, so a
-             * battle stalled on the independent verifier looked like one about to
-             * finish, and one that ended badly looked like one still running.
+             * Pinned rather than trailing the content. Start Battle sat below a pet picker,
+             * up to twenty opponent rows and the replay, so on a full arena the one control
+             * the screen exists for was several scrolls down.
              */}
-            {panel.stageLabel ? (
-                <Text style={styles.stage}>{panel.stageLabel}</Text>
-            ) : null}
+            <ScreenActionBar>
+                {panel.validationError ? (
+                    <Text style={[styles.warning, styles.barItem]}>{panel.validationError}</Text>
+                ) : null}
+
+                {/*
+                 * What the fight is waiting on. "Fighting…" covered six backend states, so a
+                 * battle stalled on the independent verifier looked like one about to
+                 * finish, and one that ended badly looked like one still running.
+                 */}
+                {panel.stageLabel ? <Text style={styles.stage}>{panel.stageLabel}</Text> : null}
+
+                <TouchableOpacity
+                    testID="action-primary"
+                    style={[styles.action, styles.barItem, panel.isBusy && styles.actionDisabled]}
+                    onPress={panel.onStartBattle}
+                    disabled={panel.isBusy}
+                    activeOpacity={0.85}
+                >
+                    <Text style={styles.actionText}>
+                        {panel.isBusy ? 'Fighting…' : 'Start Battle'}
+                    </Text>
+                </TouchableOpacity>
+            </ScreenActionBar>
 
             {/*
              * Held back until the replay finishes, or the verdict lands on top of the
@@ -293,13 +302,21 @@ export default function BattleScreen() {
                     </View>
                 </View>
             </Modal>
-        </ScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     root: { flex: 1, backgroundColor: neon.bgDeep },
+    scroll: { flex: 1 },
     content: { padding: 16, paddingBottom: 32 },
+    /**
+     * `styles.action` and `styles.warning` are also used in the result modal and above the
+     * opponent list, where their `marginTop` is the spacing. Inside `ScreenActionBar` the
+     * `gap` already spaces the rows, so this cancels the margin at the two bar call sites
+     * rather than removing it from styles their other users still need.
+     */
+    barItem: { marginTop: 0 },
     centered: {
         flex: 1,
         alignItems: 'center',
@@ -349,7 +366,6 @@ const styles = StyleSheet.create({
     spinner: { marginVertical: 16 },
     hint: { fontSize: 14, color: neon.textMuted, lineHeight: 20, marginVertical: 8 },
     stage: {
-        marginTop: 10,
         fontSize: 13,
         color: neon.textMuted,
         textAlign: 'center',

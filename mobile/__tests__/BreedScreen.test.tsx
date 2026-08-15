@@ -9,6 +9,16 @@ import React from 'react';
 import { Text, TextInput, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Pet } from '@shared/core';
+/**
+ * `useSafeAreaInsets` throws outside a `SafeAreaProvider`, and this suite renders a screen on
+ * its own. The library ships this mock for exactly that. Repeated per suite rather than
+ * registered globally: a global one needs a `setupFiles` entry pointing at a file whose name
+ * says nothing about what it does.
+ */
+jest.mock('react-native-safe-area-context', () =>
+    require('react-native-safe-area-context/jest/mock').default,
+);
+
 
 const pet = (over: Partial<Pet> = {}): Pet => ({
     id: '1',
@@ -123,7 +133,6 @@ const press = async (tree: ReactTestRenderer.ReactTestRenderer, index: number) =
     });
 };
 
-/** The breed button is the last touchable on the screen. */
 const pressLabel = async (tree: ReactTestRenderer.ReactTestRenderer, label: string) => {
     const node = tree.root
         .findAllByType(TouchableOpacity)
@@ -131,10 +140,13 @@ const pressLabel = async (tree: ReactTestRenderer.ReactTestRenderer, label: stri
     await ReactTestRenderer.act(async () => node!.props.onPress());
 };
 
-const breedButton = (tree: ReactTestRenderer.ReactTestRenderer) => {
-    const buttons = tree.root.findAllByType(TouchableOpacity);
-    return buttons[buttons.length - 1];
-};
+/**
+ * By `testID`, not by taking the last touchable. That held only while the breed button was
+ * the final thing in the scroll; it now lives in `ScreenActionBar`, and the next control
+ * added after the bar would have silently pressed the wrong one.
+ */
+const breedButton = (tree: ReactTestRenderer.ReactTestRenderer) =>
+    tree.root.findAllByType(TouchableOpacity).find((n) => n.props.testID === 'action-primary')!;
 
 const pressBreed = async (tree: ReactTestRenderer.ReactTestRenderer) => {
     await ReactTestRenderer.act(async () => {

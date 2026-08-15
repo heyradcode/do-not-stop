@@ -9,9 +9,20 @@
  */
 
 import React from 'react';
-import { Text, TextInput, TouchableOpacity } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Pet } from '@shared/core';
+/**
+ * `useSafeAreaInsets` throws outside a `SafeAreaProvider`, and this suite renders a screen on
+ * its own. The library ships this mock for exactly that. Repeated per suite rather than
+ * registered globally: a global one needs a `setupFiles` entry pointing at a file whose name
+ * says nothing about what it does.
+ */
+jest.mock('react-native-safe-area-context', () =>
+    require('react-native-safe-area-context/jest/mock').default,
+);
+
 
 const pet = (over: Partial<Pet> = {}): Pet => ({
     id: '1',
@@ -104,12 +115,17 @@ const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
         })
         .join(' | ');
 
-/** The action button is the last touchable the layout renders. */
+/**
+ * Found by `testID` rather than by position. It used to take the last touchable, which held
+ * only because these three screens have no secondary button — Defense does, and the same
+ * helper there was already pointing at the wrong control once the action bar moved out of
+ * the scroll.
+ */
 const pressAction = async (tree: ReactTestRenderer.ReactTestRenderer) => {
-    const buttons = tree.root.findAllByType(TouchableOpacity);
-    await ReactTestRenderer.act(() => {
-        buttons[buttons.length - 1].props.onPress();
-    });
+    const node = tree.root
+        .findAllByType(TouchableOpacity)
+        .find((n) => n.props.testID === 'action-primary');
+    await ReactTestRenderer.act(() => node!.props.onPress());
 };
 
 const selectFirstPet = async (tree: ReactTestRenderer.ReactTestRenderer) => {
@@ -247,3 +263,71 @@ describe('PetPicker empty states', () => {
         expect(textOf(tree)).not.toContain('off cooldown');
     });
 });
+
+/**
+ * The action bar's whole point is that it does not move.
+ *
+ * Rendered after `children` inside the `ScrollView`, the button's position tracked the height
+ * of whatever the screen put above it: different on every screen, and below the fold on the
+ * longer ones. These assert the structure that fixes it, because nothing else would notice it
+ * sliding back in — every behavioural test above passes either way.
+ */
+describe('the fixed action bar', () => {
+    const scrolls = (tree: ReactTestRenderer.ReactTestRenderer) =>
+        tree.root.findAllByType(ScrollView);
+
+    const primary = (tree: ReactTestRenderer.ReactTestRenderer) =>
+        tree.root.findAllByType(TouchableOpacity).find((n) => n.props.testID === 'action-primary');
+
+    it('keeps the action outside every scrollable region', async () => {
+        const tree = await render(LevelUpScreen);
+        const button = primary(tree);
+
+        expect(button).toBeDefined();
+        for (const scroll of scrolls(tree)) {
+            expect(scroll.findAll((n) => n === button)).toHaveLength(0);
+        }
+    });
+
+    /**
+     * Pinning the bar is what creates this problem: inside the scroll the content inset
+     * handled it, and a bar sitting on the window's bottom edge does not. Both cases are
+     * asserted because only the pair distinguishes a real inset read from a constant that
+     * happens to match one device.
+     */
+    it('pads itself clear of whatever the device puts along the bottom edge', async () => {
+        const gestureBar = await renderWithInsets(LevelUpScreen, 34);
+        expect(paddingBottomOfBar(gestureBar)).toBe(34 + 12);
+
+        const noInset = await renderWithInsets(LevelUpScreen, 0);
+        expect(paddingBottomOfBar(noInset)).toBe(12);
+    });
+
+    it('renders the action even when the screen has no content of its own', async () => {
+        mockState.pets = [];
+        const tree = await render(LevelUpScreen);
+        expect(primary(tree)).toBeDefined();
+    });
+});
+
+/**
+ * The global mock reads `SafeAreaInsetsContext` before falling back to zeroes, so a provider
+ * is enough to stand in for a device with a gesture bar. No `SafeAreaProvider`: that measures
+ * a native view, which does not exist here.
+ */
+const renderWithInsets = async (Screen: React.ComponentType, bottom: number) => {
+    let tree!: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(() => {
+        tree = ReactTestRenderer.create(
+            <SafeAreaInsetsContext.Provider value={{ top: 0, left: 0, right: 0, bottom }}>
+                <Screen />
+            </SafeAreaInsetsContext.Provider>,
+        );
+    });
+    return tree;
+};
+
+const paddingBottomOfBar = (tree: ReactTestRenderer.ReactTestRenderer): number | undefined => {
+    const bar = tree.root.findAllByType(View).find((n) => n.props.testID === 'action-bar');
+    return StyleSheet.flatten(bar!.props.style).paddingBottom as number | undefined;
+};
