@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Animated,
@@ -8,9 +8,10 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    useWindowDimensions,
     View,
+    type LayoutChangeEvent,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppKit } from '@reown/appkit-react-native';
 import { useAccount } from 'wagmi';
 import { useAuth } from '@shared/core';
@@ -20,6 +21,9 @@ import { usePanelTransition } from '../hooks/usePanelTransition';
 import { neon, neonGlow } from '../theme/neon';
 
 const truncate = (addr: string): string => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
+/** Stand-in slide distance for the one frame before the sheet has been measured. */
+const CLOSED_FALLBACK = 800;
 
 /**
  * The wallet surface for the tab shell, mirroring frontend's `account-dropdown`.
@@ -64,8 +68,20 @@ export default function AccountSheet() {
         }).start();
     };
 
-    const { width } = useWindowDimensions();
-    const sheetWidth = Math.min(400, width - 40);
+    const insets = useSafeAreaInsets();
+
+    /**
+     * How far down the sheet sits when closed, which is its own height: anchored to the bottom
+     * edge, translating by that much puts it exactly off-screen.
+     *
+     * Measured rather than assumed, because the sheet's height depends on whether the player
+     * is signed in and whether an auth stage is showing. The fallback covers the frame before
+     * layout runs and is deliberately taller than the sheet can be, since starting too far
+     * down is invisible and starting too little shows a band of it at rest.
+     */
+    const [sheetHeight, setSheetHeight] = useState(0);
+    const onSheetLayout = (event: LayoutChangeEvent) =>
+        setSheetHeight(event.nativeEvent.layout.height);
 
     const isAuthPending = isNonceLoading || isSigning || isVerifying;
     const authLabel = isNonceLoading
@@ -76,9 +92,10 @@ export default function AccountSheet() {
             ? 'Verifying...'
             : 'Sign message & login';
 
-    // Both read off `entry`, so the panel's lift, scale and fade cannot drift apart.
-    const sheetLift = entry.interpolate({ inputRange: [0, 1], outputRange: [-12, 0] });
-    const sheetScale = entry.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] });
+    const rise = entry.interpolate({
+        inputRange: [0, 1],
+        outputRange: [sheetHeight || CLOSED_FALLBACK, 0],
+    });
 
     return (
         <View style={styles.wrap}>
@@ -112,16 +129,25 @@ export default function AccountSheet() {
                             accessibilityLabel="Close account sheet"
                         />
                     </Animated.View>
+                    {/*
+                     * No opacity on the panel. It is anchored to the bottom edge and slides by
+                     * its own height, so it is already off-screen when closed; fading as well
+                     * would only make a half-open sheet translucent, which a bottom sheet is
+                     * not.
+                     */}
                     <Animated.View
+                        testID="account-sheet"
+                        onLayout={onSheetLayout}
                         style={[
                             styles.sheet,
-                            { width: sheetWidth },
-                            {
-                                opacity: entry,
-                                transform: [{ translateY: sheetLift }, { scale: sheetScale }],
-                            },
+                            { paddingBottom: insets.bottom + 20 },
+                            { transform: [{ translateY: rise }] },
                         ]}
                     >
+                        {/* The grab handle is what says "this came up from the bottom edge and
+                            goes back down there". */}
+                        <View style={styles.grabber} />
+
                         <View style={styles.header}>
                             <Text style={styles.title}>Account</Text>
                             <Pressable style={styles.closeBtn} onPress={close} hitSlop={8}>
@@ -240,8 +266,7 @@ const styles = StyleSheet.create({
     },
     modalRoot: {
         flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        justifyContent: 'flex-end',
     },
     backdrop: {
         backgroundColor: 'rgba(5, 5, 13, 0.88)',
@@ -249,11 +274,23 @@ const styles = StyleSheet.create({
     sheet: {
         zIndex: 2,
         backgroundColor: neon.bgPanel,
-        borderRadius: 16,
-        padding: 20,
-        borderWidth: 1,
+        // Top corners only: the bottom two are off the screen edge, and rounding them leaves
+        // two slivers of scrim in the corners of the display.
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        borderTopWidth: 1,
         borderColor: neon.border,
         ...neonGlow(neon.purple, 14, 0.35),
+    },
+    grabber: {
+        alignSelf: 'center',
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: neon.textDim,
+        marginBottom: 12,
     },
     header: {
         flexDirection: 'row',

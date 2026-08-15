@@ -8,7 +8,15 @@
  */
 
 import React from 'react';
-import { AccessibilityInfo, Modal, Text, TouchableOpacity } from 'react-native';
+import {
+    AccessibilityInfo,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 
 const mockState = {
@@ -41,6 +49,14 @@ jest.mock('wagmi', () => ({
 jest.mock('@reown/appkit-react-native', () => ({
     useAppKit: () => ({ open: mockOpen, disconnect: mockDisconnect }),
 }));
+
+/**
+ * The sheet pads itself clear of the home indicator, so it calls `useSafeAreaInsets`, which
+ * throws outside a `SafeAreaProvider`. The library ships this mock for exactly that.
+ */
+jest.mock('react-native-safe-area-context', () =>
+    require('react-native-safe-area-context/jest/mock').default,
+);
 
 jest.mock('@shared/core', () => ({
     useAuth: () => ({
@@ -234,6 +250,62 @@ describe('AccountSheet auth actions', () => {
         expect(labels).toEqual(expect.arrayContaining(['Wallet', 'Disconnect']));
         expect(labels).not.toContain('Marriage');
         expect(labels).not.toContain('Leaderboard');
+    });
+});
+
+describe('AccountSheet as a bottom sheet', () => {
+    const sheetStyle = (tree: ReactTestRenderer.ReactTestRenderer) =>
+        StyleSheet.flatten(
+            tree.root
+                .findAllByType(View)
+                .find((n) => n.props.testID === 'account-sheet')!.props.style,
+        );
+
+    it('sits against the bottom edge rather than the middle of the screen', async () => {
+        // The whole difference between this and the centred card it replaced. A pager or a
+        // refactor that restores `justifyContent: center` puts it back in the middle with the
+        // slide animation still running, which reads as the sheet arriving from nowhere.
+        const tree = await render(<AccountSheet />);
+        await openSheet(tree);
+
+        const root = tree.root
+            .findAllByType(View)
+            .map((n) => StyleSheet.flatten(n.props.style))
+            .find((style) => style?.flex === 1 && style?.justifyContent);
+        expect(root?.justifyContent).toBe('flex-end');
+    });
+
+    it('clears whatever the device puts along the bottom edge', async () => {
+        // A sheet flush to the bottom puts its last button under the home indicator.
+        //
+        // The inset is injected rather than left to the shipped mock, which reports zero on
+        // every edge. Against that, `insets.bottom + 20` and a bare `20` are the same number
+        // and this test passes with the safe-area handling deleted.
+        const gestureBar = await render(
+            <SafeAreaInsetsContext.Provider value={{ top: 0, left: 0, right: 0, bottom: 34 }}>
+                <AccountSheet />
+            </SafeAreaInsetsContext.Provider>,
+        );
+        await openSheet(gestureBar);
+        expect(sheetStyle(gestureBar).paddingBottom).toBe(34 + 20);
+
+        const noInset = await render(
+            <SafeAreaInsetsContext.Provider value={{ top: 0, left: 0, right: 0, bottom: 0 }}>
+                <AccountSheet />
+            </SafeAreaInsetsContext.Provider>,
+        );
+        await openSheet(noInset);
+        expect(sheetStyle(noInset).paddingBottom).toBe(20);
+    });
+
+    it('squares off the corners that sit on the screen edge', async () => {
+        // Rounding all four leaves two slivers of scrim in the bottom corners of the display.
+        const tree = await render(<AccountSheet />);
+        await openSheet(tree);
+
+        const style = sheetStyle(tree);
+        expect(style.borderTopLeftRadius).toBeGreaterThan(0);
+        expect(style.borderRadius).toBeUndefined();
     });
 });
 
