@@ -43,9 +43,6 @@ export default function BattleScreen() {
         );
     }
 
-    const winPct =
-        panel.winProbability != null ? `${Math.round(panel.winProbability * 100)}%` : null;
-
     return (
         <View style={styles.root}>
             <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -178,15 +175,6 @@ export default function BattleScreen() {
                  * `OpponentPet` extends `Pet`, so this is the same component, not a variant.
                  */}
                 {panel.opponent ? <PetDetailStrip pet={panel.opponent} /> : null}
-
-                {panel.fighter && panel.opponent ? (
-                    <View style={styles.estimate}>
-                        <Text style={styles.estimateLabel}>Estimated win chance</Text>
-                        <Text style={styles.estimateValue}>
-                            {panel.winEstimateLoading ? '…' : (winPct ?? 'unavailable')}
-                        </Text>
-                    </View>
-                ) : null}
 
                 {panel.taunts.length > 0 ? (
                     <View style={styles.taunts}>
@@ -425,17 +413,6 @@ const styles = StyleSheet.create({
     oppName: { fontSize: 13, fontWeight: '700', color: neon.text },
     oppMeta: { fontSize: 11, color: neon.textMuted, marginTop: 1 },
     tier: { fontSize: 10, fontWeight: '800', marginTop: 3 },
-    estimate: {
-        marginTop: 12,
-        borderWidth: 1,
-        borderColor: neon.border,
-        backgroundColor: neon.bgCard,
-        borderRadius: 12,
-        padding: 14,
-        alignItems: 'center',
-    },
-    estimateLabel: { fontSize: 12, color: neon.textMuted, letterSpacing: 1 },
-    estimateValue: { fontSize: 24, fontWeight: '900', color: neon.cyan, marginTop: 4 },
     taunts: {
         marginTop: 16,
         borderLeftWidth: 2,

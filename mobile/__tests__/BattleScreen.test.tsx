@@ -60,7 +60,6 @@ const mockState = {
     battleState: null as string | null,
     failureReason: null as string | null,
     isConnected: true,
-    winProbability: 0.62 as number | null,
     turns: [] as { text: string }[],
     /** Post-fight reactions. `taunt` turns are filtered out before rendering. */
     dialogueTurns: [] as { speaker: string; phase: string; text: string }[],
@@ -105,7 +104,6 @@ const mockTaunts = jest.fn();
 const mockCreateRoom = jest.fn<Promise<string | null>, unknown[]>(async () => 'r1');
 /** Captures what the panel hands `useBattlePets`, which is where roomId matters. */
 const mockBattleOptions: { roomId?: string | null; roomSocketUrl?: string } = {};
-const mockWinEstimateArgs = jest.fn();
 /** Captures what the result dialogue is asked for, including the personas fallback. */
 const mockDialogueArgs = jest.fn();
 
@@ -165,10 +163,6 @@ jest.mock('@shared/core', () => ({
         jest
             .requireActual('../../shared/src/hooks/battle/useOpponents')
             .describeNoOpponents(...args),
-    useWinEstimate: (...args: unknown[]) => {
-        mockWinEstimateArgs(...args);
-        return { winProbability: mockState.winProbability, samples: 100, isLoading: false };
-    },
     useBattleTaunts: () => ({
         generate: mockTaunts,
         reset: jest.fn(),
@@ -302,7 +296,6 @@ beforeEach(() => {
     mockState.battleState = null;
     mockState.failureReason = null;
     mockState.isConnected = true;
-    mockState.winProbability = 0.62;
     mockState.turns = [];
     mockState.liveReplay = null;
     mockState.dialogueTurns = [];
@@ -545,22 +538,6 @@ describe('BattleScreen', () => {
         await pressWith(tree, 'Start Battle');
 
         expect(mockBattleOptions.roomId).toBeNull();
-    });
-
-    it('asks for the win estimate with both fighters', async () => {
-        const tree = await render();
-        await pressWith(tree, 'Rex');
-        await pressWith(tree, 'Luna');
-        expect(mockWinEstimateArgs).toHaveBeenCalledWith('evm', '1', '9');
-        expect(textOf(tree)).toContain('62%');
-    });
-
-    it('says the estimate is unavailable rather than showing a fake number', async () => {
-        mockState.winProbability = null;
-        const tree = await render();
-        await pressWith(tree, 'Rex');
-        await pressWith(tree, 'Luna');
-        expect(textOf(tree)).toContain('unavailable');
     });
 
     it('labels the match by level gap', async () => {

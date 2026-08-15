@@ -15,7 +15,6 @@ import {
     useAuth,
     useOpponents,
     usePetList,
-    useWinEstimate,
     toDialoguePet,
     type BattlePersonas,
     type BattlePetsArgs,
@@ -75,8 +74,6 @@ export interface UseBattlePanel {
     onSelectOpponent: (id: string) => void;
     opponent: OpponentPet | null;
     onRandomOpponent: () => void;
-    winProbability: number | null;
-    winEstimateLoading: boolean;
     taunts: string[];
     phase: string;
     /**
@@ -210,13 +207,6 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
     );
     const opponent =
         opponents.find((o) => opponentKey(o.owner, o.id) === selectedOpponentKey) ?? null;
-
-    const { winProbability, isLoading: winEstimateLoading } = useWinEstimate(
-        capabilities.activeKind,
-        selectedPetId || null,
-        // The estimate is per pet, so it takes the resolved pet's id rather than the key.
-        opponent?.id ?? null,
-    );
 
     const battle = useBattlePets({
         onSuccess: (resolved) => {
@@ -389,8 +379,6 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         onSelectOpponent: setSelectedOpponentKey,
         opponent,
         onRandomOpponent,
-        winProbability,
-        winEstimateLoading,
         taunts: taunts.turns?.map((t) => t.text) ?? [],
         phase: battle.phase,
         stageLabel: battle.failureReason
