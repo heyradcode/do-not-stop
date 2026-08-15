@@ -14,6 +14,7 @@ import { useRoute } from '@react-navigation/native';
 
 import PetArt from '../components/PetArt';
 import PetPicker from '../components/PetPicker';
+import GlyphDivider from '../components/ui/GlyphDivider';
 import BattleScene from './parts/BattleScene';
 import ScreenActionBar from './parts/ScreenActionBar';
 import { useBattlePanel } from '../hooks/battle/useBattlePanel';
@@ -78,6 +79,10 @@ export default function BattleScreen() {
                     hasAnyPets={panel.hasAnyPets}
                     emptyHint="No pets are off cooldown. A pet that just fought has to wait."
                 />
+
+                {/* Your fighter above, the opponent below. Both are pet rows, and nothing
+                    else on the screen says which side of the fight each one is. */}
+                <GlyphDivider glyph="VS" />
 
                 <View style={styles.opponentHeader}>
                     <Text style={styles.label}>Opponent</Text>

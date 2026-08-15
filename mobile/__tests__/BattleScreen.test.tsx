@@ -825,3 +825,13 @@ describe('battle stage', () => {
         expect(textOf(tree)).toContain('engines disagreed');
     });
 });
+
+describe('BattleScreen — versus mark', () => {
+    it('separates your fighter from the opponent', async () => {
+        // Your pet is a picker chip strip and the opponent is a list of rows. Both are pet
+        // rows under their own label, and nothing else on the screen says which side of the
+        // fight each one is.
+        const tree = await render();
+        expect(textOf(tree)).toContain('VS');
+    });
+});
