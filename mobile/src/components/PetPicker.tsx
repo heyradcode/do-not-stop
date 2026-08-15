@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import type { Pet, ReadyPet } from '@shared/core';
 
 import PetArt from './PetArt';
+import PetDetailStrip from './PetDetailStrip';
 import PetPreview from './PetPreview';
 import { neon } from '../theme/neon';
 
@@ -33,11 +34,17 @@ const NO_PETS_HINT = 'No pets in this wallet yet. Mint one from the Gallery tab.
  * pets by name alone asks the player to remember which one Rex is, when the thing
  * they recognise it by is sitting one field away in the same object.
  *
- * Holding a chip down opens that pet's full card. Art, a name and a level are enough to tell
- * two pets apart and not enough to choose between twenty on stats you cannot see, and the
- * only screen that showed those was the Gallery. The preview lives here rather than in each
- * screen because every screen that picks a pet picks it through this component, so none of
- * the eight call sites changes.
+ * A chip carries art, a name and a level, which tells two pets apart and does not decide
+ * between twenty. Two things fill that gap, and they answer different questions:
+ *
+ * - **Selecting** a pet shows its numbers inline, under the chips. That is the "what did I
+ *   just pick" answer, and it stays on screen while the rest of the form is filled in.
+ * - **Holding** a chip opens the full card over the screen. That is the "should I pick that
+ *   one instead" answer, and it matters because a tap here is a commitment: comparing a third
+ *   pet by selecting it means re-picking the one you had.
+ *
+ * Both live here rather than in each screen, because every screen that picks a pet picks it
+ * through this component, so none of the eight call sites changes.
  */
 export default function PetPicker({
     pets,
@@ -58,6 +65,8 @@ export default function PetPicker({
             </View>
         );
     }
+
+    const selected = pets.find(({ id }) => id === selectedId)?.pet;
 
     return (
         <View>
@@ -91,6 +100,8 @@ export default function PetPicker({
                     );
                 })}
             </ScrollView>
+
+            {selected ? <PetDetailStrip pet={selected} /> : null}
 
             <PetPreview pet={preview} onClose={() => setPreview(null)} />
         </View>

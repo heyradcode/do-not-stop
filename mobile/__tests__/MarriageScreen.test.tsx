@@ -76,6 +76,12 @@ const mockRefetchProposals = jest.fn();
 const mockIncomingArgs = jest.fn();
 
 jest.mock('@shared/core', () => ({
+    // `PetPicker` shows the selected pet's stats inline now, so anything rendering a picker
+    // reaches these. Real rather than stubbed: they are pure and dependency-free, and what a
+    // pet reads here has to be what it reads on the card and on the web app.
+    ...jest.requireActual('../../shared/src/utils/ethereum/petCard'),
+    ...jest.requireActual('../../shared/src/utils/pets/skills'),
+    ...jest.requireActual('../../shared/src/utils/pets/cosmetics'),
     // The real formatter, taken from its own module rather than the package barrel: the
     // barrel drags in `queryClient` and the rest of the surface this suite mocks away. It
     // is pure, and a stub would let the wording drift from the rows frontend renders.

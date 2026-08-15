@@ -1,10 +1,9 @@
 /**
- * Holding a picker chip opens that pet's card.
+ * The two ways a picker shows what a pet actually is, outside the Gallery.
  *
- * Driven through `PetPicker` rather than `PetPreview` on its own, because the preview is a
- * dumb view over a pet and the part worth pinning is the gesture: that a hold opens it, a tap
- * still selects, and the hold is long enough not to fire while the player is scrolling the
- * chips sideways.
+ * Selecting one puts its numbers inline under the chips; holding one opens the full card over
+ * the screen. Both are driven through `PetPicker` rather than through their own components,
+ * because what is worth pinning is which gesture does which, and that a tap still selects.
  */
 
 import React from 'react';
@@ -119,7 +118,9 @@ describe('holding a pet chip', () => {
         await ReactTestRenderer.act(async () => chips(tree)[0].props.onPress());
 
         expect(onSelect).toHaveBeenCalledWith('1');
-        expect(textOf(tree)).not.toContain('STR');
+        // On the modal specifically. Stats alone would be ambiguous now that selecting a pet
+        // also shows them inline, and a tap has to select without covering the screen.
+        expect(tree.root.findAll((n) => n.props.accessibilityLabel === 'Close pet card')).toHaveLength(0);
     });
 
     it('offers no action that would navigate away', async () => {
@@ -142,5 +143,45 @@ describe('holding a pet chip', () => {
         const close = tree.root.findAll((n) => n.props.accessibilityLabel === 'Close pet card')[0];
         await ReactTestRenderer.act(async () => close.props.onPress());
         expect(textOf(tree)).not.toContain('STR');
+    });
+});
+
+describe('selecting a pet', () => {
+    /** Selection is a prop, so the picker is re-rendered with it rather than tapped. */
+    const withSelection = async (id: string) => {
+        let tree!: ReactTestRenderer.ReactTestRenderer;
+        await ReactTestRenderer.act(async () => {
+            tree = ReactTestRenderer.create(
+                <PetPicker
+                    pets={[pet(), pet({ id: '2', name: 'Momo', winCount: 0, lossCount: 0 })].map(
+                        (p) => ({ id: p.id, pet: p }),
+                    )}
+                    selectedId={id}
+                    onSelect={onSelect}
+                    emptyHint="none"
+                />,
+            );
+        });
+        return tree;
+    };
+
+    it('shows nothing until one is chosen', async () => {
+        expect(textOf(await withSelection(''))).not.toContain('STR');
+    });
+
+    it('shows the chosen pet stats the chip has no room for', async () => {
+        const shown = textOf(await withSelection('1'));
+        expect(shown).toContain('STR');
+        expect(shown).toContain('Uncommon');
+        expect(shown).toContain('80% wins');
+    });
+
+    it('follows the selection to another pet', async () => {
+        expect(textOf(await withSelection('2'))).toContain('no record');
+    });
+
+    it('says "no record" rather than 0%, which reads as losing', async () => {
+        // The card draws the same distinction, and the two are read one after the other.
+        expect(textOf(await withSelection('2'))).not.toContain('0% wins');
     });
 });

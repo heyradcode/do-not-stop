@@ -57,6 +57,12 @@ const mockSettleBreed = jest.fn(async () => undefined);
 const mockCancelBreed = jest.fn(async () => undefined);
 
 jest.mock('@shared/core', () => ({
+    // `PetPicker` shows the selected pet's stats inline now, so anything rendering a picker
+    // reaches these. Real rather than stubbed: they are pure and dependency-free, and what a
+    // pet reads here has to be what it reads on the card and on the web app.
+    ...jest.requireActual('../../shared/src/utils/ethereum/petCard'),
+    ...jest.requireActual('../../shared/src/utils/pets/skills'),
+    ...jest.requireActual('../../shared/src/utils/pets/cosmetics'),
     /** Solana holds one outstanding request per owner, not one per parent. */
     usePendingSolanaBreed: () => ({
         isPending: mockState.solanaPending,

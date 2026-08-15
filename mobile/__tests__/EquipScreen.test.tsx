@@ -67,12 +67,23 @@ jest.mock('../src/components/SessionGate', () => {
 });
 
 jest.mock('@shared/core', () => ({
+    // `PetPicker` shows the selected pet's stats inline now, so anything rendering a picker
+    // reaches these. Real rather than stubbed: they are pure and dependency-free, and what a
+    // pet reads here has to be what it reads on the card and on the web app.
+    ...jest.requireActual('../../shared/src/utils/ethereum/petCard'),
+    ...jest.requireActual('../../shared/src/utils/pets/skills'),
+    ...jest.requireActual('../../shared/src/utils/pets/cosmetics'),
     SLOT: { weapon: 0, armor: 1, trinket: 2 },
     useChainCapabilities: () => ({
         activeKind: 'ethereum',
         isConnected: mockState.isConnected,
     }),
-    usePetList: () => ({ pets: [{ id: '1', name: 'Rex', level: 2 }] }),
+    usePetList: () => ({
+        // `dna` and `rarity` are not decoration: the picker now renders the selected pet's
+        // stats, and those are derived from `dna`. Without it the real helper is handed
+        // `undefined % 10000n`, which throws rather than returning a wrong number.
+        pets: [{ id: '1', name: 'Rex', level: 2, dna: 0n, rarity: 1 }],
+    }),
     useInventory: () => ({ entries: mockState.entries }),
     usePetEquipment: (opts: { petId: string | null }) => {
         mockEquipmentPetId(opts.petId);

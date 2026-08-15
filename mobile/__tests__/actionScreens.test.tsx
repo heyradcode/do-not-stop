@@ -62,6 +62,12 @@ const mutationResult = (mutate: jest.Mock) => ({
 jest.mock('../src/components/PetArt', () => () => null);
 
 jest.mock('@shared/core', () => ({
+    // `PetPicker` shows the selected pet's stats inline now, so anything rendering a picker
+    // reaches these. Real rather than stubbed: they are pure and dependency-free, and what a
+    // pet reads here has to be what it reads on the card and on the web app.
+    ...jest.requireActual('../../shared/src/utils/ethereum/petCard'),
+    ...jest.requireActual('../../shared/src/utils/pets/skills'),
+    ...jest.requireActual('../../shared/src/utils/pets/cosmetics'),
     useSyncMetadata: () => ({ sync: jest.fn(), isPending: false, error: null }),
     getReadyPetsUnified: (pets: Pet[]) => pets.map((p) => ({ id: p.id, pet: p })),
     usePetList: () => ({ pets: mockState.pets, isLoading: false, error: null, refetch: jest.fn() }),
