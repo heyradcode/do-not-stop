@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import type { ReadyPet } from '@shared/core';
+import type { Pet, ReadyPet } from '@shared/core';
 
 import PetArt from './PetArt';
+import PetPreview from './PetPreview';
 import { neon } from '../theme/neon';
 
 type Props = {
@@ -31,6 +32,12 @@ const NO_PETS_HINT = 'No pets in this wallet yet. Mint one from the Gallery tab.
  * Each chip carries the pet's art, as every frontend picker does. Choosing between
  * pets by name alone asks the player to remember which one Rex is, when the thing
  * they recognise it by is sitting one field away in the same object.
+ *
+ * Holding a chip down opens that pet's full card. Art, a name and a level are enough to tell
+ * two pets apart and not enough to choose between twenty on stats you cannot see, and the
+ * only screen that showed those was the Gallery. The preview lives here rather than in each
+ * screen because every screen that picks a pet picks it through this component, so none of
+ * the eight call sites changes.
  */
 export default function PetPicker({
     pets,
@@ -40,6 +47,8 @@ export default function PetPicker({
     hasAnyPets,
     disabled,
 }: Props) {
+    const [preview, setPreview] = useState<Pet | null>(null);
+
     if (pets.length === 0) {
         return (
             <View style={styles.empty}>
@@ -61,6 +70,15 @@ export default function PetPicker({
                             key={id}
                             style={[styles.chip, active && styles.chipActive, disabled && styles.chipDisabled]}
                             onPress={() => onSelect(id)}
+                            /*
+                             * Two seconds, against RN's 500ms default. A picker chip is
+                             * small and sits in a horizontal scroller, so a finger resting
+                             * on one before flicking sideways is ordinary. At half a second
+                             * that opens a card the player did not ask for, over the list
+                             * they were about to scroll.
+                             */
+                            onLongPress={() => setPreview(pet)}
+                            delayLongPress={2000}
                             disabled={disabled}
                             activeOpacity={0.85}
                         >
@@ -73,6 +91,8 @@ export default function PetPicker({
                     );
                 })}
             </ScrollView>
+
+            <PetPreview pet={preview} onClose={() => setPreview(null)} />
         </View>
     );
 }

@@ -107,12 +107,14 @@ export default function PetList({
                     <PetCard
                         pet={pet}
                         status={statusFor(pet)}
-                        onBattle={() => onBattle(pet)}
-                        onRename={() => onRename(pet)}
-                        onDefend={() => onDefend(pet)}
-                        onEquip={() => onEquip(pet)}
                         equipped={equippedFor(pet.id)}
-                        onSend={() => onSend(pet)}
+                        actions={{
+                            onBattle: () => onBattle(pet),
+                            onRename: () => onRename(pet),
+                            onDefend: () => onDefend(pet),
+                            onEquip: () => onEquip(pet),
+                            onSend: () => onSend(pet),
+                        }}
                     />
                 )}
             />

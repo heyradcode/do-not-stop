@@ -42,16 +42,28 @@ const winRatio = (pet: Pet): number => {
     return fought === 0 ? 0 : Math.round((pet.winCount / fought) * 100);
 };
 
-type Props = {
-    pet: Pet;
-    status: PetCooldownStatus;
-    /** Filled slots, or undefined for a pet wearing nothing. */
-    equipped?: EquippedItem[];
+/**
+ * The five per-pet actions, together or not at all.
+ *
+ * One optional object rather than five optional handlers, because there is no such thing as
+ * a card with three of them: either it is the Gallery's card, which acts on the pet, or it is
+ * a read-only look at one, which `PetPreview` shows when a picker chip is held down.
+ */
+export type PetCardActions = {
     onBattle: () => void;
     onRename: () => void;
     onDefend: () => void;
     onEquip: () => void;
     onSend: () => void;
+};
+
+type Props = {
+    pet: Pet;
+    /** Absent on a read-only card: nothing there is waiting on a cooldown to be usable. */
+    status?: PetCooldownStatus;
+    /** Filled slots, or undefined for a pet wearing nothing. */
+    equipped?: EquippedItem[];
+    actions?: PetCardActions;
 };
 
 /**
@@ -63,16 +75,7 @@ type Props = {
  * here, so a pet reads identically on both clients. That was the gap this card had: the
  * app knew its art, stats, skill and class the whole time and drew none of them.
  */
-export default function PetCard({
-    pet,
-    status,
-    equipped,
-    onBattle,
-    onRename,
-    onDefend,
-    onEquip,
-    onSend,
-}: Props) {
+export default function PetCard({ pet, status, equipped, actions }: Props) {
     const rarityColor = getRarityColor(pet.rarity);
     const skill = getPetSkill(pet.speciesId);
     const xp = getXpNumbers(pet);
@@ -150,7 +153,7 @@ export default function PetCard({
                 {pet.winCount + pet.lossCount > 0 ? `  ·  ${winRatio(pet)}% win rate` : ''}
             </Text>
 
-            {status.onCooldown ? (
+            {status?.onCooldown ? (
                 <View style={styles.cooldowns}>
                     {status.battleOnCooldown && (
                         <Text style={styles.cooldown}>Battle ready in {status.battleLabel}</Text>
@@ -164,16 +167,17 @@ export default function PetCard({
                 </View>
             ) : null}
 
+            {actions ? (
             <View style={styles.actions}>
                 <TouchableOpacity
-                    style={[styles.action, styles.battleAction, !status.battleReady && styles.actionDisabled]}
-                    onPress={onBattle}
-                    disabled={!status.battleReady}
+                    style={[styles.action, styles.battleAction, !status?.battleReady && styles.actionDisabled]}
+                    onPress={actions.onBattle}
+                    disabled={!status?.battleReady}
                     activeOpacity={0.85}
                 >
                     <Text style={[styles.actionText, { color: neon.magenta }]}>Battle</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.action} onPress={onRename} activeOpacity={0.85}>
+                <TouchableOpacity style={styles.action} onPress={actions.onRename} activeOpacity={0.85}>
                     <Text style={styles.actionText}>Rename</Text>
                 </TouchableOpacity>
                 {/*
@@ -184,20 +188,21 @@ export default function PetCard({
                  */}
                 <TouchableOpacity
                     style={styles.action}
-                    onPress={onDefend}
+                    onPress={actions.onDefend}
                     accessibilityRole="button"
                     accessibilityLabel="Allow challenges for this pet"
                     activeOpacity={0.85}
                 >
                     <Text style={styles.actionText}>Allow</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.action} onPress={onEquip} activeOpacity={0.85}>
+                <TouchableOpacity style={styles.action} onPress={actions.onEquip} activeOpacity={0.85}>
                     <Text style={styles.actionText}>Equip</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.action} onPress={onSend} activeOpacity={0.85}>
+                <TouchableOpacity style={styles.action} onPress={actions.onSend} activeOpacity={0.85}>
                     <Text style={styles.actionText}>Send</Text>
                 </TouchableOpacity>
             </View>
+            ) : null}
         </View>
     );
 }
