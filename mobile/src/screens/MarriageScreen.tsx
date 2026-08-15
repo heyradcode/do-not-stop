@@ -13,6 +13,7 @@ import { formatExpiry } from '@shared/core';
 
 import PetPicker from '../components/PetPicker';
 import PetSearchField from '../components/PetSearchField';
+import Carousel from '../components/ui/Carousel';
 import { useMarriagePanel } from '../hooks/marriage/useMarriagePanel';
 import MarriageCard from './parts/MarriageCard';
 import ScreenActionBar from './parts/ScreenActionBar';
@@ -138,15 +139,37 @@ export default function MarriageScreen() {
                 )}
 
                 <Text style={styles.sectionTitle}>Active marriages</Text>
-                {panel.chainPets.map((pet) => (
-                    <MarriageCard
-                        key={pet.id}
-                        pet={pet}
-                        petById={panel.petById}
-                        busy={panel.busy}
-                        onDivorce={panel.onDivorce}
-                    />
-                ))}
+                {/*
+                 * The loading branch is not decoration. Without it the empty state shows
+                 * while the read is still out, so a player with four marriages is told they
+                 * have none every time the screen opens.
+                 *
+                 * The pager gets a fixed height because it sits inside this screen's
+                 * ScrollView, where `flex: 1` has nothing to fill and would collapse to
+                 * nothing.
+                 */}
+                {panel.marriagesLoading ? (
+                    <ActivityIndicator color={neon.cyan} />
+                ) : panel.marriedPets.length === 0 ? (
+                    <Text style={styles.hint}>No active marriages.</Text>
+                ) : (
+                    <View style={styles.marriagePager}>
+                        <Carousel
+                            data={panel.marriedPets}
+                            keyExtractor={(married) => married.pet.id}
+                            itemLabel="Marriage"
+                            renderItem={(married) => (
+                                <MarriageCard
+                                    pet={married.pet}
+                                    spouseId={married.spouseId}
+                                    petById={panel.petById}
+                                    busy={panel.busy}
+                                    onDivorce={panel.onDivorce}
+                                />
+                            )}
+                        />
+                    </View>
+                )}
             </ScrollView>
 
             {/*
@@ -301,6 +324,9 @@ const styles = StyleSheet.create({
         marginTop: 28,
         marginBottom: 12,
     },
+    // One card (~68) plus the pager's counter row. A card that outgrows this — larger system
+    // text — scrolls inside its own page rather than being cut off.
+    marriagePager: { height: 104 },
     action: {
         backgroundColor: neon.bgCard,
         borderRadius: 12,

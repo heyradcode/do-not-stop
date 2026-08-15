@@ -33,6 +33,9 @@ const pet = (over: Partial<Pet> = {}): Pet => ({
     ...over,
 });
 
+/** The default pet's id, so a test can say "this one is married" without repeating it. */
+const MARRIED_ID = '1';
+
 const proposal = (over: Record<string, unknown> = {}) => ({
     proposerPetId: '9',
     proposerPetName: 'Luna',
@@ -47,7 +50,9 @@ const mockState = {
     kind: 'evm' as 'evm' | 'solana' | 'none',
     proposals: [] as ReturnType<typeof proposal>[],
     proposalsLoading: false,
-    isMarried: false,
+    /** Which of `pets` `useMarriedPets` reports as married. */
+    marriedIds: [] as string[],
+    marriagesLoading: false,
     /** Bulk roster from `useAllPets`; a spouse is only sometimes in it. */
     roster: [{ id: '9', name: 'Luna' }] as { id: string; name: string }[],
     /** What a direct spouse lookup returns when the roster map has no answer. */
@@ -104,11 +109,6 @@ jest.mock('@shared/core', () => ({
         cancel: { mutateAsync: mockMutations.cancel, isPending: false },
         divorce: { mutateAsync: mockMutations.divorce, isPending: false },
     }),
-    useMarriageInfo: () => ({
-        isLoading: false,
-        isMarried: mockState.isMarried,
-        spouseId: mockState.isMarried ? 9n : undefined,
-    }),
     // Resolves a spouse the bulk roster does not hold. `skip` is what the card
     // passes when the map already answered, so honouring it here is what proves
     // the card is not firing a redundant request per married pet.
@@ -120,6 +120,22 @@ jest.mock('@shared/core', () => ({
 
 jest.mock('@tanstack/react-query', () => ({
     useQueryClient: () => ({ invalidateQueries: mockInvalidate }),
+}));
+
+/**
+ * The married set, stubbed at the mobile hook rather than at wagmi's multicall.
+ *
+ * `useMarriedPets` has its own suite for the multicall shape and the chain split. Driving it
+ * from here would put a tuple of contract results between this file and the thing it is
+ * about, which is the screen.
+ */
+jest.mock('../src/hooks/marriage/useMarriedPets', () => ({
+    useMarriedPets: (_chain: unknown, pets: { id: string }[]) => ({
+        marriedPets: pets
+            .filter((candidate) => mockState.marriedIds.includes(candidate.id))
+            .map((candidate) => ({ pet: candidate, spouseId: '9' })),
+        isLoading: mockState.marriagesLoading,
+    }),
 }));
 
 const mockNotify = jest.fn();
@@ -214,7 +230,8 @@ beforeEach(() => {
     mockState.kind = 'evm';
     mockState.proposals = [];
     mockState.proposalsLoading = false;
-    mockState.isMarried = false;
+    mockState.marriedIds = [];
+    mockState.marriagesLoading = false;
     mockState.roster = [{ id: '9', name: 'Luna' }];
     mockState.fetchedSpouse = {};
     mockState.searchResults = [{ id: '42', name: 'Nia', level: 3, dna: 1n }];
@@ -394,18 +411,43 @@ describe('MarriageScreen', () => {
     });
 
     it('lists a married pet with its spouse and hides single ones', async () => {
-        mockState.isMarried = true;
+        mockState.marriedIds = [MARRIED_ID];
         const tree = await render();
         expect(textOf(tree)).toContain('married to Luna');
 
-        mockState.isMarried = false;
+        mockState.marriedIds = [];
         const single = await render();
         expect(textOf(single)).not.toContain('married to');
     });
 
+    it('gives a page to each marriage, not to each pet', async () => {
+        // The whole reason `useMarriedPets` exists. The card used to decide for itself
+        // whether it was a marriage and render null if not, which a stacked list absorbed
+        // silently; a pager allocates the page first, so three pets and one marriage would
+        // be two blank screens to swipe past. The counter is what gives that away.
+        mockState.pets = [pet(), pet({ id: '2' }), pet({ id: '3' })];
+        mockState.marriedIds = [MARRIED_ID];
+
+        const tree = await render();
+        expect(textOf(tree)).toContain('1 / 1');
+        expect(textOf(tree)).not.toContain('1 / 3');
+    });
+
+    it('says there are no marriages rather than showing an empty pager', async () => {
+        mockState.marriedIds = [];
+        expect(textOf(await render())).toContain('No active marriages');
+    });
+
+    it('does not claim there are none while it is still reading', async () => {
+        // The read is a multicall across the roster. Showing the empty state until it lands
+        // tells a player with four marriages they have none, every time the screen opens.
+        mockState.marriagesLoading = true;
+        expect(textOf(await render())).not.toContain('No active marriages');
+    });
+
     it('does not look up a spouse the roster already named', async () => {
         // One redundant request per married pet otherwise, on every render.
-        mockState.isMarried = true;
+        mockState.marriedIds = [MARRIED_ID];
         mockSpouseLookups.length = 0;
         await render();
         expect(mockSpouseLookups.every((l) => l.skip)).toBe(true);
@@ -415,7 +457,7 @@ describe('MarriageScreen', () => {
         // The usual case: a spouse is someone else's pet, and `useAllPets` only
         // fetched a page. Without the direct lookup the card shows "pet #9", which
         // is the id the player already could not do anything with.
-        mockState.isMarried = true;
+        mockState.marriedIds = [MARRIED_ID];
         mockState.roster = [];
         mockState.fetchedSpouse = { name: 'Momo', level: 4 };
         mockSpouseLookups.length = 0;
@@ -427,7 +469,7 @@ describe('MarriageScreen', () => {
     });
 
     it('falls back to the id when nothing can name the spouse', async () => {
-        mockState.isMarried = true;
+        mockState.marriedIds = [MARRIED_ID];
         mockState.roster = [];
         mockState.fetchedSpouse = {};
         const tree = await render();
@@ -435,7 +477,7 @@ describe('MarriageScreen', () => {
     });
 
     it('divorces the chosen pet', async () => {
-        mockState.isMarried = true;
+        mockState.marriedIds = [MARRIED_ID];
         const tree = await render();
         await pressWith(tree, 'Divorce');
         expect(mockMutations.divorce).toHaveBeenCalledWith({ petId: '1' });

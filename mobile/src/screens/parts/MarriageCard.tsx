@@ -1,41 +1,38 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useMarriageInfo, useSpousePet, type OpponentPet, type Pet } from '@shared/core';
+import { useSpousePet, type OpponentPet, type Pet } from '@shared/core';
 
 import PetArt from '../../components/PetArt';
 import { neon } from '../../theme/neon';
 
 type Props = {
     pet: Pet;
+    /** The spouse's id. The caller has already established this pet is married. */
+    spouseId: string;
     petById: Map<string, OpponentPet>;
     busy: boolean;
     onDivorce: (petId: string) => void;
 };
 
 /**
- * One pet's marriage state. `useMarriageInfo` is per-pet, so this has to be a
- * component rather than a loop in the screen — a hook cannot run inside `map`.
- * Renders nothing when the pet is single, so the list shows only real marriages.
+ * One marriage.
+ *
+ * The card used to call `useMarriageInfo(pet)` itself and render null for a single pet, so
+ * the screen rendered one card per pet and each decided whether to exist. `useMarriedPets`
+ * now settles that before anything renders — a pager cannot ask a page whether it should
+ * have been allocated.
  */
-export default function MarriageCard({ pet, petById, busy, onDivorce }: Props) {
-    const info = useMarriageInfo(pet);
-
-    const spouseId = info.spouseId?.toString();
-    const fromMap = spouseId ? petById.get(spouseId)?.name : undefined;
+export default function MarriageCard({ pet, spouseId, petById, busy, onDivorce }: Props) {
+    const fromMap = petById.get(spouseId)?.name;
 
     /**
      * The roster map only holds what `useAllPets` fetched, and a spouse is usually
      * someone else's pet, so it is often absent. Without this the card falls back
      * to "married to pet #123", which is the id the player already cannot use.
      *
-     * Called before the early return below, because a pet that stops being married
-     * would otherwise change this component's hook count between renders. `skip`
-     * keeps it from firing when the map already answered, and an empty id disables
-     * it outright.
+     * `skip` keeps it from firing when the map already answered.
      */
-    const fetched = useSpousePet(pet.chain, spouseId ?? '', { skip: Boolean(fromMap) });
-
-    if (info.isLoading || !info.isMarried) return null;
+    const fetched = useSpousePet(pet.chain, spouseId, { skip: Boolean(fromMap) });
 
     const spouseName = fromMap ?? fetched.name;
 
@@ -46,9 +43,7 @@ export default function MarriageCard({ pet, petById, busy, onDivorce }: Props) {
             <PetArt pet={pet} size={40} />
             <View style={styles.body}>
                 <Text style={styles.name}>{pet.name}</Text>
-                <Text style={styles.spouse}>
-                    married to {spouseName ?? `pet #${spouseId ?? '?'}`}
-                </Text>
+                <Text style={styles.spouse}>married to {spouseName ?? `pet #${spouseId}`}</Text>
             </View>
             <TouchableOpacity
                 style={[styles.divorce, busy && styles.disabled]}
@@ -71,7 +66,6 @@ const styles = StyleSheet.create({
         backgroundColor: neon.bgCard,
         borderRadius: 12,
         padding: 14,
-        marginBottom: 10,
     },
     body: {
         flex: 1,

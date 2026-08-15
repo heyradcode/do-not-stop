@@ -12,6 +12,7 @@ import {
     type PetChain,
 } from '@shared/core';
 
+import { useMarriedPets, type MarriedPet } from './useMarriedPets';
 import { useNotifyError } from '../useNotifyError';
 
 export type MarriageTab = 'propose' | 'accept';
@@ -38,6 +39,9 @@ export interface UseMarriagePanel {
     chain: PetChain | null;
     /** Pets on the active chain only; a marriage cannot cross chains. */
     chainPets: Pet[];
+    /** The married subset of `chainPets`, resolved before render; see `useMarriedPets`. */
+    marriedPets: MarriedPet[];
+    marriagesLoading: boolean;
     petById: Map<string, OpponentPet>;
     proposals: IncomingProposal[];
     proposalsLoading: boolean;
@@ -89,6 +93,8 @@ export const useMarriagePanel = (): UseMarriagePanel => {
 
     const { proposals, isLoading: proposalsLoading, refetch: refetchProposals } =
         useIncomingProposals(activeKind, chainPetIds);
+
+    const { marriedPets, isLoading: marriagesLoading } = useMarriedPets(activeKind, chainPets);
 
     /**
      * Re-read incoming proposals while the Incoming tab is open.
@@ -168,6 +174,8 @@ export const useMarriagePanel = (): UseMarriagePanel => {
         onTabChange: setTab,
         chain: activeKind,
         chainPets,
+        marriedPets,
+        marriagesLoading,
         petById,
         proposals,
         proposalsLoading,
