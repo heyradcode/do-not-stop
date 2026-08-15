@@ -1,7 +1,6 @@
 import React from 'react';
 import {
     ActivityIndicator,
-    Modal,
     ScrollView,
     StyleSheet,
     Text,
@@ -16,7 +15,7 @@ import PetArt from '../components/PetArt';
 import PetDetailStrip from '../components/PetDetailStrip';
 import PetPicker from '../components/PetPicker';
 import GlyphDivider from '../components/ui/GlyphDivider';
-import BattleScene from './parts/BattleScene';
+import BattleStage from './parts/BattleStage';
 import ScreenActionBar from './parts/ScreenActionBar';
 import { useBattlePanel } from '../hooks/battle/useBattlePanel';
 import { getLevelDelta, getMatchLabel, getMatchTier } from '../hooks/battle/matchmaking';
@@ -176,26 +175,7 @@ export default function BattleScreen() {
                  */}
                 {panel.opponent ? <PetDetailStrip pet={panel.opponent} /> : null}
 
-                {panel.taunts.length > 0 ? (
-                    <View style={styles.taunts}>
-                        {panel.taunts.map((line, i) => (
-                            <Text key={i} style={styles.tauntLine}>
-                                {line}
-                            </Text>
-                        ))}
-                    </View>
-                ) : null}
-
-                {panel.hasReplay ? (
-                    <BattleScene
-                        fighterName={panel.attackerName}
-                        opponentName={panel.defenderName}
-                        hp1Percent={panel.hp1Percent}
-                        hp2Percent={panel.hp2Percent}
-                        flourish={panel.flourish}
-                        strikeLog={panel.strikeLog}
-                    />
-                ) : null}
+                <BattleStage panel={panel} />
             </ScrollView>
 
             {/*
@@ -228,103 +208,6 @@ export default function BattleScreen() {
                 </TouchableOpacity>
             </ScreenActionBar>
 
-            {/*
-             * Held back until the replay finishes, or the verdict lands on top of the
-             * fight the player is still watching. With no replay to play, the hook reports
-             * done immediately, so a battle that cannot be animated still shows its result
-             * at once.
-             */}
-            <Modal
-                visible={panel.result != null && panel.replayDone}
-                transparent
-                animationType="fade"
-                onRequestClose={panel.onDismissResult}
-            >
-                <View style={styles.modalRoot}>
-                    <View style={styles.sheet}>
-                        {panel.result ? (
-                            <>
-                                <Text
-                                    style={[
-                                        styles.resultTitle,
-                                        {
-                                            color: panel.result.firstWins
-                                                ? neon.success
-                                                : neon.magenta,
-                                        },
-                                    ]}
-                                >
-                                    {panel.result.firstWins ? 'Victory' : 'Defeat'}
-                                </Text>
-                                <Text style={styles.resultLine}>
-                                    {panel.result.rounds} rounds ·{' '}
-                                    {panel.result.winnerHpRemaining} HP left
-                                </Text>
-                                <Text style={styles.resultLine}>
-                                    XP: +{panel.result.firstWins
-                                        ? panel.result.xpWin
-                                        : panel.result.xpLoss}
-                                </Text>
-
-                                {/*
-                                 * Rendered when it arrives and skipped when it does not.
-                                 * Dialogue is generated best-effort and the result is
-                                 * already on screen without it, so a slow or failed
-                                 * generation must not hold up the verdict.
-                                 */}
-                                {panel.resultTurns.length > 0 ? (
-                                    <View style={styles.dialogue}>
-                                        {panel.resultTurns.map((turn, i) => (
-                                            <View key={i} style={styles.dialogueTurn}>
-                                                <Text
-                                                    style={[
-                                                        styles.dialogueSpeaker,
-                                                        {
-                                                            color:
-                                                                turn.speaker === 'attacker'
-                                                                    ? neon.cyan
-                                                                    : neon.magenta,
-                                                        },
-                                                    ]}
-                                                >
-                                                    {turn.speaker === 'attacker'
-                                                        ? panel.attackerName
-                                                        : panel.defenderName}
-                                                </Text>
-                                                <Text style={styles.dialogueText}>{turn.text}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
-                                ) : panel.dialogueLoading ? (
-                                    <Text style={styles.dialogueWaiting}>
-                                        The pets are catching their breath…
-                                    </Text>
-                                ) : null}
-                            </>
-                        ) : null}
-                        {panel.hasReplay ? (
-                            <TouchableOpacity
-                                style={styles.action}
-                                onPress={panel.onReplay}
-                                accessibilityRole="button"
-                                accessibilityLabel="Watch again"
-                                activeOpacity={0.85}
-                            >
-                                <Text style={styles.actionText}>Watch again</Text>
-                            </TouchableOpacity>
-                        ) : null}
-                        <TouchableOpacity
-                            style={styles.action}
-                            onPress={panel.onDismissResult}
-                            accessibilityRole="button"
-                            accessibilityLabel="Close result"
-                            activeOpacity={0.85}
-                        >
-                            <Text style={styles.actionText}>Close</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
         </View>
     );
 }
@@ -413,13 +296,6 @@ const styles = StyleSheet.create({
     oppName: { fontSize: 13, fontWeight: '700', color: neon.text },
     oppMeta: { fontSize: 11, color: neon.textMuted, marginTop: 1 },
     tier: { fontSize: 10, fontWeight: '800', marginTop: 3 },
-    taunts: {
-        marginTop: 16,
-        borderLeftWidth: 2,
-        borderLeftColor: neon.purple,
-        paddingLeft: 12,
-    },
-    tauntLine: { fontSize: 14, color: neon.textMuted, fontStyle: 'italic', marginBottom: 6 },
     action: {
         backgroundColor: neon.bgCard,
         borderRadius: 12,
@@ -432,40 +308,4 @@ const styles = StyleSheet.create({
     },
     actionDisabled: { opacity: 0.5 },
     actionText: { color: neon.magenta, fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
-    modalRoot: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'rgba(5, 5, 13, 0.9)',
-        paddingHorizontal: 24,
-    },
-    sheet: {
-        width: '100%',
-        maxWidth: 400,
-        backgroundColor: neon.bgPanel,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: neon.border,
-        padding: 24,
-        alignItems: 'center',
-        ...neonGlow(neon.magenta, 16, 0.45),
-    },
-    resultTitle: { fontSize: 28, fontWeight: '900', letterSpacing: 2, marginBottom: 12 },
-    resultLine: { fontSize: 15, color: neon.textMuted, marginBottom: 4 },
-    dialogue: {
-        marginTop: 14,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        borderTopColor: neon.border,
-        paddingTop: 12,
-    },
-    dialogueTurn: { marginBottom: 10 },
-    dialogueSpeaker: {
-        fontSize: 11,
-        fontWeight: '800',
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
-        marginBottom: 2,
-    },
-    dialogueText: { fontSize: 14, color: neon.text, lineHeight: 20 },
-    dialogueWaiting: { marginTop: 14, fontSize: 13, color: neon.textDim, fontStyle: 'italic' },
 });
