@@ -23,6 +23,7 @@ import RenameScreen from '../screens/RenameScreen';
 import TrainScreen from '../screens/TrainScreen';
 import { neon } from '../theme/neon';
 import {
+    DRAWER_ITEMS,
     STACK_TITLES,
     TAB_ITEMS,
     type MainTabParamList,
@@ -93,28 +94,24 @@ export const MainTabs = () => (
 );
 
 /**
- * Screens opened from the account sheet, which push without a transition.
+ * Screens opened from the drawer, which push without a transition.
  *
- * The sheet is a Modal — its own native window — and closing it fades over ~300ms. The
+ * The drawer is a Modal — its own native window — and closing it animates over ~120ms. The
  * default push slides in over ~350ms, so the two overlap and the screen you came from is
- * visible through the fading sheet for most of that: the Gallery "blinks" on the way to
- * the Leaderboard. Reordering the calls so the push starts first does not fix it, because
- * both are still animating at once.
+ * visible through the closing drawer for most of that: the Gallery "blinks" on the way to the
+ * Leaderboard. Reordering the calls so the push starts first does not fix it, because both
+ * are still animating at once.
  *
- * With no push animation the destination is fully painted the instant `navigate` returns,
- * so the sheet's own fade is the only transition and it reveals where you are going. The
- * sheet still animates; the screen under it no longer needs to.
+ * With no push animation the destination is fully painted the instant `navigate` returns, so
+ * the drawer's own exit is the only transition and it reveals where you are going. The drawer
+ * still animates; the screen under it no longer needs to.
  *
- * `Rename` and `Equip` are absent deliberately: they are reached by tapping a pet card,
- * with no modal involved, where the slide reads as moving deeper into that pet.
+ * Derived from `DRAWER_ITEMS` rather than listed again, because the two were the same five
+ * routes written out twice and nothing tied them together. `Rename` and `Equip` are absent
+ * for the reason they are absent from the menu: reached by tapping a pet card, with no modal
+ * involved, where the slide reads as moving deeper into that pet.
  */
-const FROM_ACCOUNT_SHEET = new Set<keyof typeof STACK_SCREENS>([
-    'Defense',
-    'Marriage',
-    'Leaderboard',
-    'Chat',
-    'Inventory',
-]);
+const FROM_DRAWER = new Set<keyof typeof STACK_SCREENS>(DRAWER_ITEMS);
 
 /**
  * Landing sits outside the tab shell so the connect screen has no tab bar and no
@@ -160,7 +157,7 @@ export const RootNavigator = () => {
                             component={STACK_SCREENS[name]}
                             options={{
                                 title: STACK_TITLES[name],
-                                ...(FROM_ACCOUNT_SHEET.has(name) ? { animation: 'none' as const } : {}),
+                                ...(FROM_DRAWER.has(name) ? { animation: 'none' as const } : {}),
                             }}
                         />
                     ))}

@@ -29,12 +29,6 @@ const mockSignAndLogin = jest.fn();
 const mockLogout = jest.fn();
 const mockOpen = jest.fn();
 const mockDisconnect = jest.fn();
-const mockNavigate = jest.fn();
-
-jest.mock('@react-navigation/native', () => ({
-    useNavigation: () => ({ navigate: mockNavigate }),
-}));
-
 jest.mock('wagmi', () => ({
     useAccount: () => ({ address: mockState.address, chainId: mockState.chainId }),
     useBalance: () => ({
@@ -227,30 +221,19 @@ describe('AccountSheet auth actions', () => {
         expect(mockDisconnect).toHaveBeenCalled();
     });
 
-    it('reaches marriage, which had no entry point at all until it was added here', async () => {
-        // The screen was registered, titled and implemented, and nothing navigated to
-        // it. `navigation.test.tsx` guards the whole route table against a repeat.
+    it('carries no navigation, which is the drawer’s job now', async () => {
+        // Five rows to Allow Challenges, Marriage, Leaderboard, Messages and Inventory used
+        // to live here, which made the wallet control the only way to reach half the app.
+        // `appDrawer.test.tsx` is where those destinations are checked now.
         const tree = await render(<AccountSheet />);
         await openSheet(tree);
-        await pressAction(tree, 'Marriage');
-        expect(mockNavigate).toHaveBeenCalledWith('Marriage');
-    });
 
-    it('reaches defence consent, which is wallet-wide and was per-pet only', async () => {
-        // The screen opens with "all my pets" ticked, so requiring a pet to be chosen
-        // just to reach it inverted the feature. The per-pet Defend action still
-        // exists; it narrows the grant rather than being the only way in.
-        const tree = await render(<AccountSheet />);
-        await openSheet(tree);
-        await pressAction(tree, 'Allow Challenges');
-        expect(mockNavigate).toHaveBeenCalledWith('Defense');
-    });
-
-    it('reaches the leaderboard, which has no tab of its own', async () => {
-        const tree = await render(<AccountSheet />);
-        await openSheet(tree);
-        await pressAction(tree, 'Leaderboard');
-        expect(mockNavigate).toHaveBeenCalledWith('Leaderboard');
+        const labels = tree.root
+            .findAllByType(TouchableOpacity)
+            .map((node) => node.props.accessibilityLabel);
+        expect(labels).toEqual(expect.arrayContaining(['Wallet', 'Disconnect']));
+        expect(labels).not.toContain('Marriage');
+        expect(labels).not.toContain('Leaderboard');
     });
 });
 

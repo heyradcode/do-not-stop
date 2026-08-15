@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAccount } from 'wagmi';
 
 import AccountSheet from './AccountSheet';
+import AppDrawer from './AppDrawer';
 import EthereumNetworkSwitcher from './EthereumNetworkSwitcher';
 import NetworkGate from './NetworkGate';
 import { neon, neonGlow } from '../theme/neon';
@@ -23,7 +24,15 @@ export default function AppHeader() {
 
     return (
         <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
-            <Text style={styles.headerTitle}>Do Not Stop</Text>
+            {/*
+             * The spacer is the same width as the drawer's button, so the title stays
+             * centred on the screen rather than on what is left of the row.
+             */}
+            <View style={styles.titleRow}>
+                <AppDrawer />
+                <Text style={styles.headerTitle}>Do Not Stop</Text>
+                <View style={styles.titleSpacer} />
+            </View>
             {isConnected ? (
                 <View style={styles.walletRow}>
                     <EthereumNetworkSwitcher />
@@ -44,7 +53,15 @@ const styles = StyleSheet.create({
         paddingBottom: 16,
         ...neonGlow(neon.cyan, 8, 0.2),
     },
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    titleSpacer: {
+        width: 40,
+    },
     headerTitle: {
+        flex: 1,
         fontSize: 28,
         fontWeight: '800',
         textAlign: 'center',

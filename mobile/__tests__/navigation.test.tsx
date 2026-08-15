@@ -36,7 +36,7 @@ jest.mock('../src/screens/LandingScreen', () => {
 });
 
 import { RootNavigator } from '../src/navigation/RootNavigator';
-import { STACK_TITLES, TAB_ITEMS } from '../src/navigation/routes';
+import { DRAWER_ITEMS, STACK_TITLES, TAB_ITEMS } from '../src/navigation/routes';
 
 const render = async () => {
     let tree!: ReactTestRenderer.ReactTestRenderer;
@@ -216,22 +216,37 @@ describe('reachability', () => {
     const reachedByACall = (route: string) =>
         [`('${route}'`, `("${route}"`, `(\`${route}\``].some((call) => sourceText.includes(call));
 
+    /**
+     * `AppDrawer` maps over `DRAWER_ITEMS` and navigates with the loop variable, so none of
+     * its five destinations appears as a literal argument anywhere in `src/` — the scan above
+     * cannot see a door that is built from a table.
+     *
+     * Membership is accepted as a door instead, which is only honest because
+     * `appDrawer.test.tsx` renders the drawer and presses each row: without that, this would
+     * be the "the name appears somewhere" mistake the comment above warns about, one level up.
+     */
+    const reachedByTheDrawer = (route: string) =>
+        (DRAWER_ITEMS as readonly string[]).includes(route);
+
     it.each(Object.keys(STACK_TITLES))('has a way into %s', (route) => {
-        expect(reachedByACall(route)).toBe(true);
+        expect(reachedByACall(route) || reachedByTheDrawer(route)).toBe(true);
     });
 });
 
 /**
- * Screens opened from the account sheet push without a transition.
+ * Screens opened from the drawer push without a transition.
  *
- * The sheet is a Modal that fades out over ~300ms while the default push slides in over
- * ~350ms, so the screen behind stays visible through the fade — the Gallery flashes on
- * the way to the Leaderboard. Ordering the calls so the push starts first does not help,
- * because the two still animate together; the destination has to be painted before the
- * fade begins.
+ * The drawer is a Modal that slides out while the default push slides in over ~350ms, so the
+ * screen behind stays visible through it — the Gallery flashes on the way to the Leaderboard.
+ * Ordering the calls so the push starts first does not help, because the two still animate
+ * together; the destination has to be painted before the drawer starts to leave.
+ *
+ * Read off `DRAWER_ITEMS` rather than listed again, which is the same array `RootNavigator`
+ * derives the no-transition set from. A separate copy here would pass while the navigator and
+ * the menu disagreed.
  */
-describe('account sheet transitions', () => {
-    const fromSheet = ['Defense', 'Marriage', 'Leaderboard', 'Chat', 'Inventory'];
+describe('drawer transitions', () => {
+    const fromSheet: readonly string[] = DRAWER_ITEMS;
 
     const optionsFor = async (route: string) => {
         const ref = React.createRef<React.ComponentRef<typeof NavigationContainer>>();

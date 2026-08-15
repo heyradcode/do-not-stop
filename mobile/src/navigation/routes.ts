@@ -84,3 +84,23 @@ export const STACK_TITLES: Record<Exclude<keyof RootStackParamList, 'Landing' | 
     Equip: 'Equip',
     Chat: 'Messages',
 };
+
+/**
+ * The drawer, in the order it lists them. Labels come from `STACK_TITLES`, so a screen is
+ * named the same in the menu and in the header it pushes.
+ *
+ * These five are the account-level destinations: none of them acts on a pet you picked. That
+ * is why `Rename` and `Equip` are absent — both arrive from a tapped pet card carrying its
+ * id, and a menu has no pet to offer. They used to be rows in `AccountSheet`, which made the
+ * wallet control double as the app's navigation.
+ *
+ * `RootNavigator` derives its no-transition set from this array rather than repeating it, so
+ * a route added here cannot end up in the menu without the transition fix that goes with it.
+ */
+export const DRAWER_ITEMS: readonly (keyof typeof STACK_TITLES)[] = [
+    'Defense',
+    'Marriage',
+    'Leaderboard',
+    'Chat',
+    'Inventory',
+];
