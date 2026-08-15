@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { Text, TouchableOpacity } from 'react-native';
+import { AccessibilityInfo, Modal, Text, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 
 const mockState = {
@@ -62,9 +62,14 @@ jest.mock('@shared/core', () => ({
 import AccountSheet from '../src/components/AccountSheet';
 import NativeBalance from '../src/components/NativeBalance';
 
+/**
+ * The act callback is `async` on purpose. A sync one closes the scope the moment effects have
+ * flushed, so a mount effect that asks the OS something — `useReduceMotion` here — sets its
+ * state one microtask later, outside any scope, and React reports the update as unwrapped.
+ */
 const render = async (node: React.ReactElement) => {
     let tree!: ReactTestRenderer.ReactTestRenderer;
-    await ReactTestRenderer.act(() => {
+    await ReactTestRenderer.act(async () => {
         tree = ReactTestRenderer.create(node);
     });
     return tree;
@@ -93,7 +98,26 @@ const openSheet = async (tree: ReactTestRenderer.ReactTestRenderer) => {
     });
 };
 
+/**
+ * Runs the sheet's close animation out.
+ *
+ * Closing is animated, so `setIsOpen(false)` lands in an animation callback ~120ms after the
+ * press rather than during it. Left pending, that timer fires after jest has torn the
+ * environment down and the run reports `You are trying to import a file after the Jest
+ * environment has been torn down` against a component render — which points at the wrong
+ * file entirely, since the test that walked away from the timer is not the one named.
+ */
+const settle = async () => {
+    await ReactTestRenderer.act(async () => {
+        jest.advanceTimersByTime(300);
+    });
+};
+
+const isSheetOpen = (tree: ReactTestRenderer.ReactTestRenderer): boolean =>
+    tree.root.findAllByType(Modal)[0].props.visible;
+
 beforeEach(() => {
+    jest.useFakeTimers();
     mockState.address = '0x1234567890abcdef1234567890abcdef12345678';
     mockState.isAuthenticated = false;
     mockState.isNonceLoading = false;
@@ -103,6 +127,13 @@ beforeEach(() => {
     mockState.balanceLoading = false;
     mockState.balanceError = null;
     jest.clearAllMocks();
+});
+
+afterEach(() => {
+    jest.useRealTimers();
+    // `clearAllMocks` above keeps implementations, so a `spyOn` in one test would still be
+    // answering in the next.
+    jest.restoreAllMocks();
 });
 
 describe('AccountSheet trigger', () => {
@@ -179,6 +210,7 @@ describe('AccountSheet auth actions', () => {
             .findAllByType(TouchableOpacity)
             .find((node) => node.props.accessibilityLabel === label);
         await ReactTestRenderer.act(async () => button!.props.onPress());
+        await settle();
     };
 
     it('leaves wallet-level actions to AppKit', async () => {
@@ -219,6 +251,46 @@ describe('AccountSheet auth actions', () => {
         await openSheet(tree);
         await pressAction(tree, 'Leaderboard');
         expect(mockNavigate).toHaveBeenCalledWith('Leaderboard');
+    });
+});
+
+describe('AccountSheet open and close animation', () => {
+    /**
+     * `setIsOpen(false)` runs from an animation callback now, not from the press handler. If
+     * that callback never arrives — a bad config, a driver that does not run — every button
+     * in the sheet still fires its action and the sheet stays up over the screen it just
+     * navigated to. The action tests above would not notice: they assert the handler was
+     * called, which happens either way.
+     */
+    it('finishes closing rather than leaving the sheet over the screen', async () => {
+        const tree = await render(<AccountSheet />);
+        await openSheet(tree);
+        expect(isSheetOpen(tree)).toBe(true);
+
+        const close = tree.root
+            .findAllByType(TouchableOpacity)
+            .find((node) => node.props.accessibilityLabel === 'Disconnect');
+        await ReactTestRenderer.act(async () => close!.props.onPress());
+        await settle();
+
+        expect(isSheetOpen(tree)).toBe(false);
+    });
+
+    it('closes instantly when the OS asks for reduced motion', async () => {
+        // Not a preference about polish: the animation is a 120ms delay before the sheet
+        // goes, and the reduced-motion path has to skip the wait, not just the movement.
+        jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
+
+        const tree = await render(<AccountSheet />);
+        await openSheet(tree);
+
+        const close = tree.root
+            .findAllByType(TouchableOpacity)
+            .find((node) => node.props.accessibilityLabel === 'Disconnect');
+        await ReactTestRenderer.act(async () => close!.props.onPress());
+
+        // No `settle()`: with reduced motion there is no animation to wait on.
+        expect(isSheetOpen(tree)).toBe(false);
     });
 });
 
