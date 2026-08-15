@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Modal,
@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 
 import BattleScene from './BattleScene';
+import BattleSplash from './BattleSplash';
 import type { UseBattlePanel } from '../../hooks/battle/useBattlePanel';
 import { neon, neonGlow } from '../../theme/neon';
 
@@ -34,9 +35,30 @@ type Props = {
 export default function BattleStage({ panel, visible, onClose }: Props) {
     const watching = panel.hasReplay || panel.result != null;
 
+    /**
+     * The card plays once per entry, not once per fight.
+     *
+     * Reset on open rather than on close, so a card interrupted by closing the arena is not
+     * left marked as shown, and so a second battle announces itself like the first.
+     */
+    const [announced, setAnnounced] = useState(false);
+    useEffect(() => {
+        if (visible) setAnnounced(false);
+    }, [visible]);
+
     return (
         <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
             <View style={styles.stage}>
+                {!announced ? (
+                    <BattleSplash
+                        attackerName={panel.attackerName}
+                        defenderName={panel.defenderName}
+                        attacker={panel.fighter}
+                        defender={panel.opponent}
+                        onDone={() => setAnnounced(true)}
+                    />
+                ) : null}
+
                 <View style={styles.header}>
                     <Text style={styles.heading}>
                         {panel.attackerName} vs {panel.defenderName}
