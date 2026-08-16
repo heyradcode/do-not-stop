@@ -56,6 +56,11 @@ jest.mock('@shared/core', () => ({
 
 import ConnectButton from '../src/components/ConnectButton';
 
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' ');
+
 const render = async () => {
     let tree!: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(() => {
@@ -64,21 +69,6 @@ const render = async () => {
     return tree;
 };
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((n) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string'
-                    ? c
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : typeof c === 'number'
-                        ? String(c)
-                        : '';
-            return walk(n.props.children);
-        })
-        .join(' ');
 
 /** Finds a button by the text it renders, since order shifts between states. */
 const buttonWith = (tree: ReactTestRenderer.ReactTestRenderer, label: string) =>

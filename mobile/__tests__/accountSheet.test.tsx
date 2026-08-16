@@ -8,14 +8,7 @@
  */
 
 import React from 'react';
-import {
-    AccessibilityInfo,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native';
+import { AccessibilityInfo, Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 
@@ -72,6 +65,11 @@ jest.mock('@shared/core', () => ({
 import AccountSheet from '../src/components/AccountSheet';
 import NativeBalance from '../src/components/NativeBalance';
 
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' ');
+
 /**
  * The act callback is `async` on purpose. A sync one closes the scope the moment effects have
  * flushed, so a mount effect that asks the OS something — `useReduceMotion` here — sets its
@@ -85,21 +83,6 @@ const render = async (node: React.ReactElement) => {
     return tree;
 };
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((n) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string'
-                    ? c
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : typeof c === 'number'
-                        ? String(c)
-                        : '';
-            return walk(n.props.children);
-        })
-        .join(' ');
 
 /** Opens the sheet; the trigger is the first touchable. */
 const openSheet = async (tree: ReactTestRenderer.ReactTestRenderer) => {

@@ -31,6 +31,7 @@ module.exports = {
   // config change, half the suites time out and the failure reads as a hang
   // rather than as a slow first pass. Verified by `jest --clearCache`.
   testTimeout: 30000,
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/__tests__/support/'],
   moduleNameMapper: {
     // Side-effect-only polyfills shipped as ESM importing a `.ts` path: Metro bundles
     // it, jest cannot parse it, and nothing under test reads from it.

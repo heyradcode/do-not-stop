@@ -11,10 +11,15 @@
  */
 
 import React from 'react';
-import { Text, TextInput, TouchableOpacity } from 'react-native';
+import { TextInput, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 
 import CreatePetModal from '../src/components/CreatePetModal';
+
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' ');
 
 type CreatePetLike = React.ComponentProps<typeof CreatePetModal>['createPet'];
 
@@ -47,21 +52,6 @@ const render = async (props: Partial<React.ComponentProps<typeof CreatePetModal>
     return tree;
 };
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((n) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string'
-                    ? c
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : typeof c === 'number'
-                        ? String(c)
-                        : '';
-            return walk(n.props.children);
-        })
-        .join(' ');
 
 /** The submit button is the only TouchableOpacity in the sheet. */
 const submitButton = (tree: ReactTestRenderer.ReactTestRenderer) =>

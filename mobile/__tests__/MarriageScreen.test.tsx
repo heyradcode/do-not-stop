@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Text, TextInput, TouchableOpacity } from 'react-native';
+import { TextInput, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Pet } from '@shared/core';
 /**
@@ -149,6 +149,11 @@ jest.mock('../src/hooks/useNotifyError', () => ({ useNotifyError: () => mockNoti
 
 import MarriageScreen from '../src/screens/MarriageScreen';
 
+import { allText, type Tree, textOfNode } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' | ');
+
 /**
  * Every tree is unmounted after its test.
  *
@@ -173,19 +178,6 @@ afterEach(async () => {
     });
 });
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((n) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string' || typeof c === 'number'
-                    ? String(c)
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : '';
-            return walk(n.props.children);
-        })
-        .join(' | ');
 
 const pressWith = async (tree: ReactTestRenderer.ReactTestRenderer, label: string) => {
     const target = tree.root
@@ -196,19 +188,6 @@ const pressWith = async (tree: ReactTestRenderer.ReactTestRenderer, label: strin
     });
 };
 
-const textOfNode = (node: ReactTestRenderer.ReactTestInstance): string =>
-    node
-        .findAllByType(Text)
-        .map((n) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string' || typeof c === 'number'
-                    ? String(c)
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : '';
-            return walk(n.props.children);
-        })
-        .join(' ');
 
 const type = async (tree: ReactTestRenderer.ReactTestRenderer, value: string) => {
     await ReactTestRenderer.act(async () => {

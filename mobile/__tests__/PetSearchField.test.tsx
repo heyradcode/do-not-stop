@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { Text, TextInput, TouchableOpacity } from 'react-native';
+import { TextInput, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 
 const mockState = {
@@ -36,6 +36,11 @@ jest.mock('../src/components/PetArt', () => () => null);
 
 import PetSearchField from '../src/components/PetSearchField';
 
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' | ');
+
 const onChange = jest.fn();
 
 const render = async (props: Partial<React.ComponentProps<typeof PetSearchField>> = {}) => {
@@ -48,19 +53,6 @@ const render = async (props: Partial<React.ComponentProps<typeof PetSearchField>
     return tree;
 };
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((node) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string' || typeof c === 'number'
-                    ? String(c)
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : '';
-            return walk(node.props.children);
-        })
-        .join(' | ');
 
 const type = async (tree: ReactTestRenderer.ReactTestRenderer, value: string) => {
     await ReactTestRenderer.act(async () => {

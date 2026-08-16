@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Pet } from '@shared/core';
@@ -99,6 +99,11 @@ import LevelUpScreen from '../src/screens/LevelUpScreen';
 import TrainScreen from '../src/screens/TrainScreen';
 import RenameScreen from '../src/screens/RenameScreen';
 
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' | ');
+
 const render = async (Screen: React.ComponentType) => {
     let tree!: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(() => {
@@ -107,19 +112,6 @@ const render = async (Screen: React.ComponentType) => {
     return tree;
 };
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((n) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string' || typeof c === 'number'
-                    ? String(c)
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : '';
-            return walk(n.props.children);
-        })
-        .join(' | ');
 
 /**
  * Found by `testID` rather than by position. It used to take the last touchable, which held

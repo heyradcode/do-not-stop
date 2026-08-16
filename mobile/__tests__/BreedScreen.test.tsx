@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Text, TextInput, TouchableOpacity } from 'react-native';
+import { TextInput, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Pet } from '@shared/core';
 /**
@@ -111,6 +111,11 @@ jest.mock('../src/hooks/usePetErrorToast', () => ({ usePetErrorToast: () => {} }
 
 import BreedScreen from '../src/screens/BreedScreen';
 
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' | ');
+
 const render = async () => {
     let tree!: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(() => {
@@ -119,19 +124,6 @@ const render = async () => {
     return tree;
 };
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((n) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string' || typeof c === 'number'
-                    ? String(c)
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : '';
-            return walk(n.props.children);
-        })
-        .join(' | ');
 
 const press = async (tree: ReactTestRenderer.ReactTestRenderer, index: number) => {
     await ReactTestRenderer.act(async () => {

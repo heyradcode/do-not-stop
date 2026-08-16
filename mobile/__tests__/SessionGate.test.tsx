@@ -37,6 +37,11 @@ jest.mock('@shared/core', () => ({
 
 import SessionGate from '../src/components/SessionGate';
 
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' | ');
+
 const render = async () => {
     let tree!: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(() => {
@@ -53,19 +58,6 @@ const render = async () => {
     return tree;
 };
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((node) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string' || typeof c === 'number'
-                    ? String(c)
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : '';
-            return walk(node.props.children);
-        })
-        .join(' | ');
 
 beforeEach(() => {
     mockState.isConnected = true;

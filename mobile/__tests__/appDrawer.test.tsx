@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { Modal, PanResponder, Text, TouchableOpacity } from 'react-native';
+import { Modal, PanResponder, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 
 const mockNavigate = jest.fn();
@@ -28,6 +28,11 @@ jest.mock('react-native-safe-area-context', () =>
 import AppDrawer from '../src/components/AppDrawer';
 import DrawerHost, { shouldCloseFromDrag, shouldOpenFromEdge } from '../src/components/DrawerHost';
 import { DRAWER_ITEMS, STACK_TITLES } from '../src/navigation/routes';
+
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' | ');
 
 const render = async () => {
     let tree!: ReactTestRenderer.ReactTestRenderer;
@@ -62,11 +67,6 @@ const open = async (tree: ReactTestRenderer.ReactTestRenderer) => {
     await press(byLabel(tree, 'Menu'));
 };
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((n) => (typeof n.props.children === 'string' ? n.props.children : ''))
-        .join(' | ');
 
 beforeEach(() => {
     jest.useFakeTimers();

@@ -8,7 +8,6 @@
  */
 
 import React from 'react';
-import { Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Pet } from '@shared/core';
 
@@ -59,6 +58,11 @@ jest.mock('../src/components/SendPetModal', () => () => null);
 import GalleryScreen from '../src/screens/GalleryScreen';
 import { usePetCooldowns } from '../src/hooks/usePetCooldowns';
 
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' | ');
+
 const pet = (over: Partial<Pet> = {}): Pet => ({
     id: '1',
     chain: 'evm',
@@ -103,19 +107,6 @@ const galleryValue = (over: Record<string, unknown> = {}) => ({
     ...over,
 });
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((node) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string' || typeof c === 'number'
-                    ? String(c)
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : '';
-            return walk(node.props.children);
-        })
-        .join(' | ');
 
 const render = async () => {
     let tree!: ReactTestRenderer.ReactTestRenderer;

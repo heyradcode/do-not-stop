@@ -5,7 +5,6 @@
  */
 
 import React from 'react';
-import { Text } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import { NavigationContainer } from '@react-navigation/native';
 
@@ -38,6 +37,11 @@ jest.mock('../src/screens/LandingScreen', () => {
 import { RootNavigator } from '../src/navigation/RootNavigator';
 import { DRAWER_ITEMS, STACK_TITLES, TAB_ITEMS } from '../src/navigation/routes';
 
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' ');
+
 const render = async () => {
     let tree!: ReactTestRenderer.ReactTestRenderer;
     await ReactTestRenderer.act(() => {
@@ -54,19 +58,6 @@ beforeEach(() => {
     mockIsConnected.mockReturnValue(true);
 });
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((node) => {
-            const walk = (child: unknown): string =>
-                typeof child === 'string'
-                    ? child
-                    : Array.isArray(child)
-                      ? child.map(walk).join('')
-                      : '';
-            return walk(node.props.children);
-        })
-        .join(' ');
 
 describe('routes', () => {
     it('has five tabs, not the seven routed sidebar entries', () => {

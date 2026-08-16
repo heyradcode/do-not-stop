@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { Text, TouchableOpacity } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { Pet } from '@shared/core';
 
@@ -29,6 +29,11 @@ jest.mock('../src/components/PetArt', () => {
 });
 
 import PetPicker from '../src/components/PetPicker';
+
+import { allText, type Tree } from './support/harness';
+
+/** Every string on screen. The walk itself lives in the shared harness. */
+const textOf = (tree: Tree) => allText(tree, ' | ');
 
 const pet = (over: Partial<Pet> = {}): Pet => ({
     id: '1',
@@ -64,19 +69,6 @@ const render = async (pets: Pet[]) => {
 const chips = (tree: ReactTestRenderer.ReactTestRenderer) =>
     tree.root.findAllByType(TouchableOpacity);
 
-const textOf = (tree: ReactTestRenderer.ReactTestRenderer): string =>
-    tree.root
-        .findAllByType(Text)
-        .map((n) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string' || typeof c === 'number'
-                    ? String(c)
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : '';
-            return walk(n.props.children);
-        })
-        .join(' | ');
 
 beforeEach(() => jest.clearAllMocks());
 

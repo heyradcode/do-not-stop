@@ -10,7 +10,7 @@
  */
 
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { OpponentPet, Pet } from '@shared/core';
 /**
@@ -230,6 +230,8 @@ jest.mock('@react-navigation/native', () => ({
 
 import BattleScreen from '../src/screens/BattleScreen';
 
+import { textOfNode } from './support/harness';
+
 /**
  * Every tree rendered by a test, so `afterEach` can unmount them.
  *
@@ -255,19 +257,6 @@ afterEach(async () => {
     });
 });
 
-const textOfNode = (node: ReactTestRenderer.ReactTestInstance): string =>
-    node
-        .findAllByType(Text)
-        .map((n) => {
-            const walk = (c: unknown): string =>
-                typeof c === 'string' || typeof c === 'number'
-                    ? String(c)
-                    : Array.isArray(c)
-                      ? c.map(walk).join('')
-                      : '';
-            return walk(n.props.children);
-        })
-        .join(' ');
 
 const textOf = (tree: ReactTestRenderer.ReactTestRenderer) => textOfNode(tree.root);
 
