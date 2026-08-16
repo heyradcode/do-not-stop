@@ -12,13 +12,14 @@ import { usePolledContractEvent } from '../../src/hooks/chains/ethereum/usePolle
 
 const ADDRESS = '0xcontract' as `0x${string}`;
 
-const setup = (onLogs: (logs: unknown[]) => void) =>
+const setup = (onLogs: (logs: unknown[]) => void, fromBlock?: bigint) =>
     renderHook(() =>
         usePolledContractEvent({
             address: ADDRESS,
             abi: [],
             eventName: 'Revealed',
             enabled: true,
+            fromBlock,
             onLogs: onLogs as never,
         }),
     );
@@ -104,6 +105,25 @@ describe('usePolledContractEvent', () => {
         // Resumes at the first unread block, not back at 1001.
         const afterFailure = spans().slice(2);
         expect(afterFailure[0]![0]).toBe(1451n);
+    });
+
+    it('reads from a given start block, catching an event that already fired', async () => {
+        // The regression this guards: the watch used to begin at `latest + 1`, so
+        // anything emitted before it mounted was invisible. A mint cannot arm its
+        // watch until the request receipt confirms and React re-renders, by which
+        // time Pyth Entropy has usually already revealed a block or two after the
+        // request. The reveal was therefore missed on nearly every mint, and the
+        // flow sat on "awaiting randomness" forever with the fee already spent.
+        publicClient.getBlockNumber.mockResolvedValue(1003n);
+        const onLogs = vi.fn();
+        publicClient.getContractEvents.mockResolvedValue([{ args: { sequenceNumber: 7n } }]);
+
+        setup(onLogs, 1000n); // request landed in 1000, three blocks back
+        await flush();
+
+        // No watermark-only first tick: the backlog is read immediately.
+        expect(spans()).toEqual([[1000n, 1003n]]);
+        expect(onLogs).toHaveBeenCalledTimes(1);
     });
 
     it('delivers logs to the latest callback without restarting the poll', async () => {

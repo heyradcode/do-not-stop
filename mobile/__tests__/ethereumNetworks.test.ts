@@ -1,0 +1,156 @@
+/**
+ * `react-native-dotenv` inlines `@env` at Babel transform time, so `TARGET_CHAIN_ID`
+ * is a literal baked in from whichever `.env` this machine has and asserting a value
+ * for it would only test the local file. `resolveTargetChainId` is the parsing it
+ * wraps, and that is checked directly.
+ */
+
+import { baseSepolia, mainnet, sepolia } from 'wagmi/chains';
+
+import {
+    CHAINS,
+    TARGET_CHAIN_ID,
+    WC_FALLBACK_CHAINS,
+    getAppKitEvmNetworks,
+    getChainConfig,
+    getNativeTokenSymbol,
+    getTargetChainName,
+    isSupportedChain,
+    resolveTargetChainId,
+} from '../src/constants/ethereumNetworks';
+import { withRpcUrl } from '../src/ethereumChains';
+
+/**
+ * Unset, viem reads through the chain's built-in public endpoint, which for Base Sepolia
+ * is the shared `https://sepolia.base.org`. This app's reads are not light there: the pet
+ * list is one Multicall3 `aggregate3` over every pet the wallet owns, and incoming
+ * proposals another over the whole roster. Both were timing out, and a timed-out multicall
+ * drops pets from the list rather than failing loudly.
+ *
+ * `withRpcUrl` takes the URL as an argument rather than reading `@env` itself, because
+ * `react-native-dotenv` inlines that at transform time and a test could only assert
+ * whatever `.env` this machine happens to have.
+ */
+describe('withRpcUrl', () => {
+    it('leaves a chain untouched when no url is configured', () => {
+        expect(withRpcUrl(baseSepolia, undefined)).toBe(baseSepolia);
+        expect(withRpcUrl(baseSepolia, '')).toBe(baseSepolia);
+        expect(withRpcUrl(baseSepolia, '   ')).toBe(baseSepolia);
+    });
+
+    it('reads through the configured url instead of the public default', () => {
+        const custom = withRpcUrl(baseSepolia, 'https://my-node.example/v2/key');
+        expect(custom.rpcUrls.default.http).toEqual(['https://my-node.example/v2/key']);
+        expect(baseSepolia.rpcUrls.default.http[0]).not.toBe('https://my-node.example/v2/key');
+    });
+
+    it('changes nothing a wallet matches a network on', () => {
+        // id, currency and explorer are what a wallet uses to recognise or add a network.
+        // Rewriting them would offer a network the wallet cannot place.
+        const custom = withRpcUrl(baseSepolia, 'https://my-node.example');
+        expect(custom.id).toBe(baseSepolia.id);
+        expect(custom.name).toBe(baseSepolia.name);
+        expect(custom.nativeCurrency).toEqual(baseSepolia.nativeCurrency);
+        expect(custom.blockExplorers).toEqual(baseSepolia.blockExplorers);
+    });
+
+    it('does not mutate the shared chain object', () => {
+        const before = [...baseSepolia.rpcUrls.default.http];
+        withRpcUrl(baseSepolia, 'https://my-node.example');
+        expect(baseSepolia.rpcUrls.default.http).toEqual(before);
+    });
+});
+
+describe('resolveTargetChainId', () => {
+    it('parses a chain id', () => {
+        expect(resolveTargetChainId('11155111')).toBe(sepolia.id);
+        expect(resolveTargetChainId('31337')).toBe(31337);
+    });
+
+    it('falls back to Base Sepolia when unset or empty', () => {
+        expect(resolveTargetChainId(undefined)).toBe(baseSepolia.id);
+        expect(resolveTargetChainId('')).toBe(baseSepolia.id);
+    });
+
+    it('falls back rather than returning NaN for a malformed value', () => {
+        expect(resolveTargetChainId('base-sepolia')).toBe(baseSepolia.id);
+        expect(resolveTargetChainId('1.5')).toBe(baseSepolia.id);
+    });
+});
+
+describe('TARGET_CHAIN_ID', () => {
+    it('is a chain the app has contracts on', () => {
+        expect(isSupportedChain(TARGET_CHAIN_ID)).toBe(true);
+    });
+});
+
+describe('CHAINS', () => {
+    it('lists both deployment chains, so a player can switch between them', () => {
+        const ids = CHAINS.map((c) => c.chain.id);
+        expect(ids).toContain(baseSepolia.id);
+        expect(ids).toContain(sepolia.id);
+        expect(CHAINS[0].chain.id).toBe(baseSepolia.id);
+    });
+
+    it('omits chains with no deployment, including the handshake fallback', () => {
+        // Mainnet is offered in the WalletConnect proposal so testnet-less wallets
+        // can approve something, but it has no contracts. It must not be listed as
+        // somewhere to play, or the switcher could strand a player there.
+        expect(WC_FALLBACK_CHAINS.some((c) => c.id === mainnet.id)).toBe(true);
+        expect(CHAINS.some((c) => c.chain.id === mainnet.id)).toBe(false);
+        expect(isSupportedChain(mainnet.id)).toBe(false);
+    });
+
+    it('does not treat an unknown chain as supported', () => {
+        expect(isSupportedChain(137)).toBe(false);
+        expect(isSupportedChain(undefined)).toBe(false);
+    });
+});
+
+describe('getChainConfig / getTargetChainName', () => {
+    it('resolves a playable chain and names the target', () => {
+        expect(getChainConfig(sepolia.id)?.name).toBe('Sepolia');
+        expect(getTargetChainName(sepolia.id)).toBe('Sepolia');
+    });
+
+    it('does not resolve the handshake fallback', () => {
+        expect(getChainConfig(mainnet.id)).toBeUndefined();
+    });
+
+    it('names an unknown chain by id rather than rendering "undefined"', () => {
+        expect(getTargetChainName(137)).toBe('chain 137');
+    });
+});
+
+describe('getAppKitEvmNetworks', () => {
+    it('puts the target first so defaultNetwork lands on it', () => {
+        expect(getAppKitEvmNetworks(sepolia.id)[0].id).toBe(sepolia.id);
+    });
+
+    it('trails the handshake fallback behind every playable chain', () => {
+        const ids = getAppKitEvmNetworks(sepolia.id).map((c) => c.id);
+        expect(ids).toContain(mainnet.id);
+        expect(ids.indexOf(mainnet.id)).toBe(ids.length - 1);
+    });
+
+    it('lists each chain once', () => {
+        const ids = getAppKitEvmNetworks(sepolia.id).map((c) => c.id);
+        expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('still leads with a playable chain when the target has no config', () => {
+        // A typo'd EVM_CHAIN_ID must not put wagmi's default on the fallback.
+        // 137 rather than 84532: Base Sepolia is a real deployment chain now, so
+        // it would pass this trivially while testing nothing.
+        expect(getAppKitEvmNetworks(137)[0].id).toBe(CHAINS[0].chain.id);
+    });
+});
+
+describe('getNativeTokenSymbol', () => {
+    it('resolves known chains and defaults to ETH', () => {
+        expect(getNativeTokenSymbol(sepolia.id)).toBe('ETH');
+        expect(getNativeTokenSymbol(31337)).toBe('ETH');
+        expect(getNativeTokenSymbol(999999)).toBe('ETH');
+        expect(getNativeTokenSymbol(undefined)).toBe('ETH');
+    });
+});

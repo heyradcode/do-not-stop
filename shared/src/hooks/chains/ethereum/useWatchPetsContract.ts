@@ -15,6 +15,11 @@ type UseWatchPetsContractParams = {
     address?: `0x${string}`;
     /** VRF request id from `BreedRandomnessRequested`; must match `BreedSettled.requestId` */
     pendingRequestId: bigint | null;
+    /**
+     * Block the breed request landed in. A settle keeper can emit `BreedSettled`
+     * before this watch arms, and reading from the head would miss it.
+     */
+    fromBlock?: bigint;
     onBreedSuccess?: (payload: BreedSuccessPayload) => void;
 };
 
@@ -27,6 +32,7 @@ export const useWatchPetsContract = ({
     abi,
     address,
     pendingRequestId,
+    fromBlock,
     onBreedSuccess,
 }: UseWatchPetsContractParams): void => {
     const pendingRef = useRef(pendingRequestId);
@@ -45,6 +51,7 @@ export const useWatchPetsContract = ({
         abi: abi as Abi,
         eventName: 'BreedSettled',
         enabled: Boolean(pendingRequestId != null && address && contractAddress),
+        fromBlock,
         onLogs(logs) {
             if (!address) return;
             const want = pendingRef.current;

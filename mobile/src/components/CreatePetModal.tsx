@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -12,57 +12,59 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
+import { parseContractError, type CreatePetArgs, type PetMutationResult } from '@shared/core';
 import { neon, neonGlow } from '../theme/neon';
+
+/**
+ * A wallet refusal and a prompt that never arrived report identically (code 4001), and
+ * on a phone the second is common: MetaMask sitting on an update or onboarding screen
+ * never renders the request, then denies it. So the wording covers both rather than
+ * telling a player they cancelled something they were never shown.
+ */
+const REJECTED_HINT =
+    'Cancelled in your wallet. If you never saw a prompt, open MetaMask, clear any update screen, and try again.';
 
 type Props = {
     visible: boolean;
     onClose: () => void;
-    isContractConfigured: boolean;
-    createRandomPet: (name: string) => void;
-    isWritePending: boolean;
-    writeError: Error | null | undefined;
-    isConfirming: boolean;
-    txHash: `0x${string}` | undefined;
+    createPet: PetMutationResult<CreatePetArgs>;
 };
 
-export default function CreatePetModal({
-    visible,
-    onClose,
-    isContractConfigured,
-    createRandomPet,
-    isWritePending,
-    writeError,
-    isConfirming,
-    txHash,
-}: Props) {
+export default function CreatePetModal({ visible, onClose, createPet }: Props) {
+    const { mutate, isPending, error, hash, isAwaitingFulfillment, isSettling, reset } = createPet;
     const [name, setName] = useState('');
-    const prevTxHash = useRef<typeof txHash>(undefined);
+    // Only the refusal case is rewritten. A revert reason or a gas failure is worth
+    // showing verbatim, because it says something specific about why this mint failed;
+    // a rejection dump says nothing the player can act on.
+    const isUserRejection = error ? parseContractError(error).isUserRejection : false;
     const { width } = useWindowDimensions();
     const cardWidth = Math.min(400, width - 48);
 
+    // Opening the sheet clears the previous attempt. Keyed on `visible` alone:
+    // the adapter rebuilds its `lifecycle` object every render, so `reset` is a
+    // new identity each time, and depending on it would re-run this effect on
+    // every render, whose own `reset()` renders again. That loop is what
+    // "Maximum update depth exceeded" was.
     useEffect(() => {
         if (visible) {
             setName('');
+            reset();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- open-only reset
     }, [visible]);
 
-    useEffect(() => {
-        if (prevTxHash.current && !txHash) {
-            setName('');
-            onClose();
-        }
-        prevTxHash.current = txHash;
-    }, [txHash, onClose]);
-
-    const busy = isWritePending || isConfirming;
-    const canSubmit = isContractConfigured && name.trim().length > 0 && !busy;
+    // EVM minting spans three waits: the request tx, Pyth Entropy revealing, then
+    // the settle tx. All of them mean "keep the sheet locked and spinning".
+    const busy = isPending || isAwaitingFulfillment === true || isSettling === true;
+    const canSubmit = name.trim().length > 0 && !busy;
 
     const handleSubmit = () => {
         const trimmed = name.trim();
         if (!trimmed) {
             return;
         }
-        createRandomPet(trimmed);
+        // `mutate` captures its own errors into `error`, so it never rejects.
+        mutate({ name: trimmed });
     };
 
     return (
@@ -114,6 +116,8 @@ export default function CreatePetModal({
                         />
                         <TouchableOpacity
                             style={[styles.button, !canSubmit && styles.buttonDisabled]}
+                            accessibilityRole="button"
+                            accessibilityLabel="Create pet"
                             onPress={handleSubmit}
                             disabled={!canSubmit}
                         >
@@ -121,21 +125,29 @@ export default function CreatePetModal({
                                 <View style={styles.buttonInner}>
                                     <ActivityIndicator color={neon.cyan} size="small" style={styles.spinner} />
                                     <Text style={styles.buttonText}>
-                                        {isWritePending ? 'Confirm in wallet…' : 'Confirming…'}
+                                        {isPending
+                                            ? 'Confirm in wallet…'
+                                            : isAwaitingFulfillment
+                                              ? 'Rolling traits…'
+                                              : 'Minting…'}
                                     </Text>
                                 </View>
                             ) : (
                                 <Text style={styles.buttonText}>Create pet</Text>
                             )}
                         </TouchableOpacity>
-                        {writeError ? (
+                        {error ? (
                             <Text style={styles.error}>
-                                {writeError instanceof Error ? writeError.message : String(writeError)}
+                                {isUserRejection
+                                    ? REJECTED_HINT
+                                    : error instanceof Error
+                                      ? error.message
+                                      : String(error)}
                             </Text>
                         ) : null}
-                        {txHash && !writeError ? (
+                        {hash && !error ? (
                             <Text style={styles.txHint} numberOfLines={1}>
-                                {isConfirming ? 'Transaction submitted…' : 'Done — refreshing list…'}
+                                {busy ? 'Transaction submitted…' : 'Done — refreshing list…'}
                             </Text>
                         ) : null}
                     </View>

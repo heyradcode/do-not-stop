@@ -2,12 +2,9 @@ import bs58 from 'bs58';
 import { PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
 import type { SolanaSigningWallet } from '@shared/core';
 
-type ProviderRequest = (args: { method: string; params?: unknown }, chain: string) => Promise<unknown>;
+import { solanaProviderChainRef } from '../utils/solanaProviderChainRef';
 
-function chainRef(chainId: string | number): string {
-    const s = String(chainId);
-    return s.includes(':') ? s : `solana:${s}`;
-}
+type ProviderRequest = (args: { method: string; params?: unknown }, chain: string) => Promise<unknown>;
 
 function serializeUnsigned(tx: Transaction | VersionedTransaction): string {
     if (tx instanceof VersionedTransaction) {
@@ -28,7 +25,7 @@ export function createReownSolanaWallet(
     chainId: string | number
 ): SolanaSigningWallet {
     const publicKey = new PublicKey(address);
-    const chain = chainRef(chainId);
+    const chain = solanaProviderChainRef(chainId);
 
     return {
         publicKey,

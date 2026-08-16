@@ -27,6 +27,21 @@ export interface UsePolledContractEventParams {
     enabled: boolean;
     chainId?: number;
     pollingIntervalMs?: number;
+    /**
+     * First block to read, instead of "whatever is latest when the watch starts".
+     *
+     * Without this the watch is blind to anything emitted before it mounted, and
+     * the events these callers wait on routinely land in that window. A mint
+     * cannot arm its watch until the request receipt has confirmed *and*
+     * `parseEventLogs` has pulled the requestId out of it *and* React has
+     * re-rendered; Pyth Entropy reveals a block or two after the request, and
+     * Base builds a block every two seconds. The reveal is therefore usually
+     * already in the past by the time anyone is looking, and the watch then polls
+     * forward forever past the one event it exists to catch.
+     *
+     * Pass the request transaction's own block and the walk starts there.
+     */
+    fromBlock?: bigint;
     onLogs: (logs: Log[]) => void;
 }
 
@@ -53,6 +68,7 @@ export function usePolledContractEvent({
     enabled,
     chainId,
     pollingIntervalMs = DEFAULT_POLLING_INTERVAL_MS,
+    fromBlock: startBlock,
     onLogs,
 }: UsePolledContractEventParams): void {
     const publicClient = usePublicClient({ chainId });
@@ -63,7 +79,7 @@ export function usePolledContractEvent({
         if (!enabled || !address || !publicClient) return;
 
         let cancelled = false;
-        let fromBlock: bigint | null = null;
+        let fromBlock: bigint | null = startBlock ?? null;
         let inFlight = false;
 
         const tick = async () => {
@@ -72,7 +88,9 @@ export function usePolledContractEvent({
             try {
                 const latest = await publicClient.getBlockNumber();
                 if (fromBlock === null) {
-                    // First tick: start watching from now, not the entire chain history.
+                    // No start block given: watch from now, not the entire chain
+                    // history. Callers waiting on an event that may already have
+                    // fired must pass `fromBlock` — see its doc comment.
                     fromBlock = latest + 1n;
                     return;
                 }
@@ -110,5 +128,5 @@ export function usePolledContractEvent({
             cancelled = true;
             clearInterval(timer);
         };
-    }, [enabled, address, publicClient, abi, eventName, pollingIntervalMs]);
+    }, [enabled, address, publicClient, abi, eventName, pollingIntervalMs, startBlock]);
 }

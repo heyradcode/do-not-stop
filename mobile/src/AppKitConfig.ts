@@ -1,12 +1,20 @@
 import { createAppKit, solana } from '@reown/appkit-react-native';
 import { WagmiAdapter } from '@reown/appkit-wagmi-react-native';
 import { SolanaAdapter } from '@reown/appkit-solana-react-native';
-import { mainnet, sepolia } from 'wagmi/chains';
 import { storage } from './StorageUtil';
 import { REOWN_PROJECT_ID } from '@env';
-import { hardhatLocal } from './ethereumChains';
+import { getAppKitEvmNetworks } from './constants/ethereumNetworks';
 
 const reownProjectId = REOWN_PROJECT_ID;
+
+/**
+ * Target chain first, handshake fallbacks last — see `getAppKitEvmNetworks`.
+ *
+ * Derived rather than listed here so `useEvmSessionChain` can read the same set
+ * when deciding what it is allowed to switch to. A hand-kept second copy is how
+ * the provider ends up pinned to a chain wagmi cannot switch away from.
+ */
+const evmNetworks = getAppKitEvmNetworks();
 
 /** WalletConnect explorer IDs — featured so they still appear when custom chains (e.g. Hardhat) narrow the API wallet list. */
 const FEATURED_WALLET_IDS = [
@@ -17,7 +25,7 @@ const FEATURED_WALLET_IDS = [
 // Create Wagmi adapter for Ethereum chains
 const wagmiAdapter = new WagmiAdapter({
     projectId: reownProjectId,
-    networks: [hardhatLocal, mainnet, sepolia],
+    networks: evmNetworks,
 });
 
 // Export wagmiConfig for App.tsx
@@ -29,8 +37,13 @@ const solanaAdapter = new SolanaAdapter();
 // Create AppKit instance with both Ethereum and Solana support
 export const appKit = createAppKit({
     projectId: reownProjectId,
-    networks: [hardhatLocal, mainnet, sepolia, solana],
-    defaultNetwork: mainnet,
+    networks: [...evmNetworks, solana],
+    /**
+     * The target chain, not mainnet. AppKit pins the provider here after every
+     * connect regardless of what the wallet approved, so naming an unplayable
+     * chain guaranteed a wrong-network session on first launch.
+     */
+    defaultNetwork: evmNetworks[0],
     adapters: [wagmiAdapter, solanaAdapter],
     featuredWalletIds: FEATURED_WALLET_IDS,
     storage,
