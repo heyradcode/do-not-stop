@@ -607,6 +607,42 @@ describe('BattleScreen', () => {
  * finish, and that a battle with nothing to animate still reports its result at once.
  */
 describe('battle replay', () => {
+    /**
+     * Fake timers, because the first test asserts on what has *not* happened yet.
+     *
+     * `useLiveBattleAnimation` arms a 700ms `setTimeout` on mount. Under real timers the
+     * "no strike has played" assertion is a race against how long `render` plus `openArena`
+     * take: under 700ms it passes, over it the first strike has already landed and the bars
+     * are no longer full. That is fast enough locally to look reliable (it failed about one
+     * run in six) and slow enough on a cold CI runner to fail every time, which is exactly
+     * how it was found.
+     *
+     * The other two tests still advance time, they just do it explicitly.
+     */
+    beforeEach(() => {
+        jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
+    /**
+     * `useLiveBattleAnimation`'s strike interval.
+     *
+     * The third copy of this number: the hook owns it unexported, and `BattleScene` keeps its
+     * own `DRAIN_MS` to match. Worth exporting from the hook so all three read one value, but
+     * that is a `shared/` change and this is a mobile fix.
+     */
+    const STRIKE_INTERVAL_MS = 700;
+
+    /** One strike interval, plus enough to clear the boundary. */
+    const playOneStrike = async () => {
+        await ReactTestRenderer.act(async () => {
+            jest.advanceTimersByTime(STRIKE_INTERVAL_MS + 50);
+        });
+    };
+
     const replay = (log: ReturnType<typeof strike>[]) => ({
         log,
         startHp1: 100n,
@@ -632,9 +668,7 @@ describe('battle replay', () => {
         const tree = await render();
         await openArena(tree);
 
-        await ReactTestRenderer.act(async () => {
-            await new Promise((r) => setTimeout(r, 750));
-        });
+        await playOneStrike();
 
         const rendered = textOf(tree);
         expect(rendered).toContain('60%');
@@ -656,9 +690,7 @@ describe('battle replay', () => {
         // after React re-renders from the previous one, so a single long wait would
         // play the first strike and never schedule the second.
         for (let i = 0; i < 2; i++) {
-            await ReactTestRenderer.act(async () => {
-                await new Promise((r) => setTimeout(r, 750));
-            });
+            await playOneStrike();
         }
 
         const rendered = textOf(tree);
