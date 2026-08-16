@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTxError } from '@shared/core';
 
-import { useToast } from '../components/ui/toast';
+import { useToast } from '../components/ui/Toast';
 import { CHAIN_MISMATCH_MESSAGE, isChainMismatchError } from '../utils/chainMismatch';
 
 export const useTxErrorToast = (

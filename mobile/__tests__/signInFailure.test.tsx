@@ -20,7 +20,7 @@ const mockAuth = { signInError: null as Error | null };
 const mockToast = { show: jest.fn(), error: jest.fn(), info: jest.fn(), success: jest.fn() };
 
 jest.mock('@shared/core', () => ({ useAuth: () => mockAuth }));
-jest.mock('../src/components/ui/toast', () => ({ useToast: () => mockToast }));
+jest.mock('../src/components/ui/Toast', () => ({ useToast: () => mockToast }));
 
 import SignInErrorReporter from '../src/components/SignInErrorReporter';
 

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useAuth } from '@shared/core';
 
 import { describeSignInFailure } from '../utils/signInFailure';
-import { useToast } from './ui/toast';
+import { useToast } from './ui/Toast';
 
 /**
  * Reports a failed sign-in, once, wherever it was started from.

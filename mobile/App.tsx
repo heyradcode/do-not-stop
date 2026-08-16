@@ -11,7 +11,7 @@ import { queryClient, ApiClientProvider, AuthProvider, PetsConfigProvider } from
 import { appKit, wagmiConfig } from './src/AppKitConfig';
 import { API_URL } from './config';
 import { useEvmPetsConfig } from './src/petsContractParams';
-import { ToastProvider } from './src/components/ui/toast';
+import { ToastProvider } from './src/components/ui/Toast';
 import SignInErrorReporter from './src/components/SignInErrorReporter';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { neon } from './src/theme/neon';

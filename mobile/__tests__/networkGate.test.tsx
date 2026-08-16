@@ -43,7 +43,7 @@ jest.mock('@reown/appkit-react-native', () => ({
     useAppKit: () => ({ open: mockOpen, disconnect: mockDisconnect }),
 }));
 
-jest.mock('../src/components/ui/toast', () => ({
+jest.mock('../src/components/ui/Toast', () => ({
     useToast: () => mockToast,
 }));
 

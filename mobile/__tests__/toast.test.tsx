@@ -23,7 +23,7 @@ jest.mock('@shared/core', () => ({
     useTxError: (...args: unknown[]) => mockUseTxError(...args),
 }));
 
-import { ToastProvider, useToast } from '../src/components/ui/toast';
+import { ToastProvider, useToast } from '../src/components/ui/Toast';
 import { useNotifyError } from '../src/hooks/useNotifyError';
 import { usePetErrorToast } from '../src/hooks/usePetErrorToast';
 import { useTxErrorToast } from '../src/hooks/useTxErrorToast';
