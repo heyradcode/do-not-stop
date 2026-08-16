@@ -520,6 +520,7 @@ describe('BattleScreen', () => {
         const tree = await render();
         await pressWith(tree, 'Rex');
         await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle'); // Add this line to actually trigger the battle
 
         expect(mockBattleOptions.roomSocketUrl).toMatch(/^wss?:\/\/.+\/ws\/battle-room$/);
     });
@@ -769,10 +770,10 @@ describe('empty opponent list', () => {
 
     it('falls back to a plain line when the server names no reason', async () => {
         mockState.emptyReason = null;
-    mockState.isAuthenticated = true;
-    mockState.phase = 'idle';
-    mockState.battleState = null;
-    mockState.failureReason = null;
+        mockState.isAuthenticated = true;
+        mockState.phase = 'idle';
+        mockState.battleState = null;
+        mockState.failureReason = null;
         const tree = await render();
         expect(textOf(tree)).toContain('No opponents available');
     });
