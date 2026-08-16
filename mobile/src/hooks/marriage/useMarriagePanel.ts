@@ -68,7 +68,7 @@ export interface UseMarriagePanel {
  * groups its fields into three of its own components' prop types.
  */
 export const useMarriagePanel = (): UseMarriagePanel => {
-    const { kind, activeKind } = useChainCapabilities();
+    const { kind, activeKind, parseError } = useChainCapabilities();
     const { pets, refetch } = usePetList();
     const notifyError = useNotifyError();
     const marriage = useMarriage();
@@ -149,8 +149,18 @@ export const useMarriagePanel = (): UseMarriagePanel => {
             queryClient.invalidateQueries({ queryKey: ['incomingProposals'] });
             return true;
         } catch (err) {
-            console.error('[marriage]', err);
-            notifyError('Marriage action failed', err, 'marriage');
+            /*
+             * The chain's own reason, not a generic line.
+             *
+             * `PetCore.divorce` reverts with "Not the owner of this pet" or "Pet doesn't
+             * exist", and `marry`/`acceptProposal` are the same shape. Every one of those
+             * tells the player something they can act on, and all of them used to arrive as
+             * "Marriage action failed" with the real string logged to a console no player
+             * reads. `parseError` is the same one `useTxError` uses, so a user rejection
+             * still reads as a rejection rather than as a failure.
+             */
+            const { message: reason } = parseError(err, 'Marriage action failed');
+            notifyError(reason, err, 'marriage');
             return false;
         }
     };

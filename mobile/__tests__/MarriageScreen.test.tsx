@@ -91,6 +91,13 @@ jest.mock('@shared/core', () => ({
         kind: mockState.kind,
         activeKind: mockState.kind === 'none' ? null : mockState.kind,
         walletAddress: '0xme',
+        // Stands in for the chain's own error parser. The real one pulls the revert reason
+        // off a viem/ethers error; this one just proves the panel routes through it rather
+        // than discarding the error and reporting its own line.
+        parseError: (err: unknown, fallback: string) => ({
+            message: err instanceof Error ? err.message : fallback,
+            isUserRejection: false,
+        }),
     }),
     useAllPets: () => ({ pets: mockState.roster }),
     useSearchPets: (query: string) => ({
@@ -283,14 +290,20 @@ describe('MarriageScreen', () => {
         );
     });
 
-    it('reports a failed write instead of claiming success', async () => {
-        mockMutations.propose.mockRejectedValueOnce(new Error('reverted'));
+    it('reports the chain’s own reason, not a line of its own', async () => {
+        /*
+         * `PetCore.divorce` reverts with "Not the owner of this pet"; marry and accept are
+         * the same shape. Those tell a player what to do about it, and they used to be
+         * replaced with "Marriage action failed" and logged to a console nobody reads.
+         */
+        mockMutations.propose.mockRejectedValueOnce(new Error('Not the owner of this pet'));
         const tree = await render();
         await pressWith(tree, 'Rex');
         await choosePartner(tree, 'Nia');
         await pressWith(tree, 'Send Proposal');
+
         expect(mockNotify).toHaveBeenCalledWith(
-            'Marriage action failed',
+            'Not the owner of this pet',
             expect.any(Error),
             'marriage',
         );
