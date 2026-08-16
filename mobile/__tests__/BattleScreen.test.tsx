@@ -10,7 +10,7 @@
  */
 
 import React from 'react';
-import { Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 import type { OpponentPet, Pet } from '@shared/core';
 /**
@@ -60,7 +60,7 @@ const mockState = {
     battleState: null as string | null,
     failureReason: null as string | null,
     isConnected: true,
-    turns: [] as { text: string }[],
+    turns: [] as { speaker: 'attacker' | 'defender'; phase: 'taunt'; text: string }[],
     /** Post-fight reactions. `taunt` turns are filtered out before rendering. */
     dialogueTurns: [] as { speaker: string; phase: string; text: string }[],
     dialogueLoading: false,
@@ -558,7 +558,9 @@ describe('BattleScreen', () => {
     });
 
     it('shows the taunts once they arrive', async () => {
-        mockState.turns = [{ text: 'You call that a stance?' }];
+        mockState.turns = [
+            { speaker: 'attacker', phase: 'taunt', text: 'You call that a stance?' },
+        ];
         const tree = await render();
         await openArena(tree);
         expect(textOf(tree)).toContain('You call that a stance?');
@@ -908,5 +910,53 @@ describe('the arena', () => {
 
         await ReactTestRenderer.act(async () => closeControl(tree)[0].props.onPress());
         expect(isOpen(tree)).toBe(false);
+    });
+});
+
+describe('who said it', () => {
+    /** A bubble's own label carries the speaker, which is also what a screen reader reads. */
+    const bubbleNodes = (tree: ReactTestRenderer.ReactTestRenderer) =>
+        tree.root.findAll(
+            // Host nodes only. `findAll` returns the composite element and the view it
+            // renders, so an unfiltered search counts every bubble twice.
+            (n) => typeof n.type === 'string' && String(n.props.accessibilityLabel ?? '').includes(' says: '),
+        );
+
+    const saidBy = (tree: ReactTestRenderer.ReactTestRenderer) =>
+        bubbleNodes(tree).map((n) => n.props.accessibilityLabel as string);
+
+    it('puts a line beside the pet that said it', async () => {
+        // The whole point. Both lines used to land in one column with nothing to tell them
+        // apart, because the panel flattened the turns to their text and dropped the speaker.
+        mockState.opponents = [foe({ id: '9', name: 'Luna' })];
+        mockState.turns = [
+            { speaker: 'attacker', phase: 'taunt', text: 'Nice stance.' },
+            { speaker: 'defender', phase: 'taunt', text: 'Come and see.' },
+        ];
+        const tree = await render();
+        // Both chosen, so the bubbles carry the pets' own names rather than the panel's
+        // "Your pet" / "Opponent" fallbacks.
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await openArena(tree);
+
+        expect(saidBy(tree)).toEqual([
+            'Rex says: Nice stance.',
+            'Luna says: Come and see.',
+        ]);
+    });
+
+    it('draws the two sides in different colours', async () => {
+        mockState.turns = [
+            { speaker: 'attacker', phase: 'taunt', text: 'Nice stance.' },
+            { speaker: 'defender', phase: 'taunt', text: 'Come and see.' },
+        ];
+        const tree = await render();
+        await openArena(tree);
+
+        const bubbles = bubbleNodes(tree).map((n) => StyleSheet.flatten(n.props.style));
+
+        expect(bubbles).toHaveLength(2);
+        expect(bubbles[0].borderColor).not.toBe(bubbles[1].borderColor);
     });
 });

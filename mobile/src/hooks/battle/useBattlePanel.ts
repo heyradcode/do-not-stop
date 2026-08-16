@@ -74,7 +74,14 @@ export interface UseBattlePanel {
     onSelectOpponent: (id: string) => void;
     opponent: OpponentPet | null;
     onRandomOpponent: () => void;
-    taunts: string[];
+    /**
+     * What the two pets say before the fight, with who said it.
+     *
+     * `DialogueTurn[]` rather than the text alone: the speaker decides which side of the
+     * arena a line is drawn on, and flattening it here left the component with no way to
+     * tell one pet's lines from the other's.
+     */
+    taunts: DialogueTurn[];
     phase: string;
     /**
      * What the battle is waiting on, in words, or null when nothing is in flight.
@@ -379,7 +386,7 @@ export const useBattlePanel = (initialPetId?: string): UseBattlePanel => {
         onSelectOpponent: setSelectedOpponentKey,
         opponent,
         onRandomOpponent,
-        taunts: taunts.turns?.map((t) => t.text) ?? [],
+        taunts: taunts.turns ?? [],
         phase: battle.phase,
         stageLabel: battle.failureReason
             ? `${describeBattleStage(battle.state)} (${battle.failureReason})`

@@ -11,6 +11,7 @@ import {
 
 import BattleScene from './BattleScene';
 import BattleSplash from './BattleSplash';
+import SpeechBubble from './SpeechBubble';
 import type { UseBattlePanel } from '../../hooks/battle/useBattlePanel';
 import { neon, neonGlow } from '../../theme/neon';
 
@@ -88,10 +89,13 @@ export default function BattleStage({ panel, visible, onClose }: Props) {
                 ) : null}
             {panel.taunts.length > 0 ? (
                 <View style={styles.taunts}>
-                    {panel.taunts.map((line, i) => (
-                        <Text key={i} style={styles.tauntLine}>
-                            {line}
-                        </Text>
+                    {panel.taunts.map((turn, i) => (
+                        <SpeechBubble
+                            key={i}
+                            turn={turn}
+                            attackerName={panel.attackerName}
+                            defenderName={panel.defenderName}
+                        />
                     ))}
                 </View>
             ) : null}
@@ -149,24 +153,12 @@ export default function BattleStage({ panel, visible, onClose }: Props) {
                             {panel.resultTurns.length > 0 ? (
                                 <View style={styles.dialogue}>
                                     {panel.resultTurns.map((turn, i) => (
-                                        <View key={i} style={styles.dialogueTurn}>
-                                            <Text
-                                                style={[
-                                                    styles.dialogueSpeaker,
-                                                    {
-                                                        color:
-                                                            turn.speaker === 'attacker'
-                                                                ? neon.cyan
-                                                                : neon.magenta,
-                                                    },
-                                                ]}
-                                            >
-                                                {turn.speaker === 'attacker'
-                                                    ? panel.attackerName
-                                                    : panel.defenderName}
-                                            </Text>
-                                            <Text style={styles.dialogueText}>{turn.text}</Text>
-                                        </View>
+                                        <SpeechBubble
+                                            key={i}
+                                            turn={turn}
+                                            attackerName={panel.attackerName}
+                                            defenderName={panel.defenderName}
+                                        />
                                     ))}
                                 </View>
                             ) : panel.dialogueLoading ? (
@@ -241,7 +233,6 @@ const styles = StyleSheet.create({
         borderLeftColor: neon.purple,
         paddingLeft: 12,
     },
-    tauntLine: { fontSize: 14, color: neon.textMuted, fontStyle: 'italic', marginBottom: 6 },
     modalRoot: {
         flex: 1,
         alignItems: 'center',
@@ -268,15 +259,6 @@ const styles = StyleSheet.create({
         borderTopColor: neon.border,
         paddingTop: 12,
     },
-    dialogueTurn: { marginBottom: 10 },
-    dialogueSpeaker: {
-        fontSize: 11,
-        fontWeight: '800',
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
-        marginBottom: 2,
-    },
-    dialogueText: { fontSize: 14, color: neon.text, lineHeight: 20 },
     dialogueWaiting: { marginTop: 14, fontSize: 13, color: neon.textDim, fontStyle: 'italic' },
     // The result sheet's own buttons. `BattleScreen` keeps a set of the same name for the
     // pinned Start control, and the two are not the same button: this one closes a verdict.
