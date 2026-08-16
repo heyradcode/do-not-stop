@@ -68,6 +68,19 @@ const render = async () => {
 };
 
 
+/**
+ * A gate button by its label, matched on a prefix because the primary names the chain
+ * it is switching to.
+ *
+ * These used to be `[0]` and `[1]`, and which one each index meant depended on
+ * `targetAuthorized`: when the target is already approved the secondary is not rendered at
+ * all, so `[1]` in one test and `[1]` in the next were different buttons.
+ */
+const byLabel = (tree: ReactTestRenderer.ReactTestRenderer, prefix: string) =>
+    tree.root
+        .findAllByType(TouchableOpacity)
+        .find((n) => String(n.props.accessibilityLabel ?? '').startsWith(prefix));
+
 beforeEach(() => {
     mockState.isConnected = true;
     mockState.chainId = TARGET_CHAIN_ID;
@@ -230,7 +243,7 @@ describe('NetworkGate', () => {
         expect(textOf(tree)).toContain('Reconnect wallet');
 
         await ReactTestRenderer.act(async () => {
-            tree.root.findAllByType(TouchableOpacity)[0].props.onPress();
+            byLabel(tree, 'Reconnect wallet')!.props.onPress();
         });
 
         expect(mockDisconnect).toHaveBeenCalled();
@@ -246,7 +259,7 @@ describe('NetworkGate', () => {
         const tree = await render();
 
         await ReactTestRenderer.act(async () => {
-            tree.root.findAllByType(TouchableOpacity)[1].props.onPress();
+            byLabel(tree, 'Ask this wallet to add')!.props.onPress();
         });
 
         expect(mockSwitchChainAsync).toHaveBeenCalledWith({ chainId: TARGET_CHAIN_ID });
@@ -264,7 +277,7 @@ describe('NetworkGate', () => {
         const tree = await render();
 
         await ReactTestRenderer.act(async () => {
-            tree.root.findAllByType(TouchableOpacity)[1].props.onPress();
+            byLabel(tree, 'Ask this wallet to add')!.props.onPress();
         });
 
         expect(textOf(tree)).toContain('ended the session');
@@ -295,7 +308,7 @@ describe('NetworkGate', () => {
         const tree = await render();
 
         await ReactTestRenderer.act(async () => {
-            tree.root.findAllByType(TouchableOpacity)[0].props.onPress();
+            byLabel(tree, 'Switch to')!.props.onPress();
         });
 
         expect(textOf(tree)).toContain('You dismissed the request in your wallet');
@@ -309,7 +322,7 @@ describe('NetworkGate', () => {
 
         // The add attempt is the secondary action now; reconnect leads.
         await ReactTestRenderer.act(async () => {
-            tree.root.findAllByType(TouchableOpacity)[1].props.onPress();
+            byLabel(tree, 'Ask this wallet to add')!.props.onPress();
         });
 
         expect(textOf(tree)).toContain('disconnect and reconnect');

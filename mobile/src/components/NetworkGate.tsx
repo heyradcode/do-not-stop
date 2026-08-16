@@ -140,6 +140,10 @@ export default function NetworkGate() {
                 }}
                 disabled={isBusy}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={
+                    targetAuthorized ? `Switch to ${targetName}` : 'Reconnect wallet'
+                }
             >
                 {isBusy ? (
                     <ActivityIndicator color={neon.warningText} size="small" />
@@ -157,6 +161,8 @@ export default function NetworkGate() {
                     }}
                     disabled={isBusy}
                     activeOpacity={0.85}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ask this wallet to add ${targetName}`}
                 >
                     <Text style={styles.secondaryBtnText}>
                         Ask this wallet to add {targetName}

@@ -55,7 +55,9 @@ const render = async (props: Partial<React.ComponentProps<typeof CreatePetModal>
 
 /** The submit button is the only TouchableOpacity in the sheet. */
 const submitButton = (tree: ReactTestRenderer.ReactTestRenderer) =>
-    tree.root.findAllByType(TouchableOpacity)[0];
+    tree.root
+        .findAllByType(TouchableOpacity)
+        .find((n) => n.props.accessibilityLabel === 'Create pet')!;
 
 const typeName = async (tree: ReactTestRenderer.ReactTestRenderer, value: string) => {
     await ReactTestRenderer.act(async () => {

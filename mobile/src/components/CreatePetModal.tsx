@@ -116,6 +116,8 @@ export default function CreatePetModal({ visible, onClose, createPet }: Props) {
                         />
                         <TouchableOpacity
                             style={[styles.button, !canSubmit && styles.buttonDisabled]}
+                            accessibilityRole="button"
+                            accessibilityLabel="Create pet"
                             onPress={handleSubmit}
                             disabled={!canSubmit}
                         >

@@ -220,6 +220,8 @@ export default function MarriageScreen() {
                         </Text>
                         <TouchableOpacity
                             style={[styles.action, panel.isAccepting && styles.actionDisabled]}
+                            accessibilityRole="button"
+                            accessibilityLabel="Confirm accept"
                             onPress={panel.onConfirmAccept}
                             disabled={panel.isAccepting}
                             activeOpacity={0.85}

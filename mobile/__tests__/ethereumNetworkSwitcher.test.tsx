@@ -60,11 +60,13 @@ const pressables = (tree: ReactTestRenderer.ReactTestRenderer) =>
         return (type.displayName ?? type.name) === 'Pressable';
     });
 
-/** The trigger is the first Pressable; the modal backdrop and rows follow. */
+/** The trigger, by label. It used to be "the first Pressable", which the modal's own
+ *  backdrop and rows sit behind in render order and could have overtaken. */
+const trigger = (tree: ReactTestRenderer.ReactTestRenderer) =>
+    pressables(tree).find((n) => n.props.accessibilityLabel === 'Switch network');
+
 const openModal = async (tree: ReactTestRenderer.ReactTestRenderer) => {
-    await ReactTestRenderer.act(async () => {
-        pressables(tree)[0].props.onPress();
-    });
+    await ReactTestRenderer.act(async () => trigger(tree)!.props.onPress());
 };
 
 beforeEach(() => {
@@ -152,6 +154,6 @@ describe('EthereumNetworkSwitcher', () => {
         mockState.isPending = true;
         const tree = await render();
         expect(textOf(tree)).toContain('Switching...');
-        expect(pressables(tree)[0].props.disabled).toBe(true);
+        expect(trigger(tree)!.props.disabled).toBe(true);
     });
 });

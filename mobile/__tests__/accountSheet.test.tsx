@@ -84,11 +84,17 @@ const render = async (node: React.ReactElement) => {
 };
 
 
-/** Opens the sheet; the trigger is the first touchable. */
+/**
+ * Every control here is reached by its accessibility label, never by position.
+ *
+ * An index-based press retargets silently when the list changes: the test still passes,
+ * against a different button. That has happened in this codebase more than once.
+ */
+const byLabel = (tree: ReactTestRenderer.ReactTestRenderer, label: string) =>
+    tree.root.findAllByType(TouchableOpacity).find((n) => n.props.accessibilityLabel === label);
+
 const openSheet = async (tree: ReactTestRenderer.ReactTestRenderer) => {
-    await ReactTestRenderer.act(async () => {
-        tree.root.findAllByType(TouchableOpacity)[0].props.onPress();
-    });
+    await ReactTestRenderer.act(async () => byLabel(tree, 'Account')!.props.onPress());
 };
 
 /**
@@ -148,10 +154,7 @@ describe('AccountSheet auth actions', () => {
         await openSheet(tree);
         expect(textOf(tree)).toContain('Sign message & login');
 
-        const buttons = tree.root.findAllByType(TouchableOpacity);
-        await ReactTestRenderer.act(async () => {
-            buttons[1].props.onPress();
-        });
+        await ReactTestRenderer.act(async () => byLabel(tree, 'Sign in')!.props.onPress());
         expect(mockSignAndLogin).toHaveBeenCalled();
     });
 
@@ -162,9 +165,7 @@ describe('AccountSheet auth actions', () => {
         expect(textOf(tree)).toContain('Logout');
         expect(textOf(tree)).not.toContain('Sign message & login');
 
-        await ReactTestRenderer.act(async () => {
-            tree.root.findAllByType(TouchableOpacity)[1].props.onPress();
-        });
+        await ReactTestRenderer.act(async () => byLabel(tree, 'Logout')!.props.onPress());
         expect(mockLogout).toHaveBeenCalled();
     });
 
@@ -184,7 +185,7 @@ describe('AccountSheet auth actions', () => {
         mockState.isSigning = true;
         const tree = await render(<AccountSheet />);
         await openSheet(tree);
-        expect(tree.root.findAllByType(TouchableOpacity)[1].props.disabled).toBe(true);
+        expect(byLabel(tree, 'Sign in')!.props.disabled).toBe(true);
     });
 
     it('shows the full address for a long-press copy', async () => {

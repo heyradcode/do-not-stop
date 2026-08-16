@@ -399,12 +399,13 @@ describe('MarriageScreen', () => {
         await pressWith(tree, 'Incoming');
         await pressWith(tree, 'Accept');
         // The dialog's Accept is the confirm; the row's opened it.
-        const confirms = tree.root
+        // The dialog's confirm, by label. Filtering on the word "Accept" also matched the
+        // row button that opened the dialog, so this took the last of two and depended on
+        // render order to tell them apart.
+        const confirm = tree.root
             .findAllByType(TouchableOpacity)
-            .filter((b) => textOfNode(b).includes('Accept'));
-        await ReactTestRenderer.act(async () => {
-            confirms[confirms.length - 1].props.onPress();
-        });
+            .find((b) => b.props.accessibilityLabel === 'Confirm accept');
+        await ReactTestRenderer.act(async () => confirm!.props.onPress());
         expect(mockMutations.accept).toHaveBeenCalledWith({ petIdA: '9', petIdB: '1' });
     });
 

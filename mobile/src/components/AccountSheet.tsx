@@ -178,6 +178,8 @@ export default function AccountSheet() {
                             {isAuthenticated ? (
                                 <TouchableOpacity
                                     style={styles.action}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Logout"
                                     onPress={() => {
                                         logout();
                                         close();
@@ -188,6 +190,8 @@ export default function AccountSheet() {
                             ) : (
                                 <TouchableOpacity
                                     style={[styles.action, isAuthPending && styles.disabled]}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Sign in"
                                     onPress={() => signAndLogin()}
                                     disabled={isAuthPending}
                                 >

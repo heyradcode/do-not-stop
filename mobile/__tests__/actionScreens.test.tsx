@@ -99,7 +99,7 @@ import LevelUpScreen from '../src/screens/LevelUpScreen';
 import TrainScreen from '../src/screens/TrainScreen';
 import RenameScreen from '../src/screens/RenameScreen';
 
-import { allText, type Tree } from './support/harness';
+import { allText, textOfNode, type Tree } from './support/harness';
 
 /** Every string on screen. The walk itself lives in the shared harness. */
 const textOf = (tree: Tree) => allText(tree, ' | ');
@@ -126,10 +126,18 @@ const pressAction = async (tree: ReactTestRenderer.ReactTestRenderer) => {
     await ReactTestRenderer.act(() => node!.props.onPress());
 };
 
+/**
+ * The first pet chip, by the name it renders.
+ *
+ * It was "the first touchable", which held only while the picker was the first thing on the
+ * screen. It is not any more: `PetPicker` now draws a detail strip under the chips, and the
+ * pinned action bar is a sibling of the scroll.
+ */
 const selectFirstPet = async (tree: ReactTestRenderer.ReactTestRenderer) => {
-    await ReactTestRenderer.act(() => {
-        tree.root.findAllByType(TouchableOpacity)[0].props.onPress();
-    });
+    const chip = tree.root
+        .findAllByType(TouchableOpacity)
+        .find((n) => textOfNode(n).includes('Rex'));
+    await ReactTestRenderer.act(() => chip!.props.onPress());
 };
 
 beforeEach(() => {

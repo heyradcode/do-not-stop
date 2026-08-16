@@ -83,9 +83,18 @@ const type = async (tree: ReactTestRenderer.ReactTestRenderer, value: string) =>
     });
 };
 
+/**
+ * The send button by label, not by position. Its own text changes to "Confirm in wallet…"
+ * while a transfer is pending, so the label is the only stable handle on it.
+ */
+const sendButton = (tree: ReactTestRenderer.ReactTestRenderer) =>
+    tree.root
+        .findAllByType(TouchableOpacity)
+        .find((n) => n.props.accessibilityLabel === 'Send pet');
+
 const send = async (tree: ReactTestRenderer.ReactTestRenderer) => {
     await ReactTestRenderer.act(async () => {
-        tree.root.findAllByType(TouchableOpacity)[0].props.onPress();
+        sendButton(tree)!.props.onPress();
     });
 };
 
@@ -182,7 +191,7 @@ describe('SendPetModal', () => {
     it('locks the sheet while the wallet is deciding', async () => {
         mockState.isPending = true;
         const tree = await render();
-        expect(tree.root.findAllByType(TouchableOpacity)[0].props.disabled).toBe(true);
+        expect(sendButton(tree)!.props.disabled).toBe(true);
         expect(tree.root.findAllByType(TextInput)[0].props.editable).toBe(false);
         expect(textOf(tree)).toContain('Confirm in wallet');
     });

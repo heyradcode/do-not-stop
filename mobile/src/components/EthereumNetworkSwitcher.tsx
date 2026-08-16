@@ -56,6 +56,8 @@ export default function EthereumNetworkSwitcher() {
 
             <Pressable
                 style={({ pressed }) => [styles.trigger, pressed && styles.triggerPressed, isPending && styles.triggerDisabled]}
+                accessibilityRole="button"
+                accessibilityLabel="Switch network"
                 onPress={() => setIsOpen(true)}
                 disabled={isPending}
             >

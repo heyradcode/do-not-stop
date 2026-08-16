@@ -27,7 +27,12 @@ export default function ConnectButton() {
 
     if (!isConnected) {
         return (
-            <TouchableOpacity style={styles.connectButton} onPress={() => open()}>
+            <TouchableOpacity
+                style={styles.connectButton}
+                accessibilityRole="button"
+                accessibilityLabel="Connect Wallet"
+                onPress={() => open()}
+            >
                 <Text style={styles.connectButtonText}>Connect Wallet</Text>
             </TouchableOpacity>
         );

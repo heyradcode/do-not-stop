@@ -132,6 +132,8 @@ export default function SendPetModal({ pet, onClose, onSent }: Props) {
                             style={[styles.button, isPending && styles.disabled]}
                             onPress={handleSend}
                             disabled={isPending}
+                            accessibilityRole="button"
+                            accessibilityLabel="Send pet"
                         >
                             {isPending ? (
                                 <View style={styles.buttonInner}>

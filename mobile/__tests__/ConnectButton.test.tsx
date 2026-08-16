@@ -104,7 +104,10 @@ describe('ConnectButton without a wallet', () => {
         const tree = await render();
 
         await ReactTestRenderer.act(async () => {
-            tree.root.findAllByType(TouchableOpacity)[0].props.onPress();
+            tree.root
+                .findAllByType(TouchableOpacity)
+                .find((n) => n.props.accessibilityLabel === 'Connect Wallet')!
+                .props.onPress();
         });
         expect(mockOpen).toHaveBeenCalled();
     });
