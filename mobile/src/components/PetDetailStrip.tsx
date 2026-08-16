@@ -4,7 +4,6 @@ import {
     getGeneration,
     getLifePercent,
     getPetClass,
-    getPetProperties,
     getPetSkill,
     getRarityColor,
     getRarityName,
@@ -12,14 +11,8 @@ import {
     type Pet,
 } from '@shared/core';
 
+import { statTiles, winPercent } from '../utils/petStats';
 import { neon } from '../theme/neon';
-
-const winRate = (pet: Pet): string => {
-    const fought = pet.winCount + pet.lossCount;
-    // Not "0%", which reads as a losing record rather than as no record. `PetCard` makes the
-    // same distinction, and the two are read one after the other here.
-    return fought === 0 ? 'no record' : `${Math.round((pet.winCount / fought) * 100)}% wins`;
-};
 
 /**
  * What you just picked, in three lines under the picker.
@@ -37,7 +30,6 @@ const winRate = (pet: Pet): string => {
  * pet cannot read one way here and another way one screen over.
  */
 export default function PetDetailStrip({ pet }: { pet: Pet }) {
-    const stats = getPetProperties(pet);
     const xp = getXpNumbers(pet);
     const skill = getPetSkill(pet.speciesId);
     const rarityColor = getRarityColor(pet.rarity);
@@ -59,15 +51,10 @@ export default function PetDetailStrip({ pet }: { pet: Pet }) {
             </Text>
 
             <View style={styles.stats}>
-                {[
-                    ['STR', stats.attack],
-                    ['INT', stats.intelligence],
-                    ['DEF', stats.defense],
-                    ['VIT', stats.life],
-                ].map(([label, value]) => (
-                    <View key={label} style={styles.stat}>
-                        <Text style={styles.statLabel}>{label}</Text>
-                        <Text style={styles.statValue}>{value}</Text>
+                {statTiles(pet).map((tile) => (
+                    <View key={tile.label} style={styles.stat}>
+                        <Text style={styles.statLabel}>{tile.label}</Text>
+                        <Text style={styles.statValue}>{tile.value}</Text>
                     </View>
                 ))}
             </View>
@@ -76,7 +63,8 @@ export default function PetDetailStrip({ pet }: { pet: Pet }) {
                 XP {xp.xpCurrent}/{xp.xpMax} · HP {getLifePercent(pet)}% ·{' '}
                 <Text style={styles.wins}>{pet.winCount}W</Text>
                 {' / '}
-                <Text style={styles.losses}>{pet.lossCount}L</Text> · {winRate(pet)}
+                <Text style={styles.losses}>{pet.lossCount}L</Text>
+                {winPercent(pet) != null ? ` · ${winPercent(pet)}% wins` : ''}
             </Text>
         </View>
     );

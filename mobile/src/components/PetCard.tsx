@@ -4,7 +4,6 @@ import {
     getGeneration,
     getLifePercent,
     getPetClass,
-    getPetProperties,
     getPetSkill,
     getRarityColor,
     getRarityName,
@@ -17,30 +16,8 @@ import {
 import EquippedBadges from './EquippedBadges';
 import PetArt from './PetArt';
 import type { PetCooldownStatus } from '../hooks/usePetCooldowns';
+import { statTiles, winPercent } from '../utils/petStats';
 import { neon, neonGlow } from '../theme/neon';
-
-/**
- * The four tiles frontend's card shows, from the same helper.
- *
- * The fourth is VIT, not AGI. Agility has no backing in the data model — `getPetProperties`
- * returns life, attack, defense and intelligence and nothing else — and frontend's own
- * comment records the same substitution. Inventing an AGI number here would make the two
- * clients disagree about a stat neither can source.
- */
-const statTiles = (pet: Pet): { label: string; value: number }[] => {
-    const p = getPetProperties(pet);
-    return [
-        { label: 'STR', value: p.attack },
-        { label: 'INT', value: p.intelligence },
-        { label: 'DEF', value: p.defense },
-        { label: 'VIT', value: p.life },
-    ];
-};
-
-const winRatio = (pet: Pet): number => {
-    const fought = pet.winCount + pet.lossCount;
-    return fought === 0 ? 0 : Math.round((pet.winCount / fought) * 100);
-};
 
 /**
  * The five per-pet actions, together or not at all.
@@ -150,7 +127,7 @@ export default function PetCard({ pet, status, equipped, actions }: Props) {
                 <Text style={styles.wins}>{pet.winCount}W</Text>
                 {' / '}
                 <Text style={styles.losses}>{pet.lossCount}L</Text>
-                {pet.winCount + pet.lossCount > 0 ? `  ·  ${winRatio(pet)}% win rate` : ''}
+                {winPercent(pet) != null ? `  ·  ${winPercent(pet)}% win rate` : ''}
             </Text>
 
             {status?.onCooldown ? (

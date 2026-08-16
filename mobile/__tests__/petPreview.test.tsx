@@ -169,11 +169,19 @@ describe('selecting a pet', () => {
     });
 
     it('follows the selection to another pet', async () => {
-        expect(textOf(await withSelection('2'))).toContain('no record');
+        // The unfought pet: no rate at all rather than a number.
+        expect(textOf(await withSelection('2'))).not.toContain('% wins');
     });
 
-    it('says "no record" rather than 0%, which reads as losing', async () => {
+    it('says nothing about a rate for a pet that has never fought', async () => {
+        // Not "0% wins", which reads as a losing record, and not "no record" either: the
+        // "0W / 0L" sitting beside it already says that, and `PetCard` omits it too. The two
+        // used to disagree, which meant one pet reading two ways a screen apart.
         // The card draws the same distinction, and the two are read one after the other.
-        expect(textOf(await withSelection('2'))).not.toContain('0% wins');
+        const shown = textOf(await withSelection('2'));
+        expect(shown).toContain('0W');
+        // On '% wins' specifically: the strip also shows an HP percentage, so a bare '%'
+        // asserts nothing about the win rate.
+        expect(shown).not.toContain('% wins');
     });
 });

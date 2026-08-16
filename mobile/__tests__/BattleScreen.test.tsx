@@ -864,7 +864,8 @@ describe('BattleScreen — chosen opponent', () => {
         expect(textOf(tree)).toContain('80% wins');
 
         await pressWith(tree, 'Momo');
-        expect(textOf(tree)).toContain('no record');
+        // An opponent with no record shows no rate at all, the same as on the card.
+        expect(textOf(tree)).not.toContain('% wins');
     });
 });
 
