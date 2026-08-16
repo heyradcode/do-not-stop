@@ -11,18 +11,31 @@ import { API_URL } from '@env';
  */
 
 /**
- * Battle-room notification socket (§J), derived exactly as
- * `frontend/src/config.ts` derives its own. Chain-neutral: backend battles run on
- * both EVM and Solana.
+ * A backend WebSocket endpoint, derived exactly as `frontend/src/config.ts` derives its
+ * own: swap the `http` scheme for `ws` and append the channel's path.
  *
- * `undefined` when `API_URL` is unset, which disables the subscription rather than
- * building `ws:/ws/battle-room` and reconnecting against that forever. A client
- * that never reaches this still converges on the same state by polling
+ * Takes the base URL as an argument rather than reading `@env` itself, for the reason
+ * `ethereumNetworks`' `resolveTargetChainId` does the same. `react-native-dotenv` inlines
+ * `@env` at Babel transform time, so `API_URL` is a literal baked in from whichever `.env`
+ * the machine running the build happened to have. A test asserting on a constant derived
+ * straight from it is testing that file, not this rule, and passes or fails on whether the
+ * machine has one at all: `mobile/.env` is gitignored, so CI has none and every such
+ * assertion reads `undefined` there while passing locally.
+ *
+ * `undefined` when the base URL is unset, which disables the subscription rather than
+ * building `ws:/ws/battle-room` and reconnecting against that forever.
+ */
+export const socketUrlFrom = (baseUrl: string | undefined, path: string): string | undefined =>
+    baseUrl ? `${baseUrl.replace(/^http/, 'ws')}${path}` : undefined;
+
+/**
+ * Battle-room notification socket (§J). Chain-neutral: backend battles run on both EVM
+ * and Solana.
+ *
+ * A client that never reaches this still converges on the same state by polling
  * `GET /api/battle/:battleId`, so losing it costs latency, never correctness.
  */
-export const BATTLE_ROOM_WS_URL = API_URL
-    ? `${API_URL.replace(/^http/, 'ws')}/ws/battle-room`
-    : undefined;
+export const BATTLE_ROOM_WS_URL = socketUrlFrom(API_URL, '/ws/battle-room');
 
 /**
  * Private chat's notification channel, derived the same way.
@@ -32,4 +45,4 @@ export const BATTLE_ROOM_WS_URL = API_URL
  * a thread is readable but not live when this is unset — every read is authorized again
  * server-side, so losing the socket costs freshness, never access.
  */
-export const CHAT_WS_URL = API_URL ? `${API_URL.replace(/^http/, 'ws')}/ws/chat` : undefined;
+export const CHAT_WS_URL = socketUrlFrom(API_URL, '/ws/chat');

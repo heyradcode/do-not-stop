@@ -228,6 +228,7 @@ jest.mock('@react-navigation/native', () => ({
     useRoute: () => ({ params: mockRouteParams }),
 }));
 
+import { BATTLE_ROOM_WS_URL } from '../src/constants/api';
 import BattleScreen from '../src/screens/BattleScreen';
 
 import { textOfNode } from './support/harness';
@@ -514,15 +515,19 @@ describe('BattleScreen', () => {
     });
 
     it('subscribes to the room socket so updates arrive by push', async () => {
-        // Polling still carries the battle either way; this is what makes it
-        // prompt. The URL is derived from API_URL, so it must be a ws scheme
-        // pointing at the §J endpoint rather than the http one it came from.
+        // Polling still carries the battle either way; this is what makes it prompt.
+        //
+        // Asserts pass-through, not the URL's shape. `BATTLE_ROOM_WS_URL` is derived from
+        // `API_URL`, which `react-native-dotenv` inlines at transform time from a gitignored
+        // `mobile/.env` — so matching it against a `wss?://` pattern here passes on a machine
+        // that has one and fails on CI, which does not. That is what it did. The derivation
+        // itself is `socketUrlFrom`, checked directly in `api.test.ts` against a known input.
         const tree = await render();
         await pressWith(tree, 'Rex');
         await pressWith(tree, 'Luna');
-        await pressWith(tree, 'Start Battle'); // Add this line to actually trigger the battle
+        await pressWith(tree, 'Start Battle');
 
-        expect(mockBattleOptions.roomSocketUrl).toMatch(/^wss?:\/\/.+\/ws\/battle-room$/);
+        expect(mockBattleOptions.roomSocketUrl).toBe(BATTLE_ROOM_WS_URL);
     });
 
     it('does not hand a failed mint the previous battle’s room', async () => {
