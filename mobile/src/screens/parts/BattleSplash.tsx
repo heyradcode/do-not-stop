@@ -24,11 +24,11 @@ type Props = {
 /**
  * The card that announces a fight, before the arena underneath it starts reporting one.
  *
- * Built from `Animated` and plain views. `react-native-svg` is in `package.json` and would
- * give real gradients and outlined text, but nothing in the app imports it, so it may not be
- * in the installed native build. A missing native library throws at import, and this is the
- * first thing shown when Start is pressed, which is the worst place to find out. The same
- * reasoning `BattleScene` records for keeping `react-native-reanimated` out.
+ * Built from `Animated` and plain views. Real gradients and outlined text would mean adding
+ * `react-native-svg`, and a native library that is not in the installed build throws at
+ * import rather than degrading. This is the first thing shown when Start is pressed, which is
+ * the worst place to find that out. The same reasoning `BattleScene` records for keeping
+ * `react-native-reanimated` out.
  *
  * The timeline, which is the whole component:
  *

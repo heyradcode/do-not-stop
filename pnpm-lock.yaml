@@ -468,9 +468,6 @@ importers:
       react-native-screens:
         specifier: ^4.26.2
         version: 4.26.2(react-native@0.82.0(@babel/core@7.28.5)(@react-native-community/cli@20.0.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))(@react-native/metro-config@0.82.0(@babel/core@7.28.5)(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@types/react@19.2.2)(bufferutil@4.0.9)(react@19.1.1)(utf-8-validate@5.0.10))(react@19.1.1)
-      react-native-svg:
-        specifier: ^15.14.0
-        version: 15.14.0(react-native@0.82.0(@babel/core@7.28.5)(@react-native-community/cli@20.0.0(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10))(@react-native/metro-config@0.82.0(@babel/core@7.28.5)(bufferutil@4.0.9)(utf-8-validate@5.0.10))(@types/react@19.2.2)(bufferutil@4.0.9)(react@19.1.1)(utf-8-validate@5.0.10))(react@19.1.1)
       viem:
         specifier: ~2.38.3
         version: 2.38.4(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.25.76)

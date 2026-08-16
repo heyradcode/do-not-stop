@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -8,52 +8,18 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import {
-    getRarityColor,
-    sameAccount,
-    shortAddress,
-    useChainCapabilities,
-    useLeaderboard,
-    usePlayerLeaderboard,
-    usePlayerRank,
-    type PetChain,
-} from '@shared/core';
-
 import SessionGate from '../components/SessionGate';
 import PetArt from '../components/PetArt';
+import {
+    BOARDS,
+    useLeaderboardPanel,
+    type Standing,
+} from '../hooks/leaderboard/useLeaderboardPanel';
+import { winPercent } from '../utils/petStats';
 import { neon, neonGlow } from '../theme/neon';
-
-/** Which ranking is showing. Pets is the default: it is the one with a pet in it. */
-type Board = 'pets' | 'players';
-
-const BOARDS: readonly { id: Board; label: string }[] = [
-    { id: 'pets', label: 'Pets' },
-    { id: 'players', label: 'Players' },
-];
 
 /** Metal for each of the top three, and nothing below. */
 const MEDALS = ['#ffd45e', '#c9d4e4', '#d08a52'] as const;
-
-/** Win rate as a percentage, or null when the row has no battles to divide by. */
-function winRate(wins: number, losses: number): number | null {
-    const fought = wins + losses;
-    return fought === 0 ? null : Math.round((wins / fought) * 100);
-}
-
-/** What one row shows, whichever board produced it. */
-type Standing = {
-    key: string;
-    rank: number;
-    /** Rendered as pet art on the pet board, an emoji on the player board. */
-    pet: { id: string; chain: PetChain; assetKey?: string; dna: bigint } | null;
-    title: string;
-    sub: string;
-    /** The pet's own rarity colour, tinting its row. Null on the player board. */
-    accent: string | null;
-    winCount: number;
-    lossCount: number;
-    isYou: boolean;
-};
 
 /**
  * One line of the board.
@@ -66,7 +32,7 @@ type Standing = {
  * read one at a time; a column of bars shows the shape of the board at a glance.
  */
 const Row: React.FC<{ standing: Standing }> = ({ standing }) => {
-    const rate = winRate(standing.winCount, standing.lossCount);
+    const rate = winPercent(standing);
     const medal = standing.rank <= MEDALS.length ? MEDALS[standing.rank - 1] : null;
     const size = medal ? 52 : 40;
 
@@ -127,73 +93,7 @@ const Row: React.FC<{ standing: Standing }> = ({ standing }) => {
  * the `rank` printed beside them.
  */
 export default function LeaderboardScreen() {
-    const { activeKind, walletAddress } = useChainCapabilities();
-    const [board, setBoard] = useState<Board>('pets');
-    const [page, setPage] = useState(0);
-    const [term, setTerm] = useState('');
-
-    // 300 ms, matching frontend and `useSearchPets`: a round trip per keystroke against
-    // a ranked query is a lot of work to throw away, and a board is not a typeahead.
-    const [search, setSearch] = useState('');
-    useEffect(() => {
-        const id = setTimeout(() => setSearch(term.trim()), 300);
-        return () => clearTimeout(id);
-    }, [term]);
-
-    // A term that narrows the board also renumbers which page anything is on, so the
-    // reader has to be put back at the first one or a search can land on an empty page.
-    useEffect(() => setPage(0), [search, board]);
-
-    const pets = useLeaderboard({ chain: activeKind, page, search, enabled: board === 'pets' });
-    const players = usePlayerLeaderboard({
-        chain: activeKind,
-        page,
-        search,
-        enabled: board === 'players',
-    });
-    const { rank: yours } = usePlayerRank(activeKind);
-
-    const active = board === 'pets' ? pets : players;
-    const lastPage = Math.max(0, Math.ceil(active.total / active.pageSize) - 1);
-
-    // `sameAccount` normalizes by address shape, so this needs no chain branch and
-    // cannot merge two Solana pubkeys differing only in case.
-    const isYou = (owner: string) => sameAccount(owner, walletAddress ?? '');
-
-    /** Both boards flattened to one shape, so a single row renderer takes either. */
-    const standings: Standing[] = useMemo(
-        () =>
-            board === 'pets'
-                ? pets.entries.map((entry) => ({
-                      key: entry.id,
-                      rank: entry.rank,
-                      pet: {
-                          id: entry.id,
-                          chain: entry.chain,
-                          assetKey: entry.asset || undefined,
-                          dna: BigInt(entry.dna),
-                      },
-                      title: entry.name,
-                      sub: `Lv ${entry.level}`,
-                      accent: getRarityColor(entry.rarity),
-                      winCount: entry.winCount,
-                      lossCount: entry.lossCount,
-                      isYou: isYou(entry.owner),
-                  }))
-                : players.entries.map((entry) => ({
-                      key: entry.owner,
-                      rank: entry.rank,
-                      pet: null,
-                      title: shortAddress(entry.owner),
-                      sub: `${entry.petCount} pet${entry.petCount === 1 ? '' : 's'}`,
-                      accent: null,
-                      winCount: entry.winCount,
-                      lossCount: entry.lossCount,
-                      isYou: isYou(entry.owner),
-                  })),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [board, pets.entries, players.entries, walletAddress],
-    );
+    const panel = useLeaderboardPanel();
 
     const header = (
         <View>
@@ -204,15 +104,15 @@ export default function LeaderboardScreen() {
                 {BOARDS.map((option) => (
                     <TouchableOpacity
                         key={option.id}
-                        style={[styles.tab, board === option.id && styles.tabActive]}
-                        onPress={() => setBoard(option.id)}
+                        style={[styles.tab, panel.board === option.id && styles.tabActive]}
+                        onPress={() => panel.onBoardChange(option.id)}
                         accessibilityRole="button"
                         accessibilityLabel={`Show ${option.label} board`}
-                        accessibilityState={{ selected: board === option.id }}
+                        accessibilityState={{ selected: panel.board === option.id }}
                         activeOpacity={0.85}
                     >
                         <Text
-                            style={[styles.tabText, board === option.id && styles.tabTextActive]}
+                            style={[styles.tabText, panel.board === option.id && styles.tabTextActive]}
                         >
                             {option.label}
                         </Text>
@@ -222,8 +122,8 @@ export default function LeaderboardScreen() {
 
             <TextInput
                 style={styles.search}
-                value={term}
-                onChangeText={setTerm}
+                value={panel.term}
+                onChangeText={panel.onTermChange}
                 placeholder="Search by pet name or wallet address"
                 placeholderTextColor={neon.textDim}
                 autoCapitalize="none"
@@ -239,30 +139,27 @@ export default function LeaderboardScreen() {
             <View style={styles.yourRank}>
                 <Text style={styles.yourRankLabel}>Your standing</Text>
                 <Text style={styles.yourRankValue}>
-                    {yours
-                        ? `#${yours.rank}  ·  ${yours.winCount}W ${yours.lossCount}L`
+                    {panel.yourRank
+                        ? `#${panel.yourRank.rank}  ·  ${panel.yourRank.winCount}W ${panel.yourRank.lossCount}L`
                         : 'Unranked. Win a battle to join the board.'}
                 </Text>
             </View>
         </View>
     );
 
-    const body = active.error ? (
-        <Text style={styles.error}>{active.error.message}</Text>
-    ) : active.isLoading ? (
+    const body = panel.error ? (
+        <Text style={styles.error}>{panel.error.message}</Text>
+    ) : panel.isLoading ? (
         <View style={styles.loading}>
             <ActivityIndicator size="large" color={neon.cyan} />
         </View>
-    ) : active.total === 0 ? (
+    ) : panel.total === 0 ? (
         <Text style={styles.empty}>
-            {search
-                ? `Nothing on the board matches "${search}".`
+            {panel.search
+                ? `Nothing on the board matches "${panel.search}".`
                 : 'No battles on record yet. Win one and the board fills up.'}
         </Text>
     ) : null;
-
-    const first = page * active.pageSize + 1;
-    const last = Math.min(active.total, (page + 1) * active.pageSize);
 
     return (
         <SessionGate
@@ -273,32 +170,32 @@ export default function LeaderboardScreen() {
             <FlatList
                 style={styles.root}
             contentContainerStyle={styles.content}
-            data={body ? [] : standings}
+            data={body ? [] : panel.standings}
             keyExtractor={(item) => item.key}
             renderItem={({ item }) => <Row standing={item} />}
             ListHeaderComponent={header}
             ListEmptyComponent={body}
             keyboardShouldPersistTaps="handled"
             ListFooterComponent={
-                body || active.total === 0 ? null : (
+                body || panel.total === 0 ? null : (
                     <View style={styles.pager}>
                         <TouchableOpacity
-                            style={[styles.pageBtn, page === 0 && styles.pageBtnOff]}
-                            onPress={() => setPage(page - 1)}
-                            disabled={page === 0}
+                            style={[styles.pageBtn, panel.page === 0 && styles.pageBtnOff]}
+                            onPress={() => panel.onPage(panel.page - 1)}
+                            disabled={panel.page === 0}
                             accessibilityLabel="Previous page"
                         >
                             <Text style={styles.pageBtnText}>←</Text>
                         </TouchableOpacity>
 
                         <Text style={styles.pageLabel}>
-                            {first}–{last} of {active.total}
+                            {panel.firstOnPage}–{panel.lastOnPage} of {panel.total}
                         </Text>
 
                         <TouchableOpacity
-                            style={[styles.pageBtn, page >= lastPage && styles.pageBtnOff]}
-                            onPress={() => setPage(page + 1)}
-                            disabled={page >= lastPage}
+                            style={[styles.pageBtn, panel.page >= panel.lastPage && styles.pageBtnOff]}
+                            onPress={() => panel.onPage(panel.page + 1)}
+                            disabled={panel.page >= panel.lastPage}
                             accessibilityLabel="Next page"
                         >
                             <Text style={styles.pageBtnText}>→</Text>

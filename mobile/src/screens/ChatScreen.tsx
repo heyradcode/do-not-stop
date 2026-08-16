@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -15,17 +15,14 @@ import {
     CHAT_REACTIONS,
     sameAccount,
     shortAddress,
-    useChatMessages,
-    useChatThreads,
     type ChatMessage,
     type ChatThread,
     type PetChain,
 } from '@shared/core';
-import { useAccount } from 'wagmi';
 
 import SessionGate from '../components/SessionGate';
 import PetArt from '../components/PetArt';
-import { CHAT_WS_URL } from '../constants/api';
+import { useChatPanel, useConversation } from '../hooks/chat/useChatPanel';
 import { neon, neonGlow } from '../theme/neon';
 
 /**
@@ -72,27 +69,15 @@ const QUICK_REACTIONS = CHAT_REACTIONS.slice(0, 6);
  * which is why losing it degrades to "not live" rather than to wrong.
  */
 export default function ChatScreen() {
-    const { address } = useAccount();
-    const { threads, isLoading, error } = useChatThreads();
-    const [openThreadId, setOpenThreadId] = useState<string | null>(null);
-
-    // A thread that disappears while open is a divorce landing mid-conversation. Falling
-    // back to the list is the honest response; keeping it open would show a transcript
-    // whose next read is going to fail.
-    useEffect(() => {
-        if (openThreadId && !threads.some((t) => t.threadId === openThreadId)) {
-            setOpenThreadId(null);
-        }
-    }, [threads, openThreadId]);
-
-    const open = threads.find((t) => t.threadId === openThreadId) ?? null;
+    const panel = useChatPanel();
+    const { threads, isLoading, error, openThread: open } = panel;
 
     if (open) {
         return (
             <Conversation
                 thread={open}
-                selfAddress={address ?? ''}
-                onBack={() => setOpenThreadId(null)}
+                selfAddress={panel.selfAddress}
+                onBack={panel.onBack}
             />
         );
     }
@@ -130,7 +115,7 @@ export default function ChatScreen() {
                     renderItem={({ item }) => (
                         <TouchableOpacity
                             style={styles.threadRow}
-                            onPress={() => setOpenThreadId(item.threadId)}
+                            onPress={() => panel.onOpen(item.threadId)}
                             accessibilityRole="button"
                             accessibilityLabel={`Open chat with ${shortAddress(item.counterpart)}`}
                             activeOpacity={0.85}
@@ -172,41 +157,10 @@ const Conversation: React.FC<{
     selfAddress: string;
     onBack: () => void;
 }> = ({ thread, selfAddress, onBack }) => {
-    const chat = useChatMessages({ threadId: thread.threadId, socketUrl: CHAT_WS_URL });
-    const [draft, setDraft] = useState('');
-    const [reactingTo, setReactingTo] = useState<number | null>(null);
-
-    const newest = chat.messages[chat.messages.length - 1];
-
-    // Moves this side's watermark whenever the last message changes. Fire and forget in
-    // the hook, so a failed receipt is a tick that stays single until the next read.
-    useEffect(() => {
-        if (newest) chat.markRead(newest.id);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [newest?.id]);
-
-    /**
-     * Presence counts identities, not sockets: one person with a phone and a browser is
-     * one person. `sameAccount` normalizes by address shape, so this needs no chain
-     * branch.
-     */
-    const counterpartOnline = useMemo(
-        () => chat.online.some((who) => sameAccount(who, thread.counterpart)),
-        [chat.online, thread.counterpart],
-    );
-
-    const onSend = async () => {
-        const text = draft.trim();
-        if (!text) return;
-        setDraft('');
-        try {
-            await chat.send(text);
-        } catch {
-            // Restored rather than dropped: the send failed, so the words are still the
-            // player's to edit or retry. `sendError` renders the reason below.
-            setDraft(text);
-        }
-    };
+    const chat = useConversation(thread);
+    const { draft, reactingTo, counterpartOnline, onSend } = chat;
+    const setDraft = chat.onDraftChange;
+    const setReactingTo = chat.onReactTo;
 
     return (
         <KeyboardAvoidingView
