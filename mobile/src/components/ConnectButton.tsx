@@ -2,14 +2,17 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { useAppKit } from '@reown/appkit-react-native';
 import { useAccount } from 'wagmi';
-import { shortAddress, useAuth } from '@shared/core';
+import { useAuth } from '@shared/core';
 import { neon, neonGlow } from '../theme/neon';
 
-interface ConnectButtonProps {
-    compact?: boolean;
-}
-
-export default function ConnectButton({ compact = false }: ConnectButtonProps = {}) {
+/**
+ * Pre-connect and post-connect wallet panel for `LandingScreen`.
+ *
+ * The compact variant is gone: inside the tab shell `AccountSheet` carries the
+ * same actions, and this one only ever renders on the landing screen, which the
+ * navigator unregisters once a wallet connects.
+ */
+export default function ConnectButton() {
     const { open, disconnect } = useAppKit();
     const { address, isConnected, chainId } = useAccount();
     const {
@@ -24,7 +27,12 @@ export default function ConnectButton({ compact = false }: ConnectButtonProps = 
 
     if (!isConnected) {
         return (
-            <TouchableOpacity style={styles.connectButton} onPress={() => open()}>
+            <TouchableOpacity
+                style={styles.connectButton}
+                accessibilityRole="button"
+                accessibilityLabel="Connect Wallet"
+                onPress={() => open()}
+            >
                 <Text style={styles.connectButtonText}>Connect Wallet</Text>
             </TouchableOpacity>
         );
@@ -32,15 +40,15 @@ export default function ConnectButton({ compact = false }: ConnectButtonProps = 
 
     const isLoading = isSigning || isVerifying || isNonceLoading;
 
-    if (compact) {
-        return (
-            <TouchableOpacity style={styles.compactButton} onPress={() => open()}>
-                <Text style={styles.compactButtonText} numberOfLines={1} ellipsizeMode="middle">
-                    {address ? shortAddress(address) : 'Connected'}
-                </Text>
-            </TouchableOpacity>
-        );
-    }
+    // if (compact) {
+    //     return (
+    //         <TouchableOpacity style={styles.compactButton} onPress={() => open()}>
+    //             <Text style={styles.compactButtonText} numberOfLines={1} ellipsizeMode="middle">
+    //                 {address ? shortAddress(address) : 'Connected'}
+    //             </Text>
+    //         </TouchableOpacity>
+    //     );
+    // }
 
     return (
         <View style={styles.container}>
@@ -125,23 +133,6 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '800',
         letterSpacing: 1,
-    },
-    compactButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        backgroundColor: neon.bgCard,
-        borderRadius: 12,
-        minWidth: 120,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: neon.magenta,
-        ...neonGlow(neon.magenta, 10, 0.35),
-    },
-    compactButtonText: {
-        color: neon.magenta,
-        fontSize: 12,
-        fontWeight: '700',
     },
     container: {
         padding: 16,

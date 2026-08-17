@@ -5,41 +5,42 @@ import {
     Text,
     Pressable,
     StyleSheet,
-    Switch,
     useWindowDimensions,
     Platform,
 } from 'react-native';
 import { useAccount, useSwitchChain } from 'wagmi';
-import { getEvmNetworkMeta, getEvmSwitcherChains, EVM_SWITCHER_CHAINS } from '../constants/ethereumNetworks';
-import { neon, neonGlow } from '../theme/neon';
+import { CHAINS, getChainConfig } from '../constants/ethereumNetworks';
+import { alpha, neon, neonGlow } from '../theme/neon';
 
 /**
- * Mirrors the web `EthereumNetworkSwitcher` (compact trigger + “Select Network” modal,
- * testnet toggle, chain rows with active checkmark).
+ * Mirrors the web `EthereumNetworkSwitcher`: compact trigger, “Select Network”
+ * modal, chain rows with an active checkmark.
+ *
+ * Lists `CHAINS` — the chains with a deployment — so it can no longer put a
+ * player somewhere `isSupportedChain` rejects. That also retires the testnet
+ * toggle: every playable chain is a testnet, so switching it off emptied the
+ * list.
  */
 export default function EthereumNetworkSwitcher() {
-    const { chain } = useAccount();
+    // Keyed off `chainId` (the raw connected id, defined even on networks the app
+    // does not support) rather than `chain` (only set for configured chains).
+    // Keying off `chain` hid this control exactly when a player needed it to get
+    // back to a supported network — the same bug frontend fixed.
+    const { chainId, isConnected } = useAccount();
     const { switchChain, isPending, error: switchError } = useSwitchChain();
     const [isOpen, setIsOpen] = useState(false);
-    const [showTestnets, setShowTestnets] = useState(() => {
-        if (!chain) {
-            return false;
-        }
-        return EVM_SWITCHER_CHAINS.some((c) => c.chain.id === chain.id && c.isTestnet);
-    });
 
     const { width } = useWindowDimensions();
     const modalWidth = Math.min(400, width - 40);
 
-    if (!chain) {
+    if (!isConnected) {
         return null;
     }
 
-    const visibleChains = getEvmSwitcherChains(showTestnets);
-    const currentMeta = getEvmNetworkMeta(chain.id);
+    const currentMeta = chainId === undefined ? undefined : getChainConfig(chainId);
 
-    const handleNetworkSelect = (chainId: number) => {
-        switchChain({ chainId });
+    const handleNetworkSelect = (targetChainId: number) => {
+        switchChain({ chainId: targetChainId });
         setIsOpen(false);
     };
 
@@ -55,12 +56,14 @@ export default function EthereumNetworkSwitcher() {
 
             <Pressable
                 style={({ pressed }) => [styles.trigger, pressed && styles.triggerPressed, isPending && styles.triggerDisabled]}
+                accessibilityRole="button"
+                accessibilityLabel="Switch network"
                 onPress={() => setIsOpen(true)}
                 disabled={isPending}
             >
                 <View style={styles.triggerInfo}>
                     <Text style={styles.triggerName} numberOfLines={1}>
-                        {isPending ? 'Switching...' : currentMeta?.name ?? 'Unknown'}
+                        {isPending ? 'Switching...' : currentMeta?.name ?? 'Wrong network'}
                     </Text>
                 </View>
                 <Text style={styles.triggerArrow}>▼</Text>
@@ -81,39 +84,18 @@ export default function EthereumNetworkSwitcher() {
                     <View style={[styles.modalCard, { width: modalWidth }]}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Select Network</Text>
-                            <View style={styles.modalHeaderRight}>
-                                <View style={styles.testnetRow}>
-                                    <Switch
-                                        value={showTestnets}
-                                        onValueChange={setShowTestnets}
-                                        disabled={isPending}
-                                        trackColor={{
-                                            false: neon.bgInput,
-                                            true: 'rgba(255, 45, 166, 0.45)',
-                                        }}
-                                        thumbColor={
-                                            Platform.OS === 'android'
-                                                ? showTestnets
-                                                    ? neon.magenta
-                                                    : neon.textDim
-                                                : undefined
-                                        }
-                                    />
-                                    <Text style={styles.testnetLabel}>Testnets</Text>
-                                </View>
-                                <Pressable
-                                    style={styles.closeBtn}
-                                    onPress={() => setIsOpen(false)}
-                                    hitSlop={8}
-                                >
-                                    <Text style={styles.closeBtnText}>×</Text>
-                                </Pressable>
-                            </View>
+                            <Pressable
+                                style={styles.closeBtn}
+                                onPress={() => setIsOpen(false)}
+                                hitSlop={8}
+                            >
+                                <Text style={styles.closeBtnText}>×</Text>
+                            </Pressable>
                         </View>
 
                         <View style={styles.modalBody}>
-                            {visibleChains.map(({ chain: ch, name, symbol, isTestnet }) => {
-                                const active = chain.id === ch.id;
+                            {CHAINS.map(({ chain: ch, name, symbol, isTestnet }) => {
+                                const active = chainId === ch.id;
                                 return (
                                     <Pressable
                                         key={ch.id}
@@ -242,20 +224,6 @@ const styles = StyleSheet.create({
         flex: 1,
         letterSpacing: 0.3,
     },
-    modalHeaderRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    testnetRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    testnetLabel: {
-        fontSize: 12,
-        color: neon.textMuted,
-        marginLeft: 6,
-    },
     closeBtn: {
         width: 32,
         height: 32,
@@ -286,7 +254,7 @@ const styles = StyleSheet.create({
         backgroundColor: neon.bgCard,
     },
     optionTestnet: {
-        borderColor: 'rgba(255, 152, 0, 0.55)',
+        borderColor: alpha(neon.warning, 0.55),
     },
     optionActive: {
         borderColor: neon.purple,
@@ -294,8 +262,8 @@ const styles = StyleSheet.create({
         ...neonGlow(neon.purple, 10, 0.3),
     },
     optionTestnetActive: {
-        backgroundColor: 'rgba(255, 152, 0, 0.12)',
-        borderColor: '#ff9800',
+        backgroundColor: alpha(neon.warning, 0.12),
+        borderColor: neon.warning,
     },
     optionPressed: {
         opacity: 0.9,
@@ -313,7 +281,7 @@ const styles = StyleSheet.create({
         color: neon.cyan,
     },
     optionNameTestnet: {
-        color: '#ffb74d',
+        color: neon.warningText,
     },
     optionSymbol: {
         fontSize: 14,

@@ -81,11 +81,32 @@ export const usePetsContract = ({
         },
     });
 
+    /**
+     * Each `getPet` result paired with the id it was read for, *before* failures are
+     * dropped.
+     *
+     * `pets` and `petIds` are consumed positionally (`useEvmAdapter` zips them by index),
+     * so filtering one without the other shifts every later pet onto the previous pet's
+     * id. When the failing read is the last one that reads as a pet quietly missing from
+     * the list; anywhere else it silently relabels every pet after it, which is worse —
+     * the wallet would show one pet's stats under another pet's id, and act on that id.
+     *
+     * Batched reads use `allowFailure`, so a single failed call still resolves the query
+     * as a success. React Query's retry never sees it, and nothing upstream reports it.
+     */
+    const readResults = (petsData as { status: string; result?: unknown }[] | undefined) ?? [];
+    const requestedIds = (petIdsData as bigint[] | undefined) ?? [];
+    const isReadable = (i: number) =>
+        readResults[i]?.status === 'success' && Boolean(readResults[i]?.result);
+
+    const readable = requestedIds
+        .map((id, i) => ({ id, result: readResults[i] }))
+        .filter((_, i) => isReadable(i));
+
     const pets: Pet[] =
-        (petsData as { status: string; result?: unknown }[] | undefined)
-            ?.filter((result) => result.status === 'success' && result.result)
-            .map((result) => {
-                const raw = result.result as Pet;
+        readable
+            .map(({ result }) => {
+                const raw = result!.result as Pet;
                 return {
                     name: raw.name,
                     dna: BigInt(raw.dna),
@@ -105,9 +126,23 @@ export const usePetsContract = ({
                     lastOpponentId: raw.lastOpponentId != null ? BigInt(raw.lastOpponentId) : undefined,
                     sameOpponentStreak: raw.sameOpponentStreak != null ? Number(raw.sameOpponentStreak) : undefined,
                 };
-            }) || [];
+            });
 
-    const petIds: bigint[] = (petIdsData as bigint[]) || [];
+    // Derived from the same filter as `pets`, so index i names pet i on both.
+    const petIds: bigint[] = readable.map(({ id }) => id);
+
+    /**
+     * Named rather than dropped. A pet whose record would not load is still owned, and a
+     * list that quietly omits it says the wallet does not have it — which is what sent
+     * someone looking for a pet that had minted perfectly well.
+     */
+    const unreadableIds = requestedIds.filter((_, i) => readResults.length > 0 && !isReadable(i));
+    const partialReadError =
+        unreadableIds.length > 0
+            ? new Error(
+                  `Could not load ${unreadableIds.length} of your ${requestedIds.length} pets (id ${unreadableIds.join(', ')}). They are still yours; this is a read that failed.`,
+              )
+            : null;
 
     return {
         address,
@@ -116,7 +151,7 @@ export const usePetsContract = ({
         pets,
         petIds,
         isLoading: canRead && isPetsLoading,
-        contractError: petIdsError ?? petsError,
+        contractError: petIdsError ?? petsError ?? partialReadError,
         refetchPetIds,
         refetchPetsData,
     };

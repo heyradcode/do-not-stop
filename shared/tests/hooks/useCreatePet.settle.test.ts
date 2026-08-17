@@ -6,7 +6,7 @@
  * the two hooks run the same request/reveal/settle flow, and these tests are what
  * makes it safe to lift that flow into one place.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 
 const h = vi.hoisted(() => ({
@@ -52,17 +52,47 @@ vi.mock('../../src/contexts/PetsConfigContext', () => ({
 
 import { useCreatePet } from '../../src/hooks/pets/useCreatePet';
 
+/**
+ * Comfortably past `useEvmEntropySettleFlow`'s keeper grace period, which the settle now
+ * waits out before asking the player. See `reveal`.
+ */
+const PAST_GRACE_MS = 60_000;
+
+/**
+ * Fire a reveal and let the grace period lapse, which is when the settle is actually sent.
+ *
+ * The settle used to go out the instant entropy revealed, racing the backend settle keeper
+ * that exists precisely so the player is not asked twice.
+ */
+const reveal = (id: bigint) => {
+    act(() => h.onFulfilled?.(id));
+    act(() => { vi.advanceTimersByTime(PAST_GRACE_MS); });
+};
+
 beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
     h.onFulfilled = undefined;
     adapter.kind = 'evm';
 });
 
+afterEach(() => {
+    vi.useRealTimers();
+});
+
 describe('useCreatePet EVM settle', () => {
-    it('sends settleMint when entropy reveals', () => {
+    it('gives a keeper time to settle before asking the player', () => {
         renderHook(() => useCreatePet());
 
         act(() => h.onFulfilled?.(7n));
+
+        expect(h.writeContract).not.toHaveBeenCalled();
+    });
+
+    it('sends settleMint when entropy reveals', () => {
+        renderHook(() => useCreatePet());
+
+        reveal(7n);
 
         expect(h.writeContract).toHaveBeenCalledTimes(1);
         expect(h.writeContract.mock.calls[0]?.[0]).toMatchObject({
@@ -74,8 +104,8 @@ describe('useCreatePet EVM settle', () => {
     it('sends only one settle when the same reveal arrives twice', () => {
         renderHook(() => useCreatePet());
 
-        act(() => h.onFulfilled?.(7n));
-        act(() => h.onFulfilled?.(7n));
+        reveal(7n);
+        reveal(7n);
 
         expect(h.writeContract).toHaveBeenCalledTimes(1);
     });
@@ -83,12 +113,12 @@ describe('useCreatePet EVM settle', () => {
     it('re-arms after a failed settle so the mint can still be finished', () => {
         renderHook(() => useCreatePet());
 
-        act(() => h.onFulfilled?.(7n));
+        reveal(7n);
         const onError = h.writeContract.mock.calls[0]?.[1]?.onError as ((e: Error) => void) | undefined;
         expect(onError, 'settleMint must pass an onError handler').toBeTypeOf('function');
 
         act(() => onError!(new Error('user rejected')));
-        act(() => h.onFulfilled?.(7n));
+        reveal(7n);
 
         expect(h.writeContract).toHaveBeenCalledTimes(2);
     });

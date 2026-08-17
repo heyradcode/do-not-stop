@@ -1,0 +1,163 @@
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import type { Pet, ReadyPet } from '@shared/core';
+
+import PetArt from './PetArt';
+import PetDetailStrip from './PetDetailStrip';
+import PetPreview from './PetPreview';
+import { neon } from '../theme/neon';
+
+type Props = {
+    pets: ReadyPet[];
+    selectedId: string;
+    onSelect: (id: string) => void;
+    /** Shown when nothing is selectable, e.g. every pet is on cooldown. */
+    emptyHint: string;
+    /**
+     * Whether the wallet holds any pets at all, before this screen's filter.
+     * Only the cooldown-filtered screens pass it: there an empty roster and a
+     * fully filtered one look identical, so `emptyHint` would tell a player
+     * with no pets that theirs are busy. Screens whose `emptyHint` already
+     * states a fact of their own ("No pets on this chain yet") omit it.
+     */
+    hasAnyPets?: boolean;
+    disabled?: boolean;
+};
+
+const NO_PETS_HINT = 'No pets in this wallet yet. Mint one from the Gallery tab.';
+
+/**
+ * Horizontal chips in place of frontend's `<select>`. RN has no native picker
+ * without a dependency, and the lists here are short: only pets off cooldown.
+ *
+ * Each chip carries the pet's art, as every frontend picker does. Choosing between
+ * pets by name alone asks the player to remember which one Rex is, when the thing
+ * they recognise it by is sitting one field away in the same object.
+ *
+ * A chip carries art, a name and a level, which tells two pets apart and does not decide
+ * between twenty. Two things fill that gap, and they answer different questions:
+ *
+ * - **Selecting** a pet shows its numbers inline, under the chips. That is the "what did I
+ *   just pick" answer, and it stays on screen while the rest of the form is filled in.
+ * - **Holding** a chip opens the full card over the screen. That is the "should I pick that
+ *   one instead" answer, and it matters because a tap here is a commitment: comparing a third
+ *   pet by selecting it means re-picking the one you had.
+ *
+ * Both live here rather than in each screen, because every screen that picks a pet picks it
+ * through this component, so none of the eight call sites changes.
+ */
+export default function PetPicker({
+    pets,
+    selectedId,
+    onSelect,
+    emptyHint,
+    hasAnyPets,
+    disabled,
+}: Props) {
+    const [preview, setPreview] = useState<Pet | null>(null);
+
+    if (pets.length === 0) {
+        return (
+            <View style={styles.empty}>
+                <Text style={styles.emptyText}>
+                    {hasAnyPets === false ? NO_PETS_HINT : emptyHint}
+                </Text>
+            </View>
+        );
+    }
+
+    const selected = pets.find(({ id }) => id === selectedId)?.pet;
+
+    return (
+        <View>
+            <Text style={styles.label}>Select Pet</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.row}>
+                {pets.map(({ id, pet }) => {
+                    const active = id === selectedId;
+                    return (
+                        <TouchableOpacity
+                            key={id}
+                            style={[styles.chip, active && styles.chipActive, disabled && styles.chipDisabled]}
+                            onPress={() => onSelect(id)}
+                            /*
+                             * Two seconds, against RN's 500ms default. A picker chip is
+                             * small and sits in a horizontal scroller, so a finger resting
+                             * on one before flicking sideways is ordinary. At half a second
+                             * that opens a card the player did not ask for, over the list
+                             * they were about to scroll.
+                             */
+                            onLongPress={() => setPreview(pet)}
+                            delayLongPress={2000}
+                            disabled={disabled}
+                            activeOpacity={0.85}
+                        >
+                            <PetArt pet={pet} size={36} />
+                            <Text style={[styles.chipName, active && styles.chipNameActive]}>
+                                {pet.name}
+                            </Text>
+                            <Text style={styles.chipLevel}>Lv.{pet.level}</Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </ScrollView>
+
+            {selected ? <PetDetailStrip pet={selected} /> : null}
+
+            <PetPreview pet={preview} onClose={() => setPreview(null)} />
+        </View>
+    );
+}
+
+const styles = StyleSheet.create({
+    label: {
+        fontSize: 12,
+        fontWeight: '700',
+        letterSpacing: 1,
+        color: neon.textMuted,
+        marginBottom: 8,
+    },
+    row: {
+        marginBottom: 16,
+    },
+    chip: {
+        borderWidth: 1,
+        borderColor: neon.border,
+        backgroundColor: neon.bgCard,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        marginRight: 10,
+        alignItems: 'center',
+        minWidth: 90,
+    },
+    chipActive: {
+        borderColor: neon.cyan,
+        backgroundColor: neon.bgInput,
+    },
+    chipDisabled: {
+        opacity: 0.5,
+    },
+    chipName: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: neon.text,
+    },
+    chipNameActive: {
+        color: neon.cyan,
+    },
+    chipLevel: {
+        fontSize: 12,
+        color: neon.textMuted,
+        marginTop: 2,
+    },
+    empty: {
+        paddingVertical: 20,
+        alignItems: 'center',
+    },
+    emptyText: {
+        fontSize: 14,
+        color: neon.textMuted,
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+});

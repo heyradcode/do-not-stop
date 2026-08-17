@@ -29,6 +29,11 @@ type UseWatchEntropyFulfillmentParams = {
     gameLogicAddress?: `0x${string}`;
     /** requestId (= entropy sequenceNumber as uint256) to wait on; null disables the watch. */
     requestId: bigint | null;
+    /**
+     * Block the request tx landed in. Entropy usually reveals before this watch can
+     * arm, so without it the reveal is already history and the mint hangs forever.
+     */
+    fromBlock?: bigint;
     /** Fired once `Revealed` lands for `requestId` called by our GameLogic. `randomNumber`
      *  is the raw revealed word — the same 32 bytes GameLogic stores as
      *  `uint256(randomNumber)` and settles the request from. */
@@ -45,6 +50,7 @@ export const useWatchEntropyFulfillment = ({
     entropyAddress,
     gameLogicAddress,
     requestId,
+    fromBlock,
     onFulfilled,
 }: UseWatchEntropyFulfillmentParams): void => {
     const wantRef = useRef(requestId);
@@ -60,6 +66,7 @@ export const useWatchEntropyFulfillment = ({
         abi: ENTROPY_REVEALED_ABI as unknown as Abi,
         eventName: 'Revealed',
         enabled: Boolean(requestId != null && entropyAddress && gameLogicAddress),
+        fromBlock,
         onLogs(logs) {
             const want = wantRef.current;
             const gl = gameLogicRef.current?.toLowerCase();

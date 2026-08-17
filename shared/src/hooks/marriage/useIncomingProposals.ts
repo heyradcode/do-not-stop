@@ -21,6 +21,20 @@ export interface UseIncomingProposalsResult {
     proposals: IncomingProposal[];
     isLoading: boolean;
     error: Error | null;
+    /**
+     * Pets whose proposal read failed, so the answer is "we could not check these" rather
+     * than "nobody proposed".
+     *
+     * The multicall runs with `allowFailure: true` and a failed entry was simply skipped,
+     * which is indistinguishable from an empty slot: an RPC hiccup rendered as an empty
+     * inbox with no error anywhere. That is the wrong way round for a screen whose whole
+     * job is to tell you something is waiting, and it is worse under a short
+     * `proposalTTL`, where a proposal missed once may be expired by the next poll.
+     *
+     * A count rather than the ids: the caller needs to know the list is incomplete, and
+     * naming pets it could not read tells a player nothing they can act on.
+     */
+    unreadable: number;
     refetch: () => void;
 }
 
@@ -88,10 +102,18 @@ const useEvmIncomingProposals = (
         });
     }, [results, allPets, userPetIds]);
 
+    // Counted from the same `results` the list is built from, so the two cannot disagree
+    // about which reads landed.
+    const unreadable = useMemo(
+        () => (results ?? []).filter((entry) => entry.status !== 'success').length,
+        [results],
+    );
+
     return {
         proposals,
         isLoading: petsLoading || readsLoading,
         error: petsError ?? (readsError as Error | null),
+        unreadable,
         refetch: () => {
             refetchPets();
             void refetchReads();
@@ -166,6 +188,9 @@ const useSolanaIncomingProposals = (
         proposals: query.data ?? [],
         isLoading: query.isLoading,
         error: query.error as Error | null,
+        // One request covering every pet, so it either answered or it threw. There is no
+        // per-pet partial failure to report here, unlike the EVM multicall.
+        unreadable: 0,
         refetch: query.refetch,
     };
 };
@@ -187,5 +212,5 @@ export const useIncomingProposals = (
 
     if (isEvm) return evm;
     if (isSolana) return solana;
-    return { proposals: [], isLoading: false, error: null, refetch: () => {} };
+    return { proposals: [], isLoading: false, error: null, unreadable: 0, refetch: () => {} };
 };

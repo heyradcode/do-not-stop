@@ -1,0 +1,990 @@
+/**
+ * Battle, over the real `useBattlePanel` with `@shared/core` stubbed.
+ *
+ * The things worth pinning are the ones that decide whether a battle is legal
+ * before a signature is asked for: only pets off cooldown can fight, the opponent
+ * must be cleared when the fighter changes (it was picked against a different
+ * level band), and `defenderOwner` must reach the mutation, since the backend needs it
+ * to find the defence authorization, and pet ids are not unique across owners on
+ * Solana.
+ */
+
+import React from 'react';
+import { StyleSheet, TouchableOpacity } from 'react-native';
+import ReactTestRenderer from 'react-test-renderer';
+import type { OpponentPet, Pet } from '@shared/core';
+/**
+ * `useSafeAreaInsets` throws outside a `SafeAreaProvider`, and this suite renders a screen on
+ * its own. The library ships this mock for exactly that. Repeated per suite rather than
+ * registered globally: a global one needs a `setupFiles` entry pointing at a file whose name
+ * says nothing about what it does.
+ */
+jest.mock('react-native-safe-area-context', () =>
+    require('react-native-safe-area-context/jest/mock').default,
+);
+
+
+const pet = (over: Partial<Pet> = {}): Pet => ({
+    id: '1',
+    chain: 'evm',
+    name: 'Rex',
+    dna: 7n,
+    level: 5,
+    rarity: 2,
+    winCount: 3,
+    lossCount: 1,
+    readyAt: 0,
+    ...over,
+});
+
+const foe = (over: Partial<OpponentPet> = {}): OpponentPet => ({
+    ...pet({ id: '9', name: 'Luna', level: 5 }),
+    owner: '0xrival',
+    ...over,
+});
+
+const mockState = {
+    pets: [pet()] as Pet[],
+    /** A pet the wallet owns whose record would not load, so it is not in `pets`. */
+    petsError: null as Error | null,
+    /** What `useBattlePets` reports after a refused battle. */
+    battleError: null as Error | null,
+    opponents: [foe()] as OpponentPet[],
+    opponentsLoading: false,
+    opponentsError: null as Error | null,
+    /** Which filter emptied the opponent list; the server names it. */
+    emptyReason: null as string | null,
+    isAuthenticated: true,
+    /** The backend's own battle state, and why it stopped if it did. */
+    phase: 'idle',
+    battleState: null as string | null,
+    failureReason: null as string | null,
+    isConnected: true,
+    turns: [] as { speaker: 'attacker' | 'defender'; phase: 'taunt'; text: string }[],
+    /** Post-fight reactions. `taunt` turns are filtered out before rendering. */
+    dialogueTurns: [] as { speaker: string; phase: string; text: string }[],
+    dialogueLoading: false,
+    /**
+     * The client's own replay of the verified receipt, which is the only thing the
+     * scene animates. Null until a battle resolves, and absent entirely when a check
+     * failed — so an unverified fight has nothing to show rather than something
+     * unverified to show.
+     */
+    liveReplay: null as {
+        log: Record<string, unknown>[];
+        startHp1: bigint;
+        startHp2: bigint;
+    } | null,
+};
+
+/** One strike, shaped as `StrikeLogEntry`. */
+const strike = (over: Record<string, unknown> = {}) => ({
+    round: 1,
+    attacker: 1,
+    isMagic: false,
+    damage: 10n,
+    heal: 0n,
+    crit: false,
+    elementMult: 100,
+    furyTriggered: false,
+    rebirthTriggered: false,
+    hp1After: 100n,
+    hp2After: 90n,
+    ...over,
+});
+
+const mockBattle = jest.fn();
+const mockRefetchPets = jest.fn();
+const mockRefetchOpponents = jest.fn();
+const mockTaunts = jest.fn();
+// `useCreateBattleRoom().createRoom` resolves to the room id itself, or null when
+// it fails; it catches internally and never rejects. The mock returned a
+// `{ roomId }` object before, which went unnoticed only because the value was
+// discarded.
+const mockCreateRoom = jest.fn<Promise<string | null>, unknown[]>(async () => 'r1');
+/** Captures what the panel hands `useBattlePets`, which is where roomId matters. */
+const mockBattleOptions: { roomId?: string | null; roomSocketUrl?: string } = {};
+/** Captures what the result dialogue is asked for, including the personas fallback. */
+const mockDialogueArgs = jest.fn();
+
+/**
+ * Rendered as a marker rather than nulled, so the opponent rows can be asserted to draw
+ * art. A stub returning null would let the art disappear again without a test noticing —
+ * which is exactly how the gallery went without avatars for the whole project.
+ */
+jest.mock('../src/components/PetArt', () => {
+    const { Text: RNText } = jest.requireActual('react-native');
+    const React_ = jest.requireActual('react');
+    return ({ pet: subject }: { pet: { id: string } }) =>
+        React_.createElement(RNText, null, `[art:${subject.id}]`);
+});
+
+jest.mock('@shared/core', () => ({
+    // `PetPicker` shows the selected pet's stats inline now, so anything rendering a picker
+    // reaches these. Real rather than stubbed: they are pure and dependency-free, and what a
+    // pet reads here has to be what it reads on the card and on the web app.
+    ...jest.requireActual('../../shared/src/utils/ethereum/petCard'),
+    ...jest.requireActual('../../shared/src/utils/pets/skills'),
+    ...jest.requireActual('../../shared/src/utils/pets/cosmetics'),
+    getReadyPetsUnified: (pets: Pet[]) =>
+        pets.filter((p) => p.readyAt === 0).map((p) => ({ id: p.id, pet: p })),
+    usePetList: () => ({
+        pets: mockState.pets,
+        isLoading: false,
+        error: mockState.petsError,
+        refetch: mockRefetchPets,
+    }),
+    useChainCapabilities: () => ({
+        isConnected: mockState.isConnected,
+        activeKind: mockState.isConnected ? 'evm' : null,
+    }),
+    useOpponents: () => ({
+        opponents: mockState.opponents,
+        isLoading: mockState.opponentsLoading,
+        error: mockState.opponentsError,
+        total: mockState.opponents.length,
+        emptyReason: mockState.emptyReason,
+        // One stable function, not a fresh `jest.fn()` per render. The real hook returns
+        // React Query's `refetch`, which is stable, and an effect depending on it would
+        // re-run on every render against a mock that is not.
+        refetch: mockRefetchOpponents,
+    }),
+    isBattleRejection: (...args: unknown[]) =>
+        jest.requireActual('../../shared/src/utils/battleFailureMessage').isBattleRejection(...args),
+    isConsentFailure: (...args: unknown[]) =>
+        jest.requireActual('../../shared/src/utils/battleFailureMessage').isConsentFailure(...args),
+    // The real wording for both: a new backend state or empty-reason must not need this
+    // screen edited to be sayable.
+    describeBattleStage: (...args: unknown[]) =>
+        jest
+            .requireActual('../../shared/src/hooks/battle/useBattlePets')
+            .describeBattleStage(...args),
+    describeNoOpponents: (...args: unknown[]) =>
+        jest
+            .requireActual('../../shared/src/hooks/battle/useOpponents')
+            .describeNoOpponents(...args),
+    useBattleTaunts: () => ({
+        generate: mockTaunts,
+        reset: jest.fn(),
+        turns: mockState.turns,
+        isLoading: false,
+    }),
+    useAuth: () => ({ isAuthenticated: mockState.isAuthenticated }),
+    useCreateBattleRoom: () => ({ createRoom: mockCreateRoom, isLoading: false }),
+    // The real one: selection correctness is the thing under test, and a fake key
+    // function would let both the screen and the hook agree on a wrong shape.
+    opponentKey: (owner: string, id: string) =>
+        jest.requireActual('../../shared/src/utils/battleMatchmaking').opponentKey(owner, id),
+    toDialoguePet: (subject: Pet | OpponentPet) => ({
+        petId: subject.id,
+        name: subject.name,
+        level: subject.level,
+        rarity: subject.rarity,
+        dna: subject.dna.toString(),
+        winCount: subject.winCount,
+        lossCount: subject.lossCount,
+    }),
+    useBattleDialogue: (opts: Record<string, unknown>) => {
+        mockDialogueArgs(opts);
+        return { turns: mockState.dialogueTurns, isLoading: mockState.dialogueLoading };
+    },
+    useBattlePets: (opts: { roomId?: string | null; roomSocketUrl?: string }) => {
+        mockBattleOptions.roomId = opts?.roomId;
+        mockBattleOptions.roomSocketUrl = opts?.roomSocketUrl;
+        return {
+            mutate: mockBattle,
+            isPending: false,
+            error: mockState.battleError,
+            phase: mockState.phase,
+            state: mockState.battleState,
+            failureReason: mockState.failureReason,
+            liveReplay: mockState.liveReplay,
+        };
+    },
+    // The real hook, not a stub: the replay's stepping and its done-gate are the
+    // behaviour under test, and a fake would only assert the fake. Pulled in by
+    // relative path because the barrel this factory replaces is what drags the Solana
+    // runtime into jest.
+    useLiveBattleAnimation: (...args: unknown[]) =>
+        jest
+            .requireActual('../../shared/src/hooks/battle/useLiveBattleAnimation')
+            .useLiveBattleAnimation(...args),
+    describeMechanicalLogEntry: (...args: unknown[]) =>
+        jest
+            .requireActual('../../shared/src/hooks/battle/useLiveBattleAnimation')
+            .describeMechanicalLogEntry(...args),
+}));
+
+// Records its arguments so the message the player would actually see can be asserted.
+// The third argument wins over the mutation error inside the real hook, which is the
+// whole point of routing a rejection through it.
+const mockPetErrorToast = jest.fn();
+jest.mock('../src/hooks/usePetErrorToast', () => ({
+    usePetErrorToast: (...args: unknown[]) => mockPetErrorToast(...args),
+}));
+
+const mockRouteParams: { petId?: string } = {};
+jest.mock('@react-navigation/native', () => ({
+    useRoute: () => ({ params: mockRouteParams }),
+}));
+
+import { BATTLE_ROOM_WS_URL } from '../src/constants/api';
+import BattleScreen from '../src/screens/BattleScreen';
+
+import { textOfNode } from './support/harness';
+
+/**
+ * Every tree rendered by a test, so `afterEach` can unmount them.
+ *
+ * Without this a finished test's component stays mounted and its replay timer keeps
+ * firing into the next one, re-rendering a dead tree *after* `jest.clearAllMocks()` has
+ * run. The symptom is a test that passes alone and fails in the file, because the last
+ * recorded call belongs to the previous test's component rather than this one's.
+ */
+const mounted: ReactTestRenderer.ReactTestRenderer[] = [];
+
+const render = async () => {
+    let tree!: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(() => {
+        tree = ReactTestRenderer.create(<BattleScreen />);
+    });
+    mounted.push(tree);
+    return tree;
+};
+
+afterEach(async () => {
+    await ReactTestRenderer.act(async () => {
+        for (const tree of mounted.splice(0)) tree.unmount();
+    });
+});
+
+
+const textOf = (tree: ReactTestRenderer.ReactTestRenderer) => textOfNode(tree.root);
+
+const pressWith = async (tree: ReactTestRenderer.ReactTestRenderer, label: string) => {
+    const target = tree.root
+        .findAllByType(TouchableOpacity)
+        .find((b) => textOfNode(b).includes(label));
+    await ReactTestRenderer.act(async () => {
+        target?.props.onPress();
+    });
+};
+
+/**
+ * Opens the arena, which is where a fight is now watched.
+ *
+ * Start sets `arenaOpen` before it validates, so this needs no pet or opponent chosen: these
+ * tests are about what the arena shows once it is open, not about getting a battle accepted.
+ */
+const openArena = async (tree: ReactTestRenderer.ReactTestRenderer) => {
+    await pressWith(tree, 'Start Battle');
+};
+
+beforeEach(() => {
+    mockState.pets = [pet()];
+    mockState.petsError = null;
+    mockState.battleError = null;
+    mockRefetchPets.mockClear();
+    mockRefetchOpponents.mockClear();
+    mockPetErrorToast.mockClear();
+    mockState.opponents = [foe()];
+    mockState.opponentsLoading = false;
+    mockState.opponentsError = null;
+    mockState.emptyReason = null;
+    mockState.isAuthenticated = true;
+    mockState.phase = 'idle';
+    mockState.battleState = null;
+    mockState.failureReason = null;
+    mockState.isConnected = true;
+    mockState.turns = [];
+    mockState.liveReplay = null;
+    mockState.dialogueTurns = [];
+    mockState.dialogueLoading = false;
+    delete mockRouteParams.petId;
+    jest.clearAllMocks();
+});
+
+describe('BattleScreen', () => {
+    it('asks for a wallet before showing the arena', async () => {
+        mockState.isConnected = false;
+        const tree = await render();
+        expect(textOf(tree)).toContain('Connect a wallet');
+    });
+
+    it('offers only pets off cooldown', async () => {
+        // A pet that just fought cannot legally battle, so it must not be offered.
+        mockState.pets = [pet(), pet({ id: '2', name: 'Cooling', readyAt: 9_999_999_999 })];
+        const tree = await render();
+        expect(textOf(tree)).toContain('Rex');
+        expect(textOf(tree)).not.toContain('Cooling');
+    });
+
+    /*
+     * A pet whose record fails to load is filtered out before the picker ever sees it, so
+     * the list is one short and nothing explains why. That is indistinguishable from the
+     * pet not existing, and it sent someone hunting for a pet that had minted correctly.
+     * The list is right to omit it — there is nothing to draw — but the screen has to say so.
+     */
+    it('says when a pet it cannot read is missing from the list', async () => {
+        mockState.pets = [pet({ id: '5', name: 'TIMON' })];
+        mockState.petsError = new Error(
+            'Could not load 1 of your 4 pets (id 12). They are still yours; this is a read that failed.',
+        );
+
+        const tree = await render();
+
+        expect(textOf(tree)).toContain('Could not load 1 of your 4 pets');
+        expect(textOf(tree)).toContain('12');
+    });
+
+    it('offers to read the pets again rather than leaving it there', async () => {
+        mockState.petsError = new Error('Could not load 1 of your 4 pets (id 12).');
+        const tree = await render();
+
+        await pressWith(tree, 'Try again');
+
+        expect(mockRefetchPets).toHaveBeenCalled();
+    });
+
+    it('stays quiet when every pet loaded', async () => {
+        mockState.pets = [pet(), pet({ id: '2', name: 'Momo' })];
+        const tree = await render();
+        expect(textOf(tree)).not.toContain('Could not load');
+        expect(textOf(tree)).not.toContain('Try again');
+    });
+
+    /*
+     * A refused battle used to reach the player as "Failed to start the battle. Please try
+     * again." while the server's actual sentence went only to the console. The two point
+     * opposite ways: "One of those pets is not on record yet" means wait for the indexer,
+     * and "please try again" means retry now, which cannot work.
+     */
+    it('shows the server’s reason for a refused battle, not the fallback', async () => {
+        const { BattleRejectionError } = jest.requireActual(
+            '../../shared/src/utils/battleFailureMessage',
+        );
+        mockState.battleError = new BattleRejectionError(
+            'unknown-pet',
+            'One of those pets is not on record yet.',
+        );
+
+        await render();
+
+        const [, , validationOrReason] = mockPetErrorToast.mock.calls.at(-1)!;
+        expect(validationOrReason).toBe('One of those pets is not on record yet.');
+    });
+
+    it('leaves an ordinary failure to the fallback wording', async () => {
+        // Not every failure is an explained refusal. A dropped connection has no sentence
+        // worth repeating, and the caller's fallback is the better text.
+        mockState.battleError = new Error('socket hang up');
+
+        await render();
+
+        const [, , validationOrReason] = mockPetErrorToast.mock.calls.at(-1)!;
+        expect(validationOrReason).toBeNull();
+    });
+
+    it('drops an opponent whose consent lapsed and re-reads the list', async () => {
+        const { BattleRejectionError } = jest.requireActual(
+            '../../shared/src/utils/battleFailureMessage',
+        );
+        mockState.battleError = new BattleRejectionError('expired', 'That grant has expired.');
+
+        await render();
+
+        expect(mockRefetchOpponents).toHaveBeenCalled();
+    });
+
+    it('keeps the opponent when the refusal is not about their consent', async () => {
+        // A level-band or unknown-pet refusal is about this attacker or the indexer, not
+        // the defender's willingness. Dropping them would be wrong.
+        const { BattleRejectionError } = jest.requireActual(
+            '../../shared/src/utils/battleFailureMessage',
+        );
+        mockState.battleError = new BattleRejectionError('unknown-pet', 'Not on record yet.');
+
+        await render();
+
+        expect(mockRefetchOpponents).not.toHaveBeenCalled();
+    });
+
+    it('preselects the pet a Gallery battle action arrived with', async () => {
+        mockState.pets = [pet(), pet({ id: '2', name: 'Momo' })];
+        mockRouteParams.petId = '2';
+        const tree = await render();
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+        expect(mockBattle).toHaveBeenCalledWith(
+            expect.objectContaining({ petId1: '2', petId2: '9' }),
+        );
+    });
+
+    it('follows a second Gallery pick, since the tab never unmounts', async () => {
+        /*
+         * `useState(initialPetId)` reads its argument once. Battle is a tab, mounted with
+         * the shell and never unmounted, so the pet a card asked for was honoured on the
+         * first tap and ignored on every one after: tapping Battle on Jane left the arena
+         * on whoever was picked first.
+         */
+        mockState.pets = [pet({ id: '1', name: 'Rex' }), pet({ id: '2', name: 'Jane' })];
+        mockRouteParams.petId = '1';
+        const tree = await render();
+
+        // Arriving again from a different card, without remounting the screen.
+        mockRouteParams.petId = '2';
+        await ReactTestRenderer.act(async () => {
+            tree.update(<BattleScreen />);
+        });
+
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+        expect(mockBattle).toHaveBeenCalledWith(expect.objectContaining({ petId1: '2' }));
+    });
+
+    it('sends defenderOwner, which the backend needs to find the consent grant', async () => {
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+        expect(mockBattle).toHaveBeenCalledWith({
+            petId1: '1',
+            petId2: '9',
+            defenderOwner: '0xrival',
+        });
+    });
+
+    it('will not start without both sides chosen', async () => {
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Start Battle');
+        expect(mockBattle).not.toHaveBeenCalled();
+        expect(textOf(tree)).toContain('Pick one of your pets and an opponent');
+    });
+
+    it('clears the opponent when the fighter changes', async () => {
+        // The pick was made against a different level band, so keeping it would
+        // silently fight a match the player never chose.
+        mockState.pets = [pet(), pet({ id: '2', name: 'Momo', level: 20 })];
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Momo');
+        await pressWith(tree, 'Start Battle');
+        expect(mockBattle).not.toHaveBeenCalled();
+    });
+
+    it('generates taunts before fighting, which also primes the result dialogue', async () => {
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+        expect(mockTaunts).toHaveBeenCalledWith(
+            expect.objectContaining({
+                chain: 'evm',
+                attacker: expect.objectContaining({ petId: '1', dna: '7' }),
+                defender: expect.objectContaining({ petId: '9' }),
+            }),
+        );
+    });
+
+    it('mints a room, but fights anyway when that fails', async () => {
+        // The receipt settles a battle, not the room, so a failed mint must not
+        // block the fight.
+        mockCreateRoom.mockRejectedValueOnce(new Error('room service down'));
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+        expect(mockCreateRoom).toHaveBeenCalled();
+        expect(mockBattle).toHaveBeenCalled();
+    });
+
+    it('links the battle to the room it minted', async () => {
+        // `accept` records roomId on the ledger row, and that is the only thing
+        // that makes the backend notify the room as the battle changes state.
+        // Minting a room without passing it here leaves it attached to nothing and
+        // every spectator holding the link uninformed.
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+
+        expect(mockBattleOptions.roomId).toBe('r1');
+        expect(mockBattle).toHaveBeenCalled();
+    });
+
+    it('subscribes to the room socket so updates arrive by push', async () => {
+        // Polling still carries the battle either way; this is what makes it prompt.
+        //
+        // Asserts pass-through, not the URL's shape. `BATTLE_ROOM_WS_URL` is derived from
+        // `API_URL`, which `react-native-dotenv` inlines at transform time from a gitignored
+        // `mobile/.env` — so matching it against a `wss?://` pattern here passes on a machine
+        // that has one and fails on CI, which does not. That is what it did. The derivation
+        // itself is `socketUrlFrom`, checked directly in `api.test.ts` against a known input.
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+
+        expect(mockBattleOptions.roomSocketUrl).toBe(BATTLE_ROOM_WS_URL);
+    });
+
+    it('does not hand a failed mint the previous battle’s room', async () => {
+        // Reusing it would push this fight's updates to a room full of the wrong
+        // spectators, which is worse than having no room at all.
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+        expect(mockBattleOptions.roomId).toBe('r1');
+
+        mockCreateRoom.mockResolvedValueOnce(null);
+        await pressWith(tree, 'Start Battle');
+
+        expect(mockBattleOptions.roomId).toBeNull();
+    });
+
+    it('labels the match by level gap', async () => {
+        mockState.opponents = [foe({ id: '9', name: 'Luna', level: 11 })];
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        expect(textOf(tree)).toContain('+6 lv');
+    });
+
+    it('shows the taunts once they arrive', async () => {
+        mockState.turns = [
+            { speaker: 'attacker', phase: 'taunt', text: 'You call that a stance?' },
+        ];
+        const tree = await render();
+        await openArena(tree);
+        expect(textOf(tree)).toContain('You call that a stance?');
+    });
+
+    it('draws each opponent with its art, not a name alone', async () => {
+        mockState.opponents = [foe({ id: '9', name: 'Luna' }), foe({ id: '12', name: 'Momo' })];
+        const rendered = textOf(await render());
+        expect(rendered).toContain('[art:9]');
+        expect(rendered).toContain('[art:12]');
+    });
+
+    /**
+     * Pet ids are not unique across owners on Solana, so an id alone can name two pets.
+     *
+     * Selecting on the id resolved to whichever matched first, and `defenderOwner` then
+     * named the wrong wallet — the backend would look for a consent grant that wallet
+     * never signed. Invisible on EVM, where ERC-721 ids are globally unique, which is why
+     * it survived: this deployment is Base Sepolia.
+     *
+     * It has to be the second of the two that is selected. A lookup by bare id resolves to
+     * whichever matched first, so picking the first cannot tell a correct implementation
+     * from a broken one.
+     */
+    it('picks the right pet when two owners hold the same id', async () => {
+        mockState.opponents = [
+            foe({ id: '1', name: 'FirstOwnerPet', owner: '0xaaa' }),
+            foe({ id: '1', name: 'SecondOwnerPet', owner: '0xbbb' }),
+        ];
+        const tree = await render();
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'SecondOwnerPet');
+        await pressWith(tree, 'Start Battle');
+
+        expect(mockBattle).toHaveBeenCalledWith(
+            expect.objectContaining({ petId2: '1', defenderOwner: '0xbbb' }),
+        );
+    });
+
+    it('surfaces an opponent load failure', async () => {
+        mockState.opponentsError = new Error('backend unreachable');
+        mockState.opponents = [];
+        const tree = await render();
+        expect(textOf(tree)).toContain('backend unreachable');
+    });
+});
+
+/**
+ * The replay is presentation over a verified receipt, never a source of truth.
+ *
+ * `useBattlePets` only exposes `liveReplay` once every verification check has passed,
+ * so there is no state where the scene animates a fight the receipt does not commit to.
+ * What is worth pinning here is the other half: that the verdict waits for the fight to
+ * finish, and that a battle with nothing to animate still reports its result at once.
+ */
+describe('battle replay', () => {
+    /**
+     * Fake timers, because the first test asserts on what has *not* happened yet.
+     *
+     * `useLiveBattleAnimation` arms a 700ms `setTimeout` on mount. Under real timers the
+     * "no strike has played" assertion is a race against how long `render` plus `openArena`
+     * take: under 700ms it passes, over it the first strike has already landed and the bars
+     * are no longer full. That is fast enough locally to look reliable (it failed about one
+     * run in six) and slow enough on a cold CI runner to fail every time, which is exactly
+     * how it was found.
+     *
+     * The other two tests still advance time, they just do it explicitly.
+     */
+    beforeEach(() => {
+        jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
+    /**
+     * `useLiveBattleAnimation`'s strike interval.
+     *
+     * The third copy of this number: the hook owns it unexported, and `BattleScene` keeps its
+     * own `DRAIN_MS` to match. Worth exporting from the hook so all three read one value, but
+     * that is a `shared/` change and this is a mobile fix.
+     */
+    const STRIKE_INTERVAL_MS = 700;
+
+    /** One strike interval, plus enough to clear the boundary. */
+    const playOneStrike = async () => {
+        await ReactTestRenderer.act(async () => {
+            jest.advanceTimersByTime(STRIKE_INTERVAL_MS + 50);
+        });
+    };
+
+    const replay = (log: ReturnType<typeof strike>[]) => ({
+        log,
+        startHp1: 100n,
+        startHp2: 100n,
+    });
+
+    it('shows nothing to watch until a replay exists', async () => {
+        const tree = await render();
+        expect(textOf(tree)).not.toContain('Bracing for the first strike');
+    });
+
+    it('opens on full bars, before any strike has played', async () => {
+        mockState.liveReplay = replay([strike()]);
+        const tree = await render();
+        await openArena(tree);
+        // Both fighters at 100%: the first strike has not landed yet.
+        expect(textOf(tree)).toContain('Bracing for the first strike');
+        expect(textOf(tree)).toContain('100%');
+    });
+
+    it('plays a strike, dropping the defender and narrating it', async () => {
+        mockState.liveReplay = replay([strike({ hp1After: 100n, hp2After: 60n })]);
+        const tree = await render();
+        await openArena(tree);
+
+        await playOneStrike();
+
+        const rendered = textOf(tree);
+        expect(rendered).toContain('60%');
+        expect(rendered).toContain('lands a physical strike');
+        // The mechanical log names both fighters, unlike the one-line flourish.
+        expect(rendered).toContain('Round 1');
+        expect(rendered).toContain('Rex');
+    });
+
+    it('reports the whole log as history, oldest first', async () => {
+        mockState.liveReplay = replay([
+            strike({ round: 1, hp2After: 70n }),
+            strike({ round: 2, attacker: 2, crit: true, hp1After: 55n }),
+        ]);
+        const tree = await render();
+        await openArena(tree);
+
+        // One act per strike. The next timer is only armed by the effect that runs
+        // after React re-renders from the previous one, so a single long wait would
+        // play the first strike and never schedule the second.
+        for (let i = 0; i < 2; i++) {
+            await playOneStrike();
+        }
+
+        const rendered = textOf(tree);
+        expect(rendered.indexOf('Round 1')).toBeLessThan(rendered.indexOf('Round 2'));
+        expect(rendered).toContain('Crit!');
+    });
+});
+
+/**
+ * The result dialogue, and the reason it needs personas captured at battle start.
+ *
+ * Publishing a receipt puts the fighter on cooldown, so it leaves `readyPets` and
+ * `fighter` reads null exactly when the result is on screen. Anything naming the two
+ * afterwards has to fall back to what was captured when the fight began.
+ */
+describe('result dialogue', () => {
+    const startBattle = async (tree: ReactTestRenderer.ReactTestRenderer) => {
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await pressWith(tree, 'Start Battle');
+    };
+
+    it('asks only for the post-fight phase, since taunts already played', async () => {
+        mockState.dialogueTurns = [
+            { speaker: 'attacker', phase: 'taunt', text: 'Before the fight.' },
+            { speaker: 'defender', phase: 'result', text: 'Well fought.' },
+        ];
+        const tree = await render();
+        await startBattle(tree);
+
+        // A taunt turn reaching the result sheet would replay pre-fight lines after it.
+        expect(textOf(tree)).not.toContain('Before the fight.');
+    });
+
+    it('names both fighters from the captured personas once the fighter is on cooldown', async () => {
+        const tree = await render();
+        await startBattle(tree);
+
+        // The receipt has published, so the fighter is cooling down and out of the list.
+        mockState.pets = [pet({ readyAt: 9_999_999_999 })];
+        mockState.opponents = [];
+        await ReactTestRenderer.act(async () => {
+            tree.update(<BattleScreen />);
+        });
+
+        const asked = mockDialogueArgs.mock.calls.at(-1)?.[0] as {
+            attacker: { name: string } | null;
+            defender: { name: string } | null;
+        };
+        expect(asked.attacker?.name).toBe('Rex');
+        expect(asked.defender?.name).toBe('Luna');
+    });
+
+    it('narrates the strike log with those names too, not "Your pet"', async () => {
+        mockState.liveReplay = { log: [strike({ hp2After: 80n })], startHp1: 100n, startHp2: 100n };
+        const tree = await render();
+        await startBattle(tree);
+
+        mockState.pets = [pet({ readyAt: 9_999_999_999 })];
+        await ReactTestRenderer.act(async () => {
+            tree.update(<BattleScreen />);
+        });
+        await ReactTestRenderer.act(async () => {
+            await new Promise((r) => setTimeout(r, 750));
+        });
+
+        expect(textOf(tree)).toContain('Rex');
+        expect(textOf(tree)).not.toContain('Your pet strikes');
+    });
+});
+
+/**
+ * Why the opponent list is empty.
+ *
+ * Four very different situations render as the same blank picker, and only some are the
+ * player's to act on. The server names which filter emptied it precisely so the client
+ * does not have to guess, and mobile discarded that until now — a roster nobody had
+ * indexed and a rival who had simply not allowed challenges both read as
+ * "No opponents available right now."
+ */
+describe('empty opponent list', () => {
+    beforeEach(() => {
+        mockState.opponents = [];
+    });
+
+    it('says an unindexed roster is not the player’s to fix', async () => {
+        mockState.emptyReason = 'roster-empty';
+        const tree = await render();
+        expect(textOf(tree)).toContain('server-side gap');
+    });
+
+    it('points at the other player when nobody has allowed challenges', async () => {
+        mockState.emptyReason = 'no-consent';
+        const tree = await render();
+        expect(textOf(tree)).toContain('Allow Challenges');
+    });
+
+    it('distinguishes consent signed under older rules from none at all', async () => {
+        mockState.emptyReason = 'consent-stale';
+        const tree = await render();
+        expect(textOf(tree)).toContain('older set of battle rules');
+    });
+
+    it('tells a player on cooldown to come back, not that the game is empty', async () => {
+        mockState.emptyReason = 'all-on-cooldown';
+        const tree = await render();
+        expect(textOf(tree)).toContain('Try again shortly');
+    });
+
+    it('falls back to a plain line when the server names no reason', async () => {
+        mockState.emptyReason = null;
+        mockState.isAuthenticated = true;
+        mockState.phase = 'idle';
+        mockState.battleState = null;
+        mockState.failureReason = null;
+        const tree = await render();
+        expect(textOf(tree)).toContain('No opponents available');
+    });
+});
+
+/**
+ * What a battle is waiting on.
+ *
+ * Six backend states rendered as the single word "Fighting…", so a fight stalled at
+ * `computed` — waiting on the independent Go verifier to agree — looked exactly like one
+ * about to finish. And a battle that ended badly said nothing at all: the overlay simply
+ * stopped changing, with the reason sitting unread on the server.
+ */
+describe('battle stage', () => {
+    it('says nothing while idle, because the arena has not been entered', async () => {
+        // The stage label moved into the arena when the arena started opening on Start. Until
+        // then there is no fight to narrate and nothing of it on screen.
+        const tree = await render();
+        expect(textOf(tree)).not.toContain('Waiting for');
+    });
+
+    it('names the stage rather than one word for six of them', async () => {
+        mockState.phase = 'resolving';
+        mockState.battleState = 'computed';
+        const tree = await render();
+        await openArena(tree);
+        expect(textOf(tree)).toContain('independent verifier');
+    });
+
+    it('distinguishes waiting on randomness from running the fight', async () => {
+        mockState.phase = 'awaiting-vrf';
+        mockState.battleState = 'committed';
+        const committed = await render();
+        await openArena(committed);
+        expect(textOf(committed)).toContain('committed randomness round');
+
+        mockState.battleState = 'seeded';
+        const seeded = await render();
+        await openArena(seeded);
+        expect(textOf(seeded)).toContain('Running the fight');
+    });
+
+    it('says why a battle stopped instead of leaving the screen frozen', async () => {
+        mockState.battleState = 'verification_failed';
+        mockState.failureReason = 'engines disagreed';
+        const tree = await render();
+        await openArena(tree);
+
+        expect(textOf(tree)).toContain('two engines disagreed');
+        expect(textOf(tree)).toContain('engines disagreed');
+    });
+});
+
+describe('BattleScreen — versus mark', () => {
+    it('separates your fighter from the opponent', async () => {
+        // Your pet is a picker chip strip and the opponent is a list of rows. Both are pet
+        // rows under their own label, and nothing else on the screen says which side of the
+        // fight each one is.
+        const tree = await render();
+        expect(textOf(tree)).toContain('VS');
+    });
+});
+
+describe('BattleScreen — chosen opponent', () => {
+    it('shows nothing until an opponent is chosen', async () => {
+        mockState.opponents = [foe({ id: '9', name: 'Luna', level: 11 })];
+        expect(textOf(await render())).not.toContain('STR');
+    });
+
+    it('shows the chosen opponent stats the chip has no room for', async () => {
+        // The chip is 80px of art, name and level. What decides a fight is underneath it.
+        mockState.opponents = [foe({ id: '9', name: 'Luna', level: 11 })];
+        const tree = await render();
+        await pressWith(tree, 'Luna');
+
+        expect(textOf(tree)).toContain('STR');
+    });
+
+    it('follows the choice to another opponent', async () => {
+        // Both are mounted in the strip, so this is a real re-selection rather than a
+        // re-render with a different prop.
+        mockState.opponents = [
+            foe({ id: '9', name: 'Luna', winCount: 4, lossCount: 1 }),
+            foe({ id: '12', name: 'Momo', winCount: 0, lossCount: 0 }),
+        ];
+        const tree = await render();
+
+        await pressWith(tree, 'Luna');
+        expect(textOf(tree)).toContain('80% wins');
+
+        await pressWith(tree, 'Momo');
+        // An opponent with no record shows no rate at all, the same as on the card.
+        expect(textOf(tree)).not.toContain('% wins');
+    });
+});
+
+describe('the arena', () => {
+    const closeControl = (tree: ReactTestRenderer.ReactTestRenderer) =>
+        tree.root.findAll((n) => n.props.accessibilityLabel === 'Leave the arena');
+
+    const isOpen = (tree: ReactTestRenderer.ReactTestRenderer) => closeControl(tree).length > 0;
+
+    it('stays shut until Start is pressed', async () => {
+        const tree = await render();
+        expect(isOpen(tree)).toBe(false);
+
+        await openArena(tree);
+        expect(isOpen(tree)).toBe(true);
+    });
+
+    it('opens on the press, before there is anything to watch', async () => {
+        // Six backend states run before a replay exists, and a fight can fail on any of them.
+        // Waiting for the replay would leave the player on the setup screen with no sign the
+        // battle had started, and none when it stopped.
+        const tree = await render();
+        await openArena(tree);
+
+        expect(isOpen(tree)).toBe(true);
+        expect(textOf(tree)).not.toContain('Bracing for the first strike');
+    });
+
+    it('closes again', async () => {
+        const tree = await render();
+        await openArena(tree);
+
+        await ReactTestRenderer.act(async () => closeControl(tree)[0].props.onPress());
+        expect(isOpen(tree)).toBe(false);
+    });
+});
+
+describe('who said it', () => {
+    /** A bubble's own label carries the speaker, which is also what a screen reader reads. */
+    const bubbleNodes = (tree: ReactTestRenderer.ReactTestRenderer) =>
+        tree.root.findAll(
+            // Host nodes only. `findAll` returns the composite element and the view it
+            // renders, so an unfiltered search counts every bubble twice.
+            (n) => typeof n.type === 'string' && String(n.props.accessibilityLabel ?? '').includes(' says: '),
+        );
+
+    const saidBy = (tree: ReactTestRenderer.ReactTestRenderer) =>
+        bubbleNodes(tree).map((n) => n.props.accessibilityLabel as string);
+
+    it('puts a line beside the pet that said it', async () => {
+        // The whole point. Both lines used to land in one column with nothing to tell them
+        // apart, because the panel flattened the turns to their text and dropped the speaker.
+        mockState.opponents = [foe({ id: '9', name: 'Luna' })];
+        mockState.turns = [
+            { speaker: 'attacker', phase: 'taunt', text: 'Nice stance.' },
+            { speaker: 'defender', phase: 'taunt', text: 'Come and see.' },
+        ];
+        const tree = await render();
+        // Both chosen, so the bubbles carry the pets' own names rather than the panel's
+        // "Your pet" / "Opponent" fallbacks.
+        await pressWith(tree, 'Rex');
+        await pressWith(tree, 'Luna');
+        await openArena(tree);
+
+        expect(saidBy(tree)).toEqual([
+            'Rex says: Nice stance.',
+            'Luna says: Come and see.',
+        ]);
+    });
+
+    it('draws the two sides in different colours', async () => {
+        mockState.turns = [
+            { speaker: 'attacker', phase: 'taunt', text: 'Nice stance.' },
+            { speaker: 'defender', phase: 'taunt', text: 'Come and see.' },
+        ];
+        const tree = await render();
+        await openArena(tree);
+
+        const bubbles = bubbleNodes(tree).map((n) => StyleSheet.flatten(n.props.style));
+
+        expect(bubbles).toHaveLength(2);
+        expect(bubbles[0].borderColor).not.toBe(bubbles[1].borderColor);
+    });
+});
