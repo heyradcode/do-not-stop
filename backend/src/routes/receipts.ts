@@ -1,5 +1,7 @@
 import express, { Router } from 'express';
 
+import { asyncRoute } from '@middleware/asyncRoute';
+
 import { getReceiptInclusionProof } from '@features/battle/batcher';
 import { getReceiptsByPet, getReceiptsBySequence, getReceiptsByWallet } from '@features/battle/ledger';
 
@@ -11,11 +13,11 @@ import { getReceiptsByPet, getReceiptsBySequence, getReceiptsByWallet } from '@f
  */
 const router: Router = express.Router();
 
-router.get('/by-pet/:chainId/:petId', getReceiptsByPet);
-router.get('/by-wallet/:wallet', getReceiptsByWallet);
+router.get('/by-pet/:chainId/:petId', asyncRoute(getReceiptsByPet));
+router.get('/by-wallet/:wallet', asyncRoute(getReceiptsByWallet));
 // Declared before `/`, and specific enough not to collide with it: the Merkle proof that
 // one receipt is in its anchored batch (§I).
-router.get('/:receiptHash/inclusion-proof', getReceiptInclusionProof);
-router.get('/', getReceiptsBySequence);
+router.get('/:receiptHash/inclusion-proof', asyncRoute(getReceiptInclusionProof));
+router.get('/', asyncRoute(getReceiptsBySequence));
 
 export default router;

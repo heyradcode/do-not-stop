@@ -20,6 +20,10 @@ let battleWorker: BattleWorkerHandle | undefined;
 // The callback is async because `configureSigner` now is: a KMS backend fetches its public
 // key before it can describe the key it signs with. Express ignores the returned promise,
 // so anything that must not be silently swallowed is handled inside.
+// The one place an async callback is not wrapped, because there is nothing to wrap it
+// into: a listen callback has no error chain. Anything that must not be swallowed is
+// handled inside, per the note above. Every *route* handler goes through asyncRoute.
+// eslint-disable-next-line @typescript-eslint/no-misused-promises
 const server = app.listen(env.port, '0.0.0.0', async () => {
     const { port } = env;
     console.log(`🚀 Backend server running on 0.0.0.0:${port}`);

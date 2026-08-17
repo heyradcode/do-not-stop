@@ -31,6 +31,33 @@ export default tseslint.config(
         },
     },
     {
+        /**
+         * Two type-aware rules, and only two.
+         *
+         * Express 4 does not await route handlers, so an `async` one passed raw to
+         * `router.get` rejects into nothing: an unhandled rejection, which Node 24 exits the
+         * process on. `app.ts` and `middleware/asyncRoute.ts` both record that a single
+         * failed battle accept took the server down that way, and the fix — wrap anything
+         * async — had been applied to one route file out of eleven.
+         *
+         * `no-misused-promises` is what catches the omission, and `no-floating-promises`
+         * catches the other half of the same class. The rest of `recommendedTypeChecked` is
+         * left off deliberately: this is a guard against a known outage, not a new
+         * lint sweep, and turning on thirty rules at once would bury it.
+         *
+         * Type-aware linting needs the program, hence `projectService`. It costs a few
+         * seconds on `pnpm lint`.
+         */
+        files: ['src/**/*.ts'],
+        languageOptions: {
+            parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+        },
+        rules: {
+            '@typescript-eslint/no-floating-promises': 'error',
+            '@typescript-eslint/no-misused-promises': 'error',
+        },
+    },
+    {
         // The build scripts are CommonJS on purpose: they run as plain node before
         // and after tsc, outside the compiled ESM output, so require() is correct
         // here rather than a lapse.

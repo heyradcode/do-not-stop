@@ -1,5 +1,7 @@
 import express, { Router } from 'express';
 
+import { asyncRoute } from '@middleware/asyncRoute';
+
 import { getSeason, getSeasonClaim, listSeasons } from '@features/battle/rewards';
 
 /**
@@ -16,8 +18,8 @@ import { getSeason, getSeasonClaim, listSeasons } from '@features/battle/rewards
  */
 const router: Router = express.Router();
 
-router.get('/seasons', listSeasons);
-router.get('/seasons/:seasonId', getSeason);
-router.get('/seasons/:seasonId/claim/:wallet', getSeasonClaim);
+router.get('/seasons', asyncRoute(listSeasons));
+router.get('/seasons/:seasonId', asyncRoute(getSeason));
+router.get('/seasons/:seasonId/claim/:wallet', asyncRoute(getSeasonClaim));
 
 export default router;
